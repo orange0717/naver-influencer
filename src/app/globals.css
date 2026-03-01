@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* 다크 테마 기본 — 브랜드커넥트 UI */
+  --color-bg: #0F0F1A;
+  --color-surface: #1A1A2E;
+  --color-surface-hover: #222240;
+  --color-border: #2A2A4A;
+  --color-text: #E0E0E0;
+  --color-dim: #888888;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* 브랜드 컬러 */
+  --color-accent: #6C5CE7;
+  --color-accent-hover: #7B6BF0;
+  --color-accent2: #E94560;
+  --color-accent2-hover: #F05A73;
+
+  /* 기능 컬러 */
+  --color-up: #00D68F;
+  --color-down: #FF6B6B;
+  --color-stable: #888888;
+  --color-blue: #4D9FFF;
+
+  /* 순위 뱃지 */
+  --color-gold: #FFD93D;
+  --color-silver: #C0C0C0;
+  --color-bronze: #CD7F32;
+
+  /* 포인트 관련 */
+  --color-point: #6C5CE7;
+  --color-point-bg: rgba(108, 92, 231, 0.12);
+
+  /* 폰트 */
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2A2A4A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3A5A; }
+
+/* 순위 숫자 모노스페이스 */
+.font-rank {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
