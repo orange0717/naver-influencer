@@ -1,14 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 
-const user = {
+const initialUser = {
   email: 'user@example.com',
   nickname: '오렌지마케터',
   point_balance: 1200,
   total_charged: 8000,
   total_used: 6800,
   linked_influencer: '오렌지도서관',
+  linked_naver_id: 'orangelibrary',
   created_at: '2026-02-15',
 };
 
@@ -22,17 +24,74 @@ const recentHistory = [
 ];
 
 export default function ProfilePage() {
+  const [user, setUser] = useState(initialUser);
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState(user.nickname);
+  const [toast, setToast] = useState('');
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2500);
+  };
+
+  const saveNickname = () => {
+    const name = nicknameInput.trim();
+    if (!name) return;
+    setUser(prev => ({ ...prev, nickname: name }));
+    setEditingNickname(false);
+    showToast('닉네임이 변경되었습니다.');
+  };
+
+  const unlinkInfluencer = () => {
+    setUser(prev => ({ ...prev, linked_influencer: '', linked_naver_id: '' }));
+    showToast('인플루언서 계정 연결이 해제되었습니다.');
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-xl font-bold">내 프로필</h1>
+
+      {/* 토스트 */}
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-accent/50 text-text px-5 py-3 rounded-xl shadow-lg text-sm font-semibold animate-pulse">
+          {toast}
+        </div>
+      )}
 
       <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-accent/20 rounded-full flex items-center justify-center text-xl font-bold text-accent">
             {user.nickname[0]}
           </div>
-          <div>
-            <p className="font-bold text-lg">{user.nickname}</p>
+          <div className="flex-1">
+            {editingNickname ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={nicknameInput}
+                  onChange={e => setNicknameInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveNickname()}
+                  className="flex-1 px-3 py-1.5 bg-bg border border-accent rounded-lg text-sm text-text focus:outline-none"
+                  autoFocus
+                />
+                <button onClick={saveNickname}
+                  className="px-3 py-1.5 bg-accent text-white text-xs font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer">
+                  저장
+                </button>
+                <button onClick={() => { setEditingNickname(false); setNicknameInput(user.nickname); }}
+                  className="px-3 py-1.5 bg-surface-hover text-dim text-xs rounded-lg cursor-pointer">
+                  취소
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-lg">{user.nickname}</p>
+                <button onClick={() => setEditingNickname(true)}
+                  className="text-xs text-dim border border-border rounded px-2 py-0.5 hover:border-accent/40 cursor-pointer">
+                  편집
+                </button>
+              </div>
+            )}
             <p className="text-sm text-dim">{user.email}</p>
             <p className="text-xs text-dim">가입일: {user.created_at}</p>
           </div>
@@ -54,6 +113,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* 인플루언서 연결 */}
       <div className="bg-surface rounded-xl border border-border p-5">
         <h3 className="font-bold text-sm mb-3">연결된 인플루언서</h3>
         {user.linked_influencer ? (
@@ -62,22 +122,69 @@ export default function ProfilePage() {
               <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center font-bold text-accent">
                 {user.linked_influencer[0]}
               </div>
-              <span className="font-medium">{user.linked_influencer}</span>
+              <div>
+                <span className="font-medium">{user.linked_influencer}</span>
+                <p className="text-xs text-dim">@{user.linked_naver_id}</p>
+              </div>
             </div>
-            <Link href="/my" className="text-sm text-accent font-semibold">대시보드 →</Link>
+            <div className="flex items-center gap-2">
+              <Link href="/my" className="text-sm text-accent font-semibold">대시보드 →</Link>
+              <button onClick={unlinkInfluencer}
+                className="text-xs text-down border border-down/30 rounded px-2 py-1 hover:bg-down/10 transition cursor-pointer">
+                연결 해제
+              </button>
+            </div>
           </div>
         ) : (
-          <Link href="/my/link" className="block text-center py-3 bg-accent/12 rounded-lg text-accent font-semibold text-sm">
-            인플루언서 계정 연결하기
-          </Link>
+          <div className="space-y-3">
+            <p className="text-sm text-dim">연결된 인플루언서가 없습니다.</p>
+            <Link href="/my/link" className="block text-center py-3 bg-accent/12 rounded-lg text-accent font-semibold text-sm">
+              인플루언서 계정 연결하기
+            </Link>
+          </div>
+        )}
+        {user.linked_influencer && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <Link href="/my/link"
+              className="text-xs text-accent hover:underline">
+              다른 인플루언서로 변경하기 →
+            </Link>
+          </div>
         )}
       </div>
 
+      {/* 사용 내역 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         <div className="p-4 border-b border-border">
           <h3 className="font-bold text-sm">최근 사용 내역</h3>
         </div>
-        <div className="divide-y divide-border/50">
+
+        {/* Desktop */}
+        <table className="w-full text-sm hidden sm:table">
+          <thead>
+            <tr className="border-b border-border bg-bg/50">
+              <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">내역</th>
+              <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">포인트</th>
+              <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">날짜</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentHistory.map((h, idx) => (
+              <tr key={idx} className="border-b border-border/50">
+                <td className="py-3 px-4 text-sm">{h.description}</td>
+                <td className="py-3 px-4 text-right">
+                  <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
+                    {h.amount > 0 ? '+' : ''}{h.amount}P
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-right text-xs text-dim">{h.date}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Mobile */}
+        <div className="sm:hidden divide-y divide-border/50">
           {recentHistory.map((h, idx) => (
             <div key={idx} className="flex items-center justify-between p-4">
               <div>

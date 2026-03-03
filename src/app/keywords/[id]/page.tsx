@@ -5,6 +5,7 @@ import Link from 'next/link';
 import TrendBadge from '@/components/TrendBadge';
 import RankBadge from '@/components/RankBadge';
 import RankChange from '@/components/RankChange';
+import TrendAreaChart from '@/components/TrendAreaChart';
 import { mockKeywords } from '@/data/mock-keywords';
 import { getRankingsForKeyword } from '@/data/mock-rankings';
 
@@ -20,7 +21,6 @@ export default function KeywordDetailPage() {
     week: w,
     volume: Math.round(kw.search_volume_monthly * (0.7 + Math.random() * 0.6) / 4),
   }));
-  const maxVol = Math.max(...trendData.map(d => d.volume));
   const ratio = Math.round(kw.search_volume_monthly / kw.participant_count);
 
   return (
@@ -111,21 +111,13 @@ export default function KeywordDetailPage() {
         </div>
       </div>
 
-      {/* 트렌드 차트 */}
+      {/* 트렌드 차트 (Recharts) */}
       <div className="bg-surface rounded-xl border border-border p-6">
-        <div className="text-sm font-bold mb-4">12주 트렌드</div>
-        <div className="flex items-end gap-1 h-32">
-          {trendData.map((d, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full bg-accent/30 rounded-t relative group hover:bg-accent/50 transition-colors" style={{ height: `${(d.volume / maxVol) * 100}%`, minHeight: 4 }}>
-                <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-surface border border-border text-text text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                  {d.volume.toLocaleString()}
-                </div>
-              </div>
-              <span className="text-[9px] text-dim whitespace-nowrap">{d.week.slice(-2)}</span>
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm font-bold">12주 트렌드</div>
+          <TrendBadge direction={kw.trend_direction} percentage={kw.trend_percentage} />
         </div>
+        <TrendAreaChart data={trendData} direction={kw.trend_direction} />
       </div>
 
       {/* 순위 */}
@@ -145,14 +137,16 @@ export default function KeywordDetailPage() {
               </button>
             </div>
           )}
-          <table className="w-full text-sm">
+
+          {/* Desktop table */}
+          <table className="w-full text-sm hidden sm:table">
             <thead>
               <tr className="bg-bg/50 border-b border-border">
                 <th className="py-2.5 px-4 text-left text-xs font-semibold text-dim">순위</th>
                 <th className="py-2.5 px-4 text-left text-xs font-semibold text-dim">인플루언서</th>
-                <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim hidden sm:table-cell">카테고리</th>
+                <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim">카테고리</th>
                 <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim">변동</th>
-                <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim hidden sm:table-cell">포스트</th>
+                <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim">포스트</th>
               </tr>
             </thead>
             <tbody>
@@ -160,13 +154,27 @@ export default function KeywordDetailPage() {
                 <tr key={r.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
                   <td className="py-3 px-4"><RankBadge rank={r.rank_position} size="sm" /></td>
                   <td className="py-3 px-4 font-semibold">{r.influencer_name}</td>
-                  <td className="py-3 px-4 text-right text-xs text-dim hidden sm:table-cell">{r.influencer_category}</td>
+                  <td className="py-3 px-4 text-right text-xs text-dim">{r.influencer_category}</td>
                   <td className="py-3 px-4 text-right"><RankChange change={r.rank_change} /></td>
-                  <td className="py-3 px-4 text-right text-dim hidden sm:table-cell font-rank">{r.post_count}개</td>
+                  <td className="py-3 px-4 text-right text-dim font-rank">{r.post_count}개</td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-border/50">
+            {rankings.map(r => (
+              <div key={r.id} className="p-4 flex items-center gap-3">
+                <RankBadge rank={r.rank_position} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{r.influencer_name}</p>
+                  <p className="text-xs text-dim">{r.influencer_category} · 포스트 {r.post_count}개</p>
+                </div>
+                <RankChange change={r.rank_change} />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

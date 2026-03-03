@@ -85,12 +85,14 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
             <h2 className="font-bold text-sm">참여 키워드 목록</h2>
             <span className="text-xs text-dim font-rank">{keywords.length}개</span>
           </div>
-          <table className="w-full text-sm">
+
+          {/* Desktop table */}
+          <table className="w-full text-sm hidden sm:table">
             <thead>
               <tr className="border-b border-border bg-bg/50">
                 <th className="text-left p-3 font-semibold text-dim text-xs">키워드</th>
                 <th className="text-center p-3 font-semibold text-dim text-xs w-14">순위</th>
-                <th className="text-right p-3 font-semibold text-dim text-xs w-20 hidden sm:table-cell">참여자</th>
+                <th className="text-right p-3 font-semibold text-dim text-xs w-20">참여자</th>
                 <th className="text-right p-3 font-semibold text-dim text-xs w-24 hidden md:table-cell">검색량</th>
                 <th className="text-center p-3 font-semibold text-dim text-xs w-14">통합</th>
               </tr>
@@ -103,13 +105,42 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                     <span className="text-xs text-dim ml-2">{kw.category}</span>
                   </td>
                   <td className="text-center p-3"><RankBadge rank={kw.rank_position} size="sm" /></td>
-                  <td className="text-right p-3 text-dim hidden sm:table-cell font-rank">{kw.participant_count}명</td>
+                  <td className="text-right p-3 text-dim font-rank">{kw.participant_count}명</td>
                   <td className="text-right p-3 font-medium hidden md:table-cell font-rank">{kw.search_volume_monthly.toLocaleString()}</td>
                   <td className="text-center p-3">{kw.is_integrated_top3 && <span className="text-gold">★</span>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-border/50">
+            {keywords.map((kw) => (
+              <Link key={kw.keyword_id} href={`/keywords/${kw.keyword_id}`} className="block p-4 hover:bg-surface-hover transition">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <span className="font-medium text-sm">{kw.keyword}</span>
+                    <span className="text-xs text-dim ml-2">{kw.category}</span>
+                  </div>
+                  {kw.is_integrated_top3 && <span className="text-gold text-sm">★</span>}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                  <div>
+                    <RankBadge rank={kw.rank_position} size="sm" />
+                    <p className="text-[10px] text-dim mt-1">순위</p>
+                  </div>
+                  <div>
+                    <p className="font-rank text-dim">{kw.participant_count}명</p>
+                    <p className="text-[10px] text-dim">참여자</p>
+                  </div>
+                  <div>
+                    <p className="font-rank font-medium">{(kw.search_volume_monthly / 1000).toFixed(0)}K</p>
+                    <p className="text-[10px] text-dim">검색량</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
 
         {!unlocked && (

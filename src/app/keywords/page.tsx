@@ -59,16 +59,17 @@ export default function KeywordsPage() {
         ))}
       </div>
 
-      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+      {/* Desktop table */}
+      <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-bg/50">
               <th className="text-left py-3 px-4 font-semibold text-dim text-xs">키워드</th>
-              <th className="text-left py-3 px-4 font-semibold text-dim text-xs hidden md:table-cell">카테고리</th>
+              <th className="text-left py-3 px-4 font-semibold text-dim text-xs">카테고리</th>
               <th className="text-right py-3 px-4 font-semibold text-dim text-xs cursor-pointer select-none hover:text-accent" onClick={() => toggleSort('search_volume_monthly')}>검색량{sortIcon('search_volume_monthly')}</th>
-              <th className="text-right py-3 px-4 font-semibold text-dim text-xs cursor-pointer select-none hover:text-accent hidden sm:table-cell" onClick={() => toggleSort('participant_count')}>참여자{sortIcon('participant_count')}</th>
+              <th className="text-right py-3 px-4 font-semibold text-dim text-xs cursor-pointer select-none hover:text-accent" onClick={() => toggleSort('participant_count')}>참여자{sortIcon('participant_count')}</th>
               <th className="text-center py-3 px-4 font-semibold text-dim text-xs cursor-pointer select-none hover:text-accent hidden lg:table-cell" onClick={() => toggleSort('competition_level')}>경쟁도{sortIcon('competition_level')}</th>
-              <th className="text-right py-3 px-4 font-semibold text-dim text-xs hidden md:table-cell">트렌드</th>
+              <th className="text-right py-3 px-4 font-semibold text-dim text-xs">트렌드</th>
               <th className="text-right py-3 px-4 font-semibold text-dim text-xs cursor-pointer select-none hover:text-accent" onClick={() => toggleSort('recommendation_score')}>추천{sortIcon('recommendation_score')}</th>
             </tr>
           </thead>
@@ -81,13 +82,12 @@ export default function KeywordsPage() {
                     {kw.is_new && <span className="ml-1.5 text-[10px] font-bold text-accent2 bg-accent2/12 px-1.5 py-0.5 rounded">NEW</span>}
                     {kw.trend_direction === 'up' && kw.trend_percentage > 30 && <span className="ml-1.5 text-[10px] font-bold text-down bg-down/12 px-1.5 py-0.5 rounded">HOT</span>}
                   </Link>
-                  <span className="block text-xs text-dim md:hidden">{kw.category}</span>
                 </td>
-                <td className="py-3 px-4 text-xs text-dim hidden md:table-cell">{kw.category}</td>
+                <td className="py-3 px-4 text-xs text-dim">{kw.category}</td>
                 <td className="py-3 px-4 text-right font-bold font-rank">{kw.search_volume_monthly.toLocaleString()}</td>
-                <td className="py-3 px-4 text-right text-dim hidden sm:table-cell font-rank">{kw.participant_count}</td>
+                <td className="py-3 px-4 text-right text-dim font-rank">{kw.participant_count}</td>
                 <td className="py-3 px-4 text-center hidden lg:table-cell">{compBadge(kw.competition_level)}</td>
-                <td className="py-3 px-4 text-right hidden md:table-cell"><TrendBadge direction={kw.trend_direction} percentage={kw.trend_percentage} /></td>
+                <td className="py-3 px-4 text-right"><TrendBadge direction={kw.trend_direction} percentage={kw.trend_percentage} /></td>
                 <td className="py-3 px-4 text-right">
                   <span className={`text-sm font-extrabold font-rank ${kw.recommendation_score >= 8 ? 'text-accent' : kw.recommendation_score >= 6 ? 'text-gold' : 'text-dim'}`}>{kw.recommendation_score}</span>
                 </td>
@@ -95,6 +95,39 @@ export default function KeywordsPage() {
             ))}
           </tbody>
         </table>
+        {filtered.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {filtered.map(kw => (
+          <Link key={kw.id} href={`/keywords/${kw.id}`}
+            className="block bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">{kw.keyword}</span>
+                {kw.is_new && <span className="text-[10px] font-bold text-accent2 bg-accent2/12 px-1.5 py-0.5 rounded">NEW</span>}
+                {kw.trend_direction === 'up' && kw.trend_percentage > 30 && <span className="text-[10px] font-bold text-down bg-down/12 px-1.5 py-0.5 rounded">HOT</span>}
+              </div>
+              <span className={`text-sm font-extrabold font-rank ${kw.recommendation_score >= 8 ? 'text-accent' : kw.recommendation_score >= 6 ? 'text-gold' : 'text-dim'}`}>{kw.recommendation_score}</span>
+            </div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-dim">{kw.category}</span>
+              {compBadge(kw.competition_level)}
+              <TrendBadge direction={kw.trend_direction} percentage={kw.trend_percentage} />
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="flex justify-between">
+                <span className="text-dim">검색량</span>
+                <span className="font-bold font-rank">{kw.search_volume_monthly.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-dim">참여자</span>
+                <span className="font-rank">{kw.participant_count}명</span>
+              </div>
+            </div>
+          </Link>
+        ))}
         {filtered.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
       </div>
     </div>

@@ -91,3 +91,36 @@ export interface MyKeywordRanking {
   search_volume_monthly: number;
   is_integrated_top3: boolean;
 }
+
+// ─── 크롤러 타입 ───
+
+/** GraphQL에서 받아오는 키워드 원본 데이터 */
+export interface NaverKeywordRaw {
+  keyword: string;
+  categoryId?: number;
+  categoryName?: string;
+  participantCount?: number;
+  contentCount?: number;
+  isIssue?: boolean;
+  thumbnailUrl?: string;
+}
+
+/** HTML 파싱으로 추출한 순위 데이터 */
+export interface ParsedRanking {
+  rank: number;
+  influencerName: string;
+  influencerUrl: string;
+  naverId: string;
+  category?: string;
+  fanCount?: number;
+  latestPostTitle?: string;
+  latestPostUrl?: string;
+}
+
+/** 네이버 검색광고 API 키워드 볼륨 */
+export interface KeywordVolume {
+  keyword: string;
+  monthlyPcQcCnt: number;
+  monthlyMobileQcCnt: number;
+  compIdx: string; // '높음' | '중간' | '낮음'
+}
