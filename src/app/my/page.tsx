@@ -1,73 +1,168 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import StatCard from '@/components/StatCard';
 import RankBadge from '@/components/RankBadge';
 import RankChange from '@/components/RankChange';
 import RankHistoryChart from '@/components/RankHistoryChart';
 import CompetitorBarChart from '@/components/CompetitorBarChart';
-import type { MyKeywordRanking } from '@/lib/types';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
-const myInfluencer = {
-  id: 'inf-003',
-  naver_id: 'orangelibrary',
-  display_name: '오렌지도서관',
-  category: '도서 전문블로거 · 소설 전문',
-  fan_count: 209,
-  blog_neighbor_count: 4200,
-};
-
-const myRankings: (MyKeywordRanking & { rank_history: number[] })[] = [
-  { keyword_id: 'kw-003', keyword: '행복명언', category: '자기계발', rank_position: 1, previous_rank: 1, rank_change: 0, participant_count: 71, search_volume_monthly: 33100, is_integrated_top3: true, rank_history: [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1] },
-  { keyword_id: 'kw-004', keyword: '독서노트작성법', category: '도서', rank_position: 2, previous_rank: 3, rank_change: 1, participant_count: 45, search_volume_monthly: 12400, is_integrated_top3: true, rank_history: [4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2] },
-  { keyword_id: 'kw-006', keyword: '한줄명언', category: '자기계발', rank_position: 3, previous_rank: 3, rank_change: 0, participant_count: 52, search_volume_monthly: 21500, is_integrated_top3: true, rank_history: [3, 3, 3, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] },
-  { keyword_id: 'kw-012', keyword: '소설추천', category: '도서', rank_position: 5, previous_rank: 3, rank_change: -2, participant_count: 128, search_volume_monthly: 58200, is_integrated_top3: false, rank_history: [3, 3, 3, 4, 4, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5] },
-  { keyword_id: 'kw-013', keyword: '자기계발책추천', category: '자기계발', rank_position: 8, previous_rank: 11, rank_change: 3, participant_count: 203, search_volume_monthly: 89100, is_integrated_top3: false, rank_history: [15, 14, 13, 12, 11, 11, 11, 10, 9, 9, 8, 8, 8, 8, 8] },
-  { keyword_id: 'kw-014', keyword: '에세이추천', category: '도서', rank_position: 4, previous_rank: 5, rank_change: 1, participant_count: 85, search_volume_monthly: 28400, is_integrated_top3: false, rank_history: [6, 6, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4] },
-  { keyword_id: 'kw-015', keyword: '인생책', category: '도서', rank_position: 6, previous_rank: 6, rank_change: 0, participant_count: 112, search_volume_monthly: 44200, is_integrated_top3: false, rank_history: [6, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6] },
-];
-
-const historyDates = Array.from({ length: 15 }, (_, i) => {
-  const d = new Date(); d.setDate(d.getDate() - (14 - i));
-  return d.toISOString().split('T')[0];
-});
-
-const CHART_COLORS = ['#6C5CE7', '#E94560', '#00D68F', '#4D9FFF', '#FFD93D', '#FF6B6B', '#CD7F32'];
-
-const guide = [
-  { factor: '서비스 활성도', status: 'warning', message: '참여 키워드 7개 / 전체 336개 (2.1%)', action: '30개 이상 참여 확대 권장' },
-  { factor: '인게이지먼트', status: 'actionable', message: '평균 조회수 3.4회', action: '콘텐츠 홍보 및 SNS 공유 필요' },
-  { factor: 'TOP 3 기회', status: 'opportunity', message: "'에세이추천' 4위 — TOP 3까지 1단계", action: '콘텐츠 품질 개선으로 TOP 3 진입 가능' },
-];
-
-const competitorData = [
-  { keyword: '행복명언', competitors: [
-    { name: '오렌지도서관', rank: 1, isMe: true },
-    { name: '여르미', rank: 2, isMe: false },
-    { name: '북레터', rank: 3, isMe: false },
-  ]},
-  { keyword: '독서노트작성법', competitors: [
-    { name: '책읽는곰', rank: 1, isMe: false },
-    { name: '오렌지도서관', rank: 2, isMe: true },
-    { name: '독서왕', rank: 3, isMe: false },
-  ]},
-];
+interface DashboardData {
+  linked: boolean;
+  influencer: {
+    id: string;
+    naver_id: string;
+    display_name: string;
+    category: string;
+    image_url?: string;
+    subscriber_count?: number;
+    total_follower_count?: number;
+  } | null;
+  stats: {
+    total_keywords: number;
+    avg_rank: number;
+    top3_count: number;
+    integrated_top3_count: number;
+    rank_up_count: number;
+    rank_down_count: number;
+  } | null;
+  rankings: {
+    keyword_id: string;
+    keyword: string;
+    category: string;
+    rank_position: number;
+    previous_rank: number | null;
+    rank_change: number;
+    is_integrated_top3: boolean;
+    participant_count: number;
+    search_volume_monthly: number;
+    rank_history: number[];
+    rank_history_dates: string[];
+  }[];
+  competitors: {
+    keyword: string;
+    competitors: { name: string; rank: number; isMe: boolean }[];
+  }[];
+  guide: {
+    factor: string;
+    status: string;
+    message: string;
+    action: string;
+  }[];
+}
 
 type SortKey = 'rank_position' | 'search_volume_monthly' | 'rank_change';
 type Filter = 'all' | 'top3' | 'integrated' | 'up';
 
+const CHART_COLORS = ['#6C5CE7', '#E94560', '#00D68F', '#4D9FFF', '#FFD93D', '#FF6B6B', '#CD7F32'];
+
 export default function MyDashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('rank_position');
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedCompetitor, setSelectedCompetitor] = useState(0);
 
-  const totalKeywords = myRankings.length;
-  const avgRank = (myRankings.reduce((s, r) => s + r.rank_position, 0) / totalKeywords).toFixed(1);
-  const top3Count = myRankings.filter(r => r.rank_position <= 3).length;
-  const integratedCount = myRankings.filter(r => r.is_integrated_top3).length;
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { session } } = await supabase.auth.getSession();
 
-  const filtered = myRankings
+        if (!session) {
+          setError('login_required');
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/my/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            setError('login_required');
+          } else {
+            setError('데이터를 불러올 수 없습니다.');
+          }
+          setLoading(false);
+          return;
+        }
+
+        const dashData = await res.json();
+        setData(dashData);
+      } catch {
+        setError('데이터를 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
+          <p className="text-sm text-dim">내 대시보드 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error === 'login_required') {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-full bg-accent/15 flex items-center justify-center text-accent text-xl font-bold">?</div>
+          <h2 className="text-xl font-bold">로그인이 필요합니다</h2>
+          <p className="text-sm text-dim">내 키워드 순위를 확인하려면 로그인하세요.</p>
+          <Link href="/auth/login"
+            className="inline-block px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
+            로그인하기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-full bg-down/15 flex items-center justify-center text-down text-xl font-bold">!</div>
+          <p className="text-sm text-dim">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data?.linked || !data.influencer) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-full bg-accent/15 flex items-center justify-center text-accent text-xl font-bold">N</div>
+          <h2 className="text-xl font-bold">인플루언서 계정을 연결하세요</h2>
+          <p className="text-sm text-dim">네이버 인플루언서 계정을 연결하면 키워드 순위를 실시간으로 확인할 수 있습니다.</p>
+          <Link href="/my/link"
+            className="inline-block px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
+            계정 연결하기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const { influencer, stats, rankings, competitors, guide } = data;
+
+  const filtered = rankings
     .filter(r => {
       if (filter === 'top3') return r.rank_position <= 3;
       if (filter === 'integrated') return r.is_integrated_top3;
@@ -85,48 +180,56 @@ export default function MyDashboard() {
       {/* 프로필 헤더 */}
       <div className="bg-gradient-to-r from-accent to-accent2 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
-            {myInfluencer.display_name[0]}
-          </div>
+          {influencer.image_url ? (
+            <img src={influencer.image_url} alt="" className="w-14 h-14 rounded-full object-cover" />
+          ) : (
+            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
+              {influencer.display_name[0]}
+            </div>
+          )}
           <div>
-            <h1 className="text-xl font-bold">{myInfluencer.display_name}</h1>
-            <p className="text-sm text-white/80">{myInfluencer.category}</p>
+            <h1 className="text-xl font-bold">{influencer.display_name}</h1>
+            <p className="text-sm text-white/80">{influencer.category}</p>
             <p className="text-xs text-white/60 mt-1">
-              팬 {myInfluencer.fan_count.toLocaleString()} · 블로그 이웃 {myInfluencer.blog_neighbor_count.toLocaleString()}+
+              구독자 {(influencer.subscriber_count || 0).toLocaleString()} · 팔로워 {(influencer.total_follower_count || 0).toLocaleString()}
             </p>
           </div>
         </div>
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="참여 키워드" value={`${totalKeywords}개`} icon="🔑" color="accent" />
-        <StatCard label="평균 순위" value={`${avgRank}위`} icon="📊" color="blue" />
-        <StatCard label="TOP 3 키워드" value={`${top3Count}개`} icon="🏆" color="green" />
-        <StatCard label="통합검색 TOP3" value={`${integratedCount}개`} icon="⭐" color="orange" />
-      </div>
-
-      {/* 순위 변동 차트 (Recharts) */}
-      <div className="bg-surface rounded-xl border border-border p-5">
-        <h3 className="font-bold text-sm mb-4">최근 15일 순위 추이</h3>
-        <RankHistoryChart
-          dates={historyDates}
-          keywords={myRankings.slice(0, 5).map((r, i) => ({
-            keyword: r.keyword,
-            ranks: r.rank_history,
-            color: CHART_COLORS[i],
-          }))}
-        />
-        <div className="flex flex-wrap gap-3 mt-3">
-          {myRankings.slice(0, 5).map((r, i) => (
-            <div key={r.keyword_id} className="flex items-center gap-1.5 text-xs">
-              <div className="w-3 h-3 rounded-full" style={{ background: CHART_COLORS[i] }} />
-              <span className="text-dim">{r.keyword}</span>
-              <span className="font-bold font-rank">{r.rank_position}위</span>
-            </div>
-          ))}
+      {stats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard label="참여 키워드" value={`${stats.total_keywords}개`} icon="KEY" color="accent" />
+          <StatCard label="평균 순위" value={`${stats.avg_rank}위`} icon="AVG" color="blue" />
+          <StatCard label="TOP 3 키워드" value={`${stats.top3_count}개`} icon="TOP" color="green" />
+          <StatCard label="통합검색 TOP3" value={`${stats.integrated_top3_count}개`} icon="INT" color="orange" />
         </div>
-      </div>
+      )}
+
+      {/* 순위 변동 차트 */}
+      {rankings.length > 0 && rankings[0].rank_history.length > 0 && (
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h3 className="font-bold text-sm mb-4">최근 순위 추이</h3>
+          <RankHistoryChart
+            dates={rankings[0].rank_history_dates}
+            keywords={rankings.slice(0, 5).map((r, i) => ({
+              keyword: r.keyword,
+              ranks: r.rank_history,
+              color: CHART_COLORS[i],
+            }))}
+          />
+          <div className="flex flex-wrap gap-3 mt-3">
+            {rankings.slice(0, 5).map((r, i) => (
+              <div key={r.keyword_id} className="flex items-center gap-1.5 text-xs">
+                <div className="w-3 h-3 rounded-full" style={{ background: CHART_COLORS[i] }} />
+                <span className="text-dim">{r.keyword}</span>
+                <span className="font-bold font-rank">{r.rank_position}위</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 필터 + 정렬 */}
       <div className="flex flex-wrap gap-2 items-center justify-between">
@@ -174,11 +277,14 @@ export default function MyDashboard() {
                 <td className="text-center p-3"><RankChange change={r.rank_change} /></td>
                 <td className="text-right p-3 text-dim font-rank">{r.participant_count}명</td>
                 <td className="text-right p-3 font-medium font-rank">{r.search_volume_monthly.toLocaleString()}</td>
-                <td className="text-center p-3">{r.is_integrated_top3 && <span className="text-gold">★</span>}</td>
+                <td className="text-center p-3">{r.is_integrated_top3 && <span className="text-gold font-bold text-xs">T3</span>}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        {filtered.length === 0 && (
+          <div className="text-center py-12 text-dim text-sm">해당 조건의 키워드가 없습니다.</div>
+        )}
       </div>
 
       {/* 순위 카드 (Mobile) */}
@@ -191,7 +297,7 @@ export default function MyDashboard() {
                 <span className="font-bold">{r.keyword}</span>
                 <span className="text-xs text-dim ml-2">{r.category}</span>
               </div>
-              {r.is_integrated_top3 && <span className="text-gold text-sm">★ 통합</span>}
+              {r.is_integrated_top3 && <span className="text-gold text-sm font-bold">T3</span>}
             </div>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>
@@ -216,46 +322,54 @@ export default function MyDashboard() {
       </div>
 
       {/* 경쟁자 비교 */}
-      <div className="bg-surface rounded-xl border border-border p-5">
-        <h3 className="font-bold text-sm mb-3">경쟁자 비교</h3>
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {competitorData.map((cd, i) => (
-            <button key={cd.keyword} onClick={() => setSelectedCompetitor(i)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
-                selectedCompetitor === i ? 'bg-accent text-white' : 'bg-surface-hover text-dim border border-border'
-              }`}>{cd.keyword}</button>
-          ))}
+      {competitors.length > 0 && (
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h3 className="font-bold text-sm mb-3">경쟁자 비교</h3>
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {competitors.map((cd, i) => (
+              <button key={cd.keyword} onClick={() => setSelectedCompetitor(i)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                  selectedCompetitor === i ? 'bg-accent text-white' : 'bg-surface-hover text-dim border border-border'
+                }`}>{cd.keyword}</button>
+            ))}
+          </div>
+          <CompetitorBarChart data={competitors[selectedCompetitor]?.competitors || []} />
         </div>
-        <CompetitorBarChart data={competitorData[selectedCompetitor].competitors} />
-      </div>
+      )}
 
       {/* 순위 상승 가이드 */}
-      <div className="bg-surface rounded-xl border border-border p-5">
-        <h3 className="font-bold text-sm mb-4">순위 상승 가이드</h3>
-        <div className="space-y-3">
-          {guide.map((g, i) => (
-            <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border ${
-              g.status === 'warning' ? 'border-gold/30 bg-gold/5' :
-              g.status === 'actionable' ? 'border-accent/30 bg-accent/5' :
-              'border-up/30 bg-up/5'
-            }`}>
-              <span className="text-lg">{g.status === 'warning' ? '⚠️' : g.status === 'opportunity' ? '🎯' : '💡'}</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-text">{g.factor}</span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                    g.status === 'warning' ? 'bg-gold/15 text-gold' :
-                    g.status === 'actionable' ? 'bg-accent/15 text-accent' :
-                    'bg-up/15 text-up'
-                  }`}>{g.status === 'warning' ? '주의' : g.status === 'opportunity' ? '기회' : '실행'}</span>
+      {guide.length > 0 && (
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h3 className="font-bold text-sm mb-4">순위 상승 가이드</h3>
+          <div className="space-y-3">
+            {guide.map((g, i) => (
+              <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border ${
+                g.status === 'warning' ? 'border-gold/30 bg-gold/5' :
+                g.status === 'actionable' ? 'border-accent/30 bg-accent/5' :
+                'border-up/30 bg-up/5'
+              }`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  g.status === 'warning' ? 'bg-gold/20 text-gold' :
+                  g.status === 'opportunity' ? 'bg-up/20 text-up' :
+                  'bg-accent/20 text-accent'
+                }`}>{g.status === 'warning' ? '!' : g.status === 'opportunity' ? 'GO' : 'TIP'}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold text-text">{g.factor}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      g.status === 'warning' ? 'bg-gold/15 text-gold' :
+                      g.status === 'actionable' ? 'bg-accent/15 text-accent' :
+                      'bg-up/15 text-up'
+                    }`}>{g.status === 'warning' ? '주의' : g.status === 'opportunity' ? '기회' : '실행'}</span>
+                  </div>
+                  <p className="text-xs text-dim">{g.message}</p>
+                  <p className="text-xs text-text mt-1 font-medium">{g.action}</p>
                 </div>
-                <p className="text-xs text-dim">{g.message}</p>
-                <p className="text-xs text-text mt-1 font-medium">{g.action}</p>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

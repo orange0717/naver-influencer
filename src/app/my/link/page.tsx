@@ -1,32 +1,100 @@
 'use client';
 
 import { useState } from 'react';
-import { mockInfluencers } from '@/data/mock-influencers';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+
+interface FoundInfluencer {
+  naverId: string;
+  name: string;
+  imageUrl?: string;
+  myKeywordCategory?: string;
+  subscriberCount?: number;
+  totalFollowerCount?: number;
+}
 
 export default function LinkInfluencer() {
   const [query, setQuery] = useState('');
-  const [found, setFound] = useState<typeof mockInfluencers[0] | null>(null);
+  const [results, setResults] = useState<FoundInfluencer[]>([]);
   const [linked, setLinked] = useState(false);
+  const [linkedName, setLinkedName] = useState('');
   const [error, setError] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [linking, setLinking] = useState(false);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setError('');
-    setFound(null);
-    const q = query.trim().toLowerCase();
+    setResults([]);
+    const q = query.trim();
     if (!q) return;
-    const match = mockInfluencers.find(i =>
-      i.naver_id.toLowerCase() === q || i.display_name.includes(query.trim())
-    );
-    if (match) setFound(match);
-    else setError('아직 크롤링되지 않은 인플루언서입니다. ID가 정확한지 확인해주세요.');
+
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/influencers?search=${encodeURIComponent(q)}&limit=5`);
+      const data = await res.json();
+      setResults(data.influencers || []);
+      if ((data.influencers || []).length === 0) {
+        setError('인플루언서를 찾을 수 없습니다. 아직 크롤링되지 않은 경우 ID를 정확히 입력해주세요.');
+      }
+    } catch {
+      setError('검색 중 오류가 발생했습니다.');
+    } finally {
+      setSearching(false);
+    }
   };
 
-  if (linked && found) {
+  const handleLink = async (inf: FoundInfluencer) => {
+    setLinking(true);
+    setError('');
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setError('로그인이 필요합니다.');
+        setLinking(false);
+        return;
+      }
+
+      // DB에서 인플루언서 ID 조회
+      const { data: dbInf } = await supabase
+        .from('influencers')
+        .select('id')
+        .eq('naver_id', inf.naverId)
+        .single();
+
+      if (!dbInf) {
+        setError('인플루언서 DB 레코드를 찾을 수 없습니다.');
+        setLinking(false);
+        return;
+      }
+
+      // users 테이블의 linked_influencer_id 업데이트
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ linked_influencer_id: dbInf.id })
+        .eq('auth_id', user.id);
+
+      if (updateError) {
+        setError('연결 실패: ' + updateError.message);
+        setLinking(false);
+        return;
+      }
+
+      setLinkedName(inf.name);
+      setLinked(true);
+    } catch {
+      setError('연결 중 오류가 발생했습니다.');
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  if (linked) {
     return (
       <div className="max-w-md mx-auto mt-12 text-center space-y-4">
-        <div className="text-5xl">✅</div>
+        <div className="w-16 h-16 mx-auto rounded-full bg-up/15 flex items-center justify-center text-up text-2xl font-bold">OK</div>
         <h2 className="text-xl font-bold">계정 연결 완료!</h2>
-        <p className="text-dim">{found.display_name} 계정이 연결되었습니다.</p>
+        <p className="text-dim">{linkedName} 계정이 연결되었습니다.</p>
         <a href="/my" className="inline-block mt-4 px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
           내 대시보드로 이동
         </a>
@@ -46,9 +114,9 @@ export default function LinkInfluencer() {
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder="네이버 인플루언서 ID (예: orangelibrary)"
           className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent" />
-        <button onClick={handleSearch}
-          className="px-5 py-3 bg-accent text-white rounded-xl font-semibold text-sm hover:bg-accent-hover transition cursor-pointer">
-          검색
+        <button onClick={handleSearch} disabled={searching}
+          className="px-5 py-3 bg-accent text-white rounded-xl font-semibold text-sm hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
+          {searching ? '...' : '검색'}
         </button>
       </div>
 
@@ -58,33 +126,37 @@ export default function LinkInfluencer() {
 
       {error && (
         <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-sm text-down">
-          <p className="font-semibold mb-1">인플루언서를 찾을 수 없습니다</p>
           <p className="text-down/80">{error}</p>
         </div>
       )}
 
-      {found && (
-        <div className="bg-surface border-2 border-accent/50 rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-up text-lg">✓</span>
-            <span className="font-bold">인플루언서 발견!</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center text-lg font-bold text-accent">
-              {found.display_name[0]}
+      {results.length > 0 && (
+        <div className="space-y-3">
+          {results.map(inf => (
+            <div key={inf.naverId}
+              className="bg-surface border-2 border-accent/30 rounded-xl p-4 hover:border-accent/50 transition">
+              <div className="flex items-center gap-3 mb-3">
+                {inf.imageUrl ? (
+                  <img src={inf.imageUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center text-lg font-bold text-accent shrink-0">
+                    {inf.name.charAt(0)}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{inf.name}</p>
+                  <p className="text-xs text-dim">@{inf.naverId}</p>
+                  <p className="text-xs text-dim">
+                    {inf.myKeywordCategory} · 구독자 {(inf.subscriberCount || 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => handleLink(inf)} disabled={linking}
+                className="w-full py-2.5 bg-accent text-white rounded-lg font-bold text-sm hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
+                {linking ? '연결 중...' : '이 계정으로 연결하기'}
+              </button>
             </div>
-            <div>
-              <p className="font-bold">{found.display_name}</p>
-              <p className="text-xs text-dim">{found.sub_category}</p>
-              <p className="text-xs text-dim">
-                팬 {found.fan_count.toLocaleString()} · 키워드 {found.total_keywords}개 참여
-              </p>
-            </div>
-          </div>
-          <button onClick={() => setLinked(true)}
-            className="w-full py-3 bg-accent text-white rounded-xl font-bold hover:bg-accent-hover transition cursor-pointer">
-            이 계정으로 연결하기
-          </button>
+          ))}
         </div>
       )}
     </div>

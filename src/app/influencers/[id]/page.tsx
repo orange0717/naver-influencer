@@ -30,7 +30,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
   if (!influencer) {
     return (
       <div className="text-center mt-12 space-y-4">
-        <p className="text-4xl">😵</p>
+        <div className="w-16 h-16 mx-auto rounded-full bg-down/15 flex items-center justify-center text-down text-xl font-bold">?</div>
         <p className="font-bold">인플루언서를 찾을 수 없습니다</p>
         <Link href="/keywords" className="text-accent text-sm">← 키워드 목록으로</Link>
       </div>
@@ -107,7 +107,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                   <td className="text-center p-3"><RankBadge rank={kw.rank_position} size="sm" /></td>
                   <td className="text-right p-3 text-dim font-rank">{kw.participant_count}명</td>
                   <td className="text-right p-3 font-medium hidden md:table-cell font-rank">{kw.search_volume_monthly.toLocaleString()}</td>
-                  <td className="text-center p-3">{kw.is_integrated_top3 && <span className="text-gold">★</span>}</td>
+                  <td className="text-center p-3">{kw.is_integrated_top3 && <span className="text-gold">T3</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -122,7 +122,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                     <span className="font-medium text-sm">{kw.keyword}</span>
                     <span className="text-xs text-dim ml-2">{kw.category}</span>
                   </div>
-                  {kw.is_integrated_top3 && <span className="text-gold text-sm">★</span>}
+                  {kw.is_integrated_top3 && <span className="text-gold text-sm">T3</span>}
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs text-center">
                   <div>

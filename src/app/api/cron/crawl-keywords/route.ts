@@ -1,74 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
-import type { NaverKeywordRaw } from '@/lib/types';
 
-const GRAPHQL_URL = 'https://in.naver.com/api/graphql';
-
-// 네이버 인플루언서 키워드챌린지 카테고리 ID 매핑
-const CATEGORIES: Record<number, string> = {
-  0: '전체',
-  1: '여행',
-  2: '뷰티',
-  3: '푸드',
-  4: '리빙',
-  5: '건강',
-  6: '육아',
-  7: '동물',
-  8: '패션',
-  9: '문화',
-  10: '자기계발',
-  11: 'IT',
-  12: '스포츠',
-  13: '시사경제',
-  14: '자동차',
-  15: '도서',
-};
-
+const GRAPHQL_URL = 'https://in.naver.com/graphql';
+const REST_API_BASE = 'https://gw.in.naver.com/keyword-challenge/api/v2';
 const PAGE_SIZE = 50;
 
-/** GraphQL 쿼리로 카테고리별 키워드 목록 조회 */
-async function fetchKeywordsByCategory(
-  categoryId: number,
-  page: number,
-): Promise<{ keywords: NaverKeywordRaw[]; hasNext: boolean }> {
-  const query = `
-    query getSearchCategoryKeywords($categoryId: Int, $page: Int, $pageSize: Int) {
-      getSearchCategoryKeywords(categoryId: $categoryId, page: $page, pageSize: $pageSize) {
-        keywords {
-          keyword
-          categoryId
-          categoryName
-          participantCount
-          contentCount
-          isIssue
-          thumbnailUrl
-        }
-        totalCount
-        page
-        pageSize
-      }
-    }
-  `;
+interface NaverCategory {
+  id: number;
+  name: string;
+  code: string;
+  keywordCount: number;
+}
 
+interface NaverKeywordItem {
+  id: number;
+  name: string;
+  categoryId: number;
+  participantCount: number;
+  thumbnailUrl?: string;
+  recentAdded: boolean;
+  issueKeyword: boolean;
+}
+
+/** GraphQL로 카테고리 목록 조회 */
+async function fetchCategories(): Promise<NaverCategory[]> {
   const res = await fetchWithRetry(GRAPHQL_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query,
-      variables: { categoryId, page, pageSize: PAGE_SIZE },
-    }),
+    headers: {
+      'Content-Type': 'application/json',
+      'Referer': 'https://in.naver.com/',
+    },
+    body: JSON.stringify({ query: '{ keywordCategories { id name code keywordCount } }' }),
   });
 
   const json = await res.json();
-  const data = json?.data?.getSearchCategoryKeywords;
+  return json?.data?.keywordCategories || [];
+}
 
-  if (!data?.keywords) {
-    return { keywords: [], hasNext: false };
-  }
+/** REST API로 카테고리별 키워드 목록 조회 */
+async function fetchKeywordsByCategory(
+  categoryId: number,
+  cursor?: string,
+): Promise<{ items: NaverKeywordItem[]; nextCursor: string | null; total: number }> {
+  const params = new URLSearchParams({ name: '', limit: String(PAGE_SIZE) });
+  if (cursor) params.set('cursor', cursor);
 
-  const hasNext = data.keywords.length === PAGE_SIZE;
-  return { keywords: data.keywords, hasNext };
+  const url = `${REST_API_BASE}/categories/${categoryId}/keywords?${params}`;
+  const res = await fetchWithRetry(url, {
+    headers: { 'Referer': 'https://in.naver.com/' },
+  });
+
+  const json = await res.json();
+  return {
+    items: json?.data || [],
+    nextCursor: json?.paging?.nextCursor ?? null,
+    total: json?.paging?.total ?? 0,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -84,28 +72,32 @@ export async function POST(request: NextRequest) {
   console.log('[Cron] Step 1: crawl-keywords started at', new Date().toISOString());
 
   try {
-    // 카테고리 0(전체)은 건너뛰고 개별 카테고리만 수집
-    const categoryIds = Object.keys(CATEGORIES).map(Number).filter(id => id > 0);
+    // 1. 카테고리 목록 조회
+    const categories = await fetchCategories();
+    if (categories.length === 0) {
+      throw new Error('Failed to fetch categories from Naver');
+    }
+    console.log(`[crawl-keywords] ${categories.length} categories found`);
 
-    for (const categoryId of categoryIds) {
-      const categoryName = CATEGORIES[categoryId];
-      let page = 1;
-      let hasNext = true;
+    const categoryMap = new Map(categories.map(c => [c.id, c.name]));
 
-      while (hasNext) {
+    // 2. 각 카테고리별 키워드 수집
+    for (const cat of categories) {
+      let cursor: string | undefined;
+      let pageNum = 0;
+
+      while (true) {
         try {
-          const result = await fetchKeywordsByCategory(categoryId, page);
-          hasNext = result.hasNext;
+          const result = await fetchKeywordsByCategory(cat.id, cursor);
+          if (result.items.length === 0) break;
 
-          if (result.keywords.length === 0) break;
-
-          // keyword_challenges 테이블에 UPSERT
-          const rows = result.keywords.map(kw => ({
-            keyword: kw.keyword,
-            keyword_clean: kw.keyword.replace(/\s+/g, '').toLowerCase(),
-            category: categoryName,
+          const rows = result.items.map(kw => ({
+            keyword: kw.name,
+            keyword_clean: kw.name.replace(/\s+/g, '').toLowerCase(),
+            category: categoryMap.get(kw.categoryId) || cat.name,
+            naver_keyword_id: kw.id,
             participant_count: kw.participantCount ?? 0,
-            content_count: kw.contentCount ?? 0,
+            is_new: kw.recentAdded || false,
             is_active: true,
             last_crawled_at: new Date().toISOString(),
           }));
@@ -115,22 +107,26 @@ export async function POST(request: NextRequest) {
             .upsert(rows, { onConflict: 'keyword_clean' });
 
           if (error) {
-            console.error(`[crawl-keywords] DB upsert error (${categoryName} p${page}):`, error.message);
+            console.error(`[crawl-keywords] DB upsert error (${cat.name} p${pageNum}):`, error.message);
             totalFailed += rows.length;
           } else {
             totalProcessed += rows.length;
           }
 
-          page++;
-          await sleep(500); // 0.5초 간격
+          pageNum++;
+          if (!result.nextCursor || result.items.length < PAGE_SIZE) break;
+          cursor = result.nextCursor;
+
+          await sleep(300);
         } catch (err) {
-          console.error(`[crawl-keywords] Error crawling ${categoryName} p${page}:`, err);
+          console.error(`[crawl-keywords] Error crawling ${cat.name} p${pageNum}:`, err);
           totalFailed++;
-          break; // 이 카테고리 스킵
+          break;
         }
       }
 
-      console.log(`[crawl-keywords] ${categoryName}: ${page - 1} pages processed`);
+      console.log(`[crawl-keywords] ${cat.name}: ${pageNum} pages (total ${cat.keywordCount})`);
+      await sleep(200);
     }
 
     await updateCrawlJob(jobId, {
@@ -147,6 +143,7 @@ export async function POST(request: NextRequest) {
       step: 1,
       processed: totalProcessed,
       failed: totalFailed,
+      categories: categories.length,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

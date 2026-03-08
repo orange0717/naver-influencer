@@ -1,35 +1,69 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import StatCard from '@/components/StatCard';
 import TrendBadge from '@/components/TrendBadge';
-import { mockKeywords } from '@/data/mock-keywords';
-import { mockRecommendations } from '@/data/mock-recommendations';
+import { Keyword, Recommendation } from '@/lib/types';
 
 export default function Dashboard() {
-  const [unlocked, setUnlocked] = useState(false);
-  const totalKeywords = mockKeywords.length;
-  const todayRecs = mockRecommendations.length;
-  const trendUp = mockKeywords.filter(k => k.trend_direction === 'up').length;
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [totalKeywords, setTotalKeywords] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [kwRes, recRes] = await Promise.all([
+          fetch('/api/keywords?limit=50&page=1'),
+          fetch('/api/recommendations'),
+        ]);
+        const kwData = await kwRes.json();
+        const recData = await recRes.json();
+
+        setKeywords(kwData.keywords || []);
+        setTotalKeywords(kwData.total || 0);
+        setRecommendations(recData.recommendations || []);
+      } catch (err) {
+        console.error('데이터 로드 실패:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
+          <p className="text-sm text-dim">네이버에서 실시간 데이터를 가져오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const todayRecs = recommendations.length;
 
   return (
     <div className="space-y-8">
       {/* 통계 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon="📊" label="전체 키워드" value={totalKeywords} sub="키워드챌린지" color="accent" />
-        <StatCard icon="⭐" label="오늘의 추천" value={todayRecs} sub="블루오션 키워드" color="green" />
-        <StatCard icon="📈" label="상승 트렌드" value={trendUp} sub="최근 1주" color="blue" />
-        <StatCard icon="P" label="보유 포인트" value="1,200" sub="잔액" color="purple" />
+        <StatCard icon="KW" label="전체 키워드" value={totalKeywords} sub="네이버 키워드챌린지" color="accent" />
+        <StatCard icon="REC" label="오늘의 추천" value={todayRecs} sub="블루오션 키워드" color="green" />
+        <StatCard icon="CAT" label="카테고리" value={20} sub="전체 분류" color="blue" />
+        <StatCard icon="LIVE" label="데이터 소스" value="LIVE" sub="실시간 크롤링" color="purple" />
       </div>
 
       {/* 오늘의 추천 키워드 */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-extrabold text-text">오늘의 추천 키워드</h2>
-          <span className="text-xs text-dim">매일 06:00 갱신</span>
+          <span className="text-xs text-dim">참여자 적은 블루오션 키워드</span>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
-          {mockRecommendations.slice(0, 3).map(rec => (
+          {recommendations.slice(0, 3).map(rec => (
             <Link key={rec.id} href={`/keywords/${rec.keyword_id}`}
               className="bg-surface rounded-xl border border-border p-5 hover:border-accent/40 hover:bg-surface-hover transition-all group">
               <div className="flex items-center justify-between mb-3">
@@ -42,10 +76,6 @@ export default function Dashboard() {
                 <TrendBadge direction={rec.trend_direction} percentage={rec.trend_percentage} />
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-dim">월간 검색량</span>
-                <span className="font-bold font-rank text-text">{rec.search_volume_monthly.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs mt-1">
                 <span className="text-dim">추천 점수</span>
                 <span className="font-bold text-accent">{rec.recommendation_score}</span>
               </div>
@@ -54,38 +84,30 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* 잠금된 추천 */}
-        <div className="mt-4 relative">
-          {!unlocked && (
-            <div className="absolute inset-0 backdrop-blur-[3px] bg-bg/60 z-10 rounded-xl flex flex-col items-center justify-center">
-              <div className="text-3xl mb-3">🔒</div>
-              <div className="text-sm font-bold text-text mb-1">나머지 {mockRecommendations.length - 3}개 추천 키워드</div>
-              <button onClick={() => setUnlocked(true)}
-                className="mt-2 px-5 py-2 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition-colors cursor-pointer">
-                50P로 전체 열기
-              </button>
+        {/* 나머지 추천 키워드 */}
+        {recommendations.length > 3 && (
+          <div className="mt-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {recommendations.slice(3).map(rec => (
+                <Link key={rec.id} href={`/keywords/${rec.keyword_id}`}
+                  className="bg-surface rounded-xl border border-border p-4 hover:border-accent/40 hover:bg-surface-hover transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-accent bg-accent/12 px-2 py-0.5 rounded">#{rec.rank_in_day}</span>
+                    <TrendBadge direction={rec.trend_direction} percentage={rec.trend_percentage} />
+                  </div>
+                  <div className="text-sm font-bold mb-1">{rec.keyword}</div>
+                  <div className="text-xs text-dim">{rec.category} · {rec.reason}</div>
+                </Link>
+              ))}
             </div>
-          )}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {mockRecommendations.slice(3).map(rec => (
-              <Link key={rec.id} href={unlocked ? `/keywords/${rec.keyword_id}` : '#'}
-                className={`bg-surface rounded-xl border border-border p-4 ${unlocked ? 'hover:border-accent/40' : ''}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-dim">#{rec.rank_in_day}</span>
-                  <TrendBadge direction={rec.trend_direction} percentage={rec.trend_percentage} />
-                </div>
-                <div className="text-sm font-bold mb-1">{rec.keyword}</div>
-                <div className="text-xs text-dim">{rec.category} · 검색량 {rec.search_volume_monthly.toLocaleString()}</div>
-              </Link>
-            ))}
           </div>
-        </div>
+        )}
       </section>
 
       {/* 인기 키워드 */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-extrabold text-text">인기 키워드 TOP 5</h2>
+          <h2 className="text-lg font-extrabold text-text">참여자 TOP 10</h2>
           <Link href="/keywords" className="text-xs text-accent font-bold hover:underline">전체보기 →</Link>
         </div>
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
@@ -94,25 +116,32 @@ export default function Dashboard() {
               <tr className="border-b border-border bg-bg/50">
                 <th className="text-left py-3 px-4 font-semibold text-dim text-xs">#</th>
                 <th className="text-left py-3 px-4 font-semibold text-dim text-xs">키워드</th>
-                <th className="text-right py-3 px-4 font-semibold text-dim text-xs">검색량</th>
+                <th className="text-right py-3 px-4 font-semibold text-dim text-xs">카테고리</th>
                 <th className="text-right py-3 px-4 font-semibold text-dim text-xs hidden sm:table-cell">참여자</th>
-                <th className="text-right py-3 px-4 font-semibold text-dim text-xs">트렌드</th>
+                <th className="text-right py-3 px-4 font-semibold text-dim text-xs">경쟁도</th>
               </tr>
             </thead>
             <tbody>
-              {[...mockKeywords].sort((a, b) => b.search_volume_monthly - a.search_volume_monthly).slice(0, 5).map((kw, i) => (
+              {keywords.slice(0, 10).map((kw, i) => (
                 <tr key={kw.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
                   <td className="py-3 px-4 font-bold text-dim font-rank">{i + 1}</td>
                   <td className="py-3 px-4">
                     <Link href={`/keywords/${kw.id}`} className="font-bold hover:text-accent transition-colors">
                       {kw.keyword}
-                      {kw.is_new && <span className="ml-1.5 text-[10px] font-bold text-accent2 bg-accent2/12 px-1.5 py-0.5 rounded">NEW</span>}
                     </Link>
                     <span className="block text-xs text-dim">{kw.category}</span>
                   </td>
-                  <td className="py-3 px-4 text-right font-bold font-rank">{kw.search_volume_monthly.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-right text-dim hidden sm:table-cell">{kw.participant_count}</td>
-                  <td className="py-3 px-4 text-right"><TrendBadge direction={kw.trend_direction} percentage={kw.trend_percentage} /></td>
+                  <td className="py-3 px-4 text-right text-xs text-dim">{kw.category}</td>
+                  <td className="py-3 px-4 text-right font-bold font-rank hidden sm:table-cell">{kw.participant_count}</td>
+                  <td className="py-3 px-4 text-right">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      kw.competition_level === 'low' ? 'text-up bg-up/12' :
+                      kw.competition_level === 'medium' ? 'text-gold bg-gold/12' :
+                      'text-down bg-down/12'
+                    }`}>
+                      {kw.competition_level === 'low' ? '낮음' : kw.competition_level === 'medium' ? '보통' : '높음'}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

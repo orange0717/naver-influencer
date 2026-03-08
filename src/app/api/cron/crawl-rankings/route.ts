@@ -24,63 +24,49 @@ function parseInfluencerTab(html: string): ParsedRanking[] {
   const $ = cheerio.load(html);
   const rankings: ParsedRanking[] = [];
 
-  // 인플루언서 검색 결과 영역
-  // 네이버 인플루언서 탭: .influencer_list 또는 .api_subject_bx 내 결과
-  const items = $('[class*="influencer"] [class*="item"], .api_subject_bx .item, .influencer_info_area, [class*="inf_item"]');
+  // 실제 구조: li.keyword_bx._item 내에 인플루언서 정보
+  const items = $('li.keyword_bx._item');
 
-  if (items.length === 0) {
-    // 대체 셀렉터: 일반 검색 결과 내 인플루언서 섹션
-    const altItems = $('li[class*="bx"], .lst_total .bx, [data-cr-area="inf"]');
-    altItems.each((i, el) => {
-      const $el = $(el);
-      const nameEl = $el.find('a[class*="name"], .name, .tit, .info_area .name_txt');
-      const name = nameEl.text().trim();
-      const profileLink = nameEl.attr('href') || $el.find('a').first().attr('href') || '';
+  items.each((i, el) => {
+    const $el = $(el);
 
-      if (!name) return;
+    // 이름: .name.elss > span.txt
+    const name = $el.find('.name.elss .txt').first().text().trim();
+    if (!name) return;
 
-      const naverId = extractNaverId(profileLink);
-      const category = $el.find('[class*="category"], .sub_txt, .tag').first().text().trim();
-      const fanText = $el.find('[class*="fan"], [class*="follower"]').text();
-      const fanCount = parseNumberFromText(fanText);
-      const postTitle = $el.find('[class*="title"], .total_tit, .api_txt_lines').first().text().trim();
+    // 프로필 URL: a[href*="in.naver.com"]
+    const profileLink = $el.find('a[href*="in.naver.com"]').first().attr('href') || '';
+    const naverId = extractNaverId(profileLink);
 
-      rankings.push({
-        rank: i + 1,
-        influencerName: name,
-        influencerUrl: profileLink,
-        naverId,
-        category: category || undefined,
-        fanCount: fanCount || undefined,
-        latestPostTitle: postTitle || undefined,
-      });
+    // 팬 수: ._fan_count
+    const fanText = $el.find('._fan_count').text().trim();
+    const fanCount = parseNumberFromText(fanText);
+
+    // 카테고리: .etc (여러 개일 수 있음 — "도서 전문블로거", "소설 전문")
+    const categories: string[] = [];
+    $el.find('.etc_area .etc').each((_, etcEl) => {
+      const t = $(etcEl).text().trim();
+      if (t) categories.push(t);
     });
-  } else {
-    items.each((i, el) => {
-      const $el = $(el);
-      const nameEl = $el.find('a[class*="name"], .name, .tit');
-      const name = nameEl.text().trim();
-      const profileLink = nameEl.attr('href') || '';
+    const category = categories.join(' · ') || undefined;
 
-      if (!name) return;
+    // 최신 포스트 제목: .elss.tit
+    const postTitle = $el.find('.elss.tit').text().trim() || undefined;
 
-      const naverId = extractNaverId(profileLink);
-      const category = $el.find('[class*="category"], .sub_txt').first().text().trim();
-      const fanText = $el.find('[class*="fan"], [class*="follower"]').text();
-      const fanCount = parseNumberFromText(fanText);
-      const postTitle = $el.find('[class*="title"], .total_tit').first().text().trim();
+    // 최신 포스트 링크: .dsc_link
+    const latestPostUrl = $el.find('.dsc_link').attr('href') || undefined;
 
-      rankings.push({
-        rank: i + 1,
-        influencerName: name,
-        influencerUrl: profileLink,
-        naverId,
-        category: category || undefined,
-        fanCount: fanCount || undefined,
-        latestPostTitle: postTitle || undefined,
-      });
+    rankings.push({
+      rank: i + 1,
+      influencerName: name,
+      influencerUrl: profileLink.split('?')[0], // areacode 쿼리 제거
+      naverId,
+      category,
+      fanCount: fanCount || undefined,
+      latestPostTitle: postTitle,
+      latestPostUrl,
     });
-  }
+  });
 
   return rankings;
 }

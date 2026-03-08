@@ -18,7 +18,7 @@ export default function StatCard({ label, value, sub, icon, color = 'accent' }: 
 
   return (
     <div className="bg-surface rounded-xl border border-border p-5 flex items-start gap-4 hover:border-accent/30 transition-colors">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${colors[color] || colors.accent}`}>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${icon.length > 2 ? 'text-[10px]' : 'text-sm'} ${colors[color] || colors.accent}`}>
         {icon}
       </div>
       <div>

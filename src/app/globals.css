@@ -1,34 +1,34 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* 다크 테마 기본 — 브랜드커넥트 UI */
-  --color-bg: #0F0F1A;
-  --color-surface: #1A1A2E;
-  --color-surface-hover: #222240;
-  --color-border: #2A2A4A;
-  --color-text: #E0E0E0;
-  --color-dim: #888888;
+  /* OrangeRefine 따뜻한 톤 */
+  --color-bg: #FFF6EE;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #FFF2E6;
+  --color-border: #FDE4CF;
+  --color-text: #0D0D0D;
+  --color-dim: #8C7A6E;
 
-  /* 브랜드 컬러 */
-  --color-accent: #6C5CE7;
-  --color-accent-hover: #7B6BF0;
-  --color-accent2: #E94560;
-  --color-accent2-hover: #F05A73;
+  /* 브랜드 컬러 — 오렌지 피치 */
+  --color-accent: #CC9486;
+  --color-accent-hover: #D4834E;
+  --color-accent2: #B8612A;
+  --color-accent2-hover: #C0714A;
 
   /* 기능 컬러 */
-  --color-up: #00D68F;
-  --color-down: #FF6B6B;
-  --color-stable: #888888;
-  --color-blue: #4D9FFF;
+  --color-up: #2E8B57;
+  --color-down: #D94848;
+  --color-stable: #8C7A6E;
+  --color-blue: #4D8FCC;
 
   /* 순위 뱃지 */
-  --color-gold: #FFD93D;
-  --color-silver: #C0C0C0;
+  --color-gold: #D4A017;
+  --color-silver: #A0A0A0;
   --color-bronze: #CD7F32;
 
   /* 포인트 관련 */
-  --color-point: #6C5CE7;
-  --color-point-bg: rgba(108, 92, 231, 0.12);
+  --color-point: #CC9486;
+  --color-point-bg: rgba(204, 148, 134, 0.12);
 
   /* 폰트 */
   --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
@@ -44,8 +44,8 @@ body {
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2A2A4A; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #3A3A5A; }
+::-webkit-scrollbar-thumb { background: #E0D0C4; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #CC9486; }
 
 /* 순위 숫자 모노스페이스 */
 .font-rank {

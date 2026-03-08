@@ -96,12 +96,10 @@ export interface MyKeywordRanking {
 
 /** GraphQL에서 받아오는 키워드 원본 데이터 */
 export interface NaverKeywordRaw {
-  keyword: string;
-  categoryId?: number;
-  categoryName?: string;
-  participantCount?: number;
-  contentCount?: number;
-  isIssue?: boolean;
+  name: string;
+  id: number;
+  categoryId: number;
+  participantCount: number;
   thumbnailUrl?: string;
 }
 
