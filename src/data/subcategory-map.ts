@@ -26,5 +26,5 @@ export function getSubcategory(category: string, keyword: string): string {
       return subcat;
     }
   }
-  return '일반';
+  return '기타';
 }

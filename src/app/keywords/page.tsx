@@ -163,7 +163,7 @@ export default function KeywordsPage() {
                         </Link>
                       </td>
                       <td className="py-2.5 px-3 text-xs text-dim">{kw.category}</td>
-                      {sub && <td className="py-2.5 px-2 text-[10px] text-accent font-semibold">{sub}</td>}
+                      {sub && <td className="py-2.5 px-2 text-xs text-accent font-semibold">{sub}</td>}
                       <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
                       <td className="py-2.5 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
                     </tr>
@@ -182,7 +182,7 @@ export default function KeywordsPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
                       <span className="font-medium text-sm">{kw.keyword}</span>
-                      {sub && <span className="text-[10px] text-accent font-semibold">{sub}</span>}
+                      {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
@@ -222,7 +222,7 @@ export default function KeywordsPage() {
                       </Link>
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">{kw.category}</td>
-                    <td className="py-3 px-2 text-[10px] text-accent font-semibold">{sub || '—'}</td>
+                    <td className="py-3 px-2 text-xs text-accent font-semibold">{sub || '—'}</td>
                     <td className="py-3 px-4 text-right font-bold font-rank">{kw.participant_count.toLocaleString()}</td>
                     <td className="py-3 px-4 text-center">{compBadge(kw.competition_level)}</td>
                   </tr>
@@ -244,7 +244,7 @@ export default function KeywordsPage() {
                     <span className="text-xs font-bold text-dim font-rank">#{startNum + i + 1}</span>
                     <span className="font-bold text-sm">{kw.keyword}</span>
                     <span className="text-dim text-xs">{kw.category}</span>
-                    {sub && <span className="text-[10px] text-accent font-semibold">{sub}</span>}
+                    {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
                   </div>
                   {compBadge(kw.competition_level)}
                 </div>
