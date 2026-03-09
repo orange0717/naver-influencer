@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import RankBadge from '@/components/RankBadge';
+import TrendAreaChart from '@/components/TrendAreaChart';
 
 interface KeywordDetail {
   id: string;
@@ -24,10 +25,24 @@ interface RankingItem {
   rank_change: number;
 }
 
+interface TrendPoint {
+  week: string;
+  volume: number;
+}
+
+interface TrendSummary {
+  trend_direction: 'up' | 'down' | 'stable';
+  trend_percentage: number;
+  peak_volume: number;
+  peak_date: string;
+}
+
 export default function KeywordDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [keyword, setKeyword] = useState<KeywordDetail | null>(null);
   const [rankings, setRankings] = useState<RankingItem[]>([]);
+  const [trendData, setTrendData] = useState<TrendPoint[]>([]);
+  const [trendSummary, setTrendSummary] = useState<TrendSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [rankLoading, setRankLoading] = useState(true);
 
@@ -60,6 +75,28 @@ export default function KeywordDetailPage() {
       }
     }
     loadRankings();
+  }, [id]);
+
+  // 트렌드 데이터 fetch
+  useEffect(() => {
+    async function loadTrend() {
+      try {
+        const res = await fetch(`/api/keywords/${id}/trend`);
+        if (!res.ok) return;
+        const data = await res.json();
+        // API returns { date, volume } -> chart expects { week, volume }
+        setTrendData(
+          (data.trendData || []).map((d: { date: string; volume: number }) => ({
+            week: d.date,
+            volume: d.volume,
+          }))
+        );
+        setTrendSummary(data.summary || null);
+      } catch (err) {
+        console.error('트렌드 로드 실패:', err);
+      }
+    }
+    loadTrend();
   }, [id]);
 
   if (loading) {
@@ -131,6 +168,31 @@ export default function KeywordDetailPage() {
         </div>
       </div>
 
+      {/* 검색량 트렌드 차트 */}
+      {trendData.length > 0 && (
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm font-bold">검색량 트렌드</div>
+            {trendSummary && (
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                  trendSummary.trend_direction === 'up' ? 'text-up bg-up/12' :
+                  trendSummary.trend_direction === 'down' ? 'text-down bg-down/12' :
+                  'text-dim bg-dim/12'
+                }`}>
+                  {trendSummary.trend_direction === 'up' ? '▲' : trendSummary.trend_direction === 'down' ? '▼' : '→'}
+                  {' '}{Math.abs(trendSummary.trend_percentage)}%
+                </span>
+                {trendSummary.peak_volume > 0 && (
+                  <span className="text-xs text-dim">최고 {trendSummary.peak_volume.toLocaleString()}</span>
+                )}
+              </div>
+            )}
+          </div>
+          <TrendAreaChart data={trendData} direction={trendSummary?.trend_direction || 'stable'} />
+        </div>
+      )}
+
       {/* 실시간 인플루언서 순위 */}
       <div className="bg-surface rounded-xl border border-border">
         <div className="flex items-center justify-between p-5 border-b border-border">
@@ -159,6 +221,7 @@ export default function KeywordDetailPage() {
               <thead>
                 <tr className="bg-bg/50 border-b border-border">
                   <th className="py-2.5 px-4 text-left text-xs font-semibold text-dim">순위</th>
+                  <th className="py-2.5 px-4 text-center text-xs font-semibold text-dim">변동</th>
                   <th className="py-2.5 px-4 text-left text-xs font-semibold text-dim">인플루언서</th>
                   <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim">카테고리</th>
                   <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim">팬 수</th>
@@ -169,8 +232,16 @@ export default function KeywordDetailPage() {
                 {rankings.map(r => (
                   <tr key={r.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
                     <td className="py-3 px-4"><RankBadge rank={r.rank_position} size="sm" /></td>
+                    <td className="py-3 px-4 text-center">
+                      <RankChange change={r.rank_change} />
+                    </td>
                     <td className="py-3 px-4">
-                      {r.influencer_url ? (
+                      {r.naver_id ? (
+                        <Link href={`/influencers/${r.naver_id}`}
+                          className="font-semibold hover:text-accent transition-colors">
+                          {r.influencer_name}
+                        </Link>
+                      ) : r.influencer_url ? (
                         <a href={r.influencer_url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold hover:text-accent transition-colors">
                           {r.influencer_name}
@@ -194,7 +265,12 @@ export default function KeywordDetailPage() {
                 <div key={r.id} className="p-4 flex items-center gap-3">
                   <RankBadge rank={r.rank_position} size="sm" />
                   <div className="flex-1 min-w-0">
-                    {r.influencer_url ? (
+                    {r.naver_id ? (
+                      <Link href={`/influencers/${r.naver_id}`}
+                        className="font-semibold text-sm truncate block hover:text-accent">
+                        {r.influencer_name}
+                      </Link>
+                    ) : r.influencer_url ? (
                       <a href={r.influencer_url} target="_blank" rel="noopener noreferrer"
                         className="font-semibold text-sm truncate block hover:text-accent">
                         {r.influencer_name}
@@ -202,7 +278,12 @@ export default function KeywordDetailPage() {
                     ) : (
                       <p className="font-semibold text-sm truncate">{r.influencer_name}</p>
                     )}
-                    <p className="text-xs text-dim">{r.influencer_category} · {r.fan_count || '팬 정보 없음'}</p>
+                    <div className="flex items-center gap-2 text-xs text-dim">
+                      <span>{r.influencer_category}</span>
+                      <span>·</span>
+                      <span>{r.fan_count || '팬 정보 없음'}</span>
+                      <RankChange change={r.rank_change} />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -212,4 +293,12 @@ export default function KeywordDetailPage() {
       </div>
     </div>
   );
+}
+
+function RankChange({ change }: { change?: number }) {
+  if (!change || change === 0) return <span className="text-dim text-xs">-</span>;
+  if (change > 0) {
+    return <span className="text-up text-xs font-bold">▲{change}</span>;
+  }
+  return <span className="text-down text-xs font-bold">▼{Math.abs(change)}</span>;
 }

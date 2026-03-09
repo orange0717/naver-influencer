@@ -5,25 +5,35 @@ import StatCard from '@/components/StatCard';
 import TrendBadge from '@/components/TrendBadge';
 import { Keyword, Recommendation } from '@/lib/types';
 
+interface Stats {
+  influencer_count: number;
+  category_count: number;
+  keyword_count: number;
+}
+
 export default function Dashboard() {
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [totalKeywords, setTotalKeywords] = useState(0);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [kwRes, recRes] = await Promise.all([
+        const [kwRes, recRes, statsRes] = await Promise.all([
           fetch('/api/keywords?limit=50&page=1'),
           fetch('/api/recommendations'),
+          fetch('/api/stats'),
         ]);
         const kwData = await kwRes.json();
         const recData = await recRes.json();
+        const statsData = await statsRes.json();
 
         setKeywords(kwData.keywords || []);
         setTotalKeywords(kwData.total || 0);
         setRecommendations(recData.recommendations || []);
+        setStats(statsData);
       } catch (err) {
         console.error('데이터 로드 실패:', err);
       } finally {
@@ -45,15 +55,17 @@ export default function Dashboard() {
   }
 
   const todayRecs = recommendations.length;
+  const categoryCount = stats?.category_count || 20;
+  const influencerCount = stats?.influencer_count || 0;
 
   return (
     <div className="space-y-8">
       {/* 통계 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon="KW" label="전체 키워드" value={totalKeywords} sub="네이버 키워드챌린지" color="accent" />
+        <StatCard icon="INF" label="인플루언서" value={influencerCount} sub="DB 수집 완료" color="orange" />
         <StatCard icon="REC" label="오늘의 추천" value={todayRecs} sub="블루오션 키워드" color="green" />
-        <StatCard icon="CAT" label="카테고리" value={20} sub="전체 분류" color="blue" />
-        <StatCard icon="LIVE" label="데이터 소스" value="LIVE" sub="실시간 크롤링" color="purple" />
+        <StatCard icon="CAT" label="카테고리" value={categoryCount} sub="전체 분류" color="blue" />
       </div>
 
       {/* 오늘의 추천 키워드 */}
@@ -116,7 +128,7 @@ export default function Dashboard() {
               <tr className="border-b border-border bg-bg/50">
                 <th className="text-left py-3 px-4 font-semibold text-dim text-xs">#</th>
                 <th className="text-left py-3 px-4 font-semibold text-dim text-xs">키워드</th>
-                <th className="text-right py-3 px-4 font-semibold text-dim text-xs">카테고리</th>
+                <th className="text-right py-3 px-4 font-semibold text-dim text-xs hidden sm:table-cell">카테고리</th>
                 <th className="text-right py-3 px-4 font-semibold text-dim text-xs hidden sm:table-cell">참여자</th>
                 <th className="text-right py-3 px-4 font-semibold text-dim text-xs">경쟁도</th>
               </tr>
@@ -131,7 +143,7 @@ export default function Dashboard() {
                     </Link>
                     <span className="block text-xs text-dim">{kw.category}</span>
                   </td>
-                  <td className="py-3 px-4 text-right text-xs text-dim">{kw.category}</td>
+                  <td className="py-3 px-4 text-right text-xs text-dim hidden sm:table-cell">{kw.category}</td>
                   <td className="py-3 px-4 text-right font-bold font-rank hidden sm:table-cell">{kw.participant_count}</td>
                   <td className="py-3 px-4 text-right">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${

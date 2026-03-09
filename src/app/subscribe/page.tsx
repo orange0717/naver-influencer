@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { subscriptionPlan, FREE_FEATURES, LOCKED_FEATURES } from '@/data/mock-packages';
+import { subscriptionPlan, FREE_FEATURES, LOCKED_FEATURES } from '@/data/subscription-config';
 
 export default function SubscribePage() {
   const [subscribed, setSubscribed] = useState(false);

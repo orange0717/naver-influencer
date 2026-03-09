@@ -1,33 +1,78 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { mockInfluencers } from '@/data/mock-influencers';
-import { mockKeywords } from '@/data/mock-keywords';
+import Image from 'next/image';
 import RankBadge from '@/components/RankBadge';
 import LockOverlay from '@/components/LockOverlay';
 
-function getInfluencerKeywords(influencerId: string) {
-  const influencer = mockInfluencers.find(i => i.id === influencerId);
-  if (!influencer) return [];
-  const count = Math.min(influencer.total_keywords, mockKeywords.length);
-  return mockKeywords.slice(0, count).map((kw, idx) => ({
-    keyword_id: kw.id,
-    keyword: kw.keyword,
-    category: kw.category,
-    rank_position: idx + 1,
-    participant_count: kw.participant_count,
-    search_volume_monthly: kw.search_volume_monthly,
-    is_integrated_top3: idx < 3,
-  }));
+interface InfluencerKeyword {
+  keyword_id: string;
+  id?: string;
+  keyword: string;
+  category: string;
+  participant_count?: number;
+  search_volume_monthly?: number;
+  rank_position?: number;
+  rank_change?: number;
+  is_integrated_top3?: boolean;
+}
+
+interface InfluencerData {
+  id: string;
+  naver_id: string;
+  display_name: string;
+  category: string;
+  sub_category?: string;
+  image_url?: string;
+  total_follower_count?: number;
+  subscriber_count?: number;
+  total_keywords?: number;
+  avg_rank?: number;
+  best_rank?: number;
+  integrated_top3_count?: number;
+  keywords: InfluencerKeyword[];
+  recent_rankings: unknown[];
 }
 
 export default function InfluencerProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [unlocked, setUnlocked] = useState(false);
-  const influencer = mockInfluencers.find(i => i.id === id || i.naver_id === id);
+  const [influencer, setInfluencer] = useState<InfluencerData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  if (!influencer) {
+  useEffect(() => {
+    async function loadInfluencer() {
+      try {
+        const res = await fetch(`/api/influencers/${id}`);
+        if (!res.ok) {
+          setError(true);
+          return;
+        }
+        const data = await res.json();
+        setInfluencer(data.influencer);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInfluencer();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
+          <p className="text-sm text-dim">인플루언서 정보를 가져오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !influencer) {
     return (
       <div className="text-center mt-12 space-y-4">
         <div className="w-16 h-16 mx-auto rounded-full bg-down/15 flex items-center justify-center text-down text-xl font-bold">?</div>
@@ -37,42 +82,74 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
     );
   }
 
-  const keywords = getInfluencerKeywords(influencer.id);
+  const keywords = influencer.keywords || [];
+  const totalKeywords = influencer.total_keywords || keywords.length;
+  const avgRank = influencer.avg_rank || (keywords.length > 0
+    ? Math.round(keywords.reduce((sum, k) => sum + (k.rank_position || 0), 0) / (keywords.filter(k => k.rank_position).length || 1))
+    : '-');
+  const bestRank = influencer.best_rank || (keywords.length > 0 && keywords.some(k => k.rank_position)
+    ? Math.min(...keywords.filter(k => k.rank_position).map(k => k.rank_position!))
+    : '-');
+  const top3Count = influencer.integrated_top3_count || keywords.filter(k => k.is_integrated_top3).length;
 
   return (
     <div className="space-y-6">
+      <Link href="/keywords" className="text-xs text-accent font-bold hover:underline">← 키워드 목록</Link>
+
       {/* 프로필 헤더 */}
       <div className="bg-surface rounded-2xl border border-border p-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center text-2xl font-bold text-accent">
-            {influencer.display_name[0]}
-          </div>
+          {influencer.image_url ? (
+            <Image
+              src={influencer.image_url}
+              alt={influencer.display_name}
+              width={64}
+              height={64}
+              className="w-16 h-16 rounded-full object-cover border-2 border-accent/30"
+              unoptimized
+            />
+          ) : (
+            <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center text-2xl font-bold text-accent">
+              {influencer.display_name?.[0] || '?'}
+            </div>
+          )}
           <div className="flex-1">
             <h1 className="text-xl font-bold">{influencer.display_name}</h1>
-            <p className="text-sm text-dim">{influencer.sub_category}</p>
+            <p className="text-sm text-dim">{influencer.sub_category || influencer.category}</p>
             <div className="flex flex-wrap gap-3 mt-2 text-xs text-dim">
-              <span>팬 {influencer.fan_count.toLocaleString()}</span>
-              <span>블로그 이웃 {influencer.blog_neighbor_count.toLocaleString()}+</span>
-              <span>{influencer.stats_summary}</span>
+              {influencer.total_follower_count != null && influencer.total_follower_count > 0 && (
+                <span>팔로워 {influencer.total_follower_count.toLocaleString()}</span>
+              )}
+              {influencer.subscriber_count != null && influencer.subscriber_count > 0 && (
+                <span>구독자 {influencer.subscriber_count.toLocaleString()}</span>
+              )}
+              <a
+                href={`https://in.naver.com/${influencer.naver_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                @{influencer.naver_id}
+              </a>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
           <div className="text-center">
-            <p className="text-lg font-bold text-accent font-rank">{influencer.total_keywords}</p>
+            <p className="text-lg font-bold text-accent font-rank">{totalKeywords}</p>
             <p className="text-xs text-dim">참여 키워드</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold font-rank">{influencer.avg_rank}</p>
+            <p className="text-lg font-bold font-rank">{avgRank}</p>
             <p className="text-xs text-dim">평균 순위</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-up font-rank">{influencer.best_rank}</p>
+            <p className="text-lg font-bold text-up font-rank">{bestRank}</p>
             <p className="text-xs text-dim">최고 순위</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-gold font-rank">{influencer.integrated_top3_count}</p>
+            <p className="text-lg font-bold text-gold font-rank">{top3Count}</p>
             <p className="text-xs text-dim">통합 TOP3</p>
           </div>
         </div>
@@ -86,64 +163,85 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
             <span className="text-xs text-dim font-rank">{keywords.length}개</span>
           </div>
 
-          {/* Desktop table */}
-          <table className="w-full text-sm hidden sm:table">
-            <thead>
-              <tr className="border-b border-border bg-bg/50">
-                <th className="text-left p-3 font-semibold text-dim text-xs">키워드</th>
-                <th className="text-center p-3 font-semibold text-dim text-xs w-14">순위</th>
-                <th className="text-right p-3 font-semibold text-dim text-xs w-20">참여자</th>
-                <th className="text-right p-3 font-semibold text-dim text-xs w-24 hidden md:table-cell">검색량</th>
-                <th className="text-center p-3 font-semibold text-dim text-xs w-14">통합</th>
-              </tr>
-            </thead>
-            <tbody>
-              {keywords.map((kw) => (
-                <tr key={kw.keyword_id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
-                  <td className="p-3">
-                    <Link href={`/keywords/${kw.keyword_id}`} className="font-medium hover:text-accent transition-colors">{kw.keyword}</Link>
-                    <span className="text-xs text-dim ml-2">{kw.category}</span>
-                  </td>
-                  <td className="text-center p-3"><RankBadge rank={kw.rank_position} size="sm" /></td>
-                  <td className="text-right p-3 text-dim font-rank">{kw.participant_count}명</td>
-                  <td className="text-right p-3 font-medium hidden md:table-cell font-rank">{kw.search_volume_monthly.toLocaleString()}</td>
-                  <td className="text-center p-3">{kw.is_integrated_top3 && <span className="text-gold">T3</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {keywords.length === 0 ? (
+            <div className="text-center py-12 text-dim text-sm">
+              참여 키워드 정보가 없습니다.
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <table className="w-full text-sm hidden sm:table">
+                <thead>
+                  <tr className="border-b border-border bg-bg/50">
+                    <th className="text-left p-3 font-semibold text-dim text-xs">키워드</th>
+                    <th className="text-center p-3 font-semibold text-dim text-xs w-14">순위</th>
+                    <th className="text-center p-3 font-semibold text-dim text-xs w-14">변동</th>
+                    <th className="text-right p-3 font-semibold text-dim text-xs w-20">참여자</th>
+                    <th className="text-right p-3 font-semibold text-dim text-xs w-24 hidden md:table-cell">검색량</th>
+                    <th className="text-center p-3 font-semibold text-dim text-xs w-14">통합</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {keywords.map((kw) => (
+                    <tr key={kw.keyword_id || kw.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
+                      <td className="p-3">
+                        <Link href={`/keywords/${kw.keyword_id || kw.id}`} className="font-medium hover:text-accent transition-colors">{kw.keyword}</Link>
+                        <span className="text-xs text-dim ml-2">{kw.category}</span>
+                      </td>
+                      <td className="text-center p-3">
+                        {kw.rank_position ? <RankBadge rank={kw.rank_position} size="sm" /> : <span className="text-dim">-</span>}
+                      </td>
+                      <td className="text-center p-3">
+                        <RankChange change={kw.rank_change} />
+                      </td>
+                      <td className="text-right p-3 text-dim font-rank">{kw.participant_count ? `${kw.participant_count}명` : '-'}</td>
+                      <td className="text-right p-3 font-medium hidden md:table-cell font-rank">
+                        {kw.search_volume_monthly ? kw.search_volume_monthly.toLocaleString() : '-'}
+                      </td>
+                      <td className="text-center p-3">{kw.is_integrated_top3 && <span className="text-gold">T3</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-          {/* Mobile cards */}
-          <div className="sm:hidden divide-y divide-border/50">
-            {keywords.map((kw) => (
-              <Link key={kw.keyword_id} href={`/keywords/${kw.keyword_id}`} className="block p-4 hover:bg-surface-hover transition">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <span className="font-medium text-sm">{kw.keyword}</span>
-                    <span className="text-xs text-dim ml-2">{kw.category}</span>
-                  </div>
-                  {kw.is_integrated_top3 && <span className="text-gold text-sm">T3</span>}
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs text-center">
-                  <div>
-                    <RankBadge rank={kw.rank_position} size="sm" />
-                    <p className="text-[10px] text-dim mt-1">순위</p>
-                  </div>
-                  <div>
-                    <p className="font-rank text-dim">{kw.participant_count}명</p>
-                    <p className="text-[10px] text-dim">참여자</p>
-                  </div>
-                  <div>
-                    <p className="font-rank font-medium">{(kw.search_volume_monthly / 1000).toFixed(0)}K</p>
-                    <p className="text-[10px] text-dim">검색량</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+              {/* Mobile cards */}
+              <div className="sm:hidden divide-y divide-border/50">
+                {keywords.map((kw) => (
+                  <Link key={kw.keyword_id || kw.id} href={`/keywords/${kw.keyword_id || kw.id}`} className="block p-4 hover:bg-surface-hover transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <span className="font-medium text-sm">{kw.keyword}</span>
+                        <span className="text-xs text-dim ml-2">{kw.category}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RankChange change={kw.rank_change} />
+                        {kw.is_integrated_top3 && <span className="text-gold text-sm">T3</span>}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                      <div>
+                        {kw.rank_position ? <RankBadge rank={kw.rank_position} size="sm" /> : <span className="text-dim">-</span>}
+                        <p className="text-[10px] text-dim mt-1">순위</p>
+                      </div>
+                      <div>
+                        <p className="font-rank text-dim">{kw.participant_count ? `${kw.participant_count}명` : '-'}</p>
+                        <p className="text-[10px] text-dim">참여자</p>
+                      </div>
+                      <div>
+                        <p className="font-rank font-medium">
+                          {kw.search_volume_monthly ? `${(kw.search_volume_monthly / 1000).toFixed(0)}K` : '-'}
+                        </p>
+                        <p className="text-[10px] text-dim">검색량</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        {!unlocked && (
+        {!unlocked && keywords.length > 0 && (
           <div className="absolute inset-0 top-[45%]">
             <LockOverlay />
           </div>
@@ -151,4 +249,12 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
       </div>
     </div>
   );
+}
+
+function RankChange({ change }: { change?: number }) {
+  if (!change || change === 0) return <span className="text-dim text-xs">-</span>;
+  if (change > 0) {
+    return <span className="text-up text-xs font-bold">▲{change}</span>;
+  }
+  return <span className="text-down text-xs font-bold">▼{Math.abs(change)}</span>;
 }
