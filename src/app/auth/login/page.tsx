@@ -97,6 +97,13 @@ export default function LoginPage() {
               ) : '접속하기'}
             </button>
           </form>
+
+          <div className="text-center pt-2 border-t border-border">
+            <p className="text-xs text-dim">
+              처음이신가요? 인플루언서 링크를 입력하면<br />
+              <span className="text-accent font-semibold">자동으로 회원가입</span>됩니다.
+            </p>
+          </div>
         </div>
       </div>
     </div>
