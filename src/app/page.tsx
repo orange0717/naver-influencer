@@ -324,24 +324,36 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-5 max-w-4xl mx-auto">
             {[
               {
-                emoji: '📊',
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                ),
                 title: '키워드챌린지 시작하는 분',
                 desc: '어떤 키워드에 참여해야 할지 모르겠다면, 블루오션 키워드 추천으로 시작하세요.',
               },
               {
-                emoji: '🏆',
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-up">
+                    <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                ),
                 title: '상위 노출을 원하는 분',
                 desc: '현재 순위를 추적하고, 경쟁자 분석을 통해 전략적으로 순위를 올리세요.',
               },
               {
-                emoji: '📈',
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-gold">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                ),
                 title: '데이터 기반 전략이 필요한 분',
                 desc: '감이 아닌 데이터로 키워드를 선택하고, 트렌드 변화를 놓치지 마세요.',
               },
             ].map(item => (
               <div key={item.title}
                 className="bg-bg rounded-2xl border border-border p-6 text-center hover:border-accent/30 transition-all">
-                <div className="text-4xl mb-4">{item.emoji}</div>
+                <div className="w-14 h-14 mx-auto rounded-xl bg-surface border border-border flex items-center justify-center mb-4">{item.icon}</div>
                 <h3 className="font-bold text-text mb-2">{item.title}</h3>
                 <p className="text-xs text-dim leading-relaxed">{item.desc}</p>
               </div>
