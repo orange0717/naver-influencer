@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAnonClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
 import { fetchInfluencersForCategory, fetchAllInfluencersSummary, fetchCategories } from '@/lib/naver-api';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const newOnly = searchParams.get('new') === 'true';
 
-  const supabase = createAnonClient();
+  // service client 사용 (RLS 우회 — 인플루언서 테이블은 공개 데이터)
+  const supabase = createServiceClient();
 
   try {
     // DB에 인플루언서가 있는지 확인
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
 
 /** DB 기반 인플루언서 조회 */
 async function getInfluencersFromDB(
-  supabase: ReturnType<typeof createAnonClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean },
 ) {
   const { category, search, page, limit, newOnly } = opts;

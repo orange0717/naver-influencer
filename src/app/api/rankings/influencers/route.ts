@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAnonClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
   const sortBy = searchParams.get('sort') || 'score'; // score, rank1, top3, followers
   const offset = (page - 1) * limit;
 
-  const supabase = createAnonClient();
+  // service client 사용 (RLS 우회 — 공개 데이터)
+  const supabase = createServiceClient();
 
   try {
     // 1. 모든 인플루언서 조회
