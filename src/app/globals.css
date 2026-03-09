@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* OrangeRefine 따뜻한 톤 */
-  --color-bg: #FFF6EE;
+  /* OrangeRefine 핑크 톤 */
+  --color-bg: #FFF5F2;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #FFF2E6;
-  --color-border: #FDE4CF;
+  --color-surface-hover: #FFF0EC;
+  --color-border: #F5D8D0;
   --color-text: #0D0D0D;
   --color-dim: #8C7A6E;
 
-  /* 브랜드 컬러 — 오렌지 피치 */
+  /* 브랜드 컬러 — 로즈 핑크 */
   --color-accent: #CC9486;
-  --color-accent-hover: #D4834E;
-  --color-accent2: #B8612A;
-  --color-accent2-hover: #C0714A;
+  --color-accent-hover: #B8807A;
+  --color-accent2: #A06B64;
+  --color-accent2-hover: #B87B74;
 
   /* 기능 컬러 */
   --color-up: #2E8B57;
@@ -44,7 +44,7 @@ body {
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E0D0C4; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #DBBFB8; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #CC9486; }
 
 /* 순위 숫자 모노스페이스 */

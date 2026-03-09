@@ -70,7 +70,7 @@ export default function Header() {
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-sm">N</div>
-              <span className="font-bold text-base text-text hidden sm:block">키워드챌린지</span>
+              <span className="font-bold text-base text-text hidden sm:block">N인플</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {NAV.map(n => {

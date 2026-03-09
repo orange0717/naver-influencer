@@ -24,10 +24,10 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-sm">N</div>
-              <span className="font-extrabold text-text">키워드챌린지</span>
+              <span className="font-extrabold text-text">N인플</span>
             </div>
             <p className="text-xs text-dim leading-relaxed">
-              네이버 인플루언서 키워드챌린지 분석 대시보드.<br />
+              네이버 인플루언서들을 위한 플랫폼.<br />
               블루오션 키워드를 발굴하고 순위를 추적하세요.
             </p>
           </div>
@@ -86,9 +86,17 @@ export default function Footer() {
           </div>
 
           {/* 저작권 */}
-          <p className="text-[11px] text-dim/60 mt-4">
-            &copy; 2026 오렌지도서관. All rights reserved.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
+            <p className="text-[11px] text-dim/60">
+              &copy; 2026 오렌지도서관. All rights reserved.
+            </p>
+            <p className="text-[11px] text-dim/60">
+              Built with{' '}
+              <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
+                Claude AI
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>

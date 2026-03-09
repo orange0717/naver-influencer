@@ -114,7 +114,7 @@ export default function LandingPage() {
   return (
     <div className="-mx-4 -mt-6">
       {/* ═══════════════════ HERO ═══════════════════ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-accent via-accent2 to-[#8B4513]">
+      <section className="relative overflow-hidden bg-gradient-to-br from-accent via-accent2 to-[#7A4F4A]">
         {/* 배경 장식 */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-white/5" />
@@ -130,7 +130,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-5">
-            키워드챌린지,<br className="md:hidden" /> 더 스마트하게
+            N인플,<br className="md:hidden" /> 더 스마트하게
           </h1>
           <p className="text-base md:text-lg text-white/80 max-w-2xl mx-auto mb-8 leading-relaxed">
             수만 개 키워드의 검색량·경쟁도·순위를 한눈에 분석하고<br className="hidden md:block" />

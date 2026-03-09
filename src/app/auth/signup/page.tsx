@@ -100,8 +100,8 @@ export default function SignupPage() {
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-white font-bold text-xl">N</div>
             <div>
-              <h2 className="text-lg font-extrabold text-text">키워드챌린지</h2>
-              <p className="text-xs text-dim">네이버 인플루언서 대시보드</p>
+              <h2 className="text-lg font-extrabold text-text">N인플</h2>
+              <p className="text-xs text-dim">네이버 인플루언서들을 위한 플랫폼</p>
             </div>
           </div>
 

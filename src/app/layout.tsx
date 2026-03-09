@@ -4,8 +4,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "네이버 인플루언서 키워드챌린지 — Orange Marketing",
-  description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천하는 대시보드",
+  title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
+  description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다",
 };
 
 export default function RootLayout({
