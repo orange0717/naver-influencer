@@ -132,8 +132,8 @@ export default function KeywordsPage() {
           </div>
         </div>
       ) : isGroupedView ? (
-        /* ─── 전체: 주제별 그룹핑 뷰 ─── */
-        <div className="space-y-6">
+        /* ─── 전체: 주제별 그룹핑 뷰 (2열) ─── */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {grouped.map((group) => (
             <div key={group.category} className="bg-surface rounded-xl border border-border overflow-hidden">
               {/* 카테고리 헤더 */}
