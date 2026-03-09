@@ -4,20 +4,20 @@
   /* 피치 크림 배경 */
   --color-bg: #FDF6F0;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #FDF2EC;
-  --color-border: #F0DDD4;
+  --color-surface-hover: #FBF0EA;
+  --color-border: #F2D9D0;
   --color-text: #2D2D2D;
   --color-dim: #999;
 
-  /* 브랜드 컬러 — 테라코타/코럴 브라운 */
-  --color-accent: #C4715B;
-  --color-accent-hover: #B5634E;
-  --color-accent2: #A05540;
-  --color-accent2-hover: #B5634E;
+  /* 브랜드 컬러 — 로즈 브라운 */
+  --color-accent: #BF8C80;
+  --color-accent-hover: #AD7A6E;
+  --color-accent2: #A06E62;
+  --color-accent2-hover: #AD7A6E;
 
   /* 헤더/네비 */
-  --color-header: #B5634E;
-  --color-nav: #B5634E;
+  --color-header: #BF8C80;
+  --color-nav: #BF8C80;
 
   /* 기능 컬러 */
   --color-up: #2E8B57;
@@ -30,9 +30,15 @@
   --color-silver: #A0A0A0;
   --color-bronze: #CD7F32;
 
+  /* 푸터 다크 */
+  --color-footer-bg: #2D2D2D;
+  --color-footer-text: #E0E0E0;
+  --color-footer-dim: #999;
+  --color-footer-heading: #F2D9D0;
+
   /* 포인트 관련 */
-  --color-point: #C4715B;
-  --color-point-bg: rgba(196, 113, 91, 0.12);
+  --color-point: #BF8C80;
+  --color-point-bg: rgba(191, 140, 128, 0.12);
 
   /* 폰트 */
   --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
