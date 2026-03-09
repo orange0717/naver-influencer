@@ -110,7 +110,7 @@ async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClien
   return result;
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

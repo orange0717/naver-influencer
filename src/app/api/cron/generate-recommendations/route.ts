@@ -86,7 +86,7 @@ function generateReason(kw: {
   return reasons.length > 0 ? reasons.join(' + ') : '블루오션 키워드';
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

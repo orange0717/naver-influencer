@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const CRON_JOBS: Record<string, string> = {
   'crawl-keywords': '/api/cron/crawl-keywords',
   'crawl-rankings': '/api/cron/crawl-rankings',
+  'crawl-influencers': '/api/cron/crawl-influencers',
   'update-volumes': '/api/cron/update-volumes',
   'aggregate-influencers': '/api/cron/aggregate-influencers',
   'generate-recommendations': '/api/cron/generate-recommendations',
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     for (const [name, path] of Object.entries(CRON_JOBS)) {
       try {
         console.log(`[cron/run] Executing: ${name}`);
-        const res = await fetch(`${baseUrl}${path}`, { method: 'POST', headers });
+        const res = await fetch(`${baseUrl}${path}`, { method: 'GET', headers });
         results[name] = await res.json();
       } catch (err) {
         results[name] = { error: err instanceof Error ? err.message : String(err) };
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
 
   try {
     console.log(`[cron/run] Executing: ${job}`);
-    const res = await fetch(`${baseUrl}${path}`, { method: 'POST', headers });
+    const res = await fetch(`${baseUrl}${path}`, { method: 'GET', headers });
     const data = await res.json();
     return NextResponse.json({ job, result: data });
   } catch (err) {
