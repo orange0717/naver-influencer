@@ -7,17 +7,17 @@
 
 /* ── 차트 공통 (그리드, 축, 툴팁) ── */
 export const CHART = {
-  grid: '#FDE4CF',
-  axis: '#FDE4CF',
+  grid: '#F2E2DC',
+  axis: '#F2E2DC',
   tooltipBg: '#FFFFFF',
-  tooltipBorder: '#FDE4CF',
+  tooltipBorder: '#F2E2DC',
   tickFill: '#8C7A6E',
   labelFill: '#8C7A6E',
 } as const;
 
 /* ── 다중 시리즈 색상 (최대 7개) ── */
 export const SERIES_COLORS = [
-  '#CC9486', // accent (피치)
+  '#BF877A', // accent (로즈 브라운)
   '#B8612A', // accent2 (딥 오렌지)
   '#2E8B57', // up (그린)
   '#4D8FCC', // blue
@@ -30,11 +30,11 @@ export const SERIES_COLORS = [
 export const DIRECTION_COLORS = {
   up: '#2E8B57',
   down: '#D94848',
-  stable: '#CC9486',
+  stable: '#BF877A',
 } as const;
 
 /* ── 경쟁자 비교 (CompetitorBarChart) ── */
 export const COMPETITOR = {
-  me: '#CC9486',
-  other: '#FDE4CF',
+  me: '#BF877A',
+  other: '#F2E2DC',
 } as const;

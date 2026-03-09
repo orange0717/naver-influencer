@@ -19,8 +19,8 @@ npx --yes vercel deploy --prod --cwd /Users/orange/개발/naver-influencer
 ```
 
 ## 디자인 시스템
-- **테마**: 라이트 오렌지 (bg: #FFF6EE, surface: #FFFFFF, border: #FDE4CF)
-- **액센트**: 피치 #CC9486, 딥오렌지 #B8612A (OrangeRefine 팔레트)
+- **테마**: 라이트 로즈 (bg: #FDF6F3, surface: #FFFFFF, border: #F2E2DC)
+- **액센트**: 로즈 브라운 #BF877A, 더스티 로즈 #D9ABA0, 블러시 크림 #F2E2DC
 - **폰트**: Pretendard (본문), 모노스페이스 (숫자 .font-rank)
 - **순위 뱃지**: 금 #D4A017, 은 #A0A0A0, 동 #CD7F32
 - **기능색**: 상승 #2E8B57, 하락 #D94848, 유지 #8C7A6E
