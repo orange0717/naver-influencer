@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     // 1. 모든 인플루언서 조회
     let infQuery = supabase
       .from('influencers')
-      .select('id, naver_id, display_name, image_url, my_keyword_category, category, total_follower_count, subscriber_count, category_my_type, first_seen_at');
+      .select('id, naver_id, display_name, image_url, my_keyword_category, category, subscriber_count, category_my_type, first_seen_at');
 
     if (category && category !== '전체') {
       infQuery = infQuery.or(`my_keyword_category.eq.${category},category.eq.${category}`);
@@ -87,22 +87,17 @@ export async function GET(request: NextRequest) {
       if (r.is_integrated_top3) stats.integratedCount++;
     }
 
-    // 5. 종합 점수 계산
+    // 5. 종합 점수 계산 (키워드 챌린지 기반)
     const scoredInfluencers = allInfluencers.map(inf => {
       const stats = statsMap.get(inf.id) || {
         rank1Count: 0, top3Count: 0, top10Count: 0, integratedCount: 0, totalKeywords: 0, keywordIds: new Set()
       };
 
-      const followerBonus = inf.total_follower_count > 0
-        ? Math.log10(inf.total_follower_count) * 2
-        : 0;
-
       const score =
         stats.rank1Count * 10 +
         stats.top3Count * 5 +
         stats.integratedCount * 3 +
-        stats.totalKeywords * 1 +
-        followerBonus;
+        stats.totalKeywords * 1;
 
       return {
         id: inf.id,
@@ -111,7 +106,6 @@ export async function GET(request: NextRequest) {
         imageUrl: inf.image_url || '',
         category: inf.my_keyword_category || inf.category || '',
         categoryMyType: inf.category_my_type || '',
-        totalFollowerCount: inf.total_follower_count || 0,
         subscriberCount: inf.subscriber_count || 0,
         firstSeenAt: inf.first_seen_at,
         rank1Count: stats.rank1Count,
@@ -131,8 +125,8 @@ export async function GET(request: NextRequest) {
       case 'top3':
         scoredInfluencers.sort((a, b) => b.top3Count - a.top3Count || b.score - a.score);
         break;
-      case 'followers':
-        scoredInfluencers.sort((a, b) => b.totalFollowerCount - a.totalFollowerCount || b.score - a.score);
+      case 'keywords':
+        scoredInfluencers.sort((a, b) => b.totalKeywords - a.totalKeywords || b.score - a.score);
         break;
       default: // score
         scoredInfluencers.sort((a, b) => b.score - a.score);

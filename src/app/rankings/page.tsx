@@ -8,7 +8,6 @@ interface RankedInfluencer {
   imageUrl: string;
   category: string;
   categoryMyType: string;
-  totalFollowerCount: number;
   subscriberCount: number;
   rank1Count: number;
   top3Count: number;
@@ -24,7 +23,7 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
-type SortType = 'score' | 'rank1' | 'top3' | 'followers';
+type SortType = 'score' | 'rank1' | 'top3' | 'keywords';
 
 export default function RankingsPage() {
   const [rankings, setRankings] = useState<RankedInfluencer[]>([]);
@@ -70,7 +69,7 @@ export default function RankingsPage() {
     { key: 'score', label: '종합점수' },
     { key: 'rank1', label: '1위 키워드' },
     { key: 'top3', label: 'TOP 3' },
-    { key: 'followers', label: '팔로워' },
+    { key: 'keywords', label: '참여 키워드' },
   ];
 
   const getRankBadge = (rank: number) => {
@@ -192,7 +191,6 @@ export default function RankingsPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs">TOP3</th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs">통합</th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs">키워드</th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs">팔로워</th>
                   <th className="text-right py-3 px-4 font-semibold text-dim text-xs">종합점수</th>
                 </tr>
               </thead>
@@ -241,7 +239,6 @@ export default function RankingsPage() {
                       </span>
                     </td>
                     <td className="py-3 px-3 text-center text-xs font-rank text-dim">{inf.totalKeywords}</td>
-                    <td className="py-3 px-3 text-right text-xs font-bold font-rank">{formatCount(inf.totalFollowerCount)}</td>
                     <td className="py-3 px-4 text-right">
                       <span className="text-sm font-black text-accent font-rank">{inf.score}</span>
                     </td>
@@ -297,8 +294,8 @@ export default function RankingsPage() {
                     <div className="text-[10px] text-dim">통합</div>
                   </div>
                   <div className="bg-bg rounded-lg py-1.5">
-                    <div className="text-sm font-bold font-rank text-dim">{formatCount(inf.totalFollowerCount)}</div>
-                    <div className="text-[10px] text-dim">팔로워</div>
+                    <div className="text-sm font-bold font-rank text-dim">{inf.totalKeywords}</div>
+                    <div className="text-[10px] text-dim">키워드</div>
                   </div>
                 </div>
               </div>
