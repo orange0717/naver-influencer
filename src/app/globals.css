@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* 피치 크림 배경 */
-  --color-bg: #FDF6F3;
+  /* 배경 */
+  --color-bg: #F2E2DC;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #F9F0EC;
-  --color-border: #F2E2DC;
+  --color-surface-hover: #F2E2DC;
+  --color-border: #D9ABA0;
   --color-text: #2D2D2D;
   --color-dim: #999;
 
-  /* 브랜드 컬러 — 로즈 브라운 */
+  /* 브랜드 컬러 — 하이라이트 */
   --color-accent: #BF877A;
   --color-accent-hover: #AD756A;
   --color-accent2: #D9ABA0;
   --color-accent2-hover: #C89B90;
 
   /* 헤더/네비 */
-  --color-header: #BF877A;
-  --color-nav: #BF877A;
+  --color-header: #D9ABA0;
+  --color-nav: #D9ABA0;
 
   /* 기능 컬러 */
   --color-up: #2E8B57;
@@ -34,7 +34,7 @@
   --color-footer-bg: #2D2D2D;
   --color-footer-text: #E0E0E0;
   --color-footer-dim: #999;
-  --color-footer-heading: #F2E2DC;
+  --color-footer-heading: #D9ABA0;
 
   /* 포인트 관련 */
   --color-point: #BF877A;

@@ -7,10 +7,10 @@
 
 /* ── 차트 공통 (그리드, 축, 툴팁) ── */
 export const CHART = {
-  grid: '#F2E2DC',
-  axis: '#F2E2DC',
+  grid: '#D9ABA0',
+  axis: '#D9ABA0',
   tooltipBg: '#FFFFFF',
-  tooltipBorder: '#F2E2DC',
+  tooltipBorder: '#D9ABA0',
   tickFill: '#8C7A6E',
   labelFill: '#8C7A6E',
 } as const;
@@ -36,5 +36,5 @@ export const DIRECTION_COLORS = {
 /* ── 경쟁자 비교 (CompetitorBarChart) ── */
 export const COMPETITOR = {
   me: '#BF877A',
-  other: '#F2E2DC',
+  other: '#D9ABA0',
 } as const;
