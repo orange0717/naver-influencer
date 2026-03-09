@@ -3,10 +3,32 @@ import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-se
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  // 쿠키 기반 인증 (Bearer 토큰 불필요)
-  const supabaseAuth = await createRouteHandlerClient();
-  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+export async function GET(request: Request) {
+  // 쿠키 기반 인증 시도
+  let authUser = null;
+
+  try {
+    const supabaseAuth = await createRouteHandlerClient();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError) {
+      console.error('Cookie auth error:', authError.message);
+    }
+    authUser = user;
+  } catch (e) {
+    console.error('Cookie auth exception:', e);
+  }
+
+  // 쿠키 인증 실패 시 Bearer 토큰 폴백
+  if (!authUser) {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    if (token) {
+      const { createAnonClient } = await import('@/lib/supabase-server');
+      const anonClient = createAnonClient();
+      const { data: { user } } = await anonClient.auth.getUser(token);
+      authUser = user;
+    }
+  }
 
   if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

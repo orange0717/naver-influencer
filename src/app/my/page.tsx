@@ -50,18 +50,18 @@ export default function MyDashboard() {
   useEffect(() => {
     async function loadDashboard() {
       try {
+        // 세션 토큰 가져오기 (쿠키 인증 + Bearer 폴백)
         const supabase = createSupabaseBrowserClient();
-
-        // 로그인 여부 확인
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          setError('login_required');
-          setLoading(false);
-          return;
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
         }
 
-        // 쿠키 기반 인증 (Bearer 토큰 불필요)
-        const res = await fetch('/api/my/dashboard');
+        const res = await fetch('/api/my/dashboard', {
+          credentials: 'same-origin',
+          headers,
+        });
 
         if (!res.ok) {
           if (res.status === 401) {
