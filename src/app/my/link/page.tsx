@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 interface FoundInfluencer {
   naverId: string;
@@ -54,36 +53,15 @@ export default function LinkInfluencer() {
     setLinking(true);
     setError('');
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const res = await fetch('/api/my/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ naverId: inf.naverId }),
+      });
 
-      if (!user) {
-        setError('로그인이 필요합니다.');
-        setLinking(false);
-        return;
-      }
-
-      // DB에서 인플루언서 ID 조회
-      const { data: dbInf } = await supabase
-        .from('influencers')
-        .select('id')
-        .eq('naver_id', inf.naverId)
-        .single();
-
-      if (!dbInf) {
-        setError('인플루언서 DB 레코드를 찾을 수 없습니다.');
-        setLinking(false);
-        return;
-      }
-
-      // users 테이블의 linked_influencer_id 업데이트
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ linked_influencer_id: dbInf.id })
-        .eq('auth_id', user.id);
-
-      if (updateError) {
-        setError('연결 실패: ' + updateError.message);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError('연결 실패: ' + (body.error || res.status));
         setLinking(false);
         return;
       }
