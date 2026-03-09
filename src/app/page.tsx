@@ -25,7 +25,7 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="-mx-4 -mt-6">
+    <div className="-mt-6 w-screen relative left-1/2 -ml-[50vw]">
 
       {/* ═══════════ HERO (bg) ═══════════ */}
       <section className="bg-bg px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
