@@ -5,11 +5,10 @@ import { useState, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const NAV = [
-  { href: '/', label: '대시보드' },
   { href: '/keywords', label: '키워드' },
   { href: '/influencers', label: '인플루언서' },
   { href: '/rankings', label: '랭킹' },
-  { href: '/my', label: '내 순위' },
+  { href: '/my', label: '내 대시보드' },
   { href: '/subscribe', label: '구독' },
 ];
 
