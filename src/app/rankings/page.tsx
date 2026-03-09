@@ -16,19 +16,12 @@ interface RankedInfluencer {
   integratedCount: number;
   totalKeywords: number;
   score: number;
-  firstSeenAt?: string;
 }
 
 function formatCount(n: number): string {
   if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return n.toLocaleString();
-}
-
-function isNew(dateStr?: string): boolean {
-  if (!dateStr) return false;
-  const diff = Date.now() - new Date(dateStr).getTime();
-  return diff < 7 * 24 * 60 * 60 * 1000;
 }
 
 type SortType = 'score' | 'rank1' | 'top3' | 'followers';
@@ -193,9 +186,6 @@ export default function RankingsPage() {
                       className="font-bold text-sm hover:text-accent transition-colors">
                       {inf.displayName}
                     </a>
-                    {isNew(inf.firstSeenAt) && (
-                      <span className="text-[9px] font-bold text-white bg-up px-1 py-0.5 rounded leading-none">NEW</span>
-                    )}
                   </div>
                   <p className="text-xs text-dim mt-0.5">{inf.category}</p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center">
@@ -256,9 +246,6 @@ export default function RankingsPage() {
                               className="font-bold hover:text-accent transition-colors truncate max-w-[160px]">
                               {inf.displayName}
                             </a>
-                            {isNew(inf.firstSeenAt) && (
-                              <span className="text-[9px] font-bold text-white bg-up px-1 py-0.5 rounded leading-none shrink-0">NEW</span>
-                            )}
                           </div>
                           <span className="text-xs text-dim">@{inf.naverId}</span>
                         </div>
@@ -315,9 +302,6 @@ export default function RankingsPage() {
                         className="font-bold text-sm hover:text-accent transition-colors truncate">
                         {inf.displayName}
                       </a>
-                      {isNew(inf.firstSeenAt) && (
-                        <span className="text-[9px] font-bold text-white bg-up px-1 py-0.5 rounded leading-none shrink-0">NEW</span>
-                      )}
                     </div>
                     <span className="text-xs text-dim">{inf.category}</span>
                   </div>

@@ -22,12 +22,6 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
-function isNew(dateStr?: string): boolean {
-  if (!dateStr) return false;
-  const diff = Date.now() - new Date(dateStr).getTime();
-  return diff < 7 * 24 * 60 * 60 * 1000; // 7일
-}
-
 export default function InfluencersPage() {
   const [influencers, setInfluencers] = useState<InfluencerItem[]>([]);
   const [categories, setCategories] = useState<string[]>(['전체']);
@@ -151,9 +145,6 @@ export default function InfluencersPage() {
                               className="font-bold hover:text-accent transition-colors truncate max-w-[180px]">
                               {inf.name}
                             </a>
-                            {isNew(inf.firstSeenAt) && (
-                              <span className="text-[9px] font-bold text-white bg-up px-1 py-0.5 rounded leading-none shrink-0">NEW</span>
-                            )}
                           </div>
                           <span className="text-xs text-dim">@{inf.naverId}</span>
                         </div>
@@ -216,9 +207,6 @@ export default function InfluencersPage() {
                         className="font-bold text-sm hover:text-accent transition-colors truncate">
                         {inf.name}
                       </a>
-                      {isNew(inf.firstSeenAt) && (
-                        <span className="text-[9px] font-bold text-white bg-up px-1 py-0.5 rounded leading-none shrink-0">NEW</span>
-                      )}
                     </div>
                     <span className="text-xs text-dim">@{inf.naverId}</span>
                   </div>
