@@ -1,17 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { Suspense } from 'react';
 
-export default function LoginPage() {
+function translateLoginError(message: string): string {
+  const errorMap: Record<string, string> = {
+    'Invalid login credentials': '이메일 또는 비밀번호가 올바르지 않습니다.',
+    'Email not confirmed': '이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.',
+    'Invalid email or password': '이메일 또는 비밀번호가 올바르지 않습니다.',
+    'Too many requests': '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    'Email rate limit exceeded': '이메일 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
+    'User not found': '등록되지 않은 이메일입니다.',
+  };
+  return errorMap[message] || message;
+}
+
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'confirm_failed') {
+      setError('이메일 인증에 실패했습니다. 다시 시도해주세요.');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,9 +46,7 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        setError(authError.message === 'Invalid login credentials'
-          ? '이메일 또는 비밀번호가 올바르지 않습니다.'
-          : authError.message);
+        setError(translateLoginError(authError.message));
         return;
       }
 
@@ -175,5 +193,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

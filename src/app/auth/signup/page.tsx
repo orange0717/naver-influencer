@@ -19,6 +19,21 @@ function getPasswordStrength(pw: string): { level: number; label: string; color:
   return { level: 4, label: '매우 강함', color: 'bg-up' };
 }
 
+function translateAuthError(message: string): string {
+  const errorMap: Record<string, string> = {
+    'User already registered': '이미 가입된 이메일입니다. 로그인해주세요.',
+    'Email rate limit exceeded': '이메일 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
+    'Signup requires a valid password': '유효한 비밀번호를 입력해주세요.',
+    'Unable to validate email address: invalid format': '올바른 이메일 형식이 아닙니다.',
+    'Password should be at least 6 characters': '비밀번호는 최소 6자 이상이어야 합니다.',
+    'Anonymous sign-ins are disabled': '회원가입이 일시적으로 비활성화되어 있습니다.',
+    'Signups not allowed for this instance': '현재 회원가입이 비활성화되어 있습니다.',
+    'Email signups are disabled': '이메일 회원가입이 비활성화되어 있습니다.',
+    'A user with this email address has already been registered': '이미 가입된 이메일입니다. 로그인해주세요.',
+  };
+  return errorMap[message] || message;
+}
+
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +42,7 @@ export default function SignupPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const pwStrength = getPasswordStrength(password);
@@ -57,12 +73,18 @@ export default function SignupPage() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
 
       if (authError) {
-        setError(authError.message);
+        setError(translateAuthError(authError.message));
         return;
       }
+
+      // 이메일 확인이 필요한 경우 (identities가 비어있지 않고, confirmed_at이 없으면)
+      const needsConfirmation = authData.user && !authData.session;
 
       // 2. API 라우트로 users 테이블에 프로필 생성 (service_role로 RLS 우회)
       if (authData.user) {
@@ -82,14 +104,49 @@ export default function SignupPage() {
         }
       }
 
-      router.push('/my');
-      router.refresh();
+      if (needsConfirmation) {
+        // 이메일 확인 필요 — 성공 메시지 표시
+        setSuccess(true);
+      } else {
+        // 이메일 확인 불필요 — 바로 대시보드로 이동
+        router.push('/my');
+        router.refresh();
+      }
     } catch {
       setError('회원가입 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
+
+  // 이메일 확인 안내 화면
+  if (success) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center -mt-6">
+        <div className="w-full max-w-md mx-auto">
+          <div className="bg-surface rounded-2xl border border-border p-8 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-up/15 flex items-center justify-center mx-auto">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-up">
+                <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+            </div>
+            <h1 className="text-2xl font-extrabold text-text">이메일을 확인해주세요</h1>
+            <p className="text-sm text-dim leading-relaxed">
+              <span className="font-bold text-text">{email}</span>으로<br />
+              확인 메일을 보냈습니다.<br />
+              메일의 링크를 클릭하면 가입이 완료됩니다.
+            </p>
+            <div className="pt-4 space-y-2">
+              <p className="text-xs text-dim">메일이 안 보이면 스팸함을 확인해주세요.</p>
+              <Link href="/auth/login" className="inline-block text-sm text-accent font-bold hover:underline">
+                로그인 페이지로 이동
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[75vh] flex items-center justify-center -mt-6">
