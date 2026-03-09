@@ -1,6 +1,7 @@
 'use client';
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
+import { CHART, COMPETITOR } from '@/lib/chart-colors';
 
 interface Competitor {
   name: string;
@@ -16,28 +17,28 @@ export default function CompetitorBarChart({ data }: Props) {
   return (
     <ResponsiveContainer width="100%" height={Math.max(180, data.length * 40)}>
       <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#2A2A4A" horizontal={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} horizontal={false} />
         <XAxis
           type="number"
           domain={[0, Math.max(...data.map(d => d.rank)) + 2]}
-          tick={{ fill: '#888', fontSize: 11 }}
+          tick={{ fill: CHART.tickFill, fontSize: 11 }}
           tickLine={false}
-          axisLine={{ stroke: '#2A2A4A' }}
+          axisLine={{ stroke: CHART.axis }}
           reversed
           tickFormatter={(v: number) => `${v}위`}
         />
         <YAxis
           type="category"
           dataKey="name"
-          tick={{ fill: '#E0E0E0', fontSize: 12 }}
+          tick={{ fill: '#0D0D0D', fontSize: 12 }}
           tickLine={false}
           axisLine={false}
           width={80}
         />
         <Tooltip
           contentStyle={{
-            background: '#1A1A2E',
-            border: '1px solid #2A2A4A',
+            background: CHART.tooltipBg,
+            border: `1px solid ${CHART.tooltipBorder}`,
             borderRadius: 8,
             fontSize: 12,
           }}
@@ -49,7 +50,7 @@ export default function CompetitorBarChart({ data }: Props) {
         />
         <Bar dataKey="rank" radius={[0, 4, 4, 0]} barSize={20}>
           {data.map((entry, i) => (
-            <Cell key={i} fill={entry.isMe ? '#6C5CE7' : '#2A2A4A'} />
+            <Cell key={i} fill={entry.isMe ? COMPETITOR.me : COMPETITOR.other} />
           ))}
         </Bar>
       </BarChart>

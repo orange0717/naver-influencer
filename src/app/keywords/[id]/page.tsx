@@ -118,7 +118,7 @@ export default function KeywordDetailPage() {
 
         <div className="bg-surface rounded-xl border border-border p-5">
           <div className="text-xs font-semibold text-dim mb-3">블루오션 지표</div>
-          <div className="text-3xl font-extrabold mb-2 font-rank" style={{ color: keyword.participant_count < 30 ? '#00D68F' : keyword.participant_count < 100 ? '#6C5CE7' : '#888' }}>
+          <div className={`text-3xl font-extrabold mb-2 font-rank ${keyword.participant_count < 30 ? 'text-up' : keyword.participant_count < 100 ? 'text-accent' : 'text-dim'}`}>
             {keyword.participant_count < 30 ? '블루오션' : keyword.participant_count < 100 ? '적정' : '레드오션'}
           </div>
           <div className="text-xs text-dim">

@@ -8,6 +8,7 @@ import RankChange from '@/components/RankChange';
 import RankHistoryChart from '@/components/RankHistoryChart';
 import CompetitorBarChart from '@/components/CompetitorBarChart';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { SERIES_COLORS } from '@/lib/chart-colors';
 
 interface DashboardData {
   linked: boolean;
@@ -56,7 +57,7 @@ interface DashboardData {
 type SortKey = 'rank_position' | 'search_volume_monthly' | 'rank_change';
 type Filter = 'all' | 'top3' | 'integrated' | 'up';
 
-const CHART_COLORS = ['#6C5CE7', '#E94560', '#00D68F', '#4D9FFF', '#FFD93D', '#FF6B6B', '#CD7F32'];
+const CHART_COLORS = SERIES_COLORS;
 
 export default function MyDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);

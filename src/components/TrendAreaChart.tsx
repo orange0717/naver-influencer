@@ -1,6 +1,7 @@
 'use client';
 
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { CHART, DIRECTION_COLORS } from '@/lib/chart-colors';
 
 interface TrendPoint {
   week: string;
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export default function TrendAreaChart({ data, direction = 'stable' }: Props) {
-  const color = direction === 'up' ? '#00D68F' : direction === 'down' ? '#FF6B6B' : '#6C5CE7';
+  const color = DIRECTION_COLORS[direction];
   const gradientId = `trendGrad-${direction}`;
 
   return (
@@ -25,27 +26,27 @@ export default function TrendAreaChart({ data, direction = 'stable' }: Props) {
             <stop offset="95%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#2A2A4A" />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
         <XAxis
           dataKey="week"
-          tick={{ fill: '#888', fontSize: 10 }}
+          tick={{ fill: CHART.tickFill, fontSize: 10 }}
           tickLine={false}
-          axisLine={{ stroke: '#2A2A4A' }}
+          axisLine={{ stroke: CHART.axis }}
         />
         <YAxis
-          tick={{ fill: '#888', fontSize: 10 }}
+          tick={{ fill: CHART.tickFill, fontSize: 10 }}
           tickLine={false}
-          axisLine={{ stroke: '#2A2A4A' }}
+          axisLine={{ stroke: CHART.axis }}
           tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
         />
         <Tooltip
           contentStyle={{
-            background: '#1A1A2E',
-            border: '1px solid #2A2A4A',
+            background: CHART.tooltipBg,
+            border: `1px solid ${CHART.tooltipBorder}`,
             borderRadius: 8,
             fontSize: 12,
           }}
-          labelStyle={{ color: '#888' }}
+          labelStyle={{ color: CHART.labelFill }}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           formatter={(value: any) => [Number(value).toLocaleString(), '검색량']}
         />

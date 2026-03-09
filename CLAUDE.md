@@ -19,11 +19,12 @@ npx --yes vercel deploy --prod --cwd /Users/orange/개발/naver-influencer
 ```
 
 ## 디자인 시스템
-- **테마**: 다크 (bg: #0F0F1A, surface: #1A1A2E)
-- **액센트**: 보라 #6C5CE7, 레드 #E94560
+- **테마**: 라이트 오렌지 (bg: #FFF6EE, surface: #FFFFFF, border: #FDE4CF)
+- **액센트**: 피치 #CC9486, 딥오렌지 #B8612A (OrangeRefine 팔레트)
 - **폰트**: Pretendard (본문), 모노스페이스 (숫자 .font-rank)
-- **순위 뱃지**: 금 #FFD93D, 은 #C0C0C0, 동 #CD7F32
-- **기능색**: 상승 #00D68F, 하락 #FF6B6B, 유지 #888888
+- **순위 뱃지**: 금 #D4A017, 은 #A0A0A0, 동 #CD7F32
+- **기능색**: 상승 #2E8B57, 하락 #D94848, 유지 #8C7A6E
+- **차트 색상**: src/lib/chart-colors.ts에 통합 관리
 
 ## 디렉토리 구조
 ```
@@ -32,12 +33,12 @@ src/
 │   ├── api/              # API 라우트 (18개)
 │   │   ├── keywords/     # 키워드 CRUD
 │   │   ├── my/           # 내 대시보드/순위 히스토리
-│   │   ├── points/       # 포인트 잔액/차감/충전
+│   │   ├── subscription/  # 구독 상태/활성화
 │   │   ├── influencers/  # 인플루언서 프로필
 │   │   ├── recommendations/ # 일일 추천
 │   │   └── cron/         # 크롤링 크론잡 5개
 │   ├── auth/             # 로그인/회원가입
-│   ├── charge/           # 포인트 충전
+│   ├── subscribe/        # 구독 페이지
 │   ├── influencers/[id]/ # 인플루언서 상세
 │   ├── keywords/         # 키워드 목록/상세
 │   ├── my/               # 내 대시보드, 인플루언서 연결
@@ -62,21 +63,17 @@ src/
     ├── types.ts          # TypeScript 인터페이스
     ├── supabase.ts       # Supabase 클라이언트 (anon)
     ├── supabase-server.ts # Supabase 서버 클라이언트 (service_role)
-    └── points.ts         # 포인트 차감/캐시 로직
+    ├── points.ts         # (레거시) 포인트 차감 로직
+    ├── subscription.ts   # 구독 확인/활성화 로직
+    └── chart-colors.ts   # Recharts 차트 색상 상수
 ```
 
-## 포인트 경제
-- 키워드 리스트: 무료
-- 키워드 상세: 30P (24시간 내 재열람 무료)
-- 순위 전체 열람: 50P (24시간 캐시)
-- 인플루언서 프로필: 50P
-- 일일 추천 TOP 3: 무료, 전체: 50P
-
-## 충전 패키지
-- 체험 100P = 1,000원
-- 스타터 500P+50보너스 = 4,500원
-- 프로(인기) 1,000P+200보너스 = 8,000원
-- 비즈니스 3,000P+1,000보너스 = 20,000원
+## 구독 모델
+- **가격**: 월 9,900원
+- **구독자**: 모든 기능 무제한 이용
+- **비구독자(무료)**: 키워드 목록 + 일일 추천 3개만
+- **결제**: 토스페이먼츠 (예정)
+- **환불**: 7일 이내 미이용 시 전액 환불
 
 ## 크론잡 스케줄 (vercel.json)
 | UTC | KST | 작업 |
@@ -92,13 +89,13 @@ src/
 - Mobile (<lg): 카드 형태로 자동 전환
 - `hidden lg:block` / `lg:hidden` 패턴 사용
 
-## 현재 상태 (MVP)
-- 프론트엔드: 완료 (모든 페이지 + 차트 + 반응형)
-- API: Mock 데이터 기반 라우트 완료
-- DB: supabase-schema.sql 준비됨 (미실행)
-- 인증: UI만 완료 (Supabase Auth 미연결)
-- 결제: UI만 완료 (토스페이먼츠 미연결)
-- 크롤러: 스켈레톤만 (TODO 주석)
+## 현재 상태
+- 프론트엔드: 완료 (오렌지 테마 + 구독 UI)
+- API: 일부 DB 전환 완료, 나머지 Mock
+- DB: supabase-schema.sql (구독 테이블 포함)
+- 인증: getAuthUser 공통 유틸 + Supabase Auth
+- 구독: 백엔드 로직 완료, 결제 연동 예정 (토스페이먼츠)
+- 크롤러: 스켈레톤 (TODO)
 
 ## 환경변수 (필요)
 ```

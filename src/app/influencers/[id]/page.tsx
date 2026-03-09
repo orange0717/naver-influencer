@@ -145,7 +145,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
 
         {!unlocked && (
           <div className="absolute inset-0 top-[45%]">
-            <LockOverlay cost={50} onUnlock={() => setUnlocked(true)} />
+            <LockOverlay />
           </div>
         )}
       </div>

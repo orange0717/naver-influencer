@@ -10,7 +10,7 @@ const NAV = [
   { href: '/influencers', label: '인플루언서' },
   { href: '/rankings', label: '랭킹' },
   { href: '/my', label: '내 순위' },
-  { href: '/charge', label: '충전' },
+  { href: '/subscribe', label: '구독' },
 ];
 
 export default function Header() {
@@ -18,7 +18,7 @@ export default function Header() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<{ email?: string; nickname?: string } | null>(null);
-  const [points, setPoints] = useState(0);
+  const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -27,19 +27,22 @@ export default function Header() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
         setUser({ email: authUser.email });
-        // 유저 프로필 + 포인트 조회
         const { data: profile } = await supabase
           .from('users')
-          .select('nickname, point_balance')
+          .select('nickname, subscription_status, subscription_expires_at')
           .eq('auth_id', authUser.id)
           .single();
         if (profile) {
           setUser({ email: authUser.email, nickname: profile.nickname });
-          setPoints(profile.point_balance || 0);
+          const isActive =
+            profile.subscription_status === 'active' &&
+            !!profile.subscription_expires_at &&
+            new Date(profile.subscription_expires_at) > new Date();
+          setSubscribed(isActive);
         }
       } else {
         setUser(null);
-        setPoints(0);
+        setSubscribed(false);
       }
     }
 
@@ -56,7 +59,7 @@ export default function Header() {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
     setUser(null);
-    setPoints(0);
+    setSubscribed(false);
     router.push('/');
     router.refresh();
   };
@@ -87,11 +90,17 @@ export default function Header() {
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                <Link href="/charge"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/12 rounded-lg text-sm font-bold text-accent hover:bg-accent/20 transition-colors">
-                  <span>P</span>
-                  <span className="font-rank">{points.toLocaleString()}</span>
-                </Link>
+                {subscribed ? (
+                  <Link href="/subscribe"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-up/12 rounded-lg text-sm font-bold text-up">
+                    구독 중
+                  </Link>
+                ) : (
+                  <Link href="/subscribe"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/12 rounded-lg text-sm font-bold text-accent hover:bg-accent/20 transition-colors">
+                    구독하기
+                  </Link>
+                )}
                 <button onClick={handleLogout}
                   className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs hover:bg-accent/30 transition cursor-pointer"
                   title={user.nickname || user.email || '로그아웃'}>

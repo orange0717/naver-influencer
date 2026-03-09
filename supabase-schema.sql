@@ -209,6 +209,27 @@ INSERT INTO point_packages (name, point_amount, price_krw, bonus_points, is_popu
   ('프로', 1000, 8000, 200, true, 3),
   ('비즈니스', 3000, 20000, 1000, false, 4);
 
+-- 12. subscriptions (구독 관리)
+CREATE TABLE subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  plan_name VARCHAR(100) NOT NULL DEFAULT '월간 구독',
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  price_krw INTEGER NOT NULL DEFAULT 9900,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  payment_key VARCHAR(200),
+  payment_method VARCHAR(50),
+  auto_renew BOOLEAN DEFAULT true,
+  cancelled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_sub_user ON subscriptions(user_id, status, expires_at DESC);
+
+-- users 테이블에 구독 필드 추가
+ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'none';
+ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMPTZ;
+
 -- RLS
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE influencers ENABLE ROW LEVEL SECURITY;
@@ -229,6 +250,9 @@ CREATE POLICY influencer_read ON influencers FOR SELECT USING (true);
 CREATE POLICY daily_rec_read ON daily_recommendations FOR SELECT USING (true);
 CREATE POLICY pricing_read ON pricing FOR SELECT USING (true);
 CREATE POLICY packages_read ON point_packages FOR SELECT USING (true);
+
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY sub_self ON subscriptions FOR ALL USING (user_id = auth.uid());
 
 -- 함수: 포인트 차감
 CREATE OR REPLACE FUNCTION deduct_points(
@@ -272,3 +296,28 @@ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
 CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER keywords_updated_at BEFORE UPDATE ON keyword_challenges FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER pricing_updated_at BEFORE UPDATE ON pricing FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- 함수: 구독 활성 여부 확인
+CREATE OR REPLACE FUNCTION is_subscribed(p_user_id UUID) RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM subscriptions
+    WHERE user_id = p_user_id
+    AND status = 'active'
+    AND expires_at > NOW()
+  );
+END; $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 함수: 구독 활성화
+CREATE OR REPLACE FUNCTION activate_subscription(
+  p_user_id UUID, p_payment_key VARCHAR(200), p_payment_method VARCHAR(50) DEFAULT 'tosspay'
+) RETURNS JSON AS $$
+DECLARE v_expires TIMESTAMPTZ; v_sub_id UUID;
+BEGIN
+  v_expires := NOW() + INTERVAL '30 days';
+  INSERT INTO subscriptions (user_id, plan_name, status, price_krw, expires_at, payment_key, payment_method)
+  VALUES (p_user_id, '월간 구독', 'active', 9900, v_expires, p_payment_key, p_payment_method)
+  RETURNING id INTO v_sub_id;
+  UPDATE users SET subscription_status = 'active', subscription_expires_at = v_expires WHERE id = p_user_id;
+  RETURN json_build_object('success', true, 'subscription_id', v_sub_id, 'expires_at', v_expires);
+END; $$ LANGUAGE plpgsql SECURITY DEFINER;

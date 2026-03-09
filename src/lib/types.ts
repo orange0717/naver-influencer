@@ -42,6 +42,30 @@ export interface Recommendation {
   is_free: boolean;
 }
 
+export type SubscriptionStatus = 'active' | 'expired' | 'none';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price_krw: number;
+  period_days: number;
+  description: string;
+  features: string[];
+}
+
+export interface UserSubscription {
+  id: string;
+  user_id: string;
+  plan_name: string;
+  status: SubscriptionStatus;
+  price_krw: number;
+  started_at: string;
+  expires_at: string;
+  payment_key?: string;
+  auto_renew: boolean;
+}
+
+/** @deprecated 포인트제 → 구독제 전환됨 */
 export interface PointPackage {
   id: string;
   name: string;
@@ -52,6 +76,7 @@ export interface PointPackage {
   unit_price: number;
 }
 
+/** @deprecated 포인트제 → 구독제 전환됨 */
 export interface PricingItem {
   action_type: string;
   point_cost: number;
