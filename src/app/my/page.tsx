@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
+import CompetitorSection from '@/components/CompetitorSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -342,6 +343,12 @@ export default async function MyDashboard() {
           </div>
         )}
       </div>
+
+      {/* ─── 경쟁자 분석 ─── */}
+      <CompetitorSection
+        naverId={naverId}
+        myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords, top3Count }}
+      />
 
       {/* ─── 내 키워드 리스트 (주제별) ─── */}
       <div className="space-y-4">
