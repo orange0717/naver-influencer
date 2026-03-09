@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* 핑크 톤 색상 */
-  --color-bg: #FFF5F2;
+  /* 피치 크림 배경 */
+  --color-bg: #FDF6F0;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #FFF0EC;
-  --color-border: #F5D8D0;
-  --color-text: #1a1a1a;
-  --color-dim: #8C7A6E;
+  --color-surface-hover: #FDF2EC;
+  --color-border: #F0DDD4;
+  --color-text: #2D2D2D;
+  --color-dim: #999;
 
-  /* 브랜드 컬러 — 로즈 핑크 */
-  --color-accent: #CC9486;
-  --color-accent-hover: #B8807A;
-  --color-accent2: #A06B64;
-  --color-accent2-hover: #B87B74;
+  /* 브랜드 컬러 — 테라코타/코럴 브라운 */
+  --color-accent: #C4715B;
+  --color-accent-hover: #B5634E;
+  --color-accent2: #A05540;
+  --color-accent2-hover: #B5634E;
 
   /* 헤더/네비 */
-  --color-header: #FBF0E8;
-  --color-nav: #FEF4EA;
+  --color-header: #FDF6F0;
+  --color-nav: #FDF6F0;
 
   /* 기능 컬러 */
   --color-up: #2E8B57;
@@ -31,8 +31,8 @@
   --color-bronze: #CD7F32;
 
   /* 포인트 관련 */
-  --color-point: #CC9486;
-  --color-point-bg: rgba(204, 148, 134, 0.12);
+  --color-point: #C4715B;
+  --color-point-bg: rgba(196, 113, 91, 0.12);
 
   /* 폰트 */
   --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
