@@ -46,18 +46,9 @@ async function getInfluencersFromDB(
   const { category, search, page, limit, newOnly } = opts;
   const offset = (page - 1) * limit;
 
-  // 카테고리 목록 조회
-  const { data: catData } = await supabase
-    .from('influencers')
-    .select('my_keyword_category')
-    .not('my_keyword_category', 'eq', '')
-    .order('my_keyword_category');
-
-  const categorySet = new Set<string>();
-  catData?.forEach(r => {
-    if (r.my_keyword_category) categorySet.add(r.my_keyword_category);
-  });
-  const categories = ['전체', ...Array.from(categorySet).sort()];
+  // 카테고리 목록: 키워드 페이지와 동일한 소스 사용 (네이버 API)
+  const apiCategories = await fetchCategories();
+  const categories = ['전체', ...apiCategories.map(c => c.name)];
 
   // 메인 쿼리 구성
   let query = supabase

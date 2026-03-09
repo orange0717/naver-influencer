@@ -37,8 +37,6 @@ export default function InfluencersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [newOnly, setNewOnly] = useState(false);
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -48,7 +46,6 @@ export default function InfluencersPage() {
       });
       if (category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
-      if (newOnly) params.set('new', 'true');
 
       const res = await fetch(`/api/influencers?${params}`);
       const data = await res.json();
@@ -62,7 +59,7 @@ export default function InfluencersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, category, search, newOnly]);
+  }, [page, category, search]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -111,14 +108,6 @@ export default function InfluencersPage() {
               category === cat ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:border-accent/40'
             }`}>{cat}</button>
         ))}
-        <span className="w-px h-5 bg-border mx-1" />
-        <button
-          onClick={() => { setNewOnly(!newOnly); setPage(1); }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-            newOnly ? 'bg-up text-white' : 'bg-surface border border-border text-dim hover:border-up/40'
-          }`}>
-          NEW
-        </button>
       </div>
 
       {loading ? (
