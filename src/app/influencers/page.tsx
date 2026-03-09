@@ -22,6 +22,11 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
+function formatDate(d: string | null | undefined): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 export default function InfluencersPage() {
   const [influencers, setInfluencers] = useState<InfluencerItem[]>([]);
   const [categories, setCategories] = useState<string[]>(['전체']);
@@ -122,7 +127,7 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">인플루언서</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">활동 분야</th>
                   <th className="text-right py-3 px-4 font-semibold text-dim text-xs">구독자</th>
-                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">발견 키워드</th>
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">선정일</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,17 +168,8 @@ export default function InfluencersPage() {
                     <td className="py-3 px-4 text-right text-xs font-bold font-rank text-accent">
                       {formatCount(inf.subscriberCount)}
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {inf.foundInKeywords.slice(0, 2).map(kw => (
-                          <span key={kw} className="text-[10px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded truncate max-w-[90px]">
-                            {kw}
-                          </span>
-                        ))}
-                        {inf.foundInKeywords.length > 2 && (
-                          <span className="text-[10px] text-dim">+{inf.foundInKeywords.length - 2}</span>
-                        )}
-                      </div>
+                    <td className="py-3 px-4 text-xs text-dim">
+                      {formatDate(inf.firstSeenAt)}
                     </td>
                   </tr>
                 ))}
@@ -216,16 +212,11 @@ export default function InfluencersPage() {
                     {inf.myKeywordCategory}{inf.categoryMyType ? ` · ${inf.categoryMyType}` : ''}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {inf.foundInKeywords.slice(0, 3).map(kw => (
-                    <span key={kw} className="text-[10px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded">
-                      {kw}
-                    </span>
-                  ))}
-                  {inf.foundInKeywords.length > 3 && (
-                    <span className="text-[10px] text-dim">+{inf.foundInKeywords.length - 3}</span>
-                  )}
-                </div>
+                {inf.firstSeenAt && (
+                  <div className="text-[10px] text-dim">
+                    선정일 {formatDate(inf.firstSeenAt)}
+                  </div>
+                )}
               </div>
             ))}
             {influencers.length === 0 && (
