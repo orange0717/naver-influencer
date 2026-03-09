@@ -8,28 +8,53 @@ const NINFL_SUB = [
   { href: '/subscribe', label: '구독' },
 ];
 
-const NAV = [
+const NAV_INFLUENCER = [
   { href: '/my', label: '대시보드' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드' },
   { href: '/rankings', label: '랭킹' },
 ];
 
+const NAV_BLOGGER = [
+  { href: '/my/blogger', label: '대시보드' },
+  { href: '/keywords', label: '키워드' },
+  { href: '/rankings', label: '랭킹' },
+];
+
+type UserInfo = {
+  type: 'influencer' | 'blogger' | null;
+  id: string | null;
+  name: string | null;
+};
+
+function getUserFromCookies(): UserInfo {
+  const cookies = document.cookie;
+  const naverMatch = cookies.match(/(?:^|;\s*)naver_id=([^;]*)/);
+  const blogMatch = cookies.match(/(?:^|;\s*)blog_id=([^;]*)/);
+  const blogNameMatch = cookies.match(/(?:^|;\s*)blog_name=([^;]*)/);
+
+  if (naverMatch) {
+    return { type: 'influencer', id: decodeURIComponent(naverMatch[1]), name: null };
+  }
+  if (blogMatch) {
+    const name = blogNameMatch ? decodeURIComponent(blogNameMatch[1]) : null;
+    return { type: 'blogger', id: decodeURIComponent(blogMatch[1]), name };
+  }
+  return { type: null, id: null, name: null };
+}
+
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ninflOpen, setNinflOpen] = useState(false);
-  const [naverId, setNaverId] = useState<string | null>(null);
+  const [user, setUser] = useState<UserInfo>({ type: null, id: null, name: null });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 쿠키에서 naver_id 확인
-    const match = document.cookie.match(/(?:^|;\s*)naver_id=([^;]*)/);
-    setNaverId(match ? decodeURIComponent(match[1]) : null);
+    setUser(getUserFromCookies());
   }, []);
 
-  // 드롭다운 외부 클릭 닫기
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -41,14 +66,26 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
-    // naver_id 쿠키 삭제
     document.cookie = 'naver_id=; path=/; max-age=0';
-    setNaverId(null);
+    document.cookie = 'blog_id=; path=/; max-age=0';
+    document.cookie = 'blog_name=; path=/; max-age=0';
+    document.cookie = 'user_type=; path=/; max-age=0';
+    setUser({ type: null, id: null, name: null });
     router.push('/');
     router.refresh();
   };
 
+  const NAV = user.type === 'blogger' ? NAV_BLOGGER : NAV_INFLUENCER;
   const ninflActive = pathname === '/subscribe' || pathname === '/notice';
+  const displayChar = user.type === 'blogger'
+    ? (user.name || user.id || 'B').charAt(0).toUpperCase()
+    : (user.id || 'N').charAt(0).toUpperCase();
+  const tooltipText = user.type === 'blogger'
+    ? `블로거 @${user.id} · 로그아웃`
+    : `@${user.id} · 로그아웃`;
+
+  // 유저 타입 배지 색상
+  const badgeColor = user.type === 'blogger' ? 'bg-[#2DB400]/30' : 'bg-white/20';
 
   return (
     <>
@@ -103,12 +140,20 @@ export default function Header() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            {naverId ? (
-              <button onClick={handleLogout}
-                className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 transition cursor-pointer"
-                title={`@${naverId} · 로그아웃`}>
-                {naverId.charAt(0).toUpperCase()}
-              </button>
+            {user.id ? (
+              <div className="flex items-center gap-2">
+                {user.type === 'blogger' && (
+                  <span className="text-[10px] text-white/60 bg-[#2DB400]/30 px-2 py-0.5 rounded-full hidden sm:block">블로거</span>
+                )}
+                {user.type === 'influencer' && (
+                  <span className="text-[10px] text-white/60 bg-white/15 px-2 py-0.5 rounded-full hidden sm:block">인플루언서</span>
+                )}
+                <button onClick={handleLogout}
+                  className={`w-8 h-8 rounded-full ${badgeColor} flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 transition cursor-pointer`}
+                  title={tooltipText}>
+                  {displayChar}
+                </button>
+              </div>
             ) : (
               <Link href="/auth/login"
                 className="px-3 py-1.5 bg-white text-header text-sm font-semibold rounded-lg hover:bg-white/90 transition-colors">
@@ -135,6 +180,12 @@ export default function Header() {
               </Link>
             ))}
             <div className="border-t border-border my-2" />
+            {/* 유저 타입 표시 */}
+            {user.type && (
+              <div className="px-4 py-2 text-xs font-bold text-dim">
+                {user.type === 'blogger' ? '블로거 메뉴' : '인플루언서 메뉴'}
+              </div>
+            )}
             {/* 모바일: 일반 네비 */}
             {NAV.map(n => {
               const active = n.href === '/' ? pathname === '/' : pathname.startsWith(n.href);
@@ -147,7 +198,7 @@ export default function Header() {
                 </Link>
               );
             })}
-            {naverId ? (
+            {user.id ? (
               <button onClick={() => { handleLogout(); setMobileOpen(false); }}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-down hover:text-down/80 cursor-pointer">
                 로그아웃

@@ -95,7 +95,20 @@ export async function POST(request: NextRequest) {
 
     // 3. 쿠키에 naver_id 저장 (30일)
     const cookieStore = await cookies();
+
+    // 기존 blog_id 쿠키 삭제 (타입 충돌 방지)
+    cookieStore.delete('blog_id');
+    cookieStore.delete('blog_name');
+
     cookieStore.set('naver_id', influencer.naver_id, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    });
+
+    cookieStore.set('user_type', 'influencer', {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
