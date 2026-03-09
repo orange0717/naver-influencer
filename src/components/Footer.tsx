@@ -79,8 +79,8 @@ export default function Footer() {
             </p>
             <p>
               이메일:{' '}
-              <a href="mailto:help@orangerefine.kr" className="hover:text-accent transition-colors">
-                help@orangerefine.kr
+              <a href="mailto:orange@orangelibrary.co.kr" className="hover:text-accent transition-colors">
+                orange@orangelibrary.co.kr
               </a>
             </p>
           </div>
