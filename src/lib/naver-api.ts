@@ -472,7 +472,7 @@ export async function fetchInfluencersForCategory(
     }
 
     allInfluencers = Array.from(influencerMap.values());
-    allInfluencers.sort((a, b) => b.totalFollowerCount - a.totalFollowerCount);
+    allInfluencers.sort((a, b) => b.subscriberCount - a.subscriberCount);
 
     setCache(cacheKey, { allInfluencers, categories });
   }
@@ -535,7 +535,7 @@ export async function fetchAllInfluencersSummary(
   );
 
   const influencers = Array.from(influencerMap.values());
-  influencers.sort((a, b) => b.totalFollowerCount - a.totalFollowerCount);
+  influencers.sort((a, b) => b.subscriberCount - a.subscriberCount);
 
   const result = { influencers, categories, total: influencers.length };
   setCache(cacheKey, result);

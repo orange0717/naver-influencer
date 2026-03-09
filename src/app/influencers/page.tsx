@@ -122,7 +122,6 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">인플루언서</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">활동 분야</th>
                   <th className="text-right py-3 px-4 font-semibold text-dim text-xs">구독자</th>
-                  <th className="text-right py-3 px-4 font-semibold text-dim text-xs">팔로워</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">발견 키워드</th>
                 </tr>
               </thead>
@@ -163,9 +162,6 @@ export default function InfluencersPage() {
                     </td>
                     <td className="py-3 px-4 text-right text-xs font-bold font-rank text-accent">
                       {formatCount(inf.subscriberCount)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-xs font-bold font-rank">
-                      {formatCount(inf.totalFollowerCount)}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
@@ -215,13 +211,10 @@ export default function InfluencersPage() {
                     <div className="text-[10px] text-dim">구독자</div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2">
                   <div className="text-xs text-dim truncate">
                     {inf.myKeywordCategory}{inf.categoryMyType ? ` · ${inf.categoryMyType}` : ''}
                   </div>
-                  <span className="text-xs font-rank text-dim shrink-0 ml-2">
-                    팔로워 {formatCount(inf.totalFollowerCount)}
-                  </span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {inf.foundInKeywords.slice(0, 3).map(kw => (

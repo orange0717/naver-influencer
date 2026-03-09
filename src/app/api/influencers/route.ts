@@ -77,7 +77,7 @@ async function getInfluencersFromDB(
 
   // 정렬 + 페이지네이션
   query = query
-    .order('total_follower_count', { ascending: false })
+    .order('subscriber_count', { ascending: false })
     .range(offset, offset + limit - 1);
 
   const { data: influencers, count, error } = await query;
