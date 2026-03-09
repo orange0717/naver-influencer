@@ -12,6 +12,15 @@ function useStats() {
   return stats;
 }
 
+/* ── 방문자/가입자 통계 ── */
+function useSiteStats() {
+  const [s, setS] = useState({ totalVisits: 0, todayVisits: 0, totalSignups: 0, todaySignups: 0 });
+  useEffect(() => {
+    fetch('/api/analytics/stats').then(r => r.json()).then(setS).catch(() => {});
+  }, []);
+  return s;
+}
+
 /* ── FAQ ── */
 const FAQS = [
   { q: '무료로 사용할 수 있나요?', a: '네, 무료 회원도 키워드 목록 열람, 일일 추천 키워드 3개, 참여자 수 확인이 가능합니다. PRO 구독 시 모든 기능을 무제한으로 이용하실 수 있습니다.' },
@@ -22,6 +31,7 @@ const FAQS = [
 
 export default function LandingPage() {
   const stats = useStats();
+  const siteStats = useSiteStats();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
@@ -71,7 +81,7 @@ export default function LandingPage() {
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
         <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되는 네이버 인플루언서 데이터</p>
 
-        <div className="flex justify-center gap-16 md:gap-24">
+        <div className="flex justify-center gap-16 md:gap-24 mb-16">
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.influencer_count.toLocaleString()}+</p>
             <p className="text-xs text-dim mt-2">인플루언서</p>
@@ -83,6 +93,26 @@ export default function LandingPage() {
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.category_count}</p>
             <p className="text-xs text-dim mt-2">카테고리</p>
+          </div>
+        </div>
+
+        {/* 방문자 / 가입자 통계 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+          <div className="bg-bg rounded-xl border border-border p-4">
+            <p className="text-2xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">오늘 방문자</p>
+          </div>
+          <div className="bg-bg rounded-xl border border-border p-4">
+            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalVisits.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">누적 방문자</p>
+          </div>
+          <div className="bg-bg rounded-xl border border-border p-4">
+            <p className="text-2xl font-extrabold text-up font-rank">{siteStats.todaySignups.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">오늘 가입자</p>
+          </div>
+          <div className="bg-bg rounded-xl border border-border p-4">
+            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalSignups.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">총 가입자</p>
           </div>
         </div>
       </section>
