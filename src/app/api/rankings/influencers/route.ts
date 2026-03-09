@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { fetchCategories } from '@/lib/naver-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,13 +148,9 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(total / limit);
     const paged = ranked.slice(offset, offset + limit);
 
-    // 8. 카테고리 목록
-    const catSet = new Set<string>();
-    allInfluencers.forEach(inf => {
-      const cat = inf.my_keyword_category || inf.category;
-      if (cat) catSet.add(cat);
-    });
-    const categories = ['전체', ...Array.from(catSet).sort()];
+    // 8. 카테고리 목록: 키워드/인플루언서 페이지와 동일한 소스 (네이버 API)
+    const apiCategories = await fetchCategories();
+    const categories = ['전체', ...apiCategories.map(c => c.name)];
 
     return NextResponse.json({
       rankings: paged,
