@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 function extractNaverId(input: string): string {
   const trimmed = input.trim();
@@ -99,9 +100,11 @@ export default function LoginPage() {
           </form>
 
           <div className="text-center pt-2 border-t border-border">
-            <p className="text-xs text-dim">
-              처음이신가요? 인플루언서 링크를 입력하면<br />
-              <span className="text-accent font-semibold">자동으로 회원가입</span>됩니다.
+            <p className="text-sm text-dim">
+              계정이 없으신가요?{' '}
+              <Link href="/auth/signup" className="text-accent font-bold hover:underline">
+                회원가입
+              </Link>
             </p>
           </div>
         </div>
