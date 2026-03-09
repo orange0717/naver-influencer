@@ -43,22 +43,36 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 전체 → 카테고리별 집계
+    // 전체 → 카테고리별 그룹핑
     const result = await fetchAllKeywordsSummary(200);
     const totalAll = result.totalAll;
 
-    // 클라이언트 요청 페이지에 맞게 슬라이싱
-    const page = parseInt(searchParams.get('page') || '1');
-    const start = (page - 1) * limit;
-    const sliced = result.keywords.slice(start, start + limit);
-    const keywords = sliced.map(kw => toUIKeyword(kw));
+    // 카테고리별로 그룹핑
+    const grouped: Record<string, { keywords: ReturnType<typeof toUIKeyword>[]; total: number }> = {};
+    for (const cat of categories) {
+      grouped[cat.name] = { keywords: [], total: cat.keywordCount };
+    }
+    for (const kw of result.keywords) {
+      const catName = kw.categoryName || '기타';
+      if (!grouped[catName]) grouped[catName] = { keywords: [], total: 0 };
+      grouped[catName].keywords.push(toUIKeyword(kw));
+    }
+
+    // 키워드 수 기준 정렬
+    const groupedList = Object.entries(grouped)
+      .filter(([, v]) => v.keywords.length > 0)
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([name, data]) => ({
+        category: name,
+        total: data.total,
+        keywords: data.keywords.slice(0, 10), // 카테고리당 TOP 10
+      }));
 
     return NextResponse.json({
-      keywords,
+      grouped: groupedList,
+      keywords: [],
       categories: categoryNames,
       total: totalAll,
-      page,
-      total_pages: Math.ceil(result.keywords.length / limit),
       nextCursor: null,
     });
   } catch (err) {

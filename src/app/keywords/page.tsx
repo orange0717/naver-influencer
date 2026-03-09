@@ -3,16 +3,23 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Keyword } from '@/lib/types';
 
+interface CategoryGroup {
+  category: string;
+  total: number;
+  keywords: Keyword[];
+}
+
 export default function KeywordsPage() {
   const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [grouped, setGrouped] = useState<CategoryGroup[]>([]);
   const [categories, setCategories] = useState<string[]>(['전체']);
   const [category, setCategory] = useState('전체');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // 커서 기반 페이지네이션
-  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]); // 각 페이지의 시작 커서
+  // 커서 기반 페이지네이션 (카테고리 선택 시)
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const loadedCountRef = useRef(0);
@@ -26,7 +33,6 @@ export default function KeywordsPage() {
         params.set('category', category);
         if (cursor) params.set('cursor', cursor);
       } else {
-        // 전체 모드: page 기반
         params.set('page', String(currentPageIndex + 1));
       }
 
@@ -36,6 +42,7 @@ export default function KeywordsPage() {
       const data = await res.json();
 
       setKeywords(data.keywords || []);
+      setGrouped(data.grouped || []);
       setCategories(data.categories || ['전체']);
       setTotal(data.total || 0);
       setNextCursor(data.nextCursor || null);
@@ -54,7 +61,6 @@ export default function KeywordsPage() {
     return () => clearTimeout(timer);
   }, [fetchData, search, currentPageIndex, cursorHistory]);
 
-  // 카테고리 변경 시 커서 리셋
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
     setCursorHistory([null]);
@@ -63,7 +69,6 @@ export default function KeywordsPage() {
     loadedCountRef.current = 0;
   };
 
-  // 검색 변경 시 커서 리셋
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setCursorHistory([null]);
@@ -72,12 +77,9 @@ export default function KeywordsPage() {
     loadedCountRef.current = 0;
   };
 
-  // 다음 페이지
   const goNext = () => {
     if (!nextCursor && category !== '전체') return;
     const newPageIndex = currentPageIndex + 1;
-
-    // 커서 히스토리에 다음 페이지 커서 저장
     if (cursorHistory.length <= newPageIndex && nextCursor) {
       setCursorHistory(prev => [...prev, nextCursor]);
     }
@@ -85,7 +87,6 @@ export default function KeywordsPage() {
     loadedCountRef.current += keywords.length;
   };
 
-  // 이전 페이지
   const goPrev = () => {
     if (currentPageIndex <= 0) return;
     loadedCountRef.current = Math.max(0, loadedCountRef.current - 50);
@@ -100,6 +101,7 @@ export default function KeywordsPage() {
 
   const startNum = currentPageIndex * 50;
   const hasNext = category !== '전체' ? !!nextCursor : (startNum + keywords.length) < total;
+  const isGroupedView = category === '전체' && !search.trim() && grouped.length > 0;
 
   return (
     <div className="space-y-6">
@@ -129,9 +131,63 @@ export default function KeywordsPage() {
             <p className="text-sm text-dim">네이버에서 키워드를 가져오는 중...</p>
           </div>
         </div>
+      ) : isGroupedView ? (
+        /* ─── 전체: 주제별 그룹핑 뷰 ─── */
+        <div className="space-y-6">
+          {grouped.map((group) => (
+            <div key={group.category} className="bg-surface rounded-xl border border-border overflow-hidden">
+              {/* 카테고리 헤더 */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg/50">
+                <button
+                  onClick={() => handleCategoryChange(group.category)}
+                  className="flex items-center gap-2 hover:text-accent transition-colors cursor-pointer"
+                >
+                  <span className="font-bold text-sm">{group.category}</span>
+                  <span className="text-xs text-accent">전체보기 →</span>
+                </button>
+                <span className="text-xs text-dim font-rank">{group.total.toLocaleString()}개</span>
+              </div>
+
+              {/* Desktop: 테이블 */}
+              <table className="w-full text-sm hidden md:table">
+                <tbody>
+                  {group.keywords.map((kw, i) => (
+                    <tr key={kw.id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
+                      <td className="py-2.5 px-4 font-bold text-dim font-rank text-xs w-8">{i + 1}</td>
+                      <td className="py-2.5 px-4">
+                        <Link href={`/keywords/${kw.id}`} className="font-medium hover:text-accent transition-colors">
+                          {kw.keyword}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
+                      <td className="py-2.5 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile: 카드 */}
+              <div className="md:hidden divide-y divide-border/30">
+                {group.keywords.map((kw, i) => (
+                  <Link key={kw.id} href={`/keywords/${kw.id}`}
+                    className="flex items-center justify-between px-4 py-3 hover:bg-surface-hover transition">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
+                      <span className="font-medium text-sm">{kw.keyword}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
+                      {compBadge(kw.competition_level)}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
+        /* ─── 카테고리 선택 or 검색: 기존 리스트 뷰 ─── */
         <>
-          {/* Desktop table */}
           <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
               <thead>
@@ -162,7 +218,6 @@ export default function KeywordsPage() {
             {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
           </div>
 
-          {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             {keywords.map((kw, i) => (
               <Link key={kw.id} href={`/keywords/${kw.id}`}
@@ -183,7 +238,6 @@ export default function KeywordsPage() {
             {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
           </div>
 
-          {/* 페이지네이션 */}
           {(hasNext || currentPageIndex > 0) && (
             <div className="flex items-center justify-center gap-3 pt-4">
               <button
