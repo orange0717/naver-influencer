@@ -22,7 +22,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <Header />
-        <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+        <main className="max-w-7xl mx-auto px-4 pt-6 flex-1 w-full">
           {children}
         </main>
         <Footer />

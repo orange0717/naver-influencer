@@ -5,15 +5,15 @@ import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob
 const FEED_API_BASE = 'https://gw.in.naver.com/feed/query/v1';
 const BATCH_SIZE = 25; // Vercel 60초 제한 내 처리 가능한 키워드 수
 
-// 요일별 카테고리 로테이션 (crawl-rankings와 동일)
+// 요일별 카테고리 로테이션 — 전체 20개 균등 배분 (crawl-rankings와 동일)
 const DAY_CATEGORIES: Record<number, string[]> = {
-  0: ['여행', '뷰티', '푸드'],
-  1: ['리빙', '건강', '육아'],
-  2: ['패션', '문화', '자기계발'],
-  3: ['IT', '스포츠', '시사경제'],
-  4: ['자동차', '도서', '동물'],
-  5: ['여행', '뷰티', '푸드', '패션'],
-  6: ['리빙', '건강', '문화', '도서'],
+  0: ['여행', '푸드', '리빙'],                  // 일 (대형 3)
+  1: ['뷰티', '패션', '육아'],                  // 월
+  2: ['생활건강', 'IT테크', '자동차'],           // 화
+  3: ['게임', '운동/레저', '프로스포츠'],         // 수
+  4: ['방송/연예', '영화', '대중음악'],           // 목
+  5: ['공연/전시/예술', '도서', '경제/비즈니스'],  // 금
+  6: ['어학/교육', '동물/펫'],                   // 토
 };
 
 interface FeedCreator {

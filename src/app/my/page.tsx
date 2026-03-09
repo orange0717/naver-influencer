@@ -72,16 +72,15 @@ export default function MyDashboard() {
       try {
         const supabase = createSupabaseBrowserClient();
 
-        // getUser()로 먼저 인증 확인 (토큰 자동 갱신)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setError('login_required');
-          setLoading(false);
-          return;
+        // refreshSession()으로 토큰 갱신 + 세션 가져오기
+        let { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          // 세션 없으면 강제 갱신 시도
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          session = refreshData.session;
         }
 
-        // 갱신된 세션에서 access_token 가져오기
-        const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           setError('login_required');
           setLoading(false);
