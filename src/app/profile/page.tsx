@@ -1,32 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
-const initialUser = {
-  email: 'user@example.com',
-  nickname: '오렌지마케터',
-  point_balance: 1200,
-  total_charged: 8000,
-  total_used: 6800,
-  linked_influencer: '오렌지도서관',
-  linked_naver_id: 'orangelibrary',
-  created_at: '2026-02-15',
-};
+interface UserProfile {
+  id: string;
+  email: string;
+  nickname: string;
+  point_balance: number;
+  total_charged: number;
+  total_used: number;
+  linked_influencer_id: string | null;
+  created_at: string;
+}
 
-const recentHistory = [
-  { type: 'deduct', description: '키워드 상세 열람: 미니멀라이프', amount: -30, date: '2026-03-01 14:23' },
-  { type: 'deduct', description: '순위 전체 열람: AI활용법', amount: -50, date: '2026-03-01 13:10' },
-  { type: 'charge', description: '프로 패키지 충전', amount: 1200, date: '2026-02-28 09:45' },
-  { type: 'deduct', description: '인플루언서 프로필 열람: 뷰티짱', amount: -50, date: '2026-02-27 16:30' },
-  { type: 'deduct', description: '추천 전체 열람', amount: -50, date: '2026-02-27 10:15' },
-  { type: 'charge', description: '스타터 패키지 충전', amount: 550, date: '2026-02-20 11:00' },
-];
+interface LinkedInfluencer {
+  display_name: string;
+  naver_id: string;
+}
+
+interface Transaction {
+  amount: number;
+  tx_type: string;
+  description: string;
+  created_at: string;
+}
 
 export default function ProfilePage() {
-  const [user, setUser] = useState(initialUser);
+  const router = useRouter();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [linkedInfluencer, setLinkedInfluencer] = useState<LinkedInfluencer | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingNickname, setEditingNickname] = useState(false);
-  const [nicknameInput, setNicknameInput] = useState(user.nickname);
+  const [nicknameInput, setNicknameInput] = useState('');
   const [toast, setToast] = useState('');
 
   const showToast = (msg: string) => {
@@ -34,24 +43,108 @@ export default function ProfilePage() {
     setTimeout(() => setToast(''), 2500);
   };
 
-  const saveNickname = () => {
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  async function loadProfile() {
+    const supabase = createSupabaseBrowserClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      router.push('/auth/login');
+      return;
+    }
+
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/profile', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setUser(data.user);
+      setLinkedInfluencer(data.linked_influencer);
+      setTransactions(data.transactions || []);
+      setNicknameInput(data.user.nickname);
+    }
+
+    setLoading(false);
+  }
+
+  const saveNickname = async () => {
     const name = nicknameInput.trim();
-    if (!name) return;
-    setUser(prev => ({ ...prev, nickname: name }));
-    setEditingNickname(false);
-    showToast('닉네임이 변경되었습니다.');
+    if (!name || !user) return;
+
+    const supabase = createSupabaseBrowserClient();
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ nickname: name }),
+    });
+
+    if (res.ok) {
+      setUser(prev => prev ? { ...prev, nickname: name } : null);
+      setEditingNickname(false);
+      showToast('닉네임이 변경되었습니다.');
+    }
   };
 
-  const unlinkInfluencer = () => {
-    setUser(prev => ({ ...prev, linked_influencer: '', linked_naver_id: '' }));
-    showToast('인플루언서 계정 연결이 해제되었습니다.');
+  const unlinkInfluencer = async () => {
+    if (!user) return;
+
+    const supabase = createSupabaseBrowserClient();
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ linked_influencer_id: null }),
+    });
+
+    if (res.ok) {
+      setUser(prev => prev ? { ...prev, linked_influencer_id: null } : null);
+      setLinkedInfluencer(null);
+      showToast('인플루언서 계정 연결이 해제되었습니다.');
+    }
   };
+
+  const handleLogout = async () => {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push('/');
+    router.refresh();
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto py-20 text-center text-dim">
+        로딩 중...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-2xl mx-auto py-20 text-center">
+        <p className="text-dim mb-4">로그인이 필요합니다.</p>
+        <Link href="/auth/login" className="text-accent font-semibold">로그인하기</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-xl font-bold">내 프로필</h1>
 
-      {/* 토스트 */}
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-accent/50 text-text px-5 py-3 rounded-xl shadow-lg text-sm font-semibold animate-pulse">
           {toast}
@@ -93,7 +186,7 @@ export default function ProfilePage() {
               </div>
             )}
             <p className="text-sm text-dim">{user.email}</p>
-            <p className="text-xs text-dim">가입일: {user.created_at}</p>
+            <p className="text-xs text-dim">가입일: {new Date(user.created_at).toLocaleDateString('ko-KR')}</p>
           </div>
         </div>
 
@@ -116,15 +209,15 @@ export default function ProfilePage() {
       {/* 인플루언서 연결 */}
       <div className="bg-surface rounded-xl border border-border p-5">
         <h3 className="font-bold text-sm mb-3">연결된 인플루언서</h3>
-        {user.linked_influencer ? (
+        {linkedInfluencer ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center font-bold text-accent">
-                {user.linked_influencer[0]}
+                {linkedInfluencer.display_name[0]}
               </div>
               <div>
-                <span className="font-medium">{user.linked_influencer}</span>
-                <p className="text-xs text-dim">@{user.linked_naver_id}</p>
+                <span className="font-medium">{linkedInfluencer.display_name}</span>
+                <p className="text-xs text-dim">@{linkedInfluencer.naver_id}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -143,7 +236,7 @@ export default function ProfilePage() {
             </Link>
           </div>
         )}
-        {user.linked_influencer && (
+        {linkedInfluencer && (
           <div className="mt-3 pt-3 border-t border-border">
             <Link href="/my/link"
               className="text-xs text-accent hover:underline">
@@ -159,51 +252,62 @@ export default function ProfilePage() {
           <h3 className="font-bold text-sm">최근 사용 내역</h3>
         </div>
 
-        {/* Desktop */}
-        <table className="w-full text-sm hidden sm:table">
-          <thead>
-            <tr className="border-b border-border bg-bg/50">
-              <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">내역</th>
-              <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">포인트</th>
-              <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">날짜</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentHistory.map((h, idx) => (
-              <tr key={idx} className="border-b border-border/50">
-                <td className="py-3 px-4 text-sm">{h.description}</td>
-                <td className="py-3 px-4 text-right">
+        {transactions.length === 0 ? (
+          <div className="p-8 text-center text-dim text-sm">사용 내역이 없습니다.</div>
+        ) : (
+          <>
+            {/* Desktop */}
+            <table className="w-full text-sm hidden sm:table">
+              <thead>
+                <tr className="border-b border-border bg-bg/50">
+                  <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">내역</th>
+                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">포인트</th>
+                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">날짜</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((h, idx) => (
+                  <tr key={idx} className="border-b border-border/50">
+                    <td className="py-3 px-4 text-sm">{h.description}</td>
+                    <td className="py-3 px-4 text-right">
+                      <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
+                        {h.amount > 0 ? '+' : ''}{h.amount}P
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right text-xs text-dim">
+                      {new Date(h.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Mobile */}
+            <div className="sm:hidden divide-y divide-border/50">
+              {transactions.map((h, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4">
+                  <div>
+                    <p className="text-sm">{h.description}</p>
+                    <p className="text-xs text-dim">
+                      {new Date(h.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
                   <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
                     {h.amount > 0 ? '+' : ''}{h.amount}P
                   </span>
-                </td>
-                <td className="py-3 px-4 text-right text-xs text-dim">{h.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Mobile */}
-        <div className="sm:hidden divide-y divide-border/50">
-          {recentHistory.map((h, idx) => (
-            <div key={idx} className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-sm">{h.description}</p>
-                <p className="text-xs text-dim">{h.date}</p>
-              </div>
-              <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
-                {h.amount > 0 ? '+' : ''}{h.amount}P
-              </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       <div className="flex gap-3">
         <Link href="/charge" className="flex-1 text-center py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
           포인트 충전
         </Link>
-        <button className="flex-1 py-3 bg-surface border border-border text-dim rounded-xl font-semibold text-sm hover:border-accent/40 transition cursor-pointer">
+        <button onClick={handleLogout}
+          className="flex-1 py-3 bg-surface border border-border text-dim rounded-xl font-semibold text-sm hover:border-accent/40 transition cursor-pointer">
           로그아웃
         </button>
       </div>

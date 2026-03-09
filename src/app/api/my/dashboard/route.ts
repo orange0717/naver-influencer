@@ -1,33 +1,18 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { createAnonClient } from '@/lib/supabase-server';
+import { getAuthUser } from '@/lib/auth';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // 인증 헤더에서 토큰 추출
-  const authHeader = request.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '');
+  const auth = await getAuthUser(request);
 
-  const supabase = createAnonClient();
-
-  // 인증된 유저 확인
-  let authUserId: string | null = null;
-  if (token) {
-    const { data: { user } } = await supabase.auth.getUser(token);
-    authUserId = user?.id || null;
-  }
-
-  if (!authUserId) {
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // 유저 프로필 + linked_influencer_id 조회
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('id, nickname, point_balance, linked_influencer_id')
-    .eq('auth_id', authUserId)
-    .single();
+  const supabase = createServiceClient();
+  const userProfile = auth.user;
 
   if (!userProfile || !userProfile.linked_influencer_id) {
     return NextResponse.json({

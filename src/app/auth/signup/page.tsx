@@ -42,14 +42,22 @@ export default function SignupPage() {
         return;
       }
 
-      // 2. users 테이블에 프로필 생성
+      // 2. API 라우트로 users 테이블에 프로필 생성 (service_role로 RLS 우회)
       if (authData.user) {
-        await supabase.from('users').insert({
-          auth_id: authData.user.id,
-          email,
-          nickname: nickname.trim(),
-          point_balance: 100, // 가입 보너스
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            authId: authData.user.id,
+            email,
+            nickname: nickname.trim(),
+          }),
         });
+        if (!res.ok) {
+          const err = await res.json();
+          setError(err.error || '프로필 생성에 실패했습니다.');
+          return;
+        }
       }
 
       router.push('/my');

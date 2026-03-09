@@ -1,63 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const historyData = [
-  {
-    keyword_id: 'kw-003', keyword: '행복명언',
-    history: {
-      dates: Array.from({ length: 15 }, (_, i) => {
-        const d = new Date(); d.setDate(d.getDate() - (14 - i));
-        return d.toISOString().split('T')[0];
-      }),
-      ranks: [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1],
-    },
-  },
-  {
-    keyword_id: 'kw-004', keyword: '독서노트작성법',
-    history: {
-      dates: Array.from({ length: 15 }, (_, i) => {
-        const d = new Date(); d.setDate(d.getDate() - (14 - i));
-        return d.toISOString().split('T')[0];
-      }),
-      ranks: [4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2],
-    },
-  },
-  {
-    keyword_id: 'kw-012', keyword: '소설추천',
-    history: {
-      dates: Array.from({ length: 15 }, (_, i) => {
-        const d = new Date(); d.setDate(d.getDate() - (14 - i));
-        return d.toISOString().split('T')[0];
-      }),
-      ranks: [3, 3, 3, 4, 4, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5],
-    },
-  },
-  {
-    keyword_id: 'kw-013', keyword: '자기계발책추천',
-    history: {
-      dates: Array.from({ length: 15 }, (_, i) => {
-        const d = new Date(); d.setDate(d.getDate() - (14 - i));
-        return d.toISOString().split('T')[0];
-      }),
-      ranks: [15, 14, 13, 12, 11, 11, 11, 10, 9, 9, 8, 8, 8, 8, 8],
-    },
-  },
-];
+import { getAuthUser } from '@/lib/auth';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   const days = parseInt(request.nextUrl.searchParams.get('days') || '15');
   const keywordId = request.nextUrl.searchParams.get('keyword_id');
 
-  let result = historyData;
-  if (keywordId) {
-    result = result.filter(h => h.keyword_id === keywordId);
+  const auth = await getAuthUser(request);
+  if (!auth || !auth.user.linked_influencer_id) {
+    return NextResponse.json({ keywords: [] });
   }
 
-  // Trim to requested days
-  result = result.map(h => ({
-    ...h,
+  const supabase = createServiceClient();
+  const sinceDate = new Date();
+  sinceDate.setDate(sinceDate.getDate() - days);
+
+  let query = supabase
+    .from('keyword_rankings')
+    .select(`
+      keyword_id, rank_position, snapshot_date,
+      keyword_challenges(keyword)
+    `)
+    .eq('influencer_id', auth.user.linked_influencer_id)
+    .gte('snapshot_date', sinceDate.toISOString().slice(0, 10))
+    .order('snapshot_date', { ascending: true });
+
+  if (keywordId) {
+    query = query.eq('keyword_id', keywordId);
+  }
+
+  const { data: rankings } = await query;
+
+  // 키워드별 그룹핑
+  const keywordMap = new Map<string, { keyword: string; dates: string[]; ranks: number[] }>();
+
+  for (const r of (rankings || [])) {
+    const kwName = (r.keyword_challenges as { keyword: string } | null)?.keyword || '';
+    if (!keywordMap.has(r.keyword_id)) {
+      keywordMap.set(r.keyword_id, { keyword: kwName, dates: [], ranks: [] });
+    }
+    const entry = keywordMap.get(r.keyword_id)!;
+    entry.dates.push(r.snapshot_date);
+    entry.ranks.push(r.rank_position);
+  }
+
+  const result = Array.from(keywordMap.entries()).map(([keyword_id, data]) => ({
+    keyword_id,
+    keyword: data.keyword,
     history: {
-      dates: h.history.dates.slice(-days),
-      ranks: h.history.ranks.slice(-days),
+      dates: data.dates,
+      ranks: data.ranks,
     },
   }));
 
