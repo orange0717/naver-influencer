@@ -156,9 +156,10 @@ export default function KeywordsPage() {
                       <td className="py-2.5 px-4 font-bold text-dim font-rank text-xs w-8">{i + 1}</td>
                       <td className="py-2.5 px-4">
                         <Link href={`/keywords/${kw.id}`} className="font-medium hover:text-accent transition-colors">
-                          {kw.keyword} <span className="text-dim font-normal">· {kw.category}</span>
+                          {kw.keyword}
                         </Link>
                       </td>
+                      <td className="py-2.5 px-3 text-xs text-dim">{kw.category}</td>
                       <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
                       <td className="py-2.5 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
                     </tr>
@@ -173,7 +174,8 @@ export default function KeywordsPage() {
                     className="flex items-center justify-between px-4 py-3 hover:bg-surface-hover transition">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
-                      <span className="font-medium text-sm">{kw.keyword} <span className="text-dim font-normal text-xs">· {kw.category}</span></span>
+                      <span className="font-medium text-sm">{kw.keyword}</span>
+                      <span className="text-dim text-xs">{kw.category}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
@@ -194,6 +196,7 @@ export default function KeywordsPage() {
                 <tr className="border-b border-border bg-bg/50">
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs w-8">#</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">키워드</th>
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs">카테고리</th>
                   <th className="text-right py-3 px-4 font-semibold text-dim text-xs">참여자</th>
                   <th className="text-center py-3 px-4 font-semibold text-dim text-xs">경쟁도</th>
                 </tr>
@@ -204,9 +207,10 @@ export default function KeywordsPage() {
                     <td className="py-3 px-4 font-bold text-dim font-rank text-xs">{startNum + i + 1}</td>
                     <td className="py-3 px-4">
                       <Link href={`/keywords/${kw.id}`} className="font-bold hover:text-accent transition-colors">
-                        {kw.keyword} <span className="text-dim font-normal text-xs">· {kw.category}</span>
+                        {kw.keyword}
                       </Link>
                     </td>
+                    <td className="py-3 px-3 text-xs text-dim">{kw.category}</td>
                     <td className="py-3 px-4 text-right font-bold font-rank">{kw.participant_count.toLocaleString()}</td>
                     <td className="py-3 px-4 text-center">{compBadge(kw.competition_level)}</td>
                   </tr>
@@ -223,7 +227,8 @@ export default function KeywordsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-dim font-rank">#{startNum + i + 1}</span>
-                    <span className="font-bold text-sm">{kw.keyword} <span className="text-dim font-normal text-xs">· {kw.category}</span></span>
+                    <span className="font-bold text-sm">{kw.keyword}</span>
+                    <span className="text-dim text-xs">{kw.category}</span>
                   </div>
                   {compBadge(kw.competition_level)}
                 </div>
