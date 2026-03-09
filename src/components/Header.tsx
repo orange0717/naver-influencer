@@ -65,12 +65,12 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-header border-b border-border/50 shadow-[0_2px_12px_rgba(180,140,120,0.12)]">
+      <header className="sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-sm">N</div>
-              <span className="font-title font-bold text-base text-text hidden sm:block">N인플</span>
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
+              <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {NAV.map(n => {
@@ -78,7 +78,7 @@ export default function Header() {
                 return (
                   <Link key={n.href} href={n.href}
                     className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                      active ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface-hover'
+                      active ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
                     }`}>
                     {n.label}
                   </Link>
@@ -91,28 +91,28 @@ export default function Header() {
               <>
                 {subscribed ? (
                   <Link href="/subscribe"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-up/12 rounded-lg text-sm font-bold text-up">
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 rounded-lg text-sm font-bold text-white">
                     구독 중
                   </Link>
                 ) : (
                   <Link href="/subscribe"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/12 rounded-lg text-sm font-bold text-accent hover:bg-accent/20 transition-colors">
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 rounded-lg text-sm font-bold text-white hover:bg-white/30 transition-colors">
                     구독하기
                   </Link>
                 )}
                 <button onClick={handleLogout}
-                  className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs hover:bg-accent/30 transition cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 transition cursor-pointer"
                   title={user.nickname || user.email || '로그아웃'}>
                   {(user.nickname || user.email || 'U').charAt(0).toUpperCase()}
                 </button>
               </>
             ) : (
               <Link href="/auth/login"
-                className="px-3 py-1.5 bg-accent text-white text-sm font-semibold rounded-lg hover:bg-accent-hover transition-colors">
+                className="px-3 py-1.5 bg-white text-header text-sm font-semibold rounded-lg hover:bg-white/90 transition-colors">
                 로그인
               </Link>
             )}
-            <button className="md:hidden p-1 text-dim" onClick={() => setMobileOpen(!mobileOpen)}>
+            <button className="md:hidden p-1 text-white/70" onClick={() => setMobileOpen(!mobileOpen)}>
               <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
           </div>
