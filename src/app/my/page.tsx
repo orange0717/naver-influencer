@@ -53,10 +53,14 @@ export default async function MyDashboard() {
     .eq('linked_influencer_id', influencerId)
     .single();
 
-  const isSubscribed = userProfile
+  // 관리자 계정
+  const ADMIN_IDS = ['orangelibrary'];
+  const isAdmin = ADMIN_IDS.includes(naverId);
+
+  const isSubscribed = isAdmin || (userProfile
     && userProfile.subscription_status === 'active'
     && !!userProfile.subscription_expires_at
-    && new Date(userProfile.subscription_expires_at) > new Date();
+    && new Date(userProfile.subscription_expires_at) > new Date());
 
   if (!influencer) {
     return (
