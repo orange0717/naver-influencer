@@ -81,24 +81,11 @@ export default function Footer() {
         </div>
 
         {/* 구분선 + 사업자정보 */}
-        <div className="border-t border-white/10 pt-6">
-          <div className="text-[11px] text-footer-dim leading-relaxed space-y-1">
-            <p>
-              상호 : 오렌지도서관
-              <span className="mx-1.5">·</span>대표 : 한미선
-              <span className="mx-1.5">·</span>사업자등록번호 : 702-62-00986
-            </p>
-            <p>
-              통신판매번호 : 2025-충남천안-1491
-              <span className="mx-1.5">·</span>전화 : 0507-1394-5091
-            </p>
-            <p>
-              주소 : 충남 천안시 서북구 검은들 3길 46 803-2(886호)
-            </p>
-          </div>
-
-          {/* 저작권 */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
+        <div className="border-t border-white/10 pt-4">
+          <p className="text-[11px] text-footer-dim leading-snug">
+            상호 : 오렌지도서관<span className="mx-1">·</span>대표 : 한미선<span className="mx-1">·</span>사업자등록번호 : 702-62-00986<span className="mx-1">·</span>통신판매번호 : 2025-충남천안-1491<span className="mx-1">·</span>전화 : 0507-1394-5091<span className="mx-1">·</span>주소 : 충남 천안시 서북구 검은들 3길 46 803-2(886호)
+          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-2">
             <p className="text-[11px] text-footer-dim/60">
               &copy; 2026 오렌지도서관. All rights reserved.
             </p>
