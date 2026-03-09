@@ -1,18 +1,29 @@
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  const auth = await getAuthUser(request);
+export async function GET() {
+  // 쿠키 기반 인증 (Bearer 토큰 불필요)
+  const supabaseAuth = await createRouteHandlerClient();
+  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
 
-  if (!auth) {
+  if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = createServiceClient();
-  const userProfile = auth.user;
+
+  // users 테이블에서 프로필 조회
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('id, nickname, point_balance, total_charged, total_used, linked_influencer_id, subscription_status, subscription_expires_at')
+    .eq('auth_id', authUser.id)
+    .single();
+
+  if (!userProfile) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
 
   if (!userProfile || !userProfile.linked_influencer_id) {
     return NextResponse.json({

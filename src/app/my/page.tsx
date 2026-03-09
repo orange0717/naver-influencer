@@ -52,7 +52,7 @@ export default function MyDashboard() {
       try {
         const supabase = createSupabaseBrowserClient();
 
-        // getUser()로 서버 검증 (헤더와 동일 방식)
+        // 로그인 여부 확인
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) {
           setError('login_required');
@@ -60,21 +60,8 @@ export default function MyDashboard() {
           return;
         }
 
-        // 세션 토큰 가져오기
-        let { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          session = refreshData.session;
-        }
-        if (!session) {
-          setError('login_required');
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch('/api/my/dashboard', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
-        });
+        // 쿠키 기반 인증 (Bearer 토큰 불필요)
+        const res = await fetch('/api/my/dashboard');
 
         if (!res.ok) {
           setError(res.status === 401 ? 'login_required' : '데이터를 불러올 수 없습니다.');
