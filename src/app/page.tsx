@@ -21,6 +21,23 @@ function useSiteStats() {
   return s;
 }
 
+/* ── 오늘의 추천키워드 ── */
+interface Recommendation {
+  keyword: string;
+  category: string;
+  reason: string;
+  recommendation_score: number;
+  keyword_id: string;
+}
+
+function useRecommendations() {
+  const [recs, setRecs] = useState<Recommendation[]>([]);
+  useEffect(() => {
+    fetch('/api/recommendations').then(r => r.json()).then(d => setRecs(d.recommendations || [])).catch(() => {});
+  }, []);
+  return recs;
+}
+
 /* ── FAQ ── */
 const FAQS = [
   { q: '무료로 사용할 수 있나요?', a: '네, 무료 회원도 키워드 목록 열람, 일일 추천 키워드 3개, 참여자 수 확인이 가능합니다. PRO 구독 시 모든 기능을 무제한으로 이용하실 수 있습니다.' },
@@ -32,6 +49,7 @@ const FAQS = [
 export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
+  const recs = useRecommendations();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
@@ -74,6 +92,59 @@ export default function LandingPage() {
           별도 결제 없이 무료로 이용 가능합니다.
         </p>
       </section>
+
+      {/* ═══════════ 오늘의 추천키워드 (surface) ═══════════ */}
+      {recs.length > 0 && (
+        <section className="bg-surface px-4 py-16 md:py-20">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <p className="text-xs text-accent font-semibold tracking-widest mb-3">TODAY&apos;S PICK</p>
+              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">오늘의 추천 키워드</h2>
+              <p className="text-sm text-dim">블루오션 키워드를 매일 분석하여 추천합니다</p>
+            </div>
+
+            <div className="grid gap-3">
+              {recs.slice(0, 6).map((rec, i) => (
+                <Link
+                  key={rec.keyword_id}
+                  href={i < 3 ? `/keywords/${rec.keyword_id}` : '/subscribe'}
+                  className={`relative flex items-center justify-between px-5 py-4 rounded-xl border transition ${
+                    i < 3
+                      ? 'bg-bg border-border hover:border-accent/40'
+                      : 'bg-bg/50 border-border/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+                      i === 0 ? 'bg-gold/20 text-gold' : i < 3 ? 'bg-accent/15 text-accent' : 'bg-border/50 text-dim'
+                    }`}>{i + 1}</span>
+                    <div className={i >= 3 ? 'blur-[5px] select-none' : ''}>
+                      <span className="font-semibold text-sm block">{rec.keyword}</span>
+                      <span className="text-[11px] text-dim">{rec.category} · {rec.reason}</span>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-2 shrink-0 ${i >= 3 ? 'blur-[5px] select-none' : ''}`}>
+                    <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded">{rec.recommendation_score}점</span>
+                  </div>
+                  {i >= 3 && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl">
+                      <span className="text-xs font-bold text-accent bg-surface/90 px-3 py-1.5 rounded-full border border-accent/20">
+                        🔒 구독하고 전체 보기
+                      </span>
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+
+            <div className="text-center mt-6">
+              <Link href="/subscribe" className="text-sm text-accent font-semibold hover:underline">
+                PRO 구독으로 매일 20개 추천 받기 →
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ═══════════ 데이터 현황 (surface) ═══════════ */}
       <section className="bg-surface px-4 py-20 md:py-24 text-center">

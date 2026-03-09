@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import VisitTracker from "@/components/VisitTracker";
+import ChatBot from "@/components/ChatBot";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -34,6 +35,7 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
+        <ChatBot />
       </body>
     </html>
   );

@@ -11,8 +11,12 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
+function formatDate(d: string | null): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 export default async function MyDashboard() {
-  // 쿠키에서 naver_id 확인 (인플루언서 링크 로그인)
   const cookieStore = await cookies();
   const naverId = cookieStore.get('naver_id')?.value;
 
@@ -41,6 +45,18 @@ export default async function MyDashboard() {
     .select('*')
     .eq('id', influencerId)
     .single();
+
+  // 구독 상태 확인 (users 테이블에서 linked_influencer_id로 조회)
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('subscription_status, subscription_expires_at')
+    .eq('linked_influencer_id', influencerId)
+    .single();
+
+  const isSubscribed = userProfile
+    && userProfile.subscription_status === 'active'
+    && !!userProfile.subscription_expires_at
+    && new Date(userProfile.subscription_expires_at) > new Date();
 
   if (!influencer) {
     return (
@@ -158,9 +174,38 @@ export default async function MyDashboard() {
         )}
         <div>
           <h1 className="text-lg font-bold">{influencer.display_name}</h1>
-          <p className="text-xs text-dim">{influencer.my_keyword_category || influencer.category} · 팬 {formatCount(influencer.subscriber_count || 0)}</p>
+          <p className="text-xs text-dim">
+            {influencer.my_keyword_category || influencer.category} · 팬 {formatCount(influencer.subscriber_count || 0)}
+            {influencer.first_seen_at && (
+              <> · 선정일 {formatDate(influencer.first_seen_at)}</>
+            )}
+          </p>
         </div>
       </div>
+
+      {/* ─── 구독 잠금 (미구독 시) ─── */}
+      {!isSubscribed && (
+        <div className="bg-surface rounded-2xl border border-accent/20 p-8 text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-full bg-accent/10 flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h2 className="text-xl font-extrabold text-text">대시보드는 구독 전용입니다</h2>
+          <p className="text-sm text-dim leading-relaxed">
+            키워드 순위 추적, 경쟁자 분석, 맞춤 추천 등<br />
+            모든 대시보드 기능을 이용하려면 구독이 필요합니다.
+          </p>
+          <div className="flex flex-col items-center gap-2 pt-2">
+            <Link href="/subscribe" className="px-8 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm">
+              월 9,900원으로 구독하기
+            </Link>
+            <p className="text-[11px] text-dim">키워드·랭킹·인플루언서 검색은 무료로 이용 가능합니다</p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 구독자 전용 콘텐츠 ─── */}
+      {isSubscribed && (
+      <>
 
       {/* ─── 주요 지표 4카드 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -307,6 +352,9 @@ export default async function MyDashboard() {
           </div>
         </div>
       </div>
+
+      </>
+      )}
     </div>
   );
 }
