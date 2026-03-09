@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   const keywordMap = new Map<string, { keyword: string; dates: string[]; ranks: number[] }>();
 
   for (const r of (rankings || [])) {
-    const kwName = (r.keyword_challenges as { keyword: string } | null)?.keyword || '';
+    const kwName = (r.keyword_challenges as unknown as { keyword: string } | null)?.keyword || '';
     if (!keywordMap.has(r.keyword_id)) {
       keywordMap.set(r.keyword_id, { keyword: kwName, dates: [], ranks: [] });
     }
