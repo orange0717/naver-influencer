@@ -21,10 +21,18 @@ export default function LinkInfluencer() {
   const [searching, setSearching] = useState(false);
   const [linking, setLinking] = useState(false);
 
+  // URL에서 ID 추출 (https://in.naver.com/orangelibrary → orangelibrary)
+  const extractNaverId = (input: string): string => {
+    const trimmed = input.trim();
+    const match = trimmed.match(/in\.naver\.com\/([^/?#]+)/);
+    if (match) return match[1];
+    return trimmed;
+  };
+
   const handleSearch = async () => {
     setError('');
     setResults([]);
-    const q = query.trim();
+    const q = extractNaverId(query);
     if (!q) return;
 
     setSearching(true);
@@ -121,7 +129,7 @@ export default function LinkInfluencer() {
       </div>
 
       {query && (
-        <p className="text-xs text-dim">https://in.naver.com/{query.trim().toLowerCase()}</p>
+        <p className="text-xs text-dim">https://in.naver.com/{extractNaverId(query).toLowerCase()}</p>
       )}
 
       {error && (
