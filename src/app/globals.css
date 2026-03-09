@@ -3,9 +3,9 @@
 @theme inline {
   /* 배경 */
   --color-bg: #F2E2DC;
-  --color-surface: #F9EDEA;
-  --color-surface-hover: #F2E2DC;
-  --color-border: #D9ABA0;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F9EDEA;
+  --color-border: #E8CFC8;
   --color-text: #2D2D2D;
   --color-dim: #999;
 
