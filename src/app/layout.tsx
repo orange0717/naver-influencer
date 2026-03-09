@@ -1,7 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
@@ -22,7 +28,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <Header />
-        <main className="max-w-7xl mx-auto px-4 pt-6 flex-1 w-full">
+        <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
           {children}
         </main>
         <Footer />
