@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* OrangeRefine 색상 토큰 */
-  --color-bg: #FFF6EE;
+  /* 핑크 톤 색상 */
+  --color-bg: #FFF5F2;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #FFF7F0;
-  --color-border: #FDE4CF;
+  --color-surface-hover: #FFF0EC;
+  --color-border: #F5D8D0;
   --color-text: #1a1a1a;
-  --color-dim: #999;
+  --color-dim: #8C7A6E;
 
-  /* 브랜드 컬러 — OrangeRefine 피치 */
+  /* 브랜드 컬러 — 로즈 핑크 */
   --color-accent: #CC9486;
-  --color-accent-hover: #D4834E;
-  --color-accent2: #B8612A;
-  --color-accent2-hover: #CC9486;
+  --color-accent-hover: #B8807A;
+  --color-accent2: #A06B64;
+  --color-accent2-hover: #B87B74;
 
   /* 헤더/네비 */
-  --color-header: #F2DACE;
+  --color-header: #FBF0E8;
   --color-nav: #FEF4EA;
 
   /* 기능 컬러 */
