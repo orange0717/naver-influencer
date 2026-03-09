@@ -6,6 +6,8 @@ const FOOTER_LINKS = [
   { href: '/rankings', label: '랭킹' },
   { href: '/subscribe', label: '구독' },
   { href: '/my', label: '대시보드' },
+  { href: '/terms', label: '이용약관' },
+  { href: '/privacy', label: '개인정보처리방침' },
 ];
 
 export default function Footer() {
