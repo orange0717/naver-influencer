@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Keyword } from '@/lib/types';
+import { getSubcategory } from '@/data/subcategory-map';
 
 interface CategoryGroup {
   category: string;
@@ -151,7 +152,9 @@ export default function KeywordsPage() {
               {/* Desktop: 테이블 */}
               <table className="w-full text-sm hidden md:table">
                 <tbody>
-                  {group.keywords.map((kw, i) => (
+                  {group.keywords.map((kw, i) => {
+                    const sub = getSubcategory(kw.category, kw.keyword);
+                    return (
                     <tr key={kw.id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
                       <td className="py-2.5 px-4 font-bold text-dim font-rank text-xs w-8">{i + 1}</td>
                       <td className="py-2.5 px-4">
@@ -160,29 +163,34 @@ export default function KeywordsPage() {
                         </Link>
                       </td>
                       <td className="py-2.5 px-3 text-xs text-dim">{kw.category}</td>
+                      {sub && <td className="py-2.5 px-2 text-[10px] text-accent font-semibold">{sub}</td>}
                       <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
                       <td className="py-2.5 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
 
               {/* Mobile: 카드 */}
               <div className="md:hidden divide-y divide-border/30">
-                {group.keywords.map((kw, i) => (
+                {group.keywords.map((kw, i) => {
+                  const sub = getSubcategory(kw.category, kw.keyword);
+                  return (
                   <Link key={kw.id} href={`/keywords/${kw.id}`}
                     className="flex items-center justify-between px-4 py-3 hover:bg-surface-hover transition">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
                       <span className="font-medium text-sm">{kw.keyword}</span>
-                      <span className="text-dim text-xs">{kw.category}</span>
+                      {sub && <span className="text-[10px] text-accent font-semibold">{sub}</span>}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
                       {compBadge(kw.competition_level)}
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -197,12 +205,15 @@ export default function KeywordsPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs w-8">#</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">키워드</th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs">카테고리</th>
+                  <th className="text-left py-3 px-2 font-semibold text-dim text-xs">세부분류</th>
                   <th className="text-right py-3 px-4 font-semibold text-dim text-xs">참여자</th>
                   <th className="text-center py-3 px-4 font-semibold text-dim text-xs">경쟁도</th>
                 </tr>
               </thead>
               <tbody>
-                {keywords.map((kw, i) => (
+                {keywords.map((kw, i) => {
+                  const sub = getSubcategory(kw.category, kw.keyword);
+                  return (
                   <tr key={kw.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
                     <td className="py-3 px-4 font-bold text-dim font-rank text-xs">{startNum + i + 1}</td>
                     <td className="py-3 px-4">
@@ -211,17 +222,21 @@ export default function KeywordsPage() {
                       </Link>
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">{kw.category}</td>
+                    <td className="py-3 px-2 text-[10px] text-accent font-semibold">{sub || '—'}</td>
                     <td className="py-3 px-4 text-right font-bold font-rank">{kw.participant_count.toLocaleString()}</td>
                     <td className="py-3 px-4 text-center">{compBadge(kw.competition_level)}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
           </div>
 
           <div className="md:hidden space-y-3">
-            {keywords.map((kw, i) => (
+            {keywords.map((kw, i) => {
+              const sub = getSubcategory(kw.category, kw.keyword);
+              return (
               <Link key={kw.id} href={`/keywords/${kw.id}`}
                 className="block bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
                 <div className="flex items-center justify-between mb-2">
@@ -229,6 +244,7 @@ export default function KeywordsPage() {
                     <span className="text-xs font-bold text-dim font-rank">#{startNum + i + 1}</span>
                     <span className="font-bold text-sm">{kw.keyword}</span>
                     <span className="text-dim text-xs">{kw.category}</span>
+                    {sub && <span className="text-[10px] text-accent font-semibold">{sub}</span>}
                   </div>
                   {compBadge(kw.competition_level)}
                 </div>
@@ -236,7 +252,8 @@ export default function KeywordsPage() {
                   <span>참여자 {kw.participant_count.toLocaleString()}명</span>
                 </div>
               </Link>
-            ))}
+              );
+            })}
             {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
           </div>
 
