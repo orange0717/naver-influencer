@@ -1,24 +1,28 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* OrangeRefine 핑크 톤 */
-  --color-bg: #FFF5F2;
+  /* OrangeRefine 색상 토큰 */
+  --color-bg: #FFF6EE;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #FFF0EC;
-  --color-border: #F5D8D0;
-  --color-text: #0D0D0D;
-  --color-dim: #8C7A6E;
+  --color-surface-hover: #FFF7F0;
+  --color-border: #FDE4CF;
+  --color-text: #1a1a1a;
+  --color-dim: #999;
 
-  /* 브랜드 컬러 — 로즈 핑크 */
+  /* 브랜드 컬러 — OrangeRefine 피치 */
   --color-accent: #CC9486;
-  --color-accent-hover: #B8807A;
-  --color-accent2: #A06B64;
-  --color-accent2-hover: #B87B74;
+  --color-accent-hover: #D4834E;
+  --color-accent2: #B8612A;
+  --color-accent2-hover: #CC9486;
+
+  /* 헤더/네비 */
+  --color-header: #F2DACE;
+  --color-nav: #FEF4EA;
 
   /* 기능 컬러 */
   --color-up: #2E8B57;
   --color-down: #D94848;
-  --color-stable: #8C7A6E;
+  --color-stable: #999;
   --color-blue: #4D8FCC;
 
   /* 순위 뱃지 */
@@ -31,7 +35,8 @@
   --color-point-bg: rgba(204, 148, 134, 0.12);
 
   /* 폰트 */
-  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+  --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Noto Serif KR', 'Playfair Display', serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
 }
 
@@ -43,13 +48,24 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  font-weight: 400;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 제목 세리프 폰트 */
+.font-title {
+  font-family: var(--font-serif);
 }
 
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #DBBFB8; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #CC9486; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
 
 /* 순위 숫자 모노스페이스 */
 .font-rank {

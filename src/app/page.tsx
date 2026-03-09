@@ -33,7 +33,7 @@ export default function LandingPage() {
           네이버 인플루언서들을 위한 플랫폼
         </p>
 
-        <h1 className="text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
+        <h1 className="font-title text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
           키워드챌린지,<br />더 스마트하게
         </h1>
 
@@ -68,7 +68,7 @@ export default function LandingPage() {
       {/* ═══════════ 데이터 현황 (surface) ═══════════ */}
       <section className="bg-surface px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">DATA</p>
-        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
+        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
         <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되는 네이버 인플루언서 데이터</p>
 
         <div className="flex justify-center gap-16 md:gap-24">
@@ -92,7 +92,7 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">FEATURES</p>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-4">키워드 전략의 모든 것</h2>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">키워드 전략의 모든 것</h2>
             <p className="text-sm text-dim">데이터 기반의 키워드 분석으로 경쟁 우위를 확보하세요.</p>
           </div>
 
@@ -143,7 +143,7 @@ export default function LandingPage() {
       {/* ═══════════ 사용 방법 (surface) ═══════════ */}
       <section className="bg-surface px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">HOW IT WORKS</p>
-        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-16">3단계로 시작하세요</h2>
+        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">3단계로 시작하세요</h2>
 
         <div className="flex flex-col md:flex-row justify-center gap-12 md:gap-20 max-w-3xl mx-auto">
           <div>
@@ -167,7 +167,7 @@ export default function LandingPage() {
       {/* ═══════════ 추천 대상 (bg) ═══════════ */}
       <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
-        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
+        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
         <div className="flex flex-col md:flex-row justify-center gap-12 md:gap-20 max-w-3xl mx-auto">
           <div>
@@ -190,7 +190,7 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PRICING</p>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-4">합리적인 가격</h2>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">합리적인 가격</h2>
             <p className="text-sm text-dim">무료 계정으로 시작하고, 더 많은 기능이 필요할 때 구독하세요.</p>
           </div>
 
@@ -235,7 +235,7 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">FAQ</p>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-text">자주 묻는 질문</h2>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text">자주 묻는 질문</h2>
           </div>
 
           <div className="divide-y divide-border">
@@ -264,7 +264,7 @@ export default function LandingPage() {
 
       {/* ═══════════ 하단 CTA (surface) ═══════════ */}
       <section className="bg-surface px-4 py-20 md:py-24 text-center">
-        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
+        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
         <p className="text-sm text-dim mb-8">
           무료 가입으로 키워드 분석을 시작하세요.<br />
           더 스마트한 키워드 전략이 기다리고 있습니다.

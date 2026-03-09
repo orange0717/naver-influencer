@@ -65,12 +65,12 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-surface border-b border-border backdrop-blur-sm">
+      <header className="sticky top-0 z-50 bg-header border-b border-border/50 shadow-[0_2px_12px_rgba(180,140,120,0.12)]">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-sm">N</div>
-              <span className="font-bold text-base text-text hidden sm:block">N인플</span>
+              <span className="font-title font-bold text-base text-text hidden sm:block">N인플</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {NAV.map(n => {

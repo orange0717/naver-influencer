@@ -24,7 +24,7 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-sm">N</div>
-              <span className="font-extrabold text-text">N인플</span>
+              <span className="font-title font-extrabold text-text">N인플</span>
             </div>
             <p className="text-xs text-dim leading-relaxed">
               네이버 인플루언서들을 위한 플랫폼.<br />
