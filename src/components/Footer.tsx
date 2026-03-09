@@ -21,7 +21,7 @@ const INFO_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-footer-bg text-footer-text mt-12">
+    <footer className="bg-footer-bg text-footer-text">
       <div className="max-w-7xl mx-auto px-4 py-10">
         {/* 상단: 브랜드 + 링크 그룹 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">

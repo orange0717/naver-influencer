@@ -71,8 +71,17 @@ export default function MyDashboard() {
     async function loadDashboard() {
       try {
         const supabase = createSupabaseBrowserClient();
-        const { data: { session } } = await supabase.auth.getSession();
 
+        // getUser()로 먼저 인증 확인 (토큰 자동 갱신)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setError('login_required');
+          setLoading(false);
+          return;
+        }
+
+        // 갱신된 세션에서 access_token 가져오기
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           setError('login_required');
           setLoading(false);
