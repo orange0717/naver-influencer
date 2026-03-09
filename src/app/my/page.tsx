@@ -64,7 +64,13 @@ export default function MyDashboard() {
         const res = await fetch('/api/my/dashboard');
 
         if (!res.ok) {
-          setError(res.status === 401 ? 'login_required' : '데이터를 불러올 수 없습니다.');
+          if (res.status === 401) {
+            setError('login_required');
+          } else {
+            const body = await res.json().catch(() => ({}));
+            console.error('Dashboard API error:', res.status, body);
+            setError(`데이터를 불러올 수 없습니다. (${res.status})`);
+          }
           setLoading(false);
           return;
         }

@@ -15,14 +15,25 @@ export async function GET() {
   const supabase = createServiceClient();
 
   // users 테이블에서 프로필 조회
-  const { data: userProfile } = await supabase
+  let { data: userProfile } = await supabase
     .from('users')
     .select('id, nickname, point_balance, total_charged, total_used, linked_influencer_id, subscription_status, subscription_expires_at')
     .eq('auth_id', authUser.id)
     .single();
 
+  // users 레코드가 없으면 자동 생성
   if (!userProfile) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const { data: newUser } = await supabase
+      .from('users')
+      .insert({
+        auth_id: authUser.id,
+        email: authUser.email,
+        nickname: authUser.email?.split('@')[0] || 'User',
+        point_balance: 100,
+      })
+      .select('id, nickname, point_balance, total_charged, total_used, linked_influencer_id, subscription_status, subscription_expires_at')
+      .single();
+    userProfile = newUser;
   }
 
   if (!userProfile || !userProfile.linked_influencer_id) {
