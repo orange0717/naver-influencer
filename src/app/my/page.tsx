@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,53 +12,28 @@ function formatCount(n: number): string {
 }
 
 export default async function MyDashboard() {
-  const supabaseAuth = await createRouteHandlerClient();
-  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+  // 쿠키에서 naver_id 확인 (인플루언서 링크 로그인)
+  const cookieStore = await cookies();
+  const naverId = cookieStore.get('naver_id')?.value;
 
-  if (!authUser) {
+  if (!naverId) {
     redirect('/auth/login');
   }
 
   const supabase = createServiceClient();
 
-  // users 프로필 조회 (없으면 자동 생성)
-  let { data: userProfile } = await supabase
-    .from('users')
-    .select('id, nickname, linked_influencer_id')
-    .eq('auth_id', authUser.id)
+  // naver_id로 인플루언서 조회
+  const { data: influencerData } = await supabase
+    .from('influencers')
+    .select('id')
+    .eq('naver_id', naverId)
     .single();
 
-  if (!userProfile) {
-    const { data: newUser } = await supabase
-      .from('users')
-      .insert({
-        auth_id: authUser.id,
-        email: authUser.email,
-        nickname: authUser.email?.split('@')[0] || 'User',
-        point_balance: 100,
-      })
-      .select('id, nickname, linked_influencer_id')
-      .single();
-    userProfile = newUser;
+  if (!influencerData) {
+    redirect('/auth/login');
   }
 
-  if (!userProfile?.linked_influencer_id) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-accent/15 flex items-center justify-center text-accent text-xl font-bold">N</div>
-          <h2 className="text-xl font-bold">인플루언서 계정을 연결하세요</h2>
-          <p className="text-sm text-dim">네이버 인플루언서 계정을 연결하면<br />키워드 순위를 실시간으로 확인할 수 있습니다.</p>
-          <Link href="/my/link"
-            className="inline-block px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
-            계정 연결하기
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const influencerId = userProfile.linked_influencer_id;
+  const influencerId = influencerData.id;
 
   // 인플루언서 정보
   const { data: influencer } = await supabase

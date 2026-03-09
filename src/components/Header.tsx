@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const NINFL_SUB = [
   { href: '/notice', label: '공지사항' },
@@ -21,43 +20,13 @@ export default function Header() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ninflOpen, setNinflOpen] = useState(false);
-  const [user, setUser] = useState<{ email?: string; nickname?: string } | null>(null);
-  const [subscribed, setSubscribed] = useState(false);
+  const [naverId, setNaverId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-
-    async function loadUser() {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        setUser({ email: authUser.email });
-        const { data: profile } = await supabase
-          .from('users')
-          .select('nickname, subscription_status, subscription_expires_at')
-          .eq('auth_id', authUser.id)
-          .single();
-        if (profile) {
-          setUser({ email: authUser.email, nickname: profile.nickname });
-          const isActive =
-            profile.subscription_status === 'active' &&
-            !!profile.subscription_expires_at &&
-            new Date(profile.subscription_expires_at) > new Date();
-          setSubscribed(isActive);
-        }
-      } else {
-        setUser(null);
-        setSubscribed(false);
-      }
-    }
-
-    loadUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      loadUser();
-    });
-
-    return () => subscription.unsubscribe();
+    // 쿠키에서 naver_id 확인
+    const match = document.cookie.match(/(?:^|;\s*)naver_id=([^;]*)/);
+    setNaverId(match ? decodeURIComponent(match[1]) : null);
   }, []);
 
   // 드롭다운 외부 클릭 닫기
@@ -71,11 +40,10 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    setUser(null);
-    setSubscribed(false);
+  const handleLogout = () => {
+    // naver_id 쿠키 삭제
+    document.cookie = 'naver_id=; path=/; max-age=0';
+    setNaverId(null);
     router.push('/');
     router.refresh();
   };
@@ -135,11 +103,11 @@ export default function Header() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            {user ? (
+            {naverId ? (
               <button onClick={handleLogout}
                 className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 transition cursor-pointer"
-                title={user.nickname || user.email || '로그아웃'}>
-                {(user.nickname || user.email || 'U').charAt(0).toUpperCase()}
+                title={`@${naverId} · 로그아웃`}>
+                {naverId.charAt(0).toUpperCase()}
               </button>
             ) : (
               <Link href="/auth/login"
@@ -179,7 +147,7 @@ export default function Header() {
                 </Link>
               );
             })}
-            {user ? (
+            {naverId ? (
               <button onClick={() => { handleLogout(); setMobileOpen(false); }}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-down hover:text-down/80 cursor-pointer">
                 로그아웃
