@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -13,10 +13,35 @@ function formatCount(n: number): string {
 export default async function MyDashboard() {
   // 서버에서 직접 쿠키 인증 (API 호출 불필요)
   const supabaseAuth = await createRouteHandlerClient();
-  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+  const { data: { user: authUser }, error: authError } = await supabaseAuth.auth.getUser();
 
   if (!authUser) {
-    redirect('/auth/login');
+    // 디버그: 서버에서 보이는 쿠키 확인
+    const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    const cookieNames = allCookies.map(c => c.name);
+    const sbCookies = cookieNames.filter(n => n.startsWith('sb-'));
+
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-full bg-accent/15 flex items-center justify-center text-accent text-xl font-bold">N</div>
+          <h2 className="text-xl font-bold">로그인이 필요합니다</h2>
+          <p className="text-sm text-dim">내 키워드 순위를 확인하려면 로그인하세요.</p>
+          <Link href="/auth/login"
+            className="inline-block px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
+            로그인하기
+          </Link>
+          <div className="mt-6 text-left bg-surface border border-border rounded-xl p-4 text-xs text-dim max-w-md mx-auto">
+            <p>디버그 정보:</p>
+            <p>쿠키 수: {allCookies.length}</p>
+            <p>Supabase 쿠키: {sbCookies.length > 0 ? sbCookies.join(', ') : '없음'}</p>
+            <p>전체 쿠키: {cookieNames.length > 0 ? cookieNames.join(', ') : '없음'}</p>
+            <p>인증 에러: {authError?.message || 'user is null'}</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const supabase = createServiceClient();
