@@ -98,33 +98,6 @@ export default function RankingsPage() {
         </div>
       </div>
 
-      {/* 점수 기준 설명 */}
-      <div className="bg-surface border border-border rounded-xl p-4">
-        <p className="text-xs font-bold text-text mb-2">종합 점수 산정 기준</p>
-        <div className="flex flex-wrap gap-3 text-[11px] text-dim">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-yellow-500" />
-            1위 키워드 x10점
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-accent" />
-            TOP 3 x5점
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-up" />
-            통합검색 TOP3 x3점
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-dim" />
-            참여 키워드 x1점
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-blue-400" />
-            팔로워 보너스
-          </span>
-        </div>
-      </div>
-
       {/* 정렬 옵션 */}
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs text-dim font-semibold mr-1">정렬:</span>
