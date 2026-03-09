@@ -51,6 +51,16 @@ export default function MyDashboard() {
     async function loadDashboard() {
       try {
         const supabase = createSupabaseBrowserClient();
+
+        // getUser()로 서버 검증 (헤더와 동일 방식)
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          setError('login_required');
+          setLoading(false);
+          return;
+        }
+
+        // 세션 토큰 가져오기
         let { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           const { data: refreshData } = await supabase.auth.refreshSession();
