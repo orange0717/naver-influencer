@@ -1,40 +1,8 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 
-interface DashboardData {
-  linked: boolean;
-  influencer: {
-    id: string;
-    naver_id: string;
-    display_name: string;
-    category: string;
-    image_url?: string;
-    subscriber_count?: number;
-    total_follower_count?: number;
-  } | null;
-  stats: {
-    total_keywords: number;
-    avg_rank: number;
-    top3_count: number;
-    integrated_top3_count: number;
-    rank_up_count: number;
-    rank_down_count: number;
-  } | null;
-  rankings: {
-    keyword_id: string;
-    keyword: string;
-    category: string;
-    rank_position: number;
-    previous_rank: number | null;
-    rank_change: number;
-    is_integrated_top3: boolean;
-    participant_count: number;
-    search_volume_monthly: number;
-  }[];
-}
+export const dynamic = 'force-dynamic';
 
 function formatCount(n: number): string {
   if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
@@ -42,88 +10,40 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
-export default function MyDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export default async function MyDashboard() {
+  // 서버에서 직접 쿠키 인증 (API 호출 불필요)
+  const supabaseAuth = await createRouteHandlerClient();
+  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
 
-  useEffect(() => {
-    async function loadDashboard() {
-      try {
-        // 세션 토큰 가져오기 (쿠키 인증 + Bearer 폴백)
-        const supabase = createSupabaseBrowserClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers: Record<string, string> = {};
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
-
-        const res = await fetch('/api/my/dashboard', {
-          credentials: 'same-origin',
-          headers,
-        });
-
-        if (!res.ok) {
-          if (res.status === 401) {
-            setError('login_required');
-          } else {
-            const body = await res.json().catch(() => ({}));
-            console.error('Dashboard API error:', res.status, body);
-            setError(`데이터를 불러올 수 없습니다. (${res.status})`);
-          }
-          setLoading(false);
-          return;
-        }
-
-        setData(await res.json());
-      } catch {
-        setError('데이터를 불러오는 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadDashboard();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
-          <p className="text-sm text-dim">대시보드를 불러오는 중...</p>
-        </div>
-      </div>
-    );
+  if (!authUser) {
+    redirect('/auth/login');
   }
 
-  if (error === 'login_required') {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-accent/15 flex items-center justify-center text-accent text-xl font-bold">N</div>
-          <h2 className="text-xl font-bold">로그인이 필요합니다</h2>
-          <p className="text-sm text-dim">내 키워드 순위를 확인하려면 로그인하세요.</p>
-          <Link href="/auth/login"
-            className="inline-block px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
-            로그인하기
-          </Link>
-        </div>
-      </div>
-    );
+  const supabase = createServiceClient();
+
+  // users 프로필 조회 (없으면 자동 생성)
+  let { data: userProfile } = await supabase
+    .from('users')
+    .select('id, nickname, linked_influencer_id')
+    .eq('auth_id', authUser.id)
+    .single();
+
+  if (!userProfile) {
+    const { data: newUser } = await supabase
+      .from('users')
+      .insert({
+        auth_id: authUser.id,
+        email: authUser.email,
+        nickname: authUser.email?.split('@')[0] || 'User',
+        point_balance: 100,
+      })
+      .select('id, nickname, linked_influencer_id')
+      .single();
+    userProfile = newUser;
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-down/15 flex items-center justify-center text-down text-xl font-bold">!</div>
-          <p className="text-sm text-dim">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data?.linked || !data.influencer) {
+  // 인플루언서 미연결
+  if (!userProfile?.linked_influencer_id) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
@@ -139,10 +59,67 @@ export default function MyDashboard() {
     );
   }
 
-  const { influencer, stats, rankings } = data;
+  // 인플루언서 정보
+  const { data: influencer } = await supabase
+    .from('influencers')
+    .select('*')
+    .eq('id', userProfile.linked_influencer_id)
+    .single();
 
-  // 순위순 정렬
-  const sorted = [...rankings].sort((a, b) => a.rank_position - b.rank_position);
+  if (!influencer) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-full bg-down/15 flex items-center justify-center text-down text-xl font-bold">!</div>
+          <p className="text-sm text-dim">인플루언서 정보를 찾을 수 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 최신 순위 데이터
+  const { data: latestRankings } = await supabase
+    .from('keyword_rankings')
+    .select(`
+      rank_position, previous_rank, rank_change, is_integrated_top3,
+      keyword_id,
+      keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
+    `)
+    .eq('influencer_id', userProfile.linked_influencer_id)
+    .order('snapshot_date', { ascending: false })
+    .limit(200);
+
+  // 최신 날짜의 순위만 (키워드별 중복 제거)
+  const latestByKeyword = new Map<string, (typeof latestRankings extends (infer T)[] | null ? T : never)>();
+  for (const r of (latestRankings || [])) {
+    if (!latestByKeyword.has(r.keyword_id)) {
+      latestByKeyword.set(r.keyword_id, r);
+    }
+  }
+  const currentRankings = Array.from(latestByKeyword.values());
+
+  // 통계 계산
+  const totalKeywords = currentRankings.length;
+  const avgRank = totalKeywords > 0
+    ? currentRankings.reduce((s, r) => s + r.rank_position, 0) / totalKeywords
+    : 0;
+  const top3Count = currentRankings.filter(r => r.rank_position <= 3).length;
+  const rankUpCount = currentRankings.filter(r => r.rank_change > 0).length;
+  const rankDownCount = currentRankings.filter(r => r.rank_change < 0).length;
+
+  // 순위 데이터 정리
+  const rankings = currentRankings.map(r => {
+    const kw = r.keyword_challenges as unknown as Record<string, unknown>;
+    return {
+      keyword_id: r.keyword_id,
+      keyword: (kw?.keyword as string) || '',
+      category: (kw?.category as string) || '',
+      rank_position: r.rank_position,
+      rank_change: r.rank_change,
+      is_integrated_top3: r.is_integrated_top3,
+      participant_count: (kw?.participant_count as number) || 0,
+    };
+  }).sort((a, b) => a.rank_position - b.rank_position);
 
   return (
     <div className="space-y-6">
@@ -158,43 +135,41 @@ export default function MyDashboard() {
         )}
         <div>
           <h1 className="text-lg font-bold">{influencer.display_name}</h1>
-          <p className="text-xs text-dim">{influencer.category} · 팬 {formatCount(influencer.subscriber_count || 0)}</p>
+          <p className="text-xs text-dim">{influencer.my_keyword_category || influencer.category} · 팬 {formatCount(influencer.subscriber_count || 0)}</p>
         </div>
       </div>
 
       {/* ─── 주요 지표 4카드 ─── */}
-      {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-surface border border-border rounded-xl p-4">
-            <p className="text-[11px] text-dim mb-1">나의 랭킹</p>
-            <p className="text-2xl font-black font-rank text-accent">
-              {stats.avg_rank > 0 ? `${Math.round(stats.avg_rank)}위` : '-'}
-            </p>
-          </div>
-          <div className="bg-surface border border-border rounded-xl p-4">
-            <p className="text-[11px] text-dim mb-1">참여 키워드</p>
-            <p className="text-2xl font-black font-rank">{stats.total_keywords}개</p>
-          </div>
-          <div className="bg-surface border border-border rounded-xl p-4">
-            <p className="text-[11px] text-dim mb-1">TOP 3 키워드</p>
-            <p className="text-2xl font-black font-rank text-up">{stats.top3_count}개</p>
-          </div>
-          <div className="bg-surface border border-border rounded-xl p-4">
-            <p className="text-[11px] text-dim mb-1">순위 변동</p>
-            <div className="flex items-baseline gap-2">
-              {stats.rank_up_count > 0 && (
-                <span className="text-lg font-black font-rank text-up">▲{stats.rank_up_count}</span>
-              )}
-              {stats.rank_down_count > 0 && (
-                <span className="text-lg font-black font-rank text-down">▼{stats.rank_down_count}</span>
-              )}
-              {stats.rank_up_count === 0 && stats.rank_down_count === 0 && (
-                <span className="text-lg font-black font-rank text-dim">-</span>
-              )}
-            </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-[11px] text-dim mb-1">나의 랭킹</p>
+          <p className="text-2xl font-black font-rank text-accent">
+            {avgRank > 0 ? `${Math.round(avgRank)}위` : '-'}
+          </p>
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-[11px] text-dim mb-1">참여 키워드</p>
+          <p className="text-2xl font-black font-rank">{totalKeywords}개</p>
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-[11px] text-dim mb-1">TOP 3 키워드</p>
+          <p className="text-2xl font-black font-rank text-up">{top3Count}개</p>
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-[11px] text-dim mb-1">순위 변동</p>
+          <div className="flex items-baseline gap-2">
+            {rankUpCount > 0 && (
+              <span className="text-lg font-black font-rank text-up">▲{rankUpCount}</span>
+            )}
+            {rankDownCount > 0 && (
+              <span className="text-lg font-black font-rank text-down">▼{rankDownCount}</span>
+            )}
+            {rankUpCount === 0 && rankDownCount === 0 && (
+              <span className="text-lg font-black font-rank text-dim">-</span>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* ─── 키워드 챌린지 순위 ─── */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
@@ -216,7 +191,7 @@ export default function MyDashboard() {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r, i) => (
+            {rankings.map((r, i) => (
               <tr key={r.keyword_id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
                 <td className="py-2.5 px-4 text-xs text-dim font-rank">{i + 1}</td>
                 <td className="py-2.5 px-4">
@@ -250,7 +225,7 @@ export default function MyDashboard() {
 
         {/* Mobile */}
         <div className="md:hidden divide-y divide-border/30">
-          {sorted.map((r, i) => (
+          {rankings.map((r, i) => (
             <Link key={r.keyword_id} href={`/keywords/${r.keyword_id}`}
               className="flex items-center justify-between px-4 py-3 hover:bg-surface-hover transition">
               <div className="flex items-center gap-2 min-w-0">
@@ -289,7 +264,7 @@ export default function MyDashboard() {
             <p className="text-[11px] text-dim mt-0.5">팬수</p>
           </div>
           <div>
-            <p className="text-xl font-black font-rank">{stats?.total_keywords || 0}</p>
+            <p className="text-xl font-black font-rank">{totalKeywords}</p>
             <p className="text-[11px] text-dim mt-0.5">참여 키워드</p>
           </div>
           <div>
