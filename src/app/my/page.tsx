@@ -190,17 +190,17 @@ export default async function MyDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-surface border border-border rounded-xl p-4">
           <p className="text-[11px] text-dim mb-1">나의 평균 순위</p>
-          <p className="text-2xl font-black font-rank text-accent">
-            {avgRank > 0 ? `${Math.round(avgRank)}위` : '-'}
+          <p className={`text-2xl font-black font-rank ${avgRank > 0 ? 'text-accent' : 'text-dim'}`}>
+            {avgRank > 0 ? `${Math.round(avgRank)}위` : '—'}
           </p>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4">
           <p className="text-[11px] text-dim mb-1">참여 키워드</p>
-          <p className="text-2xl font-black font-rank">{totalKeywords}개</p>
+          <p className={`text-2xl font-black font-rank ${totalKeywords === 0 ? 'text-dim' : ''}`}>{totalKeywords}개</p>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4">
           <p className="text-[11px] text-dim mb-1">TOP 3 키워드</p>
-          <p className="text-2xl font-black font-rank text-up">{top3Count}개</p>
+          <p className={`text-2xl font-black font-rank ${top3Count > 0 ? 'text-up' : 'text-dim'}`}>{top3Count}개</p>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4">
           <p className="text-[11px] text-dim mb-1">순위 변동</p>
@@ -252,7 +252,10 @@ export default async function MyDashboard() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-dim text-sm">아직 순위 데이터가 없습니다.</div>
+          <div className="text-center py-8 text-dim text-sm">
+            <p>아직 순위 데이터가 없습니다.</p>
+            <p className="text-[11px] mt-1">데이터 수집이 매일 자동으로 진행됩니다.</p>
+          </div>
         )}
       </div>
 
@@ -304,7 +307,8 @@ export default async function MyDashboard() {
           ))
         ) : (
           <div className="bg-surface rounded-xl border border-border text-center py-12 text-dim text-sm">
-            아직 참여 중인 키워드가 없습니다.
+            <p>아직 참여 중인 키워드가 없습니다.</p>
+            <p className="text-[11px] mt-1">키워드 데이터 수집이 진행되면 자동으로 표시됩니다.</p>
           </div>
         )}
       </div>
@@ -322,8 +326,8 @@ export default async function MyDashboard() {
             <p className="text-[11px] text-dim mt-0.5">참여 키워드</p>
           </div>
           <div>
-            <p className="text-xl font-black font-rank">{formatCount(influencer.total_follower_count || 0)}</p>
-            <p className="text-[11px] text-dim mt-0.5">팔로워</p>
+            <p className="text-xl font-black font-rank">{totalRankedKeywords}</p>
+            <p className="text-[11px] text-dim mt-0.5">순위 키워드</p>
           </div>
         </div>
       </div>
