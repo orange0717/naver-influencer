@@ -5,11 +5,10 @@ import { useState, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const NAV = [
-  { href: '/keywords', label: '키워드' },
-  { href: '/influencers', label: '인플루언서' },
-  { href: '/rankings', label: '랭킹' },
   { href: '/my', label: '내 대시보드' },
-  { href: '/subscribe', label: '구독' },
+  { href: '/influencers', label: '인플루언서 리스트' },
+  { href: '/keywords', label: '키워드' },
+  { href: '/rankings', label: '랭킹(개발중)' },
 ];
 
 export default function Header() {
@@ -68,7 +67,7 @@ export default function Header() {
       <header className="sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2.5">
+            <Link href="/subscribe" className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
               <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
             </Link>
@@ -88,24 +87,11 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-3">
             {user ? (
-              <>
-                {subscribed ? (
-                  <Link href="/subscribe"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 rounded-lg text-sm font-bold text-white">
-                    구독 중
-                  </Link>
-                ) : (
-                  <Link href="/subscribe"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 rounded-lg text-sm font-bold text-white hover:bg-white/30 transition-colors">
-                    구독하기
-                  </Link>
-                )}
-                <button onClick={handleLogout}
-                  className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 transition cursor-pointer"
-                  title={user.nickname || user.email || '로그아웃'}>
-                  {(user.nickname || user.email || 'U').charAt(0).toUpperCase()}
-                </button>
-              </>
+              <button onClick={handleLogout}
+                className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 transition cursor-pointer"
+                title={user.nickname || user.email || '로그아웃'}>
+                {(user.nickname || user.email || 'U').charAt(0).toUpperCase()}
+              </button>
             ) : (
               <Link href="/auth/login"
                 className="px-3 py-1.5 bg-white text-header text-sm font-semibold rounded-lg hover:bg-white/90 transition-colors">
