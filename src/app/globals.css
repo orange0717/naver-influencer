@@ -2,22 +2,22 @@
 
 @theme inline {
   /* 배경 */
-  --color-bg: #F2E2DC;
+  --color-bg: #FAF5F3;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #F9EDEA;
-  --color-border: #E8CFC8;
+  --color-surface-hover: #FDF8F6;
+  --color-border: #F0DED8;
   --color-text: #2D2D2D;
   --color-dim: #999;
 
   /* 브랜드 컬러 — 하이라이트 */
-  --color-accent: #BF877A;
-  --color-accent-hover: #AD756A;
-  --color-accent2: #D9ABA0;
-  --color-accent2-hover: #C89B90;
+  --color-accent: #CC9486;
+  --color-accent-hover: #BF877A;
+  --color-accent2: #E4C1B8;
+  --color-accent2-hover: #D9ABA0;
 
   /* 헤더/네비 */
-  --color-header: #D9ABA0;
-  --color-nav: #D9ABA0;
+  --color-header: #E4C1B8;
+  --color-nav: #E4C1B8;
 
   /* 기능 컬러 */
   --color-up: #2E8B57;
@@ -34,11 +34,11 @@
   --color-footer-bg: #2D2D2D;
   --color-footer-text: #E0E0E0;
   --color-footer-dim: #999;
-  --color-footer-heading: #D9ABA0;
+  --color-footer-heading: #E4C1B8;
 
   /* 포인트 관련 */
-  --color-point: #BF877A;
-  --color-point-bg: rgba(191, 135, 122, 0.12);
+  --color-point: #CC9486;
+  --color-point-bg: rgba(204, 148, 134, 0.10);
 
   /* 폰트 */
   --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
