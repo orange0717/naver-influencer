@@ -12,78 +12,6 @@ function useStats() {
   return stats;
 }
 
-/* ── 카운트 애니메이션 ── */
-function AnimatedCount({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (target === 0) return;
-    const dur = 1200;
-    const steps = 40;
-    const step = target / steps;
-    let cur = 0;
-    const id = setInterval(() => {
-      cur += step;
-      if (cur >= target) { setCount(target); clearInterval(id); }
-      else setCount(Math.floor(cur));
-    }, dur / steps);
-    return () => clearInterval(id);
-  }, [target]);
-  return <>{count.toLocaleString()}{suffix}</>;
-}
-
-/* ── 기능 데이터 ── */
-const FEATURES = [
-  {
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
-    ),
-    title: '블루오션 키워드 발굴',
-    desc: '참여자가 적고 검색량이 높은 키워드를 자동 분석하여 진입 기회를 추천합니다.',
-    color: 'accent',
-  },
-  {
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-      </svg>
-    ),
-    title: '실시간 순위 추적',
-    desc: '매일 업데이트되는 키워드챌린지 순위를 확인하고 변동 트렌드를 추적하세요.',
-    color: 'up',
-  },
-  {
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-      </svg>
-    ),
-    title: '경쟁자 분석',
-    desc: '같은 키워드에 참여 중인 인플루언서들의 순위와 전략을 비교 분석합니다.',
-    color: 'blue',
-  },
-  {
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-      </svg>
-    ),
-    title: '맞춤 키워드 추천',
-    desc: 'AI가 내 카테고리와 성과를 분석하여 매일 최적의 키워드를 추천합니다.',
-    color: 'gold',
-  },
-];
-
-/* ── 사용 방법 ── */
-const STEPS = [
-  { num: '01', title: '회원가입', desc: '무료로 가입하고 네이버 인플루언서 계정을 연결하세요.' },
-  { num: '02', title: '키워드 분석', desc: '수만 개 키워드의 참여자, 검색량, 경쟁도를 확인하세요.' },
-  { num: '03', title: '전략 수립', desc: '블루오션 키워드를 선점하고 순위 변동을 실시간으로 추적하세요.' },
-];
-
 /* ── FAQ ── */
 const FAQS = [
   { q: '무료로 사용할 수 있나요?', a: '네, 무료 회원도 키워드 목록 열람, 일일 추천 키워드 3개, 참여자 수 확인이 가능합니다. PRO 구독 시 모든 기능을 무제한으로 이용하실 수 있습니다.' },
@@ -92,9 +20,6 @@ const FAQS = [
   { q: '구독을 해지하면 어떻게 되나요?', a: '구독 기간이 끝나면 무료 계정으로 전환되며, 기본 기능은 계속 이용 가능합니다. 데이터는 삭제되지 않습니다.' },
 ];
 
-/* ══════════════════════════════════════════
-   메인 랜딩 페이지
-   ══════════════════════════════════════════ */
 export default function LandingPage() {
   const stats = useStats();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -103,218 +28,237 @@ export default function LandingPage() {
     <div className="-mx-4 -mt-6">
 
       {/* ═══════════ HERO ═══════════ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-accent via-accent2 to-[#7A4F4A]">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-white/5" />
-          <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-white/5" />
+      <section className="px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
+        <p className="text-sm text-accent font-semibold tracking-wide mb-8">
+          네이버 인플루언서들을 위한 플랫폼
+        </p>
+
+        <h1 className="text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
+          키워드챌린지,<br />더 스마트하게
+        </h1>
+
+        <p className="text-base text-dim max-w-xl mx-auto leading-relaxed mb-10">
+          수만 개 키워드의 검색량·경쟁도·순위를 한눈에 분석하고<br className="hidden md:block" />
+          블루오션 키워드를 발굴하여 상위 노출을 달성하세요.
+        </p>
+
+        {/* 퀵 링크 */}
+        <div className="flex flex-wrap gap-3 justify-center mb-10">
+          <Link href="/keywords" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
+            키워드 분석
+          </Link>
+          <Link href="/influencers" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
+            인플루언서 검색
+          </Link>
+          <Link href="/rankings" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
+            랭킹 확인
+          </Link>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28 text-center text-white">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm text-xs font-semibold mb-6">
-            <span className="w-2 h-2 rounded-full bg-up animate-pulse" />
-            네이버 인플루언서들을 위한 플랫폼
+        {/* 메인 CTA */}
+        <Link href="/auth/signup"
+          className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm">
+          무료로 시작하기 →
+        </Link>
+
+        <p className="text-xs text-dim mt-5">
+          가입 즉시 키워드 분석을 시작할 수 있습니다.<br />
+          별도 결제 없이 무료로 이용 가능합니다.
+        </p>
+      </section>
+
+      {/* ═══════════ 구분 ═══════════ */}
+      <div className="h-px bg-border mx-4 max-w-5xl md:mx-auto" />
+
+      {/* ═══════════ 데이터 현황 ═══════════ */}
+      <section className="px-4 py-20 md:py-24 text-center">
+        <p className="text-xs text-accent font-semibold tracking-widest mb-3">DATA</p>
+        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-12">실시간 데이터 현황</h2>
+
+        <div className="flex justify-center gap-16 md:gap-24">
+          <div>
+            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.influencer_count.toLocaleString()}+</p>
+            <p className="text-xs text-dim mt-2">인플루언서</p>
+          </div>
+          <div>
+            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.keyword_count.toLocaleString()}+</p>
+            <p className="text-xs text-dim mt-2">키워드</p>
+          </div>
+          <div>
+            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.category_count}</p>
+            <p className="text-xs text-dim mt-2">카테고리</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ 구분 ═══════════ */}
+      <div className="h-px bg-border mx-4 max-w-5xl md:mx-auto" />
+
+      {/* ═══════════ 핵심 기능 ═══════════ */}
+      <section className="px-4 py-20 md:py-24 max-w-3xl mx-auto">
+        <div className="text-center mb-16">
+          <p className="text-xs text-accent font-semibold tracking-widest mb-3">FEATURES</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-text">키워드 전략의 모든 것</h2>
+        </div>
+
+        <div className="space-y-14">
+          <div className="flex items-start gap-6">
+            <span className="text-accent text-lg mt-0.5">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </span>
+            <div>
+              <h3 className="font-bold text-text mb-1">블루오션 키워드 발굴</h3>
+              <p className="text-sm text-dim leading-relaxed">참여자가 적고 검색량이 높은 키워드를 자동 분석하여 진입 기회를 추천합니다.</p>
+            </div>
           </div>
 
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-5">
-            N인플,<br className="md:hidden" /> 더 스마트하게
-          </h1>
-          <p className="text-base md:text-lg text-white/80 max-w-2xl mx-auto mb-8 leading-relaxed">
-            수만 개 키워드의 검색량·경쟁도·순위를 한눈에 분석하고<br className="hidden md:block" />
-            블루오션 키워드를 발굴하여 상위 노출을 달성하세요.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
-            <Link href="/auth/signup"
-              className="px-8 py-4 bg-white text-accent font-extrabold rounded-xl hover:bg-white/90 transition-all text-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-              무료로 시작하기 →
-            </Link>
-            <Link href="/keywords"
-              className="px-8 py-4 bg-white/15 backdrop-blur-sm text-white font-bold rounded-xl hover:bg-white/25 transition-all text-sm border border-white/20">
-              키워드 둘러보기
-            </Link>
+          <div className="flex items-start gap-6">
+            <span className="text-up text-lg mt-0.5">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            </span>
+            <div>
+              <h3 className="font-bold text-text mb-1">실시간 순위 추적</h3>
+              <p className="text-sm text-dim leading-relaxed">매일 업데이트되는 키워드챌린지 순위를 확인하고 변동 트렌드를 추적하세요.</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-6 max-w-lg mx-auto">
+          <div className="flex items-start gap-6">
+            <span className="text-blue text-lg mt-0.5">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
+            </span>
             <div>
-              <p className="text-2xl md:text-3xl font-extrabold"><AnimatedCount target={stats.influencer_count} suffix="+" /></p>
-              <p className="text-xs text-white/60 mt-1">인플루언서</p>
+              <h3 className="font-bold text-text mb-1">경쟁자 분석</h3>
+              <p className="text-sm text-dim leading-relaxed">같은 키워드에 참여 중인 인플루언서들의 순위와 전략을 비교 분석합니다.</p>
             </div>
+          </div>
+
+          <div className="flex items-start gap-6">
+            <span className="text-gold text-lg mt-0.5">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+            </span>
             <div>
-              <p className="text-2xl md:text-3xl font-extrabold"><AnimatedCount target={stats.keyword_count} suffix="+" /></p>
-              <p className="text-xs text-white/60 mt-1">키워드</p>
-            </div>
-            <div>
-              <p className="text-2xl md:text-3xl font-extrabold"><AnimatedCount target={stats.category_count} /></p>
-              <p className="text-xs text-white/60 mt-1">카테고리</p>
+              <h3 className="font-bold text-text mb-1">맞춤 키워드 추천</h3>
+              <p className="text-sm text-dim leading-relaxed">AI가 내 카테고리와 성과를 분석하여 매일 최적의 키워드를 추천합니다.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════════ FEATURES ═══════════ */}
-      <section className="max-w-7xl mx-auto px-4 py-16 md:py-24">
-        <div className="text-center mb-14">
-          <span className="text-xs font-bold text-accent tracking-widest">FEATURES</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold mt-3 mb-3">키워드 전략의 모든 것</h2>
-          <p className="text-sm text-dim max-w-lg mx-auto">데이터 기반의 키워드 분석으로 네이버 인플루언서 키워드챌린지에서 경쟁 우위를 확보하세요.</p>
-        </div>
+      {/* ═══════════ 구분 ═══════════ */}
+      <div className="h-px bg-border mx-4 max-w-5xl md:mx-auto" />
 
-        <div className="space-y-16 max-w-3xl mx-auto">
-          {FEATURES.map((f, i) => (
-            <div key={f.title} className={`flex flex-col md:flex-row items-center gap-6 md:gap-10 ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0
-                ${f.color === 'accent' ? 'bg-accent/15 text-accent' :
-                  f.color === 'up' ? 'bg-up/15 text-up' :
-                  f.color === 'blue' ? 'bg-blue/15 text-blue' :
-                  'bg-gold/15 text-gold'}`}>
-                {f.icon}
-              </div>
-              <div className="text-center md:text-left">
-                <h3 className="text-lg font-bold text-text mb-2">{f.title}</h3>
-                <p className="text-sm text-dim leading-relaxed">{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ═══════════ 사용 방법 ═══════════ */}
+      <section className="px-4 py-20 md:py-24 text-center">
+        <p className="text-xs text-accent font-semibold tracking-widest mb-3">HOW IT WORKS</p>
+        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-16">3단계로 시작하세요</h2>
 
-      {/* ═══════════ 구분선 ═══════════ */}
-      <div className="max-w-7xl mx-auto px-4"><div className="border-t border-border" /></div>
-
-      {/* ═══════════ HOW IT WORKS ═══════════ */}
-      <section className="max-w-7xl mx-auto px-4 py-16 md:py-24">
-        <div className="text-center mb-14">
-          <span className="text-xs font-bold text-accent tracking-widest">HOW IT WORKS</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold mt-3 mb-3">3단계로 시작하세요</h2>
-          <p className="text-sm text-dim max-w-lg mx-auto">가입부터 키워드 전략 수립까지, 3분이면 충분합니다.</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-12 max-w-4xl mx-auto">
-          {STEPS.map((s, i) => (
-            <div key={s.num} className="relative text-center">
-              {i < STEPS.length - 1 && (
-                <div className="hidden md:block absolute top-6 -right-6 w-12 text-border">
-                  <svg width="48" height="16" viewBox="0 0 48 16" fill="none">
-                    <path d="M0 8h44M40 2l6 6-6 6" stroke="currentColor" strokeWidth="1.5" />
-                  </svg>
-                </div>
-              )}
-              <div className="text-4xl font-extrabold text-accent/20 mb-2">{s.num}</div>
-              <h3 className="font-bold text-text mb-2">{s.title}</h3>
-              <p className="text-xs text-dim leading-relaxed">{s.desc}</p>
-            </div>
-          ))}
+        <div className="flex flex-col md:flex-row justify-center gap-12 md:gap-20 max-w-3xl mx-auto">
+          <div>
+            <p className="text-4xl font-extrabold text-accent/25 mb-3">01</p>
+            <h3 className="font-bold text-text mb-1">회원가입</h3>
+            <p className="text-sm text-dim">무료로 가입하고<br />인플루언서 계정을 연결하세요.</p>
+          </div>
+          <div>
+            <p className="text-4xl font-extrabold text-accent/25 mb-3">02</p>
+            <h3 className="font-bold text-text mb-1">키워드 분석</h3>
+            <p className="text-sm text-dim">수만 개 키워드의<br />참여자, 검색량, 경쟁도를 확인하세요.</p>
+          </div>
+          <div>
+            <p className="text-4xl font-extrabold text-accent/25 mb-3">03</p>
+            <h3 className="font-bold text-text mb-1">전략 수립</h3>
+            <p className="text-sm text-dim">블루오션 키워드를 선점하고<br />순위 변동을 실시간으로 추적하세요.</p>
+          </div>
         </div>
       </section>
 
-      {/* ═══════════ 구분선 ═══════════ */}
-      <div className="max-w-7xl mx-auto px-4"><div className="border-t border-border" /></div>
+      {/* ═══════════ 구분 ═══════════ */}
+      <div className="h-px bg-border mx-4 max-w-5xl md:mx-auto" />
 
-      {/* ═══════════ PRICING ═══════════ */}
-      <section className="max-w-7xl mx-auto px-4 py-16 md:py-24">
-        <div className="text-center mb-14">
-          <span className="text-xs font-bold text-accent tracking-widest">PRICING</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold mt-3 mb-3">합리적인 가격</h2>
-          <p className="text-sm text-dim max-w-lg mx-auto">무료 계정으로 시작하고, 더 많은 기능이 필요할 때 구독하세요.</p>
+      {/* ═══════════ 가격 ═══════════ */}
+      <section className="px-4 py-20 md:py-24 max-w-3xl mx-auto">
+        <div className="text-center mb-16">
+          <p className="text-xs text-accent font-semibold tracking-widest mb-3">PRICING</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-text">합리적인 가격</h2>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-12 max-w-3xl mx-auto">
-          {/* 무료 */}
-          <div className="text-center md:text-left">
-            <span className="text-xs font-bold px-2.5 py-1 rounded bg-up/12 text-up">무료</span>
-            <h3 className="text-3xl font-extrabold mt-3 mb-1">₩0</h3>
+        <div className="grid md:grid-cols-2 gap-16">
+          <div>
+            <p className="text-xs font-bold text-up tracking-wide mb-3">무료</p>
+            <p className="text-3xl font-extrabold text-text mb-1">₩0</p>
             <p className="text-xs text-dim mb-6">영구 무료</p>
-            <ul className="space-y-3 text-left">
-              {['키워드 목록 전체 열람', '일일 추천 키워드 3개', '참여자 수 · 블루오션 지표 확인', '기본 인플루언서 검색'].map(f => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-dim">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-up flex-shrink-0"><path d="M20 6L9 17l-5-5" /></svg>
-                  {f}
+            <ul className="space-y-3">
+              {['키워드 목록 전체 열람', '일일 추천 키워드 3개', '참여자 수 · 블루오션 지표', '기본 인플루언서 검색'].map(f => (
+                <li key={f} className="flex items-center gap-2 text-sm text-dim">
+                  <span className="text-up">&#10003;</span> {f}
                 </li>
               ))}
             </ul>
-            <Link href="/auth/signup" className="inline-block mt-6 px-6 py-3 border-2 border-border text-text font-bold rounded-xl hover:border-accent/50 transition-all text-sm">
+            <Link href="/auth/signup" className="inline-block mt-8 px-6 py-2.5 rounded-full border border-border text-text text-sm font-medium hover:border-accent/50 transition-colors">
               무료로 시작하기
             </Link>
           </div>
 
-          {/* PRO */}
-          <div className="text-center md:text-left relative">
-            <span className="text-xs font-bold px-2.5 py-1 rounded bg-accent/12 text-accent">PRO · 추천</span>
-            <h3 className="text-3xl font-extrabold mt-3 mb-1">
-              ₩9,900<span className="text-sm font-normal text-dim">/월</span>
-            </h3>
+          <div>
+            <p className="text-xs font-bold text-accent tracking-wide mb-3">PRO</p>
+            <p className="text-3xl font-extrabold text-text mb-1">₩9,900<span className="text-sm font-normal text-dim">/월</span></p>
             <p className="text-xs text-dim mb-6">모든 기능 무제한</p>
-            <ul className="space-y-3 text-left">
+            <ul className="space-y-3">
               {['키워드 상세 분석 무제한', '인플루언서 순위 전체 열람', '검색량 트렌드 차트', '일일 추천 키워드 전체', '내 대시보드 + 경쟁자 비교', '실시간 데이터 업데이트'].map(f => (
-                <li key={f} className="flex items-center gap-2.5 text-sm">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent flex-shrink-0"><path d="M20 6L9 17l-5-5" /></svg>
-                  {f}
+                <li key={f} className="flex items-center gap-2 text-sm text-dim">
+                  <span className="text-accent">&#10003;</span> {f}
                 </li>
               ))}
             </ul>
-            <Link href="/subscribe" className="inline-block mt-6 px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition-all text-sm">
+            <Link href="/subscribe" className="inline-block mt-8 px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors">
               PRO 구독하기 →
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ═══════════ 구분선 ═══════════ */}
-      <div className="max-w-7xl mx-auto px-4"><div className="border-t border-border" /></div>
+      {/* ═══════════ 구분 ═══════════ */}
+      <div className="h-px bg-border mx-4 max-w-5xl md:mx-auto" />
 
-      {/* ═══════════ FOR YOU ═══════════ */}
-      <section className="max-w-7xl mx-auto px-4 py-16 md:py-24">
-        <div className="text-center mb-14">
-          <span className="text-xs font-bold text-accent tracking-widest">FOR YOU</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold mt-3 mb-3">이런 분들에게 추천합니다</h2>
-        </div>
+      {/* ═══════════ 추천 대상 ═══════════ */}
+      <section className="px-4 py-20 md:py-24 text-center">
+        <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
+        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
-        <div className="grid md:grid-cols-3 gap-10 max-w-4xl mx-auto text-center">
-          {[
-            {
-              icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
-              title: '키워드챌린지 시작하는 분',
-              desc: '어떤 키워드에 참여해야 할지 모르겠다면, 블루오션 키워드 추천으로 시작하세요.',
-            },
-            {
-              icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-up"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
-              title: '상위 노출을 원하는 분',
-              desc: '현재 순위를 추적하고, 경쟁자 분석을 통해 전략적으로 순위를 올리세요.',
-            },
-            {
-              icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-gold"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>,
-              title: '데이터 기반 전략이 필요한 분',
-              desc: '감이 아닌 데이터로 키워드를 선택하고, 트렌드 변화를 놓치지 마세요.',
-            },
-          ].map(item => (
-            <div key={item.title}>
-              <div className="w-14 h-14 mx-auto rounded-xl bg-accent/8 flex items-center justify-center mb-4">{item.icon}</div>
-              <h3 className="font-bold text-text mb-2">{item.title}</h3>
-              <p className="text-xs text-dim leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
+        <div className="flex flex-col md:flex-row justify-center gap-12 md:gap-20 max-w-3xl mx-auto">
+          <div>
+            <h3 className="font-bold text-text mb-2">키워드챌린지를 시작하는 분</h3>
+            <p className="text-sm text-dim leading-relaxed">어떤 키워드에 참여해야 할지 모르겠다면,<br />블루오션 키워드 추천으로 시작하세요.</p>
+          </div>
+          <div>
+            <h3 className="font-bold text-text mb-2">상위 노출을 원하는 분</h3>
+            <p className="text-sm text-dim leading-relaxed">현재 순위를 추적하고, 경쟁자 분석을 통해<br />전략적으로 순위를 올리세요.</p>
+          </div>
+          <div>
+            <h3 className="font-bold text-text mb-2">데이터 기반 전략이 필요한 분</h3>
+            <p className="text-sm text-dim leading-relaxed">감이 아닌 데이터로 키워드를 선택하고,<br />트렌드 변화를 놓치지 마세요.</p>
+          </div>
         </div>
       </section>
 
-      {/* ═══════════ 구분선 ═══════════ */}
-      <div className="max-w-7xl mx-auto px-4"><div className="border-t border-border" /></div>
+      {/* ═══════════ 구분 ═══════════ */}
+      <div className="h-px bg-border mx-4 max-w-5xl md:mx-auto" />
 
       {/* ═══════════ FAQ ═══════════ */}
-      <section className="max-w-7xl mx-auto px-4 py-16 md:py-24">
+      <section className="px-4 py-20 md:py-24 max-w-2xl mx-auto">
         <div className="text-center mb-14">
-          <span className="text-xs font-bold text-accent tracking-widest">FAQ</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold mt-3 mb-3">자주 묻는 질문</h2>
+          <p className="text-xs text-accent font-semibold tracking-widest mb-3">FAQ</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-text">자주 묻는 질문</h2>
         </div>
 
-        <div className="max-w-2xl mx-auto divide-y divide-border">
+        <div className="divide-y divide-border">
           {FAQS.map((faq, i) => (
             <div key={i}>
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className="w-full flex items-center justify-between py-5 text-left cursor-pointer hover:text-accent transition-colors"
+                className="w-full flex items-center justify-between py-5 text-left cursor-pointer"
               >
                 <span className="text-sm font-bold text-text">{faq.q}</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                   className={`text-dim flex-shrink-0 ml-4 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>
                   <path d="M6 9l6 6 6-6" />
                 </svg>
@@ -329,23 +273,24 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ═══════════ 구분 ═══════════ */}
+      <div className="h-px bg-border mx-4 max-w-5xl md:mx-auto" />
+
       {/* ═══════════ 하단 CTA ═══════════ */}
-      <section className="bg-gradient-to-r from-accent to-accent2">
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 text-center text-white">
-          <h2 className="text-2xl md:text-3xl font-extrabold mb-3">지금 바로 시작하세요</h2>
-          <p className="text-sm text-white/80 mb-8 max-w-md mx-auto">
-            무료 가입으로 키워드 분석을 시작하세요.<br />
-            더 스마트한 키워드 전략이 기다리고 있습니다.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/auth/signup" className="px-8 py-4 bg-white text-accent font-extrabold rounded-xl hover:bg-white/90 transition-all text-sm shadow-lg">
-              무료 회원가입 →
-            </Link>
-            <Link href="/auth/login" className="px-8 py-4 bg-white/15 backdrop-blur-sm text-white font-bold rounded-xl hover:bg-white/25 transition-all text-sm border border-white/20">
-              이미 계정이 있으신가요?
-            </Link>
-          </div>
-        </div>
+      <section className="px-4 py-20 md:py-24 text-center">
+        <h2 className="text-2xl md:text-3xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
+        <p className="text-sm text-dim mb-8">
+          무료 가입으로 키워드 분석을 시작하세요.<br />
+          더 스마트한 키워드 전략이 기다리고 있습니다.
+        </p>
+        <Link href="/auth/signup"
+          className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm">
+          무료 회원가입 →
+        </Link>
+        <p className="text-xs text-dim mt-5">
+          이미 계정이 있으신가요?{' '}
+          <Link href="/auth/login" className="text-accent font-semibold hover:underline">로그인</Link>
+        </p>
       </section>
     </div>
   );
