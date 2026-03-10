@@ -192,7 +192,66 @@ export default function BloggerDashboard() {
     }
     setLoading(false);
     setCheckProgress({ current: 0, total: 0 });
+    // 전체 확인 후 점수 서버 저장 (위젯용)
+    saveScoreToServer();
   };
+
+  // 점수를 서버에 저장 (위젯 렌더링용)
+  const saveScoreToServer = useCallback(async () => {
+    if (!profile) return;
+    // 최신 results에서 계산
+    const checked = results.filter(r => keywords.includes(r.keyword));
+    const ranked = checked.filter(r => r.rank !== null).length;
+    if (ranked === 0) return;
+
+    const t5 = checked.filter(r => r.rank !== null && r.rank <= 5).length;
+    const t10 = checked.filter(r => r.rank !== null && r.rank <= 10).length;
+    const t20 = checked.filter(r => r.rank !== null && r.rank <= 20).length;
+    const avg = checked.filter(r => r.rank !== null).reduce((s, r) => s + (r.rank || 0), 0) / ranked;
+    const imp = checked.filter(r => r.rank !== null && r.prevRank !== null && r.rank < r.prevRank).length;
+    const dec = checked.filter(r => r.rank !== null && r.prevRank !== null && r.rank > r.prevRank).length;
+
+    // C-Rank
+    const cs = Math.min(100, Math.round(
+      (ranked / Math.max(keywords.length, 1)) * 40 +
+      Math.min(keywords.length * 5, 30) +
+      (ranked >= 5 ? 15 : ranked >= 3 ? 10 : ranked >= 1 ? 5 : 0) +
+      (t20 >= 3 ? 15 : t20 >= 1 ? 8 : 0)
+    ));
+    // DIA
+    const rq = Math.max(0, 50 - (avg - 1) * 1.6);
+    const ds = Math.min(100, Math.round(rq + (t10 / ranked) * 50));
+    // DIA+
+    const sr = (imp + dec) > 0 ? imp / (imp + dec) : 0.5;
+    const dp = Math.min(100, Math.round(
+      (t5 / ranked) * 40 + sr * 30 +
+      (t5 >= 3 ? 20 : t5 >= 1 ? 10 : 0) +
+      (avg <= 5 ? 10 : 0)
+    ));
+    const total = Math.round((cs + ds + dp) / 3);
+    const g = total >= 90 ? 'S' : total >= 75 ? 'A' : total >= 60 ? 'B' : total >= 40 ? 'C' : 'D';
+
+    try {
+      await fetch('/api/blog/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blog_id: profile.blogId,
+          blog_name: profile.displayName,
+          total_score: total,
+          crank_score: cs,
+          dia_score: ds,
+          diaplus_score: dp,
+          grade: g,
+          keyword_count: keywords.length,
+          ranked_count: ranked,
+          avg_rank: Math.round(avg * 100) / 100,
+          top5_count: t5,
+          top10_count: t10,
+        }),
+      });
+    } catch { /* 저장 실패해도 UI에는 영향 없음 */ }
+  }, [profile, results, keywords]);
 
   // 결과 맵 (키워드 순서 유지)
   const resultMap = new Map(results.map(r => [r.keyword, r]));
@@ -691,6 +750,57 @@ export default function BloggerDashboard() {
         </div>
       </div>
 
+      {/* ─── 블로그 위젯 ─── */}
+      {hasData && (
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-sm">블로그 등급 위젯</h3>
+              <p className="text-[11px] text-dim mt-0.5">내 블로그에 등급 뱃지를 달아보세요</p>
+            </div>
+          </div>
+
+          {/* 위젯 미리보기 */}
+          <div className="flex justify-center mb-4 p-4 bg-bg rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/widget/${profile.blogId}`}
+              alt="블로그 등급 위젯"
+              width={280}
+              height={155}
+              className="rounded-lg"
+            />
+          </div>
+
+          {/* 임베드 코드 */}
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] font-semibold text-dim mb-1.5">HTML 코드 (블로그 사이드바에 붙여넣기)</p>
+              <div className="relative">
+                <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
+                  {`<a href="https://naver-influencer.vercel.app/my/blogger" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/${profile.blogId}" alt="N인플 블로그 등급" width="280" /></a>`}
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `<a href="https://naver-influencer.vercel.app/my/blogger" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/${profile.blogId}" alt="N인플 블로그 등급" width="280" /></a>`
+                    );
+                    alert('복사되었습니다!');
+                  }}
+                  className="absolute top-2 right-2 px-2.5 py-1 bg-accent text-white text-[10px] font-bold rounded-md hover:bg-accent-hover transition cursor-pointer">
+                  복사
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-dim leading-relaxed">
+              * 위젯은 순위 확인 시 자동으로 업데이트됩니다.
+              순위 날짜가 위젯에 표시됩니다.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ─── 무료 기능 안내 ─── */}
       <div className="grid sm:grid-cols-2 gap-3">
         <Link href="/search-volume" className="bg-surface rounded-xl border border-border p-5 hover:border-accent/30 transition group">
@@ -704,14 +814,14 @@ export default function BloggerDashboard() {
             </div>
           </div>
         </Link>
-        <Link href="/rankings" className="bg-surface rounded-xl border border-border p-5 hover:border-accent/30 transition group">
+        <Link href="/community" className="bg-surface rounded-xl border border-border p-5 hover:border-accent/30 transition group">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10M6 20V4M18 20v-6"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </div>
             <div>
-              <p className="font-bold text-sm">인플루언서 랭킹</p>
-              <p className="text-[11px] text-dim mt-0.5">카테고리별 인플루언서 순위</p>
+              <p className="font-bold text-sm">커뮤니티</p>
+              <p className="text-[11px] text-dim mt-0.5">블로거들의 소통 공간</p>
             </div>
           </div>
         </Link>
