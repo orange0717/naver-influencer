@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Banner from '@/components/Banner';
-import { PROMO_BANNERS, SUBSCRIBE_BANNERS } from '@/lib/banner-data';
 
 /* ── 실시간 DB 통계 ── */
 function useStats() {
@@ -93,13 +91,6 @@ export default function LandingPage() {
           가입 즉시 키워드 분석을 시작할 수 있습니다.<br />
           별도 결제 없이 무료로 이용 가능합니다.
         </p>
-      </section>
-
-      {/* ═══════════ 자사 홍보 배너 (OrangeRefine) ═══════════ */}
-      <section className="bg-bg px-4 py-6 md:py-8">
-        <div className="max-w-3xl mx-auto">
-          <Banner banner={PROMO_BANNERS[0]} />
-        </div>
       </section>
 
       {/* ═══════════ 오늘의 추천키워드 (surface) ═══════════ */}
@@ -337,13 +328,6 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ═══════════ 이용권 유도 배너 ═══════════ */}
-      <section className="bg-surface px-4 py-6 md:py-8">
-        <div className="max-w-3xl mx-auto">
-          <Banner banner={SUBSCRIBE_BANNERS[0]} />
         </div>
       </section>
 
