@@ -1,0 +1,221 @@
+'use client';
+
+import Link from 'next/link';
+import { useState, useEffect, useCallback } from 'react';
+
+/* ── 카테고리 ── */
+const CATEGORIES = [
+  { value: '', label: '전체' },
+  { value: 'free', label: '자유게시판' },
+  { value: 'tip', label: '블로그 꿀팁' },
+  { value: 'review', label: '체험단/협찬' },
+  { value: 'qna', label: 'Q&A' },
+] as const;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  free: '자유게시판',
+  tip: '블로그 꿀팁',
+  review: '체험단/협찬',
+  qna: 'Q&A',
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  free: 'bg-blue-100 text-blue-700',
+  tip: 'bg-green-100 text-green-700',
+  review: 'bg-purple-100 text-purple-700',
+  qna: 'bg-amber-100 text-amber-700',
+};
+
+interface Post {
+  id: string;
+  category: string;
+  title: string;
+  author_name: string;
+  author_type: 'blogger' | 'influencer' | 'admin';
+  view_count: number;
+  comment_count: number;
+  like_count: number;
+  created_at: string;
+  is_pinned?: boolean;
+}
+
+export default function CommunityPage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const cookies = document.cookie;
+    setIsLoggedIn(!!cookies.match(/(?:^|;\s*)(naver_id|blog_id)=/));
+  }, []);
+
+  const fetchPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (category) params.set('category', category);
+      const res = await fetch(`/api/community?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data.posts || []);
+        setTotalPages(data.totalPages || 1);
+      }
+    } catch {
+      // 에러 시 빈 목록
+    } finally {
+      setLoading(false);
+    }
+  }, [category, page]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMs / 3600000);
+
+    if (diffMin < 1) return '방금 전';
+    if (diffMin < 60) return `${diffMin}분 전`;
+    if (diffHour < 24) return `${diffHour}시간 전`;
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between pt-4">
+        <div>
+          <p className="text-xs text-accent font-semibold tracking-widest mb-2">COMMUNITY</p>
+          <h1 className="font-title text-2xl md:text-3xl font-extrabold text-text">
+            커뮤니티
+          </h1>
+          <p className="text-sm text-dim mt-1">블로거들의 소통 공간</p>
+        </div>
+        {isLoggedIn ? (
+          <Link href="/community/write"
+            className="px-4 py-2.5 bg-accent text-white text-sm font-bold rounded-xl hover:bg-accent-hover transition">
+            글쓰기
+          </Link>
+        ) : (
+          <Link href="/auth/login"
+            className="px-4 py-2.5 bg-surface border border-border text-dim text-sm font-semibold rounded-xl hover:text-text transition">
+            로그인 후 글쓰기
+          </Link>
+        )}
+      </div>
+
+      {/* 카테고리 탭 */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat.value}
+            onClick={() => { setCategory(cat.value); setPage(1); }}
+            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition cursor-pointer ${
+              category === cat.value
+                ? 'bg-accent text-white'
+                : 'bg-surface border border-border text-dim hover:text-text hover:border-accent/30'
+            }`}>
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 게시글 목록 */}
+      <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+        {loading ? (
+          <div className="py-20 text-center text-dim text-sm">
+            <div className="inline-block w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mb-3" />
+            <p>불러오는 중...</p>
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="py-20 text-center text-dim text-sm">
+            <p className="text-3xl mb-3">💬</p>
+            <p className="font-semibold mb-1">아직 게시글이 없습니다</p>
+            <p>첫 번째 글을 작성해보세요!</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {posts.map(post => (
+              <Link
+                key={post.id}
+                href={`/community/${post.id}`}
+                className="flex items-start gap-3 px-4 sm:px-6 py-4 hover:bg-surface-hover transition group"
+              >
+                {/* 카테고리 뱃지 */}
+                <span className={`shrink-0 mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  CATEGORY_COLORS[post.category] || 'bg-gray-100 text-gray-600'
+                }`}>
+                  {CATEGORY_LABELS[post.category] || post.category}
+                </span>
+
+                {/* 내용 */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {post.is_pinned && (
+                      <span className="text-[10px] text-accent font-bold bg-accent/10 px-1.5 py-0.5 rounded">공지</span>
+                    )}
+                    <h3 className="text-sm font-semibold text-text group-hover:text-accent transition truncate">
+                      {post.title}
+                    </h3>
+                    {post.comment_count > 0 && (
+                      <span className="text-xs text-accent font-bold">[{post.comment_count}]</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-dim">
+                    <span className="flex items-center gap-1">
+                      {post.author_type === 'admin' ? '🔧' : post.author_type === 'influencer' ? '⭐' : ''}
+                      {post.author_name}
+                    </span>
+                    <span>{formatDate(post.created_at)}</span>
+                    <span className="flex items-center gap-0.5">
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="opacity-60">
+                        <path d="M8 3C4.5 3 1.7 5.1 0.5 8c1.2 2.9 4 5 7.5 5s6.3-2.1 7.5-5c-1.2-2.9-4-5-7.5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5S6.1 4.5 8 4.5s3.5 1.6 3.5 3.5S9.9 11.5 8 11.5zM8 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                      </svg>
+                      {post.view_count}
+                    </span>
+                    {post.like_count > 0 && (
+                      <span className="flex items-center gap-0.5">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="text-red-400">
+                          <path d="M8 14s-5.5-3.5-5.5-7.5C2.5 4 4 2.5 5.5 2.5c1 0 2 .5 2.5 1.5.5-1 1.5-1.5 2.5-1.5C12 2.5 13.5 4 13.5 6.5 13.5 10.5 8 14 8 14z"/>
+                        </svg>
+                        {post.like_count}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1.5 text-sm rounded-lg border border-border text-dim hover:text-text disabled:opacity-30 cursor-pointer disabled:cursor-default">
+            이전
+          </button>
+          <span className="px-3 py-1.5 text-sm text-dim">
+            {page} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-1.5 text-sm rounded-lg border border-border text-dim hover:text-text disabled:opacity-30 cursor-pointer disabled:cursor-default">
+            다음
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

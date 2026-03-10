@@ -16,12 +16,13 @@ const NAV_INFLUENCER = [
   { href: '/keywords', label: '키워드' },
   { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
+  { href: '/community', label: '커뮤니티' },
 ];
 
 const NAV_BLOGGER = [
   { href: '/my/blogger', label: '대시보드' },
   { href: '/search-volume', label: '검색량' },
-  { href: '/rankings', label: '랭킹' },
+  { href: '/community', label: '커뮤니티' },
 ];
 
 const NAV_GUEST = [
@@ -30,6 +31,7 @@ const NAV_GUEST = [
   { href: '/keywords', label: '키워드' },
   { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
+  { href: '/community', label: '커뮤니티' },
 ];
 
 type UserInfo = {
