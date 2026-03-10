@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import CompetitorSection from '@/components/CompetitorSection';
+import Banner from '@/components/Banner';
+import { SUBSCRIBE_BANNERS } from '@/lib/banner-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -216,6 +218,11 @@ export default async function MyDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ─── 구독 유도 배너 (비구독자만) ─── */}
+      {!isSubscribed && (
+        <Banner banner={SUBSCRIBE_BANNERS[1]} dismissKey="dashboard-subscribe" />
+      )}
 
       {/* ─── 대시보드 콘텐츠 (미구독 시 블라인드) ─── */}
       <div className="relative">

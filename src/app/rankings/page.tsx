@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import Banner from '@/components/Banner';
+import { PROMO_BANNERS } from '@/lib/banner-data';
 
 interface RankedInfluencer {
   rank: number;
@@ -177,6 +179,9 @@ export default function RankingsPage() {
               ))}
             </div>
           )}
+
+          {/* 자사 홍보 배너 */}
+          <Banner banner={PROMO_BANNERS[0]} dismissKey="rankings-promo" />
 
           {/* 전체 랭킹 테이블 (Desktop) */}
           <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">

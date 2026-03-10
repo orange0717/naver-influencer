@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Keyword } from '@/lib/types';
 import { getSubcategory } from '@/data/subcategory-map';
+import Banner from '@/components/Banner';
+import { PARTNER_BANNERS } from '@/lib/banner-data';
 
 interface CategoryGroup {
   category: string;
@@ -124,6 +126,9 @@ export default function KeywordsPage() {
             }`}>{cat}</button>
         ))}
       </div>
+
+      {/* 협력사 배너 */}
+      <Banner banner={PARTNER_BANNERS[0]} dismissKey="keywords-partner" />
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

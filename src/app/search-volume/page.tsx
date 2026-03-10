@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Banner from '@/components/Banner';
+import { PROMO_BANNERS } from '@/lib/banner-data';
 
 interface KeywordVolume {
   keyword: string;
@@ -172,6 +174,9 @@ export default function SearchVolumePage() {
           </div>
         </div>
       )}
+
+      {/* 자사 홍보 배너 */}
+      <Banner banner={PROMO_BANNERS[0]} dismissKey="searchvol-promo" />
 
       {/* 빈 상태 */}
       {searched && !loading && !error && results.length === 0 && (

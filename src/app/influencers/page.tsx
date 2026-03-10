@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import Banner from '@/components/Banner';
+import { PARTNER_BANNERS } from '@/lib/banner-data';
 
 interface InfluencerItem {
   name: string;
@@ -108,6 +110,9 @@ export default function InfluencersPage() {
             }`}>{cat}</button>
         ))}
       </div>
+
+      {/* 협력사 배너 */}
+      <Banner banner={PARTNER_BANNERS[0]} dismissKey="influencers-partner" />
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

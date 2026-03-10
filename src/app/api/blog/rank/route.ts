@@ -54,7 +54,8 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
         '.total_wrap li',                              // 총합검색
       ];
 
-      let items: cheerio.Cheerio<cheerio.Element> | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let items: cheerio.Cheerio<any> | null = null;
       for (const sel of resultSelectors) {
         const found = $(sel);
         if (found.length > 0) {
