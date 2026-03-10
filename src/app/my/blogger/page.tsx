@@ -19,19 +19,37 @@ interface KeywordRank {
 interface BloggerProfile {
   blogId: string;
   displayName: string;
+  isInfluencer: boolean;
 }
 
 function getProfileFromCookies(): BloggerProfile | null {
   const cookies = document.cookie;
+
+  // 블로거 쿠키 확인
   const blogMatch = cookies.match(/(?:^|;\s*)blog_id=([^;]*)/);
   const nameMatch = cookies.match(/(?:^|;\s*)blog_name=([^;]*)/);
 
-  if (!blogMatch) return null;
+  if (blogMatch) {
+    return {
+      blogId: decodeURIComponent(blogMatch[1]),
+      displayName: nameMatch ? decodeURIComponent(nameMatch[1]) : decodeURIComponent(blogMatch[1]),
+      isInfluencer: false,
+    };
+  }
 
-  return {
-    blogId: decodeURIComponent(blogMatch[1]),
-    displayName: nameMatch ? decodeURIComponent(nameMatch[1]) : decodeURIComponent(blogMatch[1]),
-  };
+  // 인플루언서 쿠키로도 접근 가능 (인플루언서도 블로그가 있으니까)
+  const naverMatch = cookies.match(/(?:^|;\s*)naver_id=([^;]*)/);
+  const naverNameMatch = cookies.match(/(?:^|;\s*)naver_name=([^;]*)/);
+
+  if (naverMatch) {
+    return {
+      blogId: decodeURIComponent(naverMatch[1]),
+      displayName: naverNameMatch ? decodeURIComponent(naverNameMatch[1]) : decodeURIComponent(naverMatch[1]),
+      isInfluencer: true,
+    };
+  }
+
+  return null;
 }
 
 function timeAgo(dateStr: string): string {
@@ -82,11 +100,11 @@ export default function BloggerDashboard() {
     }
     setProfile(p);
 
-    // 관리자 체크
-    if (ADMIN_BLOG_IDS.includes(p.blogId)) {
+    // 인플루언서는 구독 없이 이용 가능 (이미 인플루언서 구독 중)
+    if (p.isInfluencer || ADMIN_BLOG_IDS.includes(p.blogId)) {
       setIsSubscribed(true);
     } else {
-      // 구독 상태 확인
+      // 블로거 구독 상태 확인
       fetch(`/api/blog/subscription?blogId=${encodeURIComponent(p.blogId)}`)
         .then(res => res.json())
         .then(data => setIsSubscribed(data.subscribed === true))
@@ -208,13 +226,17 @@ export default function BloggerDashboard() {
       {/* ─── 프로필 헤더 ─── */}
       <div className="bg-surface rounded-2xl border border-border p-5">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-[#2DB400]/15 rounded-full flex items-center justify-center text-[#2DB400] text-2xl font-bold">
+          <div className={`w-16 h-16 ${profile.isInfluencer ? 'bg-accent/15' : 'bg-[#2DB400]/15'} rounded-full flex items-center justify-center ${profile.isInfluencer ? 'text-accent' : 'text-[#2DB400]'} text-2xl font-bold`}>
             {profile.displayName[0]}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-extrabold">{profile.displayName}</h1>
-              <span className="text-[10px] text-[#2DB400] bg-[#2DB400]/10 px-2 py-0.5 rounded-full font-semibold">블로거</span>
+              {profile.isInfluencer ? (
+                <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-semibold">인플루언서</span>
+              ) : (
+                <span className="text-[10px] text-[#2DB400] bg-[#2DB400]/10 px-2 py-0.5 rounded-full font-semibold">블로거</span>
+              )}
               {isSubscribed && (
                 <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-semibold">구독중</span>
               )}
@@ -597,13 +619,23 @@ export default function BloggerDashboard() {
       </div>
 
       {/* ─── 인플루언서 전환 안내 ─── */}
-      <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 text-center">
-        <p className="text-sm font-semibold mb-1">네이버 인플루언서이신가요?</p>
-        <p className="text-xs text-dim mb-3">인플루언서 전용 대시보드에서 키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
-        <Link href="/auth/login" className="text-sm text-accent font-bold hover:underline">
-          인플루언서로 로그인 →
-        </Link>
-      </div>
+      {profile.isInfluencer ? (
+        <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 text-center">
+          <p className="text-sm font-semibold mb-1">인플루언서 대시보드로 돌아가기</p>
+          <p className="text-xs text-dim mb-3">키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
+          <Link href="/my" className="text-sm text-accent font-bold hover:underline">
+            인플루언서 대시보드 →
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 text-center">
+          <p className="text-sm font-semibold mb-1">네이버 인플루언서이신가요?</p>
+          <p className="text-xs text-dim mb-3">인플루언서 전용 대시보드에서 키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
+          <Link href="/auth/login" className="text-sm text-accent font-bold hover:underline">
+            인플루언서로 로그인 →
+          </Link>
+        </div>
+      )}
 
       </div>{/* /blur wrapper */}
       </div>{/* /relative wrapper */}

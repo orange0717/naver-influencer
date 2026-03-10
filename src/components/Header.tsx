@@ -10,6 +10,7 @@ const NINFL_SUB = [
 
 const NAV_INFLUENCER = [
   { href: '/my', label: '대시보드' },
+  { href: '/my/blogger', label: '블로그 순위' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드' },
   { href: '/search-volume', label: '검색량' },
