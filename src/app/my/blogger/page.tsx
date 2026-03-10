@@ -209,6 +209,51 @@ export default function BloggerDashboard() {
   const improvedCount = checkedResults.filter(r => r.rank !== null && r.prevRank !== null && r.rank < r.prevRank).length;
   const declinedCount = checkedResults.filter(r => r.rank !== null && r.prevRank !== null && r.rank > r.prevRank).length;
 
+  /* ─── C-Rank · DIA · DIA+ 스코어링 ─── */
+  const top20Count = checkedResults.filter(r => r.rank !== null && r.rank <= 20).length;
+  const hasData = checkedResults.length > 0 && rankedCount > 0;
+
+  // C-Rank: 전문성 + 키워드 커버리지 + 꾸준한 노출
+  const crankScore = hasData ? Math.min(100, Math.round(
+    (rankedCount / Math.max(keywords.length, 1)) * 40 +       // 노출 비율 (40점)
+    Math.min(keywords.length * 5, 30) +                         // 키워드 등록 수 (30점)
+    (rankedCount >= 5 ? 15 : rankedCount >= 3 ? 10 : rankedCount >= 1 ? 5 : 0) + // 일관성 보너스 (15점)
+    (top20Count >= 3 ? 15 : top20Count >= 1 ? 8 : 0)           // TOP 20 보너스 (15점)
+  )) : 0;
+
+  // DIA: 콘텐츠 품질 = 평균 순위 + TOP 10 비율
+  const rankQuality = avgRank > 0 ? Math.max(0, 50 - (avgRank - 1) * 1.6) : 0; // 1위→50, 30위→3
+  const top10Ratio = rankedCount > 0 ? (top10Count / rankedCount) : 0;
+  const diaScore = hasData ? Math.min(100, Math.round(
+    rankQuality +                                               // 순위 품질 (50점)
+    top10Ratio * 50                                             // TOP 10 비율 (50점)
+  )) : 0;
+
+  // DIA+: 핵심 키워드 지배력 + 순위 안정성
+  const top5Ratio = rankedCount > 0 ? (top5Count / rankedCount) : 0;
+  const stabilityRatio = (improvedCount + declinedCount) > 0
+    ? improvedCount / (improvedCount + declinedCount)
+    : 0.5;
+  const diaplusScore = hasData ? Math.min(100, Math.round(
+    top5Ratio * 40 +                                            // TOP 5 비율 (40점)
+    stabilityRatio * 30 +                                       // 순위 안정성 (30점)
+    (top5Count >= 3 ? 20 : top5Count >= 1 ? 10 : 0) +          // TOP 5 보너스 (20점)
+    (avgRank > 0 && avgRank <= 5 ? 10 : 0)                     // 평균 5위 이내 보너스 (10점)
+  )) : 0;
+
+  // 종합 점수
+  const totalScore = hasData ? Math.round((crankScore + diaScore + diaplusScore) / 3) : 0;
+
+  // 등급
+  function getGrade(score: number) {
+    if (score >= 90) return { grade: 'S', label: '최상위', color: 'text-accent', bg: 'bg-accent/10' };
+    if (score >= 75) return { grade: 'A', label: '상위', color: 'text-up', bg: 'bg-up/10' };
+    if (score >= 60) return { grade: 'B', label: '중상위', color: 'text-[#2DB400]', bg: 'bg-[#2DB400]/10' };
+    if (score >= 40) return { grade: 'C', label: '중위', color: 'text-amber-600', bg: 'bg-amber-50' };
+    return { grade: 'D', label: '성장 중', color: 'text-dim', bg: 'bg-bg' };
+  }
+  const gradeInfo = getGrade(totalScore);
+
   if (!profile) return null;
 
   return (
@@ -302,6 +347,70 @@ export default function BloggerDashboard() {
           <p className="text-[11px] text-dim mb-1.5">등록 키워드</p>
           <p className="text-2xl font-black font-rank">{keywords.length}<span className="text-sm text-dim font-normal">/20</span></p>
         </div>
+      </div>
+
+      {/* ─── N인플 블로그 등급 (C-Rank · DIA · DIA+) ─── */}
+      <div className="bg-surface rounded-2xl border border-border p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-bold text-sm">N인플 블로그 등급</h3>
+            <p className="text-[11px] text-dim mt-0.5">C-Rank · DIA · DIA+ 종합 평가</p>
+          </div>
+          {hasData && (
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-black">{totalScore}</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gradeInfo.bg} ${gradeInfo.color}`}>
+                {gradeInfo.grade}등급
+              </span>
+            </div>
+          )}
+        </div>
+
+        {!hasData ? (
+          <div className="text-center py-6 text-dim text-sm">
+            <p>키워드를 등록하고 순위를 확인하면</p>
+            <p>C-Rank · DIA · DIA+ 등급이 계산됩니다.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            {/* C-Rank */}
+            <div className="bg-bg rounded-xl p-3.5 text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-2">
+                <span className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold">C</span>
+                <span className="text-xs font-bold text-text">C-Rank</span>
+              </div>
+              <p className="text-xl font-black text-accent mb-1">{crankScore}</p>
+              <div className="w-full bg-border/30 rounded-full h-1.5 mb-2">
+                <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${crankScore}%` }} />
+              </div>
+              <p className="text-[10px] text-dim">전문성 · 일관성</p>
+            </div>
+            {/* DIA */}
+            <div className="bg-bg rounded-xl p-3.5 text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-2">
+                <span className="w-6 h-6 rounded-full bg-up/10 flex items-center justify-center text-up text-[10px] font-bold">D</span>
+                <span className="text-xs font-bold text-text">DIA</span>
+              </div>
+              <p className="text-xl font-black text-up mb-1">{diaScore}</p>
+              <div className="w-full bg-border/30 rounded-full h-1.5 mb-2">
+                <div className="h-full rounded-full bg-up transition-all duration-500" style={{ width: `${diaScore}%` }} />
+              </div>
+              <p className="text-[10px] text-dim">콘텐츠 품질</p>
+            </div>
+            {/* DIA+ */}
+            <div className="bg-bg rounded-xl p-3.5 text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-2">
+                <span className="w-6 h-6 rounded-full bg-[#7B1FA2]/10 flex items-center justify-center text-[#7B1FA2] text-[10px] font-bold">D+</span>
+                <span className="text-xs font-bold text-text">DIA+</span>
+              </div>
+              <p className="text-xl font-black text-[#7B1FA2] mb-1">{diaplusScore}</p>
+              <div className="w-full bg-border/30 rounded-full h-1.5 mb-2">
+                <div className="h-full rounded-full bg-[#7B1FA2] transition-all duration-500" style={{ width: `${diaplusScore}%` }} />
+              </div>
+              <p className="text-[10px] text-dim">검색 의도 부합</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── 키워드 등록 ─── */}
@@ -611,7 +720,7 @@ export default function BloggerDashboard() {
       {/* ─── 인플루언서 전환 안내 ─── */}
       {profile.isInfluencer ? (
         <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 text-center">
-          <p className="text-sm font-semibold mb-1">인플루언서 대시보드로 돌아가기</p>
+          <p className="text-sm font-semibold mb-1">인플루언서(구. 파워블로거) 대시보드로 돌아가기</p>
           <p className="text-xs text-dim mb-3">키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
           <Link href="/my" className="text-sm text-accent font-bold hover:underline">
             인플루언서 대시보드 →
@@ -619,7 +728,7 @@ export default function BloggerDashboard() {
         </div>
       ) : (
         <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 text-center">
-          <p className="text-sm font-semibold mb-1">네이버 인플루언서이신가요?</p>
+          <p className="text-sm font-semibold mb-1">네이버 인플루언서(구. 파워블로거)이신가요?</p>
           <p className="text-xs text-dim mb-3">인플루언서 전용 대시보드에서 키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
           <Link href="/auth/login" className="text-sm text-accent font-bold hover:underline">
             인플루언서로 로그인 →

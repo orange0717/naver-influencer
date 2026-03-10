@@ -78,7 +78,7 @@ export default function InfluencersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold">인플루언서 목록</h1>
+          <h1 className="text-xl font-extrabold">인플루언서(구. 파워블로거) 목록</h1>
           <p className="text-xs text-dim mt-0.5">키워드 챌린지 참여 인플루언서</p>
         </div>
         <div className="text-right">

@@ -12,7 +12,7 @@ const NINFL_SUB = [
 const NAV_INFLUENCER = [
   { href: '/my', label: '대시보드' },
   { href: '/my/blogger', label: '블로그 순위' },
-  { href: '/influencers', label: '인플루언서 리스트' },
+  { href: '/influencers', label: '인플루언서(구. 파워블로거)' },
   { href: '/keywords', label: '키워드' },
   { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
@@ -27,7 +27,7 @@ const NAV_BLOGGER = [
 
 const NAV_GUEST = [
   { href: '/auth/login', label: '대시보드' },
-  { href: '/influencers', label: '인플루언서 리스트' },
+  { href: '/influencers', label: '인플루언서(구. 파워블로거)' },
   { href: '/keywords', label: '키워드' },
   { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
@@ -196,7 +196,7 @@ export default function Header() {
             {/* 유저 타입 표시 */}
             {user.type && (
               <div className="px-4 py-2 text-xs font-bold text-dim">
-                {user.type === 'blogger' ? '블로거 메뉴' : '인플루언서 메뉴'}
+                {user.type === 'blogger' ? '블로거 메뉴' : '인플루언서(구. 파워블로거) 메뉴'}
               </div>
             )}
             {/* 모바일: 일반 네비 */}
