@@ -21,6 +21,12 @@ const NAV_BLOGGER = [
   { href: '/rankings', label: '랭킹' },
 ];
 
+const NAV_GUEST = [
+  { href: '/influencers', label: '인플루언서 리스트' },
+  { href: '/keywords', label: '키워드' },
+  { href: '/rankings', label: '랭킹' },
+];
+
 type UserInfo = {
   type: 'influencer' | 'blogger' | null;
   id: string | null;
@@ -75,7 +81,7 @@ export default function Header() {
     router.refresh();
   };
 
-  const NAV = user.type === 'blogger' ? NAV_BLOGGER : NAV_INFLUENCER;
+  const NAV = user.type === 'blogger' ? NAV_BLOGGER : user.type === 'influencer' ? NAV_INFLUENCER : NAV_GUEST;
   const ninflActive = pathname === '/subscribe' || pathname === '/notice';
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
