@@ -12,6 +12,7 @@ const NAV_INFLUENCER = [
   { href: '/my', label: '대시보드' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드' },
+  { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
 ];
 
@@ -25,6 +26,7 @@ const NAV_GUEST = [
   { href: '/auth/login', label: '대시보드' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드' },
+  { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
 ];
 
