@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk';
 
-/* ── 스마트스토어 상품 URL (추후 실제 URL로 교체) ── */
-const SMARTSTORE_URL = 'https://smartstore.naver.com/orangelibrary';
+/* ── 토스페이먼츠 설정 ── */
+const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY || 'test_ck_D5GePWvyJnrK0W0k6q8gmeYBlrqG';
+const PRICE = 9900;
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | null;
@@ -41,13 +43,13 @@ export default function LicensePage() {
   const [activeLicense, setActiveLicense] = useState<ActiveLicense | null>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const u = getUserFromCookies();
     setUser(u);
 
-    // 활성 이용권 확인
     if (u.id) {
       fetch(`/api/license?userId=${encodeURIComponent(u.id)}`)
         .then(res => res.json())
@@ -63,6 +65,46 @@ export default function LicensePage() {
     }
   }, []);
 
+  /* ── 토스페이먼츠 결제 ── */
+  const handlePayment = useCallback(async () => {
+    if (!user.id) {
+      window.location.href = '/auth/login';
+      return;
+    }
+
+    setPaying(true);
+    setMessage(null);
+
+    try {
+      const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+      const payment = tossPayments.payment({ customerKey: user.id });
+
+      const orderId = `NINFL_${user.id}_${Date.now()}`;
+      const origin = window.location.origin;
+
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: PRICE },
+        orderId,
+        orderName: 'N인플 PRO 이용권 (30일)',
+        customerName: user.name || user.id,
+        successUrl: `${origin}/payment/success`,
+        failUrl: `${origin}/payment/fail`,
+      });
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      // 사용자가 결제 창을 닫은 경우
+      if (error.code === 'USER_CANCEL') {
+        setMessage({ type: 'error', text: '결제가 취소되었습니다.' });
+      } else {
+        setMessage({ type: 'error', text: error.message || '결제 요청 중 오류가 발생했습니다.' });
+      }
+    } finally {
+      setPaying(false);
+    }
+  }, [user]);
+
+  /* ── 이용권 코드 등록 ── */
   const handleActivate = async () => {
     if (!licenseCode.trim()) {
       setMessage({ type: 'error', text: '이용권 코드를 입력해주세요.' });
@@ -110,9 +152,8 @@ export default function LicensePage() {
     }
   };
 
-  // 코드 입력 포맷팅 (NINFL-XXXX-XXXX-XXXX)
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     setLicenseCode(val);
   };
 
@@ -143,14 +184,64 @@ export default function LicensePage() {
       {!activeLicense && (
         <div className="bg-gradient-to-r from-accent to-accent2 rounded-2xl p-8 text-white text-center">
           <div className="text-sm font-semibold opacity-80 mb-2">N인플 이용권</div>
-          <div className="text-4xl font-extrabold mb-1 font-rank">
-            PRO
+          <div className="text-5xl font-extrabold mb-1 font-rank">
+            {PRICE.toLocaleString()}<span className="text-xl font-bold">원</span>
           </div>
-          <div className="text-sm opacity-80 mt-3">스마트스토어에서 이용권을 구매하고 코드를 등록하세요</div>
+          <div className="text-sm opacity-80 mt-3">30일 동안 모든 프리미엄 기능을 이용하세요</div>
         </div>
       )}
 
-      {/* ── 이용권 등록 폼 ── */}
+      {/* ── 결제 버튼 (미보유 시) ── */}
+      {!activeLicense && (
+        <section className="space-y-4">
+          {!user.id ? (
+            <div className="bg-surface rounded-2xl border border-border p-6 text-center space-y-3">
+              <p className="text-sm text-dim">이용권을 구매하려면 먼저 로그인하세요</p>
+              <Link href="/auth/login" className="inline-block px-8 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm">
+                로그인하기
+              </Link>
+            </div>
+          ) : (
+            <button
+              onClick={handlePayment}
+              disabled={paying}
+              className="w-full py-4 bg-[#0064FF] text-white text-lg font-extrabold rounded-xl hover:bg-[#0050CC] transition-colors shadow-lg shadow-[#0064FF]/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              {paying ? (
+                <>
+                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                  결제 준비 중...
+                </>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2" />
+                    <path d="M1 10h22" />
+                  </svg>
+                  {PRICE.toLocaleString()}원 결제하기
+                </>
+              )}
+            </button>
+          )}
+
+          {/* 메시지 */}
+          {message && (
+            <div className={`text-sm px-4 py-3 rounded-xl ${
+              message.type === 'success'
+                ? 'bg-up/10 text-up border border-up/20'
+                : 'bg-down/10 text-down border border-down/20'
+            }`}>
+              {message.text}
+            </div>
+          )}
+
+          <p className="text-center text-xs text-dim">
+            토스페이먼츠를 통해 안전하게 결제됩니다 · 카드, 간편결제 지원
+          </p>
+        </section>
+      )}
+
+      {/* ── 이용권 코드 등록 (별도 보유 시) ── */}
       <section className="bg-surface rounded-2xl border border-border p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-accent/12 flex items-center justify-center">
@@ -160,99 +251,30 @@ export default function LicensePage() {
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-extrabold">이용권 코드 등록</h2>
-            <p className="text-xs text-dim">스마트스토어에서 구매한 이용권 코드를 입력하세요</p>
+            <h2 className="text-base font-extrabold">이용권 코드가 있나요?</h2>
+            <p className="text-xs text-dim">이벤트나 선물 받은 이용권 코드를 입력하세요</p>
           </div>
         </div>
-
-        {!user.id && (
-          <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-center">
-            <p className="text-sm text-dim mb-2">이용권을 등록하려면 먼저 로그인하세요</p>
-            <Link href="/auth/login" className="text-sm font-bold text-accent hover:underline">
-              로그인하기 →
-            </Link>
-          </div>
-        )}
 
         {user.id && (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={licenseCode}
-                onChange={handleCodeChange}
-                placeholder="NINFL-XXXX-XXXX-XXXX"
-                maxLength={19}
-                className="flex-1 px-4 py-3 bg-bg border border-border rounded-xl text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent placeholder:text-dim/50"
-              />
-              <button
-                onClick={handleActivate}
-                disabled={activating || !licenseCode.trim()}
-                className="px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm whitespace-nowrap"
-              >
-                {activating ? '등록 중...' : '등록'}
-              </button>
-            </div>
-
-            {/* 메시지 */}
-            {message && (
-              <div className={`text-sm px-4 py-3 rounded-xl ${
-                message.type === 'success'
-                  ? 'bg-up/10 text-up border border-up/20'
-                  : 'bg-down/10 text-down border border-down/20'
-              }`}>
-                {message.text}
-              </div>
-            )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={licenseCode}
+              onChange={handleCodeChange}
+              placeholder="NINFL-XXXX-XXXX-XXXX"
+              maxLength={19}
+              className="flex-1 px-4 py-3 bg-bg border border-border rounded-xl text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent placeholder:text-dim/50"
+            />
+            <button
+              onClick={handleActivate}
+              disabled={activating || !licenseCode.trim()}
+              className="px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm whitespace-nowrap"
+            >
+              {activating ? '등록 중...' : '등록'}
+            </button>
           </div>
         )}
-      </section>
-
-      {/* ── 구매 방법 ── */}
-      <section className="bg-surface rounded-2xl border border-border p-6 space-y-5">
-        <h2 className="text-lg font-extrabold">이용권 구매 방법</h2>
-
-        <div className="space-y-4">
-          {/* Step 1 */}
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center text-accent font-black text-sm shrink-0">1</div>
-            <div>
-              <p className="font-bold text-sm">네이버 스마트스토어에서 이용권 구매</p>
-              <p className="text-xs text-dim mt-1">아래 버튼을 클릭하여 스마트스토어에서 원하는 이용권을 구매하세요.</p>
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center text-accent font-black text-sm shrink-0">2</div>
-            <div>
-              <p className="font-bold text-sm">이용권 코드 확인</p>
-              <p className="text-xs text-dim mt-1">구매 완료 후 이용권 코드가 발송됩니다. (네이버 톡톡 또는 주문 상세)</p>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center text-accent font-black text-sm shrink-0">3</div>
-            <div>
-              <p className="font-bold text-sm">위에서 코드 등록</p>
-              <p className="text-xs text-dim mt-1">이 페이지 상단의 이용권 코드 입력란에 코드를 입력하면 바로 활성화됩니다.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 스마트스토어 바로가기 */}
-        <a
-          href={SMARTSTORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-4 bg-[#03C75A] text-white text-sm font-extrabold rounded-xl hover:bg-[#02b351] transition-colors shadow-lg shadow-[#03C75A]/20"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16.273 12.845 7.376 0H0v24h7.726V11.156L16.624 24H24V0h-7.727z"/>
-          </svg>
-          네이버 스마트스토어에서 구매하기
-        </a>
       </section>
 
       {/* ── 이용권 상세 ── */}
@@ -314,10 +336,10 @@ export default function LicensePage() {
         <h2 className="text-lg font-extrabold mb-4">자주 묻는 질문</h2>
         <div className="space-y-3">
           {[
-            { q: '이용권은 어디서 구매하나요?', a: '네이버 스마트스토어(오렌지도서관)에서 구매하실 수 있습니다. 추후 사이트 내 직접 결제도 지원 예정입니다.' },
-            { q: '이용권 코드는 어떻게 받나요?', a: '스마트스토어에서 구매 완료 후 네이버 톡톡 또는 주문 상세에서 이용권 코드를 확인할 수 있습니다.' },
-            { q: '이용권 유효기간은 얼마인가요?', a: '이용권 종류에 따라 다릅니다. 코드 등록 시점부터 유효기간이 시작됩니다.' },
-            { q: '환불은 가능한가요?', a: '미사용 이용권은 스마트스토어 정책에 따라 환불 가능합니다. 이미 등록한 이용권은 환불이 불가합니다.' },
+            { q: '결제는 어떻게 하나요?', a: '토스페이먼츠를 통해 카드, 간편결제 등으로 안전하게 결제됩니다. 결제 완료 즉시 이용권이 활성화됩니다.' },
+            { q: '이용권 유효기간은 얼마인가요?', a: '결제 시점부터 30일간 유효합니다. 기간 만료 전 재결제하면 남은 기간에 30일이 추가됩니다.' },
+            { q: '환불은 가능한가요?', a: '결제 후 7일 이내 미이용 시 전액 환불 가능합니다. 고객센터로 문의해주세요.' },
+            { q: '이용권 코드는 무엇인가요?', a: '이벤트, 선물 등으로 받은 이용권 코드가 있다면 코드 입력란에 등록하여 이용권을 활성화할 수 있습니다.' },
             { q: '데이터는 얼마나 자주 업데이트되나요?', a: '매일 새벽에 네이버 키워드챌린지 데이터를 자동 수집합니다.' },
           ].map((faq, i) => (
             <div key={i} className="bg-surface rounded-xl border border-border p-4">
