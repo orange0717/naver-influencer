@@ -14,7 +14,6 @@ interface RankedInfluencer {
   top10Count: number;
   integratedCount: number;
   totalKeywords: number;
-  score: number;
 }
 
 function formatCount(n: number): string {
@@ -23,13 +22,13 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
-type SortType = 'score' | 'rank1' | 'top3' | 'keywords';
+type SortType = 'rank1' | 'top3' | 'keywords' | 'fans';
 
 export default function RankingsPage() {
   const [rankings, setRankings] = useState<RankedInfluencer[]>([]);
   const [categories, setCategories] = useState<string[]>(['전체']);
   const [category, setCategory] = useState('전체');
-  const [sort, setSort] = useState<SortType>('score');
+  const [sort, setSort] = useState<SortType>('rank1');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -66,10 +65,10 @@ export default function RankingsPage() {
   }, [fetchData]);
 
   const sortOptions: { key: SortType; label: string }[] = [
-    { key: 'score', label: '종합점수' },
     { key: 'rank1', label: '1위 키워드' },
     { key: 'top3', label: 'TOP 3' },
     { key: 'keywords', label: '참여 키워드' },
+    { key: 'fans', label: '팬 수' },
   ];
 
   const getRankBadge = (rank: number) => {
@@ -86,7 +85,7 @@ export default function RankingsPage() {
         <div>
           <h1 className="text-xl font-extrabold">인플루언서 랭킹</h1>
           <p className="text-xs text-dim mt-0.5">
-            키워드 챌린지 종합 순위
+            키워드 챌린지 데이터 기반
             {snapshotDate && ` (${snapshotDate} 기준)`}
           </p>
         </div>
@@ -159,7 +158,7 @@ export default function RankingsPage() {
                       {inf.displayName}
                     </a>
                   </div>
-                  <p className="text-xs text-dim mt-0.5">{inf.category}</p>
+                  <p className="text-xs text-dim mt-0.5">{inf.category} · 팬 {formatCount(inf.subscriberCount)}</p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                     <div>
                       <div className="text-lg font-black text-yellow-500 font-rank">{inf.rank1Count}</div>
@@ -170,8 +169,8 @@ export default function RankingsPage() {
                       <div className="text-[10px] text-dim">TOP3</div>
                     </div>
                     <div>
-                      <div className="text-lg font-black text-text font-rank">{inf.score}</div>
-                      <div className="text-[10px] text-dim">점수</div>
+                      <div className="text-lg font-black text-text font-rank">{inf.totalKeywords}</div>
+                      <div className="text-[10px] text-dim">키워드</div>
                     </div>
                   </div>
                 </div>
@@ -191,7 +190,7 @@ export default function RankingsPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs">TOP3</th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs">통합</th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs">키워드</th>
-                  <th className="text-right py-3 px-4 font-semibold text-dim text-xs">종합점수</th>
+                  <th className="text-right py-3 px-4 font-semibold text-dim text-xs">팬</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,7 +239,7 @@ export default function RankingsPage() {
                     </td>
                     <td className="py-3 px-3 text-center text-xs font-rank text-dim">{inf.totalKeywords}</td>
                     <td className="py-3 px-4 text-right">
-                      <span className="text-sm font-black text-accent font-rank">{inf.score}</span>
+                      <span className="text-xs font-semibold text-dim">{formatCount(inf.subscriberCount)}</span>
                     </td>
                   </tr>
                 ))}
@@ -273,11 +272,7 @@ export default function RankingsPage() {
                         {inf.displayName}
                       </a>
                     </div>
-                    <span className="text-xs text-dim">{inf.category}</span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-black text-accent font-rank">{inf.score}</div>
-                    <div className="text-[10px] text-dim">점수</div>
+                    <span className="text-xs text-dim">{inf.category} · 팬 {formatCount(inf.subscriberCount)}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center">
