@@ -136,7 +136,7 @@ export default function LandingPage() {
                   {i >= 3 && (
                     <div className="absolute inset-0 flex items-center justify-center rounded-xl">
                       <span className="text-xs font-bold text-accent bg-surface/90 px-3 py-1.5 rounded-full border border-accent/20">
-                        🔒 구독하고 전체 보기
+                        🔒 이용권 등록하고 전체 보기
                       </span>
                     </div>
                   )}
@@ -146,7 +146,7 @@ export default function LandingPage() {
 
             <div className="text-center mt-6">
               <Link href="/subscribe" className="text-sm text-accent font-semibold hover:underline">
-                PRO 구독으로 매일 20개 추천 받기 →
+                이용권 등록하고 매일 20개 추천 받기 →
               </Link>
             </div>
           </div>
@@ -299,7 +299,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PRICING</p>
             <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">합리적인 가격</h2>
-            <p className="text-sm text-dim">무료 계정으로 시작하고, 더 많은 기능이 필요할 때 구독하세요.</p>
+            <p className="text-sm text-dim">무료 계정으로 시작하고, 더 많은 기능이 필요할 때 이용권을 등록하세요.</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-16">
@@ -308,7 +308,7 @@ export default function LandingPage() {
               <p className="text-3xl font-extrabold text-text mb-1">₩0</p>
               <p className="text-xs text-dim mb-6">영구 무료</p>
               <ul className="space-y-3">
-                {['키워드 목록 전체 열람', '일일 추천 키워드 3개', '참여자 수 · 블루오션 지표', '기본 인플루언서 검색'].map(f => (
+                {['키워드 목록 전체 열람', '커뮤니티 · 검색량 조회', '참여자 수 · 블루오션 지표', '블로그 등급 위젯'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
                     <span className="text-up">&#10003;</span> {f}
                   </li>
@@ -331,7 +331,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link href="/subscribe" className="inline-block mt-8 px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors">
-                PRO 구독하기 →
+                이용권 등록하기 →
               </Link>
             </div>
           </div>

@@ -1,12 +1,13 @@
 import Link from 'next/link';
 
 const FOOTER_LINKS = [
+  { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드' },
-  { href: '/influencers', label: '인플루언서(구. 파워블로거)' },
   { href: '/rankings', label: '랭킹' },
+  { href: '/search-volume', label: '검색량' },
   { href: '/community', label: '커뮤니티' },
   { href: '/tools', label: '추천 도구' },
-  { href: '/subscribe', label: '구독' },
+  { href: '/subscribe', label: '이용권' },
   { href: '/my', label: '대시보드' },
   { href: '/terms', label: '이용약관' },
   { href: '/privacy', label: '개인정보처리방침' },

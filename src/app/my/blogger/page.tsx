@@ -357,16 +357,16 @@ export default function BloggerDashboard() {
             <div className="w-14 h-14 mx-auto rounded-full bg-[#2DB400]/10 flex items-center justify-center">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-[#2DB400]"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </div>
-            <h2 className="text-lg font-extrabold text-text">구독하고 대시보드 이용하기</h2>
+            <h2 className="text-lg font-extrabold text-text">이용권을 등록하고 대시보드 이용하기</h2>
             <p className="text-sm text-dim leading-relaxed">
               블로그탭 키워드 순위 추적, 순위 변동 분석 등<br />
               대시보드의 모든 기능을 이용하세요.
             </p>
             <div className="flex flex-col items-center gap-2 pt-2">
               <Link href="/subscribe" className="px-8 py-3 bg-[#2DB400] text-white font-bold rounded-xl hover:bg-[#25a000] transition text-sm">
-                월 9,900원으로 구독하기
+                이용권 등록하기
               </Link>
-              <p className="text-[11px] text-dim">검색량 조회와 랭킹은 무료입니다</p>
+              <p className="text-[11px] text-dim">검색량 조회와 커뮤니티는 무료입니다</p>
             </div>
           </div>
         </div>

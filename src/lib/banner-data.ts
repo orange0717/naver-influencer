@@ -52,29 +52,29 @@ export const PROMO_BANNERS: BannerItem[] = [
   },
 ];
 
-/* ── 구독 유도 배너 ── */
+/* ── 이용권 유도 배너 ── */
 export const SUBSCRIBE_BANNERS: BannerItem[] = [
   {
     id: 'subscribe-main',
     type: 'subscribe',
-    title: '실시간 순위 추적으로 성장하세요',
-    description: '키워드 순위 모니터링, 경쟁자 분석, 상세 리포트까지. 데이터로 인플루언서 전략을 세우세요.',
-    cta: 'PRO 구독 시작 · 월 9,900원 →',
+    title: '이용권 등록하고 모든 기능을 이용하세요',
+    description: '키워드 분석, 경쟁자 비교, 상세 리포트까지. 스마트스토어에서 이용권을 구매하세요.',
+    cta: '이용권 등록하기 →',
     href: '/subscribe',
     gradient: 'from-[#FFF7F5] to-[#FFE8E0]',
     icon: '🚀',
-    badge: 'PRO',
+    badge: '이용권',
   },
   {
     id: 'subscribe-dashboard',
     type: 'subscribe',
     title: '대시보드의 모든 데이터를 확인하세요',
-    description: 'TOP 키워드, 순위 변동, 경쟁자 비교까지. PRO 구독으로 블러 없이 전체 데이터를 이용하세요.',
-    cta: '구독하고 전체 보기 →',
+    description: 'TOP 키워드, 순위 변동, 경쟁자 비교까지. 이용권 등록으로 전체 데이터를 이용하세요.',
+    cta: '이용권 등록하기 →',
     href: '/subscribe',
     gradient: 'from-[#FFF7F5] to-[#FFE8E0]',
     icon: '📊',
-    badge: 'PRO',
+    badge: '이용권',
   },
 ];
 

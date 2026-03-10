@@ -3,34 +3,23 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 
+/* ── N인플 서브메뉴 ── */
 const NINFL_SUB = [
   { href: '/notice', label: '공지사항' },
   { href: '/tools', label: '추천 도구' },
-  { href: '/subscribe', label: '구독' },
+  { href: '/subscribe', label: '이용권' },
 ];
 
-const NAV_INFLUENCER = [
-  { href: '/my', label: '대시보드' },
-  { href: '/my/blogger', label: '블로그 순위' },
-  { href: '/influencers', label: '인플루언서(구. 파워블로거)' },
+/* ── 인플루언서 그룹 (드롭다운으로 묶음) ── */
+const INFLUENCER_GROUP = [
+  { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드' },
-  { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
-  { href: '/community', label: '커뮤니티' },
 ];
 
-const NAV_BLOGGER = [
-  { href: '/my/blogger', label: '대시보드' },
+/* ── 공통 메뉴 (모든 유저 공통) ── */
+const NAV_COMMON = [
   { href: '/search-volume', label: '검색량' },
-  { href: '/community', label: '커뮤니티' },
-];
-
-const NAV_GUEST = [
-  { href: '/auth/login', label: '대시보드' },
-  { href: '/influencers', label: '인플루언서(구. 파워블로거)' },
-  { href: '/keywords', label: '키워드' },
-  { href: '/search-volume', label: '검색량' },
-  { href: '/rankings', label: '랭킹' },
   { href: '/community', label: '커뮤니티' },
 ];
 
@@ -61,8 +50,10 @@ export default function Header() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ninflOpen, setNinflOpen] = useState(false);
+  const [inflOpen, setInflOpen] = useState(false);
   const [user, setUser] = useState<UserInfo>({ type: null, id: null, name: null });
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const ninflRef = useRef<HTMLDivElement>(null);
+  const inflRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setUser(getUserFromCookies());
@@ -70,8 +61,11 @@ export default function Header() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (ninflRef.current && !ninflRef.current.contains(e.target as Node)) {
         setNinflOpen(false);
+      }
+      if (inflRef.current && !inflRef.current.contains(e.target as Node)) {
+        setInflOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -88,16 +82,26 @@ export default function Header() {
     router.refresh();
   };
 
-  const NAV = user.type === 'blogger' ? NAV_BLOGGER : user.type === 'influencer' ? NAV_INFLUENCER : NAV_GUEST;
-  const ninflActive = pathname === '/subscribe' || pathname === '/notice';
+  // 인플루언서 그룹 보여줄지 (블로거 아닌 유저만)
+  const showInfluencerGroup = user.type !== 'blogger';
+  // 대시보드 링크
+  const dashboardLink = user.type === 'blogger'
+    ? { href: '/my/blogger', label: '대시보드' }
+    : user.type === 'influencer'
+      ? { href: '/my', label: '대시보드' }
+      : null;
+
+  // N인플 서브메뉴 활성 상태
+  const ninflActive = pathname === '/subscribe' || pathname === '/notice' || pathname === '/tools';
+  // 인플루언서 그룹 활성 상태
+  const inflGroupActive = INFLUENCER_GROUP.some(n => pathname.startsWith(n.href));
+
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
     : (user.id || 'N').charAt(0).toUpperCase();
   const tooltipText = user.type === 'blogger'
     ? `블로거 @${user.id} · 로그아웃`
     : `@${user.id} · 로그아웃`;
-
-  // 유저 타입 배지 색상
   const badgeColor = user.type === 'blogger' ? 'bg-[#2DB400]/30' : 'bg-white/20';
 
   return (
@@ -110,10 +114,11 @@ export default function Header() {
               <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
-              {/* N인플 드롭다운 */}
-              <div className="relative" ref={dropdownRef}>
+
+              {/* ── N인플 드롭다운 ── */}
+              <div className="relative" ref={ninflRef}>
                 <button
-                  onClick={() => setNinflOpen(!ninflOpen)}
+                  onClick={() => { setNinflOpen(!ninflOpen); setInflOpen(false); }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
                     ninflActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}>
@@ -138,9 +143,49 @@ export default function Header() {
                 )}
               </div>
 
-              {/* 일반 네비 */}
-              {NAV.map(n => {
-                const active = n.href === '/' ? pathname === '/' : pathname.startsWith(n.href);
+              {/* ── 대시보드 (로그인 유저만) ── */}
+              {dashboardLink && (
+                <Link href={dashboardLink.href}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    pathname.startsWith(dashboardLink.href) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}>
+                  {dashboardLink.label}
+                </Link>
+              )}
+
+              {/* ── 인플루언서 그룹 드롭다운 (블로거 제외) ── */}
+              {showInfluencerGroup && (
+                <div className="relative" ref={inflRef}>
+                  <button
+                    onClick={() => { setInflOpen(!inflOpen); setNinflOpen(false); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+                      inflGroupActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                    }`}>
+                    인플루언서
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
+                      className={`transition-transform ${inflOpen ? 'rotate-180' : ''}`}>
+                      <path d="M3 5l3 3 3-3" />
+                    </svg>
+                  </button>
+                  {inflOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-surface rounded-lg shadow-lg border border-border py-1 min-w-[160px] z-50">
+                      {INFLUENCER_GROUP.map(s => (
+                        <Link key={s.href} href={s.href}
+                          onClick={() => setInflOpen(false)}
+                          className={`block px-4 py-2 text-sm transition-colors ${
+                            pathname.startsWith(s.href) ? 'text-accent font-semibold bg-accent/5' : 'text-text hover:bg-surface-hover hover:text-accent'
+                          }`}>
+                          {s.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── 공통 메뉴 (검색량, 커뮤니티) ── */}
+              {NAV_COMMON.map(n => {
+                const active = pathname.startsWith(n.href);
                 return (
                   <Link key={n.href} href={n.href}
                     className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
@@ -179,10 +224,12 @@ export default function Header() {
           </div>
         </div>
       </header>
+
+      {/* ── 모바일 메뉴 ── */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border">
           <nav className="flex flex-col p-4 gap-1">
-            {/* 모바일: N인플 서브메뉴 */}
+            {/* N인플 서브메뉴 */}
             <div className="px-4 py-2 text-xs font-bold text-dim">N인플</div>
             {NINFL_SUB.map(s => (
               <Link key={s.href} href={s.href} onClick={() => setMobileOpen(false)}
@@ -192,16 +239,47 @@ export default function Header() {
                 {s.label}
               </Link>
             ))}
-            <div className="border-t border-border my-2" />
-            {/* 유저 타입 표시 */}
-            {user.type && (
-              <div className="px-4 py-2 text-xs font-bold text-dim">
-                {user.type === 'blogger' ? '블로거 메뉴' : '인플루언서(구. 파워블로거) 메뉴'}
-              </div>
+
+            {/* 대시보드 (로그인 유저) */}
+            {dashboardLink && (
+              <>
+                <div className="border-t border-border my-2" />
+                <div className="px-4 py-2 text-xs font-bold text-dim">
+                  {user.type === 'blogger' ? '블로거 메뉴' : '인플루언서 메뉴'}
+                </div>
+                <Link href={dashboardLink.href} onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold ${
+                    pathname.startsWith(dashboardLink.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text'
+                  }`}>
+                  {dashboardLink.label}
+                </Link>
+              </>
             )}
-            {/* 모바일: 일반 네비 */}
-            {NAV.map(n => {
-              const active = n.href === '/' ? pathname === '/' : pathname.startsWith(n.href);
+
+            {/* 인플루언서 그룹 (블로거 제외) */}
+            {showInfluencerGroup && (
+              <>
+                <div className="border-t border-border my-2" />
+                <div className="px-4 py-2 text-xs font-bold text-dim">인플루언서(구. 파워블로거)</div>
+                {INFLUENCER_GROUP.map(n => {
+                  const active = pathname.startsWith(n.href);
+                  return (
+                    <Link key={n.href} href={n.href} onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-3 px-6 py-2.5 rounded-lg text-sm font-semibold ${
+                        active ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text'
+                      }`}>
+                      {n.label}
+                    </Link>
+                  );
+                })}
+              </>
+            )}
+
+            {/* 공통 메뉴 */}
+            <div className="border-t border-border my-2" />
+            <div className="px-4 py-2 text-xs font-bold text-dim">공통</div>
+            {NAV_COMMON.map(n => {
+              const active = pathname.startsWith(n.href);
               return (
                 <Link key={n.href} href={n.href} onClick={() => setMobileOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold ${
@@ -211,6 +289,9 @@ export default function Header() {
                 </Link>
               );
             })}
+
+            {/* 로그인/로그아웃 */}
+            <div className="border-t border-border my-2" />
             {user.id ? (
               <button onClick={() => { handleLogout(); setMobileOpen(false); }}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-down hover:text-down/80 cursor-pointer">
