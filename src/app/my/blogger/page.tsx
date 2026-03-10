@@ -100,11 +100,11 @@ export default function BloggerDashboard() {
     }
     setProfile(p);
 
-    // 인플루언서는 구독 없이 이용 가능 (이미 인플루언서 구독 중)
-    if (p.isInfluencer || ADMIN_BLOG_IDS.includes(p.blogId)) {
+    // 관리자 체크
+    if (ADMIN_BLOG_IDS.includes(p.blogId)) {
       setIsSubscribed(true);
     } else {
-      // 블로거 구독 상태 확인
+      // 구독 상태 확인 (인플루언서도 블로그 순위는 구독 필요)
       fetch(`/api/blog/subscription?blogId=${encodeURIComponent(p.blogId)}`)
         .then(res => res.json())
         .then(data => setIsSubscribed(data.subscribed === true))
