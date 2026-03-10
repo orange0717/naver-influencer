@@ -67,14 +67,9 @@ export default async function MyDashboard() {
     .eq('linked_influencer_id', influencerId)
     .single();
 
-  // 관리자 계정
-  const ADMIN_IDS = ['orangelibrary'];
-  const isAdmin = ADMIN_IDS.includes(naverId);
-
-  const isSubscribed = isAdmin || (userProfile
-    && userProfile.subscription_status === 'active'
-    && !!userProfile.subscription_expires_at
-    && new Date(userProfile.subscription_expires_at) > new Date());
+  // TODO: 3개월 무료 기간 종료 후 구독 모델 연동 (2026년 6월 예정)
+  // 현재 테스트 기간 — 모두 무료
+  const isSubscribed = true;
 
   if (!influencer) {
     return (

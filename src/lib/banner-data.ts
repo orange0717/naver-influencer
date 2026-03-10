@@ -81,16 +81,16 @@ export const SUBSCRIBE_BANNERS: BannerItem[] = [
 /* ── 협력사 배너 (블로그 관련 도구) ── */
 export const PARTNER_BANNERS: BannerItem[] = [
   {
-    id: 'partner-placeholder',
+    id: 'partner-tools',
     type: 'partner',
-    title: '블로그 도구 협력사를 모집합니다',
-    description: '네이버 인플루언서 2만 명+에게 도달하는 프리미엄 배너 영역. 블로그 관련 도구를 소개해 보세요.',
-    cta: '제휴 문의 →',
-    href: 'mailto:orange@orangelibrary.co.kr',
-    external: true,
-    gradient: 'from-[#F8F9FA] to-[#F0F1F3]',
+    title: '블로거를 위한 추천 도구 모음',
+    description: '블로그 운영에 도움이 되는 도구들을 직접 사용해보고 소개합니다. AI 교정, SEO 분석 등.',
+    cta: '추천 도구 보기 →',
+    href: '/tools',
+    external: false,
+    gradient: 'from-[#F0F9F4] to-[#E8F5E9]',
     icon: '🔧',
-    badge: '협력사 모집',
+    badge: '추천 도구',
   },
 ];
 

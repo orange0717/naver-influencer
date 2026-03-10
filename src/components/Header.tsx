@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 
 const NINFL_SUB = [
   { href: '/notice', label: '공지사항' },
+  { href: '/tools', label: '추천 도구' },
   { href: '/subscribe', label: '구독' },
 ];
 

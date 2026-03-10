@@ -89,7 +89,8 @@ export default function BloggerDashboard() {
   const [results, setResults] = useState<KeywordRank[]>([]);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState('');
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  // TODO: 3개월 무료 기간 종료 후 구독 모델 연동 (2026년 6월 예정)
+  const [isSubscribed] = useState(true); // 현재 테스트 기간 — 모두 무료
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
@@ -99,17 +100,6 @@ export default function BloggerDashboard() {
       return;
     }
     setProfile(p);
-
-    // 관리자 체크
-    if (ADMIN_BLOG_IDS.includes(p.blogId)) {
-      setIsSubscribed(true);
-    } else {
-      // 구독 상태 확인 (인플루언서도 블로그 순위는 구독 필요)
-      fetch(`/api/blog/subscription?blogId=${encodeURIComponent(p.blogId)}`)
-        .then(res => res.json())
-        .then(data => setIsSubscribed(data.subscribed === true))
-        .catch(() => setIsSubscribed(false));
-    }
 
     // 저장된 키워드 불러오기
     const saved = localStorage.getItem(`blogger_keywords_${p.blogId}`);
