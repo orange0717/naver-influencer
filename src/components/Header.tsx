@@ -12,7 +12,7 @@ const NINFL_SUB = [
 
 /* ── 인플루언서 그룹 (드롭다운으로 묶음) ── */
 const INFLUENCER_GROUP = [
-  { href: '/influencers', label: '인플루언서 리스트' },
+  { href: '/influencers', label: '리스트' },
   { href: '/keywords', label: '키워드' },
   { href: '/rankings', label: '랭킹' },
 ];

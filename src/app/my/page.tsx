@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import CompetitorSection from '@/components/CompetitorSection';
-import Banner from '@/components/Banner';
-import { SUBSCRIBE_BANNERS } from '@/lib/banner-data';
+import CopyButton from '@/components/CopyButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -214,10 +213,7 @@ export default async function MyDashboard() {
         </div>
       </div>
 
-      {/* ─── 구독 유도 배너 (비구독자만) ─── */}
-      {!isSubscribed && (
-        <Banner banner={SUBSCRIBE_BANNERS[1]} dismissKey="dashboard-subscribe" />
-      )}
+
 
       {/* ─── 대시보드 콘텐츠 (미구독 시 블라인드) ─── */}
       <div className="relative">
@@ -344,6 +340,45 @@ export default async function MyDashboard() {
             <p className="text-xs mt-1">데이터 수집이 매일 자동으로 진행됩니다.</p>
           </div>
         )}
+      </div>
+
+      {/* ─── 순위 위젯 ─── */}
+      <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-bold text-sm">키워드 순위 위젯</h3>
+            <p className="text-[11px] text-dim mt-0.5">내 블로그에 키워드 순위 뱃지를 달아보세요</p>
+          </div>
+          <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">NEW</span>
+        </div>
+
+        {/* 위젯 미리보기 */}
+        <div className="flex justify-center mb-4 p-4 bg-bg rounded-xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/widget/rank/${naverId}`}
+            alt="키워드 순위 위젯"
+            width={250}
+            height={180}
+            className="rounded-lg"
+          />
+        </div>
+
+        {/* 임베드 코드 */}
+        <div className="space-y-3">
+          <div>
+            <p className="text-[11px] font-semibold text-dim mb-1.5">HTML 코드 (블로그 사이드바에 붙여넣기)</p>
+            <div className="relative">
+              <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
+                {`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="250" /></a>`}
+              </code>
+              <CopyButton text={`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="250" /></a>`} />
+            </div>
+          </div>
+          <p className="text-[10px] text-dim leading-relaxed">
+            * 위젯은 매일 자동으로 업데이트됩니다. 날짜가 위젯에 표시됩니다.
+          </p>
+        </div>
       </div>
 
       {/* ─── 경쟁자 분석 ─── */}

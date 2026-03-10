@@ -801,6 +801,56 @@ export default function BloggerDashboard() {
         </div>
       )}
 
+      {/* ─── 블로거 순위 위젯 ─── */}
+      {hasData && (
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-sm">블로거 순위 위젯</h3>
+              <p className="text-[11px] text-dim mt-0.5">등급 + 키워드 순위를 한눈에 보여주는 위젯</p>
+            </div>
+            <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">NEW</span>
+          </div>
+
+          {/* 위젯 미리보기 */}
+          <div className="flex justify-center mb-4 p-4 bg-bg rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/widget/rank/blogger/${profile.blogId}`}
+              alt="블로거 순위 위젯"
+              width={250}
+              height={200}
+              className="rounded-lg"
+            />
+          </div>
+
+          {/* 임베드 코드 */}
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] font-semibold text-dim mb-1.5">HTML 코드 (블로그 사이드바에 붙여넣기)</p>
+              <div className="relative">
+                <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
+                  {`<a href="https://naver-influencer.vercel.app/my/blogger" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/blogger/${profile.blogId}" alt="N인플 블로거 순위" width="250" /></a>`}
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `<a href="https://naver-influencer.vercel.app/my/blogger" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/blogger/${profile.blogId}" alt="N인플 블로거 순위" width="250" /></a>`
+                    );
+                    alert('복사되었습니다!');
+                  }}
+                  className="absolute top-2 right-2 px-2.5 py-1 bg-accent text-white text-[10px] font-bold rounded-md hover:bg-accent-hover transition cursor-pointer">
+                  복사
+                </button>
+              </div>
+            </div>
+            <p className="text-[10px] text-dim leading-relaxed">
+              * 등급 + 키워드 순위가 함께 표시됩니다. 날짜가 자동 갱신됩니다.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ─── 무료 기능 안내 ─── */}
       <div className="grid sm:grid-cols-2 gap-3">
         <Link href="/search-volume" className="bg-surface rounded-xl border border-border p-5 hover:border-accent/30 transition group">

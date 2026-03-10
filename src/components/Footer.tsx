@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 const FOOTER_LINKS = [
-  { href: '/influencers', label: '인플루언서 리스트' },
+  { href: '/influencers', label: '리스트' },
   { href: '/keywords', label: '키워드' },
   { href: '/rankings', label: '랭킹' },
   { href: '/search-volume', label: '검색량' },
