@@ -143,6 +143,9 @@ export default function Header() {
                 )}
               </div>
 
+              {/* ── 구분선 ── */}
+              <div className="w-px h-5 bg-white/20 mx-1" />
+
               {/* ── 대시보드 (로그인 유저만) ── */}
               {dashboardLink && (
                 <Link href={dashboardLink.href}
@@ -182,6 +185,9 @@ export default function Header() {
                   )}
                 </div>
               )}
+
+              {/* ── 구분선 ── */}
+              {showInfluencerGroup && <div className="w-px h-5 bg-white/20 mx-1" />}
 
               {/* ── 공통 메뉴 (검색량, 커뮤니티) ── */}
               {NAV_COMMON.map(n => {
@@ -227,14 +233,14 @@ export default function Header() {
 
       {/* ── 모바일 메뉴 ── */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border">
-          <nav className="flex flex-col p-4 gap-1">
+        <div className="md:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border overflow-y-auto">
+          <nav className="flex flex-col p-4 gap-0.5">
             {/* N인플 서브메뉴 */}
-            <div className="px-4 py-2 text-xs font-bold text-dim">N인플</div>
+            <div className="px-3 py-2.5 text-[11px] font-extrabold text-accent tracking-widest uppercase">N인플</div>
             {NINFL_SUB.map(s => (
               <Link key={s.href} href={s.href} onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-6 py-2.5 rounded-lg text-sm font-semibold ${
-                  pathname === s.href ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text'
+                className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                  pathname === s.href ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                 }`}>
                 {s.label}
               </Link>
@@ -243,13 +249,13 @@ export default function Header() {
             {/* 대시보드 (로그인 유저) */}
             {dashboardLink && (
               <>
-                <div className="border-t border-border my-2" />
-                <div className="px-4 py-2 text-xs font-bold text-dim">
-                  {user.type === 'blogger' ? '블로거 메뉴' : '인플루언서 메뉴'}
+                <div className="border-t-2 border-border my-3 mx-2" />
+                <div className="px-3 py-2.5 text-[11px] font-extrabold text-accent tracking-widest uppercase">
+                  {user.type === 'blogger' ? '블로거' : '내 대시보드'}
                 </div>
                 <Link href={dashboardLink.href} onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold ${
-                    pathname.startsWith(dashboardLink.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text'
+                  className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                    pathname.startsWith(dashboardLink.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                   }`}>
                   {dashboardLink.label}
                 </Link>
@@ -259,14 +265,14 @@ export default function Header() {
             {/* 인플루언서 그룹 (블로거 제외) */}
             {showInfluencerGroup && (
               <>
-                <div className="border-t border-border my-2" />
-                <div className="px-4 py-2 text-xs font-bold text-dim">인플루언서(구. 파워블로거)</div>
+                <div className="border-t-2 border-border my-3 mx-2" />
+                <div className="px-3 py-2.5 text-[11px] font-extrabold text-accent tracking-widest uppercase">인플루언서</div>
                 {INFLUENCER_GROUP.map(n => {
                   const active = pathname.startsWith(n.href);
                   return (
                     <Link key={n.href} href={n.href} onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-3 px-6 py-2.5 rounded-lg text-sm font-semibold ${
-                        active ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text'
+                      className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                        active ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                       }`}>
                       {n.label}
                     </Link>
@@ -276,14 +282,14 @@ export default function Header() {
             )}
 
             {/* 공통 메뉴 */}
-            <div className="border-t border-border my-2" />
-            <div className="px-4 py-2 text-xs font-bold text-dim">공통</div>
+            <div className="border-t-2 border-border my-3 mx-2" />
+            <div className="px-3 py-2.5 text-[11px] font-extrabold text-accent tracking-widest uppercase">공통</div>
             {NAV_COMMON.map(n => {
               const active = pathname.startsWith(n.href);
               return (
                 <Link key={n.href} href={n.href} onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold ${
-                    active ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text'
+                  className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                    active ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                   }`}>
                   {n.label}
                 </Link>
@@ -291,15 +297,15 @@ export default function Header() {
             })}
 
             {/* 로그인/로그아웃 */}
-            <div className="border-t border-border my-2" />
+            <div className="border-t-2 border-border my-3 mx-2" />
             {user.id ? (
               <button onClick={() => { handleLogout(); setMobileOpen(false); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-down hover:text-down/80 cursor-pointer">
+                className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-down hover:text-down/80 hover:bg-down/5 transition-colors cursor-pointer">
                 로그아웃
               </button>
             ) : (
               <Link href="/auth/login" onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-accent">
+                className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors">
                 로그인
               </Link>
             )}

@@ -42,10 +42,10 @@ function useRecommendations() {
 
 /* ── FAQ ── */
 const FAQS = [
-  { q: '무료로 사용할 수 있나요?', a: '네, 무료 회원도 키워드 목록 열람, 일일 추천 키워드 3개, 참여자 수 확인이 가능합니다. PRO 구독 시 모든 기능을 무제한으로 이용하실 수 있습니다.' },
+  { q: '무료로 사용할 수 있나요?', a: '네! 키워드 목록 열람, 커뮤니티, 검색량 조회, 블로그 등급 위젯은 무료입니다. 이용권 등록 시 모든 프리미엄 기능을 이용하실 수 있습니다.' },
   { q: '어떤 데이터를 분석할 수 있나요?', a: '네이버 인플루언서 키워드챌린지의 참여자 수, 순위 변동, 검색량 트렌드, 경쟁도 등을 분석합니다. 20개 카테고리, 수만 개의 키워드를 커버합니다.' },
   { q: '데이터는 얼마나 자주 업데이트되나요?', a: '키워드 순위와 참여자 데이터는 매일 자동으로 업데이트됩니다. 검색량 트렌드는 주간 단위로 갱신됩니다.' },
-  { q: '구독을 해지하면 어떻게 되나요?', a: '구독 기간이 끝나면 무료 계정으로 전환되며, 기본 기능은 계속 이용 가능합니다. 데이터는 삭제되지 않습니다.' },
+  { q: '이용권 기간이 끝나면 어떻게 되나요?', a: '이용권 기간이 끝나면 무료 기능만 이용 가능합니다. 데이터는 삭제되지 않으며, 다시 이용권을 등록하면 바로 이용 가능합니다.' },
 ];
 
 export default function LandingPage() {
@@ -96,8 +96,10 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ 자사 홍보 배너 (OrangeRefine) ═══════════ */}
-      <section className="px-4 py-4 max-w-3xl mx-auto">
-        <Banner banner={PROMO_BANNERS[0]} />
+      <section className="bg-bg px-4 py-6 md:py-8">
+        <div className="max-w-3xl mx-auto">
+          <Banner banner={PROMO_BANNERS[0]} />
+        </div>
       </section>
 
       {/* ═══════════ 오늘의 추천키워드 (surface) ═══════════ */}
@@ -153,8 +155,8 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* ═══════════ 데이터 현황 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24 text-center">
+      {/* ═══════════ 데이터 현황 (bg) ═══════════ */}
+      <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">DATA</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
         <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되는 네이버 인플루언서 데이터</p>
@@ -195,8 +197,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 핵심 기능 (bg) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24">
+      {/* ═══════════ 핵심 기능 (surface) ═══════════ */}
+      <section className="bg-surface px-4 py-20 md:py-24">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">FEATURES</p>
@@ -248,8 +250,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 사용 방법 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24 text-center">
+      {/* ═══════════ 사용 방법 (bg) ═══════════ */}
+      <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">HOW IT WORKS</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">3단계로 시작하세요</h2>
 
@@ -272,8 +274,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 추천 대상 (bg) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24 text-center">
+      {/* ═══════════ 추천 대상 (surface) ═══════════ */}
+      <section className="bg-surface px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
@@ -293,8 +295,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 가격 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24">
+      {/* ═══════════ 가격 (bg) ═══════════ */}
+      <section className="bg-bg px-4 py-20 md:py-24">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PRICING</p>
@@ -338,9 +340,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 구독 유도 배너 ═══════════ */}
-      <section className="px-4 py-4 max-w-3xl mx-auto">
-        <Banner banner={SUBSCRIBE_BANNERS[0]} />
+      {/* ═══════════ 이용권 유도 배너 ═══════════ */}
+      <section className="bg-surface px-4 py-6 md:py-8">
+        <div className="max-w-3xl mx-auto">
+          <Banner banner={SUBSCRIBE_BANNERS[0]} />
+        </div>
       </section>
 
       {/* ═══════════ FAQ (bg) ═══════════ */}

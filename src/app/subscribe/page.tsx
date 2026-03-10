@@ -166,11 +166,11 @@ export default function LicensePage() {
   }
 
   return (
-    <div className="space-y-8 max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto">
 
-      {/* ── 활성 이용권 상태 ── */}
+      {/* ═══════════ 이용권 상태 / 히어로 ═══════════ */}
       {activeLicense && (
-        <div className="bg-gradient-to-r from-up to-up/70 rounded-2xl p-8 text-white text-center">
+        <div className="bg-gradient-to-r from-up to-up/70 rounded-2xl p-8 text-white text-center mb-6">
           <div className="text-sm font-semibold opacity-80 mb-2">현재 이용권 상태</div>
           <div className="text-4xl font-extrabold mb-2">{activeLicense.plan_name} 이용 중</div>
           <div className="text-sm opacity-80">
@@ -180,9 +180,8 @@ export default function LicensePage() {
         </div>
       )}
 
-      {/* ── 이용권 히어로 (미보유 시) ── */}
       {!activeLicense && (
-        <div className="bg-gradient-to-r from-accent to-accent2 rounded-2xl p-8 text-white text-center">
+        <div className="bg-gradient-to-r from-accent to-accent2 rounded-2xl p-8 text-white text-center mb-6">
           <div className="text-sm font-semibold opacity-80 mb-2">N인플 이용권</div>
           <div className="text-5xl font-extrabold mb-1 font-rank">
             {PRICE.toLocaleString()}<span className="text-xl font-bold">원</span>
@@ -191,9 +190,14 @@ export default function LicensePage() {
         </div>
       )}
 
-      {/* ── 결제 버튼 (미보유 시) ── */}
+      {/* ═══════════ 결제하기 ═══════════ */}
       {!activeLicense && (
-        <section className="space-y-4">
+        <section className="space-y-4 mb-10">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-5 bg-accent rounded-full" />
+            <h2 className="text-lg font-extrabold">결제하기</h2>
+          </div>
+
           {!user.id ? (
             <div className="bg-surface rounded-2xl border border-border p-6 text-center space-y-3">
               <p className="text-sm text-dim">이용권을 구매하려면 먼저 로그인하세요</p>
@@ -241,45 +245,51 @@ export default function LicensePage() {
         </section>
       )}
 
-      {/* ── 이용권 코드 등록 (별도 보유 시) ── */}
-      <section className="bg-surface rounded-2xl border border-border p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-accent/12 flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
-              <rect x="2" y="4" width="20" height="16" rx="2" />
-              <path d="M7 15h0M2 9.5h20" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-base font-extrabold">이용권 코드가 있나요?</h2>
-            <p className="text-xs text-dim">이벤트나 선물 받은 이용권 코드를 입력하세요</p>
-          </div>
-        </div>
+      {/* ═══════════ 구분선 ═══════════ */}
+      <div className="border-t-2 border-border my-8" />
 
-        {user.id && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={licenseCode}
-              onChange={handleCodeChange}
-              placeholder="NINFL-XXXX-XXXX-XXXX"
-              maxLength={19}
-              className="flex-1 px-4 py-3 bg-bg border border-border rounded-xl text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent placeholder:text-dim/50"
-            />
-            <button
-              onClick={handleActivate}
-              disabled={activating || !licenseCode.trim()}
-              className="px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm whitespace-nowrap"
-            >
-              {activating ? '등록 중...' : '등록'}
-            </button>
-          </div>
-        )}
+      {/* ═══════════ 이용권 코드 등록 ═══════════ */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 bg-accent rounded-full" />
+          <h2 className="text-lg font-extrabold">이용권 코드 등록</h2>
+        </div>
+        <div className="bg-surface rounded-2xl border border-border p-6 space-y-4">
+          <p className="text-sm text-dim">이벤트나 선물 받은 이용권 코드가 있다면 아래에 입력하세요</p>
+
+          {user.id ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={licenseCode}
+                onChange={handleCodeChange}
+                placeholder="NINFL-XXXX-XXXX-XXXX"
+                maxLength={19}
+                className="flex-1 px-4 py-3 bg-bg border border-border rounded-xl text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent placeholder:text-dim/50"
+              />
+              <button
+                onClick={handleActivate}
+                disabled={activating || !licenseCode.trim()}
+                className="px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm whitespace-nowrap"
+              >
+                {activating ? '등록 중...' : '등록'}
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-dim">코드를 등록하려면 먼저 <Link href="/auth/login" className="text-accent font-semibold hover:underline">로그인</Link>하세요</p>
+          )}
+        </div>
       </section>
 
-      {/* ── 이용권 상세 ── */}
-      <section>
-        <h2 className="text-lg font-extrabold mb-4">이용권으로 이런 기능을 이용하세요</h2>
+      {/* ═══════════ 구분선 ═══════════ */}
+      <div className="border-t-2 border-border my-8" />
+
+      {/* ═══════════ 이용권 기능 ═══════════ */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 bg-up rounded-full" />
+          <h2 className="text-lg font-extrabold">이용권으로 이런 기능을 이용하세요</h2>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             '키워드 상세 분석 무제한',
@@ -299,9 +309,15 @@ export default function LicensePage() {
         </div>
       </section>
 
-      {/* ── 무료 vs 이용권 비교 ── */}
-      <section>
-        <h2 className="text-lg font-extrabold mb-4">무료 vs 이용권 비교</h2>
+      {/* ═══════════ 구분선 ═══════════ */}
+      <div className="border-t-2 border-border my-8" />
+
+      {/* ═══════════ 무료 vs 이용권 비교 ═══════════ */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 bg-blue rounded-full" />
+          <h2 className="text-lg font-extrabold">무료 vs 이용권 비교</h2>
+        </div>
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -331,9 +347,15 @@ export default function LicensePage() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
+      {/* ═══════════ 구분선 ═══════════ */}
+      <div className="border-t-2 border-border my-8" />
+
+      {/* ═══════════ FAQ ═══════════ */}
       <section className="pb-8">
-        <h2 className="text-lg font-extrabold mb-4">자주 묻는 질문</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 bg-gold rounded-full" />
+          <h2 className="text-lg font-extrabold">자주 묻는 질문</h2>
+        </div>
         <div className="space-y-3">
           {[
             { q: '결제는 어떻게 하나요?', a: '토스페이먼츠를 통해 카드, 간편결제 등으로 안전하게 결제됩니다. 결제 완료 즉시 이용권이 활성화됩니다.' },
