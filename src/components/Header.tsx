@@ -22,6 +22,7 @@ const NAV_BLOGGER = [
 ];
 
 const NAV_GUEST = [
+  { href: '/auth/login', label: '대시보드' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드' },
   { href: '/rankings', label: '랭킹' },
