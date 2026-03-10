@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
+const ADMIN_BLOG_IDS = ['orangelibrary'];
+
 interface KeywordRank {
   keyword: string;
   rank: number | null;
@@ -37,6 +39,7 @@ export default function BloggerDashboard() {
   const [results, setResults] = useState<KeywordRank[]>([]);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState('');
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     const p = getProfileFromCookies();
@@ -45,6 +48,17 @@ export default function BloggerDashboard() {
       return;
     }
     setProfile(p);
+
+    // 관리자 체크
+    if (ADMIN_BLOG_IDS.includes(p.blogId)) {
+      setIsSubscribed(true);
+    } else {
+      // 구독 상태 확인
+      fetch(`/api/blog/subscription?blogId=${encodeURIComponent(p.blogId)}`)
+        .then(res => res.json())
+        .then(data => setIsSubscribed(data.subscribed === true))
+        .catch(() => setIsSubscribed(false));
+    }
 
     // 저장된 키워드 불러오기
     const saved = localStorage.getItem(`blogger_keywords_${p.blogId}`);
@@ -162,6 +176,33 @@ export default function BloggerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ─── 대시보드 콘텐츠 (미구독 시 블라인드) ─── */}
+      <div className="relative">
+
+      {/* 미구독 시 블라인드 오버레이 */}
+      {!isSubscribed && (
+        <div className="absolute inset-0 z-10 flex items-start justify-center pt-32">
+          <div className="bg-surface/95 backdrop-blur-sm rounded-2xl border border-[#2DB400]/20 p-8 text-center space-y-4 shadow-xl max-w-sm mx-4">
+            <div className="w-14 h-14 mx-auto rounded-full bg-[#2DB400]/10 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-[#2DB400]"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h2 className="text-lg font-extrabold text-text">구독하고 대시보드 이용하기</h2>
+            <p className="text-sm text-dim leading-relaxed">
+              블로그탭 키워드 순위 확인, 경쟁 분석 등<br />
+              대시보드의 모든 기능을 이용하세요.
+            </p>
+            <div className="flex flex-col items-center gap-2 pt-2">
+              <Link href="/subscribe" className="px-8 py-3 bg-[#2DB400] text-white font-bold rounded-xl hover:bg-[#25a000] transition text-sm">
+                월 9,900원으로 구독하기
+              </Link>
+              <p className="text-[11px] text-dim">키워드·랭킹 검색은 무료입니다</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`space-y-8 ${!isSubscribed ? 'blur-[6px] select-none pointer-events-none' : ''}`}>
 
       {/* ─── 통계 카드 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -392,6 +433,9 @@ export default function BloggerDashboard() {
           인플루언서로 로그인 →
         </Link>
       </div>
+
+      </div>{/* /blur wrapper */}
+      </div>{/* /relative wrapper */}
     </div>
   );
 }
