@@ -830,7 +830,7 @@ export default function BloggerDashboard() {
       {/* ─── 인플루언서 전환 안내 ─── */}
       {profile.isInfluencer ? (
         <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 text-center">
-          <p className="text-sm font-semibold mb-1">인플루언서(구. 파워블로거) 대시보드로 돌아가기</p>
+          <p className="text-sm font-semibold mb-1">인플루언서(구. 파워블로거 2016년 폐지) 대시보드로 돌아가기</p>
           <p className="text-xs text-dim mb-3">키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
           <Link href="/my" className="text-sm text-accent font-bold hover:underline">
             인플루언서 대시보드 →
@@ -838,7 +838,7 @@ export default function BloggerDashboard() {
         </div>
       ) : (
         <div className="bg-accent/5 rounded-xl border border-accent/20 p-5 text-center">
-          <p className="text-sm font-semibold mb-1">네이버 인플루언서(구. 파워블로거)이신가요?</p>
+          <p className="text-sm font-semibold mb-1">네이버 인플루언서(구. 파워블로거 2016년 폐지)이신가요?</p>
           <p className="text-xs text-dim mb-3">인플루언서 전용 대시보드에서 키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
           <Link href="/auth/login" className="text-sm text-accent font-bold hover:underline">
             인플루언서로 로그인 →

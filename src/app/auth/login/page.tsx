@@ -133,7 +133,7 @@ export default function LoginPage() {
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
               </div>
-              <h2 className="text-lg font-extrabold mb-1">인플루언서<span className="text-xs font-normal text-dim ml-1">(구. 파워블로거)</span></h2>
+              <h2 className="text-lg font-extrabold mb-1">인플루언서<span className="text-xs font-normal text-dim ml-1">(구. 파워블로거 2016년 폐지)</span></h2>
               <p className="text-xs text-dim leading-relaxed">
                 키워드챌린지 순위 · 경쟁 분석<br />
                 맞춤 추천 · 랭킹 시스템
@@ -166,7 +166,7 @@ export default function LoginPage() {
               {isInfluencer ? '인플루언서 로그인' : '블로거 로그인'}
             </h1>
             <p className="text-sm text-dim mt-1">
-              {isInfluencer ? '인플루언서(구. 파워블로거) 링크로 접속하세요' : '블로그 주소로 접속하세요'}
+              {isInfluencer ? '인플루언서(구. 파워블로거 2016년 폐지) 링크로 접속하세요' : '블로그 주소로 접속하세요'}
             </p>
           </div>
 
@@ -179,7 +179,7 @@ export default function LoginPage() {
           <form onSubmit={isInfluencer ? handleInfluencerLogin : handleBloggerLogin} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">
-                {isInfluencer ? '인플루언서(구. 파워블로거) 링크' : '네이버 블로그 링크'}
+                {isInfluencer ? '인플루언서(구. 파워블로거 2016년 폐지) 링크' : '네이버 블로그 링크'}
               </label>
               <input
                 type="text"

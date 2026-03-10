@@ -60,7 +60,7 @@ export default function LandingPage() {
       {/* ═══════════ HERO (bg) ═══════════ */}
       <section className="bg-bg px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
         <p className="text-sm text-accent font-semibold tracking-wide mb-8">
-          인플루언서(구. 파워블로거)를 위한 플랫폼
+          인플루언서(구. 파워블로거 2016년 폐지)를 위한 플랫폼
         </p>
 
         <h1 className="font-title text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
