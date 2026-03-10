@@ -17,7 +17,7 @@ const NAV_INFLUENCER = [
 
 const NAV_BLOGGER = [
   { href: '/my/blogger', label: '대시보드' },
-  { href: '/keywords', label: '키워드' },
+  { href: '/search-volume', label: '검색량' },
   { href: '/rankings', label: '랭킹' },
 ];
 
