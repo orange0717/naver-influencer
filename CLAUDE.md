@@ -36,7 +36,7 @@ src/
 │   │   ├── subscription/  # 구독 상태/활성화
 │   │   ├── influencers/  # 인플루언서 프로필
 │   │   ├── recommendations/ # 일일 추천
-│   │   └── cron/         # 크롤링 크론잡 5개
+│   │   └── cron/         # 크롤링 크론잡 6개
 │   ├── auth/             # 로그인/회원가입
 │   ├── subscribe/        # 구독 페이지
 │   ├── influencers/[id]/ # 인플루언서 상세
@@ -78,11 +78,12 @@ src/
 ## 크론잡 스케줄 (vercel.json)
 | UTC | KST | 작업 |
 |-----|-----|------|
-| 18:00 | 03:00 | Step 1: 키워드 목록 크롤링 |
-| 19:00 | 04:00 | Step 2: 순위 크롤링 |
-| 20:00 | 05:00 | Step 3: 검색량 업데이트 |
-| 20:30 | 05:30 | 인플루언서 집계 |
-| 21:00 | 06:00 | 추천 키워드 생성 |
+| 18:00 | 03:00 | Step 1: 키워드 목록 크롤링 (crawl-keywords) |
+| 19:00 | 04:00 | Step 2: 순위 크롤링 (crawl-rankings) |
+| 0,6,12,18 | 매 6시간 | 인플루언서 수집 (crawl-influencers) |
+| 20:00 | 05:00 | Step 3: 검색량 업데이트 (update-volumes) |
+| 20:30 | 05:30 | 인플루언서 집계 (aggregate-influencers) |
+| 21:00 | 06:00 | 추천 키워드 생성 (generate-recommendations) |
 
 ## 반응형 전략
 - Desktop (lg+): 테이블 형태
@@ -91,11 +92,11 @@ src/
 
 ## 현재 상태
 - 프론트엔드: 완료 (오렌지 테마 + 구독 UI)
-- API: 일부 DB 전환 완료, 나머지 Mock
-- DB: supabase-schema.sql (구독 테이블 포함)
+- API: DB 전환 완료
+- DB: supabase/schema.sql (최신, Feed API 컬럼 포함)
 - 인증: getAuthUser 공통 유틸 + Supabase Auth
 - 구독: 백엔드 로직 완료, 결제 연동 예정 (토스페이먼츠)
-- 크롤러: 스켈레톤 (TODO)
+- 크롤러: 6개 크론잡 구현 완료, 로컬 테스트 통과 (2026-03-13)
 
 ## 환경변수 (필요)
 ```
@@ -105,6 +106,12 @@ SUPABASE_SERVICE_ROLE_KEY=
 TOSS_CLIENT_KEY=
 TOSS_SECRET_KEY=
 CRON_SECRET=
+# update-volumes용 (선택)
+NAVER_API_KEY=
+NAVER_SECRET_KEY=
+NAVER_CUSTOMER_ID=
+NAVER_DATALAB_CLIENT_ID=
+NAVER_DATALAB_CLIENT_SECRET=
 ```
 
 ## 스펙 원본
