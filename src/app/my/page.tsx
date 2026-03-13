@@ -4,6 +4,13 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import CompetitorSection from '@/components/CompetitorSection';
 import CopyButton from '@/components/CopyButton';
+import ProfileHeader from '@/components/dashboard/ProfileHeader';
+import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
+import RankTrendSection from '@/components/dashboard/RankTrendSection';
+import ActivityFeed from '@/components/dashboard/ActivityFeed';
+import RecommendationGrid from '@/components/dashboard/RecommendationGrid';
+import GlassCard from '@/components/dashboard/GlassCard';
+import { generateActivityEvents } from '@/lib/activity-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,18 +20,13 @@ function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
-function formatDate(d: string | null): string {
-  if (!d) return '—';
-  // UTC → KST 보정
-  const date = new Date(d);
-  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
-}
-
 interface Recommendation {
   keyword_id: string;
   keyword: string;
   category: string;
   participant_count: number;
+  search_volume_monthly?: number;
+  competition_level?: string;
   recommendation_score: number;
   reason: string;
 }
@@ -59,15 +61,7 @@ export default async function MyDashboard() {
     .eq('id', influencerId)
     .single();
 
-  // 구독 상태 확인 (users 테이블에서 linked_influencer_id로 조회)
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('subscription_status, subscription_expires_at')
-    .eq('linked_influencer_id', influencerId)
-    .single();
-
   // TODO: 3개월 무료 기간 종료 후 구독 모델 연동 (2026년 6월 예정)
-  // 현재 테스트 기간 — 모두 무료
   const isSubscribed = true;
 
   if (!influencer) {
@@ -93,7 +87,6 @@ export default async function MyDashboard() {
     .order('snapshot_date', { ascending: false })
     .limit(500);
 
-  // 최신 날짜의 순위만 (키워드별 중복 제거)
   const latestByKeyword = new Map<string, (typeof latestRankings extends (infer T)[] | null ? T : never)>();
   for (const r of (latestRankings || [])) {
     if (!latestByKeyword.has(r.keyword_id)) {
@@ -102,7 +95,6 @@ export default async function MyDashboard() {
   }
   const currentRankings = Array.from(latestByKeyword.values());
 
-  // 순위 데이터 정리
   const rankings = currentRankings.map(r => {
     const kw = r.keyword_challenges as unknown as Record<string, unknown>;
     return {
@@ -127,16 +119,12 @@ export default async function MyDashboard() {
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
 
-  // ─── 2. 내 키워드 전체 목록 (influencer_keywords) ───
+  // ─── 2. 내 키워드 전체 목록 ───
   const { data: myKeywords } = await supabase
     .from('influencer_keywords')
-    .select(`
-      keyword_id,
-      keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)
-    `)
+    .select(`keyword_id, keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)`)
     .eq('influencer_id', influencerId);
 
-  // 키워드 목록 정리 + 순위 정보 병합
   const rankedMap = new Map(rankings.map(r => [r.keyword_id, r]));
   const allKeywords = (myKeywords || []).map(ik => {
     const kw = ik.keyword_challenges as unknown as Record<string, unknown>;
@@ -157,7 +145,6 @@ export default async function MyDashboard() {
     return (b.search_volume || 0) - (a.search_volume || 0);
   });
 
-  // 카테고리별 그룹핑
   const grouped = new Map<string, typeof allKeywords>();
   for (const kw of allKeywords) {
     const cat = kw.category || '기타';
@@ -167,7 +154,6 @@ export default async function MyDashboard() {
   }
   const categoryGroups = Array.from(grouped.entries())
     .sort((a, b) => b[1].length - a[1].length);
-
   const totalKeywords = allKeywords.length;
 
   // ─── 3. 오늘의 추천 키워드 ───
@@ -175,50 +161,34 @@ export default async function MyDashboard() {
   try {
     const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_SUPABASE_URL
-        ? 'http://localhost:3000'
-        : 'http://localhost:3000';
+      : 'http://localhost:3000';
     const recRes = await fetch(`${baseUrl}/api/recommendations`, { cache: 'no-store' });
     if (recRes.ok) {
       const recData = await recRes.json();
       recommendations = (recData.recommendations || []).slice(0, 6);
     }
-  } catch {
-    // 추천 API 실패 시 무시
-  }
+  } catch { /* ignore */ }
+
+  // ─── 4. 활동 이벤트 생성 ───
+  const activityEvents = generateActivityEvents(rankings);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
 
-      {/* ─── 프로필 헤더 ─── */}
-      <div className="bg-surface rounded-2xl border border-border p-5">
-        <div className="flex items-center gap-4">
-          {influencer.image_url ? (
-            <img src={influencer.image_url} alt="" className="w-16 h-16 rounded-full object-cover" />
-          ) : (
-            <div className="w-16 h-16 bg-accent/15 rounded-full flex items-center justify-center text-accent text-2xl font-bold">
-              {influencer.display_name[0]}
-            </div>
-          )}
-          <div className="flex-1">
-            <h1 className="text-xl font-extrabold">{influencer.display_name}</h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-              <span className="text-sm text-dim">{influencer.my_keyword_category || influencer.category}</span>
-              <span className="text-sm text-dim">팬 {formatCount(influencer.subscriber_count || 0)}</span>
-              {influencer.first_seen_at && (
-                <span className="text-sm text-dim">선정일 {formatDate(influencer.first_seen_at)}</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* ─── 1. 프로필 헤더 ─── */}
+      <ProfileHeader
+        displayName={influencer.display_name}
+        imageUrl={influencer.image_url}
+        category={influencer.my_keyword_category || influencer.category}
+        subscriberCount={influencer.subscriber_count || 0}
+        firstSeenAt={influencer.first_seen_at}
+        type="influencer"
+        subscribed={isSubscribed}
+      />
 
-
-
-      {/* ─── 대시보드 콘텐츠 (미구독 시 블라인드) ─── */}
+      {/* ─── 대시보드 (미구독 시 블라인드) ─── */}
       <div className="relative">
 
-      {/* 미구독 시 블라인드 오버레이 */}
       {!isSubscribed && (
         <div className="absolute inset-0 z-10 flex items-start justify-center pt-40">
           <div className="bg-surface/95 backdrop-blur-sm rounded-2xl border border-accent/20 p-8 text-center space-y-4 shadow-xl max-w-sm mx-4">
@@ -240,83 +210,77 @@ export default async function MyDashboard() {
         </div>
       )}
 
-      <div className={`space-y-8 ${!isSubscribed ? 'blur-[6px] select-none pointer-events-none' : ''}`}>
+      <div className={`space-y-6 ${!isSubscribed ? 'blur-[6px] select-none pointer-events-none' : ''}`}>
 
-      {/* ─── 주요 지표 4카드 ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-surface border border-border rounded-xl p-5">
-          <p className="text-xs text-dim mb-2">나의 평균 순위</p>
-          <p className={`text-2xl font-black font-rank ${avgRank > 0 ? 'text-accent' : 'text-dim'}`}>
-            {avgRank > 0 ? `${Math.round(avgRank)}위` : '—'}
-          </p>
+      {/* ─── 2. 통계 카드 4개 ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <AnimatedStatCard
+          label="나의 평균 순위"
+          value={avgRank > 0 ? Math.round(avgRank) : 0}
+          suffix="위"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
+          color="accent"
+          delay={50}
+        />
+        <AnimatedStatCard
+          label="참여 키워드"
+          value={totalKeywords}
+          suffix="개"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>}
+          color={totalKeywords > 0 ? 'accent' : 'dim'}
+          delay={100}
+        />
+        <AnimatedStatCard
+          label="TOP 3 키워드"
+          value={top3Count}
+          suffix="개"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
+          color={top3Count > 0 ? 'gold' : 'dim'}
+          delay={150}
+        />
+        <AnimatedStatCard
+          label="순위 변동"
+          value={rankUpCount + rankDownCount}
+          suffix="건"
+          trend={rankUpCount > rankDownCount ? { direction: 'up', value: rankUpCount } : rankDownCount > 0 ? { direction: 'down', value: rankDownCount } : undefined}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>}
+          color={rankUpCount > 0 ? 'up' : rankDownCount > 0 ? 'down' : 'dim'}
+          delay={200}
+        />
+      </div>
+
+      {/* ─── 3. 순위 추이 차트 ─── */}
+      <RankTrendSection mode="influencer" naverId={naverId} />
+
+      {/* ─── 4. 변동 피드 + 추천 키워드 (2열) ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3">
+          <ActivityFeed events={activityEvents} />
         </div>
-        <div className="bg-surface border border-border rounded-xl p-5">
-          <p className="text-xs text-dim mb-2">참여 키워드</p>
-          <p className={`text-2xl font-black font-rank ${totalKeywords === 0 ? 'text-dim' : ''}`}>{totalKeywords}개</p>
-        </div>
-        <div className="bg-surface border border-border rounded-xl p-5">
-          <p className="text-xs text-dim mb-2">TOP 3 키워드</p>
-          <p className={`text-2xl font-black font-rank ${top3Count > 0 ? 'text-up' : 'text-dim'}`}>{top3Count}개</p>
-        </div>
-        <div className="bg-surface border border-border rounded-xl p-5">
-          <p className="text-xs text-dim mb-2">순위 변동</p>
-          <div className="flex items-baseline gap-2">
-            {rankUpCount > 0 && (
-              <span className="text-lg font-black font-rank text-up">▲{rankUpCount}</span>
-            )}
-            {rankDownCount > 0 && (
-              <span className="text-lg font-black font-rank text-down">▼{rankDownCount}</span>
-            )}
-            {rankUpCount === 0 && rankDownCount === 0 && (
-              <span className="text-lg font-black font-rank text-dim">—</span>
-            )}
-          </div>
+        <div className="lg:col-span-2">
+          <RecommendationGrid recommendations={recommendations} compact />
         </div>
       </div>
 
-      {/* ─── 오늘의 추천 키워드 ─── */}
-      {recommendations.length > 0 && (
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <div className="px-5 py-4 border-b border-border bg-bg/50 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-sm">오늘의 추천 키워드</h3>
-              <p className="text-[11px] text-dim mt-0.5">블루오션 키워드를 매일 추천합니다</p>
-            </div>
-            <span className="text-xs text-accent font-semibold">TODAY&apos;S PICK</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 divide-border/30">
-            {recommendations.map((rec) => (
-              <Link key={rec.keyword_id} href={`/keywords/${rec.keyword_id}`}
-                className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-hover transition border-b border-border/20 last:border-0 md:odd:border-r">
-                <div className="min-w-0">
-                  <span className="font-semibold text-sm block truncate">{rec.keyword}</span>
-                  <span className="text-xs text-dim">{rec.category} · {rec.participant_count}명 참여</span>
-                </div>
-                <div className="shrink-0 ml-3">
-                  <span className="text-[10px] text-accent bg-accent/10 px-2 py-1 rounded-full font-semibold">{rec.reason}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ─── TOP 5 키워드 ─── */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
-        <div className="px-5 py-4 border-b border-border bg-bg/50">
-          <h3 className="font-bold text-sm">TOP 5 키워드</h3>
+      {/* ─── 5. TOP 5 키워드 ─── */}
+      <GlassCard padding="none">
+        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
+          <h3 className="font-bold text-[15px]">TOP 5 키워드</h3>
+          {top5.length > 0 && (
+            <span className="text-[11px] text-dim">{totalRankedKeywords}개 중</span>
+          )}
         </div>
         {top5.length > 0 ? (
-          <div className="divide-y divide-border/30">
+          <div className="divide-y divide-border/20">
             {top5.map((r, i) => (
               <Link key={r.keyword_id} href={`/keywords/${r.keyword_id}`}
-                className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-hover transition">
+                className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-hover transition group">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${
                     i === 0 ? 'bg-gold/20 text-gold' : i <= 2 ? 'bg-accent/15 text-accent' : 'bg-border/50 text-dim'
                   }`}>{i + 1}</span>
                   <div className="min-w-0">
-                    <span className="font-semibold text-sm truncate block">{r.keyword}</span>
+                    <span className="font-semibold text-sm truncate block group-hover:text-accent transition-colors">{r.keyword}</span>
                     <span className="text-xs text-dim">{r.category} · {r.participant_count}명 참여{r.search_volume > 0 ? ` · 월 ${formatCount(r.search_volume)}회` : ''}</span>
                   </div>
                 </div>
@@ -340,31 +304,21 @@ export default async function MyDashboard() {
             <p className="text-xs mt-1">데이터 수집이 매일 자동으로 진행됩니다.</p>
           </div>
         )}
-      </div>
+      </GlassCard>
 
-      {/* ─── 순위 위젯 ─── */}
-      <div className="bg-surface rounded-xl border border-border p-5">
+      {/* ─── 6. 순위 위젯 ─── */}
+      <GlassCard>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="font-bold text-sm">키워드 순위 위젯</h3>
+            <h3 className="font-bold text-[15px]">키워드 순위 위젯</h3>
             <p className="text-[11px] text-dim mt-0.5">내 블로그에 키워드 순위 뱃지를 달아보세요</p>
           </div>
           <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">NEW</span>
         </div>
-
-        {/* 위젯 미리보기 */}
         <div className="flex justify-center mb-4 p-4 bg-bg rounded-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/api/widget/rank/${naverId}`}
-            alt="키워드 순위 위젯"
-            width={250}
-            height={180}
-            className="rounded-lg"
-          />
+          <img src={`/api/widget/rank/${naverId}`} alt="키워드 순위 위젯" width={250} height={180} className="rounded-lg" />
         </div>
-
-        {/* 임베드 코드 */}
         <div className="space-y-3">
           <div>
             <p className="text-[11px] font-semibold text-dim mb-1.5">HTML 코드 (블로그 사이드바에 붙여넣기)</p>
@@ -375,28 +329,26 @@ export default async function MyDashboard() {
               <CopyButton text={`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="250" /></a>`} />
             </div>
           </div>
-          <p className="text-[10px] text-dim leading-relaxed">
-            * 위젯은 매일 자동으로 업데이트됩니다. 날짜가 위젯에 표시됩니다.
-          </p>
+          <p className="text-[10px] text-dim leading-relaxed">* 위젯은 매일 자동으로 업데이트됩니다.</p>
         </div>
-      </div>
+      </GlassCard>
 
-      {/* ─── 경쟁자 분석 ─── */}
+      {/* ─── 7. 경쟁자 분석 ─── */}
       <CompetitorSection
         naverId={naverId}
         myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords, top3Count }}
       />
 
-      {/* ─── 내 키워드 리스트 (주제별) ─── */}
+      {/* ─── 8. 내 키워드 리스트 (주제별) ─── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-sm">내 키워드 리스트</h3>
+          <h3 className="font-bold text-[15px]">내 키워드 리스트</h3>
           <span className="text-xs text-dim">{categoryGroups.length}개 주제 · {totalKeywords}개 키워드</span>
         </div>
 
         {categoryGroups.length > 0 ? (
           categoryGroups.map(([category, keywords]) => (
-            <div key={category} className="bg-surface rounded-xl border border-border overflow-hidden">
+            <GlassCard key={category} padding="none">
               <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 bg-bg/30">
                 <span className="text-sm font-bold">{category}</span>
                 <span className="text-xs text-dim font-rank">{keywords.length}개</span>
@@ -431,19 +383,19 @@ export default async function MyDashboard() {
                   </Link>
                 ))}
               </div>
-            </div>
+            </GlassCard>
           ))
         ) : (
-          <div className="bg-surface rounded-xl border border-border text-center py-12 text-dim text-sm">
+          <GlassCard className="text-center py-12 text-dim text-sm">
             <p>아직 참여 중인 키워드가 없습니다.</p>
             <p className="text-xs mt-1">키워드 데이터 수집이 진행되면 자동으로 표시됩니다.</p>
-          </div>
+          </GlassCard>
         )}
       </div>
 
-      {/* ─── 활동 현황 ─── */}
-      <div className="bg-surface rounded-xl border border-border p-5">
-        <h3 className="font-bold text-sm mb-4">활동 현황</h3>
+      {/* ─── 9. 활동 현황 ─── */}
+      <GlassCard>
+        <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-xl font-black font-rank">{formatCount(influencer.subscriber_count || 0)}</p>
@@ -458,7 +410,7 @@ export default async function MyDashboard() {
             <p className="text-xs text-dim mt-1">순위 키워드</p>
           </div>
         </div>
-      </div>
+      </GlassCard>
 
       </div>
       </div>
