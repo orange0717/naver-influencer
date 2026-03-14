@@ -139,18 +139,21 @@ export default function KeywordsPage() {
               category === cat ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:border-accent/40'
             }`}>{cat}</button>
         ))}
-        {subCategories.length > 2 && (
-          <select
-            value={subFilter}
-            onChange={e => setSubFilter(e.target.value)}
-            className="ml-auto px-3 py-1.5 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors"
-          >
-            {subCategories.map(sub => (
-              <option key={sub} value={sub}>{sub === '전체' ? '세부분류 전체' : sub}</option>
-            ))}
-          </select>
-        )}
       </div>
+
+      {/* 세부분류 서브 탭 (도서 등 세부분류 있을 때) */}
+      {subCategories.length > 2 && (
+        <div className="flex flex-wrap gap-1.5">
+          {subCategories.map(sub => (
+            <button key={sub} onClick={() => setSubFilter(sub)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                subFilter === sub
+                  ? 'bg-accent/20 text-accent border border-accent/40'
+                  : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
+              }`}>{sub === '전체' ? '전체' : sub}</button>
+          ))}
+        </div>
+      )}
 
       {/* 협력사 배너 */}
       <Banner banner={PARTNER_BANNERS[0]} dismissKey="keywords-partner" />
