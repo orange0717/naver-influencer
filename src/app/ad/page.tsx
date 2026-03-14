@@ -7,7 +7,7 @@ export default function AdvertiserPage() {
       {/* ── 히어로 ── */}
       <section className="text-center py-12 px-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 rounded-full mb-4">
-          <span className="text-blue-500 text-sm font-bold">광고주를 위한 플랫폼</span>
+          <span className="text-blue-500 text-sm font-bold">ORANGE CONNECT</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-black mb-4 leading-tight">
           검증된 <span className="text-blue-500">인플루언서</span>와<br />
@@ -21,7 +21,7 @@ export default function AdvertiserPage() {
 
       {/* ── 광고주가 할 수 있는 것 ── */}
       <section className="max-w-4xl mx-auto px-4">
-        <h2 className="text-xl font-bold text-center mb-8">광고주·대행사가 할 수 있는 것</h2>
+        <h2 className="text-xl font-bold text-center mb-8">오렌지커넥트에서 할 수 있는 것</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="bg-surface border border-border rounded-2xl p-6 text-center hover:border-blue-400/40 transition-colors">
             <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
