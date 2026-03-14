@@ -39,6 +39,8 @@ export default function ProfilePage() {
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
   const [toast, setToast] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -124,6 +126,37 @@ export default function ProfilePage() {
     await supabase.auth.signOut();
     router.push('/');
     router.refresh();
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setDeleteLoading(true);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+      const res = await fetch('/api/profile', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        await supabase.auth.signOut();
+        // 쿠키도 삭제
+        await fetch('/api/auth/logout', { method: 'POST' });
+        router.push('/');
+        router.refresh();
+      } else {
+        const data = await res.json();
+        showToast(data.error || '탈퇴 처리에 실패했습니다.');
+      }
+    } catch {
+      showToast('탈퇴 처리 중 오류가 발생했습니다.');
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   if (loading) {
@@ -319,6 +352,49 @@ export default function ProfilePage() {
           로그아웃
         </button>
       </div>
+
+      {/* 회원 탈퇴 */}
+      <div className="pt-4 border-t border-border/30">
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="text-xs text-dim hover:text-down transition cursor-pointer underline underline-offset-2"
+        >
+          회원 탈퇴
+        </button>
+      </div>
+
+      {/* 탈퇴 확인 모달 */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl border border-border p-6 max-w-sm mx-4 shadow-2xl space-y-4">
+            <h3 className="text-lg font-extrabold text-text">회원 탈퇴</h3>
+            <div className="space-y-2 text-sm text-dim">
+              <p>정말 탈퇴하시겠습니까?</p>
+              <p>탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+              <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
+                <li>계정 정보 및 프로필</li>
+                <li>포인트 잔액 및 거래 내역</li>
+                <li>이용권 및 구독 정보</li>
+              </ul>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 bg-surface-hover text-text rounded-xl font-semibold text-sm cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                className="flex-1 py-2.5 bg-down text-white rounded-xl font-semibold text-sm hover:bg-down/80 transition cursor-pointer disabled:opacity-50"
+              >
+                {deleteLoading ? '처리 중...' : '탈퇴하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
