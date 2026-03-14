@@ -5,7 +5,7 @@ import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob
 import type { ParsedRanking } from '@/lib/types';
 
 const NAVER_SEARCH_URL = 'https://search.naver.com/search.naver';
-const BATCH_SIZE = 15; // Vercel 60초 제한 내 안전한 키워드 수
+const BATCH_SIZE = 20; // Vercel 60초 제한 내 안전한 키워드 수
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 // 요일별 카테고리 로테이션 — 전체 20개 균등 배분
@@ -97,7 +97,70 @@ async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClien
   const today = new Date();
   const dayOfWeek = today.getDay();
   const dayOfMonth = today.getDate();
+  const snapshotDate = today.toISOString().slice(0, 10);
   const todayCategories = DAY_CATEGORIES[dayOfWeek] || [];
+
+  // ─── Tier 0: 등록 사용자 키워드 (최우선) ───
+  // users.linked_influencer_id가 있는 사용자 = 로그인해서 연동한 사용자
+  const { data: linkedUsers } = await supabase
+    .from('users')
+    .select('linked_influencer_id')
+    .not('linked_influencer_id', 'is', null);
+
+  const linkedIds = new Set<string>(
+    (linkedUsers || []).map(u => u.linked_influencer_id).filter(Boolean) as string[]
+  );
+
+  // 활성 이용권 보유 인플루언서도 포함
+  const { data: activeLicenses } = await supabase
+    .from('licenses')
+    .select('buyer_id')
+    .eq('is_used', true)
+    .gte('expires_at', new Date().toISOString());
+
+  if (activeLicenses?.length) {
+    const buyerIds = activeLicenses.map(l => l.buyer_id).filter(Boolean);
+    if (buyerIds.length > 0) {
+      const { data: infData } = await supabase
+        .from('influencers')
+        .select('id')
+        .in('naver_id', buyerIds);
+      infData?.forEach(inf => linkedIds.add(inf.id));
+    }
+  }
+
+  let tier0: { id: string; keyword: string; category: string }[] = [];
+  if (linkedIds.size > 0) {
+    // 사용자의 참여 키워드 조회
+    const { data: ikData } = await supabase
+      .from('influencer_keywords')
+      .select('keyword_id')
+      .in('influencer_id', Array.from(linkedIds));
+
+    const kwIds = [...new Set((ikData || []).map(k => k.keyword_id))];
+
+    if (kwIds.length > 0) {
+      // 오늘 이미 크롤된 키워드 제외
+      const { data: todaysRankings } = await supabase
+        .from('keyword_rankings')
+        .select('keyword_id')
+        .eq('snapshot_date', snapshotDate)
+        .in('keyword_id', kwIds);
+
+      const alreadyCrawled = new Set((todaysRankings || []).map(r => r.keyword_id));
+      const missingKwIds = kwIds.filter(id => !alreadyCrawled.has(id));
+
+      if (missingKwIds.length > 0) {
+        const { data } = await supabase
+          .from('keyword_challenges')
+          .select('id, keyword, category')
+          .in('id', missingKwIds)
+          .eq('is_active', true);
+        tier0 = data || [];
+        console.log(`[crawl-rankings] Tier 0 (user keywords): ${tier0.length} missing today`);
+      }
+    }
+  }
 
   // Tier 1: 검색량 상위 키워드 (매일)
   const { data: tier1 } = await supabase
@@ -132,11 +195,11 @@ async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClien
     tier3 = data || [];
   }
 
-  // 중복 제거 후 BATCH_SIZE로 제한
+  // 중복 제거 후 BATCH_SIZE로 제한 (Tier 0 최우선)
   const seen = new Set<string>();
   const result: { id: string; keyword: string; category: string }[] = [];
 
-  for (const item of [...(tier1 || []), ...tier2, ...tier3]) {
+  for (const item of [...tier0, ...(tier1 || []), ...tier2, ...tier3]) {
     if (!seen.has(item.id) && result.length < BATCH_SIZE) {
       seen.add(item.id);
       result.push(item);
