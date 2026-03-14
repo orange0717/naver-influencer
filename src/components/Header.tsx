@@ -7,6 +7,10 @@ import { useState, useEffect, useRef } from 'react';
 const INFLUENCER_GROUP = [
   { href: '/influencers', label: '인플루언서 리스트', desc: '전체 인플루언서 검색' },
   { href: '/keywords', label: '키워드챌린지', desc: '키워드별 순위·경쟁도' },
+];
+
+/* ── 랭킹 메뉴 ── */
+const RANKING_GROUP = [
   { href: '/rankings', label: '인플루언서 랭킹', desc: '카테고리별 TOP 순위' },
   { href: '/rankings/bloggers', label: '블로거 랭킹', desc: '블로그 검색 순위' },
 ];
@@ -94,6 +98,7 @@ export default function Header() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [user, setUser] = useState<UserInfo>({ type: null, id: null, name: null });
   const inflRef = useRef<HTMLDivElement>(null);
+  const rankRef = useRef<HTMLDivElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   const adRef = useRef<HTMLDivElement>(null);
   const infoRef = useRef<HTMLDivElement>(null);
@@ -107,7 +112,7 @@ export default function Header() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      const refs = [inflRef, toolsRef, adRef, infoRef];
+      const refs = [inflRef, rankRef, toolsRef, adRef, infoRef];
       const clickedInside = refs.some(ref => ref.current?.contains(e.target as Node));
       if (!clickedInside) setOpenDropdown(null);
     }
@@ -135,6 +140,7 @@ export default function Header() {
 
   // 활성 상태 체크
   const inflActive = INFLUENCER_GROUP.some(n => pathname.startsWith(n.href));
+  const rankActive = RANKING_GROUP.some(n => pathname.startsWith(n.href));
   const toolsActive = TOOLS_GROUP.some(n => pathname.startsWith(n.href));
   const adActive = pathname.startsWith('/ad');
   const infoActive = INFO_GROUP.some(n => pathname === n.href);
@@ -182,6 +188,17 @@ export default function Header() {
                 onToggle={() => toggleDropdown('infl')}
                 isActive={inflActive}
                 dropdownRef={inflRef}
+                showDesc
+              />
+
+              {/* 랭킹 (드롭다운) */}
+              <NavDropdown
+                label="랭킹"
+                items={RANKING_GROUP}
+                isOpen={openDropdown === 'rank'}
+                onToggle={() => toggleDropdown('rank')}
+                isActive={rankActive}
+                dropdownRef={rankRef}
                 showDesc
               />
 
@@ -278,6 +295,19 @@ export default function Header() {
             {/* 인플루언서 그룹 */}
             <div className="px-3 py-2.5 text-[11px] font-extrabold text-accent tracking-widest uppercase">인플루언서</div>
             {INFLUENCER_GROUP.map(n => (
+              <Link key={n.href} href={n.href} onClick={() => setMobileOpen(false)}
+                className={`flex flex-col px-5 py-3 rounded-xl transition-colors ${
+                  pathname.startsWith(n.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
+                }`}>
+                <span className="text-sm font-semibold">{n.label}</span>
+                {n.desc && <span className="text-[11px] text-dim mt-0.5">{n.desc}</span>}
+              </Link>
+            ))}
+
+            {/* 랭킹 */}
+            <div className="border-t border-border/50 my-3 mx-2" />
+            <div className="px-3 py-2.5 text-[11px] font-extrabold text-accent tracking-widest uppercase">랭킹</div>
+            {RANKING_GROUP.map(n => (
               <Link key={n.href} href={n.href} onClick={() => setMobileOpen(false)}
                 className={`flex flex-col px-5 py-3 rounded-xl transition-colors ${
                   pathname.startsWith(n.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
