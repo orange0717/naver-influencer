@@ -15,6 +15,7 @@ import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import InfluencerScoreSection from '@/components/dashboard/InfluencerScoreSection';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import ChallengeTable from '@/components/dashboard/ChallengeTable';
+import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 
 export const dynamic = 'force-dynamic';
@@ -682,60 +683,10 @@ export default async function MyDashboard() {
       )}
 
       {/* ─── 8. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-[15px]">내 키워드 리스트</h3>
-          <span className="text-xs text-dim">{categoryGroups.length}개 주제 · {totalKeywords}개 키워드</span>
-        </div>
-
-        {categoryGroups.length > 0 ? (
-          categoryGroups.map(([category, keywords]) => (
-            <GlassCard key={category} padding="none">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 bg-bg/30">
-                <span className="text-sm font-bold">{category}</span>
-                <span className="text-xs text-dim font-rank">{keywords.length}개</span>
-              </div>
-              <div className="divide-y divide-border/20">
-                {keywords.map(kw => (
-                  <Link key={kw.keyword_id} href={`/keywords/${kw.keyword_id}`}
-                    className="flex items-center justify-between px-5 py-3 hover:bg-surface-hover transition">
-                    <div className="min-w-0">
-                      <span className="text-sm truncate block">{kw.keyword}</span>
-                      <span className="text-xs text-dim">
-                        {kw.participant_count}명 참여
-                        {kw.search_volume > 0 ? ` · 월 ${formatCount(kw.search_volume)}회` : ''}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {kw.rank_change !== 0 && (
-                        <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
-                          {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
-                        </span>
-                      )}
-                      {kw.rank_position !== null ? (
-                        <>
-                          <span className="text-[10px] font-bold text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded">노출</span>
-                          <span className={`text-xs font-black font-rank px-2 py-0.5 rounded ${
-                            kw.rank_position <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/30 text-dim'
-                          }`}>
-                            {kw.rank_position}위
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">미노출</span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </GlassCard>
-          ))
-        ) : (
-          <GlassCard>
-            <KeywordSyncButton />
-          </GlassCard>
-        )}
-      </div>
+      <MyKeywordList
+        categoryGroups={categoryGroups.map(([category, keywords]) => ({ category, keywords }))}
+        totalKeywords={totalKeywords}
+      />
 
       {/* 활동 현황은 상단으로 이동됨 */}
 
