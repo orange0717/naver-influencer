@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Icons</title></head>
+<body>
+<canvas id="c16" width="16" height="16"></canvas>
+<canvas id="c48" width="48" height="48"></canvas>
+<canvas id="c128" width="128" height="128"></canvas>
+<script>
+function drawIcon(canvas, size) {
+  const ctx = canvas.getContext('2d');
+  const r = size * 0.15;
+
+  // Background rounded rect
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, r);
+  ctx.fillStyle = '#FF6B35';
+  ctx.fill();
+
+  // "N" letter
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = `bold ${size * 0.55}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', size * 0.38, size * 0.48);
+
+  // Search icon (magnifying glass)
+  const cx = size * 0.68, cy = size * 0.62, cr = size * 0.14;
+  ctx.beginPath();
+  ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = size * 0.06;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + cr * 0.7, cy + cr * 0.7);
+  ctx.lineTo(cx + cr * 1.5, cy + cr * 1.5);
+  ctx.stroke();
+}
+
+[16, 48, 128].forEach(size => {
+  const canvas = document.getElementById('c' + size);
+  drawIcon(canvas, size);
+  const link = document.createElement('a');
+  link.download = 'icon' + size + '.png';
+  link.href = canvas.toDataURL();
+  link.textContent = 'Download ' + size;
+  document.body.appendChild(link);
+  document.body.appendChild(document.createElement('br'));
+});
+</script>
+</body>
+</html>

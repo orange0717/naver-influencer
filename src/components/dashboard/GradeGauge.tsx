@@ -52,7 +52,7 @@ export default function GradeGauge({ score, label, description, color, delay = 0
           className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
           style={{ backgroundColor: `${color}15`, color }}
         >
-          {label === 'DIA+' ? 'D+' : label[0]}
+          {label[0]}
         </span>
         <span className="text-xs font-bold text-text">{label}</span>
       </div>

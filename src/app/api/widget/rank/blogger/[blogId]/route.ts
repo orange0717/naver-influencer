@@ -84,17 +84,17 @@ function generateBloggerRankWidgetSVG(data: {
   <text x="236" y="55" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF" text-anchor="end" dx="-20">점</text>
 
   <!-- 스코어 바 -->
-  <text x="14" y="74" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#F29C68">C-Rank</text>
+  <text x="14" y="74" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#F29C68">전문성</text>
   <rect x="60" y="68" width="82" height="5" rx="2.5" fill="#F3F4F6"/>
   <rect x="60" y="68" width="${crankBar}" height="5" rx="2.5" fill="#F29C68"/>
   <text x="148" y="74" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="#F29C68">${data.crankScore}</text>
 
-  <text x="14" y="88" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#22C55E">DIA</text>
+  <text x="14" y="88" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#22C55E">품질</text>
   <rect x="60" y="82" width="82" height="5" rx="2.5" fill="#F3F4F6"/>
   <rect x="60" y="82" width="${diaBar}" height="5" rx="2.5" fill="#22C55E"/>
   <text x="148" y="88" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="#22C55E">${data.diaScore}</text>
 
-  <text x="14" y="102" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#7B1FA2">DIA+</text>
+  <text x="14" y="102" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#7B1FA2">노출력</text>
   <rect x="60" y="96" width="82" height="5" rx="2.5" fill="#F3F4F6"/>
   <rect x="60" y="96" width="${diaplusBar}" height="5" rx="2.5" fill="#7B1FA2"/>
   <text x="148" y="102" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="#7B1FA2">${data.diaplusScore}</text>

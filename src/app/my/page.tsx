@@ -10,6 +10,7 @@ import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import RecommendationGrid from '@/components/dashboard/RecommendationGrid';
 import GlassCard from '@/components/dashboard/GlassCard';
+import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
 import { generateActivityEvents } from '@/lib/activity-events';
 
 export const dynamic = 'force-dynamic';
@@ -85,6 +86,11 @@ export default async function MyDashboard() {
         .single();
       return !!license;
     })();
+
+  // 관리자 확인
+  const adminIds = (process.env.ADMIN_NAVER_IDS || 'orangebooks07').split(',').map(s => s.trim());
+  const isAdmin = adminIds.includes(naverId);
+  const canAccess = isSubscribed || isAdmin;
 
   if (!influencer) {
     return (
@@ -304,31 +310,8 @@ export default async function MyDashboard() {
         subscribed={isSubscribed}
       />
 
-      {/* ─── 대시보드 (미구독 시 블라인드) ─── */}
-      <div className="relative">
-
-      {!isSubscribed && (
-        <div className="absolute inset-0 z-10 flex items-start justify-center pt-40">
-          <div className="bg-surface/95 backdrop-blur-sm rounded-2xl border border-accent/20 p-8 text-center space-y-4 shadow-xl max-w-sm mx-4">
-            <div className="w-14 h-14 mx-auto rounded-full bg-accent/10 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <h2 className="text-lg font-extrabold text-text">이용권을 등록하고 전체 데이터 보기</h2>
-            <p className="text-sm text-dim leading-relaxed">
-              나의 키워드 순위, 경쟁자 분석, 맞춤 추천 등<br />
-              대시보드의 모든 데이터를 확인하세요.
-            </p>
-            <div className="flex flex-col items-center gap-2 pt-2">
-              <Link href="/subscribe" className="px-8 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm">
-                이용권 등록하기
-              </Link>
-              <p className="text-[11px] text-dim">키워드·랭킹·인플루언서 검색은 무료입니다</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className={`space-y-6 ${!isSubscribed ? 'blur-[6px] select-none pointer-events-none' : ''}`}>
+      {/* ─── 무료 공개 영역 (항상 보임) ─── */}
+      <div className="space-y-6">
 
       {/* ─── 1-2. 전체/카테고리 순위 + 등급 ─── */}
       {overallRank > 0 && (
@@ -422,107 +405,45 @@ export default async function MyDashboard() {
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />
 
-      {/* ─── 3-2. 내 포스팅 리스트 ─── */}
-      <GlassCard padding="none">
-        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-[15px]">내 포스팅</h3>
-            <p className="text-[11px] text-dim mt-0.5">키워드 챌린지에 노출 중인 내 글</p>
-          </div>
-          {myPosts.length > 0 && (
-            <span className="text-[11px] text-dim font-rank">{myPosts.length}개 글</span>
-          )}
-        </div>
-        {myPosts.length > 0 ? (
-          <>
-            {/* 데스크톱 테이블 */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50 text-xs text-dim">
-                    <th className="text-left px-5 py-3 font-semibold">제목</th>
-                    <th className="text-center px-3 py-3 font-semibold">최고순위</th>
-                    <th className="text-left px-3 py-3 font-semibold">노출 키워드</th>
-                    <th className="text-center px-3 py-3 font-semibold">키워드 수</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/20">
-                  {myPosts.map((post, i) => (
-                    <tr key={i} className="hover:bg-surface-hover/50 transition-colors">
-                      <td className="px-5 py-3.5">
-                        <a href={post.url} target="_blank" rel="noopener noreferrer"
-                          className="font-semibold text-sm hover:text-accent transition-colors line-clamp-1">
-                          {post.title}
-                        </a>
-                      </td>
-                      <td className="px-3 py-3.5 text-center">
-                        <span className={`font-black font-rank text-base ${
-                          post.bestRank <= 3 ? 'text-accent' : post.bestRank <= 10 ? 'text-up' : 'text-dim'
-                        }`}>
-                          {post.bestRank}위
-                        </span>
-                      </td>
-                      <td className="px-3 py-3.5">
-                        <div className="flex flex-wrap gap-1">
-                          {post.keywords.slice(0, 3).map((kw, j) => (
-                            <span key={j} className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
-                              kw.rank <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/30 text-dim'
-                            }`}>
-                              {kw.keyword} {kw.rank}위
-                            </span>
-                          ))}
-                          {post.keywords.length > 3 && (
-                            <span className="text-[11px] text-dim">+{post.keywords.length - 3}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3.5 text-center">
-                        <span className="font-bold font-rank text-sm">{post.keywords.length}</span>
-                        <span className="text-[10px] text-dim ml-0.5">개</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* ─── 3-2. 내 포스팅 분석 ─── */}
+      <PostAnalysisSection
+        posts={myPosts.map(p => ({
+          title: p.title,
+          url: p.url,
+          keywords: p.keywords,
+          bestRank: p.bestRank,
+          date: p.date,
+        }))}
+        naverId={naverId}
+        canSearchRank={canAccess}
+      />
 
-            {/* 모바일 카드 */}
-            <div className="md:hidden divide-y divide-border/20">
-              {myPosts.map((post, i) => (
-                <a key={i} href={post.url} target="_blank" rel="noopener noreferrer"
-                  className="block px-5 py-4 hover:bg-surface-hover/50 transition">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <span className="font-semibold text-sm line-clamp-2 flex-1">{post.title}</span>
-                    <span className={`font-black font-rank text-base shrink-0 ${
-                      post.bestRank <= 3 ? 'text-accent' : post.bestRank <= 10 ? 'text-up' : 'text-dim'
-                    }`}>
-                      {post.bestRank}위
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {post.keywords.slice(0, 4).map((kw, j) => (
-                      <span key={j} className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                        kw.rank <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/30 text-dim'
-                      }`}>
-                        {kw.keyword} {kw.rank}위
-                      </span>
-                    ))}
-                    {post.keywords.length > 4 && (
-                      <span className="text-[10px] text-dim">+{post.keywords.length - 4}</span>
-                    )}
-                  </div>
-                </a>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-10 text-dim text-sm">
-            <p>아직 노출 중인 포스팅이 없습니다.</p>
-            <p className="text-xs mt-1">키워드 챌린지에 참여하면 자동으로 표시됩니다.</p>
+      {/* ─── 프리미엄 영역 (이용권 필요) ─── */}
+      {!canAccess && (
+        <GlassCard className="text-center py-8">
+          <div className="w-14 h-14 mx-auto rounded-full bg-accent/10 flex items-center justify-center mb-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </div>
-        )}
-      </GlassCard>
+          <h3 className="font-bold text-base mb-2">프리미엄 분석 기능</h3>
+          <p className="text-sm text-dim mb-4 leading-relaxed">
+            이용권을 등록하면 더 강력한 분석 도구를 사용할 수 있어요
+          </p>
+          <div className="flex flex-wrap justify-center gap-2 mb-5 text-xs">
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">🔍 블로그 검색 순위</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">👥 경쟁자 분석</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">🎯 맞춤 추천 키워드</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">📊 순위 위젯</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">📋 전체 키워드 분석</span>
+          </div>
+          <Link href="/subscribe" className="px-8 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm inline-block">
+            이용권 등록하기
+          </Link>
+          <p className="text-[11px] text-dim mt-3">키워드·랭킹·인플루언서 검색은 무료입니다</p>
+        </GlassCard>
+      )}
 
+      {canAccess && (
+      <>
       {/* ─── 4. 변동 피드 + 추천 키워드 (2열) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
@@ -696,7 +617,10 @@ export default async function MyDashboard() {
         )}
       </div>
 
-      {/* ─── 9. 활동 현황 ─── */}
+      </>
+      )}
+
+      {/* ─── 9. 활동 현황 (무료) ─── */}
       <GlassCard>
         <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
         <div className="grid grid-cols-3 gap-4 text-center">
@@ -715,7 +639,6 @@ export default async function MyDashboard() {
         </div>
       </GlassCard>
 
-      </div>
       </div>
     </div>
   );

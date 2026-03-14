@@ -1,0 +1,52 @@
+/**
+ * N인플 키워드 분석 — Content Script CSS
+ * 네이버 검색 페이지에 오버레이 배지 스타일
+ */
+
+/* 배지 컨테이너 - 기본 상태 */
+#ninfl-search-badge {
+  all: initial;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', sans-serif;
+  line-height: 1.4;
+}
+
+/* 배지 진입 애니메이션 */
+#ninfl-search-badge > div {
+  animation: ninfl-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ninfl-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 배지 호버 효과 */
+#ninfl-badge-inner:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-2px);
+}
+
+/* 닫기 버튼 호버 */
+#ninfl-close:hover {
+  color: #FF6B35 !important;
+}
+
+/* 반응형: 모바일 */
+@media (max-width: 768px) {
+  #ninfl-search-badge > div {
+    width: 240px !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    padding: 10px 14px !important;
+  }
+}

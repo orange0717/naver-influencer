@@ -115,7 +115,7 @@ export default function LoginPage() {
               <h2 className="text-lg font-extrabold mb-1">일반 블로거</h2>
               <p className="text-xs text-dim leading-relaxed">
                 네이버 블로그 키워드 순위 확인<br />
-                C-Rank · DIA · DIA+ 기반 분석
+                전문성 · 품질 · 노출력 종합 분석
               </p>
               <div className="mt-4 text-xs font-semibold text-[#2DB400] flex items-center gap-1">
                 시작하기

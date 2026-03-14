@@ -73,20 +73,20 @@ function generateWidgetSVG(data: {
   <text x="266" y="56" font-family="Arial,sans-serif" font-size="18" font-weight="900" fill="${gc.main}" text-anchor="end">${data.total_score}</text>
   <text x="266" y="56" font-family="Arial,sans-serif" font-size="9" fill="#9CA3AF" text-anchor="end" dx="-22">점</text>
 
-  <!-- C-Rank 바 -->
-  <text x="14" y="76" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#F29C68">C-Rank</text>
+  <!-- 전문성 바 -->
+  <text x="14" y="76" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#F29C68">전문성</text>
   <rect x="62" y="69" width="92" height="6" rx="3" fill="#F3F4F6"/>
   <rect x="62" y="69" width="${crankBar}" height="6" rx="3" fill="#F29C68"/>
   <text x="160" y="76" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#F29C68">${data.crank_score}</text>
 
-  <!-- DIA 바 -->
-  <text x="14" y="92" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#22C55E">DIA</text>
+  <!-- 품질 바 -->
+  <text x="14" y="92" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#22C55E">품질</text>
   <rect x="62" y="85" width="92" height="6" rx="3" fill="#F3F4F6"/>
   <rect x="62" y="85" width="${diaBar}" height="6" rx="3" fill="#22C55E"/>
   <text x="160" y="92" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#22C55E">${data.dia_score}</text>
 
-  <!-- DIA+ 바 -->
-  <text x="14" y="108" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#7B1FA2">DIA+</text>
+  <!-- 노출력 바 -->
+  <text x="14" y="108" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#7B1FA2">노출력</text>
   <rect x="62" y="101" width="92" height="6" rx="3" fill="#F3F4F6"/>
   <rect x="62" y="101" width="${diaplusBar}" height="6" rx="3" fill="#7B1FA2"/>
   <text x="160" y="108" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#7B1FA2">${data.diaplus_score}</text>

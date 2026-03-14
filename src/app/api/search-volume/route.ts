@@ -3,6 +3,18 @@ import { createHmac } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+/** CORS 헤더 (크롬 확장앱에서 호출 가능하도록) */
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+/** OPTIONS preflight */
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 /** Node.js crypto 모듈로 HMAC-SHA256 서명 생성 */
 function generateSignature(timestamp: string, method: string, path: string, secretKey: string): string {
   const message = `${timestamp}.${method}.${path}`;
@@ -15,7 +27,7 @@ export async function GET(request: NextRequest) {
   const keyword = request.nextUrl.searchParams.get('keyword');
 
   if (!keyword) {
-    return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400 });
+    return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400, headers: corsHeaders });
   }
 
   const apiKey = process.env.NAVER_API_KEY?.trim();
@@ -25,7 +37,7 @@ export async function GET(request: NextRequest) {
   if (!apiKey || !secretKey || !customerId) {
     return NextResponse.json(
       { error: 'API 키가 설정되지 않았습니다. 관리자에게 문의하세요.' },
-      { status: 503 }
+      { status: 503, headers: corsHeaders }
     );
   }
 
@@ -49,7 +61,7 @@ export async function GET(request: NextRequest) {
       const errData = await res.json().catch(() => ({}));
       return NextResponse.json(
         { error: errData.detail || `API 오류 (${res.status})` },
-        { status: res.status }
+        { status: res.status, headers: corsHeaders }
       );
     }
 
@@ -73,11 +85,11 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ keywords });
+    return NextResponse.json({ keywords }, { headers: corsHeaders });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : '검색량 조회 실패' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

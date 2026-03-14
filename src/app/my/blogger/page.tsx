@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
@@ -69,8 +69,9 @@ function timeAgo(dateStr: string): string {
   return `${diffDay}일 전`;
 }
 
-function RankBadge({ rank }: { rank: number | null }) {
-  if (rank === null) return <span className="text-xs text-dim bg-border/30 px-2 py-0.5 rounded-full">미노출</span>;
+function RankBadge({ rank, checked = true }: { rank: number | null; checked?: boolean }) {
+  if (!checked) return <span className="text-xs text-dim bg-border/30 px-2 py-0.5 rounded-full">확인 전</span>;
+  if (rank === null) return <span className="text-xs text-down/80 bg-down/10 px-2 py-0.5 rounded-full">미노출</span>;
   if (rank <= 5) return <span className="text-xs font-bold text-white bg-accent px-2 py-0.5 rounded-full">TOP 5</span>;
   if (rank <= 10) return <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">TOP 10</span>;
   if (rank <= 20) return <span className="text-xs font-bold text-[#2DB400] bg-[#2DB400]/10 px-2 py-0.5 rounded-full">TOP 20</span>;
@@ -99,6 +100,49 @@ export default function BloggerDashboard() {
   const [extracting, setExtracting] = useState(false);
   const [rankHistory, setRankHistory] = useState<KeywordHistory[]>([]);
 
+  // 미확인 키워드 자동 순위 확인
+  const autoCheckRef = useRef(false);
+  const autoCheckUnchecked = useCallback(async (kws: string[], savedRes: KeywordRank[], blogProfile: BloggerProfile) => {
+    if (autoCheckRef.current) return;
+    const checkedKeywords = new Set(savedRes.map(r => r.keyword));
+    // 1시간 이상 지난 결과도 재확인
+    const staleThreshold = Date.now() - 60 * 60 * 1000;
+    const staleKeywords = savedRes
+      .filter(r => kws.includes(r.keyword) && new Date(r.checkedAt).getTime() < staleThreshold)
+      .map(r => r.keyword);
+    const unchecked = kws.filter(kw => !checkedKeywords.has(kw));
+    const toCheck = [...new Set([...unchecked, ...staleKeywords])];
+    if (toCheck.length === 0) return;
+    autoCheckRef.current = true;
+    setLoading(true);
+    setCheckProgress({ current: 0, total: toCheck.length });
+    for (let i = 0; i < toCheck.length; i++) {
+      setCheckProgress({ current: i + 1, total: toCheck.length });
+      try {
+        const res = await fetch(`/api/blog/rank?keyword=${encodeURIComponent(toCheck[i])}&blogId=${encodeURIComponent(blogProfile.blogId)}`);
+        const data = await res.json();
+        if (res.ok) {
+          setResults(prev => {
+            const existing = prev.find(r => r.keyword === toCheck[i]);
+            const filtered = prev.filter(r => r.keyword !== toCheck[i]);
+            const updated = [...filtered, {
+              keyword: toCheck[i], rank: data.rank, prevRank: existing?.rank ?? null,
+              totalResults: data.totalResults || 0, blogUrl: data.blogUrl || '',
+              postTitle: data.postTitle || '', searchUrl: data.searchUrl || '',
+              checkedAt: new Date().toISOString(),
+            }];
+            if (blogProfile) localStorage.setItem(`blogger_results_${blogProfile.blogId}`, JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } catch { /* ignore */ }
+      if (i < toCheck.length - 1) await new Promise(r => setTimeout(r, 2000));
+    }
+    setLoading(false);
+    setCheckProgress({ current: 0, total: 0 });
+    autoCheckRef.current = false;
+  }, []);
+
   useEffect(() => {
     getProfileFromApi().then(p => {
       if (!p) {
@@ -114,21 +158,28 @@ export default function BloggerDashboard() {
         .catch(() => {});
 
       // 저장된 키워드 불러오기
+      let savedKws: string[] = [];
+      let savedRes: KeywordRank[] = [];
       const saved = localStorage.getItem(`blogger_keywords_${p.blogId}`);
       if (saved) {
-        try { setKeywords(JSON.parse(saved)); } catch { /* ignore */ }
+        try { savedKws = JSON.parse(saved); setKeywords(savedKws); } catch { /* ignore */ }
       }
       const savedResults = localStorage.getItem(`blogger_results_${p.blogId}`);
       if (savedResults) {
-        try { setResults(JSON.parse(savedResults)); } catch { /* ignore */ }
+        try { savedRes = JSON.parse(savedResults); setResults(savedRes); } catch { /* ignore */ }
       }
 
       // 블로그 키워드 자동 추출
       fetchExtractedKeywords(p.blogId);
       // DB에서 순위 히스토리 가져오기
       fetchRankHistory(p.blogId);
+
+      // 미확인 키워드 자동 순위 확인 (1초 후 시작)
+      if (savedKws.length > 0) {
+        setTimeout(() => autoCheckUnchecked(savedKws, savedRes, p), 1000);
+      }
     });
-  }, []);
+  }, [autoCheckUnchecked]);
 
   const fetchRankHistory = async (blogId: string) => {
     try {
@@ -173,7 +224,7 @@ export default function BloggerDashboard() {
     } catch { /* DB가 아직 없으면 무시 */ }
   };
 
-  const addKeyword = (kw?: string) => {
+  const addKeyword = async (kw?: string) => {
     const target = kw || keyword.trim();
     if (!target || keywords.includes(target)) return;
     if (keywords.length >= 20) { alert('키워드는 최대 20개까지 등록할 수 있습니다.'); return; }
@@ -182,6 +233,8 @@ export default function BloggerDashboard() {
     saveKeywords(updated);
     saveKeywordToDB(target, !!kw); // kw가 있으면 추천에서 추가 (자동)
     if (!kw) setKeyword('');
+    // 키워드 추가 후 자동 순위 확인
+    setTimeout(() => checkRank(target), 300);
   };
 
   const removeKeyword = (kw: string) => {
@@ -305,22 +358,8 @@ export default function BloggerDashboard() {
         subscribed={isSubscribed}
       />
 
-      {/* ─── 대시보드 (미구독 시 블라인드) ─── */}
-      <div className="relative">
-      {!isSubscribed && (
-        <div className="absolute inset-0 z-10 flex items-start justify-center pt-32">
-          <div className="bg-surface/95 backdrop-blur-sm rounded-2xl border border-[#2DB400]/20 p-8 text-center space-y-4 shadow-xl max-w-sm mx-4">
-            <div className="w-14 h-14 mx-auto rounded-full bg-[#2DB400]/10 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-[#2DB400]"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <h2 className="text-lg font-extrabold text-text">이용권을 등록하고 대시보드 이용하기</h2>
-            <p className="text-sm text-dim leading-relaxed">블로그탭 키워드 순위 추적, 순위 변동 분석 등<br />대시보드의 모든 기능을 이용하세요.</p>
-            <Link href="/subscribe" className="block px-8 py-3 bg-[#2DB400] text-white font-bold rounded-xl hover:bg-[#25a000] transition text-sm">이용권 등록하기</Link>
-          </div>
-        </div>
-      )}
-
-      <div className={`space-y-6 ${!isSubscribed ? 'blur-[6px] select-none pointer-events-none' : ''}`}>
+      {/* ─── 대시보드 (관리자 또는 구독자는 전체 접근) ─── */}
+      <div className="space-y-6">
 
       {/* ─── 2. 통계 카드 4개 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -359,12 +398,12 @@ export default function BloggerDashboard() {
         />
       </div>
 
-      {/* ─── 3. N인플 블로그 등급 (원형 게이지) ─── */}
+      {/* ─── 3. 내 블로그 종합 점수 ─── */}
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-bold text-[15px]">N인플 블로그 등급</h3>
-            <p className="text-[11px] text-dim mt-0.5">C-Rank · DIA · DIA+ 종합 평가</p>
+            <h3 className="font-bold text-[15px]">내 블로그 종합 점수</h3>
+            <p className="text-[11px] text-dim mt-0.5">전문성 · 콘텐츠 품질 · 검색 노출력 종합</p>
           </div>
           {hasData && (
             <div className="flex items-center gap-2">
@@ -379,13 +418,13 @@ export default function BloggerDashboard() {
         {!hasData ? (
           <div className="text-center py-6 text-dim text-sm">
             <p>키워드를 등록하고 순위를 확인하면</p>
-            <p>C-Rank · DIA · DIA+ 등급이 계산됩니다.</p>
+            <p>내 블로그 종합 등급이 계산됩니다.</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3">
-            <GradeGauge score={crankScore} label="C-Rank" description="전문성 · 일관성" color="#CC9486" delay={100} />
-            <GradeGauge score={diaScore} label="DIA" description="콘텐츠 품질" color="#2E8B57" delay={200} />
-            <GradeGauge score={diaplusScore} label="DIA+" description="검색 의도 부합" color="#7B1FA2" delay={300} />
+            <GradeGauge score={crankScore} label="전문성" description="꾸준함 · 주제 집중" color="#CC9486" delay={100} />
+            <GradeGauge score={diaScore} label="품질" description="콘텐츠 퀄리티" color="#2E8B57" delay={200} />
+            <GradeGauge score={diaplusScore} label="노출력" description="검색 상위 노출" color="#7B1FA2" delay={300} />
           </div>
         )}
       </GlassCard>
@@ -567,7 +606,7 @@ export default function BloggerDashboard() {
                       </td>
                       <td className="text-right px-5 py-3.5">
                         <div className="flex items-center justify-end gap-2">
-                          <RankBadge rank={result?.rank ?? null} />
+                          <RankBadge rank={result?.rank ?? null} checked={!!result} />
                           <button onClick={() => checkRank(kw)} disabled={checking === kw || loading}
                             className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50 opacity-0 group-hover:opacity-100 transition">
                             {checking === kw ? <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" /> : '확인'}
@@ -609,12 +648,10 @@ export default function BloggerDashboard() {
                       <a href={result.blogUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-dim hover:text-accent transition truncate block">{result.postTitle}</a>
                     </div>
                   )}
-                  {result && (
-                    <div className="mt-1 ml-7 flex items-center gap-2">
-                      <RankBadge rank={result.rank} />
-                      <span className="text-[10px] text-dim">{timeAgo(result.checkedAt)}</span>
-                    </div>
-                  )}
+                  <div className="mt-1 ml-7 flex items-center gap-2">
+                    <RankBadge rank={result?.rank ?? null} checked={!!result} />
+                    {result && <span className="text-[10px] text-dim">{timeAgo(result.checkedAt)}</span>}
+                  </div>
                 </div>
               );
             })}
@@ -635,33 +672,6 @@ export default function BloggerDashboard() {
         </GlassCard>
       )}
 
-      {/* ─── 8. 블로그 순위 올리는 팁 ─── */}
-      <GlassCard>
-        <h3 className="font-bold text-[15px] mb-3">블로그 순위 올리는 팁</h3>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="flex gap-3 p-3 bg-bg rounded-xl">
-            <span className="shrink-0 w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold">C</span>
-            <div>
-              <p className="font-semibold text-sm text-text">C-Rank</p>
-              <p className="text-[11px] text-dim mt-0.5">한 분야 전문성 + 꾸준한 포스팅</p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-3 bg-bg rounded-xl">
-            <span className="shrink-0 w-8 h-8 rounded-full bg-up/10 flex items-center justify-center text-up text-xs font-bold">D</span>
-            <div>
-              <p className="font-semibold text-sm text-text">DIA</p>
-              <p className="text-[11px] text-dim mt-0.5">독창적 콘텐츠 + 체류시간</p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-3 bg-bg rounded-xl">
-            <span className="shrink-0 w-8 h-8 rounded-full bg-[#7B1FA2]/10 flex items-center justify-center text-[#7B1FA2] text-xs font-bold">D+</span>
-            <div>
-              <p className="font-semibold text-sm text-text">DIA+</p>
-              <p className="text-[11px] text-dim mt-0.5">검색 의도 부합 + 핵심 배치</p>
-            </div>
-          </div>
-        </div>
-      </GlassCard>
 
       {/* ─── 9. 블로그 위젯 ─── */}
       {hasData && (
@@ -729,7 +739,6 @@ export default function BloggerDashboard() {
         </GlassCard>
       )}
 
-      </div>
       </div>
     </div>
   );
