@@ -12,6 +12,7 @@ import RecommendationGrid from '@/components/dashboard/RecommendationGrid';
 import GlassCard from '@/components/dashboard/GlassCard';
 import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
+import InfluencerScoreSection from '@/components/dashboard/InfluencerScoreSection';
 import { generateActivityEvents } from '@/lib/activity-events';
 
 export const dynamic = 'force-dynamic';
@@ -404,6 +405,23 @@ export default async function MyDashboard() {
           delay={200}
         />
       </div>
+
+      {/* ─── 2-2. 인플루언서 종합 점수 ─── */}
+      <InfluencerScoreSection
+        subscriberCount={influencer.subscriber_count || 0}
+        categoryRank={categoryRank}
+        categoryTotal={categoryTotal}
+        totalKeywords={totalKeywords}
+        rankedKeywords={totalRankedKeywords}
+        top3Count={top3Count}
+        top10Count={top10Count}
+        avgRank={avgRank}
+        rankUpCount={rankUpCount}
+        rankDownCount={rankDownCount}
+        integratedTop3Count={integratedCount}
+        overallRank={overallRank}
+        overallTotal={overallTotal}
+      />
 
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />
