@@ -232,13 +232,13 @@ export default async function MyDashboard() {
   // 등급 계산
   function getGradeInfo(rank: number, total: number) {
     const pct = rank / total;
-    if (rank <= 3) return { label: 'TOP 3', color: 'text-yellow-500', bg: 'bg-yellow-500/15', emoji: '🏆' };
-    if (rank <= 10) return { label: 'TOP 10', color: 'text-red-500', bg: 'bg-red-500/10', emoji: '🔥' };
-    if (pct <= 0.01) return { label: 'TOP 1%', color: 'text-amber-500', bg: 'bg-amber-500/10', emoji: '⭐' };
-    if (pct <= 0.05) return { label: 'TOP 5%', color: 'text-green-500', bg: 'bg-green-500/10', emoji: '💚' };
-    if (pct <= 0.1) return { label: 'TOP 10%', color: 'text-blue-500', bg: 'bg-blue-500/10', emoji: '💙' };
-    if (pct <= 0.3) return { label: 'GOOD', color: 'text-indigo-500', bg: 'bg-indigo-500/10', emoji: '👍' };
-    return { label: 'ACTIVE', color: 'text-dim', bg: 'bg-border/30', emoji: '📝' };
+    if (rank <= 3) return { label: 'TOP 3', color: 'text-yellow-500', bg: 'bg-yellow-500/15' };
+    if (rank <= 10) return { label: 'TOP 10', color: 'text-red-500', bg: 'bg-red-500/10' };
+    if (pct <= 0.01) return { label: 'TOP 1%', color: 'text-amber-500', bg: 'bg-amber-500/10' };
+    if (pct <= 0.05) return { label: 'TOP 5%', color: 'text-green-500', bg: 'bg-green-500/10' };
+    if (pct <= 0.1) return { label: 'TOP 10%', color: 'text-blue-500', bg: 'bg-blue-500/10' };
+    if (pct <= 0.3) return { label: 'GOOD', color: 'text-indigo-500', bg: 'bg-indigo-500/10' };
+    return { label: 'ACTIVE', color: 'text-dim', bg: 'bg-border/30' };
   }
 
   const overallGrade = overallRank > 0 ? getGradeInfo(overallRank, overallTotal) : null;
@@ -321,7 +321,6 @@ export default async function MyDashboard() {
             <div className="flex flex-col items-center justify-center py-6 px-4">
               {overallGrade && (
                 <>
-                  <span className={`text-3xl mb-2`}>{overallGrade.emoji}</span>
                   <span className={`text-lg font-black ${overallGrade.color} ${overallGrade.bg} px-4 py-1.5 rounded-full`}>
                     {overallGrade.label}
                   </span>
@@ -429,11 +428,11 @@ export default async function MyDashboard() {
             이용권을 등록하면 더 강력한 분석 도구를 사용할 수 있어요
           </p>
           <div className="flex flex-wrap justify-center gap-2 mb-5 text-xs">
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">🔍 블로그 검색 순위</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">👥 경쟁자 분석</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">🎯 맞춤 추천 키워드</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">📊 순위 위젯</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">📋 전체 키워드 분석</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">블로그 검색 순위</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">경쟁자 분석</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">맞춤 추천 키워드</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">순위 위젯</span>
+            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">전체 키워드 분석</span>
           </div>
           <Link href="/subscribe" className="px-8 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm inline-block">
             이용권 등록하기

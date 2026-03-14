@@ -104,7 +104,7 @@ export default function PostAnalysisSection({
     return (
       <div className="bg-surface/50 backdrop-blur-sm rounded-2xl border border-border overflow-hidden">
         <div className="px-5 py-4 border-b border-border bg-bg/30">
-          <h3 className="font-bold text-[15px]">📝 내 포스팅 분석</h3>
+          <h3 className="font-bold text-[15px]">내 포스팅 분석</h3>
           <p className="text-[11px] text-dim mt-0.5">메인 키워드별 순위 현황</p>
         </div>
         <div className="text-center py-10 text-dim text-sm">
@@ -120,7 +120,7 @@ export default function PostAnalysisSection({
       {/* ─── 헤더 ─── */}
       <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
         <div>
-          <h3 className="font-bold text-[15px]">📝 내 포스팅 분석</h3>
+          <h3 className="font-bold text-[15px]">내 포스팅 분석</h3>
           <p className="text-[11px] text-dim mt-0.5">메인 키워드별 순위 현황</p>
         </div>
         <div className="flex items-center gap-3">
@@ -137,12 +137,12 @@ export default function PostAnalysisSection({
                   확인 중...
                 </>
               ) : (
-                '🔍 블로그 검색순위 확인'
+                '블로그 검색순위 확인'
               )}
             </button>
           ) : (
             <span className="text-[10px] px-2.5 py-1 rounded-lg bg-border/30 text-dim">
-              🔒 프리미엄
+              프리미엄
             </span>
           )}
         </div>
@@ -225,7 +225,9 @@ export default function PostAnalysisSection({
                   {/* 블로그 검색 순위 */}
                   <td className="px-3 py-3.5 text-center">
                     {!canSearchRank ? (
-                      <span className="text-[10px] text-dim">🔒</span>
+                      <span className="text-[10px] text-dim">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="inline"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      </span>
                     ) : searchRank ? (
                       searchRank.loading ? (
                         <span className="inline-flex items-center gap-1 text-xs text-dim">

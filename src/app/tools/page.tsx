@@ -10,7 +10,7 @@ interface ToolArticle {
   name: string;
   tagline: string;
   url: string;
-  icon: string;
+  icon?: string;
   badge?: string;
   description: string[];   // 본문 단락들
   features: string[];       // 주요 기능 리스트
@@ -24,7 +24,6 @@ const TOOLS: ToolArticle[] = [
     name: 'OrangeRefine',
     tagline: 'AI 맞춤법 · 교정 · 교열 · 윤문',
     url: 'https://orangerefine.kr',
-    icon: '✍️',
     badge: '자사 서비스',
     isOwn: true,
     description: [
@@ -48,7 +47,7 @@ const TOOLS: ToolArticle[] = [
   //   name: '도구 이름',
   //   tagline: '한 줄 소개',
   //   url: 'https://example.com',
-  //   icon: '🔧',
+  //   icon: '',
   //   description: [
   //     '첫 번째 단락...',
   //     '두 번째 단락...',
@@ -78,7 +77,7 @@ export default function ToolsPage() {
           {/* 도구 헤더 */}
           <div className="px-6 py-5 border-b border-border/50 bg-bg/30">
             <div className="flex items-start gap-4">
-              <span className="text-3xl mt-0.5">{tool.icon}</span>
+              {tool.icon && <span className="text-3xl mt-0.5">{tool.icon}</span>}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h2 className="text-lg font-extrabold text-text">{tool.name}</h2>

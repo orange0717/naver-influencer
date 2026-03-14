@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { parsePlanFromOrderId, findPeriod, PLANS, calculatePrice } from '@/lib/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,8 @@ const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || '';
 /**
  * POST /api/payment/confirm — 토스페이먼츠 결제 승인
  * body: { paymentKey, orderId, amount }
+ *
+ * orderId 형식: NINFL_{planName}_{months}M_{userId}_{timestamp}
  */
 export async function POST(req: NextRequest) {
   try {
@@ -37,18 +40,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. orderId에서 사용자 정보 추출 (형식: NINFL_{userId}_{timestamp})
-    const parts = orderId.split('_');
-    const userId = parts.length >= 2 ? parts.slice(1, -1).join('_') : '';
+    // 2. orderId에서 플랜 정보 추출
+    // 새 형식: NINFL_{planName}_{months}M_{userId}_{timestamp}
+    // 레거시: NINFL_{userId}_{timestamp}
+    const planInfo = parsePlanFromOrderId(orderId);
+
+    let planName: string;
+    let durationDays: number;
+
+    if (planInfo) {
+      // 새 형식
+      planName = planInfo.planName;
+      const period = findPeriod(planInfo.months);
+      durationDays = period?.days || planInfo.months * 30;
+    } else {
+      // 레거시 형식 (기존 호환)
+      planName = 'PRO';
+      durationDays = 30;
+    }
+
+    // 3. userId 추출
+    let userId: string;
+    if (planInfo) {
+      // 새 형식: NINFL_PRO_3M_{userId}_{timestamp}
+      const parts = orderId.split('_');
+      // NINFL, planName, monthsM, ...userId parts..., timestamp
+      userId = parts.slice(3, -1).join('_');
+    } else {
+      // 레거시: NINFL_{userId}_{timestamp}
+      const parts = orderId.split('_');
+      userId = parts.slice(1, -1).join('_');
+    }
 
     if (!userId) {
       return NextResponse.json({ error: '주문 정보에서 사용자를 찾을 수 없습니다.' }, { status: 400 });
     }
 
-    // 3. 이용권 생성 및 활성화
+    // 4. 이용권 생성 및 활성화
     const supabase = createServiceClient();
     const now = new Date();
-    const durationDays = 30; // 30일 이용권
     const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
     // 기존 활성 이용권이 있으면 만료일 연장
@@ -63,14 +93,13 @@ export async function POST(req: NextRequest) {
 
     let finalExpiresAt = expiresAt;
     if (existing && existing.length > 0) {
-      // 기존 만료일부터 30일 추가
       const currentExpires = new Date(existing[0].expires_at);
       finalExpiresAt = new Date(currentExpires.getTime() + durationDays * 24 * 60 * 60 * 1000);
     }
 
     const { error: insertErr } = await supabase.from('licenses').insert({
       license_code: `TOSS-${paymentKey.slice(-12).toUpperCase()}`,
-      plan_name: 'PRO',
+      plan_name: planName,
       duration_days: durationDays,
       price: amount,
       buyer_id: userId,
@@ -83,7 +112,6 @@ export async function POST(req: NextRequest) {
 
     if (insertErr) {
       console.error('[payment/confirm] DB 저장 실패:', insertErr);
-      // 결제는 성공했으므로 에러를 로깅하고 성공 응답
     }
 
     return NextResponse.json({
@@ -95,7 +123,7 @@ export async function POST(req: NextRequest) {
         approvedAt: payment.approvedAt,
       },
       license: {
-        plan_name: 'PRO',
+        plan_name: planName,
         duration_days: durationDays,
         expires_at: finalExpiresAt.toISOString(),
       },

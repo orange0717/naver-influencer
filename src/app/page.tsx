@@ -132,7 +132,7 @@ export default function LandingPage() {
                   {i >= 3 && (
                     <div className="absolute inset-0 flex items-center justify-center rounded-xl">
                       <span className="text-xs font-bold text-accent bg-surface/90 px-3 py-1.5 rounded-full border border-accent/20">
-                        🔒 이용권 등록하고 전체 보기
+                        이용권 등록하고 전체 보기
                       </span>
                     </div>
                   )}
@@ -291,49 +291,75 @@ export default function LandingPage() {
 
       {/* ═══════════ 가격 (bg) ═══════════ */}
       <section className="bg-bg px-4 py-20 md:py-24">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PRICING</p>
             <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">합리적인 가격</h2>
             <p className="text-sm text-dim">무료 계정으로 시작하고, 더 많은 기능이 필요할 때 이용권을 등록하세요.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-surface rounded-2xl border border-border p-8">
+          <div className="grid md:grid-cols-3 gap-5">
+            {/* 무료 */}
+            <div className="bg-surface rounded-2xl border border-border p-7">
               <p className="text-xs font-bold text-up tracking-wide mb-3">무료</p>
               <p className="text-3xl font-extrabold text-text mb-1">₩0</p>
               <p className="text-xs text-dim mb-6">영구 무료</p>
-              <div className="border-t border-border my-6" />
-              <ul className="space-y-3">
+              <div className="border-t border-border my-5" />
+              <ul className="space-y-2.5">
                 {['키워드 목록 전체 열람', '커뮤니티 · 검색량 조회', '참여자 수 · 블루오션 지표', '블로그 등급 위젯'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
                     <span className="text-up">&#10003;</span> {f}
                   </li>
                 ))}
               </ul>
-              <Link href="/auth/signup" className="inline-block mt-8 px-6 py-2.5 rounded-full border border-border text-text text-sm font-medium hover:border-accent/50 transition-colors">
+              <Link href="/auth/signup" className="inline-block mt-7 px-6 py-2.5 rounded-full border border-border text-text text-sm font-medium hover:border-accent/50 transition-colors">
                 무료로 시작하기
               </Link>
             </div>
 
-            <div className="bg-surface rounded-2xl border-2 border-accent/30 p-8 relative">
+            {/* PRO */}
+            <div className="bg-surface rounded-2xl border-2 border-accent/30 p-7 relative">
               <div className="absolute -top-3 left-6 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">추천</div>
               <p className="text-xs font-bold text-accent tracking-wide mb-3">PRO</p>
               <p className="text-3xl font-extrabold text-text mb-1">₩9,900<span className="text-sm font-normal text-dim">/월</span></p>
-              <p className="text-xs text-dim mb-6">모든 기능 무제한</p>
-              <div className="border-t border-border my-6" />
-              <ul className="space-y-3">
+              <p className="text-xs text-dim mb-6">개인 블로거 · 인플루언서</p>
+              <div className="border-t border-border my-5" />
+              <ul className="space-y-2.5">
                 {['키워드 상세 분석 무제한', '인플루언서 순위 전체 열람', '검색량 트렌드 차트', '일일 추천 키워드 전체', '내 대시보드 + 경쟁자 비교', '실시간 데이터 업데이트'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
                     <span className="text-accent">&#10003;</span> {f}
                   </li>
                 ))}
               </ul>
-              <Link href="/subscribe" className="inline-block mt-8 px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors">
+              <Link href="/subscribe" className="inline-block mt-7 px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors">
                 이용권 등록하기 →
               </Link>
             </div>
+
+            {/* AGENCY */}
+            <div className="bg-surface rounded-2xl border-2 border-blue/30 p-7 relative">
+              <div className="absolute -top-3 left-6 px-3 py-0.5 bg-blue text-white text-[10px] font-bold rounded-full">대행사</div>
+              <p className="text-xs font-bold text-blue tracking-wide mb-3">AGENCY</p>
+              <p className="text-3xl font-extrabold text-text mb-1">₩49,900<span className="text-sm font-normal text-dim">/월</span></p>
+              <p className="text-xs text-dim mb-6">마케팅 대행사 · 다중 블로그</p>
+              <div className="border-t border-border my-5" />
+              <ul className="space-y-2.5">
+                {['PRO 기능 전체 포함', '최대 10개 블로그 동시 관리', '블로그별 6가지 점수 분석', '대행사 전용 대시보드', '블로그 성과 비교 · 모니터링', '클라이언트 리포트 (예정)'].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-dim">
+                    <span className="text-blue">&#10003;</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/subscribe" className="inline-block mt-7 px-6 py-2.5 rounded-full bg-blue text-white text-sm font-medium hover:bg-blue/80 transition-colors">
+                대행사 플랜 시작 →
+              </Link>
+            </div>
           </div>
+
+          <p className="text-center text-xs text-dim mt-6">
+            3 · 6 · 10 · 12개월 장기 결제 시 최대 11% 할인 ·{' '}
+            <Link href="/subscribe" className="text-accent hover:underline">자세히 보기</Link>
+          </p>
         </div>
       </section>
 

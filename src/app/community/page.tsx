@@ -138,7 +138,9 @@ export default function CommunityPage() {
           </div>
         ) : posts.length === 0 ? (
           <div className="py-32 text-center text-dim text-sm">
-            <p className="text-4xl mb-4">💬</p>
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-accent/10 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
             <p className="font-semibold text-base text-text mb-1">아직 게시글이 없습니다</p>
             <p>첫 번째 글을 작성해보세요!</p>
           </div>
@@ -172,7 +174,7 @@ export default function CommunityPage() {
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-dim">
                     <span className="flex items-center gap-1">
-                      {post.author_type === 'admin' ? '🔧' : post.author_type === 'influencer' ? '⭐' : ''}
+                      {post.author_type === 'admin' ? '[관리자] ' : post.author_type === 'influencer' ? '[인플] ' : ''}
                       {post.author_name}
                     </span>
                     <span>{formatDate(post.created_at)}</span>

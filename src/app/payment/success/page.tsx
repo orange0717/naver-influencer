@@ -3,12 +3,15 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { parsePlanFromOrderId, findPeriod, PLANS } from '@/lib/plans';
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [planLabel, setPlanLabel] = useState('PRO');
+  const [periodLabel, setPeriodLabel] = useState('30일');
 
   useEffect(() => {
     const paymentKey = searchParams.get('paymentKey');
@@ -19,6 +22,15 @@ function PaymentSuccessContent() {
       setStatus('error');
       setMessage('결제 정보가 올바르지 않습니다.');
       return;
+    }
+
+    // orderId에서 플랜 정보 파싱
+    const planInfo = parsePlanFromOrderId(orderId);
+    if (planInfo) {
+      const plan = PLANS[planInfo.planName];
+      const period = findPeriod(planInfo.months);
+      setPlanLabel(`${plan?.label || planInfo.planName}`);
+      setPeriodLabel(period?.label || `${planInfo.months}개월`);
     }
 
     fetch('/api/payment/confirm', {
@@ -36,6 +48,10 @@ function PaymentSuccessContent() {
           setStatus('success');
           setExpiresAt(data.license?.expires_at || '');
           setMessage('결제가 완료되었습니다!');
+          if (data.license?.plan_name) {
+            const plan = PLANS[data.license.plan_name as keyof typeof PLANS];
+            if (plan) setPlanLabel(plan.label);
+          }
         } else {
           setStatus('error');
           setMessage(data.error || '결제 승인에 실패했습니다.');
@@ -82,7 +98,7 @@ function PaymentSuccessContent() {
       <div className="bg-surface rounded-2xl border border-border p-6 text-left space-y-3">
         <div className="flex justify-between text-sm">
           <span className="text-dim">이용권</span>
-          <span className="font-bold">PRO (30일)</span>
+          <span className="font-bold">{planLabel} ({periodLabel})</span>
         </div>
         {expiresAt && (
           <div className="flex justify-between text-sm">

@@ -83,7 +83,42 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '점수 데이터가 없습니다.' }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    // 전체 블로거 중 랭킹(등수) 계산
+    const { count: totalBloggers } = await supabase
+      .from('blog_scores')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: higherCount } = await supabase
+      .from('blog_scores')
+      .select('*', { count: 'exact', head: true })
+      .gt('total_score', data.total_score);
+
+    // 세부 카테고리별 랭킹도 계산
+    const { count: higherCrank } = await supabase
+      .from('blog_scores')
+      .select('*', { count: 'exact', head: true })
+      .gt('crank_score', data.crank_score);
+
+    const { count: higherDia } = await supabase
+      .from('blog_scores')
+      .select('*', { count: 'exact', head: true })
+      .gt('dia_score', data.dia_score);
+
+    const { count: higherDiaplus } = await supabase
+      .from('blog_scores')
+      .select('*', { count: 'exact', head: true })
+      .gt('diaplus_score', data.diaplus_score);
+
+    return NextResponse.json({
+      ...data,
+      rank: (higherCount || 0) + 1,
+      totalBloggers: totalBloggers || 1,
+      categoryRanks: {
+        reliabilityOriginality: (higherCrank || 0) + 1,  // crank = 신뢰성+독창성
+        experienceDepth: (higherDia || 0) + 1,            // dia = 경험+심층성
+        readabilityConsistency: (higherDiaplus || 0) + 1, // diaplus = 가독성+꾸준함
+      },
+    });
   } catch (err) {
     console.error('[blog/score] GET error:', err);
     return NextResponse.json({ error: '서버 오류' }, { status: 500 });

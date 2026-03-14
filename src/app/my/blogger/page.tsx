@@ -51,6 +51,35 @@ interface BlogPost {
   isPublic: boolean;
 }
 
+interface BlogAnalysisMetrics {
+  postsWithImages: number;
+  longPosts: number;
+  postsWithHeadings: number;
+  avgCharCount: number;
+  postsWithMedia: number;
+  originalImageRatio: number;
+  avgImageSizeKB: number;
+  postsWithOriginalImages: number;
+  avgPersonalPronounRatio: number;
+  avgUniqueWordRatio: number;
+  postsWithLists: number;
+  postsWithQuotations: number;
+}
+
+interface BlogAnalysisAverages {
+  charCount: number;
+  wordCount: number;
+  imageCount: number;
+  videoCount: number;
+  paragraphCount: number;
+  linkCount: number;
+  headingCount: number;
+  personalPronounCount: number;
+  uniqueWordRatio: number;
+  listItemCount: number;
+  quotationCount: number;
+}
+
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
   try {
     const res = await fetch('/api/auth/me');
@@ -115,7 +144,12 @@ export default function BloggerDashboard() {
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [blogPostsPage, setBlogPostsPage] = useState(1);
   const [blogPostsLoading, setBlogPostsLoading] = useState(false);
+  const [postAnalysis, setPostAnalysis] = useState<{ metrics: BlogAnalysisMetrics; averages: BlogAnalysisAverages } | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [blogRanking, setBlogRanking] = useState<{ rank: number; total: number; categoryRanks?: { reliabilityOriginality: number; experienceDepth: number; readabilityConsistency: number } } | null>(null);
 
+  // 최신 점수 ref (saveScoreToServer에서 사용)
+  const latestScoresRef = useRef({ total: 0, scores: [0, 0, 0, 0, 0, 0], grade: 'D' });
   // 미확인 키워드 자동 순위 확인
   const autoCheckRef = useRef(false);
   const autoCheckUnchecked = useCallback(async (kws: string[], savedRes: KeywordRank[], blogProfile: BloggerProfile) => {
@@ -173,6 +207,36 @@ export default function BloggerDashboard() {
     finally { setBlogPostsLoading(false); }
   }, []);
 
+  const fetchPostAnalysis = useCallback(async (blogId: string) => {
+    setAnalysisLoading(true);
+    try {
+      const res = await fetch(`/api/blog/analyze?blogId=${encodeURIComponent(blogId)}&count=10`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.analyzedCount > 0) {
+          setPostAnalysis({ metrics: data.metrics, averages: data.averages });
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setAnalysisLoading(false); }
+  }, []);
+
+  const fetchBlogRanking = useCallback(async (blogId: string) => {
+    try {
+      const res = await fetch(`/api/blog/score?blogId=${encodeURIComponent(blogId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.rank && data.totalBloggers) {
+          setBlogRanking({
+            rank: data.rank,
+            total: data.totalBloggers,
+            categoryRanks: data.categoryRanks,
+          });
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     getProfileFromApi().then(p => {
       if (!p) {
@@ -215,13 +279,17 @@ export default function BloggerDashboard() {
       fetchRankHistory(p.blogId);
       // 블로그 포스트 목록 가져오기
       fetchBlogPosts(p.blogId, 1);
+      // 블로그 글 본문 분석 (최근 10개)
+      fetchPostAnalysis(p.blogId);
+      // 전체 블로거 중 랭킹 가져오기
+      fetchBlogRanking(p.blogId);
 
       // 미확인 키워드 자동 순위 확인 (1초 후 시작)
       if (savedKws.length > 0) {
         setTimeout(() => autoCheckUnchecked(savedKws, savedRes, p), 1000);
       }
     });
-  }, [autoCheckUnchecked, fetchBlogPosts]);
+  }, [autoCheckUnchecked, fetchBlogPosts, fetchPostAnalysis, fetchBlogRanking]);
 
   const fetchRankHistory = async (blogId: string) => {
     try {
@@ -337,34 +405,48 @@ export default function BloggerDashboard() {
     }
     setLoading(false);
     setCheckProgress({ current: 0, total: 0 });
-    saveScoreToServer();
+    // 렌더링 후 최신 점수 ref 업데이트를 기다린 후 저장
+    setTimeout(() => saveScoreToServer(), 500);
   };
 
   const saveScoreToServer = useCallback(async () => {
     if (!profile) return;
+    const { total, scores, grade } = latestScoresRef.current;
+    if (total === 0) return;
+
     const checked = results.filter(r => keywords.includes(r.keyword));
     const ranked = checked.filter(r => r.rank !== null).length;
-    if (ranked === 0) return;
     const t5 = checked.filter(r => r.rank !== null && r.rank! <= 5).length;
     const t10 = checked.filter(r => r.rank !== null && r.rank! <= 10).length;
-    const t20 = checked.filter(r => r.rank !== null && r.rank! <= 20).length;
-    const avg = checked.filter(r => r.rank !== null).reduce((s, r) => s + (r.rank || 0), 0) / ranked;
-    const imp = checked.filter(r => r.rank !== null && r.prevRank !== null && r.rank! < r.prevRank!).length;
-    const dec = checked.filter(r => r.rank !== null && r.prevRank !== null && r.rank! > r.prevRank!).length;
-    const cs = Math.min(100, Math.round((ranked / Math.max(keywords.length, 1)) * 40 + Math.min(keywords.length * 5, 30) + (ranked >= 5 ? 15 : ranked >= 3 ? 10 : ranked >= 1 ? 5 : 0) + (t20 >= 3 ? 15 : t20 >= 1 ? 8 : 0)));
-    const rq = Math.max(0, 50 - (avg - 1) * 1.6);
-    const ds = Math.min(100, Math.round(rq + (t10 / ranked) * 50));
-    const sr = (imp + dec) > 0 ? imp / (imp + dec) : 0.5;
-    const dp = Math.min(100, Math.round((t5 / ranked) * 40 + sr * 30 + (t5 >= 3 ? 20 : t5 >= 1 ? 10 : 0) + (avg <= 5 ? 10 : 0)));
-    const total = Math.round((cs + ds + dp) / 3);
-    const g = total >= 90 ? 'S' : total >= 75 ? 'A' : total >= 60 ? 'B' : total >= 40 ? 'C' : 'D';
+    const avg = ranked > 0 ? checked.filter(r => r.rank !== null).reduce((s, r) => s + (r.rank || 0), 0) / ranked : 0;
+
     try {
       await fetch('/api/blog/score', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blog_id: profile.blogId, blog_name: profile.displayName, total_score: total, crank_score: cs, dia_score: ds, diaplus_score: dp, grade: g, keyword_count: keywords.length, ranked_count: ranked, avg_rank: Math.round(avg * 100) / 100, top5_count: t5, top10_count: t10 }),
+        body: JSON.stringify({
+          blog_id: profile.blogId, blog_name: profile.displayName,
+          total_score: total, grade,
+          crank_score: Math.round((scores[0] + scores[2]) / 2), // 신뢰성 + 독창성
+          dia_score: Math.round((scores[1] + scores[3]) / 2),   // 경험 + 심층성
+          diaplus_score: Math.round((scores[4] + scores[5]) / 2), // 가독성 + 꾸준함
+          keyword_count: keywords.length, ranked_count: ranked,
+          avg_rank: Math.round(avg * 100) / 100, top5_count: t5, top10_count: t10,
+        }),
       });
+      // 저장 후 랭킹 다시 가져오기
+      fetchBlogRanking(profile.blogId);
     } catch { /* ignore */ }
-  }, [profile, results, keywords]);
+  }, [profile, results, keywords, fetchBlogRanking]);
+
+  // 분석 완료 시 점수 자동 저장
+  const analysisSavedRef = useRef(false);
+  useEffect(() => {
+    if (profile && postAnalysis && !analysisLoading && !analysisSavedRef.current) {
+      analysisSavedRef.current = true;
+      setTimeout(() => saveScoreToServer(), 800);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postAnalysis, analysisLoading]);
 
   const resultMap = new Map(results.map(r => [r.keyword, r]));
   const checkedResults = results.filter(r => keywords.includes(r.keyword));
@@ -377,13 +459,146 @@ export default function BloggerDashboard() {
 
   const top20Count = checkedResults.filter(r => r.rank !== null && r.rank! <= 20).length;
   const hasData = checkedResults.length > 0 && rankedCount > 0;
-  const crankScore = hasData ? Math.min(100, Math.round((rankedCount / Math.max(keywords.length, 1)) * 40 + Math.min(keywords.length * 5, 30) + (rankedCount >= 5 ? 15 : rankedCount >= 3 ? 10 : rankedCount >= 1 ? 5 : 0) + (top20Count >= 3 ? 15 : top20Count >= 1 ? 8 : 0))) : 0;
   const rankQuality = avgRank > 0 ? Math.max(0, 50 - (avgRank - 1) * 1.6) : 0;
-  const diaScore = hasData ? Math.min(100, Math.round(rankQuality + (top10Count / rankedCount) * 50)) : 0;
   const top5Ratio = rankedCount > 0 ? (top5Count / rankedCount) : 0;
   const stabilityRatio = (improvedCount + declinedCount) > 0 ? improvedCount / (improvedCount + declinedCount) : 0.5;
-  const diaplusScore = hasData ? Math.min(100, Math.round(top5Ratio * 40 + stabilityRatio * 30 + (top5Count >= 3 ? 20 : top5Count >= 1 ? 10 : 0) + (avgRank > 0 && avgRank <= 5 ? 10 : 0))) : 0;
-  const totalScore = hasData ? Math.round((crankScore + diaScore + diaplusScore) / 3) : 0;
+
+  // ── 네이버 "좋은 문서의 특성" 기반 6가지 점수 ──
+  // 본문 분석 + 검색 순위 + 포스팅 데이터 종합
+
+  const pa = postAnalysis;
+
+  // 1. 신뢰성 — 출처 · 인용문 · 검색 상위 노출
+  const reliabilityScore = pa ? Math.min(100, Math.round(
+    // 외부 링크(출처) (max 30)
+    (pa.averages.linkCount >= 3 ? 30 : pa.averages.linkCount >= 2 ? 22 :
+     pa.averages.linkCount >= 1 ? 15 : 3) +
+    // 인용문/블록인용 사용 (max 20): 출처 표시 의지
+    (pa.metrics.postsWithQuotations >= 0.5 ? 20 : pa.metrics.postsWithQuotations >= 0.2 ? 12 :
+     pa.averages.quotationCount >= 1 ? 8 : 0) +
+    // 검색 순위 품질 (max 30): 네이버가 신뢰
+    (hasData ? Math.min(30, Math.round(rankQuality * 0.6)) : 0) +
+    // TOP10 비율 (max 20)
+    (hasData ? Math.min(20, Math.round((top10Count / Math.max(rankedCount, 1)) * 20)) : 0)
+  )) : (hasData ? Math.min(100, Math.round(
+    rankQuality * 0.6 + (top10Count / Math.max(rankedCount, 1)) * 40 +
+    (rankedCount >= 3 ? 20 : rankedCount >= 1 ? 10 : 0)
+  )) : 0);
+
+  // 2. 경험 — 직접 촬영 · 1인칭 서술 · 미디어
+  const experienceScore = pa ? Math.min(100, Math.round(
+    // 원본 사진 비율 (max 25): 100KB+ = 직접 촬영
+    pa.metrics.originalImageRatio * 25 +
+    // 1인칭 대명사/경험 표현 비율 (max 25): 직접 체험 서술
+    Math.min(25, pa.metrics.avgPersonalPronounRatio * 800) +
+    // 원본 사진 있는 글 비율 (max 15)
+    pa.metrics.postsWithOriginalImages * 15 +
+    // 미디어(영상/지도) 포함 (max 15)
+    pa.metrics.postsWithMedia * 15 +
+    // 이미지 크기 보너스 (max 10)
+    (pa.metrics.avgImageSizeKB >= 500 ? 10 : pa.metrics.avgImageSizeKB >= 200 ? 7 :
+     pa.metrics.avgImageSizeKB >= 100 ? 5 : 0) +
+    // 이미지가 많은 글 비율 (max 10)
+    pa.metrics.postsWithImages * 10
+  )) : (hasData ? 30 : 0);
+
+  // 3. 독창성 — 고유 단어 · 긴 글 · 원본 콘텐츠
+  const originalityScore = pa ? Math.min(100, Math.round(
+    // 고유 단어 비율 (max 25): 높을수록 독자적 표현
+    (pa.metrics.avgUniqueWordRatio >= 0.7 ? 25 : pa.metrics.avgUniqueWordRatio >= 0.6 ? 20 :
+     pa.metrics.avgUniqueWordRatio >= 0.5 ? 15 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 10 : 5) +
+    // 평균 글자 수 (max 25): 긴 글 = 직접 작성
+    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 :
+     pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
+    // 1000자+ 글 비율 (max 20)
+    pa.metrics.longPosts * 20 +
+    // 원본 사진 비율 (max 15): 직접 촬영 = 독자적
+    pa.metrics.originalImageRatio * 15 +
+    // 검색 노출 (max 15): 네이버가 독창성 인정
+    (hasData && rankedCount >= 3 ? 15 : hasData && rankedCount >= 1 ? 10 : 0)
+  )) : (hasData ? Math.min(100, Math.round(
+    rankQuality * 0.8 + (top10Count / Math.max(rankedCount, 1)) * 35 +
+    (rankedCount >= 5 ? 25 : rankedCount >= 3 ? 15 : rankedCount >= 1 ? 10 : 0)
+  )) : 0);
+
+  // 4. 심층성 — 글자 수 · 문단 · 이미지 · 리스트 · 테이블
+  const depthScore = pa ? Math.min(100, Math.round(
+    // 평균 글자 수 (max 25)
+    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 :
+     pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
+    // 문단 수 (max 20)
+    (pa.averages.paragraphCount >= 15 ? 20 : pa.averages.paragraphCount >= 10 ? 15 :
+     pa.averages.paragraphCount >= 5 ? 10 : 3) +
+    // 이미지 수 (max 15)
+    (pa.averages.imageCount >= 8 ? 15 : pa.averages.imageCount >= 5 ? 12 :
+     pa.averages.imageCount >= 3 ? 8 : 0) +
+    // 리스트 사용 (max 15): 정리된 정보
+    (pa.metrics.postsWithLists >= 0.5 ? 15 : pa.metrics.postsWithLists >= 0.2 ? 10 :
+     pa.averages.listItemCount >= 1 ? 5 : 0) +
+    // 1000자+ 비율 (max 15)
+    Math.min(15, Math.round(pa.metrics.longPosts * 15)) +
+    // 소제목 사용 (max 10): 체계적 분석
+    (pa.averages.headingCount >= 3 ? 10 : pa.averages.headingCount >= 1 ? 5 : 0)
+  )) : (hasData ? Math.min(100, Math.round(
+    top5Ratio * 50 + (top5Count >= 3 ? 30 : top5Count >= 1 ? 15 : 0) +
+    (avgRank > 0 && avgRank <= 3 ? 20 : avgRank <= 5 ? 15 : avgRank <= 10 ? 10 : 0)
+  )) : 0);
+
+  // 5. 가독성 — 소제목 · 리스트 · 이미지 밸런스 · 문단
+  const readabilityScore = pa ? Math.min(100, Math.round(
+    // 소제목 있는 글 비율 (max 25)
+    pa.metrics.postsWithHeadings * 25 +
+    // 소제목 수 (max 20)
+    (pa.averages.headingCount >= 5 ? 20 : pa.averages.headingCount >= 3 ? 15 :
+     pa.averages.headingCount >= 1 ? 8 : 0) +
+    // 리스트 사용 (max 15): 정보 정리
+    (pa.metrics.postsWithLists >= 0.3 ? 15 : pa.metrics.postsWithLists >= 0.1 ? 8 : 0) +
+    // 이미지-텍스트 밸런스 (max 20)
+    (pa.averages.imageCount >= 3 && pa.averages.imageCount <= 20 ? 20 :
+     pa.averages.imageCount >= 1 ? 10 : 0) +
+    // 문단 구조 (max 10)
+    (pa.averages.paragraphCount >= 5 ? 10 : pa.averages.paragraphCount >= 3 ? 5 : 0) +
+    // 적절한 글 길이 (max 10): 너무 짧지 않은 글
+    (pa.metrics.avgCharCount >= 500 ? 10 : pa.metrics.avgCharCount >= 300 ? 5 : 0)
+  )) : (hasData ? Math.min(100, Math.round(
+    stabilityRatio * 50 + (declinedCount === 0 ? 30 : declinedCount <= 1 ? 15 : 0) +
+    (rankedCount >= 3 ? 20 : rankedCount >= 1 ? 10 : 0)
+  )) : 0);
+
+  // 6. 꾸준함 — 포스팅 빈도 (정기적 활동)
+  const calcConsistency = () => {
+    if (blogPosts.length === 0) return 0;
+    const now = new Date();
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    let recentCount = 0;
+    let monthCount = 0;
+    const postDates: Date[] = [];
+    for (const p of blogPosts) {
+      const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
+      if (!match) continue;
+      const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+      postDates.push(d);
+      if (d >= twoWeeksAgo) recentCount++;
+      if (d >= oneMonthAgo) monthCount++;
+    }
+    // 최근 2주 포스팅 (max 40): 주 1회=10, 주 2회=20, 주 3회+=30, 매일=40
+    const recentPostScore = Math.min(40, recentCount * 10);
+    // 최근 1달 포스팅 규칙성 (max 30)
+    const regularityScore = Math.min(30, monthCount >= 8 ? 30 : monthCount >= 4 ? 20 : monthCount >= 2 ? 10 : 0);
+    // 최근 포스팅이 3일 이내면 보너스 (max 30)
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const veryRecent = postDates.some(d => d >= threeDaysAgo);
+    const streakBonus = veryRecent ? 30 : (recentCount > 0 ? 15 : 0);
+    return Math.min(100, Math.round(recentPostScore + regularityScore + streakBonus));
+  };
+  const consistencyScore = calcConsistency();
+
+  // 총점 = 6개 평균
+  const allScores = [reliabilityScore, experienceScore, originalityScore, depthScore, readabilityScore, consistencyScore];
+  const totalScore = hasData || blogPosts.length > 0
+    ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)
+    : 0;
 
   function getGrade(score: number) {
     if (score >= 90) return { grade: 'S', label: '최상위', color: 'text-accent', bg: 'bg-accent/10' };
@@ -393,6 +608,9 @@ export default function BloggerDashboard() {
     return { grade: 'D', label: '성장 중', color: 'text-dim', bg: 'bg-bg' };
   }
   const gradeInfo = getGrade(totalScore);
+
+  // 최신 점수 ref 업데이트 (saveScoreToServer에서 참조)
+  latestScoresRef.current = { total: totalScore, scores: allScores, grade: gradeInfo.grade };
 
   // 변동 피드
   const activityEvents = generateBloggerEvents(
@@ -460,29 +678,61 @@ export default function BloggerDashboard() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-bold text-[15px]">내 블로그 종합 점수</h3>
-            <p className="text-[11px] text-dim mt-0.5">전문성 · 콘텐츠 품질 · 검색 노출력 종합</p>
+            <p className="text-[11px] text-dim mt-0.5">네이버 &ldquo;좋은 문서의 특성&rdquo; 기반 · 본문 {pa ? '10' : ''}개 글 분석</p>
           </div>
-          {hasData && (
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-black">{totalScore}</span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gradeInfo.bg} ${gradeInfo.color}`}>
-                {gradeInfo.grade}등급
-              </span>
-            </div>
-          )}
+          <div className="text-right">
+            {(hasData || blogPosts.length > 0) && totalScore > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-black">{totalScore}</span>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gradeInfo.bg} ${gradeInfo.color}`}>
+                  {gradeInfo.grade}등급
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        {!hasData ? (
+        {!hasData && blogPosts.length === 0 ? (
           <div className="text-center py-6 text-dim text-sm">
             <p>키워드를 등록하고 순위를 확인하면</p>
             <p>내 블로그 종합 등급이 계산됩니다.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
-            <GradeGauge score={crankScore} label="전문성" description="꾸준함 · 주제 집중" color="#CC9486" delay={100} />
-            <GradeGauge score={diaScore} label="품질" description="콘텐츠 퀄리티" color="#2E8B57" delay={200} />
-            <GradeGauge score={diaplusScore} label="노출력" description="검색 상위 노출" color="#7B1FA2" delay={300} />
-          </div>
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              <GradeGauge score={reliabilityScore} label="신뢰성" description="출처 · 인용문 · 검색 평판" color="#3B82F6" delay={100} />
+              <GradeGauge score={experienceScore} label="경험" description="직접 촬영 · 1인칭 서술" color="#F59E0B" delay={150} />
+              <GradeGauge score={originalityScore} label="독창성" description="고유 단어 · 원본 콘텐츠" color="#8B5CF6" delay={200} />
+              <GradeGauge score={depthScore} label="심층성" description="글자 수 · 리스트 · 구조" color="#10B981" delay={250} />
+              <GradeGauge score={readabilityScore} label="가독성" description="소제목 · 리스트 · 이미지" color="#EC4899" delay={300} />
+              <GradeGauge score={consistencyScore} label="꾸준함" description="포스팅 빈도 · 정기성" color="#6366F1" delay={350} />
+            </div>
+            {analysisLoading && (
+              <div className="mt-3 flex items-center gap-2 text-[11px] text-dim">
+                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                블로그 글 본문을 분석하고 있습니다...
+              </div>
+            )}
+            {pa && (
+              <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-dim">
+                <span className="bg-bg px-2 py-1 rounded-md">평균 {pa.averages.charCount.toLocaleString()}자</span>
+                <span className="bg-bg px-2 py-1 rounded-md">이미지 {pa.averages.imageCount.toFixed(1)}장</span>
+                {pa.metrics.avgImageSizeKB > 0 && (
+                  <span className={`px-2 py-1 rounded-md ${pa.metrics.originalImageRatio >= 0.5 ? 'bg-up/10 text-up' : 'bg-bg'}`}>
+                    원본사진 {Math.round(pa.metrics.originalImageRatio * 100)}%
+                  </span>
+                )}
+                <span className="bg-bg px-2 py-1 rounded-md">문단 {pa.averages.paragraphCount}개</span>
+                {pa.averages.headingCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">소제목 {pa.averages.headingCount.toFixed(1)}개</span>}
+                {pa.averages.linkCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">출처 {pa.averages.linkCount.toFixed(1)}개</span>}
+                {pa.averages.personalPronounCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">경험표현 {pa.averages.personalPronounCount.toFixed(1)}회</span>}
+                {pa.metrics.avgUniqueWordRatio > 0 && <span className="bg-bg px-2 py-1 rounded-md">고유단어 {Math.round(pa.metrics.avgUniqueWordRatio * 100)}%</span>}
+                {pa.averages.listItemCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">리스트 {pa.averages.listItemCount.toFixed(1)}개</span>}
+                {pa.averages.quotationCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">인용문 {pa.averages.quotationCount.toFixed(1)}개</span>}
+                {pa.averages.videoCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">영상 {pa.averages.videoCount.toFixed(1)}개</span>}
+              </div>
+            )}
+          </>
         )}
       </GlassCard>
 
@@ -767,64 +1017,119 @@ export default function BloggerDashboard() {
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-left px-5 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
+                    <th className="text-center px-3 py-3 font-semibold w-24">노출</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">댓글</th>
                     <th className="text-right px-5 py-3 font-semibold w-28">작성일</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {blogPosts.map((post, i) => (
-                    <tr key={post.id} className="hover:bg-surface-hover transition group">
-                      <td className="px-5 py-3 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
-                      <td className="px-3 py-3">
-                        <a
-                          href={post.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-semibold hover:text-accent transition truncate block max-w-[400px]"
-                          title={post.title}
-                        >
-                          {post.title}
-                        </a>
-                      </td>
-                      <td className="text-center px-3 py-3">
-                        {post.commentCount > 0 ? (
-                          <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
-                        ) : (
-                          <span className="text-xs text-dim">—</span>
-                        )}
-                      </td>
-                      <td className="text-right px-5 py-3 text-xs text-dim">{post.date}</td>
-                    </tr>
-                  ))}
+                  {blogPosts.map((post, i) => {
+                    // 이 글이 노출되고 있는 키워드 찾기
+                    const exposedIn = results.filter(r =>
+                      r.rank !== null && r.blogUrl && (
+                        r.blogUrl.includes(post.id) ||
+                        (r.postTitle && post.title && (
+                          r.postTitle === post.title ||
+                          r.postTitle.replace(/\s/g, '').includes(post.title.replace(/\s/g, '').substring(0, 15)) ||
+                          post.title.replace(/\s/g, '').includes(r.postTitle.replace(/\s/g, '').substring(0, 15))
+                        ))
+                      )
+                    );
+                    return (
+                      <tr key={post.id} className="hover:bg-surface-hover transition group">
+                        <td className="px-5 py-3 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
+                        <td className="px-3 py-3">
+                          <a
+                            href={post.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold hover:text-accent transition truncate block max-w-[350px]"
+                            title={post.title}
+                          >
+                            {post.title}
+                          </a>
+                        </td>
+                        <td className="text-center px-3 py-3">
+                          {exposedIn.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {exposedIn.slice(0, 2).map(r => (
+                                <span key={r.keyword} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  r.rank! <= 5 ? 'bg-accent/10 text-accent' :
+                                  r.rank! <= 10 ? 'bg-up/10 text-up' :
+                                  'bg-[#2DB400]/10 text-[#2DB400]'
+                                }`} title={`"${r.keyword}" ${r.rank}위`}>
+                                  {r.keyword.length > 6 ? r.keyword.substring(0, 6) + '..' : r.keyword} {r.rank}위
+                                </span>
+                              ))}
+                              {exposedIn.length > 2 && (
+                                <span className="text-[10px] text-dim">+{exposedIn.length - 2}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-dim/50">—</span>
+                          )}
+                        </td>
+                        <td className="text-center px-3 py-3">
+                          {post.commentCount > 0 ? (
+                            <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
+                          ) : (
+                            <span className="text-xs text-dim">—</span>
+                          )}
+                        </td>
+                        <td className="text-right px-5 py-3 text-xs text-dim">{post.date}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* 모바일 */}
             <div className="md:hidden divide-y divide-border/20">
-              {blogPosts.map((post, i) => (
-                <div key={post.id} className="px-4 py-3">
-                  <div className="flex items-start gap-2">
-                    <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * 10 + i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <a
-                        href={post.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-semibold text-sm hover:text-accent transition line-clamp-2"
-                      >
-                        {post.title}
-                      </a>
-                      <div className="flex items-center gap-3 mt-1 text-[11px] text-dim">
-                        <span>{post.date}</span>
-                        {post.commentCount > 0 && (
-                          <span className="text-accent">댓글 {post.commentCount}</span>
-                        )}
+              {blogPosts.map((post, i) => {
+                const exposedIn = results.filter(r =>
+                  r.rank !== null && r.blogUrl && (
+                    r.blogUrl.includes(post.id) ||
+                    (r.postTitle && post.title && (
+                      r.postTitle === post.title ||
+                      r.postTitle.replace(/\s/g, '').includes(post.title.replace(/\s/g, '').substring(0, 15)) ||
+                      post.title.replace(/\s/g, '').includes(r.postTitle.replace(/\s/g, '').substring(0, 15))
+                    ))
+                  )
+                );
+                return (
+                  <div key={post.id} className="px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * 10 + i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <a
+                          href={post.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-sm hover:text-accent transition line-clamp-2"
+                        >
+                          {post.title}
+                        </a>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {exposedIn.length > 0 && exposedIn.slice(0, 2).map(r => (
+                            <span key={r.keyword} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                              r.rank! <= 5 ? 'bg-accent/10 text-accent' :
+                              r.rank! <= 10 ? 'bg-up/10 text-up' :
+                              'bg-[#2DB400]/10 text-[#2DB400]'
+                            }`}>
+                              {r.keyword} {r.rank}위
+                            </span>
+                          ))}
+                          <span className="text-[11px] text-dim">{post.date}</span>
+                          {post.commentCount > 0 && (
+                            <span className="text-[11px] text-accent">댓글 {post.commentCount}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* 페이지네이션 */}

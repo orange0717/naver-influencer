@@ -35,7 +35,6 @@ export const PROMO_BANNERS: BannerItem[] = [
     href: 'https://orangerefine.kr',
     external: true,
     gradient: 'from-[#FDF6F3] to-[#F5E6E0]',
-    icon: '✍️',
     badge: 'OrangeRefine',
   },
   {
@@ -47,7 +46,6 @@ export const PROMO_BANNERS: BannerItem[] = [
     href: '/subscribe',
     external: false,
     gradient: 'from-[#F0F4FF] to-[#E8EEFF]',
-    icon: '🤝',
     badge: 'OrangeConnect · 준비 중',
   },
 ];
@@ -62,7 +60,6 @@ export const SUBSCRIBE_BANNERS: BannerItem[] = [
     cta: '이용권 등록하기 →',
     href: '/subscribe',
     gradient: 'from-[#FFF7F5] to-[#FFE8E0]',
-    icon: '🚀',
     badge: '이용권',
   },
   {
@@ -73,7 +70,6 @@ export const SUBSCRIBE_BANNERS: BannerItem[] = [
     cta: '이용권 등록하기 →',
     href: '/subscribe',
     gradient: 'from-[#FFF7F5] to-[#FFE8E0]',
-    icon: '📊',
     badge: '이용권',
   },
 ];
@@ -89,7 +85,6 @@ export const PARTNER_BANNERS: BannerItem[] = [
     href: '/tools',
     external: false,
     gradient: 'from-[#F0F9F4] to-[#E8F5E9]',
-    icon: '🔧',
     badge: '추천 도구',
   },
 ];
