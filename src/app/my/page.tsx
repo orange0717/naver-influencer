@@ -187,6 +187,14 @@ export default async function MyDashboard() {
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
 
+  // ─── 데이터 최신 날짜 ───
+  const latestSnapshotDate = rankings.length > 0
+    ? rankings.reduce((latest, r) => r.snapshot_date > latest ? r.snapshot_date : latest, rankings[0].snapshot_date)
+    : '';
+  const dataDateLabel = latestSnapshotDate
+    ? `${latestSnapshotDate.slice(5, 7).replace(/^0/, '')}월 ${latestSnapshotDate.slice(8, 10).replace(/^0/, '')}일 기준`
+    : '';
+
   // ─── 순위별 키워드 수 (1~5위) ───
   const rank2Count = rankings.filter(r => r.rank_position === 2).length;
   const rank3Count = rankings.filter(r => r.rank_position === 3).length;
@@ -386,6 +394,11 @@ export default async function MyDashboard() {
       )}
 
       {/* ─── 2. 통계 카드 4개 ─── */}
+      {dataDateLabel && (
+        <div className="flex justify-end">
+          <span className="text-[11px] text-dim bg-border/30 px-3 py-1 rounded-full">📊 {dataDateLabel}</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard
           label="나의 평균 순위"
