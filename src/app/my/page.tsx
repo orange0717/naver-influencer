@@ -13,6 +13,8 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import InfluencerScoreSection from '@/components/dashboard/InfluencerScoreSection';
+import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
+import ChallengeTable from '@/components/dashboard/ChallengeTable';
 import { generateActivityEvents } from '@/lib/activity-events';
 
 export const dynamic = 'force-dynamic';
@@ -184,6 +186,14 @@ export default async function MyDashboard() {
   const top5 = rankings.slice(0, 5);
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
+
+  // ─── 챌린지 경쟁도 분포 ───
+  const avgParticipants = rankings.length > 0
+    ? Math.round(rankings.reduce((s, r) => s + r.participant_count, 0) / rankings.length)
+    : 0;
+  const compLow = rankings.filter(r => r.participant_count <= 30).length;
+  const compMid = rankings.filter(r => r.participant_count > 30 && r.participant_count <= 100).length;
+  const compHigh = rankings.filter(r => r.participant_count > 100).length;
 
   // ─── 1-2. 전체 순위 & 카테고리 순위 계산 ───
   const myCategory = influencer.my_keyword_category || influencer.category || '';
@@ -406,6 +416,19 @@ export default async function MyDashboard() {
         />
       </div>
 
+      {/* ─── 2-1. 키워드챌린지 참여 현황 ─── */}
+      <ChallengeStatsSection
+        totalKeywords={totalKeywords}
+        rankedKeywords={totalRankedKeywords}
+        rank1Count={rank1Count}
+        top3Count={top3Count}
+        integratedTop3Count={integratedCount}
+        avgParticipants={avgParticipants}
+        compLow={compLow}
+        compMid={compMid}
+        compHigh={compHigh}
+      />
+
       {/* ─── 2-2. 인플루언서 종합 점수 ─── */}
       <InfluencerScoreSection
         subscriberCount={influencer.subscriber_count || 0}
@@ -438,6 +461,9 @@ export default async function MyDashboard() {
         naverId={naverId}
         canSearchRank={canAccess}
       />
+
+      {/* ─── 3-3. 키워드챌린지 성과 테이블 ─── */}
+      <ChallengeTable rankings={rankings} />
 
       {/* ─── 프리미엄 영역 (이용권 필요) ─── */}
       {!canAccess && (
