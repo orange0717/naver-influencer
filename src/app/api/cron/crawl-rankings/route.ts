@@ -246,6 +246,7 @@ export async function GET(request: NextRequest) {
               fan_count: rank.fanCount || 0,
               is_integrated_top3: rank.rank <= 3,
               latest_post_title: rank.latestPostTitle || null,
+              latest_post_url: rank.latestPostUrl || null,
               snapshot_date: snapshotDate,
               crawled_at: new Date().toISOString(),
             },
