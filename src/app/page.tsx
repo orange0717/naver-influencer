@@ -155,7 +155,7 @@ export default function LandingPage() {
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
         <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되는 네이버 인플루언서 데이터</p>
 
-        <div className="flex justify-center gap-16 md:gap-24 mb-16">
+        <div className="flex justify-center gap-16 md:gap-24">
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.influencer_count.toLocaleString()}+</p>
             <p className="text-xs text-dim mt-2">인플루언서</p>
@@ -167,26 +167,6 @@ export default function LandingPage() {
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.category_count}</p>
             <p className="text-xs text-dim mt-2">카테고리</p>
-          </div>
-        </div>
-
-        {/* 방문자 / 가입자 통계 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">오늘 방문자</p>
-          </div>
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalVisits.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">누적 방문자</p>
-          </div>
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-up font-rank">{siteStats.todaySignups.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">오늘 가입자</p>
-          </div>
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalSignups.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">총 가입자</p>
           </div>
         </div>
       </section>
@@ -391,6 +371,28 @@ export default function LandingPage() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ 방문자 현황 (surface) ═══════════ */}
+      <section className="bg-surface px-4 py-12 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
+            <p className="text-2xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">오늘 방문자</p>
+          </div>
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
+            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalVisits.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">누적 방문자</p>
+          </div>
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
+            <p className="text-2xl font-extrabold text-up font-rank">{siteStats.todaySignups.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">오늘 가입자</p>
+          </div>
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
+            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalSignups.toLocaleString()}</p>
+            <p className="text-[11px] text-dim mt-1">총 가입자</p>
           </div>
         </div>
       </section>
