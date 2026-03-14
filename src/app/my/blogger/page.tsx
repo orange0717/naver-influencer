@@ -41,6 +41,16 @@ interface KeywordHistory {
   history: { date: string; rank: number | null }[];
 }
 
+interface BlogPost {
+  id: string;
+  title: string;
+  url: string;
+  commentCount: number;
+  viewCount: number;
+  date: string;
+  isPublic: boolean;
+}
+
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
   try {
     const res = await fetch('/api/auth/me');
@@ -101,6 +111,10 @@ export default function BloggerDashboard() {
   const [extracting, setExtracting] = useState(false);
   const [rankHistory, setRankHistory] = useState<KeywordHistory[]>([]);
   const [customProfile, setCustomProfile] = useState<{ displayName?: string; imageUrl?: string }>({});
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [blogPostsTotal, setBlogPostsTotal] = useState(0);
+  const [blogPostsPage, setBlogPostsPage] = useState(1);
+  const [blogPostsLoading, setBlogPostsLoading] = useState(false);
 
   // 미확인 키워드 자동 순위 확인
   const autoCheckRef = useRef(false);
@@ -145,6 +159,20 @@ export default function BloggerDashboard() {
     autoCheckRef.current = false;
   }, []);
 
+  const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
+    setBlogPostsLoading(true);
+    try {
+      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=10`);
+      if (res.ok) {
+        const data = await res.json();
+        setBlogPosts(data.posts || []);
+        setBlogPostsTotal(data.totalCount || 0);
+        setBlogPostsPage(page);
+      }
+    } catch { /* ignore */ }
+    finally { setBlogPostsLoading(false); }
+  }, []);
+
   useEffect(() => {
     getProfileFromApi().then(p => {
       if (!p) {
@@ -185,13 +213,15 @@ export default function BloggerDashboard() {
       fetchExtractedKeywords(p.blogId);
       // DB에서 순위 히스토리 가져오기
       fetchRankHistory(p.blogId);
+      // 블로그 포스트 목록 가져오기
+      fetchBlogPosts(p.blogId, 1);
 
       // 미확인 키워드 자동 순위 확인 (1초 후 시작)
       if (savedKws.length > 0) {
         setTimeout(() => autoCheckUnchecked(savedKws, savedRes, p), 1000);
       }
     });
-  }, [autoCheckUnchecked]);
+  }, [autoCheckUnchecked, fetchBlogPosts]);
 
   const fetchRankHistory = async (blogId: string) => {
     try {
@@ -699,6 +729,129 @@ export default function BloggerDashboard() {
         </GlassCard>
       )}
 
+
+      {/* ─── 8. 내 블로그 포스팅 ─── */}
+      <GlassCard padding="none">
+        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>
+            <p className="text-[11px] text-dim mt-0.5">
+              {blogPostsTotal > 0 ? `총 ${blogPostsTotal.toLocaleString()}개의 글` : '포스트 목록을 불러오는 중...'}
+            </p>
+          </div>
+          <a
+            href={`https://blog.naver.com/${profile.blogId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-accent hover:underline font-semibold"
+          >
+            블로그 방문 →
+          </a>
+        </div>
+
+        {blogPostsLoading && blogPosts.length === 0 ? (
+          <div className="flex items-center justify-center py-10 text-dim text-sm">
+            <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
+            포스트를 불러오는 중...
+          </div>
+        ) : blogPosts.length === 0 ? (
+          <div className="text-center py-10 text-dim text-sm">
+            포스트가 없습니다.
+          </div>
+        ) : (
+          <>
+            {/* 데스크톱 */}
+            <div className="hidden md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-[11px] text-dim">
+                    <th className="text-left px-5 py-3 font-semibold w-10">#</th>
+                    <th className="text-left px-3 py-3 font-semibold">제목</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">댓글</th>
+                    <th className="text-right px-5 py-3 font-semibold w-28">작성일</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {blogPosts.map((post, i) => (
+                    <tr key={post.id} className="hover:bg-surface-hover transition group">
+                      <td className="px-5 py-3 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
+                      <td className="px-3 py-3">
+                        <a
+                          href={post.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold hover:text-accent transition truncate block max-w-[400px]"
+                          title={post.title}
+                        >
+                          {post.title}
+                        </a>
+                      </td>
+                      <td className="text-center px-3 py-3">
+                        {post.commentCount > 0 ? (
+                          <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
+                        ) : (
+                          <span className="text-xs text-dim">—</span>
+                        )}
+                      </td>
+                      <td className="text-right px-5 py-3 text-xs text-dim">{post.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 모바일 */}
+            <div className="md:hidden divide-y divide-border/20">
+              {blogPosts.map((post, i) => (
+                <div key={post.id} className="px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * 10 + i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <a
+                        href={post.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-sm hover:text-accent transition line-clamp-2"
+                      >
+                        {post.title}
+                      </a>
+                      <div className="flex items-center gap-3 mt-1 text-[11px] text-dim">
+                        <span>{post.date}</span>
+                        {post.commentCount > 0 && (
+                          <span className="text-accent">댓글 {post.commentCount}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 페이지네이션 */}
+            {blogPostsTotal > 10 && (
+              <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage - 1)}
+                  disabled={blogPostsPage <= 1 || blogPostsLoading}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ← 이전
+                </button>
+                <span className="text-xs text-dim px-2">
+                  {blogPostsPage} / {Math.ceil(blogPostsTotal / 10)}
+                </span>
+                <button
+                  onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage + 1)}
+                  disabled={blogPostsPage >= Math.ceil(blogPostsTotal / 10) || blogPostsLoading}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  다음 →
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </GlassCard>
 
       {/* ─── 9. 블로그 위젯 ─── */}
       {hasData && (

@@ -4,9 +4,40 @@ import * as cheerio from 'cheerio';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
-/** 네이버 블로그 프로필 페이지에서 기본 정보 추출 */
+/** 네이버 블로그 포스트 목록 API로 블로그 존재 여부 + 정보 추출 */
 async function fetchBlogProfile(blogId: string) {
   try {
+    // 1) PostTitleListAsync API로 블로그 존재 여부 확인 (가장 정확)
+    const listRes = await fetch(
+      `https://blog.naver.com/PostTitleListAsync.naver?blogId=${encodeURIComponent(blogId)}&currentPage=1&countPerPage=1`,
+      {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': '*/*',
+          'Referer': `https://blog.naver.com/${blogId}`,
+        },
+      },
+    );
+
+    if (listRes.ok) {
+      try {
+        const listData = await listRes.json();
+        if (listData.resultCode === 'S' && listData.blog?.blogId) {
+          // 블로그 존재 확인됨! og 정보는 별도로 가져오기
+          const displayName = await fetchBlogDisplayName(blogId) || blogId;
+          return {
+            blogId,
+            displayName,
+            profileUrl: `https://blog.naver.com/${blogId}`,
+            imageUrl: '',
+            description: '',
+            totalPosts: parseInt(listData.totalCount || '0', 10),
+          };
+        }
+      } catch { /* JSON 파싱 실패 = 블로그 없음 */ }
+    }
+
+    // 2) 폴백: 블로그 페이지 직접 접근
     const res = await fetch(`https://blog.naver.com/${blogId}`, {
       headers: {
         'User-Agent': USER_AGENT,
@@ -19,18 +50,26 @@ async function fetchBlogProfile(blogId: string) {
     if (!res.ok) return null;
 
     const html = await res.text();
-    const $ = cheerio.load(html);
 
-    // og 태그에서 정보 추출
+    // 블로그가 존재하지 않는 경우 (작은 HTML + 알림 스크립트)
+    if (html.length < 500) {
+      if (html.includes('삭제되었거나') || html.includes('다른 페이지로 변경') || html.includes('alert(')) {
+        return null;
+      }
+    }
+
+    const $ = cheerio.load(html);
     const ogTitle = $('meta[property="og:title"]').attr('content') || '';
     const ogImage = $('meta[property="og:image"]').attr('content') || '';
     const ogDesc = $('meta[property="og:description"]').attr('content') || '';
-
-    // 블로그가 존재하지 않는 경우 (404 페이지 등)
     const pageTitle = $('title').text() || '';
-    if (pageTitle.includes('존재하지 않는') || pageTitle.includes('삭제된')) {
+
+    if (pageTitle.includes('존재하지 않는') || pageTitle.includes('삭제된') || pageTitle.includes('페이지 주소를 확인')) {
       return null;
     }
+
+    // og:title에서 블로그 이름이 없으면 블로그가 아님
+    if (!ogTitle && html.length < 1000) return null;
 
     const displayName = ogTitle
       .replace(/\s*[-:]\s*네이버\s*블로그.*/, '')
@@ -43,10 +82,25 @@ async function fetchBlogProfile(blogId: string) {
       profileUrl: `https://blog.naver.com/${blogId}`,
       imageUrl: ogImage,
       description: ogDesc,
+      totalPosts: 0,
     };
   } catch {
     return null;
   }
+}
+
+/** 블로그 표시 이름만 가져오기 (og:title) */
+async function fetchBlogDisplayName(blogId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://blog.naver.com/${blogId}`, {
+      headers: { 'User-Agent': USER_AGENT, 'Accept': 'text/html', 'Accept-Language': 'ko-KR,ko;q=0.9' },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    const ogTitle = $('meta[property="og:title"]').attr('content') || '';
+    return ogTitle.replace(/\s*[-:]\s*네이버\s*블로그.*/, '').replace(/\s*의\s*블로그.*/, '').trim() || null;
+  } catch { return null; }
 }
 
 export async function POST(request: NextRequest) {
@@ -67,12 +121,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 네이버 블로그 프로필 조회 시도
+    // 네이버 블로그 프로필 조회
     const profile = await fetchBlogProfile(cleanId);
 
-    // 프로필 조회 실패해도 로그인 허용 (네이버 서버 차단 가능성)
-    const displayName = profile?.displayName || cleanId;
-    const imageUrl = profile?.imageUrl || '';
+    // 블로그가 존재하지 않으면 로그인 차단
+    if (!profile) {
+      return NextResponse.json(
+        { error: '존재하지 않는 블로그입니다. 블로그 URL(blog.naver.com/아이디)의 아이디를 정확히 입력해주세요.' },
+        { status: 404 },
+      );
+    }
+
+    const displayName = profile.displayName;
+    const imageUrl = profile.imageUrl || '';
 
     // 쿠키에 blog_id와 user_type 저장 (30일)
     const cookieStore = await cookies();
