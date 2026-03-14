@@ -187,6 +187,12 @@ export default async function MyDashboard() {
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
 
+  // ─── 순위별 키워드 수 (1~5위) ───
+  const rank2Count = rankings.filter(r => r.rank_position === 2).length;
+  const rank3Count = rankings.filter(r => r.rank_position === 3).length;
+  const rank4Count = rankings.filter(r => r.rank_position === 4).length;
+  const rank5Count = rankings.filter(r => r.rank_position === 5).length;
+
   // ─── 챌린지 경쟁도 분포 ───
   const avgParticipants = rankings.length > 0
     ? Math.round(rankings.reduce((s, r) => s + r.participant_count, 0) / rankings.length)
@@ -415,6 +421,55 @@ export default async function MyDashboard() {
           delay={200}
         />
       </div>
+
+      {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
+      <GlassCard>
+        <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-5">
+          <div>
+            <p className="text-xl font-black font-rank">{formatCount(influencer.subscriber_count || 0)}</p>
+            <p className="text-xs text-dim mt-1">팬수</p>
+          </div>
+          <div>
+            <p className="text-xl font-black font-rank">{totalKeywords}</p>
+            <p className="text-xs text-dim mt-1">참여 키워드</p>
+          </div>
+          <div>
+            <p className="text-xl font-black font-rank text-accent">{totalRankedKeywords}</p>
+            <p className="text-xs text-dim mt-1">노출 키워드</p>
+          </div>
+          <div>
+            <p className="text-xl font-black font-rank">{Math.round(avgRank * 10) / 10}<span className="text-sm">위</span></p>
+            <p className="text-xs text-dim mt-1">평균 순위</p>
+          </div>
+        </div>
+        {/* 순위별 키워드 수 (1~5위) */}
+        <div className="border-t border-border/50 pt-4">
+          <p className="text-[11px] text-dim font-semibold mb-3">순위별 키워드 분포</p>
+          <div className="grid grid-cols-5 gap-2 text-center">
+            <div className="rounded-xl bg-gold/10 py-2.5">
+              <p className="text-lg font-black text-gold">{rank1Count}</p>
+              <p className="text-[10px] text-dim font-semibold mt-0.5">1위</p>
+            </div>
+            <div className="rounded-xl bg-accent/10 py-2.5">
+              <p className="text-lg font-black text-accent">{rank2Count}</p>
+              <p className="text-[10px] text-dim font-semibold mt-0.5">2위</p>
+            </div>
+            <div className="rounded-xl bg-accent/10 py-2.5">
+              <p className="text-lg font-black text-accent">{rank3Count}</p>
+              <p className="text-[10px] text-dim font-semibold mt-0.5">3위</p>
+            </div>
+            <div className="rounded-xl bg-border/30 py-2.5">
+              <p className="text-lg font-black text-dim">{rank4Count}</p>
+              <p className="text-[10px] text-dim font-semibold mt-0.5">4위</p>
+            </div>
+            <div className="rounded-xl bg-border/30 py-2.5">
+              <p className="text-lg font-black text-dim">{rank5Count}</p>
+              <p className="text-[10px] text-dim font-semibold mt-0.5">5위</p>
+            </div>
+          </div>
+        </div>
+      </GlassCard>
 
       {/* ─── 2-1. 키워드챌린지 참여 현황 ─── */}
       <ChallengeStatsSection
@@ -669,28 +724,7 @@ export default async function MyDashboard() {
         )}
       </div>
 
-      {/* ─── 9. 활동 현황 (무료) ─── */}
-      <GlassCard>
-        <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div>
-            <p className="text-xl font-black font-rank">{formatCount(influencer.subscriber_count || 0)}</p>
-            <p className="text-xs text-dim mt-1">팬수</p>
-          </div>
-          <div>
-            <p className="text-xl font-black font-rank">{totalKeywords}</p>
-            <p className="text-xs text-dim mt-1">참여 키워드</p>
-          </div>
-          <div>
-            <p className="text-xl font-black font-rank text-green-600">{totalRankedKeywords}</p>
-            <p className="text-xs text-dim mt-1">노출 키워드</p>
-          </div>
-          <div>
-            <p className="text-xl font-black font-rank text-red-500">{totalKeywords - totalRankedKeywords}</p>
-            <p className="text-xs text-dim mt-1">미노출 키워드</p>
-          </div>
-        </div>
-      </GlassCard>
+      {/* 활동 현황은 상단으로 이동됨 */}
 
       </div>
     </div>
