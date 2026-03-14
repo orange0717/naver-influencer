@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /* ── 메인 네비게이션 ── */
 const NAV_ITEMS = [
@@ -9,6 +9,12 @@ const NAV_ITEMS = [
   { href: '/influencers', label: '인플루언서' },
   { href: '/keywords', label: '키워드' },
   { href: '/community', label: '커뮤니티' },
+];
+
+/* ── N인플 소개 메뉴 ── */
+const INFO_GROUP = [
+  { href: '/notice', label: '공지사항' },
+  { href: '/tools', label: '추천 도구' },
 ];
 
 type UserInfo = {
@@ -21,7 +27,9 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [user, setUser] = useState<UserInfo>({ type: null, id: null, name: null });
+  const infoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -37,7 +45,16 @@ export default function Header() {
     router.refresh();
   };
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (infoRef.current && !infoRef.current.contains(e.target as Node)) setInfoOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const isActive = (href: string) => pathname.startsWith(href);
+  const infoActive = INFO_GROUP.some(n => pathname === n.href);
 
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
@@ -68,6 +85,36 @@ export default function Header() {
                   {item.label}
                 </Link>
               ))}
+
+              <div className="w-px h-5 bg-white/20 mx-1" />
+
+              {/* N인플 드롭다운 */}
+              <div className="relative" ref={infoRef}>
+                <button
+                  onClick={() => setInfoOpen(prev => !prev)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+                    infoActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}>
+                  N인플
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
+                    className={`transition-transform ${infoOpen ? 'rotate-180' : ''}`}>
+                    <path d="M3 5l3 3 3-3" />
+                  </svg>
+                </button>
+                {infoOpen && (
+                  <div className="absolute top-full left-0 mt-1 bg-surface rounded-xl shadow-lg border border-border py-1.5 z-50 min-w-[140px]">
+                    {INFO_GROUP.map(s => (
+                      <Link key={s.href} href={s.href}
+                        onClick={() => setInfoOpen(false)}
+                        className={`block px-4 py-2.5 transition-colors text-sm ${
+                          pathname === s.href ? 'text-accent font-semibold bg-accent/5' : 'text-text hover:bg-surface-hover hover:text-accent'
+                        }`}>
+                        {s.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </nav>
           </div>
 
@@ -110,6 +157,18 @@ export default function Header() {
                   isActive(item.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                 }`}>
                 {item.label}
+              </Link>
+            ))}
+
+            {/* N인플 */}
+            <div className="border-t border-border/50 my-3 mx-2" />
+            <div className="px-3 py-2.5 text-[11px] font-extrabold text-dim tracking-widest uppercase">N인플</div>
+            {INFO_GROUP.map(s => (
+              <Link key={s.href} href={s.href} onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                  pathname === s.href ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
+                }`}>
+                {s.label}
               </Link>
             ))}
 
