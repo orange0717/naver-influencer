@@ -1,27 +1,27 @@
 import Link from 'next/link';
 
-export default function AdCenterPage() {
+export default function AdvertiserPage() {
   return (
     <div className="space-y-10">
 
       {/* ── 히어로 ── */}
       <section className="text-center py-12 px-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 rounded-full mb-4">
-          <span className="text-blue-500 text-sm font-bold">AD CENTER</span>
+          <span className="text-blue-500 text-sm font-bold">광고주를 위한 플랫폼</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-black mb-4 leading-tight">
           검증된 <span className="text-blue-500">인플루언서</span>와<br />
-          <span className="text-accent">블로거</span>를 찾아보세요
+          <span className="text-accent">블로거</span>를 만나보세요
         </h1>
         <p className="text-dim text-base md:text-lg max-w-xl mx-auto leading-relaxed">
           N인플에 등록된 인플루언서·블로거의 실제 순위 데이터를 기반으로<br className="hidden md:block" />
-          광고 효과가 높은 크리에이터를 빠르게 찾을 수 있습니다.
+          광고 효과가 높은 크리에이터를 직접 찾을 수 있습니다.
         </p>
       </section>
 
       {/* ── 광고주가 할 수 있는 것 ── */}
       <section className="max-w-4xl mx-auto px-4">
-        <h2 className="text-xl font-bold text-center mb-8">광고주·대행사를 위한 기능</h2>
+        <h2 className="text-xl font-bold text-center mb-8">광고주·대행사가 할 수 있는 것</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="bg-surface border border-border rounded-2xl p-6 text-center hover:border-blue-400/40 transition-colors">
             <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">

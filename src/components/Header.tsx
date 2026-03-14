@@ -21,9 +21,9 @@ const TOOLS_GROUP = [
   { href: '/community', label: '커뮤니티', desc: '정보 공유·질문·토론' },
 ];
 
-/* ── 광고주/대행사 메뉴 ── */
+/* ── 광고주 메뉴 ── */
 const AD_GROUP = [
-  { href: '/ad', label: '광고센터', desc: '인플루언서·블로거 찾기' },
+  { href: '/ad', label: '광고주 소개', desc: '인플루언서·블로거와 만나보세요' },
   { href: '/ad/campaign', label: '캠페인 등록', desc: '체험단·리뷰 모집' },
 ];
 
@@ -215,9 +215,9 @@ export default function Header() {
               {/* 구분선 */}
               <div className="w-px h-5 bg-white/20 mx-1" />
 
-              {/* 광고센터 (드롭다운) */}
+              {/* 광고주 (드롭다운) */}
               <NavDropdown
-                label="광고센터"
+                label="광고주"
                 items={AD_GROUP}
                 isOpen={openDropdown === 'ad'}
                 onToggle={() => toggleDropdown('ad')}
@@ -329,10 +329,10 @@ export default function Header() {
               </Link>
             ))}
 
-            {/* 광고센터 */}
+            {/* 광고주 */}
             <div className="border-t border-border/50 my-3 mx-2" />
             <div className="px-3 py-2.5 text-[11px] font-extrabold tracking-widest uppercase flex items-center gap-2">
-              <span className="text-blue-400">광고센터</span>
+              <span className="text-blue-400">광고주</span>
               <span className="text-[9px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded-full font-bold">AD</span>
             </div>
             {AD_GROUP.map(n => (
