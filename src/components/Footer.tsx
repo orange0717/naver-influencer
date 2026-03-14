@@ -4,7 +4,7 @@ const FOOTER_LINKS = [
   { href: '/influencers', label: '리스트' },
   { href: '/keywords', label: '키워드' },
   { href: '/rankings', label: '랭킹' },
-  { href: '/search-volume', label: '검색량' },
+  { href: '/search-volume', label: '키워드' },
   { href: '/community', label: '커뮤니티' },
   { href: '/tools', label: '추천 도구' },
   { href: '/subscribe', label: '이용권' },

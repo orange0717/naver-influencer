@@ -10,6 +10,8 @@ interface RecommendationCardProps {
   search_volume_monthly?: number;
   competition_level?: string;
   recommendation_score?: number;
+  trend_direction?: string;
+  trend_percentage?: number;
   reason: string;
   rank_in_day: number;
 }
@@ -33,6 +35,8 @@ export default function RecommendationCard({
   participant_count,
   search_volume_monthly = 0,
   competition_level = 'low',
+  trend_direction,
+  trend_percentage = 0,
   reason,
   rank_in_day,
 }: RecommendationCardProps) {
@@ -43,12 +47,19 @@ export default function RecommendationCard({
       href={`/keywords/${keyword_id}`}
       className="group block bg-surface rounded-2xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(204,148,134,0.12)] hover:border-accent/30 hover:-translate-y-0.5 transition-all duration-300"
     >
-      {/* 상단: 순위 뱃지 + 카테고리 */}
+      {/* 상단: 순위 뱃지 + 트렌드 + 카테고리 */}
       <div className="flex items-center justify-between mb-3">
-        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
-          rank_in_day === 1 ? 'bg-gold/20 text-gold' : rank_in_day <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/50 text-dim'
-        }`}>
-          {rank_in_day}
+        <div className="flex items-center gap-2">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+            rank_in_day === 1 ? 'bg-gold/20 text-gold' : rank_in_day <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/50 text-dim'
+          }`}>
+            {rank_in_day}
+          </div>
+          {trend_direction === 'up' && trend_percentage > 0 && (
+            <span className="text-[10px] font-bold text-up bg-up/10 px-1.5 py-0.5 rounded">
+              ▲{trend_percentage}%
+            </span>
+          )}
         </div>
         <span className="text-[10px] text-dim bg-bg px-2 py-0.5 rounded-full">{category}</span>
       </div>

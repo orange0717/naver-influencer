@@ -19,7 +19,7 @@ const INFLUENCER_GROUP = [
 
 /* ── 공통 메뉴 (모든 유저 공통) ── */
 const NAV_COMMON = [
-  { href: '/search-volume', label: '검색량' },
+  { href: '/search-volume', label: '키워드' },
   { href: '/community', label: '커뮤니티' },
 ];
 

@@ -30,6 +30,8 @@ interface Recommendation {
   search_volume_monthly?: number;
   competition_level?: string;
   recommendation_score: number;
+  trend_direction?: string;
+  trend_percentage?: number;
   reason: string;
 }
 

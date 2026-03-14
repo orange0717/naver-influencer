@@ -1,41 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchAllKeywordsSummary } from '@/lib/naver-api';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * GET /api/recommendations?category=도서
+ * 실시간 이슈 키워드: 트렌드 상승 + 검색량 높은 키워드
+ */
 export async function GET(request: NextRequest) {
   try {
     const category = request.nextUrl.searchParams.get('category') || undefined;
+    const supabase = createServiceClient();
 
-    // 전체 카테고리 키워드에서 참여자 적은 순 = 블루오션 추천
-    const result = await fetchAllKeywordsSummary(200);
+    // DB에서 트렌드 상승 중인 키워드 조회
+    let query = supabase
+      .from('keyword_challenges')
+      .select('id, keyword, category, participant_count, search_volume_monthly, trend_direction, trend_percentage')
+      .gt('search_volume_monthly', 0)
+      .order('trend_percentage', { ascending: false })
+      .limit(100);
 
-    let filtered = [...result.keywords].filter(kw => kw.participantCount > 0);
-
-    // 카테고리 기반 개인화: 사용자 카테고리 키워드 우선
     if (category) {
-      const catKeywords = filtered.filter(kw => kw.categoryName === category);
-      const otherKeywords = filtered.filter(kw => kw.categoryName !== category);
-      // 같은 카테고리 키워드를 먼저, 나머지를 뒤에 배치
-      filtered = [...catKeywords, ...otherKeywords];
+      query = query.eq('category', category);
     }
 
-    const sorted = filtered.sort((a, b) => a.participantCount - b.participantCount);
+    const { data: keywords } = await query;
 
-    const recommendations = sorted.slice(0, 8).map((kw, i) => ({
-      id: `rec-${kw.id}`,
-      keyword_id: String(kw.id),
-      keyword: kw.name,
-      category: kw.categoryName || '기타',
-      participant_count: kw.participantCount,
-      search_volume_monthly: 0,
-      recommendation_score: Math.round((9.5 - i * 0.3) * 10) / 10,
-      trend_direction: 'stable' as const,
-      trend_percentage: 0,
-      rank_in_day: i + 1,
-      reason: `참여자 ${kw.participantCount}명 — 진입 기회`,
-      is_free: true,
-    }));
+    if (!keywords || keywords.length === 0) {
+      // DB에 데이터 없으면 빈 배열
+      return NextResponse.json({
+        recommendations: [],
+        category: category || '전체',
+        free_count: 0,
+        total_count: 0,
+      });
+    }
+
+    // 이슈 점수: 트렌드 상승률 * 검색량 가중치
+    const scored = keywords.map(kw => {
+      const trendBonus = kw.trend_direction === 'up' ? 2 : kw.trend_direction === 'stable' ? 1 : 0.3;
+      const trendPct = Math.abs(kw.trend_percentage || 0);
+      const volumeScore = Math.log10(Math.max(kw.search_volume_monthly || 1, 1));
+      const competitionBonus = (kw.participant_count || 1) < 30 ? 1.5 : 1;
+      const score = trendPct * trendBonus * volumeScore * competitionBonus;
+      return { ...kw, score };
+    }).sort((a, b) => b.score - a.score);
+
+    const top = scored.slice(0, 8);
+
+    const recommendations = top.map((kw, i) => {
+      const reasons: string[] = [];
+      if (kw.trend_direction === 'up' && kw.trend_percentage > 0) {
+        reasons.push(`검색량 ${kw.trend_percentage}% 상승`);
+      }
+      if ((kw.participant_count || 0) < 30) {
+        reasons.push(`참여자 ${kw.participant_count}명`);
+      }
+      if ((kw.search_volume_monthly || 0) > 10000) {
+        reasons.push(`월 ${Math.round(kw.search_volume_monthly / 1000)}K 검색`);
+      }
+
+      return {
+        id: `issue-${kw.id}`,
+        keyword_id: kw.id,
+        keyword: kw.keyword,
+        category: kw.category || '기타',
+        participant_count: kw.participant_count || 0,
+        search_volume_monthly: kw.search_volume_monthly || 0,
+        recommendation_score: Math.round(kw.score * 10) / 10,
+        trend_direction: kw.trend_direction || 'stable',
+        trend_percentage: kw.trend_percentage || 0,
+        rank_in_day: i + 1,
+        reason: reasons.length > 0 ? reasons.join(' · ') : '이슈 키워드',
+        is_free: true,
+      };
+    });
 
     return NextResponse.json({
       recommendations,
