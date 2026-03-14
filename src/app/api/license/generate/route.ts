@@ -4,8 +4,8 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-// 관리자 비밀키 (환경변수)
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'ninfl-admin-2026';
+// 관리자 비밀키 (환경변수 필수)
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 /**
  * 이용권 코드 생성: NINFL-XXXX-XXXX-XXXX
@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // 관리자 인증
+    if (!ADMIN_SECRET) {
+      console.error('[license/generate] ADMIN_SECRET 환경변수가 설정되지 않았습니다.');
+      return NextResponse.json({ error: '서버 설정 오류' }, { status: 500 });
+    }
     if (secret !== ADMIN_SECRET) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }

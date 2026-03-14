@@ -14,11 +14,9 @@ const CRON_JOBS: Record<string, string> = {
  * GET /api/cron/run?job=all (전체 순차 실행)
  */
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const auth = request.headers.get('authorization');
-
-  // 개발환경이 아닐 때는 인증 필요
-  if (secret && auth !== `Bearer ${secret}`) {
+  // CRON_SECRET 인증 필수
+  const { verifyCronSecret } = await import('@/lib/crawler');
+  if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -32,8 +30,9 @@ export async function GET(request: NextRequest) {
   }
 
   const baseUrl = request.nextUrl.origin;
+  const cronSecret = process.env.CRON_SECRET;
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (secret) headers['Authorization'] = `Bearer ${secret}`;
+  if (cronSecret) headers['Authorization'] = `Bearer ${cronSecret}`;
 
   if (job === 'all') {
     const results: Record<string, unknown> = {};

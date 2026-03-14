@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     cookieStore.delete('blog_name');
 
     cookieStore.set('naver_id', influencer.naver_id, {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     });
 
     cookieStore.set('user_type', 'influencer', {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,

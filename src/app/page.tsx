@@ -295,11 +295,12 @@ export default function LandingPage() {
             <p className="text-sm text-dim">무료 계정으로 시작하고, 더 많은 기능이 필요할 때 이용권을 등록하세요.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-16">
-            <div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-surface rounded-2xl border border-border p-8">
               <p className="text-xs font-bold text-up tracking-wide mb-3">무료</p>
               <p className="text-3xl font-extrabold text-text mb-1">₩0</p>
               <p className="text-xs text-dim mb-6">영구 무료</p>
+              <div className="border-t border-border my-6" />
               <ul className="space-y-3">
                 {['키워드 목록 전체 열람', '커뮤니티 · 검색량 조회', '참여자 수 · 블루오션 지표', '블로그 등급 위젯'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
@@ -312,10 +313,12 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div>
+            <div className="bg-surface rounded-2xl border-2 border-accent/30 p-8 relative">
+              <div className="absolute -top-3 left-6 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">추천</div>
               <p className="text-xs font-bold text-accent tracking-wide mb-3">PRO</p>
               <p className="text-3xl font-extrabold text-text mb-1">₩9,900<span className="text-sm font-normal text-dim">/월</span></p>
               <p className="text-xs text-dim mb-6">모든 기능 무제한</p>
+              <div className="border-t border-border my-6" />
               <ul className="space-y-3">
                 {['키워드 상세 분석 무제한', '인플루언서 순위 전체 열람', '검색량 트렌드 차트', '일일 추천 키워드 전체', '내 대시보드 + 경쟁자 비교', '실시간 데이터 업데이트'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
@@ -331,8 +334,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ FAQ (bg) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24">
+      {/* ═══════════ FAQ (surface) ═══════════ */}
+      <section className="bg-surface px-4 py-20 md:py-24">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">FAQ</p>
@@ -363,8 +366,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 하단 CTA (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24 text-center">
+      {/* ═══════════ 하단 CTA (bg) ═══════════ */}
+      <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
         <p className="text-sm text-dim mb-8">
           무료 가입으로 키워드 분석을 시작하세요.<br />

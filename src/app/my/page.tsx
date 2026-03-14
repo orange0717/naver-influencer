@@ -61,8 +61,30 @@ export default async function MyDashboard() {
     .eq('id', influencerId)
     .single();
 
-  // TODO: 3개월 무료 기간 종료 후 구독 모델 연동 (2026년 6월 예정)
-  const isSubscribed = true;
+  // 구독 상태 확인 (users 테이블에서 linked_influencer_id로 조회)
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('subscription_status, subscription_expires_at')
+    .eq('linked_influencer_id', influencerId)
+    .single();
+
+  // 구독 상태: DB 기반 검증 (이용권 or 결제)
+  const isSubscribed =
+    (userProfile?.subscription_status === 'active' &&
+      !!userProfile?.subscription_expires_at &&
+      new Date(userProfile.subscription_expires_at) > new Date()) ||
+    // 이용권 기반 구독 확인
+    await (async () => {
+      const { data: license } = await supabase
+        .from('licenses')
+        .select('expires_at')
+        .eq('buyer_id', influencer?.naver_id ?? '')
+        .eq('is_used', true)
+        .gte('expires_at', new Date().toISOString())
+        .limit(1)
+        .single();
+      return !!license;
+    })();
 
   if (!influencer) {
     return (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getCookieUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,16 @@ export async function POST(
   const { id: post_id } = await params;
 
   try {
-    const body = await req.json();
-    const { content, author_id, author_type, author_name } = body;
+    // 쿠키에서 인증된 유저 확인
+    const cookieUser = await getCookieUser();
+    if (!cookieUser) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
 
-    if (!content?.trim() || !author_id || !author_type) {
+    const body = await req.json();
+    const { content, author_name } = body;
+
+    if (!content?.trim()) {
       return NextResponse.json({ error: '필수 항목을 입력해주세요.' }, { status: 400 });
     }
 
@@ -25,7 +32,7 @@ export async function POST(
     // 게시글 존재 확인
     const { data: post } = await supabase
       .from('community_posts')
-      .select('id, comment_count')
+      .select('id')
       .eq('id', post_id)
       .eq('is_deleted', false)
       .single();
@@ -40,20 +47,17 @@ export async function POST(
       .insert({
         post_id,
         content: content.trim().slice(0, 1000),
-        author_id,
-        author_type,
-        author_name: (author_name || author_id).slice(0, 50),
+        author_id: cookieUser.id,
+        author_type: cookieUser.type,
+        author_name: (author_name || cookieUser.id).slice(0, 50),
       })
       .select('id, content, author_id, author_name, author_type, created_at')
       .single();
 
     if (error) throw error;
 
-    // 게시글의 comment_count 증가
-    await supabase
-      .from('community_posts')
-      .update({ comment_count: (post.comment_count || 0) + 1 })
-      .eq('id', post_id);
+    // comment_count atomic 증가
+    await supabase.rpc('increment_comment_count', { post_id });
 
     return NextResponse.json({ comment }, { status: 201 });
   } catch (err) {

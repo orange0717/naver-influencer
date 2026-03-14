@@ -5,7 +5,7 @@ import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob
 import type { ParsedRanking } from '@/lib/types';
 
 const NAVER_SEARCH_URL = 'https://search.naver.com/search.naver';
-const BATCH_SIZE = 30; // 60초 제한 내 처리 가능한 키워드 수
+const BATCH_SIZE = 15; // Vercel 60초 제한 내 안전한 키워드 수
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 // 요일별 카테고리 로테이션 — 전체 20개 균등 배분
@@ -174,7 +174,19 @@ export async function GET(request: NextRequest) {
       try {
         // 인플루언서 탭 검색
         const url = `${NAVER_SEARCH_URL}?where=influencer&query=${encodeURIComponent(kw.keyword)}`;
-        const res = await fetchWithRetry(url);
+        const res = await fetchWithRetry(url, {
+          headers: {
+            'Referer': 'https://search.naver.com/',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+          },
+        });
         const html = await res.text();
         const rankings = parseInfluencerTab(html);
 
@@ -243,7 +255,7 @@ export async function GET(request: NextRequest) {
 
         totalProcessed++;
         console.log(`[crawl-rankings] ${kw.keyword}: ${rankings.length} influencers`);
-        await sleep(1200); // 1.2초 간격
+        await sleep(2000); // 2초 간격
       } catch (err) {
         console.error(`[crawl-rankings] Error for "${kw.keyword}":`, err);
         totalFailed++;

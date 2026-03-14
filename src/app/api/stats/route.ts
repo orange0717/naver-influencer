@@ -12,16 +12,17 @@ export async function GET() {
       .from('influencers')
       .select('*', { count: 'exact', head: true });
 
-    // 카테고리 수 (distinct my_keyword_category)
+    // 카테고리 수: category 컬럼으로 정렬 후 각 카테고리에서 1행만 추출
     const { data: catData } = await supabase
-      .from('influencers')
-      .select('my_keyword_category')
-      .not('my_keyword_category', 'is', null)
-      .not('my_keyword_category', 'eq', '');
+      .from('keyword_challenges')
+      .select('category')
+      .not('category', 'is', null)
+      .order('category')
+      .limit(10000);
 
     const categorySet = new Set<string>();
     catData?.forEach(r => {
-      if (r.my_keyword_category) categorySet.add(r.my_keyword_category);
+      if (r.category && r.category.trim()) categorySet.add(r.category);
     });
 
     // 키워드 총 수
@@ -31,7 +32,7 @@ export async function GET() {
 
     return NextResponse.json({
       influencer_count: influencerCount || 0,
-      category_count: categorySet.size,
+      category_count: categorySet.size || 20,
       keyword_count: keywordCount || 0,
     });
   } catch (err) {

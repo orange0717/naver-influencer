@@ -21,20 +21,16 @@ export default function CommunityWritePage() {
   const [user, setUser] = useState<{ type: string; id: string; name: string | null } | null>(null);
 
   useEffect(() => {
-    const cookies = document.cookie;
-    const naverMatch = cookies.match(/(?:^|;\s*)naver_id=([^;]*)/);
-    const blogMatch = cookies.match(/(?:^|;\s*)blog_id=([^;]*)/);
-    const blogNameMatch = cookies.match(/(?:^|;\s*)blog_name=([^;]*)/);
-
-    if (naverMatch) {
-      setUser({ type: 'influencer', id: decodeURIComponent(naverMatch[1]), name: null });
-    } else if (blogMatch) {
-      const name = blogNameMatch ? decodeURIComponent(blogNameMatch[1]) : null;
-      setUser({ type: 'blogger', id: decodeURIComponent(blogMatch[1]), name });
-    } else {
-      // 미로그인 — 로그인 페이지로
-      router.push('/auth/login');
-    }
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data.id) {
+          setUser({ type: data.type, id: data.id, name: data.name });
+        } else {
+          router.push('/auth/login');
+        }
+      })
+      .catch(() => router.push('/auth/login'));
   }, [router]);
 
   const handleSubmit = async () => {

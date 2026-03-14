@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { createServiceClient, createAnonClient } from './supabase-server';
 
 /**
@@ -37,4 +38,25 @@ export async function getAuthUser(request: Request) {
     user: profile,
     isSubscribed,
   };
+}
+
+/**
+ * 쿠키 기반 인증 유저 정보를 가져온다.
+ * (인플루언서: naver_id / 블로거: blog_id)
+ *
+ * @returns { id, type } 또는 null (미인증)
+ */
+export async function getCookieUser(): Promise<{ id: string; type: 'influencer' | 'blogger' } | null> {
+  const cookieStore = await cookies();
+  const userType = cookieStore.get('user_type')?.value;
+  const naverId = cookieStore.get('naver_id')?.value;
+  const blogId = cookieStore.get('blog_id')?.value;
+
+  if (userType === 'influencer' && naverId) {
+    return { id: naverId, type: 'influencer' };
+  }
+  if (userType === 'blogger' && blogId) {
+    return { id: blogId, type: 'blogger' };
+  }
+  return null;
 }

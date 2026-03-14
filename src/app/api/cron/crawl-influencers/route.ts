@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
 const FEED_API_BASE = 'https://gw.in.naver.com/feed/query/v1';
-const BATCH_SIZE = 25; // Vercel 60초 제한 내 처리 가능한 키워드 수
+const BATCH_SIZE = 12; // Vercel 60초 제한 내 안전한 키워드 수
 
 // 요일별 카테고리 로테이션 — 전체 20개 균등 배분 (crawl-rankings와 동일)
 const DAY_CATEGORIES: Record<number, string[]> = {

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { createServiceClient } from './supabase-server';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -7,7 +8,10 @@ export function sleep(ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** User-Agent 포함 fetch + 재시도 */
+/** 요청 타임아웃 (기본 15초) */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/** User-Agent 포함 fetch + 재시도 + AbortController 타임아웃 */
 export async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
@@ -20,10 +24,19 @@ export async function fetchWithRetry(
   };
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const res = await fetch(url, { ...options, headers });
+      const res = await fetch(url, { ...options, headers, signal: controller.signal });
       if (res.ok) return res;
-      if (res.status === 429 || res.status >= 500) {
+      if (res.status === 429) {
+        // 429는 더 긴 대기 (exponential backoff)
+        if (attempt < retries) {
+          await sleep(4000 * Math.pow(2, attempt));
+          continue;
+        }
+      }
+      if (res.status >= 500) {
         if (attempt < retries) {
           await sleep(2000 * (attempt + 1));
           continue;
@@ -33,17 +46,28 @@ export async function fetchWithRetry(
     } catch (err) {
       if (attempt === retries) throw err;
       await sleep(2000 * (attempt + 1));
+    } finally {
+      clearTimeout(timeout);
     }
   }
   throw new Error(`Failed after ${retries + 1} attempts: ${url}`);
 }
 
-/** CRON_SECRET 검증 */
+/** CRON_SECRET 검증 (timing-safe 비교) */
 export function verifyCronSecret(request: Request): boolean {
-  const auth = request.headers.get('authorization');
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true; // 개발환경에서는 검증 스킵
-  return auth === `Bearer ${secret}`;
+  if (!secret) {
+    console.error('[crawler] CRON_SECRET 환경변수가 설정되지 않았습니다.');
+    return false;
+  }
+  const auth = request.headers.get('authorization') || '';
+  const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (provided.length !== secret.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(secret));
+  } catch {
+    return false;
+  }
 }
 
 /** crawl_jobs 생성 */

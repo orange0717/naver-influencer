@@ -56,17 +56,12 @@ export default function CommunityPostPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    const cookies = document.cookie;
-    const naverMatch = cookies.match(/(?:^|;\s*)naver_id=([^;]*)/);
-    const blogMatch = cookies.match(/(?:^|;\s*)blog_id=([^;]*)/);
-    const blogNameMatch = cookies.match(/(?:^|;\s*)blog_name=([^;]*)/);
-
-    if (naverMatch) {
-      setUser({ type: 'influencer', id: decodeURIComponent(naverMatch[1]), name: null });
-    } else if (blogMatch) {
-      const name = blogNameMatch ? decodeURIComponent(blogNameMatch[1]) : null;
-      setUser({ type: 'blogger', id: decodeURIComponent(blogMatch[1]), name });
-    }
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data.id) setUser({ type: data.type, id: data.id, name: data.name });
+      })
+      .catch(() => {});
   }, []);
 
   const fetchPost = useCallback(async () => {

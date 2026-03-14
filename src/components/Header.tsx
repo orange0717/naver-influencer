@@ -29,22 +29,6 @@ type UserInfo = {
   name: string | null;
 };
 
-function getUserFromCookies(): UserInfo {
-  const cookies = document.cookie;
-  const naverMatch = cookies.match(/(?:^|;\s*)naver_id=([^;]*)/);
-  const blogMatch = cookies.match(/(?:^|;\s*)blog_id=([^;]*)/);
-  const blogNameMatch = cookies.match(/(?:^|;\s*)blog_name=([^;]*)/);
-
-  if (naverMatch) {
-    return { type: 'influencer', id: decodeURIComponent(naverMatch[1]), name: null };
-  }
-  if (blogMatch) {
-    const name = blogNameMatch ? decodeURIComponent(blogNameMatch[1]) : null;
-    return { type: 'blogger', id: decodeURIComponent(blogMatch[1]), name };
-  }
-  return { type: null, id: null, name: null };
-}
-
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
@@ -56,7 +40,10 @@ export default function Header() {
   const inflRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setUser(getUserFromCookies());
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(setUser)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -72,11 +59,8 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    document.cookie = 'naver_id=; path=/; max-age=0';
-    document.cookie = 'blog_id=; path=/; max-age=0';
-    document.cookie = 'blog_name=; path=/; max-age=0';
-    document.cookie = 'user_type=; path=/; max-age=0';
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
     setUser({ type: null, id: null, name: null });
     router.push('/');
     router.refresh();

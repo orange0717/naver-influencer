@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getCookieUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,11 +28,8 @@ export async function GET(
       return NextResponse.json({ error: '게시글을 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // 조회수 증가
-    await supabase
-      .from('community_posts')
-      .update({ view_count: (post.view_count || 0) + 1 })
-      .eq('id', id);
+    // 조회수 atomic 증가
+    const { data: newViewCount } = await supabase.rpc('increment_view_count', { post_id: id });
 
     // 댓글 조회
     const { data: comments } = await supabase
@@ -42,7 +40,7 @@ export async function GET(
       .order('created_at', { ascending: true });
 
     return NextResponse.json({
-      post: { ...post, view_count: post.view_count + 1 },
+      post: { ...post, view_count: newViewCount ?? post.view_count + 1 },
       comments: comments || [],
     });
   } catch (err) {
@@ -55,29 +53,28 @@ export async function GET(
  * DELETE /api/community/[id] — 게시글 삭제 (작성자만)
  */
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
   try {
-    const body = await req.json();
-    const { author_id } = body;
-
-    if (!author_id) {
-      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+    // 쿠키에서 인증된 유저 확인
+    const cookieUser = await getCookieUser();
+    if (!cookieUser) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const supabase = createServiceClient();
 
-    // 작성자 확인
+    // 작성자 확인 (쿠키의 유저 ID와 게시글 작성자 비교)
     const { data: post } = await supabase
       .from('community_posts')
       .select('author_id')
       .eq('id', id)
       .single();
 
-    if (!post || post.author_id !== author_id) {
+    if (!post || post.author_id !== cookieUser.id) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 

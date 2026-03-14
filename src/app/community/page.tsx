@@ -48,8 +48,10 @@ export default function CommunityPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const cookies = document.cookie;
-    setIsLoggedIn(!!cookies.match(/(?:^|;\s*)(naver_id|blog_id)=/));
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => setIsLoggedIn(!!data.id))
+      .catch(() => {});
   }, []);
 
   const fetchPosts = useCallback(async () => {
@@ -88,7 +90,7 @@ export default function CommunityPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 min-h-[calc(100vh-10rem)]">
       {/* 헤더 */}
       <div className="flex items-center justify-between pt-4">
         <div>
@@ -135,9 +137,9 @@ export default function CommunityPage() {
             <p>불러오는 중...</p>
           </div>
         ) : posts.length === 0 ? (
-          <div className="py-20 text-center text-dim text-sm">
-            <p className="text-3xl mb-3">💬</p>
-            <p className="font-semibold mb-1">아직 게시글이 없습니다</p>
+          <div className="py-32 text-center text-dim text-sm">
+            <p className="text-4xl mb-4">💬</p>
+            <p className="font-semibold text-base text-text mb-1">아직 게시글이 없습니다</p>
             <p>첫 번째 글을 작성해보세요!</p>
           </div>
         ) : (

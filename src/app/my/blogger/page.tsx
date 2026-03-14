@@ -40,27 +40,20 @@ interface KeywordHistory {
   history: { date: string; rank: number | null }[];
 }
 
-function getProfileFromCookies(): BloggerProfile | null {
-  const cookies = document.cookie;
-  const blogMatch = cookies.match(/(?:^|;\s*)blog_id=([^;]*)/);
-  const nameMatch = cookies.match(/(?:^|;\s*)blog_name=([^;]*)/);
-  if (blogMatch) {
-    return {
-      blogId: decodeURIComponent(blogMatch[1]),
-      displayName: nameMatch ? decodeURIComponent(nameMatch[1]) : decodeURIComponent(blogMatch[1]),
-      isInfluencer: false,
-    };
+async function getProfileFromApi(): Promise<BloggerProfile | null> {
+  try {
+    const res = await fetch('/api/auth/me');
+    const data = await res.json();
+    if (data.type === 'blogger' && data.id) {
+      return { blogId: data.id, displayName: data.name || data.id, isInfluencer: false };
+    }
+    if (data.type === 'influencer' && data.id) {
+      return { blogId: data.id, displayName: data.name || data.id, isInfluencer: true };
+    }
+    return null;
+  } catch {
+    return null;
   }
-  const naverMatch = cookies.match(/(?:^|;\s*)naver_id=([^;]*)/);
-  const naverNameMatch = cookies.match(/(?:^|;\s*)naver_name=([^;]*)/);
-  if (naverMatch) {
-    return {
-      blogId: decodeURIComponent(naverMatch[1]),
-      displayName: naverNameMatch ? decodeURIComponent(naverNameMatch[1]) : decodeURIComponent(naverMatch[1]),
-      isInfluencer: true,
-    };
-  }
-  return null;
 }
 
 function timeAgo(dateStr: string): string {
@@ -100,26 +93,41 @@ export default function BloggerDashboard() {
   const [results, setResults] = useState<KeywordRank[]>([]);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState('');
-  const [isSubscribed] = useState(true);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const [extractedKeywords, setExtractedKeywords] = useState<ExtractedKeyword[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [rankHistory, setRankHistory] = useState<KeywordHistory[]>([]);
 
   useEffect(() => {
-    const p = getProfileFromCookies();
-    if (!p) { window.location.href = '/auth/login'; return; }
-    setProfile(p);
+    getProfileFromApi().then(p => {
+      if (!p) {
+        window.location.href = '/auth/login';
+        return;
+      }
+      setProfile(p);
 
-    const saved = localStorage.getItem(`blogger_keywords_${p.blogId}`);
-    if (saved) { try { setKeywords(JSON.parse(saved)); } catch { /* ignore */ } }
-    const savedResults = localStorage.getItem(`blogger_results_${p.blogId}`);
-    if (savedResults) { try { setResults(JSON.parse(savedResults)); } catch { /* ignore */ } }
+      // 구독 상태 확인 (이용권 기반)
+      fetch('/api/license')
+        .then(r => r.json())
+        .then(data => setIsSubscribed(!!data.has_active))
+        .catch(() => {});
 
-    // 블로그 키워드 자동 추출
-    fetchExtractedKeywords(p.blogId);
-    // DB에서 순위 히스토리 가져오기
-    fetchRankHistory(p.blogId);
+      // 저장된 키워드 불러오기
+      const saved = localStorage.getItem(`blogger_keywords_${p.blogId}`);
+      if (saved) {
+        try { setKeywords(JSON.parse(saved)); } catch { /* ignore */ }
+      }
+      const savedResults = localStorage.getItem(`blogger_results_${p.blogId}`);
+      if (savedResults) {
+        try { setResults(JSON.parse(savedResults)); } catch { /* ignore */ }
+      }
+
+      // 블로그 키워드 자동 추출
+      fetchExtractedKeywords(p.blogId);
+      // DB에서 순위 히스토리 가져오기
+      fetchRankHistory(p.blogId);
+    });
   }, []);
 
   const fetchRankHistory = async (blogId: string) => {

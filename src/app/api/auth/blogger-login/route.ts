@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     cookieStore.delete('naver_name');
 
     cookieStore.set('blog_id', cleanId, {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     });
 
     cookieStore.set('blog_name', encodeURIComponent(displayName), {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     });
 
     cookieStore.set('user_type', 'blogger', {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,

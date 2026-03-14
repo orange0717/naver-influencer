@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
+/** Web Crypto API로 HMAC-SHA256 서명 생성 */
+async function generateSignature(timestamp: string, method: string, path: string, secretKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secretKey);
+  const msgData = encoder.encode(`${timestamp}.${method}.${path}`);
+  const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+}
 
 export async function GET(request: NextRequest) {
   const keyword = request.nextUrl.searchParams.get('keyword');
@@ -23,13 +32,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const timestamp = String(Date.now());
-    const method = 'GET';
-    const path = '/keywordstool';
-    const message = timestamp + '.' + method + '.' + path;
-    const signature = crypto
-      .createHmac('sha256', secretKey)
-      .update(message)
-      .digest('base64');
+    const signature = await generateSignature(timestamp, 'GET', '/keywordstool', secretKey);
 
     const url = `https://api.searchad.naver.com/keywordstool?hintKeywords=${encodeURIComponent(keyword)}&showDetail=1`;
 

@@ -21,22 +21,6 @@ type ActiveLicense = {
   duration_days: number;
 };
 
-function getUserFromCookies(): UserInfo {
-  const cookies = document.cookie;
-  const naverMatch = cookies.match(/(?:^|;\s*)naver_id=([^;]*)/);
-  const blogMatch = cookies.match(/(?:^|;\s*)blog_id=([^;]*)/);
-  const blogNameMatch = cookies.match(/(?:^|;\s*)blog_name=([^;]*)/);
-
-  if (naverMatch) {
-    return { type: 'influencer', id: decodeURIComponent(naverMatch[1]), name: null };
-  }
-  if (blogMatch) {
-    const name = blogNameMatch ? decodeURIComponent(blogNameMatch[1]) : null;
-    return { type: 'blogger', id: decodeURIComponent(blogMatch[1]), name };
-  }
-  return { type: null, id: null, name: null };
-}
-
 export default function LicensePage() {
   const [user, setUser] = useState<UserInfo>({ type: null, id: null, name: null });
   const [licenseCode, setLicenseCode] = useState('');
@@ -47,22 +31,23 @@ export default function LicensePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    const u = getUserFromCookies();
-    setUser(u);
-
-    if (u.id) {
-      fetch(`/api/license?userId=${encodeURIComponent(u.id)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.has_active && data.active_license) {
-            setActiveLicense(data.active_license);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(async (data) => {
+        const u: UserInfo = { type: data.type || null, id: data.id || null, name: data.name || null };
+        setUser(u);
+        if (u.id) {
+          try {
+            const res = await fetch('/api/license');
+            const licenseData = await res.json();
+            if (licenseData.has_active && licenseData.active_license) {
+              setActiveLicense(licenseData.active_license);
+            }
+          } catch { /* ignore */ }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   /* ── 토스페이먼츠 결제 ── */

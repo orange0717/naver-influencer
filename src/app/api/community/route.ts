@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getCookieUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,10 +58,16 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { category, title, content, author_id, author_type, author_name } = body;
+    // 쿠키에서 인증된 유저 확인
+    const cookieUser = await getCookieUser();
+    if (!cookieUser) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
 
-    if (!title?.trim() || !content?.trim() || !author_id || !author_type) {
+    const body = await req.json();
+    const { category, title, content, author_name } = body;
+
+    if (!title?.trim() || !content?.trim()) {
       return NextResponse.json({ error: '필수 항목을 입력해주세요.' }, { status: 400 });
     }
 
@@ -70,7 +77,7 @@ export async function POST(req: NextRequest) {
     const { data: recent } = await supabase
       .from('community_posts')
       .select('id')
-      .eq('author_id', author_id)
+      .eq('author_id', cookieUser.id)
       .gte('created_at', oneMinAgo)
       .limit(1);
 
@@ -84,9 +91,9 @@ export async function POST(req: NextRequest) {
         category: category || 'free',
         title: title.trim().slice(0, 100),
         content: content.trim().slice(0, 5000),
-        author_id,
-        author_type,
-        author_name: (author_name || author_id).slice(0, 50),
+        author_id: cookieUser.id,
+        author_type: cookieUser.type,
+        author_name: (author_name || cookieUser.id).slice(0, 50),
       })
       .select('id')
       .single();

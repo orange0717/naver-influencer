@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getCookieUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,12 +10,20 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { license_code, buyer_id, buyer_name, buyer_type } = body;
+    // 쿠키에서 인증된 유저 확인
+    const cookieUser = await getCookieUser();
+    if (!cookieUser) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
 
-    if (!license_code || !buyer_id) {
+    const body = await req.json();
+    const { license_code, buyer_name } = body;
+    const buyer_id = cookieUser.id;
+    const buyer_type = cookieUser.type;
+
+    if (!license_code) {
       return NextResponse.json(
-        { error: '이용권 코드와 사용자 정보가 필요합니다.' },
+        { error: '이용권 코드를 입력해주세요.' },
         { status: 400 },
       );
     }
@@ -79,12 +88,13 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET /api/license?userId=xxx — 사용자의 활성 이용권 조회
+ * GET /api/license — 현재 로그인 사용자의 활성 이용권 조회 (쿠키 인증)
  */
-export async function GET(req: NextRequest) {
-  const userId = new URL(req.url).searchParams.get('userId');
-  if (!userId) {
-    return NextResponse.json({ error: 'userId가 필요합니다.' }, { status: 400 });
+export async function GET(_req: NextRequest) {
+  // 쿠키에서 인증된 유저 확인
+  const cookieUser = await getCookieUser();
+  if (!cookieUser) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
   try {
@@ -92,7 +102,7 @@ export async function GET(req: NextRequest) {
     const { data: licenses } = await supabase
       .from('licenses')
       .select('*')
-      .eq('buyer_id', userId)
+      .eq('buyer_id', cookieUser.id)
       .eq('is_used', true)
       .order('expires_at', { ascending: false })
       .limit(5);
