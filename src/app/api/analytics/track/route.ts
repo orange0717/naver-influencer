@@ -1,11 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|vercel|uptime/i;
+
 /** 페이지 방문 추적 (홈페이지에서 호출) */
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    // 봇·크롤러·프리뷰 요청 필터링
+    const ua = req.headers.get('user-agent') || '';
+    if (BOT_PATTERNS.test(ua)) {
+      return NextResponse.json({ ok: true, skipped: 'bot' });
+    }
     const supabase = createServiceClient();
     const today = new Date().toISOString().slice(0, 10);
 

@@ -16,8 +16,11 @@ function useStats() {
 function useSiteStats() {
   const [s, setS] = useState({ totalVisits: 0, todayVisits: 0, totalSignups: 0, todaySignups: 0 });
   useEffect(() => {
-    // 방문 추적
-    fetch('/api/analytics/track', { method: 'POST' }).catch(() => {});
+    // 방문 추적 (세션당 1회만)
+    if (!sessionStorage.getItem('visited_home')) {
+      sessionStorage.setItem('visited_home', '1');
+      fetch('/api/analytics/track', { method: 'POST' }).catch(() => {});
+    }
     // 통계 조회
     fetch('/api/analytics/stats').then(r => r.json()).then(setS).catch(() => {});
   }, []);

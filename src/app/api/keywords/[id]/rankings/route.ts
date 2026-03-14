@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findKeywordById, fetchRankings } from '@/lib/naver-api';
+import { checkLicense } from '@/lib/license';
 
 export const dynamic = 'force-dynamic';
+
+const FREE_RANKING_LIMIT = 3; // 무료: 상위 3명만
 
 export async function GET(
   request: NextRequest,
@@ -15,6 +18,8 @@ export async function GET(
     if (!found) {
       return NextResponse.json({ error: '키워드를 찾을 수 없습니다' }, { status: 404 });
     }
+
+    const { licensed } = await checkLicense();
 
     // 네이버 검색에서 실시간 순위 가져오기
     const naverRankings = await fetchRankings(found.keyword.name);
@@ -35,7 +40,15 @@ export async function GET(
       snapshot_date: new Date().toISOString().split('T')[0],
     }));
 
-    return NextResponse.json({ rankings, keyword_name: found.keyword.name });
+    // 무료 사용자: 상위 3명만 반환
+    const visibleRankings = licensed ? rankings : rankings.slice(0, FREE_RANKING_LIMIT);
+
+    return NextResponse.json({
+      rankings: visibleRankings,
+      keyword_name: found.keyword.name,
+      total_count: rankings.length,
+      is_limited: !licensed,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to fetch rankings' },

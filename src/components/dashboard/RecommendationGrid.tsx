@@ -26,9 +26,9 @@ export default function RecommendationGrid({ recommendations, compact = false }:
     return (
       <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-2 mb-4">
-          <h3 className="font-bold text-[15px]">오늘의 추천 키워드</h3>
+          <h3 className="font-bold text-[15px]">실시간 추천 키워드</h3>
           <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">
-            TODAY&apos;S PICK
+            LIVE
           </span>
         </div>
         <div className="text-center py-8 text-dim text-sm">
@@ -41,10 +41,10 @@ export default function RecommendationGrid({ recommendations, compact = false }:
   return (
     <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex items-center gap-2 mb-4">
-        <h3 className="font-bold text-[15px]">오늘의 추천 키워드</h3>
+        <h3 className="font-bold text-[15px]">실시간 추천 키워드</h3>
         <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />
-          TODAY&apos;S PICK
+          LIVE
         </span>
         <span className="text-[11px] text-dim ml-auto">{recommendations.length}개</span>
       </div>

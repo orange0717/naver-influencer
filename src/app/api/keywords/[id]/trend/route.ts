@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { checkLicense } from '@/lib/license';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  const { licensed } = await checkLicense();
+  if (!licensed) {
+    return NextResponse.json(
+      { error: '이용권이 필요합니다', code: 'LICENSE_REQUIRED' },
+      { status: 403 },
+    );
+  }
+
   const supabase = createServiceClient();
 
   // 키워드 정보 조회

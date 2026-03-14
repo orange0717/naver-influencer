@@ -281,13 +281,14 @@ export default async function MyDashboard() {
     .sort((a, b) => b[1].length - a[1].length);
   const totalKeywords = allKeywords.length;
 
-  // ─── 3. 오늘의 추천 키워드 ───
+  // ─── 3. 실시간 추천 키워드 (카테고리 기반 개인화) ───
   let recommendations: Recommendation[] = [];
   try {
     const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : 'http://localhost:3000';
-    const recRes = await fetch(`${baseUrl}/api/recommendations`, { cache: 'no-store' });
+    const catParam = myCategory ? `?category=${encodeURIComponent(myCategory)}` : '';
+    const recRes = await fetch(`${baseUrl}/api/recommendations${catParam}`, { cache: 'no-store' });
     if (recRes.ok) {
       const recData = await recRes.json();
       recommendations = (recData.recommendations || []).slice(0, 6);
@@ -598,13 +599,16 @@ export default async function MyDashboard() {
                         </span>
                       )}
                       {kw.rank_position !== null ? (
-                        <span className={`text-xs font-black font-rank px-2 py-0.5 rounded ${
-                          kw.rank_position <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/30 text-dim'
-                        }`}>
-                          {kw.rank_position}위
-                        </span>
+                        <>
+                          <span className="text-[10px] font-bold text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded">노출</span>
+                          <span className={`text-xs font-black font-rank px-2 py-0.5 rounded ${
+                            kw.rank_position <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/30 text-dim'
+                          }`}>
+                            {kw.rank_position}위
+                          </span>
+                        </>
                       ) : (
-                        <span className="text-xs text-dim">순위 없음</span>
+                        <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">미노출</span>
                       )}
                     </div>
                   </Link>
@@ -622,7 +626,7 @@ export default async function MyDashboard() {
       {/* ─── 9. 활동 현황 (무료) ─── */}
       <GlassCard>
         <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
             <p className="text-xl font-black font-rank">{formatCount(influencer.subscriber_count || 0)}</p>
             <p className="text-xs text-dim mt-1">팬수</p>
@@ -632,8 +636,12 @@ export default async function MyDashboard() {
             <p className="text-xs text-dim mt-1">참여 키워드</p>
           </div>
           <div>
-            <p className="text-xl font-black font-rank">{totalRankedKeywords}</p>
-            <p className="text-xs text-dim mt-1">순위 키워드</p>
+            <p className="text-xl font-black font-rank text-green-600">{totalRankedKeywords}</p>
+            <p className="text-xs text-dim mt-1">노출 키워드</p>
+          </div>
+          <div>
+            <p className="text-xl font-black font-rank text-red-500">{totalKeywords - totalRankedKeywords}</p>
+            <p className="text-xs text-dim mt-1">미노출 키워드</p>
           </div>
         </div>
       </GlassCard>

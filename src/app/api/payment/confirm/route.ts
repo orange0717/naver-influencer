@@ -53,6 +53,19 @@ export async function POST(req: NextRequest) {
       planName = planInfo.planName;
       const period = findPeriod(planInfo.months);
       durationDays = period?.days || planInfo.months * 30;
+
+      // 결제 금액 서버 검증 — plans.ts 가격과 대조
+      const plan = PLANS[planInfo.planName];
+      if (plan) {
+        const expectedAmount = calculatePrice(plan.basePrice, planInfo.months, period?.discount || 0);
+        if (amount !== expectedAmount) {
+          console.error(`[payment/confirm] 금액 불일치: 요청 ${amount}원, 예상 ${expectedAmount}원, orderId=${orderId}`);
+          return NextResponse.json(
+            { error: `결제 금액이 일치하지 않습니다. (요청: ${amount}원, 예상: ${expectedAmount}원)` },
+            { status: 400 },
+          );
+        }
+      }
     } else {
       // 레거시 형식 (기존 호환)
       planName = 'PRO';
