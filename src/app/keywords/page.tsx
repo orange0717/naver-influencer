@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { Keyword } from '@/lib/types';
 import { getSubcategory } from '@/data/subcategory-map';
@@ -18,6 +18,7 @@ export default function KeywordsPage() {
   const [categories, setCategories] = useState<string[]>(['전체']);
   const [category, setCategory] = useState('전체');
   const [search, setSearch] = useState('');
+  const [subFilter, setSubFilter] = useState('전체');
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -66,6 +67,7 @@ export default function KeywordsPage() {
 
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
+    setSubFilter('전체');
     setCursorHistory([null]);
     setCurrentPageIndex(0);
     setNextCursor(null);
@@ -106,6 +108,18 @@ export default function KeywordsPage() {
   const hasNext = category !== '전체' ? !!nextCursor : (startNum + keywords.length) < total;
   const isGroupedView = category === '전체' && !search.trim() && grouped.length > 0;
 
+  // 세부분류 목록 + 필터링
+  const subCategories = useMemo(() => {
+    const subs = keywords.map(kw => getSubcategory(kw.category, kw.keyword)).filter(Boolean);
+    const unique = [...new Set(subs)].sort();
+    return ['전체', ...unique];
+  }, [keywords]);
+
+  const displayKeywords = useMemo(() => {
+    if (subFilter === '전체') return keywords;
+    return keywords.filter(kw => getSubcategory(kw.category, kw.keyword) === subFilter);
+  }, [keywords, subFilter]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -118,13 +132,24 @@ export default function KeywordsPage() {
       <input type="text" placeholder="키워드 검색..." value={search} onChange={e => handleSearchChange(e.target.value)}
         className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors" />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         {categories.map(cat => (
           <button key={cat} onClick={() => handleCategoryChange(cat)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
               category === cat ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:border-accent/40'
             }`}>{cat}</button>
         ))}
+        {subCategories.length > 2 && (
+          <select
+            value={subFilter}
+            onChange={e => setSubFilter(e.target.value)}
+            className="ml-auto px-3 py-1.5 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors"
+          >
+            {subCategories.map(sub => (
+              <option key={sub} value={sub}>{sub === '전체' ? '세부분류 전체' : sub}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* 협력사 배너 */}
@@ -155,22 +180,22 @@ export default function KeywordsPage() {
               </div>
 
               {/* Desktop: 테이블 */}
-              <table className="w-full text-sm hidden md:table">
+              <table className="w-full hidden md:table">
                 <tbody>
                   {group.keywords.map((kw, i) => {
                     const sub = getSubcategory(kw.category, kw.keyword);
                     return (
                     <tr key={kw.id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
-                      <td className="py-2.5 px-4 font-bold text-dim font-rank text-xs w-8">{i + 1}</td>
-                      <td className="py-2.5 px-4">
-                        <Link href={`/keywords/${kw.id}`} className="font-medium hover:text-accent transition-colors">
+                      <td className="py-3 px-4 font-bold text-dim font-rank text-sm w-8">{i + 1}</td>
+                      <td className="py-3 px-4">
+                        <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors">
                           {kw.keyword}
                         </Link>
                       </td>
-                      <td className="py-2.5 px-3 text-xs text-dim">{kw.category}</td>
-                      {sub && <td className="py-2.5 px-2 text-xs text-accent font-semibold">{sub}</td>}
-                      <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
-                      <td className="py-2.5 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
+                      <td className="py-3 px-3 text-sm text-dim">{kw.category}</td>
+                      {sub && <td className="py-3 px-2 text-sm text-accent font-semibold">{sub}</td>}
+                      <td className="py-3 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
+                      <td className="py-3 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
                     </tr>
                     );
                   })}
@@ -204,62 +229,62 @@ export default function KeywordsPage() {
         /* ─── 카테고리 선택 or 검색: 기존 리스트 뷰 ─── */
         <>
           <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
-            <table className="w-full text-sm">
+            <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
-                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs w-8">#</th>
-                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">키워드</th>
-                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs">카테고리</th>
-                  <th className="text-left py-3 px-2 font-semibold text-dim text-xs">세부분류</th>
-                  <th className="text-right py-3 px-4 font-semibold text-dim text-xs">참여자</th>
-                  <th className="text-center py-3 px-4 font-semibold text-dim text-xs">경쟁도</th>
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-sm w-8">#</th>
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-sm">키워드</th>
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-sm">카테고리</th>
+                  <th className="text-left py-3 px-2 font-semibold text-dim text-sm">세부분류</th>
+                  <th className="text-right py-3 px-4 font-semibold text-dim text-sm">참여자</th>
+                  <th className="text-center py-3 px-4 font-semibold text-dim text-sm">경쟁도</th>
                 </tr>
               </thead>
               <tbody>
-                {keywords.map((kw, i) => {
+                {displayKeywords.map((kw, i) => {
                   const sub = getSubcategory(kw.category, kw.keyword);
                   return (
                   <tr key={kw.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
-                    <td className="py-3 px-4 font-bold text-dim font-rank text-xs">{startNum + i + 1}</td>
-                    <td className="py-3 px-4">
-                      <Link href={`/keywords/${kw.id}`} className="font-bold hover:text-accent transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-dim font-rank text-sm">{startNum + i + 1}</td>
+                    <td className="py-3.5 px-4">
+                      <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors">
                         {kw.keyword}
                       </Link>
                     </td>
-                    <td className="py-3 px-3 text-xs text-dim">{kw.category}</td>
-                    <td className="py-3 px-2 text-xs text-accent font-semibold">{sub || '—'}</td>
-                    <td className="py-3 px-4 text-right font-bold font-rank">{kw.participant_count.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-center">{compBadge(kw.competition_level)}</td>
+                    <td className="py-3.5 px-3 text-sm text-dim">{kw.category}</td>
+                    <td className="py-3.5 px-2 text-sm text-accent font-semibold">{sub || '—'}</td>
+                    <td className="py-3.5 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}</td>
+                    <td className="py-3.5 px-4 text-center">{compBadge(kw.competition_level)}</td>
                   </tr>
                   );
                 })}
               </tbody>
             </table>
-            {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
+            {displayKeywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
           </div>
 
           <div className="md:hidden space-y-3">
-            {keywords.map((kw, i) => {
+            {displayKeywords.map((kw, i) => {
               const sub = getSubcategory(kw.category, kw.keyword);
               return (
               <Link key={kw.id} href={`/keywords/${kw.id}`}
                 className="block bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-dim font-rank">#{startNum + i + 1}</span>
-                    <span className="font-bold text-sm">{kw.keyword}</span>
-                    <span className="text-dim text-xs">{kw.category}</span>
-                    {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-sm font-bold text-dim font-rank shrink-0">#{startNum + i + 1}</span>
+                    <span className="font-bold text-[15px] truncate">{kw.keyword}</span>
+                    <span className="text-dim text-sm shrink-0">{kw.category}</span>
+                    {sub && <span className="text-sm text-accent font-semibold shrink-0">{sub}</span>}
                   </div>
                   {compBadge(kw.competition_level)}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-dim">
+                <div className="flex items-center gap-3 text-sm text-dim">
                   <span>참여자 {kw.participant_count.toLocaleString()}명</span>
                 </div>
               </Link>
               );
             })}
-            {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
+            {displayKeywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
           </div>
 
           {(hasNext || currentPageIndex > 0) && (
