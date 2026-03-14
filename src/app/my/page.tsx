@@ -245,11 +245,11 @@ export default async function MyDashboard() {
           delay={50}
         />
         <AnimatedStatCard
-          label="참여 키워드"
-          value={totalKeywords}
+          label="유효 키워드"
+          value={totalRankedKeywords}
           suffix="개"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>}
-          color={totalKeywords > 0 ? 'accent' : 'dim'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>}
+          color={totalRankedKeywords > 0 ? 'accent' : 'dim'}
           delay={100}
         />
         <AnimatedStatCard

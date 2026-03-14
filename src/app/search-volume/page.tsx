@@ -14,8 +14,6 @@ interface KeywordVolume {
 
 function formatCount(n: number | string): string {
   if (typeof n === 'string') return n;
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return n.toLocaleString();
 }
 

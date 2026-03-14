@@ -265,6 +265,14 @@ function renderWidget(r: RankResult, date: string): string {
     color: #374151;
   }
   .cat-rank span { font-size: 12px; font-weight: 600; }
+  .date-watermark {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9CA3AF;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    letter-spacing: -0.3px;
+  }
   .footer {
     padding: 6px 14px 8px;
     background: #F9FAFB;
@@ -304,6 +312,9 @@ function renderWidget(r: RankResult, date: string): string {
       <div class="cat-name">${r.category || '미분류'}</div>
       <div class="cat-rank">${r.categoryRank.toLocaleString()}<span>위</span> ${changeHtml(r.categoryChange)}</div>
     </div>
+  </div>
+  <div class="body" style="padding:0 14px 8px;">
+    <div class="date-watermark">${date.replace(/-/g, '.')} 기준</div>
   </div>
   <div class="footer">
     <div class="blog-url">in.naver.com/${r.naverId}</div>

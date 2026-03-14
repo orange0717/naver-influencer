@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHmac } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-/** Web Crypto API로 HMAC-SHA256 서명 생성 */
-async function generateSignature(timestamp: string, method: string, path: string, secretKey: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secretKey);
-  const msgData = encoder.encode(`${timestamp}.${method}.${path}`);
-  const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+/** Node.js crypto 모듈로 HMAC-SHA256 서명 생성 */
+function generateSignature(timestamp: string, method: string, path: string, secretKey: string): string {
+  const message = `${timestamp}.${method}.${path}`;
+  return createHmac('sha256', secretKey)
+    .update(message)
+    .digest('base64');
 }
 
 export async function GET(request: NextRequest) {
@@ -19,9 +18,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400 });
   }
 
-  const apiKey = process.env.NAVER_API_KEY;
-  const secretKey = process.env.NAVER_SECRET_KEY;
-  const customerId = process.env.NAVER_CUSTOMER_ID;
+  const apiKey = process.env.NAVER_API_KEY?.trim();
+  const secretKey = process.env.NAVER_SECRET_KEY?.trim();
+  const customerId = process.env.NAVER_CUSTOMER_ID?.trim();
 
   if (!apiKey || !secretKey || !customerId) {
     return NextResponse.json(
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const timestamp = String(Date.now());
-    const signature = await generateSignature(timestamp, 'GET', '/keywordstool', secretKey);
+    const signature = generateSignature(timestamp, 'GET', '/keywordstool', secretKey);
 
     const url = `https://api.searchad.naver.com/keywordstool?hintKeywords=${encodeURIComponent(keyword)}&showDetail=1`;
 
