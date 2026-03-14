@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // 경쟁자 인플루언서 정보 조회
     const { data: competitor } = await supabase
       .from('influencers')
-      .select('id, naver_id, display_name, image_url, category, my_keyword_category, subscriber_count, first_seen_at')
+      .select('id, naver_id, display_name, image_url, category, my_keyword_category, subscriber_count, first_seen_at, naver_created_at')
       .eq('naver_id', competitorId)
       .single();
 
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
         imageUrl: competitor.image_url,
         category: competitor.my_keyword_category || competitor.category,
         subscriberCount: competitor.subscriber_count,
-        firstSeenAt: competitor.first_seen_at,
+        firstSeenAt: competitor.naver_created_at || competitor.first_seen_at,
       },
       stats: {
         totalKeywords,

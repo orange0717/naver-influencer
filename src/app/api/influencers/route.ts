@@ -131,7 +131,7 @@ async function getInfluencersFromDB(
     myKeyword: inf.my_keyword || '',
     categoryMyType: inf.category_my_type || '',
     foundInKeywords: keywordMap.get(inf.id) || [],
-    firstSeenAt: inf.first_seen_at || inf.created_at,
+    firstSeenAt: inf.naver_created_at || inf.first_seen_at || inf.created_at,
   }));
 
   return NextResponse.json({

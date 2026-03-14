@@ -203,7 +203,7 @@ export default async function MyDashboard() {
         imageUrl={influencer.image_url}
         category={influencer.my_keyword_category || influencer.category}
         subscriberCount={influencer.subscriber_count || 0}
-        firstSeenAt={influencer.first_seen_at}
+        firstSeenAt={influencer.naver_created_at || influencer.first_seen_at}
         type="influencer"
         subscribed={isSubscribed}
       />

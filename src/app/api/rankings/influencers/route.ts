@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   try {
     let infQuery = supabase
       .from('influencers')
-      .select('id, naver_id, display_name, image_url, my_keyword_category, category, subscriber_count, category_my_type, first_seen_at');
+      .select('id, naver_id, display_name, image_url, my_keyword_category, category, subscriber_count, category_my_type, first_seen_at, naver_created_at');
 
     if (category && category !== '전체') {
       infQuery = infQuery.or(`my_keyword_category.eq.${category},category.eq.${category}`);
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
         category: inf.my_keyword_category || inf.category || '',
         categoryMyType: inf.category_my_type || '',
         subscriberCount: inf.subscriber_count || 0,
-        firstSeenAt: inf.first_seen_at,
+        firstSeenAt: inf.naver_created_at || inf.first_seen_at,
         rank1Count: stats.rank1Count,
         top3Count: stats.top3Count,
         top10Count: stats.top10Count,
