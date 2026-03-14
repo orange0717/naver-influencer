@@ -31,7 +31,6 @@ const AD_GROUP = [
 const INFO_GROUP = [
   { href: '/notice', label: '공지사항' },
   { href: '/tools', label: '추천 도구' },
-  { href: '/subscribe', label: '이용권' },
 ];
 
 type UserInfo = {
