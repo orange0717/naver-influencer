@@ -25,6 +25,7 @@ interface BloggerProfile {
   blogId: string;
   displayName: string;
   isInfluencer: boolean;
+  imageUrl?: string;
 }
 
 interface ExtractedKeyword {
@@ -99,6 +100,7 @@ export default function BloggerDashboard() {
   const [extractedKeywords, setExtractedKeywords] = useState<ExtractedKeyword[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [rankHistory, setRankHistory] = useState<KeywordHistory[]>([]);
+  const [customProfile, setCustomProfile] = useState<{ displayName?: string; imageUrl?: string }>({});
 
   // 미확인 키워드 자동 순위 확인
   const autoCheckRef = useRef(false);
@@ -148,6 +150,16 @@ export default function BloggerDashboard() {
       if (!p) {
         window.location.href = '/auth/login';
         return;
+      }
+      // localStorage에서 커스텀 프로필 불러오기 (사진, 닉네임)
+      const customData = localStorage.getItem(`blogger_custom_profile_${p.blogId}`);
+      if (customData) {
+        try {
+          const parsed = JSON.parse(customData);
+          setCustomProfile(parsed);
+          if (parsed.displayName) p = { ...p, displayName: parsed.displayName };
+          if (parsed.imageUrl) p = { ...p, imageUrl: parsed.imageUrl };
+        } catch { /* ignore */ }
       }
       setProfile(p);
 
@@ -202,6 +214,18 @@ export default function BloggerDashboard() {
     } catch { /* ignore */ }
     finally { setExtracting(false); }
   };
+
+  const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
+    setCustomProfile(prev => {
+      const updated = { ...prev, ...data };
+      if (profile) {
+        localStorage.setItem(`blogger_custom_profile_${profile.blogId}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+    // profile 상태도 업데이트
+    setProfile(prev => prev ? { ...prev, ...data } : prev);
+  }, [profile]);
 
   const saveKeywords = useCallback((kws: string[]) => {
     if (!profile) return;
@@ -352,10 +376,13 @@ export default function BloggerDashboard() {
 
       {/* ─── 1. 프로필 헤더 ─── */}
       <ProfileHeader
-        displayName={profile.displayName}
+        displayName={customProfile.displayName || profile.displayName}
+        imageUrl={customProfile.imageUrl || profile.imageUrl}
         blogId={profile.blogId}
         type={profile.isInfluencer ? 'influencer' : 'blogger'}
         subscribed={isSubscribed}
+        editable={true}
+        onProfileChange={handleProfileChange}
       />
 
       {/* ─── 대시보드 (관리자 또는 구독자는 전체 접근) ─── */}
