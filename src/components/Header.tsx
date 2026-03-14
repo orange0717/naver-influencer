@@ -77,17 +77,6 @@ export default function Header() {
 
             {/* ── 데스크탑 네비게이션 ── */}
             <nav className="hidden lg:flex items-center gap-1">
-              {NAV_ITEMS.map(item => (
-                <Link key={item.href} href={item.href}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                    isActive(item.href) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}>
-                  {item.label}
-                </Link>
-              ))}
-
-              <div className="w-px h-5 bg-white/20 mx-1" />
-
               {/* N인플 드롭다운 */}
               <div className="relative" ref={infoRef}>
                 <button
@@ -115,6 +104,17 @@ export default function Header() {
                   </div>
                 )}
               </div>
+
+              <div className="w-px h-5 bg-white/20 mx-1" />
+
+              {NAV_ITEMS.map(item => (
+                <Link key={item.href} href={item.href}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    isActive(item.href) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}>
+                  {item.label}
+                </Link>
+              ))}
             </nav>
           </div>
 
