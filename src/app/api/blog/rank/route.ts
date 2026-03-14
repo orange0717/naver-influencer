@@ -11,6 +11,11 @@ const cache = new Map<string, { data: unknown; expires: number }>();
 /**
  * 네이버 블로그탭에서 특정 블로그의 순위를 검색합니다.
  * 1~3페이지(약 30개)까지 확인합니다.
+ *
+ * 2025+ 네이버 검색 구조 대응:
+ * - ssc=tab.blog.all 형식의 URL 사용 (서버사이드 렌더링 보장)
+ * - Accept-Encoding 헤더 필수 (완전한 HTML 수신)
+ * - Cheerio + regex 하이브리드 방식으로 블로그 링크 추출
  */
 async function searchBlogRank(keyword: string, blogId: string): Promise<{
   rank: number | null;
@@ -20,26 +25,30 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
   postTitle: string;
 }> {
   const blogIdLower = blogId.toLowerCase();
-  const baseUrl = `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(keyword)}&sm=tab_blog`;
+  // 2025+ URL 형식: ssc=tab.blog.all 이 서버사이드 렌더링을 보장
+  const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(keyword)}`;
+  const displayUrl = `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(keyword)}&sm=tab_blog`;
 
   let globalRank = 0;
   let foundRank: number | null = null;
   let foundUrl = '';
   let foundTitle = '';
-  let totalFound = 0;
+  const seenPosts = new Set<string>();
 
   // 1~3페이지 검색
   for (let page = 1; page <= 3; page++) {
     if (foundRank !== null) break;
 
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${(page - 1) * 10 + 1}`;
+    const start = (page - 1) * 10 + 1;
+    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
 
     try {
       const res = await fetch(pageUrl, {
         headers: {
           'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'ko-KR,ko;q=0.9',
+          'Accept-Encoding': 'gzip, deflate',
           'Referer': 'https://search.naver.com/',
         },
       });
@@ -47,80 +56,77 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
       if (!res.ok) continue;
 
       const html = await res.text();
+
+      // === 방법 1: Cheerio로 <a> 태그 스캔 ===
       const $ = cheerio.load(html);
+      const blogLinks: { blogId: string; postId: string; title: string; href: string }[] = [];
 
-      // === 방법 1: 모든 블로그 포스트 링크를 직접 추출 (2025+ 새 구조 대응) ===
-      const seenHrefs = new Set<string>();
-
-      // blog.naver.com/username/postid 패턴의 모든 링크 수집
+      // 모든 <a> 태그에서 blog.naver.com/username/postid 패턴 찾기
       $('a').each((_, el) => {
-        if (foundRank !== null) return;
-
         const href = $(el).attr('href') || '';
-        const match = href.match(/blog\.naver\.com\/([^/?#]+)\/(\d+)/);
+        const match = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+        if (!match) return;
 
-        if (!match || seenHrefs.has(href)) return;
-        seenHrefs.add(href);
+        const linkBlogId = match[1];
+        const postId = match[2];
+        const key = `${linkBlogId}/${postId}`;
+        if (seenPosts.has(key)) return;
 
-        const linkBlogId = match[1].toLowerCase();
-
-        // 텍스트에서 제목 추출 (blog.naver.com 포함된 텍스트 제외)
+        // 제목 추출: <a> 태그의 텍스트 중 유의미한 것 찾기
         let title = $(el).text().trim();
-        if (title.includes('blog.naver.com') || title.length < 3) {
-          // 같은 포스트 URL을 가진 다른 링크에서 제목 찾기
-          const titleLink = $(`a[href="${href}"]`).filter((_, a) => {
+        // blog.naver.com 같은 URL 텍스트나 너무 짧은 텍스트 제외
+        if (title.includes('blog.naver.com') || title.length < 3 || /^\d+$/.test(title)) {
+          // 같은 href를 가진 다른 <a>에서 제목 찾기
+          const otherLink = $(`a[href="${href}"]`).filter((_, a) => {
             const t = $(a).text().trim();
-            return t.length > 3 && !t.includes('blog.naver.com');
+            return t.length >= 3 && !t.includes('blog.naver.com') && !/^\d+$/.test(t);
           }).first();
-          if (titleLink.length) {
-            title = titleLink.text().trim();
+          if (otherLink.length) {
+            title = otherLink.text().trim();
+          } else {
+            title = '';
           }
         }
 
-        // 프로필 링크가 아닌 실제 포스트만 카운트
-        globalRank++;
-        totalFound++;
+        seenPosts.add(key);
+        blogLinks.push({ blogId: linkBlogId, postId, title, href });
+      });
 
-        if (linkBlogId === blogIdLower) {
+      // === 방법 2: Cheerio에서 못 찾으면 regex 폴백 ===
+      if (blogLinks.length === 0) {
+        const regex = /blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/g;
+        let regexMatch;
+        while ((regexMatch = regex.exec(html)) !== null) {
+          const linkBlogId = regexMatch[1];
+          const postId = regexMatch[2];
+          const key = `${linkBlogId}/${postId}`;
+          if (seenPosts.has(key)) continue;
+          seenPosts.add(key);
+          blogLinks.push({
+            blogId: linkBlogId,
+            postId,
+            title: '',
+            href: `https://blog.naver.com/${linkBlogId}/${postId}`,
+          });
+        }
+      }
+
+      // 순위 매기기
+      for (const link of blogLinks) {
+        globalRank++;
+
+        if (link.blogId.toLowerCase() === blogIdLower) {
           foundRank = globalRank;
-          foundUrl = href;
-          // HTML 태그 제거
-          foundTitle = title
+          foundUrl = link.href.startsWith('http') ? link.href : `https://blog.naver.com/${link.blogId}/${link.postId}`;
+          foundTitle = link.title
             .replace(/<[^>]*>/g, '')
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
             .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
             .slice(0, 200);
+          break;
         }
-      });
-
-      // === 방법 2: 블로거 프로필 링크도 체크 (blog.naver.com/username 형식) ===
-      if (foundRank === null) {
-        $(`a[href*="blog.naver.com/${blogIdLower}"]`).each((_, el) => {
-          if (foundRank !== null) return;
-          const href = $(el).attr('href') || '';
-          // 이미 포스트 링크로 찾았으면 스킵
-          if (href.match(/blog\.naver\.com\/[^/?#]+\/\d+/)) return;
-          // 프로필 링크인 경우 - 근처에서 포스트 링크 찾기
-          const parent = $(el).closest('div');
-          const postLink = parent.find('a').filter((_, a) => {
-            const h = $(a).attr('href') || '';
-            return h.match(/blog\.naver\.com\/[^/?#]+\/\d+/) !== null;
-          }).first();
-          if (postLink.length) {
-            const postHref = postLink.attr('href') || '';
-            const postTitle = postLink.text().trim();
-            // 이 포스트의 순위를 찾기
-            let rank = 0;
-            seenHrefs.forEach(() => rank++);
-            if (rank > 0) {
-              foundRank = rank;
-              foundUrl = postHref;
-              foundTitle = postTitle.slice(0, 200);
-            }
-          }
-        });
       }
 
     } catch {
@@ -135,9 +141,9 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
 
   return {
     rank: foundRank,
-    totalResults: totalFound,
+    totalResults: seenPosts.size,
     blogUrl: foundUrl,
-    searchUrl: baseUrl,
+    searchUrl: displayUrl,
     postTitle: foundTitle,
   };
 }
