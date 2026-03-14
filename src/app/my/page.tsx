@@ -11,6 +11,7 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import RecommendationGrid from '@/components/dashboard/RecommendationGrid';
 import GlassCard from '@/components/dashboard/GlassCard';
 import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
+import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import { generateActivityEvents } from '@/lib/activity-events';
 
 export const dynamic = 'force-dynamic';
@@ -562,7 +563,10 @@ export default async function MyDashboard() {
         myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords, top3Count }}
       />
 
-      {/* ─── 8. 내 키워드 리스트 (주제별) ─── */}
+      </>
+      )}
+
+      {/* ─── 8. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-[15px]">내 키워드 리스트</h3>
@@ -609,15 +613,11 @@ export default async function MyDashboard() {
             </GlassCard>
           ))
         ) : (
-          <GlassCard className="text-center py-12 text-dim text-sm">
-            <p>아직 참여 중인 키워드가 없습니다.</p>
-            <p className="text-xs mt-1">키워드 데이터 수집이 진행되면 자동으로 표시됩니다.</p>
+          <GlassCard>
+            <KeywordSyncButton />
           </GlassCard>
         )}
       </div>
-
-      </>
-      )}
 
       {/* ─── 9. 활동 현황 (무료) ─── */}
       <GlassCard>
