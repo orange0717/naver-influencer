@@ -29,37 +29,23 @@ export async function GET() {
       // site_visits 테이블 없으면 0
     }
 
-    // 가입자 (users + 인플루언서 로그인 합산)
+    // 가입자 (users 테이블만 — 크롤링 인플루언서 제외)
     let totalSignups = 0;
     let todaySignups = 0;
 
     try {
-      // users 테이블
-      const { count: userCount } = await supabase
+      const { count } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true });
+      totalSignups = count || 0;
 
-      const { count: todayUserCount } = await supabase
+      const { count: todayCount } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', `${today}T00:00:00+09:00`);
-
-      // 인플루언서 중 first_seen_at이 있는 등록자 (로그인한 인플루언서)
-      const { count: infCount } = await supabase
-        .from('influencers')
-        .select('*', { count: 'exact', head: true })
-        .not('first_seen_at', 'is', null);
-
-      const { count: todayInfCount } = await supabase
-        .from('influencers')
-        .select('*', { count: 'exact', head: true })
-        .not('first_seen_at', 'is', null)
-        .gte('first_seen_at', `${today}T00:00:00+09:00`);
-
-      totalSignups = (userCount || 0) + (infCount || 0);
-      todaySignups = (todayUserCount || 0) + (todayInfCount || 0);
+      todaySignups = todayCount || 0;
     } catch {
-      // 테이블 문제 시 0
+      // users 테이블 문제 시 0
     }
 
     return NextResponse.json({
