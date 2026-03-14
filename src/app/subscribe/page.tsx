@@ -34,7 +34,7 @@ export default function SubscribePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // 플랜 & 기간 선택 상태
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>('PRO');
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>('INFLUENCER');
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>(PERIODS[0]);
 
   const plan = PLANS[selectedPlan];
@@ -190,12 +190,12 @@ export default function SubscribePage() {
             </p>
           </div>
 
-          {/* 플랜 카드 2개 */}
-          <div className="grid md:grid-cols-2 gap-4 mb-8">
+          {/* 플랜 카드 3개 */}
+          <div className="grid md:grid-cols-3 gap-4 mb-8">
             {(Object.keys(PLANS) as PlanKey[]).map((key) => {
               const p = PLANS[key];
               const isSelected = selectedPlan === key;
-              const isAgency = key === 'AGENCY';
+              const isPopular = key === 'INFLUENCER';
               return (
                 <button
                   key={key}
@@ -206,9 +206,9 @@ export default function SubscribePage() {
                       : 'border-border bg-surface hover:border-accent/30'
                   }`}
                 >
-                  {isAgency && (
-                    <span className="absolute -top-2.5 right-4 px-3 py-0.5 bg-blue text-white text-[10px] font-bold rounded-full">
-                      대행사 추천
+                  {isPopular && (
+                    <span className="absolute -top-2.5 right-4 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">
+                      인기
                     </span>
                   )}
 
@@ -233,6 +233,7 @@ export default function SubscribePage() {
                       {p.basePrice.toLocaleString()}
                     </span>
                     <span className="text-sm text-dim">원/월</span>
+                    <p className="text-[10px] text-dim mt-0.5">공급가 {p.supplyPrice.toLocaleString()}원 + VAT</p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -420,32 +421,39 @@ export default function SubscribePage() {
             <thead>
               <tr className="border-b border-border bg-bg/50">
                 <th className="text-left py-3 px-4 font-semibold text-dim text-xs">기능</th>
-                <th className="text-center py-3 px-4 font-semibold text-dim text-xs w-20">무료</th>
-                <th className="text-center py-3 px-4 font-semibold text-accent text-xs w-20">PRO</th>
-                <th className="text-center py-3 px-4 font-semibold text-blue text-xs w-20">AGENCY</th>
+                <th className="text-center py-3 px-4 font-semibold text-dim text-xs w-16">무료</th>
+                <th className="text-center py-3 px-4 font-semibold text-accent text-xs w-16">개인</th>
+                <th className="text-center py-3 px-4 font-semibold text-accent text-xs w-16">인플루언서</th>
+                <th className="text-center py-3 px-4 font-semibold text-blue text-xs w-16">대행사</th>
               </tr>
             </thead>
             <tbody>
               {[
-                { f: '키워드 목록 열람', free: true, pro: true, agency: true },
-                { f: '커뮤니티', free: true, pro: true, agency: true },
-                { f: '검색량 조회', free: true, pro: true, agency: true },
-                { f: '블로그 등급 위젯', free: true, pro: true, agency: true },
-                { f: '키워드 상세 (검색량, 트렌드)', free: false, pro: true, agency: true },
-                { f: '인플루언서 순위 전체', free: false, pro: true, agency: true },
-                { f: '내 대시보드 전체 기능', free: false, pro: true, agency: true },
-                { f: '경쟁자 비교 분석', free: false, pro: true, agency: true },
-                { f: '다중 블로그 관리 (10개)', free: false, pro: false, agency: true },
-                { f: '대행사 전용 대시보드', free: false, pro: false, agency: true },
-                { f: '블로그 성과 비교', free: false, pro: false, agency: true },
-              ].map(({ f, free, pro, agency }) => (
+                { f: '키워드 목록 열람', free: true, personal: true, influencer: true, agency: true },
+                { f: '커뮤니티', free: true, personal: true, influencer: true, agency: true },
+                { f: '검색량 조회', free: true, personal: true, influencer: true, agency: true },
+                { f: '블로그 등급 위젯', free: true, personal: true, influencer: true, agency: true },
+                { f: '키워드 상세 (검색량, 트렌드)', free: false, personal: true, influencer: true, agency: true },
+                { f: '기본 대시보드', free: false, personal: true, influencer: true, agency: true },
+                { f: '일일 추천 키워드', free: false, personal: true, influencer: true, agency: true },
+                { f: '인플루언서 순위 전체', free: false, personal: false, influencer: true, agency: true },
+                { f: '키워드챌린지 순위 추적', free: false, personal: false, influencer: true, agency: true },
+                { f: '경쟁자 비교 분석', free: false, personal: false, influencer: true, agency: true },
+                { f: '순위 위젯 (블로그 삽입)', free: false, personal: false, influencer: true, agency: true },
+                { f: '다중 블로그 관리 (10개)', free: false, personal: false, influencer: false, agency: true },
+                { f: '대행사 전용 대시보드', free: false, personal: false, influencer: false, agency: true },
+                { f: '블로그 성과 비교', free: false, personal: false, influencer: false, agency: true },
+              ].map(({ f, free, personal, influencer, agency }) => (
                 <tr key={f} className="border-b border-border/50">
                   <td className="py-3 px-4 font-medium">{f}</td>
                   <td className="py-3 px-4 text-center">
                     {free ? <span className="text-up font-bold">O</span> : <span className="text-dim">X</span>}
                   </td>
                   <td className="py-3 px-4 text-center">
-                    {pro ? <span className="text-accent font-bold">O</span> : <span className="text-dim">X</span>}
+                    {personal ? <span className="text-accent font-bold">O</span> : <span className="text-dim">X</span>}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    {influencer ? <span className="text-accent font-bold">O</span> : <span className="text-dim">X</span>}
                   </td>
                   <td className="py-3 px-4 text-center">
                     {agency ? <span className="text-blue font-bold">O</span> : <span className="text-dim">X</span>}
@@ -470,7 +478,7 @@ export default function SubscribePage() {
           {[
             { q: '결제는 어떻게 하나요?', a: '토스페이먼츠를 통해 카드, 간편결제 등으로 안전하게 결제됩니다. 결제 완료 즉시 이용권이 활성화됩니다.' },
             { q: '이용권 유효기간은 얼마인가요?', a: '선택한 기간(1~12개월)만큼 유효합니다. 기간 만료 전 재결제하면 남은 기간에 추가됩니다.' },
-            { q: '대행사 플랜은 무엇인가요?', a: '마케팅 대행사를 위한 플랜으로, 최대 10개 블로그를 동시에 등록하고 각각의 점수와 순위를 관리할 수 있습니다.' },
+            { q: '플랜 차이가 무엇인가요?', a: '개인 플랜은 기본 키워드 분석, 인플루언서 플랜은 순위 추적·경쟁자 분석 포함, 대행사 플랜은 최대 10개 블로그 동시 관리가 가능합니다.' },
             { q: '장기 결제 할인은 어떻게 되나요?', a: '3개월 5%, 6개월 7%, 10개월 9%, 12개월 11% 할인이 적용됩니다. 기간이 길수록 월 환산 비용이 저렴합니다.' },
             { q: '환불은 가능한가요?', a: '결제 후 7일 이내 미이용 시 전액 환불 가능합니다. 고객센터로 문의해주세요.' },
             { q: '이용권 코드는 무엇인가요?', a: '이벤트, 선물 등으로 받은 이용권 코드가 있다면 코드 입력란에 등록하여 이용권을 활성화할 수 있습니다.' },

@@ -2,17 +2,17 @@ import { SubscriptionPlan } from '@/lib/types';
 
 /* ── 이용권 플랜 ── */
 export const subscriptionPlan: SubscriptionPlan = {
-  id: 'plan-monthly',
-  name: '월간 이용권',
-  price_krw: 9900,
+  id: 'plan-personal',
+  name: '개인 이용권',
+  price_krw: 19800,
   period_days: 30,
-  description: '스마트스토어에서 이용권을 구매하고 코드를 등록하세요',
+  description: '플랜을 선택하고 결제하세요',
   features: [
-    '키워드 상세 분석 무제한',
-    '인플루언서 순위 전체 열람',
-    '검색량 트렌드 분석',
-    '일일 추천 키워드 전체',
-    '내 대시보드 + 경쟁자 비교',
+    '키워드 상세 분석',
+    '검색량 트렌드 차트',
+    '기본 대시보드',
+    '일일 추천 키워드',
+    '블로그 등급 위젯',
     '실시간 데이터 업데이트',
   ],
 };
