@@ -102,7 +102,7 @@ export default async function MyDashboard() {
     .from('keyword_rankings')
     .select(`
       rank_position, previous_rank, rank_change, is_integrated_top3,
-      keyword_id,
+      keyword_id, latest_post_title, latest_post_url, snapshot_date,
       keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
     `)
     .eq('influencer_id', influencerId)
@@ -128,8 +128,39 @@ export default async function MyDashboard() {
       is_integrated_top3: r.is_integrated_top3,
       participant_count: (kw?.participant_count as number) || 0,
       search_volume: (kw?.search_volume_monthly as number) || 0,
+      latest_post_title: r.latest_post_title || '',
+      latest_post_url: r.latest_post_url || '',
+      snapshot_date: r.snapshot_date || '',
     };
   }).sort((a, b) => a.rank_position - b.rank_position);
+
+  // ─── 내 포스팅 리스트 (중복 제거) ───
+  const postMap = new Map<string, {
+    title: string;
+    url: string;
+    keywords: { keyword: string; rank: number; isTop3: boolean }[];
+    bestRank: number;
+    date: string;
+  }>();
+  for (const r of rankings) {
+    if (!r.latest_post_title || !r.latest_post_url) continue;
+    const key = r.latest_post_url;
+    const existing = postMap.get(key);
+    if (existing) {
+      existing.keywords.push({ keyword: r.keyword, rank: r.rank_position, isTop3: r.is_integrated_top3 });
+      if (r.rank_position < existing.bestRank) existing.bestRank = r.rank_position;
+    } else {
+      postMap.set(key, {
+        title: r.latest_post_title,
+        url: r.latest_post_url,
+        keywords: [{ keyword: r.keyword, rank: r.rank_position, isTop3: r.is_integrated_top3 }],
+        bestRank: r.rank_position,
+        date: r.snapshot_date,
+      });
+    }
+  }
+  const myPosts = Array.from(postMap.values())
+    .sort((a, b) => a.bestRank - b.bestRank);
 
   // 통계 계산
   const totalRankedKeywords = rankings.length;
@@ -137,9 +168,74 @@ export default async function MyDashboard() {
     ? rankings.reduce((s, r) => s + r.rank_position, 0) / totalRankedKeywords
     : 0;
   const top3Count = rankings.filter(r => r.rank_position <= 3).length;
+  const rank1Count = rankings.filter(r => r.rank_position === 1).length;
+  const top10Count = rankings.filter(r => r.rank_position <= 10).length;
+  const integratedCount = rankings.filter(r => r.is_integrated_top3).length;
   const top5 = rankings.slice(0, 5);
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
+
+  // ─── 1-2. 전체 순위 & 카테고리 순위 계산 ───
+  const myCategory = influencer.my_keyword_category || influencer.category || '';
+
+  // 최신 스냅샷 날짜
+  const { data: latestDateRow } = await supabase
+    .from('keyword_rankings')
+    .select('snapshot_date')
+    .order('snapshot_date', { ascending: false })
+    .limit(1)
+    .single();
+  const snapshotDate = latestDateRow?.snapshot_date || new Date().toISOString().slice(0, 10);
+
+  // 전체 인플루언서 순위 데이터
+  const { data: allInfData } = await supabase
+    .from('influencers')
+    .select('id, category, my_keyword_category');
+
+  const { data: allRankData } = await supabase
+    .from('keyword_rankings')
+    .select('influencer_id, rank_position, is_integrated_top3')
+    .eq('snapshot_date', snapshotDate);
+
+  // 통계 집계
+  const globalStats = new Map<string, { r1: number; t3: number; total: number }>();
+  for (const r of (allRankData || [])) {
+    let s = globalStats.get(r.influencer_id);
+    if (!s) { s = { r1: 0, t3: 0, total: 0 }; globalStats.set(r.influencer_id, s); }
+    s.total++;
+    if (r.rank_position === 1) s.r1++;
+    if (r.rank_position <= 3) s.t3++;
+  }
+
+  // 전체 정렬
+  const globalSorted = (allInfData || [])
+    .map(inf => {
+      const s = globalStats.get(inf.id) || { r1: 0, t3: 0, total: 0 };
+      return { id: inf.id, cat: inf.my_keyword_category || inf.category || '', ...s };
+    })
+    .sort((a, b) => b.r1 - a.r1 || b.t3 - a.t3 || b.total - a.total);
+
+  const overallRank = globalSorted.findIndex(x => x.id === influencerId) + 1;
+  const overallTotal = globalSorted.length;
+
+  // 카테고리 순위
+  const catFiltered = globalSorted.filter(x => x.cat === myCategory);
+  const categoryRank = catFiltered.findIndex(x => x.id === influencerId) + 1;
+  const categoryTotal = catFiltered.length;
+
+  // 등급 계산
+  function getGradeInfo(rank: number, total: number) {
+    const pct = rank / total;
+    if (rank <= 3) return { label: 'TOP 3', color: 'text-yellow-500', bg: 'bg-yellow-500/15', emoji: '🏆' };
+    if (rank <= 10) return { label: 'TOP 10', color: 'text-red-500', bg: 'bg-red-500/10', emoji: '🔥' };
+    if (pct <= 0.01) return { label: 'TOP 1%', color: 'text-amber-500', bg: 'bg-amber-500/10', emoji: '⭐' };
+    if (pct <= 0.05) return { label: 'TOP 5%', color: 'text-green-500', bg: 'bg-green-500/10', emoji: '💚' };
+    if (pct <= 0.1) return { label: 'TOP 10%', color: 'text-blue-500', bg: 'bg-blue-500/10', emoji: '💙' };
+    if (pct <= 0.3) return { label: 'GOOD', color: 'text-indigo-500', bg: 'bg-indigo-500/10', emoji: '👍' };
+    return { label: 'ACTIVE', color: 'text-dim', bg: 'bg-border/30', emoji: '📝' };
+  }
+
+  const overallGrade = overallRank > 0 ? getGradeInfo(overallRank, overallTotal) : null;
 
   // ─── 2. 내 키워드 전체 목록 ───
   const { data: myKeywords } = await supabase
@@ -234,6 +330,58 @@ export default async function MyDashboard() {
 
       <div className={`space-y-6 ${!isSubscribed ? 'blur-[6px] select-none pointer-events-none' : ''}`}>
 
+      {/* ─── 1-2. 전체/카테고리 순위 + 등급 ─── */}
+      {overallRank > 0 && (
+        <GlassCard padding="none">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/30">
+            {/* 등급 배지 */}
+            <div className="flex flex-col items-center justify-center py-6 px-4">
+              {overallGrade && (
+                <>
+                  <span className={`text-3xl mb-2`}>{overallGrade.emoji}</span>
+                  <span className={`text-lg font-black ${overallGrade.color} ${overallGrade.bg} px-4 py-1.5 rounded-full`}>
+                    {overallGrade.label}
+                  </span>
+                  <p className="text-[11px] text-dim mt-2">인플루언서 등급</p>
+                </>
+              )}
+            </div>
+
+            {/* 전체 순위 */}
+            <div className="flex flex-col items-center justify-center py-6 px-4">
+              <p className="text-[11px] text-dim font-semibold mb-1">전체 순위</p>
+              <p className="text-3xl font-black font-rank text-text">
+                {overallRank.toLocaleString()}<span className="text-lg font-bold">위</span>
+              </p>
+              <p className="text-xs text-dim mt-1">{overallTotal.toLocaleString()}명 중</p>
+            </div>
+
+            {/* 카테고리 순위 */}
+            <div className="flex flex-col items-center justify-center py-6 px-4">
+              <p className="text-[11px] text-dim font-semibold mb-1">
+                {myCategory || '카테고리'} 순위
+              </p>
+              <p className="text-3xl font-black font-rank text-accent">
+                {categoryRank > 0 ? categoryRank.toLocaleString() : '-'}<span className="text-lg font-bold">위</span>
+              </p>
+              <p className="text-xs text-dim mt-1">{categoryTotal.toLocaleString()}명 중</p>
+            </div>
+          </div>
+
+          {/* 상세 통계 바 */}
+          <div className="border-t border-border/30 px-5 py-3 bg-bg/30">
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
+              <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
+              <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
+              <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
+              <span className="text-dim">통합검색 <strong className="text-text font-rank">{integratedCount}</strong>개</span>
+              <span className="text-dim">유효 키워드 <strong className="text-text font-rank">{totalRankedKeywords}</strong>개</span>
+              <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || 0)}</strong></span>
+            </div>
+          </div>
+        </GlassCard>
+      )}
+
       {/* ─── 2. 통계 카드 4개 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard
@@ -273,6 +421,107 @@ export default async function MyDashboard() {
 
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />
+
+      {/* ─── 3-2. 내 포스팅 리스트 ─── */}
+      <GlassCard padding="none">
+        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-[15px]">내 포스팅</h3>
+            <p className="text-[11px] text-dim mt-0.5">키워드 챌린지에 노출 중인 내 글</p>
+          </div>
+          {myPosts.length > 0 && (
+            <span className="text-[11px] text-dim font-rank">{myPosts.length}개 글</span>
+          )}
+        </div>
+        {myPosts.length > 0 ? (
+          <>
+            {/* 데스크톱 테이블 */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-xs text-dim">
+                    <th className="text-left px-5 py-3 font-semibold">제목</th>
+                    <th className="text-center px-3 py-3 font-semibold">최고순위</th>
+                    <th className="text-left px-3 py-3 font-semibold">노출 키워드</th>
+                    <th className="text-center px-3 py-3 font-semibold">키워드 수</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {myPosts.map((post, i) => (
+                    <tr key={i} className="hover:bg-surface-hover/50 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <a href={post.url} target="_blank" rel="noopener noreferrer"
+                          className="font-semibold text-sm hover:text-accent transition-colors line-clamp-1">
+                          {post.title}
+                        </a>
+                      </td>
+                      <td className="px-3 py-3.5 text-center">
+                        <span className={`font-black font-rank text-base ${
+                          post.bestRank <= 3 ? 'text-accent' : post.bestRank <= 10 ? 'text-up' : 'text-dim'
+                        }`}>
+                          {post.bestRank}위
+                        </span>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <div className="flex flex-wrap gap-1">
+                          {post.keywords.slice(0, 3).map((kw, j) => (
+                            <span key={j} className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                              kw.rank <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/30 text-dim'
+                            }`}>
+                              {kw.keyword} {kw.rank}위
+                            </span>
+                          ))}
+                          {post.keywords.length > 3 && (
+                            <span className="text-[11px] text-dim">+{post.keywords.length - 3}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3.5 text-center">
+                        <span className="font-bold font-rank text-sm">{post.keywords.length}</span>
+                        <span className="text-[10px] text-dim ml-0.5">개</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 모바일 카드 */}
+            <div className="md:hidden divide-y divide-border/20">
+              {myPosts.map((post, i) => (
+                <a key={i} href={post.url} target="_blank" rel="noopener noreferrer"
+                  className="block px-5 py-4 hover:bg-surface-hover/50 transition">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <span className="font-semibold text-sm line-clamp-2 flex-1">{post.title}</span>
+                    <span className={`font-black font-rank text-base shrink-0 ${
+                      post.bestRank <= 3 ? 'text-accent' : post.bestRank <= 10 ? 'text-up' : 'text-dim'
+                    }`}>
+                      {post.bestRank}위
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {post.keywords.slice(0, 4).map((kw, j) => (
+                      <span key={j} className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                        kw.rank <= 3 ? 'bg-accent/15 text-accent' : 'bg-border/30 text-dim'
+                      }`}>
+                        {kw.keyword} {kw.rank}위
+                      </span>
+                    ))}
+                    {post.keywords.length > 4 && (
+                      <span className="text-[10px] text-dim">+{post.keywords.length - 4}</span>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-10 text-dim text-sm">
+            <p>아직 노출 중인 포스팅이 없습니다.</p>
+            <p className="text-xs mt-1">키워드 챌린지에 참여하면 자동으로 표시됩니다.</p>
+          </div>
+        )}
+      </GlassCard>
 
       {/* ─── 4. 변동 피드 + 추천 키워드 (2열) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

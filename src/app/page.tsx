@@ -5,17 +5,20 @@ import Link from 'next/link';
 
 /* ── 실시간 DB 통계 ── */
 function useStats() {
-  const [stats, setStats] = useState({ influencer_count: 9000, category_count: 20, keyword_count: 115000 });
+  const [stats, setStats] = useState({ influencer_count: 9000, category_count: 20, keyword_count: 115000, total_users: 0 });
   useEffect(() => {
     fetch('/api/stats').then(r => r.json()).then(setStats).catch(() => {});
   }, []);
   return stats;
 }
 
-/* ── 방문자/가입자 통계 ── */
+/* ── 방문자/가입자 통계 + 방문 추적 ── */
 function useSiteStats() {
   const [s, setS] = useState({ totalVisits: 0, todayVisits: 0, totalSignups: 0, todaySignups: 0 });
   useEffect(() => {
+    // 방문 추적
+    fetch('/api/analytics/track', { method: 'POST' }).catch(() => {});
+    // 통계 조회
     fetch('/api/analytics/stats').then(r => r.json()).then(setS).catch(() => {});
   }, []);
   return s;
@@ -169,19 +172,19 @@ export default function LandingPage() {
 
         {/* 방문자 / 가입자 통계 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-          <div className="bg-bg rounded-xl border border-border p-4">
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
             <p className="text-2xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
             <p className="text-[11px] text-dim mt-1">오늘 방문자</p>
           </div>
-          <div className="bg-bg rounded-xl border border-border p-4">
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
             <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalVisits.toLocaleString()}</p>
             <p className="text-[11px] text-dim mt-1">누적 방문자</p>
           </div>
-          <div className="bg-bg rounded-xl border border-border p-4">
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
             <p className="text-2xl font-extrabold text-up font-rank">{siteStats.todaySignups.toLocaleString()}</p>
             <p className="text-[11px] text-dim mt-1">오늘 가입자</p>
           </div>
-          <div className="bg-bg rounded-xl border border-border p-4">
+          <div className="bg-bg rounded-xl border border-border p-4 text-center">
             <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalSignups.toLocaleString()}</p>
             <p className="text-[11px] text-dim mt-1">총 가입자</p>
           </div>
