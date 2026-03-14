@@ -18,7 +18,6 @@ const INFLUENCER_GROUP = [
 /* ── 공통 도구 메뉴 ── */
 const TOOLS_GROUP = [
   { href: '/search-volume', label: '키워드 검색량', desc: '네이버 월간 검색량 조회' },
-  { href: '/community', label: '커뮤니티', desc: '정보 공유·질문·토론' },
 ];
 
 /* ── 오렌지커넥트 (광고주) 메뉴 ── */
@@ -141,6 +140,7 @@ export default function Header() {
   const inflActive = INFLUENCER_GROUP.some(n => pathname.startsWith(n.href));
   // const rankActive = RANKING_GROUP.some(n => pathname.startsWith(n.href));
   const toolsActive = TOOLS_GROUP.some(n => pathname.startsWith(n.href));
+  const communityActive = pathname.startsWith('/community');
   const adActive = pathname.startsWith('/ad');
   const infoActive = INFO_GROUP.some(n => pathname === n.href);
 
@@ -189,6 +189,14 @@ export default function Header() {
                 dropdownRef={inflRef}
                 showDesc
               />
+
+              {/* 커뮤니티 (독립 링크) */}
+              <Link href="/community"
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                  communityActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}>
+                커뮤니티
+              </Link>
 
               {/* 도구 (드롭다운) */}
               <NavDropdown
@@ -291,6 +299,17 @@ export default function Header() {
                 {n.desc && <span className="text-[11px] text-dim mt-0.5">{n.desc}</span>}
               </Link>
             ))}
+
+            {/* 커뮤니티 (독립) */}
+            <div className="border-t border-border/50 my-3 mx-2" />
+            <div className="px-3 py-2.5 text-[11px] font-extrabold text-accent tracking-widest uppercase">커뮤니티</div>
+            <Link href="/community" onClick={() => setMobileOpen(false)}
+              className={`flex flex-col px-5 py-3 rounded-xl transition-colors ${
+                communityActive ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
+              }`}>
+              <span className="text-sm font-semibold">커뮤니티</span>
+              <span className="text-[11px] text-dim mt-0.5">정보 공유·질문·토론</span>
+            </Link>
 
             {/* 도구 */}
             <div className="border-t border-border/50 my-3 mx-2" />
