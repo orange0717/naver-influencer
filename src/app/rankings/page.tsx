@@ -90,7 +90,7 @@ export default function RankingsPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold">인플루언서 랭킹</h1>
+          <h1 className="text-xl font-extrabold">인플루언서 랭킹 <span className="text-sm font-medium text-dim">(업데이트중)</span></h1>
           <p className="text-xs text-dim mt-0.5">
             키워드 챌린지 순위 기반
             {snapshotDate && ` · ${snapshotDate.replace(/-/g, '.')} 기준`}

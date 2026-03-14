@@ -14,7 +14,7 @@ const NINFL_SUB = [
 const INFLUENCER_GROUP = [
   { href: '/influencers', label: '리스트' },
   { href: '/keywords', label: '키워드' },
-  { href: '/rankings', label: '랭킹' },
+  { href: '/rankings', label: '랭킹 (업데이트중)' },
 ];
 
 /* ── 공통 메뉴 (모든 유저 공통) ── */
