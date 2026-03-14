@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import RankBadge from '@/components/RankBadge';
@@ -41,6 +41,8 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
   const [influencer, setInfluencer] = useState<InfluencerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [kwSearch, setKwSearch] = useState('');
+  const [kwCategory, setKwCategory] = useState('전체');
 
   useEffect(() => {
     async function loadInfluencer() {
@@ -84,6 +86,25 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
 
   const keywords = influencer.keywords || [];
   const totalKeywords = influencer.total_keywords || keywords.length;
+
+  // 카테고리 목록 추출
+  const kwCategories = useMemo(() => {
+    const cats = [...new Set(keywords.map(k => k.category).filter(Boolean))];
+    return ['전체', ...cats.sort()];
+  }, [keywords]);
+
+  // 검색 + 카테고리 필터링
+  const filteredKeywords = useMemo(() => {
+    let list = [...keywords];
+    if (kwCategory !== '전체') {
+      list = list.filter(k => k.category === kwCategory);
+    }
+    if (kwSearch.trim()) {
+      const q = kwSearch.trim().toLowerCase();
+      list = list.filter(k => k.keyword.toLowerCase().includes(q));
+    }
+    return list;
+  }, [keywords, kwCategory, kwSearch]);
   const avgRank = influencer.avg_rank || (keywords.length > 0
     ? Math.round(keywords.reduce((sum, k) => sum + (k.rank_position || 0), 0) / (keywords.filter(k => k.rank_position).length || 1))
     : '-');
@@ -158,14 +179,45 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
       {/* 참여 키워드 */}
       <div className="relative">
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <div className="p-4 border-b border-border flex justify-between items-center">
-            <h2 className="font-bold text-sm">참여 키워드 목록</h2>
-            <span className="text-xs text-dim font-rank">{keywords.length}개</span>
+          {/* 헤더 + 검색 + 카테고리 드롭다운 */}
+          <div className="p-4 border-b border-border space-y-3">
+            <div className="flex justify-between items-center">
+              <h2 className="font-bold text-sm">참여 키워드 목록</h2>
+              <span className="text-xs text-dim font-rank">
+                {filteredKeywords.length !== keywords.length
+                  ? `${filteredKeywords.length} / ${keywords.length}개`
+                  : `${keywords.length}개`}
+              </span>
+            </div>
+            {keywords.length > 0 && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="키워드 검색..."
+                  value={kwSearch}
+                  onChange={e => setKwSearch(e.target.value)}
+                  className="flex-1 min-w-0 px-3 py-1.5 bg-bg border border-border rounded-lg text-xs text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+                />
+                <select
+                  value={kwCategory}
+                  onChange={e => setKwCategory(e.target.value)}
+                  className="px-3 py-1.5 bg-bg border border-border rounded-lg text-xs font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
+                >
+                  {kwCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {keywords.length === 0 ? (
             <div className="text-center py-12 text-dim text-sm">
               참여 키워드 정보가 없습니다.
+            </div>
+          ) : filteredKeywords.length === 0 ? (
+            <div className="text-center py-12 text-dim text-sm">
+              검색 결과가 없습니다.
             </div>
           ) : (
             <>
@@ -182,7 +234,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                   </tr>
                 </thead>
                 <tbody>
-                  {keywords.map((kw) => (
+                  {filteredKeywords.map((kw) => (
                     <tr key={kw.keyword_id || kw.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
                       <td className="p-3">
                         <Link href={`/keywords/${kw.keyword_id || kw.id}`} className="font-medium hover:text-accent transition-colors">{kw.keyword}</Link>
@@ -206,7 +258,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
 
               {/* Mobile cards */}
               <div className="sm:hidden divide-y divide-border/50">
-                {keywords.map((kw) => (
+                {filteredKeywords.map((kw) => (
                   <Link key={kw.keyword_id || kw.id} href={`/keywords/${kw.keyword_id || kw.id}`} className="block p-4 hover:bg-surface-hover transition">
                     <div className="flex items-center justify-between mb-2">
                       <div>
