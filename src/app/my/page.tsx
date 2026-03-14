@@ -69,35 +69,8 @@ export default async function MyDashboard() {
     .eq('id', influencerId)
     .single();
 
-  // 구독 상태 확인 (users 테이블에서 linked_influencer_id로 조회)
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('subscription_status, subscription_expires_at')
-    .eq('linked_influencer_id', influencerId)
-    .single();
-
-  // 구독 상태: DB 기반 검증 (이용권 or 결제)
-  const isSubscribed =
-    (userProfile?.subscription_status === 'active' &&
-      !!userProfile?.subscription_expires_at &&
-      new Date(userProfile.subscription_expires_at) > new Date()) ||
-    // 이용권 기반 구독 확인
-    await (async () => {
-      const { data: license } = await supabase
-        .from('licenses')
-        .select('expires_at')
-        .eq('buyer_id', influencer?.naver_id ?? '')
-        .eq('is_used', true)
-        .gte('expires_at', new Date().toISOString())
-        .limit(1)
-        .single();
-      return !!license;
-    })();
-
-  // 관리자 확인
-  const adminIds = (process.env.ADMIN_NAVER_IDS || 'orangebooks07').split(',').map(s => s.trim());
-  const isAdmin = adminIds.includes(naverId);
-  const canAccess = isSubscribed || isAdmin;
+  // 모든 기능 무료 개방
+  const canAccess = true;
 
   if (!influencer) {
     return (
@@ -337,7 +310,7 @@ export default async function MyDashboard() {
         subscriberCount={influencer.subscriber_count || 0}
         firstSeenAt={influencer.naver_created_at || influencer.first_seen_at}
         type="influencer"
-        subscribed={isSubscribed}
+        subscribed={true}
       />
 
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
@@ -534,32 +507,6 @@ export default async function MyDashboard() {
       {/* ─── 3-3. 키워드챌린지 성과 테이블 ─── */}
       <ChallengeTable rankings={rankings} />
 
-      {/* ─── 프리미엄 영역 (이용권 필요) ─── */}
-      {!canAccess && (
-        <GlassCard className="text-center py-8">
-          <div className="w-14 h-14 mx-auto rounded-full bg-accent/10 flex items-center justify-center mb-3">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-          <h3 className="font-bold text-base mb-2">프리미엄 분석 기능</h3>
-          <p className="text-sm text-dim mb-4 leading-relaxed">
-            이용권을 등록하면 더 강력한 분석 도구를 사용할 수 있어요
-          </p>
-          <div className="flex flex-wrap justify-center gap-2 mb-5 text-xs">
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">블로그 검색 순위</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">경쟁자 분석</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">맞춤 추천 키워드</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">순위 위젯</span>
-            <span className="px-3 py-1.5 bg-border/30 rounded-full text-dim">전체 키워드 분석</span>
-          </div>
-          <Link href="/subscribe" className="px-8 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm inline-block">
-            이용권 등록하기
-          </Link>
-          <p className="text-[11px] text-dim mt-3">키워드·랭킹·인플루언서 검색은 무료입니다</p>
-        </GlassCard>
-      )}
-
-      {canAccess && (
-      <>
       {/* ─── 4. 변동 피드 + 추천 키워드 (2열) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
@@ -678,9 +625,6 @@ export default async function MyDashboard() {
         naverId={naverId}
         myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords, top3Count }}
       />
-
-      </>
-      )}
 
       {/* ─── 8. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
       <MyKeywordList
