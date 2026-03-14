@@ -27,11 +27,23 @@ async function fetchSelectionDate(naverId: string): Promise<string | null> {
 
     const html = await res.text();
 
-    // __PRELOADED_STATE__ JSON에서 createdAt 추출
-    const stateMatch = html.match(/window\.__PRELOADED_STATE__\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
-    if (!stateMatch) return null;
+    // __PRELOADED_STATE__ JSON에서 createdAt 추출 (중괄호 균형 방식)
+    const idx = html.indexOf('__PRELOADED_STATE__');
+    if (idx === -1) return null;
 
-    const state = JSON.parse(stateMatch[1]);
+    const jsonStart = html.indexOf('{', idx);
+    if (jsonStart === -1) return null;
+
+    let depth = 0;
+    let jsonEnd = -1;
+    for (let i = jsonStart; i < html.length; i++) {
+      if (html[i] === '{') depth++;
+      if (html[i] === '}') depth--;
+      if (depth === 0) { jsonEnd = i + 1; break; }
+    }
+    if (jsonEnd === -1) return null;
+
+    const state = JSON.parse(html.substring(jsonStart, jsonEnd));
     const createdAt = state?.space?.data?.createdAt;
 
     if (createdAt && typeof createdAt === 'string') {
