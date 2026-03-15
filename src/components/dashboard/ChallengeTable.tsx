@@ -39,7 +39,7 @@ const compLabels: Record<CompFilter, { label: string; className: string }> = {
 export default function ChallengeTable({ rankings }: { rankings: ChallengeRanking[] }) {
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
-  const [expanded, setExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const filtered = useMemo(() => {
     let list = [...rankings];
@@ -58,8 +58,8 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
     return list;
   }, [rankings, sortKey, compFilter]);
 
-  const displayList = expanded ? filtered : filtered.slice(0, 10);
-  const hasMore = filtered.length > 10;
+  const displayList = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   if (rankings.length === 0) return null;
 
@@ -86,7 +86,7 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
               {(['all', 'low', 'mid', 'high'] as CompFilter[]).map(f => (
                 <button
                   key={f}
-                  onClick={() => setCompFilter(f)}
+                  onClick={() => { setCompFilter(f); setVisibleCount(10); }}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
                     compFilter === f
                       ? 'bg-accent text-white'
@@ -218,17 +218,25 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
         })}
       </div>
 
-      {/* 더보기 */}
-      {hasMore && (
-        <div className="px-5 py-3 border-t border-border/50 text-center">
+      {/* 더보기 / 접기 */}
+      <div className="px-5 py-3 border-t border-border/50 text-center flex items-center justify-center gap-4">
+        {hasMore && (
           <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => setVisibleCount(prev => prev + 10)}
             className="text-xs font-semibold text-accent hover:text-accent-hover transition"
           >
-            {expanded ? '접기' : `더 보기 (${filtered.length - 10}개 더)`}
+            더 보기 (+10개, 남은 {filtered.length - visibleCount}개)
           </button>
-        </div>
-      )}
+        )}
+        {visibleCount > 10 && (
+          <button
+            onClick={() => setVisibleCount(10)}
+            className="text-xs font-semibold text-dim hover:text-text transition"
+          >
+            접기
+          </button>
+        )}
+      </div>
     </div>
   );
 }
