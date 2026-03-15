@@ -79,7 +79,8 @@ src/
 | UTC | KST | 작업 |
 |-----|-----|------|
 | 18:00 | 03:00 | Step 1: 키워드 목록 크롤링 (crawl-keywords) |
-| 19:00 | 04:00 | Step 2: 순위 크롤링 (crawl-rankings) |
+| 19:00 | 04:00 | Step 2: 검색 순위 크롤링 (crawl-rankings) |
+| 19:30 | 04:30 | Step 2.5: 챌린지 공식 순위 크롤링 (crawl-challenge-ranks) |
 | 0,6,12,18 | 매 6시간 | 인플루언서 수집 (crawl-influencers) |
 | 20:00 | 05:00 | Step 3: 검색량 업데이트 (update-volumes) |
 | 20:30 | 05:30 | 인플루언서 집계 (aggregate-influencers) |
@@ -96,7 +97,7 @@ src/
 - DB: supabase/schema.sql (최신, Feed API 컬럼 포함)
 - 인증: getAuthUser 공통 유틸 + Supabase Auth
 - 구독: 백엔드 로직 완료, 결제 연동 예정 (토스페이먼츠)
-- 크롤러: 6개 크론잡 구현 완료, 로컬 테스트 통과 (2026-03-13)
+- 크롤러: 7개 크론잡 구현 완료 (crawl-challenge-ranks 추가), 로컬 테스트 통과 (2026-03-15)
 
 ## 환경변수 (필요)
 ```

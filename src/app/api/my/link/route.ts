@@ -40,5 +40,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
+  // 연결 직후 해당 인플루언서 챌린지 순위 즉시 크롤링 (백그라운드)
+  const baseUrl = request.nextUrl.origin;
+  const cronSecret = process.env.CRON_SECRET;
+  const headers: HeadersInit = {};
+  if (cronSecret) headers['Authorization'] = `Bearer ${cronSecret}`;
+
+  fetch(`${baseUrl}/api/cron/crawl-challenge-ranks?naver_id=${naverId}`, {
+    method: 'GET',
+    headers,
+  }).catch(err => console.error('[link] background crawl error:', err));
+
   return NextResponse.json({ success: true });
 }

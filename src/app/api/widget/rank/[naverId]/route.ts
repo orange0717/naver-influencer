@@ -112,7 +112,7 @@ export async function GET(
     // 인플루언서 기본 정보
     const { data: inf } = await supabase
       .from('influencers')
-      .select('naver_id, display_name, category, subscriber_count, avg_rank, best_rank, integrated_top3_count')
+      .select('id, naver_id, display_name, category, subscriber_count, avg_rank, best_rank, integrated_top3_count')
       .eq('naver_id', naverId)
       .single();
 
@@ -146,7 +146,7 @@ export async function GET(
         snapshot_date,
         keyword:keyword_challenges(keyword, category)
       `)
-      .eq('influencer_id', inf.naver_id)
+      .eq('influencer_id', inf.id)
       .order('snapshot_date', { ascending: false })
       .order('rank_position', { ascending: true })
       .limit(50);

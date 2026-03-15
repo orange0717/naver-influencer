@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     `)
     .eq('influencer_id', userProfile.linked_influencer_id)
     .order('snapshot_date', { ascending: false })
-    .limit(200);
+    .limit(5000);
 
   // 최신 날짜의 순위만 추출 (같은 키워드 중복 제거)
   const latestByKeyword = new Map<string, typeof latestRankings extends (infer T)[] | null ? T : never>();

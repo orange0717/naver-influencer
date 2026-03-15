@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const CRON_JOBS: Record<string, string> = {
   'crawl-keywords': '/api/cron/crawl-keywords',
   'crawl-rankings': '/api/cron/crawl-rankings',
+  'crawl-challenge-ranks': '/api/cron/crawl-challenge-ranks',
   'crawl-influencers': '/api/cron/crawl-influencers',
   'update-volumes': '/api/cron/update-volumes',
   'aggregate-influencers': '/api/cron/aggregate-influencers',

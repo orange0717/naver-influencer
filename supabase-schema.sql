@@ -41,6 +41,7 @@ CREATE TABLE influencers (
   avg_rank DECIMAL(5,2),
   best_rank INTEGER,
   integrated_top3_count INTEGER DEFAULT 0,
+  naver_owner_id VARCHAR(50),
   first_seen_at TIMESTAMPTZ DEFAULT NOW(),
   last_crawled_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
