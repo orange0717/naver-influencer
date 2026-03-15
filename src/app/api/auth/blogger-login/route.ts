@@ -5,7 +5,7 @@ import * as cheerio from 'cheerio';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 /** 네이버 블로그 포스트 목록 API로 블로그 존재 여부 + 정보 추출 */
-async function fetchBlogProfile(blogId: string) {
+export async function fetchBlogProfile(blogId: string) {
   try {
     // 1) PostTitleListAsync API로 블로그 존재 여부 확인 (가장 정확)
     const listRes = await fetch(
@@ -90,7 +90,7 @@ async function fetchBlogProfile(blogId: string) {
 }
 
 /** 블로그 표시 이름만 가져오기 (og:title) */
-async function fetchBlogDisplayName(blogId: string): Promise<string | null> {
+export async function fetchBlogDisplayName(blogId: string): Promise<string | null> {
   try {
     const res = await fetch(`https://blog.naver.com/${blogId}`, {
       headers: { 'User-Agent': USER_AGENT, 'Accept': 'text/html', 'Accept-Language': 'ko-KR,ko;q=0.9' },

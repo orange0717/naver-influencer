@@ -84,6 +84,9 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
   try {
     const res = await fetch('/api/auth/me');
     const data = await res.json();
+    if (data.type === 'unified' && (data.blogId || data.id)) {
+      return { blogId: data.blogId || data.id, displayName: data.name || data.blogId || data.id, isInfluencer: true };
+    }
     if (data.type === 'blogger' && data.id) {
       return { blogId: data.id, displayName: data.name || data.id, isInfluencer: false };
     }

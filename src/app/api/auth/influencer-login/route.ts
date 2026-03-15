@@ -6,7 +6,7 @@ import * as cheerio from 'cheerio';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 /** 네이버 인플루언서 프로필 페이지에서 기본 정보 추출 */
-async function fetchNaverProfile(naverId: string) {
+export async function fetchNaverProfile(naverId: string) {
   try {
     const res = await fetch(`https://in.naver.com/${naverId}`, {
       headers: { 'User-Agent': USER_AGENT },

@@ -18,8 +18,9 @@ const INFO_GROUP = [
 ];
 
 type UserInfo = {
-  type: 'influencer' | 'blogger' | null;
+  type: 'influencer' | 'blogger' | 'unified' | null;
   id: string | null;
+  blogId?: string | null;
   name: string | null;
 };
 
@@ -59,7 +60,9 @@ export default function Header() {
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
     : (user.id || 'N').charAt(0).toUpperCase();
-  const tooltipText = user.type === 'blogger'
+  const tooltipText = user.type === 'unified'
+    ? `@${user.id} · 블로그 @${user.blogId} · 로그아웃`
+    : user.type === 'blogger'
     ? `블로거 @${user.id} · 로그아웃`
     : `@${user.id} · 로그아웃`;
   const badgeColor = user.type === 'blogger' ? 'bg-[#2DB400]/30' : 'bg-white/20';
@@ -122,6 +125,9 @@ export default function Header() {
           <div className="flex items-center gap-3">
             {user.id ? (
               <div className="flex items-center gap-2">
+                {user.type === 'unified' && (
+                  <span className="text-[10px] text-white/60 bg-accent/30 px-2 py-0.5 rounded-full hidden sm:block">인플루언서</span>
+                )}
                 {user.type === 'blogger' && (
                   <span className="text-[10px] text-white/60 bg-[#2DB400]/30 px-2 py-0.5 rounded-full hidden sm:block">블로거</span>
                 )}

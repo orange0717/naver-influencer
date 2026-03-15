@@ -14,6 +14,15 @@ export async function GET() {
     const blogId = cookieStore.get('blog_id')?.value;
     const blogName = cookieStore.get('blog_name')?.value;
 
+    if (userType === 'unified' && naverId) {
+      return NextResponse.json({
+        type: 'unified',
+        id: naverId,
+        blogId: blogId || null,
+        name: blogName ? decodeURIComponent(blogName) : null,
+      });
+    }
+
     if (userType === 'influencer' && naverId) {
       return NextResponse.json({
         type: 'influencer',
