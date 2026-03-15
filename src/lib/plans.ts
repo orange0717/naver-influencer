@@ -29,8 +29,8 @@ export const PLANS: Record<PlanKey, PlanInfo> = {
     label: '개인',
     description: '일반 블로거 · 키워드 분석 입문',
     maxBlogs: 1,
-    basePrice: 19800,
-    supplyPrice: 18000,
+    basePrice: 9900,
+    supplyPrice: 9000,
     features: [
       '키워드 상세 분석',
       '검색량 트렌드 차트',

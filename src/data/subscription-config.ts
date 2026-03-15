@@ -4,7 +4,7 @@ import { SubscriptionPlan } from '@/lib/types';
 export const subscriptionPlan: SubscriptionPlan = {
   id: 'plan-personal',
   name: '개인 이용권',
-  price_krw: 19800,
+  price_krw: 9900,
   period_days: 30,
   description: '플랜을 선택하고 결제하세요',
   features: [

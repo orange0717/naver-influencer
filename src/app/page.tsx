@@ -312,7 +312,7 @@ export default function LandingPage() {
             <div className="bg-surface rounded-2xl border-2 border-accent/30 p-7 relative">
               <div className="absolute -top-3 left-6 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">추천</div>
               <p className="text-xs font-bold text-accent tracking-wide mb-3">BUSINESS</p>
-              <p className="text-3xl font-extrabold text-text mb-1">₩29,900<span className="text-sm font-normal text-dim">/월</span></p>
+              <p className="text-3xl font-extrabold text-text mb-1">₩9,900<span className="text-sm font-normal text-dim">/월</span></p>
               <p className="text-xs text-dim mb-6">소상공인 · 체험단 운영</p>
               <div className="border-t border-border my-5" />
               <ul className="space-y-2.5">
