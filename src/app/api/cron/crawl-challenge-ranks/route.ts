@@ -4,8 +4,13 @@ import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-const BATCH_SIZE = 20; // Vercel 60초 제한 고려: 인플루언서 20명씩 처리
+const BATCH_SIZE = 30; // 가입 유저 외 나머지 순환 크롤 배치 사이즈
 const TODAY = () => new Date().toISOString().slice(0, 10);
+
+/** keyword를 정규화 (keyword_clean 생성용) */
+function cleanKeyword(keyword: string): string {
+  return keyword.replace(/\s+/g, '').toLowerCase();
+}
 
 interface ParticipatedKeyword {
   id: number; // naver_keyword_id
@@ -81,49 +86,112 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<Participat
   return results;
 }
 
-/** 크롤할 인플루언서 목록 조회 */
+/** DB에 없는 키워드를 keyword_challenges에 생성하고 매핑에 추가 */
+async function ensureKeywordsExist(
+  supabase: ReturnType<typeof createServiceClient>,
+  keywords: ParticipatedKeyword[],
+  keywordMap: Map<number, string>,
+  categoryFallback: string,
+) {
+  const missing = keywords.filter(k => !keywordMap.has(k.id));
+  if (missing.length === 0) return;
+
+  // 배치로 삽입 (50개씩)
+  for (let i = 0; i < missing.length; i += 50) {
+    const batch = missing.slice(i, i + 50);
+    const rows = batch.map(kw => ({
+      keyword: kw.name,
+      keyword_clean: cleanKeyword(kw.name),
+      category: categoryFallback,
+      naver_keyword_id: kw.id,
+      participant_count: kw.challengeCount || 0,
+      is_active: true,
+    }));
+
+    const { data: inserted, error } = await supabase
+      .from('keyword_challenges')
+      .upsert(rows, { onConflict: 'keyword_clean', ignoreDuplicates: true })
+      .select('id, naver_keyword_id');
+
+    if (error) {
+      // 에러 시 개별 삽입
+      for (const row of rows) {
+        try {
+          const { data: single } = await supabase
+            .from('keyword_challenges')
+            .upsert(row, { onConflict: 'keyword_clean', ignoreDuplicates: true })
+            .select('id, naver_keyword_id')
+            .single();
+          if (single?.naver_keyword_id) keywordMap.set(single.naver_keyword_id, single.id);
+        } catch { /* skip */ }
+      }
+    } else {
+      inserted?.forEach(kw => {
+        if (kw.naver_keyword_id) keywordMap.set(kw.naver_keyword_id, kw.id);
+      });
+    }
+  }
+
+  // keyword_clean으로 존재하지만 naver_keyword_id가 없던 키워드 재매칭
+  for (const kw of missing) {
+    if (!keywordMap.has(kw.id)) {
+      const { data: existing } = await supabase
+        .from('keyword_challenges')
+        .select('id')
+        .eq('keyword_clean', cleanKeyword(kw.name))
+        .single();
+      if (existing) {
+        keywordMap.set(kw.id, existing.id);
+        await supabase
+          .from('keyword_challenges')
+          .update({ naver_keyword_id: kw.id })
+          .eq('id', existing.id);
+      }
+    }
+  }
+}
+
+/** 크롤할 인플루언서 목록 조회 — 가입 유저 우선 + 나머지 30명 순환 */
 async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>) {
-  // 우선순위 1: 사용자가 연결한 인플루언서
+  const seen = new Set<string>();
+  const result: { id: string; naver_id: string; naver_owner_id: string | null; category: string; my_keyword_category: string }[] = [];
+
+  // ── 1단계: 가입 유저가 연결한 인플루언서 (항상 최우선) ──
   const { data: linked } = await supabase
     .from('users')
     .select('linked_influencer_id')
     .not('linked_influencer_id', 'is', null);
 
-  const linkedIds = new Set((linked || []).map(u => u.linked_influencer_id));
+  const linkedIds = (linked || []).map(u => u.linked_influencer_id).filter(Boolean);
 
-  // 우선순위 2: 챌린지 순위 크롤이 오래된 인플루언서 우선 (ASC)
-  const { data: recent } = await supabase
+  if (linkedIds.length > 0) {
+    const { data: linkedInfluencers } = await supabase
+      .from('influencers')
+      .select('id, naver_id, naver_owner_id, category, my_keyword_category')
+      .in('id', linkedIds);
+
+    for (const inf of linkedInfluencers || []) {
+      seen.add(inf.id);
+      result.push(inf);
+    }
+  }
+
+  // ── 2단계: 나머지 인플루언서 순환 크롤 (오래된 순 30명) ──
+  const { data: others } = await supabase
     .from('influencers')
-    .select('id, naver_id, naver_owner_id')
-    .not('last_crawled_at', 'is', null)
-    .order('last_crawled_at', { ascending: true })
-    .limit(100);
+    .select('id, naver_id, naver_owner_id, category, my_keyword_category')
+    .order('last_crawled_at', { ascending: true, nullsFirst: true })
+    .limit(BATCH_SIZE + linkedIds.length); // 연결된 유저가 포함될 수 있으므로 여유분
 
-  // 연결된 인플루언서 우선 + 나머지
-  const seen = new Set<string>();
-  const result: { id: string; naver_id: string; naver_owner_id: string | null }[] = [];
-
-  // 연결된 인플루언서 먼저
-  if (linkedIds.size > 0 && recent) {
-    for (const inf of recent) {
-      if (linkedIds.has(inf.id) && !seen.has(inf.id)) {
-        seen.add(inf.id);
-        result.push(inf);
-      }
+  for (const inf of others || []) {
+    if (!seen.has(inf.id) && result.length < linkedIds.length + BATCH_SIZE) {
+      seen.add(inf.id);
+      result.push(inf);
     }
   }
 
-  // 나머지 채우기
-  if (recent) {
-    for (const inf of recent) {
-      if (!seen.has(inf.id) && result.length < BATCH_SIZE) {
-        seen.add(inf.id);
-        result.push(inf);
-      }
-    }
-  }
-
-  return result.slice(0, BATCH_SIZE);
+  console.log(`[crawl-challenge-ranks] Target: ${linkedIds.length} linked + ${result.length - linkedIds.length} others = ${result.length} total`);
+  return result;
 }
 
 export async function GET(request: NextRequest) {
@@ -144,12 +212,12 @@ export async function GET(request: NextRequest) {
   console.log('[Cron] crawl-challenge-ranks started at', new Date().toISOString());
 
   try {
-    let influencers: { id: string; naver_id: string; naver_owner_id: string | null }[];
+    let influencers: { id: string; naver_id: string; naver_owner_id: string | null; category: string; my_keyword_category: string }[];
 
     if (targetNaverId) {
       const { data } = await supabase
         .from('influencers')
-        .select('id, naver_id, naver_owner_id')
+        .select('id, naver_id, naver_owner_id, category, my_keyword_category')
         .eq('naver_id', targetNaverId)
         .limit(1);
       influencers = data || [];
@@ -195,7 +263,7 @@ export async function GET(request: NextRequest) {
         // 3. naver_keyword_id로 keyword_challenges 매칭
         const naverKeywordIds = keywords.map(k => k.id);
 
-        // 배치로 조회 (1000개 단위)
+        // 배치로 조회 (500개 단위)
         const keywordMap = new Map<number, string>(); // naver_keyword_id → keyword_challenges.id
         for (let i = 0; i < naverKeywordIds.length; i += 500) {
           const batch = naverKeywordIds.slice(i, i + 500);
@@ -207,6 +275,23 @@ export async function GET(request: NextRequest) {
           dbKeywords?.forEach(kw => {
             if (kw.naver_keyword_id) keywordMap.set(kw.naver_keyword_id, kw.id);
           });
+        }
+
+        // 3-1. DB에 없는 키워드 → keyword_challenges에 생성
+        const categoryFallback = inf.my_keyword_category || inf.category || '';
+        await ensureKeywordsExist(supabase, keywords, keywordMap, categoryFallback);
+
+        // 3-2. influencer_keywords 연결
+        const linkRows: { influencer_id: string; keyword_id: string }[] = [];
+        for (const kw of keywords) {
+          const kwId = keywordMap.get(kw.id);
+          if (kwId) linkRows.push({ influencer_id: inf.id, keyword_id: kwId });
+        }
+        for (let i = 0; i < linkRows.length; i += 100) {
+          const batch = linkRows.slice(i, i + 100);
+          await supabase
+            .from('influencer_keywords')
+            .upsert(batch, { onConflict: 'influencer_id,keyword_id', ignoreDuplicates: true });
         }
 
         // 4. 전일 순위 조회 (rank_change 계산용)

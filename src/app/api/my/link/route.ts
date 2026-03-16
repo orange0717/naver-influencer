@@ -13,11 +13,34 @@ export async function POST(request: NextRequest) {
   }
 
   const { naverId } = await request.json();
-  if (!naverId) {
+  if (!naverId || typeof naverId !== 'string') {
     return NextResponse.json({ error: 'naverId is required' }, { status: 400 });
   }
 
+  // naverId 형식 검증 (영문, 숫자, 밑줄, 하이픈만 허용)
+  if (!/^[a-zA-Z0-9_-]{2,30}$/.test(naverId)) {
+    return NextResponse.json({ error: 'Invalid naverId format' }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
+
+  // 연결 횟수 제한: 하루 5회까지
+  const today = new Date().toISOString().slice(0, 10);
+  const { count: linkCount } = await supabase
+    .from('link_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('auth_id', authUser.id)
+    .gte('created_at', `${today}T00:00:00Z`);
+
+  if ((linkCount ?? 0) >= 5) {
+    return NextResponse.json({ error: '일일 연결 시도 횟수를 초과했습니다.' }, { status: 429 });
+  }
+
+  // 연결 시도 기록 (테이블이 없으면 무시)
+  await supabase
+    .from('link_attempts')
+    .insert({ auth_id: authUser.id })
+    .then(() => {}, () => {});
 
   // 인플루언서 조회
   const { data: influencer } = await supabase
@@ -37,7 +60,8 @@ export async function POST(request: NextRequest) {
     .eq('auth_id', authUser.id);
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    console.error('[my/link] Update error:', updateError.message);
+    return NextResponse.json({ error: '연결에 실패했습니다.' }, { status: 500 });
   }
 
   // 연결 직후 해당 인플루언서 챌린지 순위 즉시 크롤링 (백그라운드)

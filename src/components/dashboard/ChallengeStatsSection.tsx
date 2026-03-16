@@ -87,7 +87,7 @@ export default function ChallengeStatsSection({
           }
         />
         <StatBox
-          label="노출 챌린지"
+          label="TOP 10 키워드"
           value={rankedKeywords}
           suffix="개"
           color="text-up"
@@ -97,7 +97,7 @@ export default function ChallengeStatsSection({
           }
         />
         <StatBox
-          label="1위 달성"
+          label="챌린지 1위"
           value={rank1Count}
           suffix="개"
           color="text-gold"
@@ -116,7 +116,7 @@ export default function ChallengeStatsSection({
           }
         />
         <StatBox
-          label="통합검색 TOP3"
+          label="챌린지 TOP 3"
           value={integratedTop3Count}
           suffix="개"
           color="text-gold"

@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
 
 /* ── 메인 네비게이션 ── */
 const NAV_ITEMS = [
@@ -40,6 +41,10 @@ export default function Header() {
   }, []);
 
   const handleLogout = async () => {
+    // 클라이언트 Supabase 세션 종료
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    // 서버 쿠키 삭제
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser({ type: null, id: null, name: null });
     router.push('/');

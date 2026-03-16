@@ -1,13 +1,42 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/auth/me — 현재 로그인된 유저 정보 반환 (httpOnly 쿠키 기반)
+ * GET /api/auth/me — 현재 로그인된 유저 정보 반환
+ * 1. Supabase Auth 세션 체크 (우선)
+ * 2. 기존 쿠키 기반 체크 (하위 호환)
  */
 export async function GET() {
   try {
+    // ─── 1. Supabase Auth 세션 체크 ───
+    const supabaseAuth = await createRouteHandlerClient();
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+
+    if (authUser) {
+      const supabase = createServiceClient();
+      const { data: profile } = await supabase
+        .from('users')
+        .select('id, nickname, email, linked_influencer_id, subscription_status')
+        .eq('auth_id', authUser.id)
+        .single();
+
+      if (profile) {
+        // linked_influencer_id가 있으면 인플루언서, 없으면 블로거
+        const type = profile.linked_influencer_id ? 'influencer' : 'blogger';
+        return NextResponse.json({
+          type,
+          id: profile.id,
+          name: profile.nickname || authUser.email?.split('@')[0] || null,
+          email: authUser.email,
+          authId: authUser.id,
+        });
+      }
+    }
+
+    // ─── 2. 기존 쿠키 기반 체크 (하위 호환) ───
     const cookieStore = await cookies();
     const userType = cookieStore.get('user_type')?.value;
     const naverId = cookieStore.get('naver_id')?.value;

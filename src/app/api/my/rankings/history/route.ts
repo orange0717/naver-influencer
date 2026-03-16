@@ -1,20 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   const days = parseInt(request.nextUrl.searchParams.get('days') || '15');
   const keywordId = request.nextUrl.searchParams.get('keyword_id');
 
-  // 쿠키 기반 인증 (대시보드와 동일한 방식)
-  const cookieStore = await cookies();
-  const naverId = cookieStore.get('naver_id')?.value;
+  const supabase = createServiceClient();
+  let naverId: string | undefined;
+
+  // 1. Supabase Auth 세션 체크 (우선)
+  try {
+    const supabaseAuth = await createRouteHandlerClient();
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+    if (authUser) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('linked_influencer_id')
+        .eq('auth_id', authUser.id)
+        .single();
+      if (profile?.linked_influencer_id) {
+        const { data: linkedInf } = await supabase
+          .from('influencers')
+          .select('naver_id')
+          .eq('id', profile.linked_influencer_id)
+          .single();
+        naverId = linkedInf?.naver_id || undefined;
+      }
+    }
+  } catch { /* ignore */ }
+
+  // 2. 기존 쿠키 기반 체크 (하위 호환)
+  if (!naverId) {
+    const cookieStore = await cookies();
+    naverId = cookieStore.get('naver_id')?.value;
+  }
 
   if (!naverId) {
     return NextResponse.json({ keywords: [] });
   }
-
-  const supabase = createServiceClient();
 
   // naver_id로 인플루언서 조회
   const { data: influencer } = await supabase

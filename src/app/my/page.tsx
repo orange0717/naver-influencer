@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import CompetitorSection from '@/components/CompetitorSection';
 import CopyButton from '@/components/CopyButton';
@@ -14,7 +14,6 @@ import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import InfluencerScoreSection from '@/components/dashboard/InfluencerScoreSection';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
-import ChallengeTable from '@/components/dashboard/ChallengeTable';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 
@@ -40,14 +39,39 @@ interface Recommendation {
 }
 
 export default async function MyDashboard() {
-  const cookieStore = await cookies();
-  const naverId = cookieStore.get('naver_id')?.value;
+  const supabase = createServiceClient();
+  let naverId: string | undefined;
+
+  // ─── 1. Supabase Auth 세션 체크 (우선) ───
+  const supabaseAuth = await createRouteHandlerClient();
+  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+
+  if (authUser) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('linked_influencer_id')
+      .eq('auth_id', authUser.id)
+      .single();
+
+    if (profile?.linked_influencer_id) {
+      const { data: linkedInf } = await supabase
+        .from('influencers')
+        .select('naver_id')
+        .eq('id', profile.linked_influencer_id)
+        .single();
+      naverId = linkedInf?.naver_id || undefined;
+    }
+  }
+
+  // ─── 2. 기존 쿠키 기반 체크 (하위 호환) ───
+  if (!naverId) {
+    const cookieStore = await cookies();
+    naverId = cookieStore.get('naver_id')?.value;
+  }
 
   if (!naverId) {
     redirect('/auth/login');
   }
-
-  const supabase = createServiceClient();
 
   // naver_id로 인플루언서 조회
   const { data: influencerData } = await supabase
@@ -252,6 +276,9 @@ export default async function MyDashboard() {
     .eq('influencer_id', influencerId);
 
   const rankedMap = new Map(rankings.map(r => [r.keyword_id, r]));
+  const ikKeywordIds = new Set((myKeywords || []).map(ik => ik.keyword_id));
+
+  // influencer_keywords 기반 키워드
   const allKeywords = (myKeywords || []).map(ik => {
     const kw = ik.keyword_challenges as unknown as Record<string, unknown>;
     const ranked = rankedMap.get(ik.keyword_id);
@@ -263,8 +290,27 @@ export default async function MyDashboard() {
       search_volume: (kw?.search_volume_monthly as number) || 0,
       rank_position: ranked?.rank_position ?? null,
       rank_change: ranked?.rank_change ?? 0,
+      is_integrated_top3: ranked?.is_integrated_top3 ?? false,
     };
-  }).sort((a, b) => {
+  });
+
+  // rankings에는 있지만 influencer_keywords에는 없는 키워드 추가 (숫자 일치)
+  for (const r of rankings) {
+    if (!ikKeywordIds.has(r.keyword_id)) {
+      allKeywords.push({
+        keyword_id: r.keyword_id,
+        keyword: r.keyword,
+        category: r.category,
+        participant_count: r.participant_count,
+        search_volume: r.search_volume,
+        rank_position: r.rank_position,
+        rank_change: r.rank_change,
+        is_integrated_top3: r.is_integrated_top3,
+      });
+    }
+  }
+
+  allKeywords.sort((a, b) => {
     if (a.rank_position !== null && b.rank_position === null) return -1;
     if (a.rank_position === null && b.rank_position !== null) return 1;
     if (a.rank_position !== null && b.rank_position !== null) return a.rank_position - b.rank_position;
@@ -360,7 +406,7 @@ export default async function MyDashboard() {
               <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
               <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
               <span className="text-dim">통합검색 <strong className="text-text font-rank">{integratedCount}</strong>개</span>
-              <span className="text-dim">유효 키워드 <strong className="text-text font-rank">{totalRankedKeywords}</strong>개</span>
+              <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{totalKeywords}</strong>개</span>
               <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || 0)}</strong></span>
             </div>
           </div>
@@ -375,7 +421,7 @@ export default async function MyDashboard() {
       )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard
-          label="나의 평균 순위"
+          label="나의 키워드챌린지 평균순위"
           value={avgRank > 0 ? Math.round(avgRank) : 0}
           suffix="위"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
@@ -383,11 +429,11 @@ export default async function MyDashboard() {
           delay={50}
         />
         <AnimatedStatCard
-          label="유효 키워드"
-          value={totalRankedKeywords}
+          label="참여 키워드"
+          value={totalKeywords}
           suffix="개"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>}
-          color={totalRankedKeywords > 0 ? 'accent' : 'dim'}
+          color={totalKeywords > 0 ? 'accent' : 'dim'}
           delay={100}
         />
         <AnimatedStatCard
@@ -461,10 +507,10 @@ export default async function MyDashboard() {
       {/* ─── 2-1. 키워드챌린지 참여 현황 ─── */}
       <ChallengeStatsSection
         totalKeywords={totalKeywords}
-        rankedKeywords={totalRankedKeywords}
+        rankedKeywords={top10Count}
         rank1Count={rank1Count}
         top3Count={top3Count}
-        integratedTop3Count={integratedCount}
+        integratedTop3Count={top3Count}
         avgParticipants={avgParticipants}
         compLow={compLow}
         compMid={compMid}
@@ -503,9 +549,6 @@ export default async function MyDashboard() {
         naverId={naverId}
         canSearchRank={canAccess}
       />
-
-      {/* ─── 3-3. 키워드챌린지 성과 테이블 ─── */}
-      <ChallengeTable rankings={rankings} />
 
       {/* ─── 4. 변동 피드 + 추천 키워드 (2열) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -572,16 +615,16 @@ export default async function MyDashboard() {
         </div>
         <div className="flex justify-center mb-4 p-4 bg-bg rounded-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/widget/rank/${naverId}`} alt="키워드 순위 위젯" width={250} height={180} className="rounded-lg" />
+          <img src={`/api/widget/rank/${naverId}`} alt="키워드 순위 위젯" width={170} height={220} className="rounded-lg" />
         </div>
         <div className="space-y-3">
           <div>
             <p className="text-[11px] font-semibold text-dim mb-1.5">HTML 코드 (블로그 사이드바에 붙여넣기)</p>
             <div className="relative">
               <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
-                {`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="250" /></a>`}
+                {`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`}
               </code>
-              <CopyButton text={`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="250" /></a>`} />
+              <CopyButton text={`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`} />
             </div>
           </div>
           <p className="text-[10px] text-dim leading-relaxed">* 위젯은 매일 자동으로 업데이트됩니다.</p>

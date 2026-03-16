@@ -141,17 +141,37 @@ export default function KeywordsPage() {
         ))}
       </div>
 
-      {/* 세부분류 서브 탭 (도서 등 세부분류 있을 때) */}
+      {/* 세부분류 필터 (버튼 + 드롭다운) */}
       {subCategories.length > 2 && (
-        <div className="flex flex-wrap gap-1.5">
-          {subCategories.map(sub => (
-            <button key={sub} onClick={() => setSubFilter(sub)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
-                subFilter === sub
-                  ? 'bg-accent/20 text-accent border border-accent/40'
-                  : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
-              }`}>{sub === '전체' ? '전체' : sub}</button>
-          ))}
+        <div className="space-y-2">
+          {/* 드롭다운 + 개수 */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-dim">세부분류</span>
+            <select
+              value={subFilter}
+              onChange={e => setSubFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-surface border border-border text-text focus:outline-none focus:border-accent transition-colors cursor-pointer appearance-none pr-8"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            >
+              {subCategories.map(sub => (
+                <option key={sub} value={sub}>{sub === '전체' ? `전체 (${keywords.length})` : sub}</option>
+              ))}
+            </select>
+            {subFilter !== '전체' && (
+              <span className="text-xs text-accent font-rank">{displayKeywords.length}개</span>
+            )}
+          </div>
+          {/* 버튼 바로가기 */}
+          <div className="flex flex-wrap gap-1.5">
+            {subCategories.map(sub => (
+              <button key={sub} onClick={() => setSubFilter(sub)}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                  subFilter === sub
+                    ? 'bg-accent/20 text-accent border border-accent/40'
+                    : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
+                }`}>{sub}</button>
+            ))}
+          </div>
         </div>
       )}
 

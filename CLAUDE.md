@@ -36,7 +36,7 @@ src/
 │   │   ├── subscription/  # 구독 상태/활성화
 │   │   ├── influencers/  # 인플루언서 프로필
 │   │   ├── recommendations/ # 일일 추천
-│   │   └── cron/         # 크롤링 크론잡 6개
+│   │   └── cron/         # 크롤링 크론잡 9개 + run 엔드포인트
 │   ├── auth/             # 로그인/회원가입
 │   ├── subscribe/        # 구독 페이지
 │   ├── influencers/[id]/ # 인플루언서 상세
@@ -65,26 +65,34 @@ src/
     ├── supabase-server.ts # Supabase 서버 클라이언트 (service_role)
     ├── points.ts         # (레거시) 포인트 차감 로직
     ├── subscription.ts   # 구독 확인/활성화 로직
+    ├── plans.ts          # 플랜 & 기간 상수 (PERSONAL/INFLUENCER/AGENCY)
+    ├── crawler.ts        # 크롤러 공통 유틸 (fetchWithRetry, verifyCronSecret, crawlJob)
     └── chart-colors.ts   # Recharts 차트 색상 상수
 ```
 
-## 구독 모델
-- **가격**: 월 9,900원
-- **구독자**: 모든 기능 무제한 이용
+## 구독 모델 (3-플랜 체계)
+- **개인 (PERSONAL)**: 월 ₩9,900 — 블로그 1개, 키워드 분석 기본
+- **인플루언서 (INFLUENCER)**: 월 ₩44,000 — 인플루언서 순위 + 챌린지 분석
+- **대행사 (AGENCY)**: 월 ₩99,000 — 최대 10개 블로그, 대행사 대시보드
+- **기간 옵션**: 1/3/6/10/12개월 (할인율 0%/5%/7%/9%/11%)
+- **무료 체험**: 3일 (예정)
 - **비구독자(무료)**: 키워드 목록 + 일일 추천 3개만
 - **결제**: 토스페이먼츠 (예정)
 - **환불**: 7일 이내 미이용 시 전액 환불
+- **상세**: src/lib/plans.ts (PlanInfo, PeriodOption, calculatePrice)
 
-## 크론잡 스케줄 (vercel.json)
-| UTC | KST | 작업 |
-|-----|-----|------|
-| 18:00 | 03:00 | Step 1: 키워드 목록 크롤링 (crawl-keywords) |
-| 19:00 | 04:00 | Step 2: 검색 순위 크롤링 (crawl-rankings) |
-| 19:30 | 04:30 | Step 2.5: 챌린지 공식 순위 크롤링 (crawl-challenge-ranks) |
-| 0,6,12,18 | 매 6시간 | 인플루언서 수집 (crawl-influencers) |
-| 20:00 | 05:00 | Step 3: 검색량 업데이트 (update-volumes) |
-| 20:30 | 05:30 | 인플루언서 집계 (aggregate-influencers) |
-| 21:00 | 06:00 | 추천 키워드 생성 (generate-recommendations) |
+## 크론잡 스케줄 (vercel.json) — 9개
+| UTC | KST | 작업 | 설명 |
+|-----|-----|------|------|
+| 18:00 | 03:00 | crawl-keywords | Step 1: 키워드 목록 크롤링 (GraphQL 카테고리 + REST 키워드) |
+| 19:00 | 04:00 | crawl-rankings | Step 2: 검색 순위 크롤링 (Tier 0~3 배치 전략) |
+| 매 3시간 (01:30,04:30,...) | — | crawl-challenge-ranks | Step 2.5: 챌린지 공식 순위 (연결 인플루언서 키워드) |
+| 0,6,12,18 | 매 6시간 | crawl-influencers | 인플루언서 수집 (Feed Discover API) |
+| 20:00 | 05:00 | update-volumes | Step 3: 검색량 업데이트 (네이버 검색광고 + DataLab API) |
+| 20:30 | 05:30 | aggregate-influencers | 인플루언서 통계 집계 (total_keywords, avg_rank 등) |
+| 21:00 | 06:00 | generate-recommendations | 추천 키워드 생성 (recommendation_score 배치 업데이트) |
+| 22:00 | 07:00 | crawl-blog-ranks | 블로그 검색 순위 크롤링 (Cheerio HTML 파싱) |
+| 23:00 | 08:00 | crawl-selection-dates | 키워드챌린지 선정일 크롤링 (__PRELOADED_STATE__ 파싱) |
 
 ## 반응형 전략
 - Desktop (lg+): 테이블 형태
@@ -97,7 +105,9 @@ src/
 - DB: supabase/schema.sql (최신, Feed API 컬럼 포함)
 - 인증: getAuthUser 공통 유틸 + Supabase Auth
 - 구독: 백엔드 로직 완료, 결제 연동 예정 (토스페이먼츠)
-- 크롤러: 7개 크론잡 구현 완료 (crawl-challenge-ranks 추가), 로컬 테스트 통과 (2026-03-15)
+- 크롤러: 9개 크론잡 구현 완료 + run 엔드포인트, 코드리뷰 + 보안감사 완료 (2026-03-16)
+- 보안: timingSafeEqual 인증, SSRF 방지, naverId 포맷 검증, 레이트 리밋 추가
+- 성능: N+1 → 배치 upsert 최적화 (crawl-rankings, generate-recommendations)
 
 ## 환경변수 (필요)
 ```

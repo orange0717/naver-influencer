@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/crawl-blog-ranks",
       "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/crawl-selection-dates",
+      "schedule": "0 23 * * *"
     }
   ]
 }
