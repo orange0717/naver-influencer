@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import CompetitorCompareView from '@/components/dashboard/CompetitorCompareView';
+import CompetitorChanges from '@/components/dashboard/CompetitorChanges';
 
 interface CompetitorData {
   competitor: {
@@ -36,12 +38,18 @@ interface MyStats {
   top3Count: number;
 }
 
-export default function CompetitorSection({ naverId, myStats }: { naverId: string; myStats: MyStats }) {
+export default function CompetitorSection({ naverId, myStats, mySubscriberCount = 0, myDisplayName = '나' }: {
+  naverId: string;
+  myStats: MyStats;
+  mySubscriberCount?: number;
+  myDisplayName?: string;
+}) {
   const [competitorIds, setCompetitorIds] = useState<string[]>([]);
   const [competitorData, setCompetitorData] = useState<Map<string, CompetitorData>>(new Map());
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'compare' | 'changes'>('compare');
 
   // 저장된 경쟁자 로드
   useEffect(() => {
@@ -221,80 +229,52 @@ export default function CompetitorSection({ naverId, myStats }: { naverId: strin
                   )}
                 </div>
 
-                {/* 상세 비교 (펼치기) */}
+                {/* 상세 비교 (펼치기) — 탭 시스템 */}
                 {isExpanded && data && (
                   <div className="px-5 pb-5 space-y-4">
-                    {/* 비교 카드 */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-accent/5 rounded-lg p-3 text-center border border-accent/10">
-                        <p className="text-[10px] text-accent font-semibold mb-1">나</p>
-                        <p className="text-lg font-black font-rank">{Math.round(myStats.avgRank)}위</p>
-                        <p className="text-[10px] text-dim">평균순위</p>
-                        <div className="mt-2 flex justify-center gap-3">
-                          <div>
-                            <p className="text-sm font-bold">{myStats.totalKeywords}</p>
-                            <p className="text-[10px] text-dim">키워드</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-up">{myStats.top3Count}</p>
-                            <p className="text-[10px] text-dim">TOP3</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="bg-down/5 rounded-lg p-3 text-center border border-down/10">
-                        <p className="text-[10px] text-down font-semibold mb-1">{data.competitor.displayName}</p>
-                        <p className="text-lg font-black font-rank">{data.stats.avgRank}위</p>
-                        <p className="text-[10px] text-dim">평균순위</p>
-                        <div className="mt-2 flex justify-center gap-3">
-                          <div>
-                            <p className="text-sm font-bold">{data.stats.totalKeywords}</p>
-                            <p className="text-[10px] text-dim">키워드</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-up">{data.stats.top3Count}</p>
-                            <p className="text-[10px] text-dim">TOP3</p>
-                          </div>
-                        </div>
-                      </div>
+                    {/* 탭 헤더 */}
+                    <div className="flex bg-bg rounded-lg p-0.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setActiveTab('compare'); }}
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition cursor-pointer ${
+                          activeTab === 'compare' ? 'bg-surface text-text shadow-sm' : 'text-dim hover:text-text'
+                        }`}
+                      >
+                        비교
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setActiveTab('changes'); }}
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition cursor-pointer ${
+                          activeTab === 'changes' ? 'bg-surface text-text shadow-sm' : 'text-dim hover:text-text'
+                        }`}
+                      >
+                        변동
+                      </button>
                     </div>
 
-                    {/* 겹치는 키워드 비교 */}
-                    {data.sharedKeywords.length > 0 && (
-                      <div>
-                        <p className="text-xs font-semibold text-dim mb-2">겹치는 키워드 순위 비교 ({data.sharedCount}개)</p>
-                        <div className="bg-bg rounded-lg border border-border/50 overflow-hidden">
-                          <div className="grid grid-cols-3 text-[10px] text-dim font-semibold px-4 py-2 border-b border-border/30">
-                            <span>키워드</span>
-                            <span className="text-center">나</span>
-                            <span className="text-center">{data.competitor.displayName}</span>
-                          </div>
-                          <div className="divide-y divide-border/10 max-h-64 overflow-y-auto">
-                            {data.sharedKeywords.slice(0, 20).map(sk => {
-                              const iWin = sk.myRank !== null && sk.myRank < sk.competitorRank;
-                              const iLose = sk.myRank !== null && sk.myRank > sk.competitorRank;
-                              return (
-                                <div key={sk.keyword_id} className="grid grid-cols-3 px-4 py-2 text-sm items-center">
-                                  <span className="text-xs truncate">{sk.keyword}</span>
-                                  <span className={`text-center font-black font-rank text-xs ${iWin ? 'text-up' : iLose ? 'text-down' : ''}`}>
-                                    {sk.myRank ?? '—'}위
-                                  </span>
-                                  <span className={`text-center font-black font-rank text-xs ${iLose ? 'text-up' : iWin ? 'text-down' : ''}`}>
-                                    {sk.competitorRank}위
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {data.sharedKeywords.length > 20 && (
-                            <div className="text-center py-2 text-[10px] text-dim border-t border-border/30">
-                              +{data.sharedKeywords.length - 20}개 더
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                    {/* 비교 탭 */}
+                    {activeTab === 'compare' && (
+                      <CompetitorCompareView
+                        myName={myDisplayName}
+                        competitorName={data.competitor.displayName}
+                        myStats={myStats}
+                        competitorStats={data.stats}
+                        mySubscribers={mySubscriberCount}
+                        competitorSubscribers={data.competitor.subscriberCount}
+                        sharedKeywords={data.sharedKeywords}
+                      />
                     )}
 
-                    {data.sharedKeywords.length === 0 && (
+                    {/* 변동 탭 */}
+                    {activeTab === 'changes' && (
+                      <CompetitorChanges
+                        competitorNaverId={cId}
+                        competitorName={data.competitor.displayName}
+                        myNaverId={naverId}
+                      />
+                    )}
+
+                    {data.sharedKeywords.length === 0 && activeTab === 'compare' && (
                       <p className="text-xs text-dim text-center py-4">
                         아직 겹치는 키워드가 없습니다. 키워드 데이터가 수집되면 비교할 수 있습니다.
                       </p>

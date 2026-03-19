@@ -16,6 +16,11 @@ import InfluencerScoreSection from '@/components/dashboard/InfluencerScoreSectio
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
+import { analyzeRankAlerts } from '@/lib/rank-alerts';
+import { computeGrowthSummary, computeScoreTrend } from '@/lib/growth-analysis';
+import SmartAlerts from '@/components/dashboard/SmartAlerts';
+import GrowthReport from '@/components/dashboard/GrowthReport';
+import ScoreTrendChart from '@/components/dashboard/ScoreTrendChart';
 
 export const dynamic = 'force-dynamic';
 
@@ -345,6 +350,16 @@ export default async function MyDashboard() {
   // ─── 4. 활동 이벤트 생성 ───
   const activityEvents = generateActivityEvents(rankings);
 
+  // ─── 5. 스마트 알림 (순위 트렌드 분석) ───
+  const rankAlerts = analyzeRankAlerts(latestRankings || []);
+
+  // ─── 6. 성장 리포트 (주간/월간 비교) ───
+  const growthSummary7d = computeGrowthSummary(latestRankings || [], '7d');
+  const growthSummary30d = computeGrowthSummary(latestRankings || [], '30d');
+
+  // ─── 7. 종합 점수 추이 ───
+  const scoreTrend = computeScoreTrend(latestRankings || [], influencer.subscriber_count || 0);
+
   return (
     <div className="space-y-6">
 
@@ -536,6 +551,15 @@ export default async function MyDashboard() {
         overallTotal={overallTotal}
       />
 
+      {/* ─── 2-3. 성장 리포트 ─── */}
+      <GrowthReport summary7d={growthSummary7d} summary30d={growthSummary30d} />
+
+      {/* ─── 2-4. 종합 점수 추이 ─── */}
+      <ScoreTrendChart data={scoreTrend} />
+
+      {/* ─── 2-5. 스마트 알림 (오늘의 액션 포인트) ─── */}
+      <SmartAlerts alerts={rankAlerts} />
+
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />
 
@@ -641,6 +665,8 @@ export default async function MyDashboard() {
       <CompetitorSection
         naverId={naverId}
         myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords, top3Count }}
+        mySubscriberCount={influencer.subscriber_count || 0}
+        myDisplayName={influencer.display_name || '나'}
       />
 
       {/* ─── 8. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
