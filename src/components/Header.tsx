@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 const NAV_ITEMS = [
   { href: '/influencers', label: '인플루언서' },
   { href: '/keywords', label: '키워드' },
+  { href: '/subscribe', label: '이용권' },
   { href: '/community', label: '커뮤니티' },
 ];
 

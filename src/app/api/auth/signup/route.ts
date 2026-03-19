@@ -16,32 +16,6 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // 이미 존재하는지 확인
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id')
-    .eq('auth_id', authId)
-    .single();
-
-  if (existing) {
-    // 인플루언서 연결이 안 되어 있으면 연결
-    if (naverId) {
-      const { data: inf } = await supabase
-        .from('influencers')
-        .select('id')
-        .eq('naver_id', naverId)
-        .single();
-
-      if (inf) {
-        await supabase
-          .from('users')
-          .update({ linked_influencer_id: inf.id })
-          .eq('id', existing.id);
-      }
-    }
-    return NextResponse.json({ success: true, userId: existing.id });
-  }
-
   // 인플루언서 ID 조회
   let linkedInfluencerId: string | null = null;
   if (naverId) {
@@ -52,6 +26,24 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (inf) linkedInfluencerId = inf.id;
+  }
+
+  // 이미 존재하는지 확인
+  const { data: existing } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_id', authId)
+    .single();
+
+  if (existing) {
+    // 인플루언서 연결이 안 되어 있으면 연결
+    if (linkedInfluencerId) {
+      await supabase
+        .from('users')
+        .update({ linked_influencer_id: linkedInfluencerId })
+        .eq('id', existing.id);
+    }
+    return NextResponse.json({ success: true, userId: existing.id, linked: !!linkedInfluencerId });
   }
 
   // service_role로 INSERT (RLS 우회)
@@ -71,5 +63,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '회원가입 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, userId: data.id });
+  return NextResponse.json({ success: true, userId: data.id, linked: !!linkedInfluencerId });
 }

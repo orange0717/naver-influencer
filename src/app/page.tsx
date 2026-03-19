@@ -110,15 +110,17 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
               <p className="text-xs text-accent font-semibold tracking-widest mb-3">NEW INFLUENCERS</p>
-              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">이번 주 신규 인플루언서</h2>
-              <p className="text-sm text-dim">최근 7일간 새로 등록된 인플루언서들입니다</p>
+              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">신규 인플루언서</h2>
+              <p className="text-sm text-dim">최근 등록된 인플루언서들입니다</p>
             </div>
 
             <div className="grid gap-3">
               {newInfluencers.slice(0, 8).map((inf) => (
-                <Link
+                <a
                   key={inf.id}
-                  href={`/influencers/${inf.id}`}
+                  href={`https://in.naver.com/${inf.naver_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-between px-5 py-4 rounded-xl border border-border bg-bg hover:border-accent/40 transition"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -137,7 +139,7 @@ export default function LandingPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-dim">팬 {inf.subscriber_count.toLocaleString()}</span>
                   </div>
-                </Link>
+                </a>
               ))}
             </div>
 
