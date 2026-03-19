@@ -267,90 +267,47 @@ export default function LandingPage() {
             <h3 className="font-bold text-text mb-2">상위 노출을 원하는 분</h3>
             <p className="text-sm text-dim leading-relaxed">경쟁 키워드 분석과 검색량 트렌드로 데이터 기반 전략을 수립하세요.</p>
           </div>
-          <div className="bg-bg rounded-2xl border border-blue/20 p-6">
-            <p className="text-xs font-bold text-blue tracking-wide mb-3">체험단 · 마케팅 에이전시</p>
-            <h3 className="font-bold text-text mb-2">인플루언서를 찾는 광고주</h3>
-            <p className="text-sm text-dim leading-relaxed">108만 인플루언서 DB에서 카테고리·키워드별로 최적의 인플루언서를 검색하고 컨택하세요.</p>
+          <div className="bg-bg rounded-2xl border border-border p-6">
+            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
+            <h3 className="font-bold text-text mb-2">순위 하락에 빠르게 대응하고 싶은 분</h3>
+            <p className="text-sm text-dim leading-relaxed">스마트 알림으로 하락 위험 키워드를 감지하고, TOP 3 진입 기회를 놓치지 마세요.</p>
           </div>
-          <div className="bg-bg rounded-2xl border border-blue/20 p-6">
-            <p className="text-xs font-bold text-blue tracking-wide mb-3">체험단 · 마케팅 에이전시</p>
-            <h3 className="font-bold text-text mb-2">인플루언서 성과 분석이 필요한 업체</h3>
-            <p className="text-sm text-dim leading-relaxed">체험단 선정에 필요한 인플루언서 키워드 순위 분석, 영향력 리포트를 제공합니다.</p>
+          <div className="bg-bg rounded-2xl border border-border p-6">
+            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
+            <h3 className="font-bold text-text mb-2">경쟁자와 비교하고 싶은 분</h3>
+            <p className="text-sm text-dim leading-relaxed">같은 키워드에 참여 중인 인플루언서와 순위를 비교하고 전략을 세우세요.</p>
           </div>
         </div>
       </section>
 
       {/* ═══════════ 가격 (bg) ═══════════ */}
       <section className="bg-bg px-4 py-20 md:py-24">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PRICING</p>
             <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">서비스 요금</h2>
-            <p className="text-sm text-dim">인플루언서는 무료, 광고주·에이전시는 합리적인 가격으로 시작하세요.</p>
+            <p className="text-sm text-dim">인플루언서를 위한 합리적인 가격</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-5">
-            {/* 무료 */}
-            <div className="bg-surface rounded-2xl border border-border p-7">
-              <p className="text-xs font-bold text-up tracking-wide mb-3">무료</p>
-              <p className="text-3xl font-extrabold text-text mb-1">₩0</p>
-              <p className="text-xs text-dim mb-6">네이버 인플루언서</p>
-              <div className="border-t border-border my-5" />
-              <ul className="space-y-2.5">
-                {['키워드 분석 · 검색량 조회', '키워드챌린지 순위 추적', '인플루언서 검색', '커뮤니티 참여', '블루오션 키워드 추천'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-dim">
-                    <span className="text-up">&#10003;</span> {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/auth/signup" className="inline-block mt-7 px-6 py-2.5 rounded-full border border-border text-text text-sm font-medium hover:border-accent/50 transition-colors">
-                무료로 시작하기
-              </Link>
-            </div>
-
-            {/* 비즈니스 */}
-            <div className="bg-surface rounded-2xl border-2 border-accent/30 p-7 relative">
-              <div className="absolute -top-3 left-6 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">추천</div>
-              <p className="text-xs font-bold text-accent tracking-wide mb-3">BUSINESS</p>
+          <div className="grid md:grid-cols-2 gap-5 max-w-lg mx-auto">
+            <div className="bg-surface rounded-2xl border border-border p-7 text-center">
+              <p className="text-xs font-bold text-dim tracking-wide mb-3">월간 구독</p>
               <p className="text-3xl font-extrabold text-text mb-1">₩19,800<span className="text-sm font-normal text-dim">/월</span></p>
-              <p className="text-xs text-dim mb-6">소상공인 · 체험단 운영</p>
-              <div className="border-t border-border my-5" />
-              <ul className="space-y-2.5">
-                {['인플루언서 상세 검색 · 필터링', '카테고리별 인플루언서 리스트', '키워드 순위 분석 (무제한)', '체험단 모집 캠페인 등록', '인플루언서 컨택 기능', '키워드 트렌드 리포트'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-dim">
-                    <span className="text-accent">&#10003;</span> {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/subscribe" className="inline-block mt-7 px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors">
-                비즈니스 시작하기 →
+              <Link href="/subscribe" className="inline-block mt-5 px-6 py-2.5 rounded-full border border-accent text-accent text-sm font-medium hover:bg-accent/5 transition-colors">
+                월간 시작하기
               </Link>
             </div>
 
-            {/* 에이전시 */}
-            <div className="bg-surface rounded-2xl border-2 border-blue/30 p-7 relative">
-              <div className="absolute -top-3 left-6 px-3 py-0.5 bg-blue text-white text-[10px] font-bold rounded-full">대행사</div>
-              <p className="text-xs font-bold text-blue tracking-wide mb-3">AGENCY</p>
-              <p className="text-3xl font-extrabold text-text mb-1">₩99,000<span className="text-sm font-normal text-dim">/월</span></p>
-              <p className="text-xs text-dim mb-6">마케팅 대행사 · 에이전시</p>
-              <div className="border-t border-border my-5" />
-              <ul className="space-y-2.5">
-                {['BUSINESS 기능 전체 포함', '키워드 순위 심층 분석', '인플루언서 리스트 다운로드', '다중 캠페인 동시 운영', '에이전시 전용 대시보드', '성과 리포트 · API 연동'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-dim">
-                    <span className="text-blue">&#10003;</span> {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/subscribe" className="inline-block mt-7 px-6 py-2.5 rounded-full bg-blue text-white text-sm font-medium hover:bg-blue/80 transition-colors">
-                에이전시 플랜 시작 →
+            <div className="bg-surface rounded-2xl border-2 border-accent/30 p-7 text-center relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">25% 할인</div>
+              <p className="text-xs font-bold text-accent tracking-wide mb-3">연간 구독</p>
+              <p className="text-3xl font-extrabold text-text mb-1">₩178,200<span className="text-sm font-normal text-dim">/연</span></p>
+              <p className="text-xs text-dim mt-1">월 14,850원</p>
+              <Link href="/subscribe" className="inline-block mt-5 px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors">
+                연간 시작하기 →
               </Link>
             </div>
           </div>
-
-          <p className="text-center text-xs text-dim mt-6">
-            연간 결제 시 2개월 무료 · 부가세 별도 ·{' '}
-            <Link href="/subscribe" className="text-accent hover:underline">자세히 보기</Link>
-          </p>
         </div>
       </section>
 
