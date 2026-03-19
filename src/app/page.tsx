@@ -264,7 +264,7 @@ export default function LandingPage() {
           </div>
           <div className="bg-bg rounded-2xl border border-border p-6">
             <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
-            <h3 className="font-bold text-text mb-2">상위 노출을 원하는 분</h3>
+            <h3 className="font-bold text-text mb-2">키워드챌린지에서 우위를 점하고 싶은 분</h3>
             <p className="text-sm text-dim leading-relaxed">경쟁 키워드 분석과 검색량 트렌드로 데이터 기반 전략을 수립하세요.</p>
           </div>
           <div className="bg-bg rounded-2xl border border-border p-6">
