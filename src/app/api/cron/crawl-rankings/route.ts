@@ -195,15 +195,25 @@ async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClien
     tier3 = data || [];
   }
 
-  // 중복 제거 후 BATCH_SIZE로 제한 (Tier 0 최우선)
+  // 중복 제거: Tier 0는 전부 포함, 나머지는 BATCH_SIZE 내에서 배분
   const seen = new Set<string>();
   const result: { id: string; keyword: string; category: string }[] = [];
 
-  for (const item of [...tier0, ...(tier1 || []), ...tier2, ...tier3]) {
-    if (!seen.has(item.id) && result.length < BATCH_SIZE) {
+  // Tier 0 (사용자 키워드)는 BATCH_SIZE 무관하게 전부 포함
+  for (const item of tier0) {
+    if (!seen.has(item.id)) {
       seen.add(item.id);
       result.push(item);
     }
+  }
+
+  // 나머지 Tier는 BATCH_SIZE 내에서 채우기
+  for (const item of [...(tier1 || []), ...tier2, ...tier3]) {
+    if (!seen.has(item.id) && result.length < Math.max(BATCH_SIZE, result.length)) {
+      seen.add(item.id);
+      result.push(item);
+    }
+    if (result.length >= BATCH_SIZE + tier0.length) break;
   }
 
   return result;
@@ -274,35 +284,41 @@ export async function GET(request: NextRequest) {
         const prevRankMap = new Map<string, number>();
         prevRankings?.forEach(r => prevRankMap.set(r.influencer_id, r.rank_position));
 
-        // 인플루언서 UPSERT + 순위 INSERT
-        for (const rank of rankings) {
-          // influencers 테이블에 UPSERT
-          const { data: inf } = await supabase
-            .from('influencers')
-            .upsert(
-              {
-                naver_id: rank.naverId,
-                display_name: rank.influencerName,
-                profile_url: rank.influencerUrl || `https://in.naver.com/${rank.naverId}`,
-                category: rank.category || kw.category,
-                fan_count: rank.fanCount || 0,
-                last_crawled_at: new Date().toISOString(),
-              },
-              { onConflict: 'naver_id' },
-            )
-            .select('id')
-            .single();
+        // 인플루언서 배치 UPSERT
+        const influencerRows = rankings.map(rank => ({
+          naver_id: rank.naverId,
+          display_name: rank.influencerName,
+          profile_url: rank.influencerUrl || `https://in.naver.com/${rank.naverId}`,
+          category: rank.category || kw.category,
+          fan_count: rank.fanCount || 0,
+          last_crawled_at: new Date().toISOString(),
+        }));
 
-          if (!inf) continue;
+        await supabase
+          .from('influencers')
+          .upsert(influencerRows, { onConflict: 'naver_id' });
 
-          const prevRank = prevRankMap.get(inf.id);
-          const rankChange = prevRank ? prevRank - rank.rank : 0;
+        // upsert 후 ID 매핑 조회
+        const naverIds = rankings.map(r => r.naverId);
+        const { data: dbInfluencers } = await supabase
+          .from('influencers')
+          .select('id, naver_id')
+          .in('naver_id', naverIds);
 
-          // keyword_rankings 테이블에 UPSERT (같은 날 같은 키워드+인플루언서 중복 방지)
-          await supabase.from('keyword_rankings').upsert(
-            {
+        const idMap = new Map<string, string>();
+        dbInfluencers?.forEach(inf => idMap.set(inf.naver_id, inf.id));
+
+        // 순위 배치 UPSERT
+        const rankingRows = rankings
+          .filter(rank => idMap.has(rank.naverId))
+          .map(rank => {
+            const infId = idMap.get(rank.naverId)!;
+            const prevRank = prevRankMap.get(infId);
+            const rankChange = prevRank ? prevRank - rank.rank : 0;
+
+            return {
               keyword_id: kw.id,
-              influencer_id: inf.id,
+              influencer_id: infId,
               rank_position: rank.rank,
               previous_rank: prevRank ?? null,
               rank_change: rankChange,
@@ -312,9 +328,13 @@ export async function GET(request: NextRequest) {
               latest_post_url: rank.latestPostUrl || null,
               snapshot_date: snapshotDate,
               crawled_at: new Date().toISOString(),
-            },
-            { onConflict: 'keyword_id,influencer_id,snapshot_date' },
-          );
+            };
+          });
+
+        if (rankingRows.length > 0) {
+          await supabase
+            .from('keyword_rankings')
+            .upsert(rankingRows, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
         }
 
         totalProcessed++;

@@ -5,9 +5,22 @@ export const dynamic = 'force-dynamic';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
-// 분석 결과 캐시 (10분)
+// 분석 결과 캐시 (10분, 최대 200개 엔트리)
+const MAX_CACHE_SIZE = 200;
 const cache = new Map<string, { data: unknown; expires: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
+
+// 이미지 HEAD 요청 허용 도메인 (SSRF 방지)
+const ALLOWED_IMAGE_HOSTS = [
+  'postfiles.pstatic.net',
+  'blogfiles.pstatic.net',
+  'mblogthumb-phinf.pstatic.net',
+  'blogpfthumb-phinf.pstatic.net',
+  'storep-phinf.pstatic.net',
+  'pup-review-phinf.pstatic.net',
+  'ssl.pstatic.net',
+  'img.naver.net',
+];
 
 export interface ImageAnalysis {
   url: string;
@@ -227,10 +240,29 @@ async function analyzePost(blogId: string, logNo: string): Promise<PostAnalysis>
     for (const imgUrl of imagesToCheck) {
       try {
         const fullUrl = imgUrl.startsWith('//') ? `https:${imgUrl}` : imgUrl;
+
+        // SSRF 방지: 허용된 Naver CDN 도메인만 HEAD 요청
+        const urlObj = new URL(fullUrl);
+        const isAllowedHost = ALLOWED_IMAGE_HOSTS.some(h => urlObj.hostname === h || urlObj.hostname.endsWith(`.${h}`));
+
+        if (!isAllowedHost) {
+          imageAnalyses.push({
+            url: imgUrl, size: 0,
+            isOriginal: false,
+            isNaverUpload: false,
+          });
+          continue;
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         const headRes = await fetch(fullUrl, {
           method: 'HEAD',
           headers: { 'User-Agent': USER_AGENT },
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
+
         const contentLength = parseInt(headRes.headers.get('content-length') || '0', 10);
         const isNaverUpload = imgUrl.includes('postfiles') || imgUrl.includes('blogfiles');
         // 100KB 이상 = 직접 촬영한 원본 사진 가능성 높음
@@ -486,7 +518,11 @@ export async function GET(request: NextRequest) {
       metrics,
     };
 
-    // 캐시 저장
+    // 캐시 저장 (크기 제한: 오래된 항목부터 제거)
+    if (cache.size >= MAX_CACHE_SIZE) {
+      const firstKey = cache.keys().next().value;
+      if (firstKey) cache.delete(firstKey);
+    }
     cache.set(cacheKey, { data: result, expires: Date.now() + CACHE_TTL });
 
     return NextResponse.json(result);

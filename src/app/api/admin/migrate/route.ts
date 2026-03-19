@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { verifyCronSecret } from '@/lib/crawler';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const secret = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (secret !== process.env.CRON_SECRET) {
+  if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -18,14 +18,11 @@ export async function GET(request: NextRequest) {
     .limit(1);
 
   if (testError?.code === '42703') {
-    // 컬럼이 없으면 Supabase RPC로 ALTER TABLE 실행 불가
-    // Supabase SQL Editor에서 수동 실행 필요
     return NextResponse.json({
       status: 'column_missing',
-      message: 'naver_created_at column does not exist. Run this SQL in Supabase SQL Editor:',
-      sql: 'ALTER TABLE influencers ADD COLUMN IF NOT EXISTS naver_created_at TIMESTAMPTZ;',
+      message: 'naver_created_at 컬럼이 없습니다. Supabase SQL Editor에서 마이그레이션을 실행하세요.',
     });
   }
 
-  return NextResponse.json({ status: 'ok', message: 'naver_created_at column exists' });
+  return NextResponse.json({ status: 'ok' });
 }

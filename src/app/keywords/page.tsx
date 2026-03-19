@@ -162,10 +162,10 @@ export default function KeywordsPage() {
             )}
           </div>
           {/* 버튼 바로가기 */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {subCategories.map(sub => (
               <button key={sub} onClick={() => setSubFilter(sub)}
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                   subFilter === sub
                     ? 'bg-accent/20 text-accent border border-accent/40'
                     : 'bg-surface border border-border/50 text-dim hover:border-accent/30'

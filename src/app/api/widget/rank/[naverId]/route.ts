@@ -28,72 +28,77 @@ function generateRankWidgetSVG(data: {
   topKeywords: { keyword: string; rank: number; change: number }[];
   snapshotDate: string;
 }) {
-  const name = data.displayName.length > 12 ? data.displayName.slice(0, 12) + '…' : data.displayName;
+  const W = 170; // 네이버 블로그 위젯 최대 가로
+  const name = data.displayName.length > 8 ? data.displayName.slice(0, 8) + '…' : data.displayName;
   const dateStr = data.snapshotDate;
 
-  // TOP 키워드 행 생성 (최대 3개)
-  const keywordRows = data.topKeywords.slice(0, 3).map((kw, i) => {
+  // TOP 키워드 행 생성 (최대 5개)
+  const keywordRows = data.topKeywords.slice(0, 5).map((kw, i) => {
     const badge = getRankBadge(kw.rank);
-    const kwName = kw.keyword.length > 10 ? kw.keyword.slice(0, 10) + '…' : kw.keyword;
-    const changeText = kw.change > 0 ? `▲${kw.change}` : kw.change < 0 ? `▼${Math.abs(kw.change)}` : '—';
+    const kwName = kw.keyword.length > 7 ? kw.keyword.slice(0, 7) + '…' : kw.keyword;
+    const changeText = kw.change > 0 ? `▲${kw.change}` : kw.change < 0 ? `▼${Math.abs(kw.change)}` : '';
     const changeColor = kw.change > 0 ? '#22C55E' : kw.change < 0 ? '#EF4444' : '#9CA3AF';
-    const y = 82 + i * 22;
+    const y = 104 + i * 20;
 
     return `
-    <text x="14" y="${y}" font-family="Arial,sans-serif" font-size="10" font-weight="600" fill="#374151">${kwName}</text>
-    <rect x="168" y="${y - 10}" width="32" height="14" rx="7" fill="${badge.color}15"/>
-    <text x="184" y="${y}" font-family="Arial,sans-serif" font-size="9" font-weight="800" fill="${badge.color}" text-anchor="middle">${kw.rank}위</text>
-    <text x="218" y="${y}" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="${changeColor}">${changeText}</text>`;
+    <text x="10" y="${y}" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#374151">${kwName}</text>
+    <rect x="108" y="${y - 9}" width="28" height="13" rx="6" fill="${badge.color}15"/>
+    <text x="122" y="${y}" font-family="Arial,sans-serif" font-size="8" font-weight="800" fill="${badge.color}" text-anchor="middle">${kw.rank}위</text>${changeText ? `
+    <text x="142" y="${y}" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="${changeColor}">${changeText}</text>` : ''}`;
   }).join('');
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="250" height="180" viewBox="0 0 250 180">
+  const keywordCount = Math.min(data.topKeywords.length, 5);
+  const H = 122 + keywordCount * 20; // 동적 높이
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" style="stop-color:#F29C68;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#E8854A;stop-opacity:1" />
     </linearGradient>
-    <filter id="s" x="-4%" y="-4%" width="108%" height="112%">
-      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.08"/>
-    </filter>
   </defs>
 
   <!-- 카드 -->
-  <rect width="250" height="180" rx="12" fill="white" filter="url(#s)" stroke="#E5E7EB" stroke-width="0.5"/>
+  <rect width="${W}" height="${H}" rx="10" fill="white" stroke="#E5E7EB" stroke-width="0.5"/>
 
   <!-- 헤더 -->
-  <rect width="250" height="36" rx="12" fill="url(#hg)"/>
-  <rect y="24" width="250" height="12" fill="url(#hg)"/>
-  <rect x="10" y="8" width="20" height="20" rx="4" fill="rgba(255,255,255,0.25)"/>
-  <text x="20" y="23" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" text-anchor="middle">N</text>
-  <text x="38" y="23" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white">인플 키워드 순위</text>
-  <text x="240" y="23" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="rgba(255,255,255,0.7)" text-anchor="end">${dateStr}</text>
+  <rect width="${W}" height="32" rx="10" fill="url(#hg)"/>
+  <rect y="22" width="${W}" height="10" fill="url(#hg)"/>
+  <rect x="8" y="6" width="18" height="18" rx="4" fill="rgba(255,255,255,0.25)"/>
+  <text x="17" y="20" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">N</text>
+  <text x="32" y="20" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="white">인플 키워드 순위</text>
 
   <!-- 이름 + 카테고리 -->
-  <text x="14" y="55" font-family="Arial,sans-serif" font-size="13" font-weight="800" fill="#1F2937">${name}</text>
-  <text x="14" y="67" font-family="Arial,sans-serif" font-size="9" fill="#9CA3AF">${data.category} · 키워드 ${data.totalKeywords}개</text>
+  <text x="10" y="50" font-family="Arial,sans-serif" font-size="12" font-weight="800" fill="#1F2937">${name}</text>
+  <text x="10" y="62" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">${data.category} · ${data.totalKeywords}개 키워드</text>
 
-  <!-- 통계 뱃지 -->
-  <rect x="148" y="44" width="92" height="28" rx="8" fill="#FFF5EE"/>
-  <text x="162" y="55" font-family="Arial,sans-serif" font-size="7" fill="#E8854A" font-weight="600">TOP3</text>
-  <text x="162" y="66" font-family="Arial,sans-serif" font-size="11" font-weight="900" fill="#F29C68">${data.top3Count}개</text>
-  <line x1="194" y1="48" x2="194" y2="68" stroke="#F29C6830" stroke-width="1"/>
-  <text x="206" y="55" font-family="Arial,sans-serif" font-size="7" fill="#E8854A" font-weight="600">1위</text>
-  <text x="206" y="66" font-family="Arial,sans-serif" font-size="11" font-weight="900" fill="#F29C68">${data.rank1Count}개</text>
+  <!-- 통계 뱃지 3개 -->
+  <rect x="8" y="70" width="48" height="22" rx="6" fill="#FFF5EE"/>
+  <text x="32" y="79" font-family="Arial,sans-serif" font-size="6" fill="#E8854A" font-weight="600" text-anchor="middle">1위</text>
+  <text x="32" y="88" font-family="Arial,sans-serif" font-size="9" font-weight="900" fill="#F29C68" text-anchor="middle">${data.rank1Count}개</text>
+
+  <rect x="61" y="70" width="48" height="22" rx="6" fill="#FFF5EE"/>
+  <text x="85" y="79" font-family="Arial,sans-serif" font-size="6" fill="#E8854A" font-weight="600" text-anchor="middle">TOP3</text>
+  <text x="85" y="88" font-family="Arial,sans-serif" font-size="9" font-weight="900" fill="#F29C68" text-anchor="middle">${data.top3Count}개</text>
+
+  <rect x="114" y="70" width="48" height="22" rx="6" fill="#FFF5EE"/>
+  <text x="138" y="79" font-family="Arial,sans-serif" font-size="6" fill="#E8854A" font-weight="600" text-anchor="middle">통합T3</text>
+  <text x="138" y="88" font-family="Arial,sans-serif" font-size="9" font-weight="900" fill="#F29C68" text-anchor="middle">${data.integratedTop3}개</text>
 
   <!-- 구분선 -->
-  <line x1="14" y1="74" x2="236" y2="74" stroke="#F3F4F6" stroke-width="1"/>
+  <line x1="10" y1="97" x2="${W - 10}" y2="97" stroke="#F3F4F6" stroke-width="1"/>
 
   <!-- TOP 키워드 목록 -->
   ${keywordRows}
 
   <!-- 하단 -->
-  <line x1="14" y1="152" x2="236" y2="152" stroke="#F3F4F6" stroke-width="1"/>
-  <text x="14" y="166" font-family="Arial,sans-serif" font-size="8" fill="#D1D5DB">평균 ${data.avgRank > 0 ? Math.round(data.avgRank) + '위' : '—'} · 통합검색 TOP3 ${data.integratedTop3}개</text>
-  <text x="236" y="166" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB" text-anchor="end">N인플</text>
+  <line x1="10" y1="${H - 18}" x2="${W - 10}" y2="${H - 18}" stroke="#F3F4F6" stroke-width="1"/>
+  <text x="10" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB">${dateStr} · 평균 ${data.avgRank > 0 ? Math.round(data.avgRank) + '위' : '—'}</text>
+  <text x="${W - 10}" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB" text-anchor="end">N인플</text>
 
   <!-- 하단 악센트 -->
-  <rect y="174" width="250" height="6" rx="0" fill="url(#hg)" opacity="0.15"/>
-  <rect y="174" width="250" height="2" fill="url(#hg)" opacity="0.4"/>
+  <rect y="${H - 4}" width="${W}" height="4" rx="0" fill="url(#hg)" opacity="0.15"/>
+  <rect y="${H - 4}" width="${W}" height="2" fill="url(#hg)" opacity="0.3"/>
 </svg>`;
 }
 
@@ -159,7 +164,7 @@ export async function GET(
     const top3 = latestRankings.filter(r => r.rank_position <= 3).length;
     const top10 = latestRankings.filter(r => r.rank_position <= 10).length;
 
-    const topKeywords = latestRankings.slice(0, 3).map(r => {
+    const topKeywords = latestRankings.slice(0, 5).map(r => {
       const kw = r.keyword as unknown as { keyword: string; category: string } | null;
       return {
         keyword: kw?.keyword || '—',

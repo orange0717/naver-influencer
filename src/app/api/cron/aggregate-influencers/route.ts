@@ -30,15 +30,16 @@ export async function GET(request: NextRequest) {
       // 폴백: 직접 keyword_rankings에서 집계
       const { data: rankings, error: fallbackErr } = await supabase
         .from('keyword_rankings')
-        .select('influencer_id, rank_position, is_integrated_top3')
+        .select('influencer_id, keyword_id, rank_position, is_integrated_top3')
         .gte('snapshot_date', sinceDate);
 
       if (fallbackErr) throw new Error(fallbackErr.message);
 
       // JS에서 GROUP BY 처리
-      const grouped = new Map<string, { ranks: number[]; top3: number }>();
-      for (const r of rankings || []) {
-        const g = grouped.get(r.influencer_id) || { ranks: [], top3: 0 };
+      const grouped = new Map<string, { keywordIds: Set<string>; ranks: number[]; top3: number }>();
+      for (const r of (rankings as { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean }[]) || []) {
+        const g = grouped.get(r.influencer_id) || { keywordIds: new Set(), ranks: [], top3: 0 };
+        g.keywordIds.add(r.keyword_id);
         g.ranks.push(r.rank_position);
         if (r.is_integrated_top3) g.top3++;
         grouped.set(r.influencer_id, g);
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
       stats = Array.from(grouped.entries()).map(([id, g]) => ({
         influencer_id: id,
-        total_keywords: new Set(g.ranks).size,
+        total_keywords: g.keywordIds.size,
         avg_rank: Math.round((g.ranks.reduce((a, b) => a + b, 0) / g.ranks.length) * 100) / 100,
         best_rank: Math.min(...g.ranks),
         integrated_top3_count: g.top3,

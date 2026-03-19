@@ -8,6 +8,8 @@ const CRON_JOBS: Record<string, string> = {
   'update-volumes': '/api/cron/update-volumes',
   'aggregate-influencers': '/api/cron/aggregate-influencers',
   'generate-recommendations': '/api/cron/generate-recommendations',
+  'crawl-blog-ranks': '/api/cron/crawl-blog-ranks',
+  'crawl-selection-dates': '/api/cron/crawl-selection-dates',
 };
 
 /** 수동 크론잡 실행 (테스트용)

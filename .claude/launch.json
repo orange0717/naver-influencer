@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "chrome-ext-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "./chrome-extension", "-p", "8090", "-c-1", "--cors"],
+      "port": 8090
     }
   ]
 }

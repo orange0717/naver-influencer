@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep } from '@/lib/crawler';
 import * as cheerio from 'cheerio';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5분 (Vercel Pro)
+export const maxDuration = 60;
 
-const CRON_SECRET = process.env.CRON_SECRET;
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 /**
@@ -100,7 +100,7 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
     }
 
     if (page < 3 && foundRank === null) {
-      await new Promise(r => setTimeout(r, 500));
+      await sleep(500);
     }
   }
 
@@ -112,14 +112,11 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
  * GET /api/cron/crawl-blog-ranks
  */
 export async function GET(request: NextRequest) {
-  // Vercel Cron 인증
-  if (CRON_SECRET) {
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const jobId = await createCrawlJob('crawl-blog-ranks');
   const supabase = createServiceClient();
   const today = new Date().toISOString().split('T')[0];
 
@@ -149,21 +146,21 @@ export async function GET(request: NextRequest) {
 
     // 3) 블로거별로 순위 체크
     for (const [blogId, kwList] of blogGroups) {
-      // 이전 날의 순위 가져오기 (비교용)
-      const { data: prevData } = await supabase
-        .from('blog_rank_history')
-        .select('keyword, rank_position')
-        .eq('blog_id', blogId)
-        .lt('snapshot_date', today)
-        .order('snapshot_date', { ascending: false })
-        .limit(kwList.length);
-
+      // 이전 날의 순위 가져오기 (비교용) — 키워드별 최신 1건씩
       const prevRanks = new Map<string, number | null>();
-      if (prevData) {
-        for (const p of prevData) {
-          if (!prevRanks.has(p.keyword)) {
-            prevRanks.set(p.keyword, p.rank_position);
-          }
+      for (const keyword of kwList) {
+        const { data: prev } = await supabase
+          .from('blog_rank_history')
+          .select('rank_position')
+          .eq('blog_id', blogId)
+          .eq('keyword', keyword)
+          .lt('snapshot_date', today)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (prev) {
+          prevRanks.set(keyword, prev.rank_position);
         }
       }
 
@@ -200,14 +197,14 @@ export async function GET(request: NextRequest) {
           if (result.rank !== null) totalRanked++;
 
           // Rate limiting — 키워드 사이 600ms 대기
-          await new Promise(r => setTimeout(r, 600));
+          await sleep(600);
         } catch (err) {
           console.error(`[crawl-blog-ranks] Error checking ${blogId}/${keyword}:`, err);
         }
       }
 
       // 블로거 사이 1초 대기
-      await new Promise(r => setTimeout(r, 1000));
+      await sleep(1000);
     }
 
     // 4) blog_scores 업데이트 (요약 통계 갱신)
@@ -247,6 +244,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    await updateCrawlJob(jobId, {
+      status: 'success',
+      total_items: totalChecked,
+      processed_items: totalRanked,
+      failed_items: totalChecked - totalRanked,
+    });
+
     return NextResponse.json({
       success: true,
       date: today,
@@ -255,7 +259,14 @@ export async function GET(request: NextRequest) {
       totalRanked,
     });
   } catch (err) {
-    console.error('[crawl-blog-ranks] Fatal error:', err);
-    return NextResponse.json({ error: '크론잡 실행 실패' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[crawl-blog-ranks] Fatal error:', msg);
+
+    await updateCrawlJob(jobId, {
+      status: 'failed',
+      error_message: msg,
+    });
+
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

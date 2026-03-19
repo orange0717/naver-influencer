@@ -138,13 +138,14 @@ export async function GET(request: NextRequest) {
       throw new Error(`DB insert error: ${error.message}`);
     }
 
-    // keyword_challenges의 recommendation_score도 업데이트
-    for (const kw of scored) {
-      await supabase
-        .from('keyword_challenges')
-        .update({ recommendation_score: kw.score })
-        .eq('id', kw.id);
-    }
+    // keyword_challenges의 recommendation_score 배치 업데이트
+    const scoreUpdates = scored.map(kw => ({
+      id: kw.id,
+      recommendation_score: kw.score,
+    }));
+    await supabase
+      .from('keyword_challenges')
+      .upsert(scoreUpdates, { onConflict: 'id' });
 
     await updateCrawlJob(jobId, {
       status: 'success',
