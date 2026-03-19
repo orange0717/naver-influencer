@@ -437,15 +437,7 @@ export default async function MyDashboard() {
           <span className="text-[11px] text-dim bg-border/30 px-3 py-1 rounded-full">{dataDateLabel}</span>
         </div>
       )}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <AnimatedStatCard
-          label="나의 키워드챌린지 평균순위"
-          value={avgRank > 0 ? Math.round(avgRank) : 0}
-          suffix="위"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
-          color="accent"
-          delay={50}
-        />
+      <div className="grid grid-cols-3 gap-3">
         <AnimatedStatCard
           label="참여 키워드"
           value={totalKeywords}
@@ -476,7 +468,7 @@ export default async function MyDashboard() {
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
       <GlassCard>
         <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-5">
+        <div className="grid grid-cols-3 gap-4 text-center mb-5">
           <div>
             <p className="text-xl font-black font-rank">{formatCount(influencer.subscriber_count || 0)}</p>
             <p className="text-xs text-dim mt-1">팬수</p>
@@ -488,10 +480,6 @@ export default async function MyDashboard() {
           <div>
             <p className="text-xl font-black font-rank text-accent">{totalRankedKeywords}</p>
             <p className="text-xs text-dim mt-1">노출 키워드</p>
-          </div>
-          <div>
-            <p className="text-xl font-black font-rank">{Math.round(avgRank * 10) / 10}<span className="text-sm">위</span></p>
-            <p className="text-xs text-dim mt-1">평균 순위</p>
           </div>
         </div>
         {/* 순위별 키워드 수 (1~5위) */}
