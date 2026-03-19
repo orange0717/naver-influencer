@@ -7,7 +7,6 @@ import { useAuth } from '@/hooks/useAuth';
 
 /* ── 메인 네비게이션 ── */
 const NAV_ITEMS = [
-  { href: '/my/blogger', label: '블로그' },
   { href: '/influencers', label: '인플루언서' },
   { href: '/keywords', label: '키워드' },
   { href: '/community', label: '커뮤니티' },

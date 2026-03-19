@@ -46,7 +46,7 @@ function useRecommendations() {
 
 /* ── FAQ ── */
 const FAQS = [
-  { q: '인플루언서/블로거도 무료로 사용할 수 있나요?', a: '네! 키워드 분석, 블로그 노출 분석, 인플루언서 검색, 커뮤니티 등 핵심 기능을 무료로 이용할 수 있습니다.' },
+  { q: '인플루언서도 무료로 사용할 수 있나요?', a: '네! 키워드 분석, 순위 추적, 인플루언서 검색, 커뮤니티 등 핵심 기능을 무료로 이용할 수 있습니다.' },
   { q: '어떤 데이터를 분석할 수 있나요?', a: '108만 인플루언서 DB, 키워드챌린지 순위·경쟁도, 블로그 검색노출 분석, 검색량 트렌드 등을 제공합니다. 20개 카테고리, 11만 개 이상의 키워드를 커버합니다.' },
   { q: '비즈니스/에이전시 플랜은 어떤 분들에게 적합한가요?', a: '체험단을 운영하거나, 인플루언서 마케팅을 진행하는 소상공인·마케팅 대행사에 적합합니다. 인플루언서 검색·컨택, 블로그 노출 분석, 캠페인 관리 등의 기능을 제공합니다.' },
   { q: '데이터는 얼마나 자주 업데이트되나요?', a: '키워드 순위와 인플루언서 데이터는 매일 자동으로 업데이트됩니다. 검색량 트렌드는 주간 단위로 갱신됩니다.' },
@@ -83,8 +83,8 @@ export default function LandingPage() {
           <Link href="/influencers" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
             인플루언서 검색
           </Link>
-          <Link href="/my/blogger" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
-            블로그 분석
+          <Link href="/my" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
+            대시보드
           </Link>
         </div>
 
