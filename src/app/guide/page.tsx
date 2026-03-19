@@ -292,43 +292,19 @@ export default function GuidePage() {
       {/* ─── 요금 안내 ─── */}
       <div className="bg-bg rounded-2xl border border-border p-8 text-center space-y-6">
         <h2 className="text-xl font-extrabold">요금 안내</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg mx-auto">
           <div className="bg-surface rounded-xl border border-border p-5">
-            <p className="text-xs text-up font-bold tracking-wide mb-2">무료</p>
-            <p className="text-2xl font-extrabold">0원</p>
-            <p className="text-xs text-dim mt-1 mb-4">네이버 인플루언서</p>
-            <ul className="text-xs text-dim space-y-1.5 text-left">
-              <li className="flex items-center gap-1.5"><span className="text-up">&#10003;</span> 키워드 분석 / 검색량</li>
-              <li className="flex items-center gap-1.5"><span className="text-up">&#10003;</span> 인플루언서 검색</li>
-              <li className="flex items-center gap-1.5"><span className="text-up">&#10003;</span> 커뮤니티 참여</li>
-            </ul>
+            <p className="text-2xl font-extrabold">19,800원<span className="text-sm font-normal text-dim">/월</span></p>
+            <p className="text-xs text-dim mt-2">월간 구독</p>
           </div>
           <div className="bg-surface rounded-xl border-2 border-accent/30 p-5 relative">
-            <div className="absolute -top-2.5 left-5 px-2.5 py-0.5 bg-accent text-white text-[9px] font-bold rounded-full">추천</div>
-            <p className="text-xs text-accent font-bold tracking-wide mb-2">BUSINESS</p>
-            <p className="text-2xl font-extrabold">19,800원<span className="text-sm font-normal text-dim">/월</span></p>
-            <p className="text-xs text-dim mt-1 mb-4">소상공인 / 체험단 운영</p>
-            <ul className="text-xs text-dim space-y-1.5 text-left">
-              <li className="flex items-center gap-1.5"><span className="text-accent">&#10003;</span> 인플루언서 상세 검색</li>
-              <li className="flex items-center gap-1.5"><span className="text-accent">&#10003;</span> 키워드 순위 분석 (무제한)</li>
-              <li className="flex items-center gap-1.5"><span className="text-accent">&#10003;</span> 체험단 캠페인 등록</li>
-            </ul>
-          </div>
-          <div className="bg-surface rounded-xl border-2 border-blue/30 p-5 relative">
-            <div className="absolute -top-2.5 left-5 px-2.5 py-0.5 bg-blue text-white text-[9px] font-bold rounded-full">대행사</div>
-            <p className="text-xs text-blue font-bold tracking-wide mb-2">AGENCY</p>
-            <p className="text-2xl font-extrabold">99,000원<span className="text-sm font-normal text-dim">/월</span></p>
-            <p className="text-xs text-dim mt-1 mb-4">마케팅 대행사 / 에이전시</p>
-            <ul className="text-xs text-dim space-y-1.5 text-left">
-              <li className="flex items-center gap-1.5"><span className="text-blue">&#10003;</span> BUSINESS 기능 전체 포함</li>
-              <li className="flex items-center gap-1.5"><span className="text-blue">&#10003;</span> 인플루언서 리스트 다운로드</li>
-              <li className="flex items-center gap-1.5"><span className="text-blue">&#10003;</span> 에이전시 전용 대시보드</li>
-            </ul>
+            <div className="absolute -top-2.5 left-5 px-2.5 py-0.5 bg-accent text-white text-[9px] font-bold rounded-full">25% 할인</div>
+            <p className="text-2xl font-extrabold">178,200원<span className="text-sm font-normal text-dim">/연</span></p>
+            <p className="text-xs text-dim mt-2">월 14,850원</p>
           </div>
         </div>
-        <p className="text-xs text-dim">연간 결제 시 2개월 무료 · 부가세 별도</p>
         <Link href="/subscribe" className="inline-block px-8 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
-          요금제 자세히 보기
+          구독 시작하기
         </Link>
       </div>
 
