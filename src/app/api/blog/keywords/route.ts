@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { validateBody } from '@/lib/validations';
+import { blogKeywordSchema, deleteBlogKeywordSchema } from '@/lib/validations/blog';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,11 +11,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { blog_id, keyword, is_auto } = body;
+    const v = validateBody(blogKeywordSchema, body);
+    if (!v.success) return v.response;
 
-    if (!blog_id || !keyword) {
-      return NextResponse.json({ error: 'blog_id와 keyword가 필요합니다.' }, { status: 400 });
-    }
+    const { blog_id, keyword, is_auto } = v.data;
 
     const supabase = createServiceClient();
 
@@ -72,11 +73,10 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json();
-    const { blog_id, keyword } = body;
+    const v = validateBody(deleteBlogKeywordSchema, body);
+    if (!v.success) return v.response;
 
-    if (!blog_id || !keyword) {
-      return NextResponse.json({ error: 'blog_id와 keyword가 필요합니다.' }, { status: 400 });
-    }
+    const { blog_id, keyword } = v.data;
 
     const supabase = createServiceClient();
 

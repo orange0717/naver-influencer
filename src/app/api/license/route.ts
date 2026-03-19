@@ -1,34 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
+import { validateBody } from '@/lib/validations';
+import { licenseActivateSchema } from '@/lib/validations/payment';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/license — 이용권 코드 활성화
- * body: { license_code, buyer_id, buyer_name?, buyer_type? }
+ * body: { license_code, buyer_name? }
  */
 export async function POST(req: NextRequest) {
   try {
-    // 쿠키에서 인증된 유저 확인
     const cookieUser = await getCookieUser();
     if (!cookieUser) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const body = await req.json();
-    const { license_code, buyer_name } = body;
+    const v = validateBody(licenseActivateSchema, body);
+    if (!v.success) return v.response;
+
+    const { license_code: code, buyer_name } = v.data;
     const buyer_id = cookieUser.id;
     const buyer_type = cookieUser.type;
-
-    if (!license_code) {
-      return NextResponse.json(
-        { error: '이용권 코드를 입력해주세요.' },
-        { status: 400 },
-      );
-    }
-
-    const code = license_code.trim().toUpperCase();
     const supabase = createServiceClient();
 
     // 1. 이용권 코드 조회

@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import VisitTracker from "@/components/VisitTracker";
 import ChatBot from "@/components/ChatBot";
+import Providers from "@/components/Providers";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -29,13 +30,15 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Noto+Serif+KR:wght@400;700;900&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased flex flex-col min-h-screen">
-        <Header />
-        <VisitTracker />
-        <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
-          {children}
-        </main>
-        <Footer />
-        <ChatBot />
+        <Providers>
+          <Header />
+          <VisitTracker />
+          <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
+            {children}
+          </main>
+          <Footer />
+          <ChatBot />
+        </Providers>
       </body>
     </html>
   );

@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { validateBody } from '@/lib/validations';
+import { signupSchema } from '@/lib/validations/auth';
+import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
-  const { authId, email, nickname, naverId } = await request.json();
+  const ip = getClientIp(request);
+  if (authLimiter.check(ip)) return rateLimitResponse();
 
-  if (!authId || !email || !nickname) {
-    return NextResponse.json({ error: '필수 파라미터가 누락되었습니다' }, { status: 400 });
-  }
+  const body = await request.json();
+  const v = validateBody(signupSchema, body);
+  if (!v.success) return v.response;
+
+  const { authId, email, nickname, naverId } = v.data;
 
   const supabase = createServiceClient();
 
@@ -54,15 +60,15 @@ export async function POST(request: NextRequest) {
     .insert({
       auth_id: authId,
       email,
-      nickname: nickname.trim(),
-      point_balance: 100,
+      nickname,
       linked_influencer_id: linkedInfluencerId,
     })
     .select('id')
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[signup] DB error:', error.message);
+    return NextResponse.json({ error: '회원가입 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, userId: data.id });

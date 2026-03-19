@@ -46,6 +46,62 @@ const typeConfig = {
   },
 };
 
+function EventCard({ event, index }: { event: ActivityEvent; index: number }) {
+  const config = typeConfig[event.type];
+  const baseClassName = `
+    flex items-start gap-3 p-3 rounded-xl
+    border-l-[3px] ${config.border}
+    bg-bg/50 hover:bg-bg transition-colors
+    animate-fade-in-up stagger-${Math.min(index + 1, 6)}
+  `.trim();
+
+  const content = (
+    <>
+      <div className={`w-7 h-7 rounded-full ${config.color} flex items-center justify-center shrink-0 mt-0.5`}>
+        {config.icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm leading-relaxed">
+          <span className="font-bold">{event.keyword}</span>
+          {event.type === 'rank_up' && (
+            <span className="text-up"> {event.change}단계 상승</span>
+          )}
+          {event.type === 'rank_down' && (
+            <span className="text-down"> {Math.abs(event.change || 0)}단계 하락</span>
+          )}
+          {event.type === 'new_top3' && (
+            <span className="text-gold"> TOP 3 진입!</span>
+          )}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          {event.from_rank && event.to_rank && (
+            <span className="text-[11px] text-dim font-rank">
+              {event.from_rank}위 → {event.to_rank}위
+            </span>
+          )}
+        </div>
+      </div>
+      {event.change && (
+        <div className={`shrink-0 text-sm font-black font-rank ${
+          event.type === 'rank_down' ? 'text-down' : 'text-up'
+        }`}>
+          {event.type === 'rank_down' ? '▼' : '▲'}{Math.abs(event.change)}
+        </div>
+      )}
+    </>
+  );
+
+  if (event.keyword_id) {
+    return (
+      <Link href={`/keywords/${event.keyword_id}`} className={`${baseClassName} cursor-pointer`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={baseClassName}>{content}</div>;
+}
+
 export default function ActivityFeed({ events, maxVisible = 8 }: ActivityFeedProps) {
   const visibleEvents = events.slice(0, maxVisible);
 
@@ -67,6 +123,9 @@ export default function ActivityFeed({ events, maxVisible = 8 }: ActivityFeedPro
     );
   }
 
+  const downEvents = visibleEvents.filter(e => e.type === 'rank_down');
+  const upEvents = visibleEvents.filter(e => e.type === 'rank_up' || e.type === 'new_top3' || e.type === 'new_keyword' || e.type === 'milestone');
+
   return (
     <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex items-center gap-2 mb-4">
@@ -78,71 +137,44 @@ export default function ActivityFeed({ events, maxVisible = 8 }: ActivityFeedPro
         <span className="text-[11px] text-dim ml-auto">{events.length}건</span>
       </div>
 
-      <div className="space-y-2.5">
-        {visibleEvents.map((event, i) => {
-          const config = typeConfig[event.type];
-          const baseClassName = `
-            flex items-start gap-3 p-3 rounded-xl
-            border-l-[3px] ${config.border}
-            bg-bg/50 hover:bg-bg transition-colors
-            animate-fade-in-up stagger-${Math.min(i + 1, 6)}
-          `.trim();
-
-          const content = (
-            <>
-              {/* 아이콘 */}
-              <div className={`w-7 h-7 rounded-full ${config.color} flex items-center justify-center shrink-0 mt-0.5`}>
-                {config.icon}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 왼쪽: 하락 */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <span className="text-down text-xs font-bold">▼ 하락</span>
+            <span className="text-[11px] text-dim">{downEvents.length}건</span>
+          </div>
+          <div className="space-y-2">
+            {downEvents.length > 0 ? (
+              downEvents.map((event, i) => (
+                <EventCard key={event.id} event={event} index={i} />
+              ))
+            ) : (
+              <div className="text-center py-6 text-dim text-xs bg-bg/30 rounded-xl">
+                하락 키워드 없음
               </div>
+            )}
+          </div>
+        </div>
 
-              {/* 내용 */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm leading-relaxed">
-                  <span className="font-bold">{event.keyword}</span>
-                  {event.type === 'rank_up' && (
-                    <span className="text-up"> {event.change}단계 상승</span>
-                  )}
-                  {event.type === 'rank_down' && (
-                    <span className="text-down"> {Math.abs(event.change || 0)}단계 하락</span>
-                  )}
-                  {event.type === 'new_top3' && (
-                    <span className="text-gold"> TOP 3 진입!</span>
-                  )}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {event.from_rank && event.to_rank && (
-                    <span className="text-[11px] text-dim font-rank">
-                      {event.from_rank}위 → {event.to_rank}위
-                    </span>
-                  )}
-                </div>
+        {/* 오른쪽: 상승 */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <span className="text-up text-xs font-bold">▲ 상승</span>
+            <span className="text-[11px] text-dim">{upEvents.length}건</span>
+          </div>
+          <div className="space-y-2">
+            {upEvents.length > 0 ? (
+              upEvents.map((event, i) => (
+                <EventCard key={event.id} event={event} index={i} />
+              ))
+            ) : (
+              <div className="text-center py-6 text-dim text-xs bg-bg/30 rounded-xl">
+                상승 키워드 없음
               </div>
-
-              {/* 변동 수치 */}
-              {event.change && (
-                <div className={`shrink-0 text-sm font-black font-rank ${
-                  event.type === 'rank_down' ? 'text-down' : 'text-up'
-                }`}>
-                  {event.type === 'rank_down' ? '▼' : '▲'}{Math.abs(event.change)}
-                </div>
-              )}
-            </>
-          );
-
-          if (event.keyword_id) {
-            return (
-              <Link key={event.id} href={`/keywords/${event.keyword_id}`} className={`${baseClassName} cursor-pointer`}>
-                {content}
-              </Link>
-            );
-          }
-
-          return (
-            <div key={event.id} className={baseClassName}>
-              {content}
-            </div>
-          );
-        })}
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

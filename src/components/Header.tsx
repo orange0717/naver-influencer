@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 /* ── 메인 네비게이션 ── */
 const NAV_ITEMS = [
@@ -30,23 +31,14 @@ export default function Header() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [user, setUser] = useState<UserInfo>({ type: null, id: null, name: null });
+  const { user, logout: authLogout } = useAuth();
   const infoRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(setUser)
-      .catch(() => {});
-  }, []);
-
   const handleLogout = async () => {
-    // 클라이언트 Supabase 세션 종료
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    // 서버 쿠키 삭제
     await fetch('/api/auth/logout', { method: 'POST' });
-    setUser({ type: null, id: null, name: null });
+    authLogout();
     router.push('/');
     router.refresh();
   };

@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   // users 테이블에서 프로필 조회
   let { data: userProfile } = await supabase
     .from('users')
-    .select('id, nickname, point_balance, total_charged, total_used, linked_influencer_id, subscription_status, subscription_expires_at')
+    .select('id, nickname, linked_influencer_id, subscription_status, subscription_expires_at')
     .eq('auth_id', authUser.id)
     .single();
 
@@ -51,9 +51,8 @@ export async function GET(request: Request) {
         auth_id: authUser.id,
         email: authUser.email,
         nickname: authUser.email?.split('@')[0] || 'User',
-        point_balance: 0,
       })
-      .select('id, nickname, point_balance, total_charged, total_used, linked_influencer_id, subscription_status, subscription_expires_at')
+      .select('id, nickname, linked_influencer_id, subscription_status, subscription_expires_at')
       .single();
     userProfile = newUser;
   }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { validateBody } from '@/lib/validations';
+import { linkInfluencerSchema } from '@/lib/validations/payment';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,15 +14,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { naverId } = await request.json();
-  if (!naverId || typeof naverId !== 'string') {
-    return NextResponse.json({ error: 'naverId is required' }, { status: 400 });
-  }
+  const body = await request.json();
+  const v = validateBody(linkInfluencerSchema, body);
+  if (!v.success) return v.response;
 
-  // naverId 형식 검증 (영문, 숫자, 밑줄, 하이픈만 허용)
-  if (!/^[a-zA-Z0-9_-]{2,30}$/.test(naverId)) {
-    return NextResponse.json({ error: 'Invalid naverId format' }, { status: 400 });
-  }
+  const { naverId } = v.data;
 
   const supabase = createServiceClient();
 

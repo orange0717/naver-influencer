@@ -3,17 +3,20 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import { fetchNaverProfile } from '../influencer-login/route';
 import { fetchBlogProfile } from '../blogger-login/route';
+import { validateBody } from '@/lib/validations';
+import { unifiedLoginSchema } from '@/lib/validations/auth';
+import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
-    const { blogId, naverId } = await request.json();
+    const ip = getClientIp(request);
+    if (authLimiter.check(ip)) return rateLimitResponse();
 
-    if (!blogId && !naverId) {
-      return NextResponse.json(
-        { error: '블로그 또는 인플루언서 중 하나 이상 입력해주세요.' },
-        { status: 400 },
-      );
-    }
+    const body = await request.json();
+    const v = validateBody(unifiedLoginSchema, body);
+    if (!v.success) return v.response;
+
+    const { blogId, naverId } = v.data;
 
     const cleanBlogId = blogId ? blogId.trim().toLowerCase() : '';
     const cleanNaverId = naverId ? naverId.trim().toLowerCase() : '';
@@ -23,8 +26,8 @@ export async function POST(request: NextRequest) {
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      maxAge: 60 * 60 * 24 * 30,
+      sameSite: 'strict' as const,
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     };
 
@@ -81,7 +84,6 @@ export async function POST(request: NextRequest) {
     let isNewUser = false;
 
     if (influencer) {
-      // 인플루언서가 있으면 linked_influencer_id로 유저 조회
       const { data: existingUser } = await supabase
         .from('users')
         .select('id')
@@ -96,7 +98,6 @@ export async function POST(request: NextRequest) {
             email: `${cleanNaverId}@ninfl.auto`,
             nickname: influencer.display_name || cleanNaverId,
             linked_influencer_id: influencer.id,
-            point_balance: 100,
           });
 
         if (userError) {
@@ -115,7 +116,6 @@ export async function POST(request: NextRequest) {
       cookieStore.set('blog_name', encodeURIComponent(blogProfile.displayName), cookieOptions);
     }
 
-    // user_type 결정
     if (cleanNaverId && cleanBlogId) {
       cookieStore.set('user_type', 'unified', cookieOptions);
     } else if (cleanNaverId) {

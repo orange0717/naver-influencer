@@ -65,25 +65,6 @@ export interface UserSubscription {
   auto_renew: boolean;
 }
 
-/** @deprecated 포인트제 → 구독제 전환됨 */
-export interface PointPackage {
-  id: string;
-  name: string;
-  point_amount: number;
-  price_krw: number;
-  bonus_points: number;
-  is_popular: boolean;
-  unit_price: number;
-}
-
-/** @deprecated 포인트제 → 구독제 전환됨 */
-export interface PricingItem {
-  action_type: string;
-  point_cost: number;
-  description: string;
-  is_free: boolean;
-}
-
 export interface TrendData {
   week: string;
   volume: number;

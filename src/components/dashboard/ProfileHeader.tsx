@@ -15,6 +15,8 @@ interface ProfileHeaderProps {
   children?: ReactNode;
   editable?: boolean;
   onProfileChange?: (data: { displayName?: string; imageUrl?: string }) => void;
+  top3Count?: number;
+  totalKeywords?: number;
 }
 
 function formatCount(n: number): string {
@@ -42,6 +44,8 @@ export default function ProfileHeader({
   children,
   editable = false,
   onProfileChange,
+  top3Count,
+  totalKeywords,
 }: ProfileHeaderProps) {
   const isInfluencer = type === 'influencer';
   const accentColor = isInfluencer ? 'accent' : '[#2DB400]';
@@ -195,6 +199,17 @@ export default function ProfileHeader({
             )}
           </div>
         </div>
+
+        {/* TOP3 달성률 위젯 */}
+        {top3Count !== undefined && totalKeywords !== undefined && totalKeywords > 0 && (
+          <div className="ml-auto shrink-0 text-center bg-accent/[0.07] rounded-xl px-4 py-3 border border-accent/15">
+            <p className="text-[10px] text-accent font-bold tracking-wide mb-1">TOP 3 달성률</p>
+            <p className="text-2xl font-black font-rank text-accent leading-none">
+              {Math.round((top3Count / totalKeywords) * 100)}<span className="text-sm font-bold">%</span>
+            </p>
+            <p className="text-[10px] text-dim mt-1">{top3Count}/{totalKeywords}개</p>
+          </div>
+        )}
       </div>
 
       {/* 추가 스탯 또는 자식 요소 */}

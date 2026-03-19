@@ -357,6 +357,8 @@ export default async function MyDashboard() {
         firstSeenAt={influencer.naver_created_at || influencer.first_seen_at}
         type="influencer"
         subscribed={true}
+        top3Count={top3Count}
+        totalKeywords={totalRankedKeywords}
       />
 
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
@@ -416,7 +418,7 @@ export default async function MyDashboard() {
       {/* ─── 2. 통계 카드 4개 ─── */}
       {dataDateLabel && (
         <div className="flex justify-end">
-          <span className="text-[11px] text-dim bg-border/30 px-3 py-1 rounded-full">📊 {dataDateLabel}</span>
+          <span className="text-[11px] text-dim bg-border/30 px-3 py-1 rounded-full">{dataDateLabel}</span>
         </div>
       )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -615,19 +617,22 @@ export default async function MyDashboard() {
         </div>
         <div className="flex justify-center mb-4 p-4 bg-bg rounded-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/widget/rank/${naverId}`} alt="키워드 순위 위젯" width={170} height={220} className="rounded-lg" />
+          <a href={`/api/widget/rank/${naverId}`} download={`ninfl-rank-${naverId}.svg`} title="클릭하여 이미지 다운로드">
+            <img src={`/api/widget/rank/${naverId}`} alt="키워드 순위 위젯" width={170} height={220} className="rounded-lg cursor-pointer hover:opacity-80 transition" />
+          </a>
         </div>
+        <p className="text-[10px] text-dim text-center mb-4">이미지를 클릭하면 다운로드할 수 있습니다</p>
         <div className="space-y-3">
           <div>
             <p className="text-[11px] font-semibold text-dim mb-1.5">HTML 코드 (블로그 사이드바에 붙여넣기)</p>
             <div className="relative">
               <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
-                {`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`}
+                {`<a href="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" download><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`}
               </code>
-              <CopyButton text={`<a href="https://naver-influencer.vercel.app/my" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`} />
+              <CopyButton text={`<a href="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" download><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`} />
             </div>
           </div>
-          <p className="text-[10px] text-dim leading-relaxed">* 위젯은 매일 자동으로 업데이트됩니다.</p>
+          <p className="text-[10px] text-dim leading-relaxed">* 위젯은 매일 자동으로 업데이트됩니다. 이미지를 클릭하면 최신 위젯을 다운로드합니다.</p>
         </div>
       </GlassCard>
 

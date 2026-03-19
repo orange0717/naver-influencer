@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const limit = parseInt(searchParams.get('limit') || '50');
-  const category = searchParams.get('category') || undefined;
-  const search = searchParams.get('search') || undefined;
-  const cursor = searchParams.get('cursor') || undefined;
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 100);
+  const category = searchParams.get('category')?.slice(0, 50) || undefined;
+  const search = searchParams.get('search')?.slice(0, 100) || undefined;
+  const cursor = searchParams.get('cursor')?.slice(0, 100) || undefined;
 
   try {
     const categories = await fetchCategories();
@@ -76,8 +76,9 @@ export async function GET(request: NextRequest) {
       nextCursor: null,
     });
   } catch (err) {
+    console.error('[keywords] error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to fetch keywords' },
+      { error: '키워드를 불러오는 중 오류가 발생했습니다.' },
       { status: 500 },
     );
   }

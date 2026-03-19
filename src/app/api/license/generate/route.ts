@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import crypto from 'crypto';
+import { validateBody } from '@/lib/validations';
+import { licenseGenerateSchema } from '@/lib/validations/payment';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +13,7 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET;
  * 이용권 코드 생성: NINFL-XXXX-XXXX-XXXX
  */
 function generateCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 혼동 문자 제외 (O/0, I/1)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const segments: string[] = [];
   for (let s = 0; s < 3; s++) {
     let seg = '';
@@ -30,28 +32,25 @@ function generateCode(): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const {
-      secret,
-      count = 10,
-      plan_name = 'PRO',
-      duration_days = 30,
-      price = 9900,
-    } = body;
+    const v = validateBody(licenseGenerateSchema, body);
+    if (!v.success) return v.response;
 
-    // 관리자 인증
+    const { secret, count, plan_name, duration_days, price } = v.data;
+
+    // 관리자 인증 (timing-safe 비교)
     if (!ADMIN_SECRET) {
       console.error('[license/generate] ADMIN_SECRET 환경변수가 설정되지 않았습니다.');
       return NextResponse.json({ error: '서버 설정 오류' }, { status: 500 });
     }
-    if (secret !== ADMIN_SECRET) {
+    if (secret.length !== ADMIN_SECRET.length) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
-
-    if (count < 1 || count > 100) {
-      return NextResponse.json(
-        { error: '1~100개까지 생성 가능합니다.' },
-        { status: 400 },
-      );
+    try {
+      if (!crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(ADMIN_SECRET))) {
+        return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+      }
+    } catch {
+      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
     const supabase = createServiceClient();

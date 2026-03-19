@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import * as cheerio from 'cheerio';
+import { validateBody } from '@/lib/validations';
+import { influencerLoginSchema } from '@/lib/validations/auth';
+import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -49,13 +52,14 @@ export async function fetchNaverProfile(naverId: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { naverId } = await request.json();
+    const ip = getClientIp(request);
+    if (authLimiter.check(ip)) return rateLimitResponse();
 
-    if (!naverId || typeof naverId !== 'string') {
-      return NextResponse.json({ error: '인플루언서 ID를 입력해주세요.' }, { status: 400 });
-    }
+    const body = await request.json();
+    const v = validateBody(influencerLoginSchema, body);
+    if (!v.success) return v.response;
 
-    const cleanId = naverId.trim().toLowerCase();
+    const cleanId = v.data.naverId;
 
     const supabase = createServiceClient();
 
@@ -103,16 +107,16 @@ export async function POST(request: NextRequest) {
     cookieStore.set('naver_id', influencer.naver_id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
 
     cookieStore.set('user_type', 'influencer', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
 

@@ -53,7 +53,7 @@ export async function fetchWithRetry(
   throw new Error(`Failed after ${retries + 1} attempts: ${url}`);
 }
 
-/** CRON_SECRET 검증 (timing-safe 비교) */
+/** CRON_SECRET 검증 (timing-safe 비교, 길이 노출 방지) */
 export function verifyCronSecret(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -62,12 +62,12 @@ export function verifyCronSecret(request: Request): boolean {
   }
   const auth = request.headers.get('authorization') || '';
   const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (provided.length !== secret.length) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(secret));
-  } catch {
-    return false;
-  }
+  if (!provided) return false;
+
+  // 길이가 달라도 timing-safe하게 비교 (SHA-256 해시 비교)
+  const hashProvided = crypto.createHash('sha256').update(provided).digest();
+  const hashSecret = crypto.createHash('sha256').update(secret).digest();
+  return crypto.timingSafeEqual(hashProvided, hashSecret);
 }
 
 /** crawl_jobs 생성 */

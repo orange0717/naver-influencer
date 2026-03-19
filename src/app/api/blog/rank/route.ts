@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import { validateSearchParams } from '@/lib/validations';
+import { blogRankQuerySchema } from '@/lib/validations/blog';
+import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,16 +153,13 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const keyword = searchParams.get('keyword');
-    const blogId = searchParams.get('blogId');
+    const ip = getClientIp(request);
+    if (blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
-    if (!keyword || !blogId) {
-      return NextResponse.json(
-        { error: 'keyword와 blogId 파라미터가 필요합니다.' },
-        { status: 400 },
-      );
-    }
+    const v = validateSearchParams(blogRankQuerySchema, new URL(request.url).searchParams);
+    if (!v.success) return v.response;
+
+    const { keyword, blogId } = v.data;
 
     // 캐시 확인 (3분)
     const cacheKey = `rank-${keyword}-${blogId}`;

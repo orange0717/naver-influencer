@@ -1,23 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
+import { validateBody, validateSearchParams, paginationSchema } from '@/lib/validations';
+import { createPostSchema } from '@/lib/validations/community';
+import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+
+const communityQuerySchema = paginationSchema.extend({
+  category: z.string().optional(),
+});
 
 /**
  * GET /api/community — 게시글 목록
  */
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const category = searchParams.get('category') || '';
-  const page = Math.max(1, Number(searchParams.get('page') || '1'));
-  const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit') || '20')));
+  const v = validateSearchParams(communityQuerySchema, new URL(req.url).searchParams);
+  if (!v.success) return v.response;
+
+  const { page, limit, category } = v.data;
   const offset = (page - 1) * limit;
 
   try {
     const supabase = createServiceClient();
 
-    // 전체 개수 조회
     let countQuery = supabase
       .from('community_posts')
       .select('*', { count: 'exact', head: true })
@@ -26,7 +33,6 @@ export async function GET(req: NextRequest) {
     if (category) countQuery = countQuery.eq('category', category);
     const { count } = await countQuery;
 
-    // 게시글 조회 (고정글 우선, 최신순)
     let query = supabase
       .from('community_posts')
       .select('id, category, title, author_id, author_name, author_type, view_count, comment_count, like_count, created_at, is_pinned')
@@ -58,20 +64,20 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    // 쿠키에서 인증된 유저 확인
+    const ip = getClientIp(req);
+    if (communityLimiter.check(ip)) return rateLimitResponse();
+
     const cookieUser = await getCookieUser();
     if (!cookieUser) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const body = await req.json();
-    const { category, title, content, author_name } = body;
+    const v = validateBody(createPostSchema, body);
+    if (!v.success) return v.response;
 
-    if (!title?.trim() || !content?.trim()) {
-      return NextResponse.json({ error: '필수 항목을 입력해주세요.' }, { status: 400 });
-    }
+    const { category, title, content, author_name } = v.data;
 
-    // 스팸 방지: 같은 사용자가 1분 내 중복 글 방지
     const supabase = createServiceClient();
     const oneMinAgo = new Date(Date.now() - 60000).toISOString();
     const { data: recent } = await supabase
@@ -88,9 +94,9 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from('community_posts')
       .insert({
-        category: category || 'free',
-        title: title.trim().slice(0, 100),
-        content: content.trim().slice(0, 5000),
+        category,
+        title,
+        content,
         author_id: cookieUser.id,
         author_type: cookieUser.type,
         author_name: (author_name || cookieUser.id).slice(0, 50),

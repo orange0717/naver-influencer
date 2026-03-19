@@ -54,6 +54,10 @@ export default function CommunityPostPage() {
   const [liked, setLiked] = useState(false);
   const [user, setUser] = useState<{ type: string; id: string; name: string | null } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; commentId?: string }>({ type: 'post' });
+  const [reportReason, setReportReason] = useState<string>('spam');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -143,6 +147,39 @@ export default function CommunityPostPage() {
     finally { setDeleting(false); }
   };
 
+  const openReport = (type: 'post' | 'comment', commentId?: string) => {
+    setReportTarget({ type, commentId });
+    setReportReason('spam');
+    setReportOpen(true);
+  };
+
+  const handleReport = async () => {
+    if (!user) return;
+    setReportSubmitting(true);
+    try {
+      const res = await fetch(`/api/community/${postId}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: reportReason,
+          target_type: reportTarget.type,
+          comment_id: reportTarget.commentId,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('신고가 접수되었습니다.');
+      } else {
+        alert(data.error || '신고에 실패했습니다.');
+      }
+    } catch {
+      alert('신고 처리 중 오류가 발생했습니다.');
+    } finally {
+      setReportSubmitting(false);
+      setReportOpen(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -197,14 +234,23 @@ export default function CommunityPostPage() {
               <span>{formatDate(post.created_at)}</span>
               <span>조회 {post.view_count}</span>
             </div>
-            {isAuthor && (
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="text-xs text-dim hover:text-red-500 transition cursor-pointer">
-                {deleting ? '삭제 중...' : '삭제'}
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {user && !isAuthor && (
+                <button
+                  onClick={() => openReport('post')}
+                  className="text-xs text-dim hover:text-orange-500 transition cursor-pointer">
+                  신고
+                </button>
+              )}
+              {isAuthor && (
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-xs text-dim hover:text-red-500 transition cursor-pointer">
+                  {deleting ? '삭제 중...' : '삭제'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -255,7 +301,16 @@ export default function CommunityPostPage() {
                   <span className="text-xs font-semibold text-text">{comment.author_name}</span>
                   <span className="text-xs text-dim">{formatDate(comment.created_at)}</span>
                 </div>
-                <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-text leading-relaxed whitespace-pre-wrap flex-1">{comment.content}</p>
+                  {user && user.id !== comment.author_id && (
+                    <button
+                      onClick={() => openReport('comment', comment.id)}
+                      className="text-[10px] text-dim hover:text-orange-500 transition cursor-pointer ml-3 shrink-0">
+                      신고
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -289,6 +344,50 @@ export default function CommunityPostPage() {
           </div>
         )}
       </div>
+
+      {/* 신고 모달 */}
+      {reportOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setReportOpen(false)}>
+          <div className="bg-surface rounded-2xl border border-border p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-text">
+              {reportTarget.type === 'post' ? '게시글' : '댓글'} 신고
+            </h3>
+            <div className="space-y-2">
+              {[
+                { value: 'spam', label: '스팸/광고' },
+                { value: 'abuse', label: '욕설/비방' },
+                { value: 'inappropriate', label: '부적절한 내용' },
+                { value: 'other', label: '기타' },
+              ].map(opt => (
+                <label key={opt.value} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-bg cursor-pointer">
+                  <input
+                    type="radio"
+                    name="report_reason"
+                    value={opt.value}
+                    checked={reportReason === opt.value}
+                    onChange={() => setReportReason(opt.value)}
+                    className="accent-accent"
+                  />
+                  <span className="text-sm text-text">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReportOpen(false)}
+                className="flex-1 py-2.5 text-sm font-semibold text-dim border border-border rounded-xl hover:bg-bg transition cursor-pointer">
+                취소
+              </button>
+              <button
+                onClick={handleReport}
+                disabled={reportSubmitting}
+                className="flex-1 py-2.5 text-sm font-bold text-white bg-orange-500 rounded-xl hover:bg-orange-600 transition disabled:opacity-50 cursor-pointer">
+                {reportSubmitting ? '처리 중...' : '신고하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

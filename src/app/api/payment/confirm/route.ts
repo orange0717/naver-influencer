@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { parsePlanFromOrderId, findPeriod, PLANS, calculatePrice } from '@/lib/plans';
+import { validateBody } from '@/lib/validations';
+import { paymentConfirmSchema } from '@/lib/validations/payment';
+import { paymentLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,11 +17,14 @@ const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || '';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { paymentKey, orderId, amount } = await req.json();
+    const ip = getClientIp(req);
+    if (paymentLimiter.check(ip)) return rateLimitResponse();
 
-    if (!paymentKey || !orderId || !amount) {
-      return NextResponse.json({ error: '필수 파라미터가 없습니다.' }, { status: 400 });
-    }
+    const body = await req.json();
+    const v = validateBody(paymentConfirmSchema, body);
+    if (!v.success) return v.response;
+
+    const { paymentKey, orderId, amount } = v.data;
 
     // 1. 토스페이먼츠 결제 승인 API 호출
     const confirmRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
@@ -41,49 +47,40 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. orderId에서 플랜 정보 추출
-    // 새 형식: NINFL_{planName}_{months}M_{userId}_{timestamp}
-    // 레거시: NINFL_{userId}_{timestamp}
+    // 형식: NINFL_{planName}_{months}M_{userId}_{timestamp}
     const planInfo = parsePlanFromOrderId(orderId);
 
-    let planName: string;
-    let durationDays: number;
-
-    if (planInfo) {
-      // 새 형식
-      planName = planInfo.planName;
-      const period = findPeriod(planInfo.months);
-      durationDays = period?.days || planInfo.months * 30;
-
-      // 결제 금액 서버 검증 — plans.ts 가격과 대조
-      const plan = PLANS[planInfo.planName];
-      if (plan) {
-        const expectedAmount = calculatePrice(plan.basePrice, planInfo.months, period?.discount || 0);
-        if (amount !== expectedAmount) {
-          console.error(`[payment/confirm] 금액 불일치: 요청 ${amount}원, 예상 ${expectedAmount}원, orderId=${orderId}`);
-          return NextResponse.json(
-            { error: `결제 금액이 일치하지 않습니다. (요청: ${amount}원, 예상: ${expectedAmount}원)` },
-            { status: 400 },
-          );
-        }
-      }
-    } else {
-      // 레거시 형식 (기존 호환)
-      planName = 'PRO';
-      durationDays = 30;
+    if (!planInfo) {
+      console.error(`[payment/confirm] 잘못된 orderId 형식: ${orderId}`);
+      return NextResponse.json({ error: '주문 형식이 올바르지 않습니다.' }, { status: 400 });
     }
 
-    // 3. userId 추출
-    let userId: string;
-    if (planInfo) {
-      // 새 형식: NINFL_PRO_3M_{userId}_{timestamp}
-      const parts = orderId.split('_');
-      // NINFL, planName, monthsM, ...userId parts..., timestamp
-      userId = parts.slice(3, -1).join('_');
-    } else {
-      // 레거시: NINFL_{userId}_{timestamp}
-      const parts = orderId.split('_');
-      userId = parts.slice(1, -1).join('_');
+    const plan = PLANS[planInfo.planName];
+    if (!plan) {
+      return NextResponse.json({ error: '존재하지 않는 플랜입니다.' }, { status: 400 });
     }
+
+    const period = findPeriod(planInfo.months);
+    if (!period) {
+      return NextResponse.json({ error: '유효하지 않은 결제 기간입니다.' }, { status: 400 });
+    }
+
+    const planName = planInfo.planName;
+    const durationDays = period.days;
+
+    // 결제 금액 서버 검증
+    const expectedAmount = calculatePrice(plan.basePrice, planInfo.months, period.discount);
+    if (amount !== expectedAmount) {
+      console.error(`[payment/confirm] 금액 불일치: 요청 ${amount}원, 예상 ${expectedAmount}원`);
+      return NextResponse.json(
+        { error: '결제 금액이 일치하지 않습니다.' },
+        { status: 400 },
+      );
+    }
+
+    // 3. userId 추출: NINFL_{planName}_{months}M_{userId}_{timestamp}
+    const parts = orderId.split('_');
+    const userId = parts.slice(3, -1).join('_');
 
     if (!userId) {
       return NextResponse.json({ error: '주문 정보에서 사용자를 찾을 수 없습니다.' }, { status: 400 });

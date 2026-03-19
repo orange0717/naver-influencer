@@ -21,7 +21,7 @@ export async function getAuthUser(request: Request) {
   const supabase = createServiceClient();
   const { data: profile } = await supabase
     .from('users')
-    .select('id, nickname, point_balance, total_charged, total_used, linked_influencer_id, subscription_status, subscription_expires_at')
+    .select('id, nickname, linked_influencer_id, subscription_status, subscription_expires_at')
     .eq('auth_id', authUser.id)
     .single();
 
