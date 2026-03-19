@@ -17,6 +17,7 @@ interface ProfileHeaderProps {
   onProfileChange?: (data: { displayName?: string; imageUrl?: string }) => void;
   top3Count?: number;
   totalKeywords?: number;
+  myKeyword?: string;
 }
 
 function formatCount(n: number): string {
@@ -46,6 +47,7 @@ export default function ProfileHeader({
   onProfileChange,
   top3Count,
   totalKeywords,
+  myKeyword,
 }: ProfileHeaderProps) {
   const isInfluencer = type === 'influencer';
   const accentColor = isInfluencer ? 'accent' : '[#2DB400]';
@@ -172,6 +174,12 @@ export default function ProfileHeader({
               <span className="text-sm text-dim flex items-center gap-1">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
                 {category}
+              </span>
+            )}
+            {myKeyword && (
+              <span className="text-sm text-dim flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                {myKeyword}
               </span>
             )}
             {subscriberCount !== undefined && subscriberCount > 0 && (

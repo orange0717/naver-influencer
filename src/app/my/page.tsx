@@ -369,11 +369,12 @@ export default async function MyDashboard() {
         imageUrl={influencer.image_url}
         category={influencer.my_keyword_category || influencer.category}
         subscriberCount={influencer.subscriber_count || 0}
-        firstSeenAt={influencer.naver_created_at || influencer.first_seen_at}
+        firstSeenAt={influencer.naver_created_at || undefined}
         type="influencer"
         subscribed={true}
         top3Count={top3Count}
         totalKeywords={totalRankedKeywords}
+        myKeyword={influencer.my_keyword || undefined}
       />
 
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
