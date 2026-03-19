@@ -11,9 +11,15 @@ export async function GET() {
   try {
     const supabase = createServiceClient();
 
+    // 최근 7일 이내 등록된 인플루언서만
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const sinceDate = weekAgo.toISOString();
+
     const { data, error } = await supabase
       .from('influencers')
       .select('id, naver_id, display_name, image_url, category, my_keyword_category, subscriber_count, first_seen_at')
+      .gte('first_seen_at', sinceDate)
       .order('first_seen_at', { ascending: false })
       .limit(8);
 

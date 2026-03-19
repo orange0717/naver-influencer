@@ -110,8 +110,8 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
               <p className="text-xs text-accent font-semibold tracking-widest mb-3">NEW INFLUENCERS</p>
-              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">최근 등록된 인플루언서</h2>
-              <p className="text-sm text-dim">새롭게 데이터베이스에 추가된 인플루언서들입니다</p>
+              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">이번 주 신규 인플루언서</h2>
+              <p className="text-sm text-dim">최근 7일간 새로 등록된 인플루언서들입니다</p>
             </div>
 
             <div className="grid gap-3">
