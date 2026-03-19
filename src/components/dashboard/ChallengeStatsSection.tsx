@@ -57,11 +57,7 @@ export default function ChallengeStatsSection({
   compMid,
   compHigh,
 }: ChallengeStatsProps) {
-  const total = compLow + compMid + compHigh;
-  const lowPct = total > 0 ? Math.round((compLow / total) * 100) : 0;
-  const midPct = total > 0 ? Math.round((compMid / total) * 100) : 0;
-  const highPct = total > 0 ? 100 - lowPct - midPct : 0;
-  const top3Rate = rankedKeywords > 0 ? Math.round((top3Count / rankedKeywords) * 100) : 0;
+  const top3Rate = totalKeywords > 0 ? Math.round((top3Count / totalKeywords) * 100) : 0;
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-5 space-y-5">
@@ -110,7 +106,7 @@ export default function ChallengeStatsSection({
           value={top3Rate}
           suffix="%"
           color="text-accent"
-          sub={`${top3Count}/${rankedKeywords}`}
+          sub={`${top3Count}/${totalKeywords}`}
           icon={
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
           }
@@ -135,52 +131,6 @@ export default function ChallengeStatsSection({
         />
       </div>
 
-      {/* 경쟁도 분포 바 */}
-      {total > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-dim">
-            <span>경쟁도 분포</span>
-            <span>{total}개 챌린지</span>
-          </div>
-          <div className="flex h-3 rounded-full overflow-hidden bg-border/30">
-            {lowPct > 0 && (
-              <div
-                className="bg-emerald-400 transition-all duration-700"
-                style={{ width: `${lowPct}%` }}
-                title={`낮음 ${compLow}개`}
-              />
-            )}
-            {midPct > 0 && (
-              <div
-                className="bg-amber-400 transition-all duration-700"
-                style={{ width: `${midPct}%` }}
-                title={`보통 ${compMid}개`}
-              />
-            )}
-            {highPct > 0 && (
-              <div
-                className="bg-rose-400 transition-all duration-700"
-                style={{ width: `${highPct}%` }}
-                title={`높음 ${compHigh}개`}
-              />
-            )}
-          </div>
-          <div className="flex gap-4 text-[11px]">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
-              낮음 {compLow}개 ({lowPct}%)
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
-              보통 {compMid}개 ({midPct}%)
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />
-              높음 {compHigh}개 ({highPct}%)
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

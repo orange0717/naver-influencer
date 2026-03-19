@@ -151,8 +151,8 @@ describe('Payment 스키마', () => {
   it('paymentConfirmSchema 유효 데이터 통과', () => {
     const result = paymentConfirmSchema.safeParse({
       paymentKey: 'pk_test_abc123',
-      orderId: 'NINFL_PERSONAL_1M_user_123456',
-      amount: 9900,
+      orderId: 'NINFL_PRO_1M_user_123456',
+      amount: 19800,
     });
     expect(result.success).toBe(true);
   });

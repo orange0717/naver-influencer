@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     let orderValid = false;
     let productOrderId = orderId;
-    let orderAmount = 9900;
+    let orderAmount = 19800;
 
     if (hasApiKeys) {
       // 5a. Commerce API로 주문 검증

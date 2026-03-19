@@ -290,22 +290,76 @@ export default function GuidePage() {
       </div>
 
       {/* ─── 요금 안내 ─── */}
-      <div className="bg-bg rounded-2xl border border-border p-8 text-center space-y-6">
-        <h2 className="text-xl font-extrabold">요금 안내</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg mx-auto">
-          <div className="bg-surface rounded-xl border border-border p-5">
-            <p className="text-2xl font-extrabold">19,800원<span className="text-sm font-normal text-dim">/월</span></p>
-            <p className="text-xs text-dim mt-2">월간 구독</p>
+      <div className="bg-bg rounded-2xl border border-border p-8 space-y-6">
+        <h2 className="text-xl font-extrabold text-center">요금 안내</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* 무료 */}
+          <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+            <div className="text-center">
+              <span className="text-xs font-bold text-dim bg-border/30 px-2.5 py-1 rounded-full">무료</span>
+              <p className="text-2xl font-extrabold mt-2">0원</p>
+              <p className="text-xs text-dim mt-1">기본 검색 기능</p>
+            </div>
+            <div className="space-y-1.5">
+              {['키워드 목록 검색', '인플루언서 목록 검색', '커뮤니티 이용', '키워드 상세 정보'].map(f => (
+                <div key={f} className="flex items-center gap-2 text-xs">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-dim shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span className="text-dim">{f}</span>
+                </div>
+              ))}
+            </div>
+            <Link href="/auth/login" className="block w-full text-center py-2 border border-border text-dim font-semibold rounded-lg hover:bg-bg transition text-xs">
+              무료로 시작하기
+            </Link>
           </div>
-          <div className="bg-surface rounded-xl border-2 border-accent/30 p-5 relative">
-            <div className="absolute -top-2.5 left-5 px-2.5 py-0.5 bg-accent text-white text-[9px] font-bold rounded-full">25% 할인</div>
-            <p className="text-2xl font-extrabold">178,200원<span className="text-sm font-normal text-dim">/연</span></p>
-            <p className="text-xs text-dim mt-2">월 14,850원</p>
+
+          {/* 월간 */}
+          <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+            <div className="text-center">
+              <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">월간</span>
+              <p className="text-2xl font-extrabold mt-2">19,800원<span className="text-sm font-normal text-dim">/월</span></p>
+              <p className="text-xs text-dim mt-1">매월 자동 결제</p>
+            </div>
+            <div className="space-y-1.5">
+              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+                <div key={f} className="flex items-center gap-2 text-xs">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              <Link href="/subscribe" className="block w-full text-center py-2 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg transition text-xs">
+                월간 시작하기
+              </Link>
+              <p className="text-[10px] text-center text-dim">1일 무료 체험 후 결제</p>
+            </div>
+          </div>
+
+          {/* 연간 */}
+          <div className="bg-surface rounded-xl border-2 border-accent/30 p-5 space-y-4 relative">
+            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-accent text-white text-[9px] font-bold rounded-full">25% 할인</div>
+            <div className="text-center">
+              <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">연간</span>
+              <p className="text-2xl font-extrabold mt-2">178,200원<span className="text-sm font-normal text-dim">/연</span></p>
+              <p className="text-xs text-dim mt-1">월 14,850원</p>
+            </div>
+            <div className="space-y-1.5">
+              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+                <div key={f} className="flex items-center gap-2 text-xs">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              <Link href="/subscribe" className="block w-full text-center py-2 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg transition text-xs">
+                연간 시작하기
+              </Link>
+              <p className="text-[10px] text-center text-dim">1일 무료 체험 후 결제</p>
+            </div>
           </div>
         </div>
-        <Link href="/subscribe" className="inline-block px-8 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
-          구독 시작하기
-        </Link>
       </div>
 
       {/* ─── FAQ ─── */}

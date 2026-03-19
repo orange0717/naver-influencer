@@ -179,7 +179,7 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">FEATURES</p>
-            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">키워드 전략의 모든 것</h2>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">키워드챌린지 전략의 모든 것</h2>
             <p className="text-sm text-dim">데이터 기반의 키워드 분석으로 경쟁 우위를 확보하세요.</p>
           </div>
 
@@ -280,6 +280,184 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ═══════════ 서비스 미리보기 (bg) ═══════════ */}
+      <section className="bg-bg px-4 py-20 md:py-24">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <p className="text-xs text-accent font-semibold tracking-widest mb-3">PREVIEW</p>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">서비스 미리보기</h2>
+            <p className="text-sm text-dim">N인플의 핵심 기능을 확인하세요</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                url: 'ninfl.co.kr/my',
+                title: '내 대시보드',
+                desc: '내 인플루언서 점수, 키워드 순위, 성장 추이를 한눈에 확인하세요.',
+                link: '/my',
+                linkText: '대시보드 보기',
+                mockup: (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-accent">종합 점수</div>
+                    <div className="flex gap-1">
+                      {[78, 85, 72, 90, 68, 82].map((v, i) => (
+                        <div key={i} className="flex-1 bg-accent/10 rounded overflow-hidden" style={{ height: 40 }}>
+                          <div className="bg-accent/40 rounded-t w-full" style={{ height: `${v}%`, marginTop: `${100 - v}%` }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-[8px] text-dim">
+                      <span>활동성</span><span>영향력</span><span>성장성</span><span>안정성</span><span>소통</span><span>전문성</span>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                url: 'ninfl.co.kr/keywords/분석',
+                title: '키워드 순위 추적',
+                desc: '키워드별 내 순위 변동을 실시간으로 추적하고, 하락 전에 대응하세요.',
+                link: '/search-volume',
+                linkText: '키워드 분석하기',
+                mockup: (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-text">맛집 추천</span>
+                      <span className="text-up font-bold">2위 (+1)</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-text">서울 카페</span>
+                      <span className="text-down font-bold">5위 (-2)</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-text">여행 코스</span>
+                      <span className="text-up font-bold">1위 (=)</span>
+                    </div>
+                    <div className="h-[1px] bg-border" />
+                    <div className="flex items-center gap-1 text-[9px] text-accent">
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      TOP3 달성률 67%
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                url: 'ninfl.co.kr/rankings',
+                title: '인플루언서 랭킹',
+                desc: '분야별 인플루언서 순위와 점수를 비교하고 내 위치를 확인하세요.',
+                link: '/rankings',
+                linkText: '랭킹 보기',
+                mockup: (
+                  <div className="space-y-1.5">
+                    {[
+                      { rank: 1, name: '트래블제이', score: 94, change: '+2' },
+                      { rank: 2, name: '맛집헌터', score: 91, change: '=' },
+                      { rank: 3, name: '서울먹방', score: 88, change: '-1' },
+                    ].map(r => (
+                      <div key={r.rank} className="flex items-center gap-2 text-[10px]">
+                        <span className={`w-4 text-center font-extrabold ${r.rank <= 3 ? 'text-accent' : 'text-dim'}`}>{r.rank}</span>
+                        <span className="flex-1 font-semibold text-text">{r.name}</span>
+                        <span className="text-dim">{r.score}점</span>
+                        <span className={`text-[9px] ${r.change.startsWith('+') ? 'text-up' : r.change.startsWith('-') ? 'text-down' : 'text-dim'}`}>{r.change}</span>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                url: 'ninfl.co.kr/alerts',
+                title: '스마트 알림',
+                desc: '순위 하락 위험과 TOP3 진입 기회를 자동으로 감지해 알려드립니다.',
+                link: '/my',
+                linkText: '알림 확인하기',
+                mockup: (
+                  <div className="space-y-2">
+                    <div className="bg-down/10 border border-down/20 rounded-lg px-2.5 py-2">
+                      <p className="text-[9px] font-bold text-down">하락 위험</p>
+                      <p className="text-[9px] text-dim">&quot;맛집 추천&quot; 2일 연속 하락 (3위→5위)</p>
+                    </div>
+                    <div className="bg-up/10 border border-up/20 rounded-lg px-2.5 py-2">
+                      <p className="text-[9px] font-bold text-up">TOP3 기회</p>
+                      <p className="text-[9px] text-dim">&quot;서울 카페&quot; 현재 4위, 상승 추세</p>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                url: 'ninfl.co.kr/compare',
+                title: '경쟁자 비교',
+                desc: '같은 키워드에 참여 중인 경쟁자와 점수를 비교하고 전략을 세우세요.',
+                link: '/my',
+                linkText: '비교 분석하기',
+                mockup: (
+                  <div className="space-y-2">
+                    <div className="flex items-end gap-1" style={{ height: 50 }}>
+                      {[
+                        { name: '나', h: 85, accent: true },
+                        { name: 'A', h: 72, accent: false },
+                        { name: 'B', h: 68, accent: false },
+                      ].map(b => (
+                        <div key={b.name} className="flex-1 text-center">
+                          <div className={`rounded-t mx-auto ${b.accent ? 'bg-accent' : 'bg-border'}`} style={{ height: `${b.h}%`, width: '70%' }} />
+                          <p className={`text-[8px] mt-1 ${b.accent ? 'font-bold text-accent' : 'text-dim'}`}>{b.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[9px] text-dim text-center">종합 점수 비교</p>
+                  </div>
+                ),
+              },
+              {
+                url: 'ninfl.co.kr/report',
+                title: '성장 리포트',
+                desc: '주간/월간 성장 추이와 점수 변화를 리포트로 확인하세요.',
+                link: '/my',
+                linkText: '리포트 보기',
+                mockup: (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-text">이번 주 성장률</span>
+                      <span className="text-up font-bold">+12%</span>
+                    </div>
+                    <div className="flex gap-0.5 items-end" style={{ height: 30 }}>
+                      {[40, 45, 42, 55, 60, 58, 70].map((v, i) => (
+                        <div key={i} className="flex-1 bg-accent/30 rounded-t" style={{ height: `${v}%` }} />
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-[7px] text-dim">
+                      <span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span>
+                    </div>
+                  </div>
+                ),
+              },
+            ].map(card => (
+              <div key={card.title} className="bg-surface rounded-2xl border border-border overflow-hidden">
+                {/* 브라우저 목업 */}
+                <div className="bg-bg border-b border-border">
+                  <div className="flex items-center gap-1.5 px-3 py-2">
+                    <div className="w-2 h-2 rounded-full bg-[#FF6058]" />
+                    <div className="w-2 h-2 rounded-full bg-[#FFBD2E]" />
+                    <div className="w-2 h-2 rounded-full bg-[#27CA40]" />
+                    <span className="ml-2 text-[9px] text-dim">{card.url}</span>
+                  </div>
+                  <div className="px-4 py-4">
+                    {card.mockup}
+                  </div>
+                </div>
+                {/* 설명 */}
+                <div className="p-5">
+                  <h3 className="font-bold text-text mb-1.5">{card.title}</h3>
+                  <p className="text-xs text-dim leading-relaxed mb-3">{card.desc}</p>
+                  <Link href={card.link} className="text-sm text-accent font-semibold hover:underline">
+                    {card.linkText} →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════ 가격 (bg) ═══════════ */}
       <section className="bg-bg px-4 py-20 md:py-24">
         <div className="max-w-3xl mx-auto">
@@ -289,23 +467,72 @@ export default function LandingPage() {
             <p className="text-sm text-dim">인플루언서를 위한 합리적인 가격</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-5 max-w-lg mx-auto">
-            <div className="bg-surface rounded-2xl border border-border p-7 text-center">
-              <p className="text-xs font-bold text-dim tracking-wide mb-3">월간 구독</p>
-              <p className="text-3xl font-extrabold text-text mb-1">₩19,800<span className="text-sm font-normal text-dim">/월</span></p>
-              <Link href="/subscribe" className="inline-block mt-5 px-6 py-2.5 rounded-full border border-accent text-accent text-sm font-medium hover:bg-accent/5 transition-colors">
-                월간 시작하기
+          <div className="grid md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+            {/* 무료 */}
+            <div className="bg-surface rounded-2xl border border-border p-7 space-y-5">
+              <div className="text-center">
+                <span className="text-xs font-bold text-dim bg-border/30 px-2.5 py-1 rounded-full">무료</span>
+                <p className="text-3xl font-extrabold text-text mt-3">0원</p>
+                <p className="text-xs text-dim mt-1">기본 검색 기능</p>
+              </div>
+              <div className="space-y-2">
+                {['키워드 목록 검색', '인플루언서 목록 검색', '커뮤니티 이용', '키워드 상세 정보'].map(f => (
+                  <div key={f} className="flex items-center gap-2 text-sm">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-dim shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span className="text-dim">{f}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/auth/login" className="block w-full text-center py-2.5 border border-border text-dim font-semibold rounded-xl hover:bg-bg transition text-sm">
+                무료로 시작하기
               </Link>
             </div>
 
-            <div className="bg-surface rounded-2xl border-2 border-accent/30 p-7 text-center relative">
+            {/* 월간 */}
+            <div className="bg-surface rounded-2xl border border-border p-7 space-y-5">
+              <div className="text-center">
+                <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">월간</span>
+                <p className="text-3xl font-extrabold text-text mt-3">19,800원<span className="text-sm font-normal text-dim">/월</span></p>
+                <p className="text-xs text-dim mt-1">매월 자동 결제</p>
+              </div>
+              <div className="space-y-2">
+                {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+                  <div key={f} className="flex items-center gap-2 text-sm">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <Link href="/subscribe" className="block w-full text-center py-2.5 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
+                  월간 시작하기
+                </Link>
+                <p className="text-[10px] text-center text-dim">1일 무료 체험 후 결제</p>
+              </div>
+            </div>
+
+            {/* 연간 */}
+            <div className="bg-surface rounded-2xl border-2 border-accent/30 p-7 space-y-5 relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">25% 할인</div>
-              <p className="text-xs font-bold text-accent tracking-wide mb-3">연간 구독</p>
-              <p className="text-3xl font-extrabold text-text mb-1">₩178,200<span className="text-sm font-normal text-dim">/연</span></p>
-              <p className="text-xs text-dim mt-1">월 14,850원</p>
-              <Link href="/subscribe" className="inline-block mt-5 px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors">
-                연간 시작하기 →
-              </Link>
+              <div className="text-center">
+                <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">연간</span>
+                <p className="text-3xl font-extrabold text-text mt-3">178,200원<span className="text-sm font-normal text-dim">/연</span></p>
+                <p className="text-xs text-dim mt-1">월 14,850원</p>
+              </div>
+              <div className="space-y-2">
+                {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+                  <div key={f} className="flex items-center gap-2 text-sm">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <Link href="/subscribe" className="block w-full text-center py-2.5 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
+                  연간 시작하기
+                </Link>
+                <p className="text-[10px] text-center text-dim">1일 무료 체험 후 결제</p>
+              </div>
             </div>
           </div>
         </div>

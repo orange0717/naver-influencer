@@ -22,7 +22,7 @@ export const licenseGenerateSchema = z.object({
   count: z.number().int().min(1).max(100).default(10),
   plan_name: z.string().default('PRO'),
   duration_days: z.number().int().min(1).default(30),
-  price: z.number().int().min(0).default(9900),
+  price: z.number().int().min(0).default(19800),
 });
 
 /** PATCH /api/profile */
