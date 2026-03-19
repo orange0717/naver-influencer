@@ -17,10 +17,7 @@ import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection'
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
-import { computeGrowthSummary, computeScoreTrend } from '@/lib/growth-analysis';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
-import GrowthReport from '@/components/dashboard/GrowthReport';
-import ScoreTrendChart from '@/components/dashboard/ScoreTrendChart';
 
 export const dynamic = 'force-dynamic';
 
@@ -353,13 +350,6 @@ export default async function MyDashboard() {
   // ─── 5. 스마트 알림 (순위 트렌드 분석) ───
   const rankAlerts = analyzeRankAlerts(latestRankings || []);
 
-  // ─── 6. 성장 리포트 (주간/월간 비교) ───
-  const growthSummary7d = computeGrowthSummary(latestRankings || [], '7d');
-  const growthSummary30d = computeGrowthSummary(latestRankings || [], '30d');
-
-  // ─── 7. 종합 점수 추이 ───
-  const scoreTrend = computeScoreTrend(latestRankings || [], influencer.subscriber_count || 0);
-
   return (
     <div className="space-y-6">
 
@@ -541,13 +531,7 @@ export default async function MyDashboard() {
         overallTotal={overallTotal}
       />
 
-      {/* ─── 2-3. 성장 리포트 ─── */}
-      <GrowthReport summary7d={growthSummary7d} summary30d={growthSummary30d} />
-
-      {/* ─── 2-4. 종합 점수 추이 ─── */}
-      <ScoreTrendChart data={scoreTrend} />
-
-      {/* ─── 2-5. 스마트 알림 (오늘의 액션 포인트) ─── */}
+      {/* ─── 2-3. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
 
       {/* ─── 3. 순위 추이 차트 ─── */}
