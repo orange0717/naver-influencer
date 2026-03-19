@@ -1,150 +1,292 @@
 import Link from 'next/link';
 
-const STEPS = [
-  {
-    step: '01',
-    title: '회원가입',
-    description: '이메일로 가입하고 네이버 인플루언서 계정을 연결하세요. 가입 즉시 키워드 분석을 시작할 수 있습니다.',
-    link: '/auth/signup',
-    linkText: '가입하기',
-  },
-  {
-    step: '02',
-    title: '대시보드 확인',
-    description: '내 키워드 순위, 종합 점수, 경쟁자 분석까지 한눈에 확인하세요. 매일 자동으로 데이터가 업데이트됩니다.',
-    link: '/my',
-    linkText: '대시보드 보기',
-  },
-  {
-    step: '03',
-    title: '알림으로 대응',
-    description: '순위 하락 위험 키워드, TOP 3 기회 키워드를 자동으로 감지합니다. 알림에 따라 콘텐츠를 전략적으로 작성하세요.',
-    link: '/subscribe',
-    linkText: 'PRO 시작하기',
-  },
-];
+/* ── 브라우저 프레임 ── */
+function BrowserFrame({ url, children }: { url: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm">
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50 bg-border/20">
+        <span className="w-2.5 h-2.5 rounded-full bg-down/40" />
+        <span className="w-2.5 h-2.5 rounded-full bg-gold/40" />
+        <span className="w-2.5 h-2.5 rounded-full bg-up/40" />
+        <span className="ml-2 text-[10px] text-dim/60 truncate">{url}</span>
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
 
+/* ── 기능 카드 데이터 ── */
 const FEATURES = [
   {
-    title: '키워드 순위 실시간 추적',
-    description: '내가 참여한 키워드챌린지의 순위를 매일 자동으로 수집합니다. 7일/15일/30일 추이 차트로 변동을 한눈에 파악하세요.',
-    category: '핵심',
+    url: 'ninfl.co.kr/my',
+    title: '키워드 순위 추적',
+    description: '내가 참여한 키워드챌린지 순위를 매일 자동으로 수집합니다. 순위 변동을 한눈에 파악하세요.',
+    link: '/my',
+    linkText: '대시보드 보기',
+    mockup: 'ranking',
   },
   {
+    url: 'ninfl.co.kr/my#alerts',
     title: '스마트 알림',
-    description: '2일 연속 하락 중인 키워드는 "하락 위험"으로, 4~6위에서 상승 중인 키워드는 "TOP 3 기회"로 자동 분류합니다.',
-    category: 'PRO',
+    description: '하락 위험 키워드와 TOP 3 진입 기회 키워드를 자동으로 감지하여 알려드립니다.',
+    link: '/subscribe',
+    linkText: 'PRO 시작하기',
+    mockup: 'alerts',
   },
   {
+    url: 'ninfl.co.kr/my#growth',
     title: '성장 리포트',
-    description: '지난 7일/30일간의 성과를 이전 기간과 비교합니다. 평균 순위, TOP 3 수, 키워드 수 변화를 한눈에 확인하세요.',
-    category: 'PRO',
+    description: '지난 7일/30일 성과를 이전 기간과 비교합니다. 평균 순위, TOP 3 수 변화를 확인하세요.',
+    link: '/subscribe',
+    linkText: 'PRO 시작하기',
+    mockup: 'growth',
   },
   {
-    title: '종합 점수',
-    description: '영향력, 전문성, 노출도, 성장성, 활동성, 경쟁력 6가지 차원으로 인플루언서 역량을 분석합니다.',
-    category: '핵심',
-  },
-  {
-    title: '경쟁자 비교',
-    description: '경쟁 인플루언서를 등록하면 겹치는 키워드에서 누가 앞서는지, 경쟁자가 내 키워드에 진입했는지 추적합니다.',
-    category: 'PRO',
-  },
-  {
+    url: 'ninfl.co.kr/keywords',
     title: '키워드 분석',
-    description: '11만 개 이상의 키워드에서 참여자 수, 검색량, 경쟁도를 분석합니다. 블루오션 키워드를 발굴하세요.',
-    category: '무료',
+    description: '11만 개 이상의 키워드에서 참여자 수, 검색량, 경쟁도를 분석합니다. 블루오션을 발굴하세요.',
+    link: '/keywords',
+    linkText: '무료로 검색하기',
+    mockup: 'keywords',
   },
   {
-    title: '포스팅 분석',
-    description: '내 포스팅별로 어떤 키워드에서 몇 위인지 분석합니다. 하나의 포스팅이 여러 키워드에 영향을 주는 구조를 파악하세요.',
-    category: 'PRO',
+    url: 'ninfl.co.kr/my#competitors',
+    title: '경쟁자 비교',
+    description: '경쟁 인플루언서를 등록하면 겹치는 키워드에서 누가 앞서는지 실시간으로 비교합니다.',
+    link: '/subscribe',
+    linkText: 'PRO 시작하기',
+    mockup: 'competitors',
   },
   {
-    title: '순위 위젯',
-    description: '내 블로그에 키워드 순위 위젯을 삽입할 수 있습니다. HTML 코드를 복사해서 블로그 사이드바에 붙여넣기만 하면 됩니다.',
-    category: '핵심',
+    url: 'ninfl.co.kr/my#score',
+    title: '종합 점수 분석',
+    description: '영향력, 전문성, 노출도, 성장성, 활동성, 경쟁력 6가지 차원으로 역량을 분석합니다.',
+    link: '/my',
+    linkText: '내 점수 확인',
+    mockup: 'score',
   },
 ];
 
+/* ── 목업 컴포넌트들 ── */
+function RankingMockup() {
+  const rows = [
+    { kw: '제주도맛집', rank: 2, change: 1, tag: 'top3' },
+    { kw: '부산여행', rank: 5, change: -2, tag: 'down' },
+    { kw: '서울카페', rank: 1, change: 0, tag: 'top3' },
+  ];
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">실시간</span>
+        <span className="text-[10px] text-dim">3개 키워드 참여 중</span>
+      </div>
+      {rows.map(r => (
+        <div key={r.kw} className="flex items-center justify-between bg-bg rounded-lg px-3 py-2 border border-border/50">
+          <span className="text-xs font-semibold">{r.kw}</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-bold ${r.tag === 'top3' ? 'text-accent' : 'text-text'}`}>{r.rank}위</span>
+            <span className={`text-[10px] font-bold ${r.change > 0 ? 'text-up' : r.change < 0 ? 'text-down' : 'text-dim'}`}>
+              {r.change > 0 ? `+${r.change}` : r.change < 0 ? r.change : '-'}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AlertsMockup() {
+  return (
+    <div className="space-y-2">
+      <div className="bg-down/10 border border-down/20 rounded-lg px-3 py-2.5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-[10px] font-bold text-down bg-down/15 px-1.5 py-0.5 rounded">하락 위험</span>
+        </div>
+        <p className="text-[11px] text-dim"><span className="font-semibold text-text">부산여행</span> 2일 연속 하락 중 (3위 → 5위)</p>
+      </div>
+      <div className="bg-up/10 border border-up/20 rounded-lg px-3 py-2.5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-[10px] font-bold text-up bg-up/15 px-1.5 py-0.5 rounded">TOP 3 기회</span>
+        </div>
+        <p className="text-[11px] text-dim"><span className="font-semibold text-text">강남맛집</span> 4위에서 상승 추세 감지</p>
+      </div>
+    </div>
+  );
+}
+
+function GrowthMockup() {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-bold text-dim">최근 7일 vs 이전 7일</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-bg rounded-lg p-2 text-center border border-border/50">
+          <p className="text-[10px] text-dim">평균 순위</p>
+          <p className="text-sm font-extrabold text-up">3.2위</p>
+          <p className="text-[9px] text-up">+1.5</p>
+        </div>
+        <div className="bg-bg rounded-lg p-2 text-center border border-border/50">
+          <p className="text-[10px] text-dim">TOP 3</p>
+          <p className="text-sm font-extrabold text-accent">5개</p>
+          <p className="text-[9px] text-up">+2</p>
+        </div>
+        <div className="bg-bg rounded-lg p-2 text-center border border-border/50">
+          <p className="text-[10px] text-dim">키워드</p>
+          <p className="text-sm font-extrabold text-text">12개</p>
+          <p className="text-[9px] text-dim">-</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KeywordsMockup() {
+  const rows = [
+    { kw: '제주도맛집', participants: 342, volume: '12,400', competition: '낮음' },
+    { kw: '서울카페', participants: 891, volume: '45,200', competition: '높음' },
+  ];
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex-1 bg-bg rounded-lg border border-border/50 px-2.5 py-1.5 text-[10px] text-dim">키워드를 검색하세요...</div>
+      </div>
+      {rows.map(r => (
+        <div key={r.kw} className="bg-bg rounded-lg px-3 py-2 border border-border/50">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold">{r.kw}</span>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${r.competition === '낮음' ? 'text-up bg-up/10' : 'text-down bg-down/10'}`}>{r.competition}</span>
+          </div>
+          <div className="flex gap-3 mt-1">
+            <span className="text-[10px] text-dim">참여 {r.participants}명</span>
+            <span className="text-[10px] text-dim">검색량 {r.volume}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompetitorsMockup() {
+  return (
+    <div className="space-y-2">
+      <div className="text-[10px] font-bold text-dim mb-2">겹치는 키워드 3개</div>
+      <div className="bg-bg rounded-lg px-3 py-2 border border-border/50">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-semibold">제주도맛집</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="flex items-center justify-between text-[10px] mb-0.5">
+              <span className="text-accent font-semibold">나</span>
+              <span className="font-bold">2위</span>
+            </div>
+            <div className="h-1.5 bg-accent/20 rounded-full"><div className="h-full bg-accent rounded-full" style={{ width: '85%' }} /></div>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between text-[10px] mb-0.5">
+              <span className="text-dim font-semibold">경쟁자A</span>
+              <span className="font-bold">4위</span>
+            </div>
+            <div className="h-1.5 bg-border rounded-full"><div className="h-full bg-dim/40 rounded-full" style={{ width: '60%' }} /></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScoreMockup() {
+  const dims = [
+    { label: '영향력', value: 82, color: 'bg-accent' },
+    { label: '전문성', value: 75, color: 'bg-up' },
+    { label: '노출도', value: 90, color: 'bg-accent' },
+    { label: '성장성', value: 68, color: 'bg-gold' },
+    { label: '활동성', value: 85, color: 'bg-up' },
+    { label: '경쟁력', value: 72, color: 'bg-accent' },
+  ];
+  return (
+    <div className="space-y-2">
+      <div className="text-center mb-2">
+        <span className="text-2xl font-black text-accent">78</span>
+        <span className="text-xs text-dim ml-1">/ 100</span>
+      </div>
+      <div className="space-y-1.5">
+        {dims.map(d => (
+          <div key={d.label} className="flex items-center gap-2">
+            <span className="text-[10px] text-dim w-12 text-right">{d.label}</span>
+            <div className="flex-1 h-1.5 bg-border/50 rounded-full">
+              <div className={`h-full ${d.color} rounded-full`} style={{ width: `${d.value}%` }} />
+            </div>
+            <span className="text-[10px] font-bold w-6">{d.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const MOCKUP_MAP: Record<string, () => React.ReactNode> = {
+  ranking: RankingMockup,
+  alerts: AlertsMockup,
+  growth: GrowthMockup,
+  keywords: KeywordsMockup,
+  competitors: CompetitorsMockup,
+  score: ScoreMockup,
+};
+
+/* ── FAQ ── */
 const FAQS = [
   {
     q: '가입하면 바로 순위를 볼 수 있나요?',
-    a: '네, 가입 시 인플루언서 계정을 연결하면 이미 수집된 키워드 순위 데이터를 바로 확인할 수 있습니다. 신규 키워드는 다음 날부터 수집됩니다.',
+    a: '네, 인플루언서 계정을 연결하면 이미 수집된 키워드 순위 데이터를 바로 확인할 수 있습니다.',
   },
   {
     q: '무료와 PRO의 차이는 무엇인가요?',
-    a: '무료로 키워드 검색, 인플루언서 검색, 커뮤니티를 이용할 수 있습니다. PRO에서는 내 순위 추적, 스마트 알림, 성장 리포트, 경쟁자 비교 등 대시보드 전체 기능을 이용할 수 있습니다.',
+    a: '무료로 키워드 검색, 인플루언서 검색, 커뮤니티를 이용할 수 있습니다. PRO에서는 대시보드 전체 기능(알림, 리포트, 경쟁자 비교)을 이용할 수 있습니다.',
   },
   {
     q: '데이터는 어떻게 수집되나요?',
-    a: '네이버 키워드챌린지 순위를 매일 자동으로 크롤링합니다. 내 인플루언서 계정에 연결된 키워드의 순위, 경쟁자 정보, 검색량 등을 수집합니다.',
-  },
-  {
-    q: '경쟁자는 몇 명까지 등록할 수 있나요?',
-    a: '제한 없이 등록할 수 있습니다. 같은 키워드에 참여하는 인플루언서를 등록하면 겹치는 키워드에서 순위를 비교할 수 있습니다.',
+    a: '네이버 키워드챌린지 순위를 매일 자동으로 수집합니다. 내 인플루언서 계정에 연결된 키워드의 순위, 경쟁자 정보 등을 크롤링합니다.',
   },
   {
     q: '해지는 어떻게 하나요?',
-    a: '마이페이지에서 언제든지 구독을 해지할 수 있습니다. 해지해도 남은 기간까지 정상적으로 이용 가능합니다.',
+    a: '마이페이지에서 언제든지 구독을 해지할 수 있습니다. 해지해도 남은 기간까지 정상 이용 가능합니다.',
   },
 ];
 
 export default function GuidePage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 space-y-16">
+    <div className="max-w-5xl mx-auto px-4 py-12 space-y-16">
 
       {/* ─── 히어로 ─── */}
       <div className="text-center space-y-4">
         <p className="text-xs text-accent font-semibold tracking-widest">SERVICE GUIDE</p>
-        <h1 className="text-3xl md:text-4xl font-extrabold">
-          N인플 서비스 가이드
-        </h1>
+        <h1 className="text-3xl md:text-4xl font-extrabold">서비스 미리보기</h1>
         <p className="text-dim text-sm md:text-base max-w-lg mx-auto leading-relaxed">
-          키워드챌린지 순위를 추적하고, 하락에 대응하고, TOP 3 기회를 포착하세요.
-          <br />
-          N인플이 데이터로 도와드립니다.
+          N인플의 핵심 기능을 확인하세요.
         </p>
       </div>
 
-      {/* ─── 3단계 시작 ─── */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-extrabold text-center">3단계로 시작하세요</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {STEPS.map(s => (
-            <div key={s.step} className="bg-surface rounded-2xl border border-border p-6 space-y-3">
-              <span className="text-3xl font-extrabold text-accent/20">{s.step}</span>
-              <h3 className="font-bold text-lg">{s.title}</h3>
-              <p className="text-sm text-dim leading-relaxed">{s.description}</p>
-              <Link href={s.link} className="inline-block text-sm text-accent font-semibold hover:underline">
-                {s.linkText} →
-              </Link>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ─── 주요 기능 ─── */}
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-xl font-extrabold">주요 기능</h2>
-          <p className="text-sm text-dim mt-1">인플루언서를 위한 데이터 분석 도구</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {FEATURES.map(f => (
-            <div key={f.title} className="bg-surface rounded-xl border border-border p-5 space-y-2">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm">{f.title}</h3>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  f.category === 'PRO' ? 'bg-accent/10 text-accent' :
-                  f.category === '무료' ? 'bg-up/10 text-up' :
-                  'bg-border/50 text-dim'
-                }`}>{f.category}</span>
+      {/* ─── 기능 카드 그리드 ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {FEATURES.map(f => {
+          const MockupComponent = MOCKUP_MAP[f.mockup];
+          return (
+            <div key={f.title} className="space-y-4">
+              <BrowserFrame url={f.url}>
+                {MockupComponent && <MockupComponent />}
+              </BrowserFrame>
+              <div>
+                <h3 className="font-bold text-base">{f.title}</h3>
+                <p className="text-xs text-dim leading-relaxed mt-1">{f.description}</p>
+                <Link href={f.link} className="inline-block text-sm text-accent font-semibold hover:underline mt-2">
+                  {f.linkText} →
+                </Link>
               </div>
-              <p className="text-xs text-dim leading-relaxed">{f.description}</p>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* ─── 요금 안내 ─── */}
