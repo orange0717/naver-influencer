@@ -18,6 +18,7 @@ interface ProfileHeaderProps {
   top3Count?: number;
   totalKeywords?: number;
   myKeyword?: string;
+  naverId?: string;
 }
 
 function formatCount(n: number): string {
@@ -48,6 +49,7 @@ export default function ProfileHeader({
   top3Count,
   totalKeywords,
   myKeyword,
+  naverId,
 }: ProfileHeaderProps) {
   const isInfluencer = type === 'influencer';
   const accentColor = isInfluencer ? 'accent' : '[#2DB400]';
@@ -55,6 +57,9 @@ export default function ProfileHeader({
   // 닉네임 편집
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(displayName);
+
+  // TOP3 위젯 코드 모달
+  const [showWidgetCode, setShowWidgetCode] = useState(false);
 
   // 프로필 사진 업로드
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -210,15 +215,65 @@ export default function ProfileHeader({
 
         {/* TOP3 달성률 위젯 */}
         {top3Count !== undefined && totalKeywords !== undefined && totalKeywords > 0 && (
-          <div className="ml-auto shrink-0 text-center bg-accent/[0.07] rounded-xl px-4 py-3 border border-accent/15">
+          <button
+            onClick={() => naverId && setShowWidgetCode(true)}
+            className="ml-auto shrink-0 text-center bg-accent/[0.07] rounded-xl px-4 py-3 border border-accent/15 cursor-pointer hover:bg-accent/[0.12] transition"
+            title="클릭하면 블로그 삽입 코드를 확인할 수 있습니다"
+          >
             <p className="text-[10px] text-accent font-bold tracking-wide mb-1">TOP 3 달성률</p>
             <p className="text-2xl font-black font-rank text-accent leading-none">
               {Math.round((top3Count / totalKeywords) * 100)}<span className="text-sm font-bold">%</span>
             </p>
             <p className="text-[10px] text-dim mt-1">{top3Count}/{totalKeywords}개</p>
-          </div>
+          </button>
         )}
       </div>
+
+      {/* TOP3 위젯 HTML 코드 모달 */}
+      {showWidgetCode && naverId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowWidgetCode(false)}>
+          <div className="bg-surface rounded-2xl border border-border p-6 max-w-lg w-full space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg">TOP 3 달성률 위젯</h3>
+              <button onClick={() => setShowWidgetCode(false)} className="text-dim hover:text-text transition cursor-pointer">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            {/* 미리보기 */}
+            <div className="flex justify-center py-2">
+              <img
+                src={`/api/widget/top3/${naverId}`}
+                alt="TOP3 달성률 위젯"
+                width={170}
+                className="rounded-lg"
+              />
+            </div>
+
+            {/* HTML 코드 */}
+            <div>
+              <p className="text-xs text-dim font-semibold mb-2">아래 코드를 블로그에 붙여넣으세요</p>
+              <div className="relative">
+                <textarea
+                  readOnly
+                  value={`<a href="https://ninfl.co.kr/influencers/${naverId}" target="_blank" rel="noopener"><img src="https://ninfl.co.kr/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`}
+                  className="w-full h-20 text-xs bg-bg border border-border rounded-xl p-3 font-mono resize-none focus:outline-none"
+                  onClick={e => (e.target as HTMLTextAreaElement).select()}
+                />
+                <button
+                  onClick={() => {
+                    const code = `<a href="https://ninfl.co.kr/influencers/${naverId}" target="_blank" rel="noopener"><img src="https://ninfl.co.kr/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`;
+                    navigator.clipboard.writeText(code);
+                  }}
+                  className="absolute top-2 right-2 text-[10px] font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-lg hover:bg-accent/20 transition cursor-pointer"
+                >
+                  복사
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 추가 스탯 또는 자식 요소 */}
       {(extraStats || children) && (

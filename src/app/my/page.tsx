@@ -375,6 +375,7 @@ export default async function MyDashboard() {
         top3Count={top3Count}
         totalKeywords={totalRankedKeywords}
         myKeyword={influencer.my_keyword || undefined}
+        naverId={naverId}
       />
 
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
