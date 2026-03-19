@@ -47,8 +47,8 @@ function useRecommendations() {
 /* ── FAQ ── */
 const FAQS = [
   { q: '인플루언서도 무료로 사용할 수 있나요?', a: '네! 키워드 분석, 순위 추적, 인플루언서 검색, 커뮤니티 등 핵심 기능을 무료로 이용할 수 있습니다.' },
-  { q: '어떤 데이터를 분석할 수 있나요?', a: '108만 인플루언서 DB, 키워드챌린지 순위·경쟁도, 블로그 검색노출 분석, 검색량 트렌드 등을 제공합니다. 20개 카테고리, 11만 개 이상의 키워드를 커버합니다.' },
-  { q: '비즈니스/에이전시 플랜은 어떤 분들에게 적합한가요?', a: '체험단을 운영하거나, 인플루언서 마케팅을 진행하는 소상공인·마케팅 대행사에 적합합니다. 인플루언서 검색·컨택, 블로그 노출 분석, 캠페인 관리 등의 기능을 제공합니다.' },
+  { q: '어떤 데이터를 분석할 수 있나요?', a: '108만 인플루언서 DB, 키워드챌린지 순위·경쟁도, 검색량 트렌드 등을 제공합니다. 20개 카테고리, 11만 개 이상의 키워드를 커버합니다.' },
+  { q: '비즈니스/에이전시 플랜은 어떤 분들에게 적합한가요?', a: '체험단을 운영하거나, 인플루언서 마케팅을 진행하는 소상공인·마케팅 대행사에 적합합니다. 인플루언서 검색·컨택, 캠페인 관리 등의 기능을 제공합니다.' },
   { q: '데이터는 얼마나 자주 업데이트되나요?', a: '키워드 순위와 인플루언서 데이터는 매일 자동으로 업데이트됩니다. 검색량 트렌드는 주간 단위로 갱신됩니다.' },
 ];
 
@@ -258,12 +258,12 @@ export default function LandingPage() {
 
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto text-left">
           <div className="bg-bg rounded-2xl border border-border p-6">
-            <p className="text-xs font-bold text-accent tracking-wide mb-3">인플루언서 · 블로거</p>
+            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
             <h3 className="font-bold text-text mb-2">키워드챌린지를 시작하는 분</h3>
-            <p className="text-sm text-dim leading-relaxed">블루오션 키워드를 발굴하고, 내 블로그 노출도를 분석하세요. 무료로 시작할 수 있습니다.</p>
+            <p className="text-sm text-dim leading-relaxed">블루오션 키워드를 발굴하고, 내 순위와 경쟁도를 분석하세요. 무료로 시작할 수 있습니다.</p>
           </div>
           <div className="bg-bg rounded-2xl border border-border p-6">
-            <p className="text-xs font-bold text-accent tracking-wide mb-3">인플루언서 · 블로거</p>
+            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
             <h3 className="font-bold text-text mb-2">상위 노출을 원하는 분</h3>
             <p className="text-sm text-dim leading-relaxed">경쟁 키워드 분석과 검색량 트렌드로 데이터 기반 전략을 수립하세요.</p>
           </div>
@@ -274,8 +274,8 @@ export default function LandingPage() {
           </div>
           <div className="bg-bg rounded-2xl border border-blue/20 p-6">
             <p className="text-xs font-bold text-blue tracking-wide mb-3">체험단 · 마케팅 에이전시</p>
-            <h3 className="font-bold text-text mb-2">블로그 노출 분석이 필요한 업체</h3>
-            <p className="text-sm text-dim leading-relaxed">체험단 선정에 필요한 블로그 검색노출 분석, 인플루언서 영향력 리포트를 제공합니다.</p>
+            <h3 className="font-bold text-text mb-2">인플루언서 성과 분석이 필요한 업체</h3>
+            <p className="text-sm text-dim leading-relaxed">체험단 선정에 필요한 인플루언서 키워드 순위 분석, 영향력 리포트를 제공합니다.</p>
           </div>
         </div>
       </section>
@@ -286,7 +286,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PRICING</p>
             <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">서비스 요금</h2>
-            <p className="text-sm text-dim">인플루언서·블로거는 무료, 광고주·에이전시는 합리적인 가격으로 시작하세요.</p>
+            <p className="text-sm text-dim">인플루언서는 무료, 광고주·에이전시는 합리적인 가격으로 시작하세요.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-5">
@@ -294,10 +294,10 @@ export default function LandingPage() {
             <div className="bg-surface rounded-2xl border border-border p-7">
               <p className="text-xs font-bold text-up tracking-wide mb-3">무료</p>
               <p className="text-3xl font-extrabold text-text mb-1">₩0</p>
-              <p className="text-xs text-dim mb-6">인플루언서 · 블로거</p>
+              <p className="text-xs text-dim mb-6">네이버 인플루언서</p>
               <div className="border-t border-border my-5" />
               <ul className="space-y-2.5">
-                {['키워드 분석 · 검색량 조회', '블로그 노출 분석', '인플루언서 검색', '커뮤니티 참여', '블루오션 키워드 추천'].map(f => (
+                {['키워드 분석 · 검색량 조회', '키워드챌린지 순위 추적', '인플루언서 검색', '커뮤니티 참여', '블루오션 키워드 추천'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
                     <span className="text-up">&#10003;</span> {f}
                   </li>
@@ -316,7 +316,7 @@ export default function LandingPage() {
               <p className="text-xs text-dim mb-6">소상공인 · 체험단 운영</p>
               <div className="border-t border-border my-5" />
               <ul className="space-y-2.5">
-                {['인플루언서 상세 검색 · 필터링', '카테고리별 인플루언서 리스트', '블로그 검색노출 분석 (월 100건)', '체험단 모집 캠페인 등록', '인플루언서 컨택 기능', '키워드 트렌드 리포트'].map(f => (
+                {['인플루언서 상세 검색 · 필터링', '카테고리별 인플루언서 리스트', '키워드 순위 분석 (무제한)', '체험단 모집 캠페인 등록', '인플루언서 컨택 기능', '키워드 트렌드 리포트'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
                     <span className="text-accent">&#10003;</span> {f}
                   </li>
@@ -335,7 +335,7 @@ export default function LandingPage() {
               <p className="text-xs text-dim mb-6">마케팅 대행사 · 에이전시</p>
               <div className="border-t border-border my-5" />
               <ul className="space-y-2.5">
-                {['BUSINESS 기능 전체 포함', '블로그 검색노출 분석 (월 500건)', '인플루언서 리스트 다운로드', '다중 캠페인 동시 운영', '에이전시 전용 대시보드', '성과 리포트 · API 연동'].map(f => (
+                {['BUSINESS 기능 전체 포함', '키워드 순위 심층 분석', '인플루언서 리스트 다운로드', '다중 캠페인 동시 운영', '에이전시 전용 대시보드', '성과 리포트 · API 연동'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-dim">
                     <span className="text-blue">&#10003;</span> {f}
                   </li>
@@ -386,28 +386,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 방문자 현황 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-12 text-center">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">오늘 방문자</p>
-          </div>
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalVisits.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">누적 방문자</p>
-          </div>
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-up font-rank">{siteStats.todaySignups.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">오늘 가입자</p>
-          </div>
-          <div className="bg-bg rounded-xl border border-border p-4 text-center">
-            <p className="text-2xl font-extrabold text-text font-rank">{siteStats.totalSignups.toLocaleString()}</p>
-            <p className="text-[11px] text-dim mt-1">총 가입자</p>
-          </div>
-        </div>
-      </section>
-
       {/* ═══════════ 하단 CTA (bg) ═══════════ */}
       <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
@@ -419,7 +397,27 @@ export default function LandingPage() {
           className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm">
           무료 회원가입 →
         </Link>
-        <p className="text-xs text-dim mt-5">
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto mt-12">
+          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+            <p className="text-[11px] text-dim mb-0.5">오늘 방문</p>
+            <p className="text-lg font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
+          </div>
+          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+            <p className="text-[11px] text-dim mb-0.5">누적 방문</p>
+            <p className="text-lg font-extrabold text-text font-rank">{siteStats.totalVisits.toLocaleString()}</p>
+          </div>
+          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+            <p className="text-[11px] text-dim mb-0.5">신규 가입</p>
+            <p className="text-lg font-extrabold text-up font-rank">{siteStats.todaySignups.toLocaleString()}</p>
+          </div>
+          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+            <p className="text-[11px] text-dim mb-0.5">누적 가입</p>
+            <p className="text-lg font-extrabold text-text font-rank">{siteStats.totalSignups.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-dim mt-6">
           이미 계정이 있으신가요?{' '}
           <Link href="/auth/login" className="text-accent font-semibold hover:underline">로그인</Link>
         </p>
