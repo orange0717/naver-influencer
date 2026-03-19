@@ -14,6 +14,7 @@ const NAV_ITEMS = [
 
 /* ── N인플 소개 메뉴 ── */
 const INFO_GROUP = [
+  { href: '/guide', label: '서비스 가이드' },
   { href: '/notice', label: '공지사항' },
 ];
 

@@ -20,8 +20,8 @@ function extractBlogId(input: string): string {
 }
 
 export default function SignupPage() {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [userType, setUserType] = useState<'influencer' | 'blogger' | null>(null);
+  const [step, setStep] = useState<2 | 3>(2);
+  const userType = 'influencer' as const;
 
   // Step 2: 계정 정보
   const [email, setEmail] = useState('');
@@ -48,7 +48,7 @@ export default function SignupPage() {
 
   const goBack = () => {
     setError('');
-    setStep(prev => Math.max(prev - 1, 1) as 1 | 2 | 3);
+    setStep(2);
   };
 
   // ─── Step 2: 회원가입 (Supabase Auth) ───
@@ -143,11 +143,7 @@ export default function SignupPage() {
   const handleLink = async () => {
     const value = naverInput.trim();
     if (!value) {
-      setError(
-        userType === 'influencer'
-          ? '인플루언서 아이디를 입력해주세요.'
-          : '블로그 아이디를 입력해주세요.',
-      );
+      setError('인플루언서 아이디를 입력해주세요.');
       return;
     }
 
@@ -156,7 +152,7 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const naverId = userType === 'influencer' ? extractNaverId(value) : extractBlogId(value);
+      const naverId = extractNaverId(value);
 
       const res = await fetch('/api/my/link', {
         method: 'POST',
@@ -171,11 +167,7 @@ export default function SignupPage() {
       }
 
       // 성공 → 대시보드 이동
-      if (userType === 'influencer') {
-        router.push('/my');
-      } else {
-        router.push('/my/blogger');
-      }
+      router.push('/my');
       router.refresh();
     } catch {
       setError('연결 중 오류가 발생했습니다.');
@@ -186,23 +178,14 @@ export default function SignupPage() {
   };
 
   const handleSkipLink = () => {
-    if (userType === 'influencer') {
-      router.push('/my');
-    } else {
-      router.push('/my/blogger');
-    }
+    router.push('/my');
     router.refresh();
   };
 
   // ─── 서브타이틀 ───
-  const subtitle =
-    step === 1
-      ? '인플루언서이신가요? 블로거이신가요?'
-      : step === 2
-        ? '계정을 만들어주세요'
-        : userType === 'influencer'
-          ? '인플루언서 계정을 연결해주세요'
-          : '블로그를 연결해주세요';
+  const subtitle = step === 2
+    ? '계정을 만들어주세요'
+    : '인플루언서 계정을 연결해주세요';
 
   return (
     <div className="min-h-[75vh] flex items-center justify-center -mt-6">
@@ -219,17 +202,17 @@ export default function SignupPage() {
 
           {/* ─── 프로그레스 ─── */}
           <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3].map(s => (
+            {[2, 3].map((s, i) => (
               <div key={s} className="flex items-center gap-2">
                 <div
                   className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                     s <= step ? 'bg-accent scale-110' : 'bg-border'
                   }`}
                 />
-                {s < 3 && (
+                {i < 1 && (
                   <div
                     className={`w-8 h-0.5 rounded-full transition-all duration-300 ${
-                      s < step ? 'bg-accent' : 'bg-border'
+                      step === 3 ? 'bg-accent' : 'bg-border'
                     }`}
                   />
                 )}
@@ -237,57 +220,9 @@ export default function SignupPage() {
             ))}
           </div>
 
-          {/* ═══ Step 1: 타입 선택 ═══ */}
-          {step === 1 && (
-            <div key="step-1" className="space-y-4 animate-fade-in-up">
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setUserType('influencer'); setError(''); setStep(2); }}
-                  className="group bg-bg border-2 border-border rounded-2xl p-5 text-center hover:border-accent hover:bg-accent/5 transition-all cursor-pointer focus:outline-none focus:border-accent"
-                >
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l.588 1.809h1.902l-1.539 1.118.588 1.809L12 5.618l-1.539 1.118.588-1.809-1.539-1.118h1.902L12 2z" />
-                    </svg>
-                  </div>
-                  <p className="font-bold text-[15px] mb-1">인플루언서</p>
-                  <p className="text-[11px] text-dim leading-relaxed">키워드챌린지 순위와<br />경쟁 분석이 필요해요</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setUserType('blogger'); setError(''); setStep(2); }}
-                  className="group bg-bg border-2 border-border rounded-2xl p-5 text-center hover:border-accent hover:bg-accent/5 transition-all cursor-pointer focus:outline-none focus:border-accent"
-                >
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                    </svg>
-                  </div>
-                  <p className="font-bold text-[15px] mb-1">블로거</p>
-                  <p className="text-[11px] text-dim leading-relaxed">블로그 검색노출과<br />키워드 분석이 필요해요</p>
-                </button>
-              </div>
-
-              <p className="text-[10px] text-dim text-center leading-relaxed">
-                이미 계정이 있으신가요?{' '}
-                <Link href="/auth/login" className="text-accent underline hover:text-accent-hover">로그인</Link>
-              </p>
-            </div>
-          )}
-
           {/* ═══ Step 2: 이메일 + 비밀번호 + 약관 ═══ */}
           {step === 2 && (
             <div key="step-2" className="space-y-4 animate-fade-in-up">
-              <button type="button" onClick={goBack} className="flex items-center gap-1 text-sm text-dim hover:text-text transition cursor-pointer">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-                뒤로
-              </button>
-
               <div>
                 <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" autoFocus
@@ -360,21 +295,15 @@ export default function SignupPage() {
               </div>
 
               <div className="text-center">
-                <h2 className="text-lg font-bold">
-                  {userType === 'influencer' ? '인플루언서 계정 연결' : '블로그 연결'}
-                </h2>
-                <p className="text-sm text-dim mt-1">
-                  {userType === 'influencer' ? '네이버 인플루언서 홈 주소를 입력해주세요' : '네이버 블로그 주소를 입력해주세요'}
-                </p>
+                <h2 className="text-lg font-bold">인플루언서 계정 연결</h2>
+                <p className="text-sm text-dim mt-1">네이버 인플루언서 홈 주소를 입력해주세요</p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-dim block">
-                  {userType === 'influencer' ? '인플루언서 주소' : '블로그 주소'}
-                </label>
+                <label className="text-xs font-semibold text-dim block">인플루언서 주소</label>
                 <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
                   <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
-                    {userType === 'influencer' ? 'in.naver.com/' : 'blog.naver.com/'}
+                    in.naver.com/
                   </span>
                   <input type="text" value={naverInput} onChange={e => setNaverInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleLink()}
