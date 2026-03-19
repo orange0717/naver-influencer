@@ -7,7 +7,7 @@ const FOOTER_LINKS = [
   { href: '/search-volume', label: '키워드' },
   { href: '/community', label: '커뮤니티' },
   { href: '/tools', label: '추천 도구' },
-  { href: '/subscribe', label: '이용권' },
+  { href: '/subscribe', label: '9,900원' },
   { href: '/my', label: '대시보드' },
   { href: '/terms', label: '이용약관' },
   { href: '/privacy', label: '개인정보처리방침' },

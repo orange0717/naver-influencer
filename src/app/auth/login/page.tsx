@@ -114,12 +114,21 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-[10px] text-dim text-center leading-relaxed">
-            아직 계정이 없으신가요?{' '}
-            <Link href="/auth/signup" className="text-accent underline hover:text-accent-hover">
-              회원가입
-            </Link>
-          </p>
+          <div className="text-center space-y-2">
+            <p className="text-[10px] text-dim leading-relaxed">
+              아직 계정이 없으신가요?{' '}
+              <Link href="/auth/signup" className="text-accent underline hover:text-accent-hover">
+                회원가입
+              </Link>
+            </p>
+            <p className="text-[10px] text-dim leading-relaxed">
+              인플루언서 계정 연결은{' '}
+              <Link href="/my/link" className="text-accent underline hover:text-accent-hover">
+                여기에서
+              </Link>{' '}
+              할 수 있습니다
+            </p>
+          </div>
         </div>
       </div>
     </div>
