@@ -27,21 +27,26 @@ function useSiteStats() {
   return s;
 }
 
-/* ── 오늘의 추천키워드 ── */
-interface Recommendation {
-  keyword: string;
+/* ── 신규 인플루언서 ── */
+interface NewInfluencer {
+  id: string;
+  naver_id: string;
+  display_name: string;
+  image_url: string | null;
   category: string;
-  reason: string;
-  recommendation_score: number;
-  keyword_id: string;
+  subscriber_count: number;
+  first_seen_at: string;
 }
 
-function useRecommendations() {
-  const [recs, setRecs] = useState<Recommendation[]>([]);
+function useNewInfluencers() {
+  const [list, setList] = useState<NewInfluencer[]>([]);
   useEffect(() => {
-    fetch('/api/recommendations').then(r => r.json()).then(d => setRecs(d.recommendations || [])).catch(() => {});
+    fetch('/api/influencers/recent')
+      .then(r => r.json())
+      .then(d => setList(d.influencers || []))
+      .catch(() => {});
   }, []);
-  return recs;
+  return list;
 }
 
 /* ── FAQ ── */
@@ -55,7 +60,7 @@ const FAQS = [
 export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
-  const recs = useRecommendations();
+  const newInfluencers = useNewInfluencers();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
@@ -99,53 +104,46 @@ export default function LandingPage() {
         </p>
       </section>
 
-      {/* ═══════════ 오늘의 추천키워드 (surface) ═══════════ */}
-      {recs.length > 0 && (
+      {/* ═══════════ 신규 인플루언서 (surface) ═══════════ */}
+      {newInfluencers.length > 0 && (
         <section className="bg-surface px-4 py-16 md:py-20">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
-              <p className="text-xs text-accent font-semibold tracking-widest mb-3">TODAY&apos;S PICK</p>
-              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">오늘의 추천 키워드</h2>
-              <p className="text-sm text-dim">블루오션 키워드를 매일 분석하여 추천합니다</p>
+              <p className="text-xs text-accent font-semibold tracking-widest mb-3">NEW INFLUENCERS</p>
+              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">최근 등록된 인플루언서</h2>
+              <p className="text-sm text-dim">새롭게 데이터베이스에 추가된 인플루언서들입니다</p>
             </div>
 
             <div className="grid gap-3">
-              {recs.slice(0, 6).map((rec, i) => (
+              {newInfluencers.slice(0, 8).map((inf) => (
                 <Link
-                  key={rec.keyword_id}
-                  href={i < 3 ? `/keywords/${rec.keyword_id}` : '/subscribe'}
-                  className={`relative flex items-center justify-between px-5 py-4 rounded-xl border transition ${
-                    i < 3
-                      ? 'bg-bg border-border hover:border-accent/40'
-                      : 'bg-bg/50 border-border/50'
-                  }`}
+                  key={inf.id}
+                  href={`/influencers/${inf.id}`}
+                  className="flex items-center justify-between px-5 py-4 rounded-xl border border-border bg-bg hover:border-accent/40 transition"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
-                      i === 0 ? 'bg-gold/20 text-gold' : i < 3 ? 'bg-accent/15 text-accent' : 'bg-border/50 text-dim'
-                    }`}>{i + 1}</span>
-                    <div className={i >= 3 ? 'blur-[5px] select-none' : ''}>
-                      <span className="font-semibold text-sm block">{rec.keyword}</span>
-                      <span className="text-[11px] text-dim">{rec.category} · {rec.reason}</span>
+                    {inf.image_url ? (
+                      <img src={inf.image_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center text-accent font-bold text-sm shrink-0">
+                        {inf.display_name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <span className="font-semibold text-sm block truncate">{inf.display_name}</span>
+                      <span className="text-[11px] text-dim">@{inf.naver_id} · {inf.category}</span>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-2 shrink-0 ${i >= 3 ? 'blur-[5px] select-none' : ''}`}>
-                    <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded">{rec.recommendation_score}점</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-dim">팬 {inf.subscriber_count.toLocaleString()}</span>
                   </div>
-                  {i >= 3 && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-xl">
-                      <span className="text-xs font-bold text-accent bg-surface/90 px-3 py-1.5 rounded-full border border-accent/20">
-                        이용권 등록하고 전체 보기
-                      </span>
-                    </div>
-                  )}
                 </Link>
               ))}
             </div>
 
             <div className="text-center mt-6">
-              <Link href="/subscribe" className="text-sm text-accent font-semibold hover:underline">
-                이용권 등록하고 매일 20개 추천 받기 →
+              <Link href="/influencers" className="text-sm text-accent font-semibold hover:underline">
+                전체 인플루언서 보기 →
               </Link>
             </div>
           </div>
@@ -312,7 +310,7 @@ export default function LandingPage() {
             <div className="bg-surface rounded-2xl border-2 border-accent/30 p-7 relative">
               <div className="absolute -top-3 left-6 px-3 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full">추천</div>
               <p className="text-xs font-bold text-accent tracking-wide mb-3">BUSINESS</p>
-              <p className="text-3xl font-extrabold text-text mb-1">₩9,900<span className="text-sm font-normal text-dim">/월</span></p>
+              <p className="text-3xl font-extrabold text-text mb-1">₩19,800<span className="text-sm font-normal text-dim">/월</span></p>
               <p className="text-xs text-dim mb-6">소상공인 · 체험단 운영</p>
               <div className="border-t border-border my-5" />
               <ul className="space-y-2.5">
