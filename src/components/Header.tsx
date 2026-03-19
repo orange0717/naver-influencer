@@ -15,7 +15,6 @@ const NAV_ITEMS = [
 /* ── N인플 소개 메뉴 ── */
 const INFO_GROUP = [
   { href: '/notice', label: '공지사항' },
-  { href: '/tools', label: '추천 도구' },
 ];
 
 type UserInfo = {
