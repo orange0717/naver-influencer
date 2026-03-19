@@ -407,29 +407,6 @@ export default function LandingPage() {
                   </div>
                 ),
               },
-              {
-                url: 'ninfl.co.kr/report',
-                title: '성장 리포트',
-                desc: '주간/월간 성장 추이와 점수 변화를 리포트로 확인하세요.',
-                link: '/my',
-                linkText: '리포트 보기',
-                mockup: (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-text">이번 주 성장률</span>
-                      <span className="text-up font-bold">+12%</span>
-                    </div>
-                    <div className="flex gap-0.5 items-end" style={{ height: 30 }}>
-                      {[40, 45, 42, 55, 60, 58, 70].map((v, i) => (
-                        <div key={i} className="flex-1 bg-accent/30 rounded-t" style={{ height: `${v}%` }} />
-                      ))}
-                    </div>
-                    <div className="flex justify-between text-[7px] text-dim">
-                      <span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span>
-                    </div>
-                  </div>
-                ),
-              },
             ].map(card => (
               <div key={card.title} className="bg-surface rounded-2xl border border-border overflow-hidden">
                 {/* 브라우저 목업 */}
@@ -496,7 +473,7 @@ export default function LandingPage() {
                 <p className="text-xs text-dim mt-1">매월 자동 결제</p>
               </div>
               <div className="space-y-2">
-                {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+                {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-sm">
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     <span>{f}</span>
@@ -520,7 +497,7 @@ export default function LandingPage() {
                 <p className="text-xs text-dim mt-1">월 14,850원</p>
               </div>
               <div className="space-y-2">
-                {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+                {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-sm">
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     <span>{f}</span>

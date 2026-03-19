@@ -13,7 +13,6 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   { text: '내 키워드 순위 실시간 추적', highlight: true },
   { text: '스마트 알림 (하락 위험 / TOP3 기회)', highlight: true },
-  { text: '성장 리포트 (주간/월간 비교)', highlight: true },
   { text: '종합 점수 추이 차트', highlight: false },
   { text: '경쟁자 비교 분석 + 변동 감지', highlight: true },
   { text: '순위 추이 차트 (7/15/30일)', highlight: false },

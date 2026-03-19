@@ -34,14 +34,6 @@ const FEATURES = [
     mockup: 'alerts',
   },
   {
-    url: 'ninfl.co.kr/my#growth',
-    title: '성장 리포트',
-    description: '지난 7일/30일 성과를 이전 기간과 비교합니다. 평균 순위, TOP 3 수 변화를 확인하세요.',
-    link: '/subscribe',
-    linkText: 'PRO 시작하기',
-    mockup: 'growth',
-  },
-  {
     url: 'ninfl.co.kr/keywords',
     title: '키워드 분석',
     description: '11만 개 이상의 키워드에서 참여자 수, 검색량, 경쟁도를 분석합니다. 블루오션을 발굴하세요.',
@@ -321,7 +313,7 @@ export default function GuidePage() {
               <p className="text-xs text-dim mt-1">매월 자동 결제</p>
             </div>
             <div className="space-y-1.5">
-              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
                 <div key={f} className="flex items-center gap-2 text-xs">
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   <span>{f}</span>
@@ -345,7 +337,7 @@ export default function GuidePage() {
               <p className="text-xs text-dim mt-1">월 14,850원</p>
             </div>
             <div className="space-y-1.5">
-              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '성장 리포트 (주간/월간)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
+              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
                 <div key={f} className="flex items-center gap-2 text-xs">
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   <span>{f}</span>

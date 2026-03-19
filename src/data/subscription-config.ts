@@ -32,7 +32,6 @@ export const FREE_FEATURES = [
 export const LOCKED_FEATURES = [
   '내 키워드 순위 실시간 추적',
   '스마트 알림 (하락 위험 / TOP3 기회)',
-  '성장 리포트 (주간/월간 비교)',
   '경쟁자 비교 분석',
   '순위 추이 차트',
   '맞춤 추천 키워드',
