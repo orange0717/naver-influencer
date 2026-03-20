@@ -26,13 +26,23 @@ interface RankingRecord {
   keyword_challenges: unknown;
 }
 
+interface KeywordChallengeData {
+  keyword?: string;
+  category?: string;
+  participant_count?: number;
+  search_volume_monthly?: number;
+}
+
 function extractKeywordInfo(kw: unknown): { keyword: string; category: string; participant_count: number; search_volume: number } {
-  const obj = kw as Record<string, unknown> | null;
+  if (!kw || typeof kw !== 'object') {
+    return { keyword: '', category: '', participant_count: 0, search_volume: 0 };
+  }
+  const obj = kw as KeywordChallengeData;
   return {
-    keyword: (obj?.keyword as string) || '',
-    category: (obj?.category as string) || '',
-    participant_count: (obj?.participant_count as number) || 0,
-    search_volume: (obj?.search_volume_monthly as number) || 0,
+    keyword: obj.keyword ?? '',
+    category: obj.category ?? '',
+    participant_count: obj.participant_count ?? 0,
+    search_volume: obj.search_volume_monthly ?? 0,
   };
 }
 

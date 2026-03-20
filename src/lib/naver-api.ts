@@ -6,12 +6,12 @@
  * - 인플루언서 목록: REST API (gw.in.naver.com/feed - discover)
  */
 import * as cheerio from 'cheerio';
+import { fetchWithRetry } from './crawler';
 
 const GRAPHQL_URL = 'https://in.naver.com/graphql';
 const REST_API_BASE = 'https://gw.in.naver.com/keyword-challenge/api/v2';
 const FEED_API_BASE = 'https://gw.in.naver.com/feed/query/v1';
 const NAVER_SEARCH_URL = 'https://search.naver.com/search.naver';
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 // ─── 타입 ───
 
@@ -63,31 +63,6 @@ function getCached<T>(key: string): T | null {
 
 function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, timestamp: Date.now() });
-}
-
-// ─── 유틸 ───
-
-async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2): Promise<Response> {
-  const defaultHeaders: Record<string, string> = {
-    'User-Agent': USER_AGENT,
-    'Referer': 'https://in.naver.com/',
-    'Accept-Language': 'ko-KR,ko;q=0.9',
-  };
-
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const res = await fetch(url, {
-        ...options,
-        headers: { ...defaultHeaders, ...(options.headers || {}) },
-      });
-      if (res.ok) return res;
-      if (i === retries) return res;
-    } catch (err) {
-      if (i === retries) throw err;
-    }
-    await new Promise(r => setTimeout(r, 500 * (i + 1)));
-  }
-  throw new Error(`Failed to fetch ${url}`);
 }
 
 // ─── 카테고리 ───

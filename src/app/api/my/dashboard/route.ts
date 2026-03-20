@@ -146,35 +146,51 @@ export async function GET(request: Request) {
     .slice(0, 5)
     .map(r => r.keyword_id);
 
+  // 경쟁자 데이터 배치 조회 (N+1 -> 1 쿼리)
   const competitors: { keyword: string; competitors: { name: string; rank: number; isMe: boolean }[] }[] = [];
 
-  for (const kwId of topKeywordIds) {
-    const { data: kwRankings } = await supabase
+  if (topKeywordIds.length > 0) {
+    // 상위 키워드들의 snapshot_date 수집
+    const snapshotDate = currentRankings.find(r => topKeywordIds.includes(r.keyword_id))?.snapshot_date || today;
+
+    const { data: allCompetitorRankings } = await supabase
       .from('keyword_rankings')
       .select(`
+        keyword_id,
         rank_position,
         influencer_id,
         influencers!inner(display_name, naver_id)
       `)
-      .eq('keyword_id', kwId)
-      .eq('snapshot_date', currentRankings.find(r => r.keyword_id === kwId)?.snapshot_date || today)
-      .order('rank_position', { ascending: true })
-      .limit(5);
+      .in('keyword_id', topKeywordIds)
+      .eq('snapshot_date', snapshotDate)
+      .order('rank_position', { ascending: true });
 
-    const kwInfo = currentRankings.find(r => r.keyword_id === kwId);
-    const kwName = (kwInfo as Record<string, unknown>)?.keyword_challenges
-      ? ((kwInfo as Record<string, unknown>).keyword_challenges as Record<string, unknown>).keyword as string
-      : '';
+    // 키워드별로 그룹핑 (TOP 5만)
+    const competitorMap = new Map<string, typeof allCompetitorRankings>();
+    for (const kr of (allCompetitorRankings || [])) {
+      const arr = competitorMap.get(kr.keyword_id) || [];
+      if (arr.length < 5) {
+        arr.push(kr);
+        competitorMap.set(kr.keyword_id, arr);
+      }
+    }
 
-    if (kwRankings && kwName) {
-      competitors.push({
-        keyword: kwName,
-        competitors: kwRankings.map(kr => ({
-          name: ((kr.influencers as unknown) as Record<string, unknown>)?.display_name as string || '',
-          rank: kr.rank_position,
-          isMe: kr.influencer_id === userProfile.linked_influencer_id,
-        })),
-      });
+    for (const kwId of topKeywordIds) {
+      const kwInfo = currentRankings.find(r => r.keyword_id === kwId);
+      const kwData = kwInfo?.keyword_challenges as Record<string, unknown> | undefined;
+      const kwName = (kwData?.keyword as string) || '';
+      const kwRankings = competitorMap.get(kwId);
+
+      if (kwRankings && kwName) {
+        competitors.push({
+          keyword: kwName,
+          competitors: kwRankings.map(kr => ({
+            name: ((kr.influencers as unknown) as Record<string, unknown>)?.display_name as string || '',
+            rank: kr.rank_position,
+            isMe: kr.influencer_id === userProfile.linked_influencer_id,
+          })),
+        });
+      }
     }
   }
 

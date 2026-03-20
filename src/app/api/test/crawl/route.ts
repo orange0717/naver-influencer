@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyCronSecret } from '@/lib/crawler';
 import * as cheerio from 'cheerio';
 
 const GRAPHQL_URL = 'https://in.naver.com/graphql';
@@ -73,6 +74,10 @@ async function testRankings(keyword: string) {
  * GET /api/test/crawl?type=rankings&keyword=행복명언
  */
 export async function GET(request: NextRequest) {
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const type = request.nextUrl.searchParams.get('type') || 'categories';
 
   try {

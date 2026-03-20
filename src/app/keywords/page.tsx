@@ -56,11 +56,17 @@ export default function KeywordsPage() {
   }, [category, search, currentPageIndex]);
 
   useEffect(() => {
+    const abortController = new AbortController();
     const timer = setTimeout(() => {
       const cursor = cursorHistory[currentPageIndex];
-      fetchData(cursor);
+      if (!abortController.signal.aborted) {
+        fetchData(cursor);
+      }
     }, search ? 500 : 0);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
   }, [fetchData, search, currentPageIndex, cursorHistory]);
 
   const handleCategoryChange = (cat: string) => {

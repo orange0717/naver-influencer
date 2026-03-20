@@ -20,6 +20,7 @@ export async function fetchWithRetry(
   const headers = {
     'User-Agent': USER_AGENT,
     'Accept-Language': 'ko-KR,ko;q=0.9',
+    'Referer': 'https://in.naver.com/',
     ...options.headers,
   };
 

@@ -21,6 +21,32 @@ export async function POST(
     }
 
     const supabase = createServiceClient();
+    const likeUserId = cookieUser.id;
+
+    // 중복 좋아요 방지
+    const { data: existingLike } = await supabase
+      .from('community_likes')
+      .select('id')
+      .eq('post_id', id)
+      .eq('user_id', likeUserId)
+      .single();
+
+    if (existingLike) {
+      return NextResponse.json({ error: '이미 좋아요한 게시글입니다.' }, { status: 409 });
+    }
+
+    // 좋아요 기록 저장
+    const { error: likeError } = await supabase
+      .from('community_likes')
+      .insert({ post_id: id, user_id: likeUserId });
+
+    if (likeError) {
+      // unique constraint 위반 (동시 요청)
+      if (likeError.code === '23505') {
+        return NextResponse.json({ error: '이미 좋아요한 게시글입니다.' }, { status: 409 });
+      }
+      console.error('[community] Like insert error:', likeError);
+    }
 
     // like_count atomic 증가
     const { data: newLikeCount, error } = await supabase.rpc('increment_like_count', { post_id: id });

@@ -80,6 +80,9 @@ export async function POST(req: NextRequest) {
 
     // 3. userId 추출: NINFL_{planName}_{months}M_{userId}_{timestamp}
     const parts = orderId.split('_');
+    if (parts.length < 5 || parts[0] !== 'NINFL') {
+      return NextResponse.json({ error: '주문 형식이 올바르지 않습니다.' }, { status: 400 });
+    }
     const userId = parts.slice(3, -1).join('_');
 
     if (!userId) {
@@ -88,6 +91,26 @@ export async function POST(req: NextRequest) {
 
     // 4. 이용권 생성 및 활성화
     const supabase = createServiceClient();
+
+    // 멱등성 체크: 동일 orderId로 이미 처리된 결제인지 확인
+    const { data: existingLicense } = await supabase
+      .from('licenses')
+      .select('id, plan_name, expires_at')
+      .eq('order_id', orderId)
+      .single();
+
+    if (existingLicense) {
+      return NextResponse.json({
+        success: true,
+        payment: { orderId, totalAmount: amount, method: 'already_processed' },
+        license: {
+          plan_name: existingLicense.plan_name,
+          duration_days: durationDays,
+          expires_at: existingLicense.expires_at,
+        },
+        duplicate: true,
+      });
+    }
     const now = new Date();
     const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 

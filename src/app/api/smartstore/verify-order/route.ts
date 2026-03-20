@@ -101,10 +101,12 @@ export async function POST(req: NextRequest) {
         );
       }
     } else {
-      // 5b. API 키 없을 때 — 수동 승인 모드 (주문번호만 기록)
-      // 관리자가 나중에 확인 가능하도록
-      orderValid = true;
-      console.log(`[SmartStore] Manual mode - order ${orderId} for user ${user.id}`);
+      // 5b. API 키 없을 때 — 스마트스토어 검증 불가, 차단
+      console.warn(`[SmartStore] API keys not configured - rejecting order ${orderId} for user ${user.id}`);
+      return NextResponse.json(
+        { error: '스마트스토어 주문 검증 시스템이 현재 비활성 상태입니다. 관리자에게 문의해주세요.' },
+        { status: 503 },
+      );
     }
 
     if (!orderValid) {

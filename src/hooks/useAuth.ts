@@ -26,7 +26,12 @@ export function useAuth() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // 로그아웃 API 실패해도 클라이언트 상태는 클리어
+    }
     queryClient.setQueryData(['auth', 'me'], defaultUser);
     queryClient.invalidateQueries({ queryKey: ['auth'] });
   };

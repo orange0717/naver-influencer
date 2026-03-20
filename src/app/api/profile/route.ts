@@ -52,7 +52,20 @@ export async function PATCH(request: NextRequest) {
   const updates: Record<string, unknown> = {};
 
   if (v.data.nickname !== undefined) updates.nickname = v.data.nickname;
-  if (v.data.linked_influencer_id !== undefined) updates.linked_influencer_id = v.data.linked_influencer_id;
+  if (v.data.linked_influencer_id !== undefined) {
+    // linked_influencer_id가 실제 존재하는 인플루언서인지 검증
+    if (v.data.linked_influencer_id !== null) {
+      const { data: inf } = await supabase
+        .from('influencers')
+        .select('id')
+        .eq('id', v.data.linked_influencer_id)
+        .single();
+      if (!inf) {
+        return NextResponse.json({ error: '존재하지 않는 인플루언서입니다.' }, { status: 400 });
+      }
+    }
+    updates.linked_influencer_id = v.data.linked_influencer_id;
+  }
 
   const { error } = await supabase
     .from('users')

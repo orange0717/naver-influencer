@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
-  const days = parseInt(request.nextUrl.searchParams.get('days') || '15');
+  const rawDays = parseInt(request.nextUrl.searchParams.get('days') || '15');
+  const days = Math.min(Math.max(rawDays || 15, 1), 90); // 1~90일 제한
   const keywordId = request.nextUrl.searchParams.get('keyword_id');
 
   const supabase = createServiceClient();

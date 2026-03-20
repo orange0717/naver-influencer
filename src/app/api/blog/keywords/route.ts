@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getCookieUser } from '@/lib/auth';
 import { validateBody } from '@/lib/validations';
 import { blogKeywordSchema, deleteBlogKeywordSchema } from '@/lib/validations/blog';
 
@@ -10,11 +11,21 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCookieUser();
+    if (!user) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
+
     const body = await req.json();
     const v = validateBody(blogKeywordSchema, body);
     if (!v.success) return v.response;
 
     const { blog_id, keyword, is_auto } = v.data;
+
+    // 본인 블로그만 키워드 저장 가능
+    if (user.type === 'blogger' && user.id !== blog_id) {
+      return NextResponse.json({ error: '본인 블로그의 키워드만 저장할 수 있습니다.' }, { status: 403 });
+    }
 
     const supabase = createServiceClient();
 
@@ -44,6 +55,11 @@ export async function POST(req: NextRequest) {
  * GET /api/blog/keywords?blogId=xxx — 블로거의 활성 키워드 목록 조회
  */
 export async function GET(req: NextRequest) {
+  const user = await getCookieUser();
+  if (!user) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
   const blogId = new URL(req.url).searchParams.get('blogId');
   if (!blogId) {
     return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
@@ -72,6 +88,11 @@ export async function GET(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
+    const user = await getCookieUser();
+    if (!user) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
+
     const body = await req.json();
     const v = validateBody(deleteBlogKeywordSchema, body);
     if (!v.success) return v.response;
