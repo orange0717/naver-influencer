@@ -51,7 +51,7 @@ export default function MyKeywordList({
 }) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
-  const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>('all');
+  const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>('not_participated');
   const [rankFilter, setRankFilter] = useState<'all' | 'ranked' | 'unranked'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
