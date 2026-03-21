@@ -132,6 +132,23 @@ export default function MyKeywordList({
   const rankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position !== null).length;
   const unrankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position === null).length;
 
+  // 카테고리별 키워드 수 (참여 필터 연동)
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let total = 0;
+    for (const g of categoryGroups) {
+      const filtered = participationFilter === 'participated'
+        ? g.keywords.filter(kw => kw.is_participated)
+        : participationFilter === 'not_participated'
+        ? g.keywords.filter(kw => !kw.is_participated)
+        : g.keywords;
+      counts[g.category] = filtered.length;
+      total += filtered.length;
+    }
+    counts['전체'] = total;
+    return counts;
+  }, [categoryGroups, participationFilter]);
+
   return (
     <div className="space-y-3">
       {/* --- 헤더 --- */}
@@ -145,9 +162,8 @@ export default function MyKeywordList({
           <div>
             <h3 className="font-bold text-[15px]">내 키워드</h3>
             <p className="text-[11px] text-dim">
-              {filteredKeywords.length !== totalKeywords
-                ? `${filteredKeywords.length} / ${totalKeywords}개`
-                : `참여 ${participatedCount} / 전체 ${totalKeywords}개`}
+              참여 {participatedCount} / 전체 {totalKeywords}개
+              {filteredKeywords.length !== totalKeywords && ` (검색결과 ${filteredKeywords.length}개)`}
             </p>
           </div>
         </div>
@@ -196,7 +212,7 @@ export default function MyKeywordList({
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>
-                  {cat === '전체' ? `전체 (${totalKeywords})` : `${cat} (${categoryGroups.find(g => g.category === cat)?.keywords.length || 0})`}
+                  {cat} ({categoryCounts[cat] || 0})
                 </option>
               ))}
             </select>

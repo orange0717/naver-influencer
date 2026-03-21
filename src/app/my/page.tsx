@@ -316,17 +316,32 @@ export default async function MyDashboard() {
   const participatedKeywordIds = new Set(participatedKeywords.map(kw => kw.keyword_id));
 
   // 해당 카테고리의 전체 키워드 조회 (미참여 키워드 포함)
-  const { data: categoryAllKeywords } = participatedCategories.length > 0
-    ? await supabase
+  // Supabase 기본 1000건 제한 해제
+  let categoryAllKeywords: { id: string; keyword: string; category: string; participant_count: number; search_volume_monthly: number }[] = [];
+  if (participatedCategories.length > 0) {
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data: batch } = await supabase
         .from('keyword_challenges')
         .select('id, keyword, category, participant_count, search_volume_monthly')
         .in('category', participatedCategories)
         .eq('is_active', true)
         .order('participant_count', { ascending: false })
-    : { data: null };
+        .range(from, from + PAGE_SIZE - 1);
+      if (batch && batch.length > 0) {
+        categoryAllKeywords.push(...batch);
+        from += PAGE_SIZE;
+        hasMore = batch.length === PAGE_SIZE;
+      } else {
+        hasMore = false;
+      }
+    }
+  }
 
   // 미참여 키워드 추가
-  const notParticipatedKeywords = (categoryAllKeywords || [])
+  const notParticipatedKeywords = categoryAllKeywords
     .filter(kw => !participatedKeywordIds.has(kw.id))
     .map(kw => ({
       keyword_id: kw.id,
