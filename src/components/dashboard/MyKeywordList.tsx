@@ -175,27 +175,6 @@ export default function MyKeywordList({
 
       {totalKeywords > 0 && (
         <>
-          {/* --- 참여 필터 탭 --- */}
-          <div className="flex rounded-xl bg-border/20 p-1 gap-0.5">
-            {([
-              { key: 'all' as ParticipationFilter, label: '전체', count: totalKeywords },
-              { key: 'participated' as ParticipationFilter, label: '참여', count: participatedCount },
-              { key: 'not_participated' as ParticipationFilter, label: '미참여', count: notParticipatedCount },
-            ]).map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => { setParticipationFilter(tab.key); setVisibleCount(20); }}
-                className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  participationFilter === tab.key
-                    ? 'bg-surface text-text shadow-sm'
-                    : 'text-dim hover:text-text'
-                }`}
-              >
-                {tab.label} <span className={participationFilter === tab.key ? 'text-accent' : 'text-dim'}>{tab.count}</span>
-              </button>
-            ))}
-          </div>
-
           {/* --- 필터 바 --- */}
           <div className="flex flex-col sm:flex-row gap-2">
             <input
