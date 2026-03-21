@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import GradeGauge from './GradeGauge';
 import GlassCard from './GlassCard';
 
@@ -17,6 +18,32 @@ interface InfluencerScoreSectionProps {
   integratedTop3Count: number;
   overallRank: number;
   overallTotal: number;
+}
+
+function ScoreContent({ influenceScore, expertiseScore, exposureScore, growthScore, activityScore, competitivenessScore, subscriberCount, totalKeywords, rankedKeywords, top3Count, integratedTop3Count, rankUpCount }: { influenceScore: number; expertiseScore: number; exposureScore: number; growthScore: number; activityScore: number; competitivenessScore: number; subscriberCount: number; totalKeywords: number; rankedKeywords: number; top3Count: number; integratedTop3Count: number; rankUpCount: number }) {
+  const [showTags, setShowTags] = useState(false);
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-3 cursor-pointer" onClick={() => setShowTags(!showTags)}>
+        <GradeGauge score={influenceScore} label="영향력" description="사용자 피드백 · 팬 수" color="#3B82F6" delay={100} />
+        <GradeGauge score={expertiseScore} label="전문성" description="주제 전문성 · 콘텐츠 적합성" color="#F59E0B" delay={150} />
+        <GradeGauge score={exposureScore} label="노출도" description="검색 노출 · 평균 순위" color="#8B5CF6" delay={200} />
+        <GradeGauge score={growthScore} label="성장성" description="순위 상승 · 하락 비율" color="#10B981" delay={250} />
+        <GradeGauge score={activityScore} label="활동성" description="참여 이력 · 콘텐츠 품질" color="#EC4899" delay={300} />
+        <GradeGauge score={competitivenessScore} label="경쟁력" description="주제 랭킹 · TOP 3 보유" color="#6366F1" delay={350} />
+      </div>
+      {showTags && (
+        <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-dim animate-fade-in">
+          <span className="bg-bg px-2 py-1 rounded-md">팬 {subscriberCount.toLocaleString()}명</span>
+          <span className="bg-bg px-2 py-1 rounded-md">키워드 {totalKeywords}개</span>
+          <span className="bg-bg px-2 py-1 rounded-md">노출 {rankedKeywords}개</span>
+          {top3Count > 0 && <span className="bg-up/10 text-up px-2 py-1 rounded-md">TOP 3 {top3Count}개</span>}
+          {integratedTop3Count > 0 && <span className="bg-gold/10 text-gold px-2 py-1 rounded-md">통합검색 {integratedTop3Count}개</span>}
+          {rankUpCount > 0 && <span className="bg-up/10 text-up px-2 py-1 rounded-md">상승 {rankUpCount}개</span>}
+        </div>
+      )}
+    </>
+  );
 }
 
 function getGrade(score: number) {
@@ -155,25 +182,14 @@ export default function InfluencerScoreSection({
           <p>인플루언서 종합 등급이 계산됩니다.</p>
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-3 gap-3">
-            <GradeGauge score={influenceScore} label="영향력" description="사용자 피드백 · 팬 수" color="#3B82F6" delay={100} />
-            <GradeGauge score={expertiseScore} label="전문성" description="주제 전문성 · 콘텐츠 적합성" color="#F59E0B" delay={150} />
-            <GradeGauge score={exposureScore} label="노출도" description="검색 노출 · 평균 순위" color="#8B5CF6" delay={200} />
-            <GradeGauge score={growthScore} label="성장성" description="순위 상승 · 하락 비율" color="#10B981" delay={250} />
-            <GradeGauge score={activityScore} label="활동성" description="참여 이력 · 콘텐츠 품질" color="#EC4899" delay={300} />
-            <GradeGauge score={competitivenessScore} label="경쟁력" description="주제 랭킹 · TOP 3 보유" color="#6366F1" delay={350} />
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-dim">
-            <span className="bg-bg px-2 py-1 rounded-md">팬 {subscriberCount.toLocaleString()}명</span>
-            <span className="bg-bg px-2 py-1 rounded-md">키워드 {totalKeywords}개</span>
-            <span className="bg-bg px-2 py-1 rounded-md">노출 {rankedKeywords}개</span>
-            {top3Count > 0 && <span className="bg-up/10 text-up px-2 py-1 rounded-md">TOP 3 {top3Count}개</span>}
-            {integratedTop3Count > 0 && <span className="bg-gold/10 text-gold px-2 py-1 rounded-md">통합검색 {integratedTop3Count}개</span>}
-            {rankUpCount > 0 && <span className="bg-up/10 text-up px-2 py-1 rounded-md">상승 {rankUpCount}개</span>}
-          </div>
-        </>
+        <ScoreContent
+          influenceScore={influenceScore} expertiseScore={expertiseScore}
+          exposureScore={exposureScore} growthScore={growthScore}
+          activityScore={activityScore} competitivenessScore={competitivenessScore}
+          subscriberCount={subscriberCount} totalKeywords={totalKeywords}
+          rankedKeywords={rankedKeywords} top3Count={top3Count}
+          integratedTop3Count={integratedTop3Count} rankUpCount={rankUpCount}
+        />
       )}
     </GlassCard>
   );
