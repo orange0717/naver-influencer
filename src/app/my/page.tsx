@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
-import CompetitorSection from '@/components/CompetitorSection';
 import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import WidgetSection from '@/components/dashboard/WidgetSection';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
@@ -590,15 +589,7 @@ export default async function MyDashboard() {
       <WidgetSection naverId={naverId} />
 
 
-      {/* ─── 7. 경쟁자 분석 ─── */}
-      <CompetitorSection
-        naverId={naverId}
-        myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords: participatedCount, top3Count }}
-        mySubscriberCount={influencer.subscriber_count || 0}
-        myDisplayName={influencer.display_name || '나'}
-      />
-
-      {/* ─── 8. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
+      {/* ─── 7. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
       <MyKeywordList
         categoryGroups={categoryGroups.map(([category, keywords]) => ({ category, keywords }))}
         totalKeywords={totalKeywords}
