@@ -438,13 +438,14 @@ export default async function MyDashboard() {
           color={rankUpCount > 0 ? 'up' : rankDownCount > 0 ? 'down' : 'dim'}
           delay={200}
         />
-        <div className="glass-card flex flex-col items-center justify-center text-center p-4 min-h-[100px]">
-          <p className="text-[11px] text-dim mb-1">토픽</p>
-          <p className="text-sm font-bold text-text">{influencer.my_keyword || influencer.my_keyword_category || influencer.category || '-'}</p>
-          {influencer.category_my_type && (
-            <p className="text-[10px] text-dim mt-1">{influencer.category_my_type}</p>
-          )}
-        </div>
+        <AnimatedStatCard
+          label="토픽"
+          value={categoryGroups.length}
+          suffix="개"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>}
+          color={categoryGroups.length > 0 ? 'accent' : 'dim'}
+          delay={250}
+        />
       </div>
 
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
