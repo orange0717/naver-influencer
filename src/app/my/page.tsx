@@ -12,7 +12,6 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
 import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
-import InfluencerScoreSection from '@/components/dashboard/InfluencerScoreSection';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
@@ -506,24 +505,7 @@ export default async function MyDashboard() {
         compHigh={compHigh}
       />
 
-      {/* ─── 2-2. 인플루언서 종합 점수 ─── */}
-      <InfluencerScoreSection
-        subscriberCount={influencer.subscriber_count || 0}
-        categoryRank={categoryRank}
-        categoryTotal={categoryTotal}
-        totalKeywords={totalKeywords}
-        rankedKeywords={totalRankedKeywords}
-        top3Count={top3Count}
-        top10Count={top10Count}
-        avgRank={avgRank}
-        rankUpCount={rankUpCount}
-        rankDownCount={rankDownCount}
-        integratedTop3Count={integratedCount}
-        overallRank={overallRank}
-        overallTotal={overallTotal}
-      />
-
-      {/* ─── 2-3. 스마트 알림 (오늘의 액션 포인트) ─── */}
+      {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
 
       {/* ─── 3. 순위 추이 차트 ─── */}
