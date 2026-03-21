@@ -1,11 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { ActivityEvent } from '@/lib/activity-events';
 
 interface ActivityFeedProps {
   events: ActivityEvent[];
-  maxVisible?: number;
 }
 
 const typeConfig = {
@@ -45,6 +45,8 @@ const typeConfig = {
     border: 'border-l-accent',
   },
 };
+
+const PAGE_SIZE = 5;
 
 function EventCard({ event, index }: { event: ActivityEvent; index: number }) {
   const config = typeConfig[event.type];
@@ -102,10 +104,56 @@ function EventCard({ event, index }: { event: ActivityEvent; index: number }) {
   return <div className={baseClassName}>{content}</div>;
 }
 
-export default function ActivityFeed({ events, maxVisible = 8 }: ActivityFeedProps) {
-  const visibleEvents = events.slice(0, maxVisible);
+function PaginatedList({ events, label, icon, emptyText }: {
+  events: ActivityEvent[];
+  label: string;
+  icon: string;
+  emptyText: string;
+}) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(events.length / PAGE_SIZE));
+  const visible = events.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  if (visibleEvents.length === 0) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <span className={`text-xs font-bold ${label === '상승' ? 'text-up' : 'text-down'}`}>{icon} {label}</span>
+        <span className="text-[11px] text-dim">{events.length}건</span>
+      </div>
+      <div className="space-y-2">
+        {visible.length > 0 ? (
+          visible.map((event, i) => (
+            <EventCard key={event.id} event={event} index={i} />
+          ))
+        ) : (
+          <div className="text-center py-6 text-dim text-xs bg-bg/30 rounded-xl">
+            {emptyText}
+          </div>
+        )}
+      </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-3">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+            <button
+              key={p}
+              onClick={() => setPage(p)}
+              className={`w-7 h-7 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                page === p
+                  ? 'bg-accent text-white'
+                  : 'bg-border/30 text-dim hover:bg-border/50'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ActivityFeed({ events }: ActivityFeedProps) {
+  if (events.length === 0) {
     return (
       <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-2 mb-4">
@@ -123,8 +171,8 @@ export default function ActivityFeed({ events, maxVisible = 8 }: ActivityFeedPro
     );
   }
 
-  const downEvents = visibleEvents.filter(e => e.type === 'rank_down');
-  const upEvents = visibleEvents.filter(e => e.type === 'rank_up' || e.type === 'new_top3' || e.type === 'new_keyword' || e.type === 'milestone');
+  const upEvents = events.filter(e => e.type === 'rank_up' || e.type === 'new_top3' || e.type === 'new_keyword' || e.type === 'milestone');
+  const downEvents = events.filter(e => e.type === 'rank_down');
 
   return (
     <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -138,43 +186,21 @@ export default function ActivityFeed({ events, maxVisible = 8 }: ActivityFeedPro
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* 왼쪽: 하락 */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <span className="text-down text-xs font-bold">▼ 하락</span>
-            <span className="text-[11px] text-dim">{downEvents.length}건</span>
-          </div>
-          <div className="space-y-2">
-            {downEvents.length > 0 ? (
-              downEvents.map((event, i) => (
-                <EventCard key={event.id} event={event} index={i} />
-              ))
-            ) : (
-              <div className="text-center py-6 text-dim text-xs bg-bg/30 rounded-xl">
-                하락 키워드 없음
-              </div>
-            )}
-          </div>
-        </div>
+        {/* 왼쪽: 상승 */}
+        <PaginatedList
+          events={upEvents}
+          label="상승"
+          icon="▲"
+          emptyText="상승 키워드 없음"
+        />
 
-        {/* 오른쪽: 상승 */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <span className="text-up text-xs font-bold">▲ 상승</span>
-            <span className="text-[11px] text-dim">{upEvents.length}건</span>
-          </div>
-          <div className="space-y-2">
-            {upEvents.length > 0 ? (
-              upEvents.map((event, i) => (
-                <EventCard key={event.id} event={event} index={i} />
-              ))
-            ) : (
-              <div className="text-center py-6 text-dim text-xs bg-bg/30 rounded-xl">
-                상승 키워드 없음
-              </div>
-            )}
-          </div>
-        </div>
+        {/* 오른쪽: 하락 */}
+        <PaginatedList
+          events={downEvents}
+          label="하락"
+          icon="▼"
+          emptyText="하락 키워드 없음"
+        />
       </div>
     </div>
   );
