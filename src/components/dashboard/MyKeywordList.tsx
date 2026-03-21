@@ -185,17 +185,6 @@ export default function MyKeywordList({
               className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
             />
             <select
-              value={selectedCategory}
-              onChange={e => { setSelectedCategory(e.target.value); setVisibleCount(20); }}
-              className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>
-                  {cat} ({categoryCounts[cat] || 0})
-                </option>
-              ))}
-            </select>
-            <select
               value={participationFilter}
               onChange={e => { setParticipationFilter(e.target.value as ParticipationFilter); setVisibleCount(20); }}
               className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
