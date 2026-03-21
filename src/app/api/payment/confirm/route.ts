@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const payment = await confirmRes.json();
 
     if (!confirmRes.ok) {
-      console.error('[payment/confirm] 토스 승인 실패:', payment);
+      console.error('[payment/confirm] 토스 승인 실패:', { orderId, status: confirmRes.status });
       return NextResponse.json(
         { error: payment.message || '결제 승인에 실패했습니다.' },
         { status: 400 },

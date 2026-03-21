@@ -55,17 +55,22 @@ async function getInfluencersFromDB(
     .from('influencers')
     .select('*', { count: 'exact' });
 
-  // 카테고리 필터
+  // 카테고리 필터 (특수문자 제거)
   if (category && category !== '전체') {
-    query = query.or(`my_keyword_category.eq.${category},category.eq.${category}`);
+    const safeCategory = category.replace(/[.,()%_'"\\]/g, '');
+    if (safeCategory) {
+      query = query.or(`my_keyword_category.eq.${safeCategory},category.eq.${safeCategory}`);
+    }
   }
 
-  // 검색 필터
+  // 검색 필터 (특수문자 이스케이프)
   if (search?.trim()) {
-    const q = search.trim();
-    query = query.or(
-      `display_name.ilike.%${q}%,naver_id.ilike.%${q}%,my_keyword_category.ilike.%${q}%,my_keyword.ilike.%${q}%,category_my_type.ilike.%${q}%`,
-    );
+    const q = search.trim().replace(/[%_'"\\.,()]/g, '');
+    if (q) {
+      query = query.or(
+        `display_name.ilike.%${q}%,naver_id.ilike.%${q}%,my_keyword_category.ilike.%${q}%,my_keyword.ilike.%${q}%,category_my_type.ilike.%${q}%`,
+      );
+    }
   }
 
   // 신규 인플루언서만
