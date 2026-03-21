@@ -454,7 +454,7 @@ export default async function MyDashboard() {
               <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
               <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
               <span className="text-dim">통합검색 <strong className="text-text font-rank">{integratedCount}</strong>개</span>
-              <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{totalKeywords}</strong>개</span>
+              <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
               <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || 0)}</strong></span>
             </div>
           </div>
@@ -470,10 +470,10 @@ export default async function MyDashboard() {
       <div className="grid grid-cols-4 gap-3">
         <AnimatedStatCard
           label="참여 키워드"
-          value={totalKeywords}
+          value={participatedCount}
           suffix="개"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>}
-          color={totalKeywords > 0 ? 'accent' : 'dim'}
+          color={participatedCount > 0 ? 'accent' : 'dim'}
           delay={100}
         />
         <AnimatedStatCard
@@ -512,7 +512,7 @@ export default async function MyDashboard() {
             <p className="text-xs text-dim mt-1">팬수</p>
           </div>
           <div>
-            <p className="text-xl font-black font-rank">{totalKeywords}</p>
+            <p className="text-xl font-black font-rank">{participatedCount}</p>
             <p className="text-xs text-dim mt-1">참여 키워드</p>
           </div>
           <div>
@@ -550,7 +550,7 @@ export default async function MyDashboard() {
 
       {/* ─── 2-1. 키워드챌린지 참여 현황 ─── */}
       <ChallengeStatsSection
-        totalKeywords={totalKeywords}
+        totalKeywords={participatedCount}
         rankedKeywords={top10Count}
         rank1Count={rank1Count}
         top3Count={top3Count}
@@ -593,7 +593,7 @@ export default async function MyDashboard() {
       {/* ─── 7. 경쟁자 분석 ─── */}
       <CompetitorSection
         naverId={naverId}
-        myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords, top3Count }}
+        myStats={{ avgRank: Math.round(avgRank * 10) / 10, totalKeywords: participatedCount, top3Count }}
         mySubscriberCount={influencer.subscriber_count || 0}
         myDisplayName={influencer.display_name || '나'}
       />
