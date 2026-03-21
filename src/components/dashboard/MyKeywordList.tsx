@@ -216,17 +216,15 @@ export default function MyKeywordList({
                 </option>
               ))}
             </select>
-            {participationFilter !== 'not_participated' && (
-              <select
-                value={rankFilter}
-                onChange={e => { setRankFilter(e.target.value as 'all' | 'ranked' | 'unranked'); setVisibleCount(20); }}
-                className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
-              >
-                <option value="all">전체 상태</option>
-                <option value="ranked">노출 ({rankedCount})</option>
-                <option value="unranked">미노출 ({unrankedCount})</option>
-              </select>
-            )}
+            <select
+              value={participationFilter}
+              onChange={e => { setParticipationFilter(e.target.value as ParticipationFilter); setVisibleCount(20); }}
+              className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
+            >
+              <option value="all">전체 키워드 ({totalKeywords})</option>
+              <option value="participated">참여 키워드 ({participatedCount})</option>
+              <option value="not_participated">미참여 키워드 ({notParticipatedCount})</option>
+            </select>
           </div>
 
           {/* --- 경쟁도 + 정렬 --- */}
