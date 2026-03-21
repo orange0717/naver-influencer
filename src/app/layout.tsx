@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import VisitTracker from "@/components/VisitTracker";
 import ChatBot from "@/components/ChatBot";
+import FeedbackButton from "@/components/FeedbackButton";
 import Providers from "@/components/Providers";
 
 export const viewport: Viewport = {
@@ -37,6 +38,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <FeedbackButton />
           <ChatBot />
         </Providers>
       </body>
