@@ -277,8 +277,8 @@ export default async function MyDashboard() {
     id: string;
   }
 
-  // influencer_keywords 기반 키워드
-  const allKeywords = (myKeywords || []).map(ik => {
+  // influencer_keywords 기반 키워드 (참여 키워드)
+  const participatedKeywords = (myKeywords || []).map(ik => {
     const kw = ik.keyword_challenges as unknown as KeywordChallengeWithId;
     const ranked = rankedMap.get(ik.keyword_id);
     return {
@@ -290,13 +290,14 @@ export default async function MyDashboard() {
       rank_position: ranked?.rank_position ?? null,
       rank_change: ranked?.rank_change ?? 0,
       is_integrated_top3: ranked?.is_integrated_top3 ?? false,
+      is_participated: true,
     };
   });
 
-  // rankings에는 있지만 influencer_keywords에는 없는 키워드 추가 (숫자 일치)
+  // rankings에는 있지만 influencer_keywords에는 없는 키워드 추가
   for (const r of rankings) {
     if (!ikKeywordIds.has(r.keyword_id)) {
-      allKeywords.push({
+      participatedKeywords.push({
         keyword_id: r.keyword_id,
         keyword: r.keyword,
         category: r.category,
@@ -305,14 +306,53 @@ export default async function MyDashboard() {
         rank_position: r.rank_position,
         rank_change: r.rank_change,
         is_integrated_top3: r.is_integrated_top3,
+        is_participated: true,
       });
     }
   }
 
+  // 참여 키워드의 카테고리 목록 추출
+  const participatedCategories = [...new Set(participatedKeywords.map(kw => kw.category).filter(Boolean))];
+  const participatedKeywordIds = new Set(participatedKeywords.map(kw => kw.keyword_id));
+
+  // 해당 카테고리의 전체 키워드 조회 (미참여 키워드 포함)
+  const { data: categoryAllKeywords } = participatedCategories.length > 0
+    ? await supabase
+        .from('keyword_challenges')
+        .select('id, keyword, category, participant_count, search_volume_monthly')
+        .in('category', participatedCategories)
+        .eq('is_active', true)
+        .order('participant_count', { ascending: false })
+    : { data: null };
+
+  // 미참여 키워드 추가
+  const notParticipatedKeywords = (categoryAllKeywords || [])
+    .filter(kw => !participatedKeywordIds.has(kw.id))
+    .map(kw => ({
+      keyword_id: kw.id,
+      keyword: kw.keyword || '',
+      category: kw.category || '기타',
+      participant_count: kw.participant_count || 0,
+      search_volume: kw.search_volume_monthly || 0,
+      rank_position: null,
+      rank_change: 0,
+      is_integrated_top3: false,
+      is_participated: false,
+    }));
+
+  // 전체 키워드 = 참여 + 미참여
+  const allKeywords = [...participatedKeywords, ...notParticipatedKeywords];
+
   allKeywords.sort((a, b) => {
-    if (a.rank_position !== null && b.rank_position === null) return -1;
-    if (a.rank_position === null && b.rank_position !== null) return 1;
-    if (a.rank_position !== null && b.rank_position !== null) return a.rank_position - b.rank_position;
+    // 참여 키워드 우선
+    if (a.is_participated && !b.is_participated) return -1;
+    if (!a.is_participated && b.is_participated) return 1;
+    // 참여 키워드 내에서는 순위순
+    if (a.is_participated && b.is_participated) {
+      if (a.rank_position !== null && b.rank_position === null) return -1;
+      if (a.rank_position === null && b.rank_position !== null) return 1;
+      if (a.rank_position !== null && b.rank_position !== null) return a.rank_position - b.rank_position;
+    }
     return (b.search_volume || 0) - (a.search_volume || 0);
   });
 
@@ -326,6 +366,7 @@ export default async function MyDashboard() {
   const categoryGroups = Array.from(grouped.entries())
     .sort((a, b) => b[1].length - a[1].length);
   const totalKeywords = allKeywords.length;
+  const participatedCount = participatedKeywords.length;
 
   // ─── 3. 활동 이벤트 생성 ───
   const activityEvents = generateActivityEvents(rankings);
@@ -546,6 +587,7 @@ export default async function MyDashboard() {
       <MyKeywordList
         categoryGroups={categoryGroups.map(([category, keywords]) => ({ category, keywords }))}
         totalKeywords={totalKeywords}
+        participatedCount={participatedCount}
       />
 
       {/* 활동 현황은 상단으로 이동됨 */}

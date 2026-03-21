@@ -43,36 +43,15 @@ export const PROMO_BANNERS: BannerItem[] = [
     title: '광고주와 인플루언서를 연결합니다',
     description: '체험단, 협찬, 원고 의뢰까지. 인플루언서와 광고주를 위한 매칭 플랫폼.',
     cta: '사전 등록하기 →',
-    href: '/subscribe',
+    href: '/guide',
     external: false,
     gradient: 'from-[#F0F4FF] to-[#E8EEFF]',
     badge: 'OrangeConnect · 준비 중',
   },
 ];
 
-/* ── 이용권 유도 배너 ── */
-export const SUBSCRIBE_BANNERS: BannerItem[] = [
-  {
-    id: 'subscribe-main',
-    type: 'subscribe',
-    title: '이용권 등록하고 모든 기능을 이용하세요',
-    description: '키워드 분석, 경쟁자 비교, 상세 리포트까지. 스마트스토어에서 이용권을 구매하세요.',
-    cta: '이용권 등록하기 →',
-    href: '/subscribe',
-    gradient: 'from-[#FFF7F5] to-[#FFE8E0]',
-    badge: '이용권',
-  },
-  {
-    id: 'subscribe-dashboard',
-    type: 'subscribe',
-    title: '대시보드의 모든 데이터를 확인하세요',
-    description: 'TOP 키워드, 순위 변동, 경쟁자 비교까지. 이용권 등록으로 전체 데이터를 이용하세요.',
-    cta: '이용권 등록하기 →',
-    href: '/subscribe',
-    gradient: 'from-[#FFF7F5] to-[#FFE8E0]',
-    badge: '이용권',
-  },
-];
+/* ── 이용권 유도 배너 (비활성) ── */
+export const SUBSCRIBE_BANNERS: BannerItem[] = [];
 
 /* ── 협력사 배너 (블로그 관련 도구) ── */
 export const PARTNER_BANNERS: BannerItem[] = [

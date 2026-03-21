@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { MONTHLY_PRICE, YEARLY_PRICE } from '@/lib/plans';
 
 /* ── 브라우저 프레임 ── */
 function BrowserFrame({ url, children }: { url: string; children: React.ReactNode }) {
@@ -30,8 +29,8 @@ const FEATURES = [
     url: 'ninfl.co.kr/my#alerts',
     title: '스마트 알림',
     description: '하락 위험 키워드와 TOP 3 진입 기회 키워드를 자동으로 감지하여 알려드립니다.',
-    link: '/subscribe',
-    linkText: 'PRO 시작하기',
+    link: '/my',
+    linkText: '대시보드 보기',
     mockup: 'alerts',
   },
   {
@@ -46,8 +45,8 @@ const FEATURES = [
     url: 'ninfl.co.kr/my#competitors',
     title: '경쟁자 비교',
     description: '경쟁 인플루언서를 등록하면 겹치는 키워드에서 누가 앞서는지 실시간으로 비교합니다.',
-    link: '/subscribe',
-    linkText: 'PRO 시작하기',
+    link: '/my',
+    linkText: '대시보드 보기',
     mockup: 'competitors',
   },
   {
@@ -235,16 +234,12 @@ const FAQS = [
     a: '네, 인플루언서 계정을 연결하면 이미 수집된 키워드 순위 데이터를 바로 확인할 수 있습니다.',
   },
   {
-    q: '무료와 PRO의 차이는 무엇인가요?',
-    a: '무료로 키워드 검색, 인플루언서 검색, 커뮤니티를 이용할 수 있습니다. PRO에서는 대시보드 전체 기능(알림, 리포트, 경쟁자 비교)을 이용할 수 있습니다.',
+    q: '모든 기능이 무료인가요?',
+    a: '네, N인플의 모든 기능을 무료로 이용할 수 있습니다. 키워드 분석, 순위 추적, 스마트 알림, 경쟁자 비교 등 모든 기능이 무료입니다.',
   },
   {
     q: '데이터는 어떻게 수집되나요?',
     a: '네이버 키워드챌린지 순위를 매일 자동으로 수집합니다. 내 인플루언서 계정에 연결된 키워드의 순위, 경쟁자 정보 등을 크롤링합니다.',
-  },
-  {
-    q: '해지는 어떻게 하나요?',
-    a: '마이페이지에서 언제든지 구독을 해지할 수 있습니다. 해지해도 남은 기간까지 정상 이용 가능합니다.',
   },
 ];
 
@@ -282,79 +277,6 @@ export default function GuidePage() {
         })}
       </div>
 
-      {/* ─── 요금 안내 ─── */}
-      <div className="bg-bg rounded-2xl border border-border p-8 space-y-6">
-        <h2 className="text-xl font-extrabold text-center">요금 안내</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* 무료 */}
-          <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
-            <div className="text-center">
-              <span className="text-xs font-bold text-dim bg-border/30 px-2.5 py-1 rounded-full">무료</span>
-              <p className="text-2xl font-extrabold mt-2">0원</p>
-              <p className="text-xs text-dim mt-1">기본 검색 기능</p>
-            </div>
-            <div className="space-y-1.5">
-              {['키워드 목록 검색', '인플루언서 목록 검색', '커뮤니티 이용', '키워드 상세 정보'].map(f => (
-                <div key={f} className="flex items-center gap-2 text-xs">
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-dim shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span className="text-dim">{f}</span>
-                </div>
-              ))}
-            </div>
-            <Link href="/auth/login" className="block w-full text-center py-2 border border-border text-dim font-semibold rounded-lg hover:bg-bg transition text-xs">
-              무료로 시작하기
-            </Link>
-          </div>
-
-          {/* 월간 */}
-          <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
-            <div className="text-center">
-              <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">월간</span>
-              <p className="text-2xl font-extrabold mt-2">{MONTHLY_PRICE.toLocaleString()}원<span className="text-sm font-normal text-dim">/월</span></p>
-              <p className="text-xs text-dim mt-1">매월 자동 결제</p>
-            </div>
-            <div className="space-y-1.5">
-              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
-                <div key={f} className="flex items-center gap-2 text-xs">
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              <Link href="/subscribe" className="block w-full text-center py-2 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg transition text-xs">
-                월간 시작하기
-              </Link>
-              <p className="text-[10px] text-center text-dim">1일 무료 체험 후 결제</p>
-            </div>
-          </div>
-
-          {/* 연간 */}
-          <div className="bg-surface rounded-xl border-2 border-accent/30 p-5 space-y-4 relative">
-            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-accent text-white text-[9px] font-bold rounded-full">25% 할인</div>
-            <div className="text-center">
-              <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">연간</span>
-              <p className="text-2xl font-extrabold mt-2">{YEARLY_PRICE.toLocaleString()}원<span className="text-sm font-normal text-dim">/연</span></p>
-              <p className="text-xs text-dim mt-1">월 14,850원</p>
-            </div>
-            <div className="space-y-1.5">
-              {['내 키워드 순위 실시간 추적', '스마트 알림 (하락/TOP3)', '경쟁자 비교 분석', '순위 추이 차트', '맞춤 추천 키워드'].map(f => (
-                <div key={f} className="flex items-center gap-2 text-xs">
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-accent shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              <Link href="/subscribe" className="block w-full text-center py-2 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg transition text-xs">
-                연간 시작하기
-              </Link>
-              <p className="text-[10px] text-center text-dim">1일 무료 체험 후 결제</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* ─── FAQ ─── */}
       <div className="space-y-4">
         <h2 className="text-xl font-extrabold text-center">자주 묻는 질문</h2>
@@ -379,15 +301,10 @@ export default function GuidePage() {
       {/* ─── 하단 CTA ─── */}
       <div className="text-center space-y-4">
         <h2 className="text-xl font-extrabold">지금 시작하세요</h2>
-        <p className="text-sm text-dim">무료 가입으로 키워드 분석을 바로 시작할 수 있습니다.</p>
-        <div className="flex justify-center gap-3">
-          <Link href="/auth/signup" className="px-6 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
-            무료 회원가입
-          </Link>
-          <Link href="/subscribe" className="px-6 py-3 border border-accent text-accent font-bold rounded-xl hover:bg-accent/5 transition text-sm">
-            PRO 요금 보기
-          </Link>
-        </div>
+        <p className="text-sm text-dim">모든 기능을 무료로 이용할 수 있습니다.</p>
+        <Link href="/auth/signup" className="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
+          무료 회원가입
+        </Link>
       </div>
     </div>
   );

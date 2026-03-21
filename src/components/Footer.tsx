@@ -6,7 +6,7 @@ const FOOTER_LINKS = [
   { href: '/rankings', label: '랭킹' },
   { href: '/search-volume', label: '검색량' },
   { href: '/community', label: '커뮤니티' },
-  { href: '/subscribe', label: '이용권' },
+  { href: '/guide', label: '서비스 가이드' },
   { href: '/my', label: '대시보드' },
   { href: '/terms', label: '이용약관' },
   { href: '/privacy', label: '개인정보처리방침' },

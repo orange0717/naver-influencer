@@ -137,7 +137,7 @@ export default function BloggerDashboard() {
   const [results, setResults] = useState<KeywordRank[]>([]);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState('');
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const isSubscribed = true; // 모든 기능 무료 개방
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const [extractedKeywords, setExtractedKeywords] = useState<ExtractedKeyword[]>([]);
   const [extracting, setExtracting] = useState(false);
@@ -257,12 +257,6 @@ export default function BloggerDashboard() {
         } catch { /* ignore */ }
       }
       setProfile(p);
-
-      // 구독 상태 확인 (이용권 기반)
-      fetch('/api/license')
-        .then(r => r.json())
-        .then(data => setIsSubscribed(!!data.has_active))
-        .catch(() => {});
 
       // 저장된 키워드 불러오기
       let savedKws: string[] = [];

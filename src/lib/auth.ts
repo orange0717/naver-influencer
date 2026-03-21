@@ -21,22 +21,16 @@ export async function getAuthUser(request: Request) {
   const supabase = createServiceClient();
   const { data: profile } = await supabase
     .from('users')
-    .select('id, nickname, linked_influencer_id, subscription_status, subscription_expires_at')
+    .select('id, nickname, linked_influencer_id')
     .eq('auth_id', authUser.id)
     .single();
 
   if (!profile) return null;
 
-  const isSubscribed =
-    profile.subscription_status === 'active' &&
-    !!profile.subscription_expires_at &&
-    new Date(profile.subscription_expires_at) > new Date();
-
   return {
     authId: authUser.id,
     userId: profile.id as string,
     user: profile,
-    isSubscribed,
   };
 }
 

@@ -13,8 +13,6 @@ interface UserProfile {
   total_charged: number;
   total_used: number;
   linked_influencer_id: string | null;
-  subscription_status: string;
-  subscription_expires_at: string | null;
   created_at: string;
 }
 
@@ -225,26 +223,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
-          <div className="text-center">
-            <p className={`text-xl font-bold font-rank ${
-              user.subscription_status === 'active' && user.subscription_expires_at && new Date(user.subscription_expires_at) > new Date()
-                ? 'text-up' : 'text-dim'
-            }`}>
-              {user.subscription_status === 'active' && user.subscription_expires_at && new Date(user.subscription_expires_at) > new Date()
-                ? '구독 중' : '미구독'}
-            </p>
-            <p className="text-xs text-dim">구독 상태</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-dim font-rank">
-              {user.subscription_expires_at
-                ? new Date(user.subscription_expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
-                : '-'}
-            </p>
-            <p className="text-xs text-dim">만료일</p>
-          </div>
-        </div>
       </div>
 
       {/* 인플루언서 연결 */}
@@ -343,12 +321,9 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="flex gap-3">
-        <Link href="/subscribe" className="flex-1 text-center py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition">
-          구독 관리
-        </Link>
+      <div>
         <button onClick={handleLogout}
-          className="flex-1 py-3 bg-surface border border-border text-dim rounded-xl font-semibold text-sm hover:border-accent/40 transition cursor-pointer">
+          className="w-full py-3 bg-surface border border-border text-dim rounded-xl font-semibold text-sm hover:border-accent/40 transition cursor-pointer">
           로그아웃
         </button>
       </div>
@@ -374,7 +349,6 @@ export default function ProfilePage() {
               <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                 <li>계정 정보 및 프로필</li>
                 <li>포인트 잔액 및 거래 내역</li>
-                <li>이용권 및 구독 정보</li>
               </ul>
             </div>
             <div className="flex gap-3 pt-2">

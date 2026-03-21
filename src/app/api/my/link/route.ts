@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
-import { validateBody } from '@/lib/validations';
-import { linkInfluencerSchema } from '@/lib/validations/payment';
+import { validateBody, linkInfluencerSchema } from '@/lib/validations';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase-server';
-import { validateBody } from '@/lib/validations';
-import { profileUpdateSchema } from '@/lib/validations/payment';
+import { validateBody, profileUpdateSchema } from '@/lib/validations';
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthUser(request);
@@ -90,13 +89,7 @@ export async function DELETE(request: NextRequest) {
   const supabase = createServiceClient();
 
   try {
-    // 1. 이용권 삭제
-    await supabase
-      .from('licenses')
-      .delete()
-      .eq('buyer_id', auth.userId);
-
-    // 2. users 테이블 삭제
+    // 1. users 테이블 삭제
     const { error: deleteError } = await supabase
       .from('users')
       .delete()

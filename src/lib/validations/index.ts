@@ -64,3 +64,14 @@ export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).max(100).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
+
+/** 인플루언서 연결 */
+export const linkInfluencerSchema = z.object({
+  naverId: naverIdSchema,
+});
+
+/** 프로필 업데이트 */
+export const profileUpdateSchema = z.object({
+  nickname: z.string().min(1).max(20).optional(),
+  linked_influencer_id: z.string().uuid().nullable().optional(),
+});

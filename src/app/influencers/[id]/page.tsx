@@ -4,7 +4,6 @@ import { use, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import RankBadge from '@/components/RankBadge';
-import LockOverlay from '@/components/LockOverlay';
 
 interface InfluencerKeyword {
   keyword_id: string;
@@ -37,7 +36,6 @@ interface InfluencerData {
 
 export default function InfluencerProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [unlocked, setUnlocked] = useState(false);
   const [influencer, setInfluencer] = useState<InfluencerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -293,11 +291,6 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           )}
         </div>
 
-        {!unlocked && keywords.length > 0 && (
-          <div className="absolute inset-0 top-[45%]">
-            <LockOverlay />
-          </div>
-        )}
       </div>
     </div>
   );

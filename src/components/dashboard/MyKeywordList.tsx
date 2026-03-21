@@ -15,6 +15,7 @@ interface KeywordItem {
   rank_position: number | null;
   rank_change: number;
   is_integrated_top3?: boolean;
+  is_participated: boolean;
 }
 
 interface CategoryGroupData {
@@ -24,6 +25,7 @@ interface CategoryGroupData {
 
 type SortKey = 'rank' | 'volume' | 'participants' | 'change' | 'keyword';
 type CompFilter = 'all' | 'low' | 'mid' | 'high';
+type ParticipationFilter = 'all' | 'participated' | 'not_participated';
 
 function getCompLevel(participants: number): CompFilter {
   if (participants <= 30) return 'low';
@@ -41,16 +43,21 @@ const compLabels: Record<CompFilter, { label: string; className: string }> = {
 export default function MyKeywordList({
   categoryGroups,
   totalKeywords,
+  participatedCount,
 }: {
   categoryGroups: CategoryGroupData[];
   totalKeywords: number;
+  participatedCount: number;
 }) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>('all');
   const [rankFilter, setRankFilter] = useState<'all' | 'ranked' | 'unranked'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
   const [visibleCount, setVisibleCount] = useState(20);
+
+  const notParticipatedCount = totalKeywords - participatedCount;
 
   // 카테고리 목록
   const categories = useMemo(() => {
@@ -66,12 +73,19 @@ export default function MyKeywordList({
   const filteredKeywords = useMemo(() => {
     let list = [...allKeywords];
 
+    // 참여 필터
+    if (participationFilter === 'participated') {
+      list = list.filter(kw => kw.is_participated);
+    } else if (participationFilter === 'not_participated') {
+      list = list.filter(kw => !kw.is_participated);
+    }
+
     // 카테고리 필터
     if (selectedCategory !== '전체') {
       list = list.filter(kw => kw.category === selectedCategory);
     }
 
-    // 노출/미노출 필터
+    // 노출/미노출 필터 (참여 키워드에만 의미 있음)
     if (rankFilter === 'ranked') {
       list = list.filter(kw => kw.rank_position !== null);
     } else if (rankFilter === 'unranked') {
@@ -93,6 +107,9 @@ export default function MyKeywordList({
     list.sort((a, b) => {
       switch (sortKey) {
         case 'rank': {
+          // 참여 키워드 우선
+          if (a.is_participated && !b.is_participated) return -1;
+          if (!a.is_participated && b.is_participated) return 1;
           // 순위 있는 것 우선, 없으면 뒤로
           if (a.rank_position !== null && b.rank_position === null) return -1;
           if (a.rank_position === null && b.rank_position !== null) return 1;
@@ -108,16 +125,16 @@ export default function MyKeywordList({
     });
 
     return list;
-  }, [allKeywords, selectedCategory, rankFilter, compFilter, search, sortKey]);
+  }, [allKeywords, selectedCategory, participationFilter, rankFilter, compFilter, search, sortKey]);
 
   const displayList = filteredKeywords.slice(0, visibleCount);
   const hasMore = visibleCount < filteredKeywords.length;
-  const rankedCount = allKeywords.filter(kw => kw.rank_position !== null).length;
-  const unrankedCount = allKeywords.filter(kw => kw.rank_position === null).length;
+  const rankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position !== null).length;
+  const unrankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position === null).length;
 
   return (
     <div className="space-y-3">
-      {/* ─── 헤더 ─── */}
+      {/* --- 헤더 --- */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
@@ -130,21 +147,40 @@ export default function MyKeywordList({
             <p className="text-[11px] text-dim">
               {filteredKeywords.length !== totalKeywords
                 ? `${filteredKeywords.length} / ${totalKeywords}개`
-                : `${categories.length - 1}개 주제 · ${totalKeywords}개 키워드`}
+                : `참여 ${participatedCount} / 전체 ${totalKeywords}개`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-up font-bold bg-up/10 px-2 py-0.5 rounded-full">노출 {rankedCount}</span>
-          {unrankedCount > 0 && (
-            <span className="text-[11px] text-down font-bold bg-down/10 px-2 py-0.5 rounded-full">미노출 {unrankedCount}</span>
-          )}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-full">참여 {participatedCount}</span>
+          <span className="text-[11px] text-dim font-bold bg-border/30 px-2 py-0.5 rounded-full">미참여 {notParticipatedCount}</span>
         </div>
       </div>
 
       {totalKeywords > 0 && (
         <>
-          {/* ─── 필터 바 ─── */}
+          {/* --- 참여 필터 탭 --- */}
+          <div className="flex rounded-xl bg-border/20 p-1 gap-0.5">
+            {([
+              { key: 'all' as ParticipationFilter, label: '전체', count: totalKeywords },
+              { key: 'participated' as ParticipationFilter, label: '참여', count: participatedCount },
+              { key: 'not_participated' as ParticipationFilter, label: '미참여', count: notParticipatedCount },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => { setParticipationFilter(tab.key); setVisibleCount(20); }}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  participationFilter === tab.key
+                    ? 'bg-surface text-text shadow-sm'
+                    : 'text-dim hover:text-text'
+                }`}
+              >
+                {tab.label} <span className={participationFilter === tab.key ? 'text-accent' : 'text-dim'}>{tab.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* --- 필터 바 --- */}
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
@@ -164,18 +200,20 @@ export default function MyKeywordList({
                 </option>
               ))}
             </select>
-            <select
-              value={rankFilter}
-              onChange={e => { setRankFilter(e.target.value as 'all' | 'ranked' | 'unranked'); setVisibleCount(20); }}
-              className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
-            >
-              <option value="all">전체 상태</option>
-              <option value="ranked">노출 ({rankedCount})</option>
-              <option value="unranked">미노출 ({unrankedCount})</option>
-            </select>
+            {participationFilter !== 'not_participated' && (
+              <select
+                value={rankFilter}
+                onChange={e => { setRankFilter(e.target.value as 'all' | 'ranked' | 'unranked'); setVisibleCount(20); }}
+                className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
+              >
+                <option value="all">전체 상태</option>
+                <option value="ranked">노출 ({rankedCount})</option>
+                <option value="unranked">미노출 ({unrankedCount})</option>
+              </select>
+            )}
           </div>
 
-          {/* ─── 경쟁도 + 정렬 ─── */}
+          {/* --- 경쟁도 + 정렬 --- */}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex gap-1">
               {(['all', 'low', 'mid', 'high'] as CompFilter[]).map(f => (
@@ -207,7 +245,7 @@ export default function MyKeywordList({
         </>
       )}
 
-      {/* ─── 키워드 리스트 ─── */}
+      {/* --- 키워드 리스트 --- */}
       {filteredKeywords.length > 0 ? (
         <div className="rounded-2xl border border-border bg-surface overflow-hidden">
           {/* 데스크톱 테이블 */}
@@ -227,8 +265,9 @@ export default function MyKeywordList({
               <tbody className="divide-y divide-border/20">
                 {displayList.map(kw => {
                   const comp = getCompLevel(kw.participant_count);
+                  const dimmed = !kw.is_participated;
                   return (
-                    <tr key={kw.keyword_id} className="hover:bg-surface-hover transition">
+                    <tr key={kw.keyword_id} className={`hover:bg-surface-hover transition ${dimmed ? 'opacity-60' : ''}`}>
                       <td className="px-5 py-3">
                         <Link href={`/keywords/${kw.keyword_id}`} className="hover:text-accent transition">
                           <span className="text-sm font-semibold">{kw.keyword}</span>
@@ -236,7 +275,7 @@ export default function MyKeywordList({
                         </Link>
                       </td>
                       <td className="text-center px-3 py-3">
-                        {kw.rank_position !== null ? (
+                        {kw.is_participated && kw.rank_position !== null ? (
                           <span className={`text-sm font-black font-rank ${
                             kw.rank_position === 1 ? 'text-gold' : kw.rank_position <= 3 ? 'text-accent' : ''
                           }`}>
@@ -247,7 +286,7 @@ export default function MyKeywordList({
                         )}
                       </td>
                       <td className="text-center px-3 py-3">
-                        {kw.rank_change !== 0 ? (
+                        {kw.is_participated && kw.rank_change !== 0 ? (
                           <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
                             {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
                           </span>
@@ -269,7 +308,9 @@ export default function MyKeywordList({
                         </span>
                       </td>
                       <td className="text-center px-3 py-3">
-                        {kw.rank_position !== null ? (
+                        {!kw.is_participated ? (
+                          <span className="text-[10px] font-bold text-dim bg-border/30 px-1.5 py-0.5 rounded">미참여</span>
+                        ) : kw.rank_position !== null ? (
                           <div className="flex items-center justify-center gap-1">
                             <span className="text-[10px] font-bold text-up bg-up/10 px-1.5 py-0.5 rounded">노출</span>
                             {kw.is_integrated_top3 && (
@@ -291,16 +332,17 @@ export default function MyKeywordList({
           <div className="lg:hidden divide-y divide-border/20">
             {displayList.map(kw => {
               const comp = getCompLevel(kw.participant_count);
+              const dimmed = !kw.is_participated;
               return (
                 <Link key={kw.keyword_id} href={`/keywords/${kw.keyword_id}`}
-                  className="flex items-center justify-between px-4 py-3.5 hover:bg-surface-hover transition">
+                  className={`flex items-center justify-between px-4 py-3.5 hover:bg-surface-hover transition ${dimmed ? 'opacity-60' : ''}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-semibold truncate">{kw.keyword}</span>
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${compLabels[comp].className}`}>
                         {compLabels[comp].label}
                       </span>
-                      {kw.is_integrated_top3 && (
+                      {kw.is_participated && kw.is_integrated_top3 && (
                         <span className="text-[9px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full shrink-0">T3</span>
                       )}
                     </div>
@@ -310,12 +352,14 @@ export default function MyKeywordList({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-3">
-                    {kw.rank_change !== 0 && (
+                    {kw.is_participated && kw.rank_change !== 0 && (
                       <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
                         {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
                       </span>
                     )}
-                    {kw.rank_position !== null ? (
+                    {!kw.is_participated ? (
+                      <span className="text-[10px] font-bold text-dim bg-border/30 px-1.5 py-0.5 rounded">미참여</span>
+                    ) : kw.rank_position !== null ? (
                       <span className={`text-sm font-black font-rank ${
                         kw.rank_position === 1 ? 'text-gold' : kw.rank_position <= 3 ? 'text-accent' : ''
                       }`}>
