@@ -27,14 +27,22 @@ export async function POST(req: NextRequest) {
     const { paymentKey, orderId, amount } = v.data;
 
     // 1. 토스페이먼츠 결제 승인 API 호출
-    const confirmRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${Buffer.from(TOSS_SECRET_KEY + ':').toString('base64')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ paymentKey, orderId, amount }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let confirmRes: Response;
+    try {
+      confirmRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(TOSS_SECRET_KEY + ':').toString('base64')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ paymentKey, orderId, amount }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const payment = await confirmRes.json();
 
@@ -79,13 +87,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. userId 추출: NINFL_{planName}_{months}M_{userId}_{timestamp}
-    const parts = orderId.split('_');
-    if (parts.length < 5 || parts[0] !== 'NINFL') {
+    // 형식 검증: NINFL_PRO_1M_uuid_timestamp 또는 NINFL_PRO_12M_uuid_timestamp
+    const orderIdRegex = /^NINFL_(PERSONAL|INFLUENCER|AGENCY|PRO)_(\d+)M_(.+)_(\d{10,13})$/;
+    const orderMatch = orderId.match(orderIdRegex);
+    if (!orderMatch) {
       return NextResponse.json({ error: '주문 형식이 올바르지 않습니다.' }, { status: 400 });
     }
-    const userId = parts.slice(3, -1).join('_');
+    const userId = orderMatch[3];
 
-    if (!userId) {
+    if (!userId || userId.length < 1 || userId.length > 128) {
       return NextResponse.json({ error: '주문 정보에서 사용자를 찾을 수 없습니다.' }, { status: 400 });
     }
 

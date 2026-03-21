@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useRef, useState } from 'react';
+import { formatCount, formatDate } from '@/lib/format';
 
 interface ProfileHeaderProps {
   displayName: string;
@@ -19,18 +20,6 @@ interface ProfileHeaderProps {
   totalKeywords?: number;
   myKeyword?: string;
   naverId?: string;
-}
-
-function formatCount(n: number): string {
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return n.toLocaleString();
-}
-
-function formatDate(d: string | null): string {
-  if (!d) return '';
-  const date = new Date(d);
-  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 }
 
 export default function ProfileHeader({
@@ -93,11 +82,11 @@ export default function ProfileHeader({
         {/* 프로필 이미지 */}
         <div className="relative group">
           {imageUrl ? (
-            <div className={`relative w-16 h-16 rounded-full ring-2 ring-${accentColor}/30 ring-offset-2 ring-offset-surface`}>
-              <img src={imageUrl} alt="" className="w-16 h-16 rounded-full object-cover" />
+            <div className={`relative w-16 h-16 rounded-full ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'ring-accent/30' : 'ring-[#2DB400]/30'}`}>
+              <img src={imageUrl} alt={displayName} className="w-16 h-16 rounded-full object-cover" />
             </div>
           ) : (
-            <div className={`w-16 h-16 bg-${accentColor}/15 rounded-full flex items-center justify-center text-${accentColor} text-2xl font-bold ring-2 ring-${accentColor}/20 ring-offset-2 ring-offset-surface`}>
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'bg-accent/15 text-accent ring-accent/20' : 'bg-[#2DB400]/15 text-[#2DB400] ring-[#2DB400]/20'}`}>
               {displayName[0]}
             </div>
           )}

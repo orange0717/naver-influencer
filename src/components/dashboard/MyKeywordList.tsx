@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import GlassCard from './GlassCard';
 import KeywordSyncButton from './KeywordSyncButton';
+import { formatCount } from '@/lib/format';
 
 interface KeywordItem {
   keyword_id: string;
@@ -19,12 +20,6 @@ interface KeywordItem {
 interface CategoryGroupData {
   category: string;
   keywords: KeywordItem[];
-}
-
-function formatCount(n: number): string {
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return n.toLocaleString();
 }
 
 type SortKey = 'rank' | 'volume' | 'participants' | 'change' | 'keyword';

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { MONTHLY_PRICE, YEARLY_PRICE } from '@/lib/plans';
 
 const FREE_FEATURES = [
   { text: '키워드 목록 검색', included: true },
@@ -22,15 +23,30 @@ const PRO_FEATURES = [
   { text: '키워드 순위 위젯 (블로그 삽입)', highlight: false },
 ];
 
-const MONTHLY_PRICE = 19800;
-const YEARLY_PRICE = 178200; // 연 25% 할인 (공급가 162,000 + VAT 16,200)
 const YEARLY_MONTHLY = Math.round(YEARLY_PRICE / 12);
 const YEARLY_DISCOUNT = Math.round((1 - YEARLY_PRICE / (MONTHLY_PRICE * 12)) * 100);
 
 export default function SubscribePage() {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly');
+  const [loading, setLoading] = useState(false);
 
   const monthlyEquiv = billing === 'monthly' ? MONTHLY_PRICE : YEARLY_MONTHLY;
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      // 로그인 여부 확인
+      const meRes = await fetch('/api/auth/me');
+      if (!meRes.ok) {
+        window.location.href = '/auth/login?redirect=/subscribe';
+        return;
+      }
+      // Stripe 결제 연동 예정 — 현재는 안내 표시
+      alert('Stripe 결제 연동 준비 중입니다. 곧 이용 가능합니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-12">
@@ -149,9 +165,11 @@ export default function SubscribePage() {
             ))}
           </div>
           <button
-            className="w-full py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition cursor-pointer text-sm"
+            onClick={handleSubscribe}
+            disabled={loading}
+            className="w-full py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition cursor-pointer text-sm disabled:opacity-50"
           >
-            PRO 시작하기
+            {loading ? '처리 중...' : 'PRO 시작하기'}
           </button>
         </div>
       </div>
@@ -186,9 +204,11 @@ export default function SubscribePage() {
           커피 한 잔 값으로 내 순위를 지키세요
         </p>
         <button
-          className="px-8 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition cursor-pointer text-sm"
+          onClick={handleSubscribe}
+          disabled={loading}
+          className="px-8 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition cursor-pointer text-sm disabled:opacity-50"
         >
-          {billing === 'yearly'
+          {loading ? '처리 중...' : billing === 'yearly'
             ? `연간 PRO 시작하기 · ${YEARLY_PRICE.toLocaleString()}원`
             : `월간 PRO 시작하기 · ${MONTHLY_PRICE.toLocaleString()}원`}
         </button>

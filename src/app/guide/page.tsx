@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MONTHLY_PRICE, YEARLY_PRICE } from '@/lib/plans';
 
 /* ── 브라우저 프레임 ── */
 function BrowserFrame({ url, children }: { url: string; children: React.ReactNode }) {
@@ -309,7 +310,7 @@ export default function GuidePage() {
           <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
             <div className="text-center">
               <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">월간</span>
-              <p className="text-2xl font-extrabold mt-2">19,800원<span className="text-sm font-normal text-dim">/월</span></p>
+              <p className="text-2xl font-extrabold mt-2">{MONTHLY_PRICE.toLocaleString()}원<span className="text-sm font-normal text-dim">/월</span></p>
               <p className="text-xs text-dim mt-1">매월 자동 결제</p>
             </div>
             <div className="space-y-1.5">
@@ -333,7 +334,7 @@ export default function GuidePage() {
             <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-accent text-white text-[9px] font-bold rounded-full">25% 할인</div>
             <div className="text-center">
               <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-full">연간</span>
-              <p className="text-2xl font-extrabold mt-2">178,200원<span className="text-sm font-normal text-dim">/연</span></p>
+              <p className="text-2xl font-extrabold mt-2">{YEARLY_PRICE.toLocaleString()}원<span className="text-sm font-normal text-dim">/연</span></p>
               <p className="text-xs text-dim mt-1">월 14,850원</p>
             </div>
             <div className="space-y-1.5">

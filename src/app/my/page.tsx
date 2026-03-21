@@ -1,9 +1,10 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
 import CompetitorSection from '@/components/CompetitorSection';
-import CopyButton from '@/components/CopyButton';
+import Top5Keywords from '@/components/dashboard/Top5Keywords';
+import WidgetSection from '@/components/dashboard/WidgetSection';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
@@ -20,12 +21,6 @@ import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 
 export const dynamic = 'force-dynamic';
-
-function formatCount(n: number): string {
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return n.toLocaleString();
-}
 
 interface Recommendation {
   keyword_id: string;
@@ -110,36 +105,50 @@ export default async function MyDashboard() {
   }
 
   // ─── 1. 최신 순위 데이터 (keyword_rankings) ───
-  const { data: latestRankings } = await supabase
+  // 먼저 이 인플루언서의 최신 스냅샷 날짜를 조회
+  const { data: myLatestDate } = await supabase
     .from('keyword_rankings')
-    .select(`
-      rank_position, previous_rank, rank_change, is_integrated_top3,
-      keyword_id, latest_post_title, latest_post_url, snapshot_date,
-      keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
-    `)
+    .select('snapshot_date')
     .eq('influencer_id', influencerId)
     .order('snapshot_date', { ascending: false })
-    .limit(5000);
+    .limit(1)
+    .single();
 
-  const latestByKeyword = new Map<string, (typeof latestRankings extends (infer T)[] | null ? T : never)>();
-  for (const r of (latestRankings || [])) {
-    if (!latestByKeyword.has(r.keyword_id)) {
-      latestByKeyword.set(r.keyword_id, r);
-    }
+  const mySnapshotDate = myLatestDate?.snapshot_date;
+
+  // 최신 날짜의 랭킹만 가져오기 (limit 5000 -> 정확한 최신 데이터만)
+  const { data: latestRankings } = mySnapshotDate
+    ? await supabase
+        .from('keyword_rankings')
+        .select(`
+          rank_position, previous_rank, rank_change, is_integrated_top3,
+          keyword_id, latest_post_title, latest_post_url, snapshot_date,
+          keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
+        `)
+        .eq('influencer_id', influencerId)
+        .eq('snapshot_date', mySnapshotDate)
+    : { data: null };
+
+  const currentRankings = latestRankings || [];
+
+  interface KeywordChallengeJoin {
+    keyword: string;
+    category: string;
+    participant_count: number;
+    search_volume_monthly: number;
   }
-  const currentRankings = Array.from(latestByKeyword.values());
 
   const rankings = currentRankings.map(r => {
-    const kw = r.keyword_challenges as unknown as Record<string, unknown>;
+    const kw = r.keyword_challenges as unknown as KeywordChallengeJoin;
     return {
       keyword_id: r.keyword_id,
-      keyword: (kw?.keyword as string) || '',
-      category: (kw?.category as string) || '',
+      keyword: kw?.keyword || '',
+      category: kw?.category || '',
       rank_position: r.rank_position,
       rank_change: r.rank_change,
       is_integrated_top3: r.is_integrated_top3,
-      participant_count: (kw?.participant_count as number) || 0,
-      search_volume: (kw?.search_volume_monthly as number) || 0,
+      participant_count: kw?.participant_count || 0,
+      search_volume: kw?.search_volume_monthly || 0,
       latest_post_title: r.latest_post_title || '',
       latest_post_url: r.latest_post_url || '',
       snapshot_date: r.snapshot_date || '',
@@ -183,7 +192,6 @@ export default async function MyDashboard() {
   const rank1Count = rankings.filter(r => r.rank_position === 1).length;
   const top10Count = rankings.filter(r => r.rank_position <= 10).length;
   const integratedCount = rankings.filter(r => r.is_integrated_top3).length;
-  const top5 = rankings.slice(0, 5);
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
 
@@ -280,16 +288,20 @@ export default async function MyDashboard() {
   const rankedMap = new Map(rankings.map(r => [r.keyword_id, r]));
   const ikKeywordIds = new Set((myKeywords || []).map(ik => ik.keyword_id));
 
+  interface KeywordChallengeWithId extends KeywordChallengeJoin {
+    id: string;
+  }
+
   // influencer_keywords 기반 키워드
   const allKeywords = (myKeywords || []).map(ik => {
-    const kw = ik.keyword_challenges as unknown as Record<string, unknown>;
+    const kw = ik.keyword_challenges as unknown as KeywordChallengeWithId;
     const ranked = rankedMap.get(ik.keyword_id);
     return {
-      keyword_id: (kw?.id as string) || ik.keyword_id,
-      keyword: (kw?.keyword as string) || '',
-      category: (kw?.category as string) || '기타',
-      participant_count: (kw?.participant_count as number) || 0,
-      search_volume: (kw?.search_volume_monthly as number) || 0,
+      keyword_id: kw?.id || ik.keyword_id,
+      keyword: kw?.keyword || '',
+      category: kw?.category || '기타',
+      participant_count: kw?.participant_count || 0,
+      search_volume: kw?.search_volume_monthly || 0,
       rank_position: ranked?.rank_position ?? null,
       rank_change: ranked?.rank_change ?? 0,
       is_integrated_top3: ranked?.is_integrated_top3 ?? false,
@@ -342,7 +354,9 @@ export default async function MyDashboard() {
       const recData = await recRes.json();
       recommendations = (recData.recommendations || []).slice(0, 6);
     }
-  } catch { /* ignore */ }
+  } catch (err) {
+    console.warn('[dashboard] 추천 키워드 로드 실패', err instanceof Error ? err.message : err);
+  }
 
   // ─── 4. 활동 이벤트 생성 ───
   const activityEvents = generateActivityEvents(rankings);
@@ -561,96 +575,10 @@ export default async function MyDashboard() {
       </div>
 
       {/* ─── 5. TOP 5 키워드 ─── */}
-      <GlassCard padding="none">
-        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
-          <h3 className="font-bold text-[15px]">TOP 5 키워드</h3>
-          {top5.length > 0 && (
-            <span className="text-[11px] text-dim">{totalRankedKeywords}개 중</span>
-          )}
-        </div>
-        {top5.length > 0 ? (
-          <div className="divide-y divide-border/20">
-            {top5.map((r, i) => (
-              <Link key={r.keyword_id} href={`/keywords/${r.keyword_id}`}
-                className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-hover transition group">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${
-                    i === 0 ? 'bg-gold/20 text-gold' : i <= 2 ? 'bg-accent/15 text-accent' : 'bg-border/50 text-dim'
-                  }`}>{i + 1}</span>
-                  <div className="min-w-0">
-                    <span className="font-semibold text-sm truncate block group-hover:text-accent transition-colors">{r.keyword}</span>
-                    <span className="text-xs text-dim">{r.category} · {r.participant_count}명 참여{r.search_volume > 0 ? ` · 월 ${formatCount(r.search_volume)}회` : ''}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {r.rank_change !== 0 && (
-                    <span className={`text-xs font-bold ${r.rank_change > 0 ? 'text-up' : 'text-down'}`}>
-                      {r.rank_change > 0 ? '▲' : '▼'}{Math.abs(r.rank_change)}
-                    </span>
-                  )}
-                  <span className={`text-sm font-black font-rank ${r.rank_position <= 3 ? 'text-accent' : ''}`}>
-                    {r.rank_position}위
-                  </span>
-                  {r.is_integrated_top3 && <span className="text-xs font-bold text-gold">T3</span>}
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-10 text-dim text-sm">
-            <p>아직 순위 데이터가 없습니다.</p>
-            <p className="text-xs mt-1">데이터 수집이 매일 자동으로 진행됩니다.</p>
-          </div>
-        )}
-      </GlassCard>
+      <Top5Keywords rankings={rankings} totalRankedKeywords={totalRankedKeywords} />
 
       {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
-      <GlassCard>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-bold text-[15px]">블로그 위젯</h3>
-            <p className="text-[11px] text-dim mt-0.5">내 블로그에 뱃지를 달아보세요</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="flex flex-col items-center p-4 bg-bg rounded-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <a href={`/api/widget/rank/${naverId}`} download={`ninfl-rank-${naverId}.svg`} title="클릭하여 이미지 다운로드">
-              <img src={`/api/widget/rank/${naverId}`} alt="키워드 순위 위젯" width={170} height={220} className="rounded-lg cursor-pointer hover:opacity-80 transition" />
-            </a>
-            <p className="text-[10px] text-dim mt-2">키워드 순위</p>
-          </div>
-          <div className="flex flex-col items-center p-4 bg-bg rounded-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <a href={`/api/widget/top3/${naverId}`} download={`ninfl-top3-${naverId}.svg`} title="클릭하여 이미지 다운로드">
-              <img src={`/api/widget/top3/${naverId}`} alt="TOP 3 달성률 위젯" width={170} height={140} className="rounded-lg cursor-pointer hover:opacity-80 transition" />
-            </a>
-            <p className="text-[10px] text-dim mt-2">TOP 3 달성률</p>
-          </div>
-        </div>
-        <p className="text-[10px] text-dim text-center mb-4">이미지를 클릭하면 다운로드할 수 있습니다</p>
-        <div className="space-y-3">
-          <div>
-            <p className="text-[11px] font-semibold text-dim mb-1.5">키워드 순위 위젯 HTML</p>
-            <div className="relative">
-              <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
-                {`<a href="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" download><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`}
-              </code>
-              <CopyButton text={`<a href="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" download><img src="https://naver-influencer.vercel.app/api/widget/rank/${naverId}" alt="N인플 키워드 순위" width="170" /></a>`} />
-            </div>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-dim mb-1.5">TOP 3 달성률 위젯 HTML</p>
-            <div className="relative">
-              <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
-                {`<a href="https://naver-influencer.vercel.app/api/widget/top3/${naverId}" download><img src="https://naver-influencer.vercel.app/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`}
-              </code>
-              <CopyButton text={`<a href="https://naver-influencer.vercel.app/api/widget/top3/${naverId}" download><img src="https://naver-influencer.vercel.app/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`} />
-            </div>
-          </div>
-          <p className="text-[10px] text-dim leading-relaxed">* 위젯은 매일 자동으로 업데이트됩니다. 이미지를 클릭하면 최신 위젯을 다운로드합니다.</p>
-        </div>
-      </GlassCard>
+      <WidgetSection naverId={naverId} />
 
 
       {/* ─── 7. 경쟁자 분석 ─── */}

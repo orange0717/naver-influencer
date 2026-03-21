@@ -65,12 +65,20 @@ async function searchNaverBlog(keyword: string, blogId: string) {
   // 네이버 블로그 검색 API - 최대 100개 결과
   const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(keyword)}&display=100&sort=sim`;
 
-  const res = await fetch(url, {
-    headers: {
-      'X-Naver-Client-Id': clientId,
-      'X-Naver-Client-Secret': clientSecret,
-    },
-  });
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 8000);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        'X-Naver-Client-Id': clientId,
+        'X-Naver-Client-Secret': clientSecret,
+      },
+      signal: ac.signal,
+    });
+  } finally {
+    clearTimeout(t);
+  }
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');

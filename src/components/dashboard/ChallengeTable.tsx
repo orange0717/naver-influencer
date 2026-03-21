@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { formatCount } from '@/lib/format';
 
 interface ChallengeRanking {
   keyword_id: string;
@@ -16,12 +17,6 @@ interface ChallengeRanking {
 
 type SortKey = 'rank' | 'volume' | 'participants' | 'change';
 type CompFilter = 'all' | 'low' | 'mid' | 'high';
-
-function formatCount(n: number): string {
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return n.toLocaleString();
-}
 
 function getCompLevel(participants: number): CompFilter {
   if (participants <= 30) return 'low';

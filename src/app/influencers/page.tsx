@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { formatCount } from '@/lib/format';
 
 interface InfluencerItem {
   name: string;
@@ -14,12 +15,6 @@ interface InfluencerItem {
   categoryMyType: string;
   foundInKeywords: string[];
   firstSeenAt?: string;
-}
-
-function formatCount(n: number): string {
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return n.toLocaleString();
 }
 
 function formatDate(d: string | null | undefined): string {

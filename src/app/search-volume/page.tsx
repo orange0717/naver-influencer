@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatCount } from '@/lib/format';
 
 interface KeywordVolume {
   keyword: string;
@@ -10,9 +11,9 @@ interface KeywordVolume {
   competition: string;
 }
 
-function formatCount(n: number | string): string {
+function formatCountOrString(n: number | string): string {
   if (typeof n === 'string') return n;
-  return n.toLocaleString();
+  return formatCount(n);
 }
 
 export default function SearchVolumePage() {
@@ -123,9 +124,9 @@ export default function SearchVolumePage() {
                 {results.map((kw, i) => (
                   <tr key={i} className="hover:bg-surface-hover transition">
                     <td className="px-5 py-3.5 font-semibold">{kw.keyword}</td>
-                    <td className="px-4 py-3.5 text-right font-rank">{formatCount(kw.monthlyPc)}</td>
-                    <td className="px-4 py-3.5 text-right font-rank">{formatCount(kw.monthlyMobile)}</td>
-                    <td className="px-4 py-3.5 text-right font-rank font-bold text-accent">{formatCount(kw.monthlyTotal)}</td>
+                    <td className="px-4 py-3.5 text-right font-rank">{formatCountOrString(kw.monthlyPc)}</td>
+                    <td className="px-4 py-3.5 text-right font-rank">{formatCountOrString(kw.monthlyMobile)}</td>
+                    <td className="px-4 py-3.5 text-right font-rank font-bold text-accent">{formatCountOrString(kw.monthlyTotal)}</td>
                     <td className="px-4 py-3.5 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
                         kw.competition === '높음' ? 'bg-down/10 text-down' :
@@ -153,15 +154,15 @@ export default function SearchVolumePage() {
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-bg rounded-lg py-1.5">
-                    <div className="text-sm font-bold font-rank">{formatCount(kw.monthlyPc)}</div>
+                    <div className="text-sm font-bold font-rank">{formatCountOrString(kw.monthlyPc)}</div>
                     <div className="text-[10px] text-dim">PC</div>
                   </div>
                   <div className="bg-bg rounded-lg py-1.5">
-                    <div className="text-sm font-bold font-rank">{formatCount(kw.monthlyMobile)}</div>
+                    <div className="text-sm font-bold font-rank">{formatCountOrString(kw.monthlyMobile)}</div>
                     <div className="text-[10px] text-dim">모바일</div>
                   </div>
                   <div className="bg-bg rounded-lg py-1.5">
-                    <div className="text-sm font-bold font-rank text-accent">{formatCount(kw.monthlyTotal)}</div>
+                    <div className="text-sm font-bold font-rank text-accent">{formatCountOrString(kw.monthlyTotal)}</div>
                     <div className="text-[10px] text-dim">합계</div>
                   </div>
                 </div>

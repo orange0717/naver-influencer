@@ -37,19 +37,14 @@ export async function POST(req: NextRequest) {
 
     const { secret, count, plan_name, duration_days, price } = v.data;
 
-    // 관리자 인증 (timing-safe 비교)
+    // 관리자 인증 (timing-safe 비교 — 해시 비교로 길이 노출 방지)
     if (!ADMIN_SECRET) {
       console.error('[license/generate] ADMIN_SECRET 환경변수가 설정되지 않았습니다.');
       return NextResponse.json({ error: '서버 설정 오류' }, { status: 500 });
     }
-    if (secret.length !== ADMIN_SECRET.length) {
-      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
-    }
-    try {
-      if (!crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(ADMIN_SECRET))) {
-        return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
-      }
-    } catch {
+    const hashProvided = crypto.createHash('sha256').update(secret).digest();
+    const hashExpected = crypto.createHash('sha256').update(ADMIN_SECRET).digest();
+    if (!crypto.timingSafeEqual(hashProvided, hashExpected)) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
