@@ -157,12 +157,12 @@ export default function InfluencerScoreSection({
       ) : (
         <>
           <div className="grid grid-cols-3 gap-3">
-            <GradeGauge score={influenceScore} label="영향력" description="팬 수 · 카테고리 순위" color="#3B82F6" delay={100} />
-            <GradeGauge score={expertiseScore} label="전문성" description="TOP 3 · 통합검색 비율" color="#F59E0B" delay={150} />
-            <GradeGauge score={exposureScore} label="노출도" description="노출 비율 · 평균 순위" color="#8B5CF6" delay={200} />
+            <GradeGauge score={influenceScore} label="영향력" description="사용자 피드백 · 팬 수" color="#3B82F6" delay={100} />
+            <GradeGauge score={expertiseScore} label="전문성" description="주제 전문성 · 콘텐츠 적합성" color="#F59E0B" delay={150} />
+            <GradeGauge score={exposureScore} label="노출도" description="검색 노출 · 평균 순위" color="#8B5CF6" delay={200} />
             <GradeGauge score={growthScore} label="성장성" description="순위 상승 · 하락 비율" color="#10B981" delay={250} />
-            <GradeGauge score={activityScore} label="활동성" description="참여 키워드 · 변동 수" color="#EC4899" delay={300} />
-            <GradeGauge score={competitivenessScore} label="경쟁력" description="전체 순위 · TOP 3 보유" color="#6366F1" delay={350} />
+            <GradeGauge score={activityScore} label="활동성" description="참여 이력 · 콘텐츠 품질" color="#EC4899" delay={300} />
+            <GradeGauge score={competitivenessScore} label="경쟁력" description="주제 랭킹 · TOP 3 보유" color="#6366F1" delay={350} />
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-dim">

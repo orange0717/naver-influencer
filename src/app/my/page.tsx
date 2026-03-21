@@ -412,7 +412,7 @@ export default async function MyDashboard() {
           <span className="text-[11px] text-dim bg-border/30 px-3 py-1 rounded-full">{dataDateLabel}</span>
         </div>
       )}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <AnimatedStatCard
           label="참여 키워드"
           value={totalKeywords}
@@ -438,6 +438,13 @@ export default async function MyDashboard() {
           color={rankUpCount > 0 ? 'up' : rankDownCount > 0 ? 'down' : 'dim'}
           delay={200}
         />
+        <div className="glass-card flex flex-col items-center justify-center text-center p-4 min-h-[100px]">
+          <p className="text-[11px] text-dim mb-1">토픽</p>
+          <p className="text-sm font-bold text-text">{influencer.my_keyword || influencer.my_keyword_category || influencer.category || '-'}</p>
+          {influencer.category_my_type && (
+            <p className="text-[10px] text-dim mt-1">{influencer.category_my_type}</p>
+          )}
+        </div>
       </div>
 
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
