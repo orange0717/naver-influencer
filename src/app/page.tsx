@@ -142,8 +142,13 @@ export default function LandingPage() {
                       <span className="text-[11px] text-dim">@{inf.naver_id} · {inf.category}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-dim">팬 {inf.subscriber_count.toLocaleString()}</span>
+                  <div className="flex items-center gap-2 shrink-0 text-right">
+                    <div>
+                      <span className="text-xs text-dim block">팬 {inf.subscriber_count.toLocaleString()}</span>
+                      {inf.first_seen_at && (
+                        <span className="text-[10px] text-dim/70">{new Date(inf.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 선정</span>
+                      )}
+                    </div>
                   </div>
                 </a>
               ))}
