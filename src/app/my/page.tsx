@@ -9,7 +9,6 @@ import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
-import RecommendationGrid from '@/components/dashboard/RecommendationGrid';
 import GlassCard from '@/components/dashboard/GlassCard';
 import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
@@ -21,19 +20,6 @@ import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 
 export const dynamic = 'force-dynamic';
-
-interface Recommendation {
-  keyword_id: string;
-  keyword: string;
-  category: string;
-  participant_count: number;
-  search_volume_monthly?: number;
-  competition_level?: string;
-  recommendation_score: number;
-  trend_direction?: string;
-  trend_percentage?: number;
-  reason: string;
-}
 
 export default async function MyDashboard() {
   const supabase = createServiceClient();
@@ -342,23 +328,7 @@ export default async function MyDashboard() {
     .sort((a, b) => b[1].length - a[1].length);
   const totalKeywords = allKeywords.length;
 
-  // ─── 3. 실시간 추천 키워드 (카테고리 기반 개인화) ───
-  let recommendations: Recommendation[] = [];
-  try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
-    const catParam = myCategory ? `?category=${encodeURIComponent(myCategory)}` : '';
-    const recRes = await fetch(`${baseUrl}/api/recommendations${catParam}`, { cache: 'no-store' });
-    if (recRes.ok) {
-      const recData = await recRes.json();
-      recommendations = (recData.recommendations || []).slice(0, 6);
-    }
-  } catch (err) {
-    console.warn('[dashboard] 추천 키워드 로드 실패', err instanceof Error ? err.message : err);
-  }
-
-  // ─── 4. 활동 이벤트 생성 ───
+  // ─── 3. 활동 이벤트 생성 ───
   const activityEvents = generateActivityEvents(rankings);
 
   // ─── 5. 스마트 알림 (순위 트렌드 분석) ───
@@ -564,15 +534,8 @@ export default async function MyDashboard() {
         canSearchRank={canAccess}
       />
 
-      {/* ─── 4. 변동 피드 + 추천 키워드 (2열) ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3">
-          <ActivityFeed events={activityEvents} />
-        </div>
-        <div className="lg:col-span-2">
-          <RecommendationGrid recommendations={recommendations} compact />
-        </div>
-      </div>
+      {/* ─── 4. 변동 피드 ─── */}
+      <ActivityFeed events={activityEvents} />
 
       {/* ─── 5. TOP 5 키워드 ─── */}
       <Top5Keywords rankings={rankings} totalRankedKeywords={totalRankedKeywords} />
