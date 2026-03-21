@@ -1,32 +1,44 @@
-import { NextResponse } from 'next/server';
-import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient, createRouteHandlerClient, createAnonClient } from '@/lib/supabase-server';
+import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+
+interface JoinedKeywordChallenge {
+  keyword: string;
+  category: string;
+  participant_count: number;
+  search_volume_monthly: number;
+}
+
+function getKwData(r: { keyword_challenges: unknown }): JoinedKeywordChallenge | null {
+  const kw = r.keyword_challenges;
+  if (kw && typeof kw === 'object' && 'keyword' in kw) return kw as JoinedKeywordChallenge;
+  return null;
+}
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  // 쿠키 기반 인증 시도
+export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (dashboardLimiter.check(ip)) return rateLimitResponse();
+  // 1순위: Bearer 토큰 인증
   let authUser = null;
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  try {
-    const supabaseAuth = await createRouteHandlerClient();
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError) {
-      console.error('Cookie auth error:', authError.message);
-    }
+  if (token) {
+    const anonClient = createAnonClient();
+    const { data: { user } } = await anonClient.auth.getUser(token);
     authUser = user;
-  } catch (e) {
-    console.error('Cookie auth exception:', e);
   }
 
-  // 쿠키 인증 실패 시 Bearer 토큰 폴백
+  // 2순위: 쿠키 기반 인증 (폴백)
   if (!authUser) {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    if (token) {
-      const { createAnonClient } = await import('@/lib/supabase-server');
-      const anonClient = createAnonClient();
-      const { data: { user } } = await anonClient.auth.getUser(token);
+    try {
+      const supabaseAuth = await createRouteHandlerClient();
+      const { data: { user } } = await supabaseAuth.auth.getUser();
       authUser = user;
+    } catch {
+      // 쿠키 인증 실패 무시
     }
   }
 
@@ -79,8 +91,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ linked: false, influencer: null, stats: null, rankings: [], competitors: [], guide: [] });
   }
 
-  // 최신 순위 데이터 (keyword_rankings)
+  // 최신 순위 데이터 (keyword_rankings) - 최근 30일로 제한
   const today = new Date().toISOString().slice(0, 10);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const { data: latestRankings } = await supabase
     .from('keyword_rankings')
     .select(`
@@ -90,8 +104,9 @@ export async function GET(request: Request) {
       keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
     `)
     .eq('influencer_id', userProfile.linked_influencer_id)
+    .gte('snapshot_date', thirtyDaysAgo.toISOString().slice(0, 10))
     .order('snapshot_date', { ascending: false })
-    .limit(5000);
+    .limit(1000);
 
   // 최신 날짜의 순위만 추출 (같은 키워드 중복 제거)
   const latestByKeyword = new Map<string, typeof latestRankings extends (infer T)[] | null ? T : never>();
@@ -206,7 +221,7 @@ export async function GET(request: Request) {
   }
   const nearTop3 = currentRankings.find(r => r.rank_position === 4);
   if (nearTop3) {
-    const kwData = (nearTop3 as Record<string, unknown>).keyword_challenges as Record<string, string> | undefined;
+    const kwData = getKwData(nearTop3 as { keyword_challenges: unknown });
     guide.push({
       factor: 'TOP 3 기회',
       status: 'opportunity',
@@ -225,7 +240,7 @@ export async function GET(request: Request) {
 
   // 응답
   const rankings = currentRankings.map(r => {
-    const kwData = (r as Record<string, unknown>).keyword_challenges as Record<string, unknown> | undefined;
+    const kwData = getKwData(r as { keyword_challenges: unknown });
     const history = historyMap.get(r.keyword_id) || [];
     return {
       keyword_id: r.keyword_id,

@@ -7,7 +7,9 @@ import Link from 'next/link';
 function useStats() {
   const [stats, setStats] = useState({ influencer_count: 9000, category_count: 20, keyword_count: 115000, total_users: 0 });
   useEffect(() => {
-    fetch('/api/stats').then(r => r.json()).then(setStats).catch(() => {});
+    fetch('/api/stats').then(r => r.json()).then(setStats).catch(err => {
+      console.warn('[landing] stats 로드 실패', err instanceof Error ? err.message : err);
+    });
   }, []);
   return stats;
 }
@@ -22,7 +24,9 @@ function useSiteStats() {
       fetch('/api/analytics/track', { method: 'POST' }).catch(() => {});
     }
     // 통계 조회
-    fetch('/api/analytics/stats').then(r => r.json()).then(setS).catch(() => {});
+    fetch('/api/analytics/stats').then(r => r.json()).then(setS).catch(err => {
+      console.warn('[landing] analytics 로드 실패', err instanceof Error ? err.message : err);
+    });
   }, []);
   return s;
 }
@@ -44,7 +48,9 @@ function useNewInfluencers() {
     fetch('/api/influencers/recent')
       .then(r => r.json())
       .then(d => setList(d.influencers || []))
-      .catch(() => {});
+      .catch(err => {
+        console.warn('[landing] 신규 인플루언서 로드 실패', err instanceof Error ? err.message : err);
+      });
   }, []);
   return list;
 }
@@ -528,16 +534,19 @@ export default function LandingPage() {
               <div key={i}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  aria-expanded={openFaq === i}
+                  aria-controls={`faq-answer-${i}`}
                   className="w-full flex items-center justify-between py-5 text-left cursor-pointer"
                 >
                   <span className="text-sm font-bold text-text">{faq.q}</span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    aria-hidden="true"
                     className={`text-dim flex-shrink-0 ml-4 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </button>
                 {openFaq === i && (
-                  <div className="pb-5">
+                  <div id={`faq-answer-${i}`} role="region" aria-labelledby={`faq-q-${i}`} className="pb-5">
                     <p className="text-sm text-dim leading-relaxed">{faq.a}</p>
                   </div>
                 )}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getCookieUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,11 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
+    const cookieUser = await getCookieUser();
+    if (!cookieUser) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const competitorId = searchParams.get('naverId');
     const myNaverId = searchParams.get('myNaverId');

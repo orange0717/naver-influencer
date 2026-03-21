@@ -133,13 +133,13 @@ export async function GET(request: NextRequest) {
   const hasDatalabKey = !!(process.env.NAVER_DATALAB_CLIENT_ID && process.env.NAVER_DATALAB_CLIENT_SECRET);
 
   if (!hasSearchAdKey && !hasDatalabKey) {
-    console.log('[Cron] Step 3: Skipped - No Naver API keys configured');
+    console.warn('[Cron] Step 3: SKIPPED - No Naver API keys configured. Set NAVER_API_KEY/SECRET_KEY/CUSTOMER_ID or NAVER_DATALAB_CLIENT_ID/SECRET.');
     return NextResponse.json({
-      success: true,
+      success: false,
       step: 3,
       skipped: true,
-      message: 'No API keys configured. Set NAVER_API_KEY/SECRET_KEY/CUSTOMER_ID or NAVER_DATALAB_CLIENT_ID/SECRET.',
-    });
+      message: 'API 키가 설정되지 않아 검색량 업데이트를 건너뛰었습니다.',
+    }, { status: 200 });
   }
 
   const jobId = await createCrawlJob('update-volumes');

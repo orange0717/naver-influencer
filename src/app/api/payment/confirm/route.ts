@@ -47,9 +47,9 @@ export async function POST(req: NextRequest) {
     const payment = await confirmRes.json();
 
     if (!confirmRes.ok) {
-      console.error('[payment/confirm] 토스 승인 실패:', { orderId, status: confirmRes.status });
+      console.error('[payment/confirm] 토스 승인 실패:', { orderId, status: confirmRes.status, message: payment.message });
       return NextResponse.json(
-        { error: payment.message || '결제 승인에 실패했습니다.' },
+        { error: '결제 승인에 실패했습니다.' },
         { status: 400 },
       );
     }
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     // 3. userId 추출: NINFL_{planName}_{months}M_{userId}_{timestamp}
     // 형식 검증: NINFL_PRO_1M_uuid_timestamp 또는 NINFL_PRO_12M_uuid_timestamp
-    const orderIdRegex = /^NINFL_(PERSONAL|INFLUENCER|AGENCY|PRO)_(\d+)M_(.+)_(\d{10,13})$/;
+    const orderIdRegex = /^NINFL_(PERSONAL|INFLUENCER|AGENCY|PRO)_(\d+)M_([a-f0-9-]+)_(\d{10,13})$/;
     const orderMatch = orderId.match(orderIdRegex);
     if (!orderMatch) {
       return NextResponse.json({ error: '주문 형식이 올바르지 않습니다.' }, { status: 400 });

@@ -135,7 +135,6 @@ export async function POST(request: NextRequest) {
 
     // 기존 naver_id 쿠키 삭제 (타입 충돌 방지)
     cookieStore.delete('naver_id');
-    cookieStore.delete('naver_name');
 
     cookieStore.set('blog_id', cleanId, {
       httpOnly: true,

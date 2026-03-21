@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchInfluencersForCategory, fetchAllInfluencersSummary, fetchCategories } from '@/lib/naver-api';
+import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (searchLimiter.check(ip)) return rateLimitResponse();
+
   const { searchParams } = request.nextUrl;
   const category = searchParams.get('category') || undefined;
   const search = searchParams.get('search') || undefined;
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '50');
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50));
   const newOnly = searchParams.get('new') === 'true';
 
   // service client 사용 (RLS 우회 — 인플루언서 테이블은 공개 데이터)
@@ -31,8 +35,9 @@ export async function GET(request: NextRequest) {
     // DB에 데이터 없으면 실시간 API 폴백
     return await getInfluencersFromAPI({ category, search, page, limit });
   } catch (err) {
+    console.error('[influencers]', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to fetch influencers' },
+      { error: '인플루언서 데이터를 불러오는 중 오류가 발생했습니다.' },
       { status: 500 },
     );
   }

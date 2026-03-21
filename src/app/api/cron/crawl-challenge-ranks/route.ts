@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
+export const maxDuration = 60;
+
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-const BATCH_SIZE = 30; // 가입 유저 외 나머지 순환 크롤 배치 사이즈
+const BATCH_SIZE = 15; // Vercel 60초 제한 내 안전한 배치 사이즈
 const TODAY = () => new Date().toISOString().slice(0, 10);
+const MAX_RUNTIME_MS = 55_000; // 안전 마진 5초
 
 /** keyword를 정규화 (keyword_clean 생성용) */
 function cleanKeyword(keyword: string): string {
@@ -22,8 +25,14 @@ interface ParticipatedKeyword {
   thumbnailUrl?: string;
 }
 
+/** naverId 형식 검증 (영문/숫자/언더스코어만 허용) */
+function isValidNaverId(id: string): boolean {
+  return /^[a-zA-Z0-9_]{2,30}$/.test(id);
+}
+
 /** 인플루언서 프로필 페이지에서 ownerId 추출 */
 async function fetchOwnerId(naverId: string): Promise<string | null> {
+  if (!isValidNaverId(naverId)) return null;
   try {
     const res = await fetchWithRetry(`https://in.naver.com/${naverId}`, {
       headers: { Referer: 'https://in.naver.com/' },
@@ -46,7 +55,8 @@ async function fetchOwnerId(naverId: string): Promise<string | null> {
     }
     if (jsonEnd === -1) return null;
 
-    const state = JSON.parse(html.substring(jsonStart, jsonEnd));
+    let state;
+    try { state = JSON.parse(html.substring(jsonStart, jsonEnd)); } catch { return null; }
     const ownerId = state?.space?.data?.ownerId;
     return ownerId ? String(ownerId) : null;
   } catch (err) {
@@ -233,7 +243,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`[crawl-challenge-ranks] Processing ${influencers.length} influencers`);
 
+    const startTime = Date.now();
     for (const inf of influencers) {
+      if (Date.now() - startTime > MAX_RUNTIME_MS) {
+        console.log(`[crawl-challenge-ranks] Time limit reached, stopping early`);
+        break;
+      }
       try {
         // 1. ownerId 확보
         let ownerId = inf.naver_owner_id;

@@ -128,3 +128,13 @@ export interface KeywordVolume {
   monthlyMobileQcCnt: number;
   compIdx: string; // '높음' | '중간' | '낮음'
 }
+
+/** 경쟁자 키워드 변동 이벤트 */
+export interface CompetitorChangeEvent {
+  keyword: string;
+  keyword_id: string;
+  changeType: 'entered' | 'exited' | 'overtook_me' | 'i_overtook';
+  competitorRank: number | null;
+  myRank: number | null;
+  date: string;
+}

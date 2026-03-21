@@ -62,11 +62,13 @@ export function createRateLimiter(options: RateLimitOptions) {
  * NextRequest에서 클라이언트 IP를 추출한다.
  */
 export function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  );
+  // Vercel 환경: 마지막 IP가 실제 클라이언트 (프록시 체인에서 가장 신뢰)
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const ips = forwarded.split(',').map(ip => ip.trim());
+    return ips[ips.length - 1] || ips[0] || 'unknown';
+  }
+  return request.headers.get('x-real-ip') || 'unknown';
 }
 
 /**
@@ -95,3 +97,9 @@ export const searchVolumeLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 
 
 /** 결제: 15분에 5회 */
 export const paymentLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
+
+/** 대시보드: 1분에 30회 */
+export const dashboardLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });
+
+/** 검색 (인플루언서/키워드): 1분에 30회 */
+export const searchLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });

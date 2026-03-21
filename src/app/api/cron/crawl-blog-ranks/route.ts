@@ -146,21 +146,20 @@ export async function GET(request: NextRequest) {
 
     // 3) 블로거별로 순위 체크
     for (const [blogId, kwList] of blogGroups) {
-      // 이전 날의 순위 가져오기 (비교용) — 키워드별 최신 1건씩
+      // 이전 날의 순위를 배치로 가져오기 (N+1 방지)
       const prevRanks = new Map<string, number | null>();
-      for (const keyword of kwList) {
-        const { data: prev } = await supabase
-          .from('blog_rank_history')
-          .select('rank_position')
-          .eq('blog_id', blogId)
-          .eq('keyword', keyword)
-          .lt('snapshot_date', today)
-          .order('snapshot_date', { ascending: false })
-          .limit(1)
-          .single();
+      const { data: prevData } = await supabase
+        .from('blog_rank_history')
+        .select('keyword, rank_position, snapshot_date')
+        .eq('blog_id', blogId)
+        .lt('snapshot_date', today)
+        .in('keyword', kwList)
+        .order('snapshot_date', { ascending: false });
 
-        if (prev) {
-          prevRanks.set(keyword, prev.rank_position);
+      // 키워드별 최신 1건만
+      for (const row of (prevData || [])) {
+        if (!prevRanks.has(row.keyword)) {
+          prevRanks.set(row.keyword, row.rank_position);
         }
       }
 

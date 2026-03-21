@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findKeywordById } from '@/lib/naver-api';
+import { getCompetitionLevel } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  if (!id || !/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {
+    return NextResponse.json({ error: '잘못된 키워드 ID입니다.' }, { status: 400 });
+  }
 
   try {
     const found = await findKeywordById(id);
@@ -18,7 +23,7 @@ export async function GET(
 
     const kw = found.keyword;
     const participantCount = kw.participantCount || 1;
-    const competitionLevel = participantCount > 100 ? 'high' : participantCount > 30 ? 'medium' : 'low';
+    const competitionLevel = getCompetitionLevel(participantCount);
 
     return NextResponse.json({
       keyword: {

@@ -41,7 +41,15 @@ export interface NaverRanking {
   postTitle: string | null;
 }
 
-// ─── 캐시 (서버 메모리) ───
+// ─── 설정 상수 ───
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+const MAX_CACHE_SIZE = 500; // 캐시 엔트리 최대 개수
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_INFLUENCER_PAGES = 2; // 키워드당 최대 페이지 (50명/페이지)
+const PARALLEL_BATCH_SIZE = 5; // 병렬 요청 배치 크기
+
+// ─── 캐시 (서버 메모리, 최대 크기 제한) ───
 
 interface CacheEntry<T> {
   data: T;
@@ -49,19 +57,26 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>();
-const CACHE_TTL = 5 * 60 * 1000; // 5분
 
 function getCached<T>(key: string): T | null {
   const entry = cache.get(key);
   if (!entry) return null;
-  if (Date.now() - entry.timestamp > CACHE_TTL) {
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
     cache.delete(key);
     return null;
   }
+  // LRU: 접근 시 Map 끝으로 이동
+  cache.delete(key);
+  cache.set(key, entry);
   return entry.data as T;
 }
 
 function setCache<T>(key: string, data: T): void {
+  // LRU: 초과 시 가장 오래 접근되지 않은 엔트리(Map 첫 번째) 제거
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
   cache.set(key, { data, timestamp: Date.now() });
 }
 
@@ -179,8 +194,8 @@ export async function fetchAllKeywordsSummary(
           categoryId: cat.id,
         }));
         allKeywords.push(...enriched);
-      } catch {
-        // 개별 카테고리 실패 시 스킵
+      } catch (err) {
+        console.warn(`[naver-api] fetchAllKeywordsSummary: 카테고리 ${cat.name} 실패`, err instanceof Error ? err.message : err);
       }
     }),
   );
@@ -224,8 +239,8 @@ export async function searchKeywordsAcrossCategories(
           categoryId: cat.id,
         }));
         allResults.push(...enriched);
-      } catch {
-        // skip
+      } catch (err) {
+        console.warn(`[naver-api] searchKeywords: 카테고리 ${cat.name} 검색 실패`, err instanceof Error ? err.message : err);
       }
     }),
   );
@@ -261,8 +276,8 @@ export async function findKeywordById(
         setCache(cacheKey, entry);
         return entry;
       }
-    } catch {
-      // skip
+    } catch (err) {
+      console.warn(`[naver-api] findKeywordById: 카테고리 ${cat.name} 조회 실패`, err instanceof Error ? err.message : err);
     }
   }
 
@@ -346,10 +361,9 @@ async function fetchInfluencersByKeywordId(
   const results: InfluencerEntry[] = [];
   const seenIds = new Set<string>();
 
-  // 2페이지 가져오기 (50 + 50 = 최대 100명)
   let cursor: string | undefined;
-  for (let page = 0; page < 2; page++) {
-    let url = `${FEED_API_BASE}/discover/collection/searched?keywordId=${keywordId}&limit=50`;
+  for (let page = 0; page < MAX_INFLUENCER_PAGES; page++) {
+    let url = `${FEED_API_BASE}/discover/collection/searched?keywordId=${keywordId}&limit=${DEFAULT_PAGE_SIZE}`;
     if (cursor) url += `&cursor=${cursor}`;
 
     try {
@@ -378,8 +392,9 @@ async function fetchInfluencersByKeywordId(
       }
 
       cursor = json?.paging?.nextCursor;
-      if (!cursor || items.length < 50) break;
-    } catch {
+      if (!cursor || items.length < DEFAULT_PAGE_SIZE) break;
+    } catch (err) {
+      console.warn(`[naver-api] fetchInfluencersByKeywordId: 키워드 ${keywordId} 페이지 ${page + 1} 실패`, err instanceof Error ? err.message : err);
       break;
     }
   }
@@ -421,11 +436,11 @@ export async function fetchInfluencersForCategory(
     const kwResult = await fetchKeywordsByCategory(cat.id, keywordsToSearch);
     const keywords = kwResult.items;
 
-    // 각 키워드로 인플루언서 수집 (5개씩 병렬)
+    // 각 키워드로 인플루언서 수집 (배치 병렬)
     const influencerMap = new Map<string, InfluencerEntry>();
 
-    for (let i = 0; i < keywords.length; i += 5) {
-      const batch = keywords.slice(i, i + 5);
+    for (let i = 0; i < keywords.length; i += PARALLEL_BATCH_SIZE) {
+      const batch = keywords.slice(i, i + PARALLEL_BATCH_SIZE);
       const batchResults = await Promise.all(
         batch.map(kw => fetchInfluencersByKeywordId(kw.id, kw.name).catch(() => [] as InfluencerEntry[])),
       );
@@ -499,12 +514,12 @@ export async function fetchAllInfluencersSummary(
                 influencerMap.set(inf.naverId, { ...inf });
               }
             }
-          } catch {
-            // skip keyword
+          } catch (err) {
+            console.warn(`[naver-api] fetchAllInfluencersSummary: 키워드 ${kw.name} 실패`, err instanceof Error ? err.message : err);
           }
         }
-      } catch {
-        // skip category
+      } catch (err) {
+        console.warn(`[naver-api] fetchAllInfluencersSummary: 카테고리 ${cat.name} 실패`, err instanceof Error ? err.message : err);
       }
     }),
   );

@@ -1,7 +1,7 @@
 -- community_likes 테이블: 좋아요 중복 방지
 CREATE TABLE IF NOT EXISTS community_likes (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  post_id uuid NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+  post_id uuid NOT NULL,
   user_id text NOT NULL,
   created_at timestamptz DEFAULT now()
 );

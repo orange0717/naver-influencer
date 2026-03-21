@@ -92,8 +92,10 @@ export default function CommunityPostPage() {
 
   // 좋아요 로컬 체크
   useEffect(() => {
-    const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
-    setLiked(likedPosts.includes(postId));
+    try {
+      const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
+      setLiked(likedPosts.includes(postId));
+    } catch { /* localStorage 접근 실패 무시 */ }
   }, [postId]);
 
   const handleLike = async () => {

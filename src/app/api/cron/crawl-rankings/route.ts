@@ -294,16 +294,10 @@ export async function GET(request: NextRequest) {
           last_crawled_at: new Date().toISOString(),
         }));
 
-        await supabase
-          .from('influencers')
-          .upsert(influencerRows, { onConflict: 'naver_id' });
-
-        // upsert 후 ID 매핑 조회
-        const naverIds = rankings.map(r => r.naverId);
         const { data: dbInfluencers } = await supabase
           .from('influencers')
-          .select('id, naver_id')
-          .in('naver_id', naverIds);
+          .upsert(influencerRows, { onConflict: 'naver_id' })
+          .select('id, naver_id');
 
         const idMap = new Map<string, string>();
         dbInfluencers?.forEach(inf => idMap.set(inf.naver_id, inf.id));

@@ -28,12 +28,17 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch {
-      // 로그아웃 API 실패해도 클라이언트 상태는 클리어
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!res.ok) {
+        console.warn('[useAuth] 로그아웃 API 실패:', res.status);
+      }
+    } catch (err) {
+      console.warn('[useAuth] 로그아웃 요청 실패:', err);
     }
+    // API 성공/실패와 무관하게 클라이언트 상태 클리어
     queryClient.setQueryData(['auth', 'me'], defaultUser);
     queryClient.invalidateQueries({ queryKey: ['auth'] });
+    window.location.href = '/';
   };
 
   return { user, isLoading, logout };

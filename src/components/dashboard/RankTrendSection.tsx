@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -73,9 +73,13 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
     setSelectedKeywords(new Set(bloggerData.slice(0, 5).map(k => k.keyword)));
   }, [mode, bloggerData]);
 
-  // 차트 데이터 변환
-  const chartData = (() => {
-    const activeKeywords = keywords.filter(k => selectedKeywords.has(k.keyword));
+  // 차트 데이터 변환 (메모이제이션)
+  const activeKeywords = useMemo(
+    () => keywords.filter(k => selectedKeywords.has(k.keyword)),
+    [keywords, selectedKeywords],
+  );
+
+  const chartData = useMemo(() => {
     if (activeKeywords.length === 0) return [];
 
     const dateMap = new Map<string, Record<string, unknown>>();
@@ -90,9 +94,7 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
     return Array.from(dateMap.values())
       .sort((a, b) => (a.date as string).localeCompare(b.date as string))
       .slice(-period);
-  })();
-
-  const activeKeywords = keywords.filter(k => selectedKeywords.has(k.keyword));
+  }, [activeKeywords, period]);
 
   const toggleKeyword = (keyword: string) => {
     const next = new Set(selectedKeywords);

@@ -81,8 +81,8 @@ async function fetchBlogPosts(blogId: string): Promise<{ title: string; url: str
             }
           });
         }
-      } catch {
-        // RSS 실패는 무시
+      } catch (err) {
+        console.warn(`[blog-crawler] RSS 피드 실패: ${blogId}`, err instanceof Error ? err.message : err);
       }
     }
 
@@ -106,13 +106,13 @@ async function fetchBlogPosts(blogId: string): Promise<{ title: string; url: str
             }
           });
         }
-      } catch {
-        // 검색 실패 무시
+      } catch (err) {
+        console.warn(`[blog-crawler] 네이버 검색 보충 실패: ${blogId}`, err instanceof Error ? err.message : err);
       }
     }
 
-  } catch {
-    // 전체 실패 시 빈 배열
+  } catch (err) {
+    console.warn(`[blog-crawler] fetchBlogPosts 전체 실패: ${blogId}`, err instanceof Error ? err.message : err);
   }
 
   return posts.slice(0, 30);

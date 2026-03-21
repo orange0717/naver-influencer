@@ -13,10 +13,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const category = searchParams.get('category') || undefined;
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '50');
-  const sortBy = searchParams.get('sort') || 'rank1';
+  const rawCategory = searchParams.get('category') || undefined;
+  const category = rawCategory?.replace(/[.,()%_'"\\]/g, '') || undefined;
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50));
+  const validSorts = ['rank1', 'top3', 'keywords', 'fans'];
+  const sortBy = validSorts.includes(searchParams.get('sort') || '') ? searchParams.get('sort')! : 'rank1';
   const offset = (page - 1) * limit;
 
   const supabase = createServiceClient();
@@ -184,8 +186,9 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (err) {
+    console.error('[rankings/influencers]', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to fetch rankings' },
+      { error: '랭킹 데이터를 불러오는 중 오류가 발생했습니다.' },
       { status: 500 },
     );
   }
