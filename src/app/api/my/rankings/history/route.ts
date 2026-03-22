@@ -98,5 +98,20 @@ export async function GET(request: NextRequest) {
       return aLatest - bLatest;
     });
 
-  return NextResponse.json({ keywords: result });
+  // 날짜별 전체 평균 순위 계산
+  const dateRanks = new Map<string, number[]>();
+  for (const r of (rankings || [])) {
+    const ranks = dateRanks.get(r.snapshot_date) || [];
+    ranks.push(r.rank_position);
+    dateRanks.set(r.snapshot_date, ranks);
+  }
+  const avgHistory = Array.from(dateRanks.entries())
+    .map(([date, ranks]) => ({
+      date,
+      rank: Math.round((ranks.reduce((s, r) => s + r, 0) / ranks.length) * 10) / 10,
+      count: ranks.length,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return NextResponse.json({ keywords: result, avgHistory });
 }

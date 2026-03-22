@@ -12,6 +12,12 @@ interface KeywordHistory {
   history: { date: string; rank: number | null }[];
 }
 
+interface AvgHistoryEntry {
+  date: string;
+  rank: number;
+  count: number;
+}
+
 interface RankTrendSectionProps {
   mode: 'influencer' | 'blogger';
   naverId?: string;
@@ -47,7 +53,9 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export default function RankTrendSection({ mode, naverId, bloggerData }: RankTrendSectionProps) {
   const [period, setPeriod] = useState(15);
   const [keywords, setKeywords] = useState<KeywordHistory[]>([]);
+  const [avgHistory, setAvgHistory] = useState<AvgHistoryEntry[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
+  const [showAvg, setShowAvg] = useState(true);
   const [loading, setLoading] = useState(false);
 
   // 인플루언서: API에서 데이터 페치
@@ -59,10 +67,11 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
       .then(data => {
         const kws = (data.keywords || []).slice(0, 10);
         setKeywords(kws);
+        setAvgHistory(data.avgHistory || []);
         // 기본 선택: 상위 5개
         setSelectedKeywords(new Set(kws.slice(0, 5).map((k: KeywordHistory) => k.keyword)));
       })
-      .catch(() => setKeywords([]))
+      .catch(() => { setKeywords([]); setAvgHistory([]); })
       .finally(() => setLoading(false));
   }, [mode, naverId, period]);
 
@@ -80,9 +89,11 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
   );
 
   const chartData = useMemo(() => {
-    if (activeKeywords.length === 0) return [];
+    if (activeKeywords.length === 0 && !showAvg) return [];
 
     const dateMap = new Map<string, Record<string, unknown>>();
+
+    // 개별 키워드 데이터
     for (const kw of activeKeywords) {
       for (const h of kw.history) {
         const entry = dateMap.get(h.date) || { date: h.date };
@@ -91,10 +102,19 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
       }
     }
 
+    // 전체 평균 순위 데이터
+    if (showAvg && avgHistory.length > 0) {
+      for (const avg of avgHistory) {
+        const entry = dateMap.get(avg.date) || { date: avg.date };
+        entry['전체 평균'] = avg.rank;
+        dateMap.set(avg.date, entry);
+      }
+    }
+
     return Array.from(dateMap.values())
       .sort((a, b) => (a.date as string).localeCompare(b.date as string))
       .slice(-period);
-  }, [activeKeywords, period]);
+  }, [activeKeywords, avgHistory, showAvg, period]);
 
   const toggleKeyword = (keyword: string) => {
     const next = new Set(selectedKeywords);
@@ -135,6 +155,20 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
       {/* 키워드 필터 */}
       {keywords.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-4">
+          {/* 전체 평균 토글 */}
+          {avgHistory.length > 0 && (
+            <button
+              onClick={() => setShowAvg(prev => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer border ${
+                showAvg
+                  ? 'border-text bg-text text-white shadow-sm'
+                  : 'border-border bg-bg/50 text-dim opacity-60 hover:opacity-100'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: showAvg ? '#fff' : '#ccc' }} />
+              전체 평균
+            </button>
+          )}
           {keywords.slice(0, 10).map((kw, i) => {
             const isActive = selectedKeywords.has(kw.keyword);
             const color = SERIES_COLORS[i % SERIES_COLORS.length];
@@ -192,7 +226,20 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
               strokeWidth={1}
               label={{ value: 'TOP 3', position: 'right', fontSize: 10, fill: '#D4A017' }}
             />
-            {activeKeywords.map((kw, i) => (
+            {showAvg && avgHistory.length > 0 && (
+              <Line
+                key="전체 평균"
+                type="monotone"
+                dataKey="전체 평균"
+                stroke="#2D2D2D"
+                strokeWidth={2.5}
+                strokeDasharray="6 3"
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }}
+                connectNulls
+              />
+            )}
+            {activeKeywords.map((kw) => (
               <Line
                 key={kw.keyword}
                 type="monotone"
