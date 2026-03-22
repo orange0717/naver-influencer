@@ -125,7 +125,6 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
               width={64}
               height={64}
               className="w-16 h-16 rounded-full object-cover border-2 border-accent/30"
-              unoptimized
             />
           ) : (
             <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center text-2xl font-bold text-accent">

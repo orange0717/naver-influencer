@@ -35,3 +35,11 @@ export const reportSchema = z.object({
   comment_id: z.string().uuid().optional(),
   description: z.string().max(500).optional(),
 });
+
+/** POST /api/feedback — 피드백 */
+export const feedbackSchema = z.object({
+  category: z.string().max(30).default('general'),
+  message: z.string().min(2, '피드백 내용을 입력해주세요.').max(1000, '1000자 이내로 입력해주세요.').transform(v => v.trim()),
+  pageUrl: z.string().max(500).optional(),
+  userName: z.string().max(50).optional(),
+});

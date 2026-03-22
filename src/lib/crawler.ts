@@ -3,6 +3,33 @@ import { createServiceClient } from './supabase-server';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
+/** SSRF 방지: 허용된 외부 도메인 목록 */
+const ALLOWED_EXTERNAL_DOMAINS = [
+  'in.naver.com',
+  'blog.naver.com',
+  'm.blog.naver.com',
+  'section.blog.naver.com',
+  'search.naver.com',
+  'openapi.naver.com',
+  'api.naver.com',
+  'influencer.naver.com',
+  'api.searchad.naver.com',
+  'pstatic.net',
+];
+
+/** URL이 허용된 외부 도메인인지 검증 */
+export function isAllowedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    return ALLOWED_EXTERNAL_DOMAINS.some(
+      domain => parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** 1초 대기 */
 export function sleep(ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -11,12 +38,16 @@ export function sleep(ms = 1000) {
 /** 요청 타임아웃 (기본 15초) */
 const REQUEST_TIMEOUT_MS = 15_000;
 
-/** User-Agent 포함 fetch + 재시도 + AbortController 타임아웃 */
+/** User-Agent 포함 fetch + 재시도 + AbortController 타임아웃 + SSRF 방지 */
 export async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
   retries = 2,
 ): Promise<Response> {
+  if (!isAllowedUrl(url)) {
+    throw new Error(`SSRF blocked: ${new URL(url).hostname} is not in the allowed domain list`);
+  }
+
   const headers = {
     'User-Agent': USER_AGENT,
     'Accept-Language': 'ko-KR,ko;q=0.9',

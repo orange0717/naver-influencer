@@ -71,13 +71,25 @@ function getCached<T>(key: string): T | null {
   return entry.data as T;
 }
 
+let lastCacheCleanup = 0;
+
 function setCache<T>(key: string, data: T): void {
+  const now = Date.now();
+
+  // 1분마다 만료 엔트리 일괄 정리
+  if (now - lastCacheCleanup > 60_000) {
+    lastCacheCleanup = now;
+    for (const [k, entry] of cache) {
+      if (now - entry.timestamp > CACHE_TTL_MS) cache.delete(k);
+    }
+  }
+
   // LRU: 초과 시 가장 오래 접근되지 않은 엔트리(Map 첫 번째) 제거
   if (cache.size >= MAX_CACHE_SIZE) {
     const oldestKey = cache.keys().next().value;
     if (oldestKey) cache.delete(oldestKey);
   }
-  cache.set(key, { data, timestamp: Date.now() });
+  cache.set(key, { data, timestamp: now });
 }
 
 // ─── 카테고리 ───

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to fetch recommendations' },
+      { error: '추천 키워드를 불러오지 못했습니다.' },
       { status: 500 },
     );
   }

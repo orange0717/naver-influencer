@@ -70,7 +70,7 @@ export default function LandingPage() {
         </p>
 
         <h1 className="font-title text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
-          나만의 대시보드를 통해서<br />인플루언서 순위를 올려보세요.
+          당신의 인플순위,<br />스마트하게 관리하세요.
         </h1>
 
         <p className="text-base text-dim max-w-xl mx-auto leading-relaxed mb-10">

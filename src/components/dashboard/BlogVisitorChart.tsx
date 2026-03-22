@@ -110,7 +110,7 @@ export default function BlogVisitorChart({ blogId }: Props) {
           <div className="flex items-center gap-1 mt-0.5">
             <span className="text-[10px] text-dim">평균 {avgVisitors.toLocaleString()}</span>
             {trend !== 0 && (
-              <span className={`text-[10px] font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+              <span className={`text-[10px] font-bold ${trend > 0 ? 'text-up' : 'text-down'}`}>
                 {trend > 0 ? '▲' : '▼'}{Math.abs(trend)}%
               </span>
             )}

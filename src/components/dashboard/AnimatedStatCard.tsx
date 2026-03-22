@@ -109,7 +109,7 @@ export default function AnimatedStatCard({
           {prefix}{value === 0 ? '—' : displayValue}{value !== 0 ? suffix : ''}
         </span>
         {trend && trend.value !== 0 && (
-          <span className={`text-xs font-bold ${trend.direction === 'up' ? 'text-red-500' : 'text-blue-500'}`}>
+          <span className={`text-xs font-bold ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
             {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}
           </span>
         )}

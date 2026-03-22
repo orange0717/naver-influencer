@@ -54,7 +54,7 @@ export async function GET() {
     });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to fetch stats' },
+      { error: '통계 정보를 불러오지 못했습니다.' },
       { status: 500 },
     );
   }

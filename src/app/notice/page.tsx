@@ -1,6 +1,9 @@
-'use client';
+import type { Metadata } from 'next';
 
-import Link from 'next/link';
+export const metadata: Metadata = {
+  title: '공지사항 - N인플',
+  description: 'N인플 서비스 공지사항 및 업데이트 안내',
+};
 
 interface Notice {
   id: number;

@@ -75,7 +75,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
                   <span className="text-[11px] text-dim ml-1.5">{kw.category}</span>
                 </div>
                 {kw.rank_change !== 0 && (
-                  <span className={`text-xs font-bold shrink-0 ${kw.rank_change > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                  <span className={`text-xs font-bold shrink-0 ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
                     {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
                   </span>
                 )}

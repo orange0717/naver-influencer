@@ -1,26 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { validateBody } from '@/lib/validations';
+import { feedbackSchema } from '@/lib/validations/community';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { category, message, pageUrl, userName } = body;
-
-    if (!message || typeof message !== 'string' || message.trim().length < 2) {
-      return NextResponse.json({ error: '피드백 내용을 입력해주세요.' }, { status: 400 });
-    }
-
-    if (message.length > 1000) {
-      return NextResponse.json({ error: '1000자 이내로 입력해주세요.' }, { status: 400 });
-    }
+    const v = validateBody(feedbackSchema, body);
+    if (!v.success) return v.response;
 
     const supabase = createServiceClient();
 
     const { error } = await supabase.from('feedback').insert({
-      category: category || 'general',
-      message: message.trim(),
-      page_url: pageUrl || null,
-      user_name: userName || null,
+      category: v.data.category,
+      message: v.data.message,
+      page_url: v.data.pageUrl || null,
+      user_name: v.data.userName || null,
     });
 
     if (error) {

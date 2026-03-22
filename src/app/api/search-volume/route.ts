@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ keywords }, { headers: corsHeaders });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : '검색량 조회 실패' },
+      { error: '검색량 조회에 실패했습니다.' },
       { status: 500, headers: corsHeaders }
     );
   }

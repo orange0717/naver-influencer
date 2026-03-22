@@ -109,7 +109,7 @@ export default function ProfilePage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ linked_influencer_id: null }),
+      body: JSON.stringify({ unlink_influencer: true }),
     });
 
     if (res.ok) {
@@ -340,9 +340,9 @@ export default function ProfilePage() {
 
       {/* 탈퇴 확인 모달 */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-surface rounded-2xl border border-border p-6 max-w-sm mx-4 shadow-2xl space-y-4">
-            <h3 className="text-lg font-extrabold text-text">회원 탈퇴</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-surface rounded-2xl border border-border p-6 max-w-sm mx-4 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 id="delete-modal-title" className="text-lg font-extrabold text-text">회원 탈퇴</h3>
             <div className="space-y-2 text-sm text-dim">
               <p>정말 탈퇴하시겠습니까?</p>
               <p>탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>

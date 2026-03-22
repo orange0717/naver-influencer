@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCookieUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getProductOrder, searchOrderByOrderId, isValidOrder } from '@/lib/smartstore-api';
+import { paymentLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   try {
+    // 0. Rate Limiting
+    const ip = getClientIp(req);
+    if (await paymentLimiter.check(ip)) return rateLimitResponse();
+
     // 1. 인증 확인
     const user = await getCookieUser();
     if (!user) {

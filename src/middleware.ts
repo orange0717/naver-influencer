@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.naver.com https://*.pstatic.net https://*.tosspayments.com",
+      "script-src 'self' 'unsafe-inline' https://*.naver.com https://*.pstatic.net https://*.tosspayments.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https://*.naver.com https://*.pstatic.net",

@@ -76,7 +76,11 @@ export default function CompetitorSection({ naverId, myStats, mySubscriberCount 
         const data: CompetitorData = await res.json();
         setCompetitorData(prev => new Map(prev).set(competitorId, data));
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[CompetitorSection] fetch failed for ${competitorId}:`, err);
+      }
+    }
     setLoading(null);
   };
 

@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import GradeGauge from './GradeGauge';
 import GlassCard from './GlassCard';
 
+/** 순위 품질 점수 계산 시 순위당 감점 가중치 (1위=50점, 높을수록 감점) */
+const RANK_QUALITY_BASE = 50;
+const RANK_QUALITY_WEIGHT = 1.6;
+
 interface BlogAnalysisMetrics {
   postsWithImages: number;
   longPosts: number;
@@ -125,7 +129,7 @@ export default function BlogScoreSection({ blogId, rankingStats }: BlogScoreSect
   const pa = postAnalysis;
   const rs = rankingStats;
   const hasRankData = rs && rs.rankedCount > 0;
-  const rankQuality = rs && rs.avgRank > 0 ? Math.max(0, 50 - (rs.avgRank - 1) * 1.6) : 0;
+  const rankQuality = rs && rs.avgRank > 0 ? Math.max(0, RANK_QUALITY_BASE - (rs.avgRank - 1) * RANK_QUALITY_WEIGHT) : 0;
   const top5Ratio = rs && rs.rankedCount > 0 ? (rs.top5Count / rs.rankedCount) : 0;
   const stabilityRatio = rs && (rs.improvedCount + rs.declinedCount) > 0
     ? rs.improvedCount / (rs.improvedCount + rs.declinedCount)

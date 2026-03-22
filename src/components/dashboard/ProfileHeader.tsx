@@ -49,6 +49,7 @@ export default function ProfileHeader({
 
   // TOP3 위젯 코드 모달
   const [showWidgetCode, setShowWidgetCode] = useState(false);
+  const widgetDomain = process.env.NEXT_PUBLIC_SITE_URL || 'https://ninfl.co.kr';
 
   // 프로필 사진 업로드
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -245,13 +246,13 @@ export default function ProfileHeader({
               <div className="relative">
                 <textarea
                   readOnly
-                  value={`<a href="https://ninfl.co.kr/influencers/${naverId}" target="_blank" rel="noopener"><img src="https://ninfl.co.kr/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`}
+                  value={`<a href="${widgetDomain}/influencers/${naverId}" target="_blank" rel="noopener"><img src="${widgetDomain}/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`}
                   className="w-full h-20 text-xs bg-bg border border-border rounded-xl p-3 font-mono resize-none focus:outline-none"
                   onClick={e => (e.target as HTMLTextAreaElement).select()}
                 />
                 <button
                   onClick={() => {
-                    const code = `<a href="https://ninfl.co.kr/influencers/${naverId}" target="_blank" rel="noopener"><img src="https://ninfl.co.kr/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`;
+                    const code = `<a href="${widgetDomain}/influencers/${naverId}" target="_blank" rel="noopener"><img src="${widgetDomain}/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`;
                     navigator.clipboard.writeText(code);
                   }}
                   className="absolute top-2 right-2 text-[10px] font-bold text-accent bg-accent/10 px-2.5 py-1 rounded-lg hover:bg-accent/20 transition cursor-pointer"

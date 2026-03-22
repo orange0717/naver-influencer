@@ -71,8 +71,8 @@ export const linkInfluencerSchema = z.object({
   naverId: naverIdSchema,
 });
 
-/** 프로필 업데이트 */
+/** 프로필 업데이트 — 인플루언서 연결은 /my/link, 해제만 여기서 허용 */
 export const profileUpdateSchema = z.object({
   nickname: z.string().min(1).max(20).optional(),
-  linked_influencer_id: z.string().uuid().nullable().optional(),
+  unlink_influencer: z.literal(true).optional(),
 });

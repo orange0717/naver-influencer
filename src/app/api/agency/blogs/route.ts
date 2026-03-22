@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
+import { isAllowedUrl } from '@/lib/crawler';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +75,11 @@ export async function POST(req: NextRequest) {
 
     const cleanBlogId = blog_id.trim().replace(/^https?:\/\/blog\.naver\.com\//, '').replace(/\/$/, '');
 
+    // 블로그 ID 형식 검증 (영문, 숫자, 밑줄, 하이픈만 허용)
+    if (!/^[a-zA-Z0-9_-]{2,30}$/.test(cleanBlogId)) {
+      return NextResponse.json({ error: '올바른 블로그 ID 형식이 아닙니다.' }, { status: 400 });
+    }
+
     const supabase = createServiceClient();
 
     // 1. AGENCY 플랜 확인
@@ -106,17 +112,20 @@ export async function POST(req: NextRequest) {
 
     // 3. 블로그 유효성 검사 (네이버 블로그 존재 여부)
     let finalBlogName = blog_name || cleanBlogId;
+    const checkUrl = `https://blog.naver.com/PostTitleListAsync.naver?blogId=${encodeURIComponent(cleanBlogId)}&currentPage=1&countPerPage=1`;
+    if (!isAllowedUrl(checkUrl)) {
+      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+    }
     try {
-      const checkRes = await fetch(
-        `https://blog.naver.com/PostTitleListAsync.naver?blogId=${cleanBlogId}&currentPage=1&countPerPage=1`,
-      );
+      const checkRes = await fetch(checkUrl);
       if (!checkRes.ok) {
         return NextResponse.json({ error: '존재하지 않는 네이버 블로그입니다.' }, { status: 400 });
       }
       // 블로그 이름 추출 시도
       if (!blog_name) {
         try {
-          const pageRes = await fetch(`https://blog.naver.com/${cleanBlogId}`);
+          const pageUrl = `https://blog.naver.com/${encodeURIComponent(cleanBlogId)}`;
+          const pageRes = await fetch(pageUrl);
           const html = await pageRes.text();
           const titleMatch = html.match(/<title>([^<]+)<\/title>/);
           if (titleMatch) {
