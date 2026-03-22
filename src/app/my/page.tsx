@@ -10,7 +10,6 @@ import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
-import PostAnalysisSection from '@/components/dashboard/PostAnalysisSection';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
@@ -585,19 +584,6 @@ export default async function MyDashboard() {
 
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />
-
-      {/* ─── 3-2. 내 포스팅 분석 ─── */}
-      <PostAnalysisSection
-        posts={myPosts.map(p => ({
-          title: p.title,
-          url: p.url,
-          keywords: p.keywords,
-          bestRank: p.bestRank,
-          date: p.date,
-        }))}
-        naverId={naverId}
-        canSearchRank={canAccess}
-      />
 
       {/* ─── 4. 변동 피드 ─── */}
       <ActivityFeed events={activityEvents} />
