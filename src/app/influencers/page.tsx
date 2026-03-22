@@ -77,7 +77,7 @@ export default function InfluencersPage() {
         </div>
         <div className="text-right">
           <span className="text-xs text-dim font-rank">
-            {loading ? '수집 중...' : `총 ${total.toLocaleString()}명`}
+            {loading ? '수집 중...' : category === '전체' ? `총 ${total.toLocaleString()}명` : `${category} ${total.toLocaleString()}명`}
           </span>
           {!loading && (
             <div className="flex items-center gap-1 mt-0.5">
