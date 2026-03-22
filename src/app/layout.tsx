@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
+import HeaderWrapper from "@/components/HeaderWrapper";
 import Footer from "@/components/Footer";
 import VisitTracker from "@/components/VisitTracker";
 import ChatBot from "@/components/ChatBot";
@@ -32,7 +32,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <Providers>
-          <Header />
+          <HeaderWrapper />
           <VisitTracker />
           <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
             {children}

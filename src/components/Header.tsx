@@ -26,13 +26,20 @@ type UserInfo = {
   name: string | null;
 };
 
-export default function Header() {
+interface HeaderProps {
+  serverUser?: { type: string; id: string; name: string } | null;
+}
+
+export default function Header({ serverUser }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const { user, isLoading: authLoading, logout: authLogout } = useAuth();
+  const { user: clientUser, isLoading: authLoading, logout: authLogout } = useAuth();
   const infoRef = useRef<HTMLDivElement>(null);
+
+  // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
+  const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser);
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
