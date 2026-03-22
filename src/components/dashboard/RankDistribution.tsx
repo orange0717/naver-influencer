@@ -19,8 +19,11 @@ interface Props {
   rank5: RankKeyword[];
 }
 
+const PAGE_SIZE = 5;
+
 export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: Props) {
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
 
   const rankData = [
     { rank: 1, count: rank1.length, keywords: rank1, color: 'text-gold', bg: 'bg-gold/10' },
@@ -31,6 +34,8 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
   ];
 
   const selected = rankData.find(r => r.rank === selectedRank);
+  const totalPages = selected ? Math.ceil(selected.keywords.length / PAGE_SIZE) : 0;
+  const displayList = selected ? selected.keywords.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : [];
 
   return (
     <div className="border-t border-border/50 pt-4">
@@ -39,7 +44,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
         {rankData.map(r => (
           <button
             key={r.rank}
-            onClick={() => setSelectedRank(prev => prev === r.rank ? null : r.rank)}
+            onClick={() => { setSelectedRank(prev => prev === r.rank ? null : r.rank); setPage(1); }}
             className={`rounded-xl py-2.5 cursor-pointer transition-all ${r.bg} ${
               selectedRank === r.rank ? 'ring-2 ring-accent scale-[1.02]' : 'hover:scale-[1.02]'
             }`}
@@ -52,11 +57,14 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
 
       {selected && selected.keywords.length > 0 && (
         <div className="mt-3 rounded-xl border border-border bg-surface overflow-hidden">
-          <div className="px-4 py-2 bg-bg/30 border-b border-border/50">
+          <div className="px-4 py-2 bg-bg/30 border-b border-border/50 flex items-center justify-between">
             <span className="text-xs font-bold">{selectedRank}위 키워드 ({selected.keywords.length}개)</span>
+            {totalPages > 1 && (
+              <span className="text-[10px] text-dim">{page}/{totalPages}</span>
+            )}
           </div>
-          <div className="divide-y divide-border/20 max-h-[240px] overflow-y-auto">
-            {selected.keywords.map(kw => (
+          <div className="divide-y divide-border/20">
+            {displayList.map(kw => (
               <Link
                 key={kw.keyword_id}
                 href={`/keywords/${kw.keyword_id}`}
@@ -74,6 +82,35 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
               </Link>
             ))}
           </div>
+          {totalPages > 1 && (
+            <div className="px-4 py-2 border-t border-border/50 flex items-center justify-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-2 py-1 rounded text-[11px] font-semibold transition cursor-pointer disabled:opacity-30 disabled:cursor-default bg-border/30 text-dim hover:bg-border/50"
+              >
+                이전
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-6 h-6 rounded text-[11px] font-semibold transition cursor-pointer ${
+                    page === p ? 'bg-accent text-white' : 'bg-border/30 text-dim hover:bg-border/50'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-2 py-1 rounded text-[11px] font-semibold transition cursor-pointer disabled:opacity-30 disabled:cursor-default bg-border/30 text-dim hover:bg-border/50"
+              >
+                다음
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
