@@ -100,15 +100,10 @@ export default function CommunityPage() {
           </h1>
           <p className="text-sm text-dim mt-1">블로거들의 소통 공간</p>
         </div>
-        {isLoggedIn ? (
+        {isLoggedIn && (
           <Link href="/community/write"
             className="px-4 py-2.5 bg-accent text-white text-sm font-bold rounded-xl hover:bg-accent-hover transition">
             글쓰기
-          </Link>
-        ) : (
-          <Link href="/auth/login"
-            className="px-4 py-2.5 bg-surface border border-border text-dim text-sm font-semibold rounded-xl hover:text-text transition">
-            로그인 후 글쓰기
           </Link>
         )}
       </div>

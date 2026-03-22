@@ -89,7 +89,7 @@ export default function LandingPage() {
           </Link>
         </div>
 
-        <Link href="/auth/signup"
+        <Link href="/trial"
           className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm">
           3일 무료로 시작하기 →
         </Link>

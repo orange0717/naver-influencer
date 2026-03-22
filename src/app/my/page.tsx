@@ -16,6 +16,7 @@ import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
+import TrialBanner from '@/components/TrialBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,18 @@ export default async function MyDashboard() {
 
   if (!naverId) {
     redirect('/auth/login');
+  }
+
+  // 체험 만료 체크
+  const trialStarted = (await cookieStore.get('trial_started'))?.value;
+  const isTrial = !!trialStarted;
+  let trialExpired = false;
+  if (trialStarted) {
+    const elapsed = Date.now() - Number(trialStarted);
+    trialExpired = elapsed > 3 * 24 * 60 * 60 * 1000;
+  }
+  if (trialExpired) {
+    redirect('/subscribe');
   }
 
   // naver_id로 인플루언서 조회
@@ -427,6 +440,9 @@ export default async function MyDashboard() {
 
   return (
     <div className="space-y-6">
+
+      {/* ─── 체험 배너 ─── */}
+      {isTrial && <TrialBanner />}
 
       {/* ─── 1. 프로필 헤더 ─── */}
       <ProfileHeader

@@ -80,10 +80,20 @@ export async function GET() {
         .eq('naver_id', naverId)
         .single();
 
+      // 체험 남은 일수 계산
+      const trialStarted = cookieStore.get('trial_started')?.value;
+      let trialDaysLeft: number | undefined;
+      if (trialStarted) {
+        const elapsed = Date.now() - Number(trialStarted);
+        const remaining = Math.ceil((3 * 24 * 60 * 60 * 1000 - elapsed) / (24 * 60 * 60 * 1000));
+        trialDaysLeft = Math.max(0, remaining);
+      }
+
       return NextResponse.json({
         type: 'influencer',
         id: naverId,
         name: inf?.display_name || naverId,
+        ...(trialDaysLeft !== undefined && { trialDaysLeft }),
       });
     }
 
