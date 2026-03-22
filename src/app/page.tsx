@@ -74,8 +74,7 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-base text-dim max-w-xl mx-auto leading-relaxed mb-10">
-          수만 개 키워드의 검색량·경쟁도·순위를 한눈에 분석하고<br className="hidden md:block" />
-          블루오션 키워드를 발굴하여 상위 노출을 달성하세요.
+          실시간으로 변경되는 키워드챌린지 순위를 빠르게 체크하세요.
         </p>
 
         <div className="flex flex-wrap gap-3 justify-center mb-10">
