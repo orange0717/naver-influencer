@@ -3,6 +3,7 @@ import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-se
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
 import Top5Keywords from '@/components/dashboard/Top5Keywords';
+import RankDistribution from '@/components/dashboard/RankDistribution';
 import WidgetSection from '@/components/dashboard/WidgetSection';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
@@ -213,7 +214,14 @@ export default async function MyDashboard() {
     ? `${latestSnapshotDate.slice(5, 7).replace(/^0/, '')}월 ${latestSnapshotDate.slice(8, 10).replace(/^0/, '')}일 기준`
     : '';
 
-  // ─── 순위별 키워드 수 (1~5위) ───
+  // ─── 순위별 키워드 데이터 (1~5위) ───
+  const rankKeywords = (rank: number) => rankings.filter(r => r.rank_position === rank).map(r => ({
+    keyword_id: r.keyword_id,
+    keyword: r.keyword,
+    rank_position: r.rank_position,
+    rank_change: r.rank_change,
+    category: r.category,
+  }));
   const rank2Count = rankings.filter(r => r.rank_position === 2).length;
   const rank3Count = rankings.filter(r => r.rank_position === 3).length;
   const rank4Count = rankings.filter(r => r.rank_position === 4).length;
@@ -545,32 +553,14 @@ export default async function MyDashboard() {
             <p className="text-xs text-dim mt-1">노출 키워드</p>
           </div>
         </div>
-        {/* 순위별 키워드 수 (1~5위) */}
-        <div className="border-t border-border/50 pt-4">
-          <p className="text-[11px] text-dim font-semibold mb-3">순위별 키워드 분포</p>
-          <div className="grid grid-cols-5 gap-2 text-center">
-            <div className="rounded-xl bg-gold/10 py-2.5">
-              <p className="text-lg font-black text-gold">{rank1Count}</p>
-              <p className="text-[10px] text-dim font-semibold mt-0.5">1위</p>
-            </div>
-            <div className="rounded-xl bg-accent/10 py-2.5">
-              <p className="text-lg font-black text-accent">{rank2Count}</p>
-              <p className="text-[10px] text-dim font-semibold mt-0.5">2위</p>
-            </div>
-            <div className="rounded-xl bg-accent/10 py-2.5">
-              <p className="text-lg font-black text-accent">{rank3Count}</p>
-              <p className="text-[10px] text-dim font-semibold mt-0.5">3위</p>
-            </div>
-            <div className="rounded-xl bg-border/30 py-2.5">
-              <p className="text-lg font-black text-dim">{rank4Count}</p>
-              <p className="text-[10px] text-dim font-semibold mt-0.5">4위</p>
-            </div>
-            <div className="rounded-xl bg-border/30 py-2.5">
-              <p className="text-lg font-black text-dim">{rank5Count}</p>
-              <p className="text-[10px] text-dim font-semibold mt-0.5">5위</p>
-            </div>
-          </div>
-        </div>
+        {/* 순위별 키워드 분포 (클릭 시 키워드 목록 표시) */}
+        <RankDistribution
+          rank1={rankKeywords(1)}
+          rank2={rankKeywords(2)}
+          rank3={rankKeywords(3)}
+          rank4={rankKeywords(4)}
+          rank5={rankKeywords(5)}
+        />
       </GlassCard>
 
       {/* ─── 2-1. 키워드챌린지 참여 현황 ─── */}
@@ -608,8 +598,17 @@ export default async function MyDashboard() {
       {/* ─── 4. 변동 피드 ─── */}
       <ActivityFeed events={activityEvents} />
 
-      {/* ─── 5. TOP 5 키워드 ─── */}
-      <Top5Keywords rankings={rankings} totalRankedKeywords={totalRankedKeywords} />
+      {/* ─── 5. 오늘의 추천키워드 (미참여 중 경쟁도 낮고 검색량 높은 키워드) ─── */}
+      <Top5Keywords
+        recommendations={notParticipatedKeywords
+          .map(kw => ({
+            ...kw,
+            score: (kw.search_volume > 0 ? Math.log10(kw.search_volume) * 10 : 0) + Math.max(0, 50 - kw.participant_count),
+          }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5)}
+        totalNotParticipated={notParticipatedKeywords.length}
+      />
 
       {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
       <WidgetSection naverId={naverId} />

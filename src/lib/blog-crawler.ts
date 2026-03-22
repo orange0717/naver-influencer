@@ -261,22 +261,24 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
       }
     }
 
-    // 폴백: 블로그 메인 페이지에서 방문자 위젯 파싱
+    // 폴백: 모바일 블로그 페이지에서 todayVisitor JSON 추출
     if (results.length === 0) {
       try {
-        const mainRes = await fetch(`https://blog.naver.com/${blogId}`, {
+        const mobileRes = await fetch(`https://m.blog.naver.com/${blogId}`, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
             'Accept-Language': 'ko-KR,ko;q=0.9',
           },
         });
-        if (mainRes.ok) {
-          const html = await mainRes.text();
-          // 오늘 방문자수 추출 (다양한 패턴)
-          const todayMatch = html.match(/오늘\s*(\d[\d,]*)/);
+        if (mobileRes.ok) {
+          const html = await mobileRes.text();
+          const todayMatch = html.match(/"todayVisitor"\s*:\s*(\d+)/);
           if (todayMatch) {
             const today = new Date().toISOString().slice(0, 10);
-            results.push({ date: today, visitors: parseInt(todayMatch[1].replace(/,/g, '')) });
+            const visitors = parseInt(todayMatch[1]);
+            if (visitors > 0) {
+              results.push({ date: today, visitors });
+            }
           }
         }
       } catch {
