@@ -115,6 +115,7 @@ export default function SubscribePage() {
               ))}
             </ul>
           </div>
+      </div>
     </div>
   );
 }
