@@ -125,15 +125,9 @@ export default function Header() {
           <div className="flex items-center gap-3">
             {user.id ? (
               <div className="flex items-center gap-2">
-                {user.type === 'unified' && (
-                  <span className="text-[10px] text-white/60 bg-accent/30 px-2 py-0.5 rounded-full hidden sm:block">인플루언서</span>
-                )}
-                {user.type === 'blogger' && (
-                  <span className="text-[10px] text-white/60 bg-[#2DB400]/30 px-2 py-0.5 rounded-full hidden sm:block">블로거</span>
-                )}
-                {user.type === 'influencer' && (
-                  <span className="text-[10px] text-white/60 bg-white/15 px-2 py-0.5 rounded-full hidden sm:block">인플루언서</span>
-                )}
+                <Link href="/my" className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/10 transition">
+                  <span className="text-xs text-white/80 font-semibold">@{user.name || user.id}</span>
+                </Link>
                 <button onClick={handleLogout}
                   className={`w-8 h-8 rounded-full ${badgeColor} flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 transition cursor-pointer`}
                   title={tooltipText}
