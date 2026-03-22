@@ -15,6 +15,7 @@ function extractNaverId(input: string): string {
 export default function SignupPage() {
 
   const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [naverInput, setNaverInput] = useState('');
@@ -43,6 +44,14 @@ export default function SignupPage() {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+    if (!nickname.trim()) {
+      setError('닉네임을 입력해주세요.');
+      return;
+    }
+    if (nickname.trim().length > 20) {
+      setError('닉네임은 20자 이하로 입력해주세요.');
       return;
     }
     if (password.length < 6) {
@@ -97,14 +106,13 @@ export default function SignupPage() {
       setLoadingStep('인플루언서 연결 중...');
 
       // 2. users 테이블에 레코드 생성 + 인플루언서 연결
-      const nickname = email.trim().split('@')[0];
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           authId: authData.user.id,
           email: email.trim(),
-          nickname,
+          nickname: nickname.trim(),
           naverId,
         }),
       });
@@ -149,6 +157,12 @@ export default function SignupPage() {
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" autoFocus
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-dim block mb-1.5">닉네임</label>
+              <input type="text" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="닉네임을 입력해주세요" maxLength={20}
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
