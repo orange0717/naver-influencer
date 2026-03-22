@@ -70,8 +70,15 @@ export default function BlogVisitorChart({ blogId }: Props) {
           </div>
           <h3 className="font-bold text-[15px]">블로그 방문자수</h3>
         </div>
-        <p className="text-sm text-dim text-center py-4">방문자 데이터가 아직 수집되지 않았습니다.</p>
-        <p className="text-xs text-dim text-center">매일 자동으로 수집됩니다.</p>
+        <div className="text-center py-4 space-y-2">
+          <p className="text-sm text-dim">방문자 데이터가 아직 수집되지 않았습니다.</p>
+          <div className="text-xs text-dim bg-bg rounded-xl p-3 text-left space-y-1.5 max-w-sm mx-auto">
+            <p className="font-semibold text-text">방문자수 수집을 위해 아래 설정이 필요합니다:</p>
+            <p>1. 네이버 블로그 관리 &gt; 메뉴-글-동영상 관리</p>
+            <p>2. 위젯 사용 설정 &gt; 방문자수 카운터 ON</p>
+            <p>3. 설정 완료 후 다음 날부터 자동 수집됩니다.</p>
+          </div>
+        </div>
       </GlassCard>
     );
   }
