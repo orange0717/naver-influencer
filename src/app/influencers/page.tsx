@@ -16,6 +16,7 @@ interface InfluencerItem {
   categoryMyType: string;
   foundInKeywords: string[];
   firstSeenAt?: string;
+  lastCrawledAt?: string;
 }
 
 function formatDate(d: string | null | undefined): string {
@@ -72,7 +73,7 @@ export default function InfluencersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold">인플루언서(구. 파워블로거 2016년 폐지) 목록</h1>
+          <h1 className="text-xl font-extrabold">인플루언서 리스트</h1>
           <p className="text-xs text-dim mt-0.5">키워드 챌린지 참여 인플루언서</p>
         </div>
         <div className="text-right">
@@ -117,6 +118,7 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">활동 분야</th>
                   <th className="text-right py-3 px-4 font-semibold text-dim text-xs">구독자</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">선정일</th>
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">마지막 챌린지 참여</th>
                 </tr>
               </thead>
               <tbody>
@@ -160,6 +162,9 @@ export default function InfluencersPage() {
                     <td className="py-3 px-4 text-xs text-dim">
                       {formatDate(inf.firstSeenAt)}
                     </td>
+                    <td className="py-3 px-4 text-xs text-dim">
+                      {formatDate(inf.lastCrawledAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -201,11 +206,10 @@ export default function InfluencersPage() {
                     {inf.myKeywordCategory}{inf.categoryMyType ? ` · ${inf.categoryMyType}` : ''}
                   </div>
                 </div>
-                {inf.firstSeenAt && (
-                  <div className="text-[10px] text-dim">
-                    선정일 {formatDate(inf.firstSeenAt)}
-                  </div>
-                )}
+                <div className="flex gap-3 text-[10px] text-dim">
+                  {inf.firstSeenAt && <span>선정일 {formatDate(inf.firstSeenAt)}</span>}
+                  {inf.lastCrawledAt && <span>챌린지 {formatDate(inf.lastCrawledAt)}</span>}
+                </div>
               </div>
             ))}
             {influencers.length === 0 && (

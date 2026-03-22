@@ -143,6 +143,7 @@ async function getInfluencersFromDB(
     categoryMyType: inf.category_my_type || '',
     foundInKeywords: keywordMap.get(inf.id) || [],
     firstSeenAt: inf.naver_created_at || inf.first_seen_at || inf.created_at,
+    lastCrawledAt: inf.last_crawled_at || null,
   }));
 
   return NextResponse.json({
