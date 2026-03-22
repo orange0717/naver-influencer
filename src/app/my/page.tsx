@@ -168,16 +168,20 @@ export default async function MyDashboard() {
   const myPosts = Array.from(postMap.values())
     .sort((a, b) => a.bestRank - b.bestRank);
 
-  // ─── 토픽 수 크롤링 ───
+  // ─── 토픽 수 크롤링 (3초 타임아웃) ───
   let topicCount = 0;
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
     const inRes = await fetch(`https://in.naver.com/${naverId}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Accept-Language': 'ko-KR,ko;q=0.9',
       },
+      signal: controller.signal,
       next: { revalidate: 3600 },
     });
+    clearTimeout(timeout);
     if (inRes.ok) {
       const html = await inRes.text();
       // "토픽 N" 또는 토픽 카운트 패턴 매칭
