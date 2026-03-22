@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | 'unified' | null;
@@ -12,6 +13,25 @@ type UserInfo = {
 const defaultUser: UserInfo = { type: null, id: null, name: null };
 
 async function fetchUser(): Promise<UserInfo> {
+  // Supabase 세션에서 토큰을 가져와 Bearer 헤더로 전달
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      const res = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.id) return data;
+      }
+    }
+  } catch {
+    // Supabase 세션 실패 시 폴백
+  }
+
+  // 쿠키 기반 폴백
   const res = await fetch('/api/auth/me');
   if (!res.ok) return defaultUser;
   return res.json();
@@ -35,7 +55,6 @@ export function useAuth() {
     } catch (err) {
       console.warn('[useAuth] 로그아웃 요청 실패:', err);
     }
-    // API 성공/실패와 무관하게 클라이언트 상태 클리어
     queryClient.setQueryData(['auth', 'me'], defaultUser);
     queryClient.invalidateQueries({ queryKey: ['auth'] });
     window.location.href = '/';
