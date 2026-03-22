@@ -31,7 +31,7 @@ export default function Header() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const { user, logout: authLogout } = useAuth();
+  const { user, isLoading: authLoading, logout: authLogout } = useAuth();
   const infoRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
@@ -124,7 +124,9 @@ export default function Header() {
 
           {/* ── 우측: 로그인/프로필 ── */}
           <div className="flex items-center gap-3">
-            {user.id ? (
+            {authLoading ? (
+              <div className="w-20 h-8" />
+            ) : user.id ? (
               <div className="flex items-center gap-2">
                 <Link href="/my" className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/10 transition" title="알림">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/70"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>

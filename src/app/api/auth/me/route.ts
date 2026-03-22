@@ -27,6 +27,7 @@ export async function GET() {
         // linked_influencer_id가 있으면 인플루언서 이름 조회
         let displayName = profile.nickname || authUser.email?.split('@')[0] || null;
         const type = profile.linked_influencer_id ? 'influencer' : 'blogger';
+        let naverId: string | null = null;
 
         if (profile.linked_influencer_id) {
           const { data: inf } = await supabase
@@ -36,12 +37,13 @@ export async function GET() {
             .single();
           if (inf) {
             displayName = inf.display_name || inf.naver_id || displayName;
+            naverId = inf.naver_id;
           }
         }
 
         return NextResponse.json({
           type,
-          id: profile.id,
+          id: naverId || profile.id,
           name: displayName,
           email: authUser.email,
           authId: authUser.id,
