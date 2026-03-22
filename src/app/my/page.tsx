@@ -167,6 +167,32 @@ export default async function MyDashboard() {
   const myPosts = Array.from(postMap.values())
     .sort((a, b) => a.bestRank - b.bestRank);
 
+  // ─── 토픽 수 크롤링 ───
+  let topicCount = 0;
+  try {
+    const inRes = await fetch(`https://in.naver.com/${naverId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+      },
+      next: { revalidate: 3600 },
+    });
+    if (inRes.ok) {
+      const html = await inRes.text();
+      // "토픽 N" 또는 토픽 카운트 패턴 매칭
+      const topicMatch = html.match(/토픽\s*(\d+)/);
+      if (topicMatch) {
+        topicCount = parseInt(topicMatch[1]);
+      } else {
+        // JSON 데이터에서 topicCount 추출 시도
+        const jsonMatch = html.match(/"topicCount"\s*:\s*(\d+)/);
+        if (jsonMatch) topicCount = parseInt(jsonMatch[1]);
+      }
+    }
+  } catch {
+    // 토픽 크롤링 실패 무시
+  }
+
   // 통계 계산
   const totalRankedKeywords = rankings.length;
   const avgRank = totalRankedKeywords > 0
@@ -494,10 +520,10 @@ export default async function MyDashboard() {
         />
         <AnimatedStatCard
           label="토픽"
-          value={0}
+          value={topicCount}
           suffix="개"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>}
-          color="dim"
+          color={topicCount > 0 ? 'accent' : 'dim'}
           delay={250}
         />
       </div>

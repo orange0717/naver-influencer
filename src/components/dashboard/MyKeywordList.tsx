@@ -55,7 +55,8 @@ export default function MyKeywordList({
   const [rankFilter, setRankFilter] = useState<'all' | 'ranked' | 'unranked'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const notParticipatedCount = totalKeywords - participatedCount;
 
@@ -127,8 +128,8 @@ export default function MyKeywordList({
     return list;
   }, [allKeywords, selectedCategory, participationFilter, rankFilter, compFilter, search, sortKey]);
 
-  const displayList = filteredKeywords.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredKeywords.length;
+  const totalPages = Math.ceil(filteredKeywords.length / PAGE_SIZE);
+  const displayList = filteredKeywords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const rankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position !== null).length;
   const unrankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position === null).length;
 
@@ -181,12 +182,12 @@ export default function MyKeywordList({
               type="text"
               placeholder="키워드 검색..."
               value={search}
-              onChange={e => { setSearch(e.target.value); setVisibleCount(20); }}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
               className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
             />
             <select
               value={participationFilter}
-              onChange={e => { setParticipationFilter(e.target.value as ParticipationFilter); setVisibleCount(20); }}
+              onChange={e => { setParticipationFilter(e.target.value as ParticipationFilter); setCurrentPage(1); }}
               className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text focus:outline-none focus:border-accent transition-colors shrink-0"
             >
               <option value="all">전체 키워드 ({totalKeywords})</option>
@@ -201,7 +202,7 @@ export default function MyKeywordList({
               {(['all', 'low', 'mid', 'high'] as CompFilter[]).map(f => (
                 <button
                   key={f}
-                  onClick={() => { setCompFilter(f); setVisibleCount(20); }}
+                  onClick={() => { setCompFilter(f); setCurrentPage(1); }}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
                     compFilter === f
                       ? 'bg-accent text-white'
@@ -356,25 +357,49 @@ export default function MyKeywordList({
             })}
           </div>
 
-          {/* 더보기 / 접기 */}
-          <div className="px-5 py-3 border-t border-border/50 text-center flex items-center justify-center gap-4">
-            {hasMore && (
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-1">
               <button
-                onClick={() => setVisibleCount(prev => prev + 20)}
-                className="text-xs font-semibold text-accent hover:text-accent-hover transition cursor-pointer"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-30 disabled:cursor-default bg-border/30 text-dim hover:bg-border/50"
               >
-                더 보기 (+20개, 남은 {filteredKeywords.length - visibleCount}개)
+                이전
               </button>
-            )}
-            {visibleCount > 20 && (
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                .reduce<(number | 'dots')[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('dots');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((item, i) =>
+                  item === 'dots' ? (
+                    <span key={`dots-${i}`} className="px-1 text-xs text-dim">...</span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item)}
+                      className={`w-8 h-8 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        currentPage === item
+                          ? 'bg-accent text-white'
+                          : 'bg-border/30 text-dim hover:bg-border/50'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
               <button
-                onClick={() => setVisibleCount(20)}
-                className="text-xs font-semibold text-dim hover:text-text transition cursor-pointer"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-30 disabled:cursor-default bg-border/30 text-dim hover:bg-border/50"
               >
-                접기
+                다음
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ) : totalKeywords > 0 ? (
         <GlassCard>
