@@ -530,11 +530,11 @@ export default async function MyDashboard() {
           delay={200}
         />
         <AnimatedStatCard
-          label="토픽"
-          value={topicCount}
+          label="미참여"
+          value={notParticipatedKeywords.length}
           suffix="개"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>}
-          color={topicCount > 0 ? 'accent' : 'dim'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>}
+          color={notParticipatedKeywords.length > 0 ? 'down' : 'dim'}
           delay={250}
         />
       </div>
