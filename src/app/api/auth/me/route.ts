@@ -72,10 +72,18 @@ export async function GET() {
     }
 
     if (userType === 'influencer' && naverId) {
+      // 인플루언서 display_name 조회
+      const supabase = createServiceClient();
+      const { data: inf } = await supabase
+        .from('influencers')
+        .select('display_name')
+        .eq('naver_id', naverId)
+        .single();
+
       return NextResponse.json({
         type: 'influencer',
         id: naverId,
-        name: null,
+        name: inf?.display_name || naverId,
       });
     }
 
