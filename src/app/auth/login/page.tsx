@@ -45,6 +45,9 @@ export default function LoginPage() {
         return;
       }
 
+      // 레거시 쿠키 동기화 (헤더 닉네임 표시용)
+      await fetch('/api/auth/sync-cookies', { method: 'POST' }).catch(() => {});
+
       router.push('/my');
       router.refresh();
     } catch {
