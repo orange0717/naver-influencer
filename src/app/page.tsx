@@ -55,19 +55,10 @@ function useNewInfluencers() {
   return list;
 }
 
-/* ── FAQ ── */
-const FAQS = [
-  { q: '인플루언서도 무료로 사용할 수 있나요?', a: '네! 키워드 분석, 순위 추적, 인플루언서 검색, 커뮤니티 등 핵심 기능을 무료로 이용할 수 있습니다.' },
-  { q: '어떤 데이터를 분석할 수 있나요?', a: '108만 인플루언서 DB, 키워드챌린지 순위·경쟁도, 검색량 트렌드 등을 제공합니다. 20개 카테고리, 11만 개 이상의 키워드를 커버합니다.' },
-  { q: '비즈니스/에이전시 플랜은 어떤 분들에게 적합한가요?', a: '체험단을 운영하거나, 인플루언서 마케팅을 진행하는 소상공인·마케팅 대행사에 적합합니다. 인플루언서 검색·컨택, 캠페인 관리 등의 기능을 제공합니다.' },
-  { q: '데이터는 얼마나 자주 업데이트되나요?', a: '키워드 순위와 인플루언서 데이터는 매일 자동으로 업데이트됩니다. 검색량 트렌드는 주간 단위로 갱신됩니다.' },
-];
-
 export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
   const newInfluencers = useNewInfluencers();
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
     <div className="-mt-6 -mb-10 w-screen relative left-1/2 -ml-[50vw]">
@@ -75,11 +66,11 @@ export default function LandingPage() {
       {/* ═══════════ HERO (bg) ═══════════ */}
       <section className="bg-bg px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
         <p className="text-sm text-accent font-semibold tracking-wide mb-8">
-          인플루언서(구. 파워블로거 2016년 폐지)를 위한 플랫폼
+          네이버 인플루언서를 위한 플랫폼
         </p>
 
         <h1 className="font-title text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
-          키워드챌린지,<br />더 스마트하게
+          나만의 대시보드를 통해서<br />인플루언서 순위를 올려보세요.
         </h1>
 
         <p className="text-base text-dim max-w-xl mx-auto leading-relaxed mb-10">
@@ -101,7 +92,7 @@ export default function LandingPage() {
 
         <Link href="/auth/signup"
           className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm">
-          무료로 시작하기 →
+          3일 무료로 시작하기 →
         </Link>
 
         <p className="text-xs text-dim mt-5">
@@ -234,30 +225,6 @@ export default function LandingPage() {
                 <p className="text-sm text-dim leading-relaxed">AI가 내 카테고리와 성과를 분석하여 매일 최적의 키워드를 추천합니다.</p>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════ 사용 방법 (bg) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24 text-center">
-        <p className="text-xs text-accent font-semibold tracking-widest mb-3">HOW IT WORKS</p>
-        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">3단계로 시작하세요</h2>
-
-        <div className="flex flex-col md:flex-row justify-center gap-12 md:gap-20 max-w-3xl mx-auto">
-          <div>
-            <p className="text-4xl font-extrabold text-accent/25 mb-3">01</p>
-            <h3 className="font-bold text-text mb-1">회원가입</h3>
-            <p className="text-sm text-dim">무료로 가입하고<br />인플루언서 계정을 연결하세요.</p>
-          </div>
-          <div>
-            <p className="text-4xl font-extrabold text-accent/25 mb-3">02</p>
-            <h3 className="font-bold text-text mb-1">키워드 분석</h3>
-            <p className="text-sm text-dim">수만 개 키워드의<br />참여자, 검색량, 경쟁도를 확인하세요.</p>
-          </div>
-          <div>
-            <p className="text-4xl font-extrabold text-accent/25 mb-3">03</p>
-            <h3 className="font-bold text-text mb-1">전략 수립</h3>
-            <p className="text-sm text-dim">블루오션 키워드를 선점하고<br />순위 변동을 실시간으로 추적하세요.</p>
           </div>
         </div>
       </section>
@@ -440,41 +407,6 @@ export default function LandingPage() {
                     {card.linkText} →
                   </Link>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════ FAQ (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-xs text-accent font-semibold tracking-widest mb-3">FAQ</p>
-            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text">자주 묻는 질문</h2>
-          </div>
-
-          <div className="divide-y divide-border">
-            {FAQS.map((faq, i) => (
-              <div key={i}>
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  aria-expanded={openFaq === i}
-                  aria-controls={`faq-answer-${i}`}
-                  className="w-full flex items-center justify-between py-5 text-left cursor-pointer"
-                >
-                  <span className="text-sm font-bold text-text">{faq.q}</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                    aria-hidden="true"
-                    className={`text-dim flex-shrink-0 ml-4 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-                {openFaq === i && (
-                  <div id={`faq-answer-${i}`} role="region" aria-labelledby={`faq-q-${i}`} className="pb-5">
-                    <p className="text-sm text-dim leading-relaxed">{faq.a}</p>
-                  </div>
-                )}
               </div>
             ))}
           </div>
