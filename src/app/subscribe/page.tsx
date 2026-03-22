@@ -97,24 +97,6 @@ export default function SubscribePage() {
         </div>
       </div>
 
-      {/* 안내 */}
-      <div className="bg-bg rounded-2xl p-6 space-y-3 text-center">
-        <p className="text-sm font-bold">자주 묻는 질문</p>
-        <div className="max-w-lg mx-auto space-y-4 text-left">
-          <div>
-            <p className="text-sm font-semibold">무료 체험은 어떻게 시작하나요?</p>
-            <p className="text-xs text-dim mt-1">회원가입 없이 네이버 인플루언서 ID만 입력하면 3일간 대시보드를 이용할 수 있습니다.</p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold">체험 종료 후에는요?</p>
-            <p className="text-xs text-dim mt-1">3일 후 자동으로 종료됩니다. 계속 이용하려면 회원가입 후 PRO 플랜을 구독해주세요.</p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold">결제는 어떻게 하나요?</p>
-            <p className="text-xs text-dim mt-1">스마트스토어에서 이용권을 구매하고, 주문번호를 입력하면 자동 활성화됩니다.</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
