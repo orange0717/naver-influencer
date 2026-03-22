@@ -9,6 +9,7 @@ import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
 import { generateBloggerEvents } from '@/lib/activity-events';
+import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 
 interface KeywordRank {
   keyword: string;
@@ -669,6 +670,9 @@ export default function BloggerDashboard() {
           delay={200}
         />
       </div>
+
+      {/* ─── 2-1. 블로그 방문자수 ─── */}
+      {profile && <BlogVisitorChart blogId={profile.blogId} />}
 
       {/* ─── 3. 블로그탭 노출 등급 ─── */}
       <GlassCard>
