@@ -12,43 +12,46 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     // ─── 1. Supabase Auth 세션 체크 ───
-    const supabaseAuth = await createRouteHandlerClient();
-    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+    try {
+      const supabaseAuth = await createRouteHandlerClient();
+      const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
 
-    if (authUser) {
-      const supabase = createServiceClient();
-      const { data: profile } = await supabase
-        .from('users')
-        .select('id, nickname, email, linked_influencer_id, subscription_status')
-        .eq('auth_id', authUser.id)
-        .single();
+      if (authUser) {
+        const supabase = createServiceClient();
+        const { data: profile } = await supabase
+          .from('users')
+          .select('id, nickname, email, linked_influencer_id, subscription_status')
+          .eq('auth_id', authUser.id)
+          .single();
 
-      if (profile) {
-        // linked_influencer_id가 있으면 인플루언서 이름 조회
-        let displayName = profile.nickname || authUser.email?.split('@')[0] || null;
-        const type = profile.linked_influencer_id ? 'influencer' : 'blogger';
-        let naverId: string | null = null;
+        if (profile) {
+          let displayName = profile.nickname || authUser.email?.split('@')[0] || null;
+          const type = profile.linked_influencer_id ? 'influencer' : 'blogger';
+          let naverId: string | null = null;
 
-        if (profile.linked_influencer_id) {
-          const { data: inf } = await supabase
-            .from('influencers')
-            .select('display_name, naver_id')
-            .eq('id', profile.linked_influencer_id)
-            .single();
-          if (inf) {
-            displayName = inf.display_name || inf.naver_id || displayName;
-            naverId = inf.naver_id;
+          if (profile.linked_influencer_id) {
+            const { data: inf } = await supabase
+              .from('influencers')
+              .select('display_name, naver_id')
+              .eq('id', profile.linked_influencer_id)
+              .single();
+            if (inf) {
+              displayName = inf.display_name || inf.naver_id || displayName;
+              naverId = inf.naver_id;
+            }
           }
-        }
 
-        return NextResponse.json({
-          type,
-          id: naverId || profile.id,
-          name: displayName,
-          email: authUser.email,
-          authId: authUser.id,
-        });
+          return NextResponse.json({
+            type,
+            id: naverId || profile.id,
+            name: displayName,
+            email: authUser.email,
+            authId: authUser.id,
+          });
+        }
       }
+    } catch {
+      // Supabase Auth 실패 시 쿠키 기반으로 폴백
     }
 
     // ─── 2. 기존 쿠키 기반 체크 (하위 호환) ───
@@ -74,7 +77,6 @@ export async function GET() {
     }
 
     if (userType === 'influencer' && naverId) {
-      // 인플루언서 display_name 조회
       const supabase = createServiceClient();
       const { data: inf } = await supabase
         .from('influencers')
@@ -82,7 +84,6 @@ export async function GET() {
         .eq('naver_id', naverId)
         .single();
 
-      // 체험 남은 일수 계산
       const trialStarted = cookieStore.get('trial_started')?.value;
       let trialDaysLeft: number | undefined;
       if (trialStarted) {
