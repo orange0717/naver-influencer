@@ -46,8 +46,8 @@ export default async function MyDashboard() {
   }
 
   // ─── 2. 기존 쿠키 기반 체크 (하위 호환) ───
+  const cookieStore = await cookies();
   if (!naverId) {
-    const cookieStore = await cookies();
     naverId = cookieStore.get('naver_id')?.value;
   }
 
@@ -56,7 +56,7 @@ export default async function MyDashboard() {
   }
 
   // 체험 만료 체크
-  const trialStarted = (await cookieStore.get('trial_started'))?.value;
+  const trialStarted = cookieStore.get('trial_started')?.value;
   const isTrial = !!trialStarted;
   let trialExpired = false;
   if (trialStarted) {
