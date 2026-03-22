@@ -155,14 +155,14 @@ export default function SignupPage() {
 
           <div className="space-y-4 animate-fade-in-up">
             <div>
-              <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" autoFocus
+              <label className="text-xs font-semibold text-dim block mb-1.5">닉네임</label>
+              <input type="text" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="닉네임을 입력해주세요" maxLength={20} autoFocus
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-dim block mb-1.5">닉네임</label>
-              <input type="text" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="닉네임을 입력해주세요" maxLength={20}
+              <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com"
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
