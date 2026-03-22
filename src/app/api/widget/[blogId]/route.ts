@@ -21,11 +21,8 @@ function formatDate(dateStr: string) {
 
 function generateWidgetSVG(data: {
   blog_name: string;
-  total_score: number;
-  crank_score: number;
-  dia_score: number;
-  diaplus_score: number;
-  grade: string;
+  exposure_grade?: string;
+  exposure_score?: number;
   keyword_count: number;
   ranked_count: number;
   avg_rank: number;
@@ -33,14 +30,18 @@ function generateWidgetSVG(data: {
   top10_count: number;
   scored_at: string;
 }) {
-  const gc = getGradeColor(data.grade);
+  const grade = data.exposure_grade || 'D';
+  const score = data.exposure_score || 0;
+  const gc = getGradeColor(grade);
   const dateStr = formatDate(data.scored_at);
-  const blogName = data.blog_name.length > 14 ? data.blog_name.slice(0, 14) + '…' : data.blog_name;
+  const blogName = data.blog_name.length > 14 ? data.blog_name.slice(0, 14) + '...' : data.blog_name;
 
   // 바 너비 계산 (max 90px)
-  const crankBar = Math.round(data.crank_score * 0.9);
-  const diaBar = Math.round(data.dia_score * 0.9);
-  const diaplusBar = Math.round(data.diaplus_score * 0.9);
+  const exposureRate = data.keyword_count > 0 ? data.ranked_count / data.keyword_count : 0;
+  const exposureBar = Math.round(exposureRate * 90);
+  const top10Rate = data.keyword_count > 0 ? data.top10_count / data.keyword_count : 0;
+  const qualityBar = Math.round(top10Rate * 90);
+  const rankBar = data.avg_rank > 0 ? Math.round(Math.max(0, 90 - (data.avg_rank - 1) * 3)) : 0;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="280" height="155" viewBox="0 0 280 155">
   <defs>
@@ -63,39 +64,39 @@ function generateWidgetSVG(data: {
   <!-- N인플 로고 -->
   <rect x="10" y="8" width="20" height="20" rx="4" fill="rgba(255,255,255,0.25)"/>
   <text x="20" y="23" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" text-anchor="middle">N</text>
-  <text x="38" y="23" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white">인플 블로그 등급</text>
+  <text x="38" y="23" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white">인플 블로그 노출등급</text>
 
   <!-- 등급 뱃지 -->
   <rect x="228" y="6" width="44" height="24" rx="12" fill="rgba(255,255,255,0.3)"/>
-  <text x="250" y="23" font-family="Arial,sans-serif" font-size="14" font-weight="900" fill="white" text-anchor="middle">${data.grade}등급</text>
+  <text x="250" y="23" font-family="Arial,sans-serif" font-size="14" font-weight="900" fill="white" text-anchor="middle">${grade}등급</text>
 
   <!-- 블로그 이름 + 점수 -->
   <text x="14" y="56" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#1F2937">${blogName}</text>
-  <text x="266" y="56" font-family="Arial,sans-serif" font-size="18" font-weight="900" fill="${gc.main}" text-anchor="end">${data.total_score}</text>
+  <text x="266" y="56" font-family="Arial,sans-serif" font-size="18" font-weight="900" fill="${gc.main}" text-anchor="end">${score}</text>
   <text x="266" y="56" font-family="Arial,sans-serif" font-size="9" fill="#9CA3AF" text-anchor="end" dx="-22">점</text>
 
-  <!-- 전문성 바 -->
-  <text x="14" y="76" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#F29C68">전문성</text>
+  <!-- 노출률 바 -->
+  <text x="14" y="76" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#F29C68">노출률</text>
   <rect x="62" y="69" width="92" height="6" rx="3" fill="#F3F4F6"/>
-  <rect x="62" y="69" width="${crankBar}" height="6" rx="3" fill="#F29C68"/>
-  <text x="160" y="76" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#F29C68">${data.crank_score}</text>
+  <rect x="62" y="69" width="${exposureBar}" height="6" rx="3" fill="#F29C68"/>
+  <text x="160" y="76" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#F29C68">${Math.round(exposureRate * 100)}%</text>
 
-  <!-- 품질 바 -->
+  <!-- 노출 품질 바 -->
   <text x="14" y="92" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#22C55E">품질</text>
   <rect x="62" y="85" width="92" height="6" rx="3" fill="#F3F4F6"/>
-  <rect x="62" y="85" width="${diaBar}" height="6" rx="3" fill="#22C55E"/>
-  <text x="160" y="92" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#22C55E">${data.dia_score}</text>
+  <rect x="62" y="85" width="${qualityBar}" height="6" rx="3" fill="#22C55E"/>
+  <text x="160" y="92" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#22C55E">TOP10 ${data.top10_count}</text>
 
-  <!-- 노출력 바 -->
-  <text x="14" y="108" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#7B1FA2">노출력</text>
+  <!-- 평균순위 바 -->
+  <text x="14" y="108" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#3B82F6">순위</text>
   <rect x="62" y="101" width="92" height="6" rx="3" fill="#F3F4F6"/>
-  <rect x="62" y="101" width="${diaplusBar}" height="6" rx="3" fill="#7B1FA2"/>
-  <text x="160" y="108" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#7B1FA2">${data.diaplus_score}</text>
+  <rect x="62" y="101" width="${rankBar}" height="6" rx="3" fill="#3B82F6"/>
+  <text x="160" y="108" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#3B82F6">${data.avg_rank > 0 ? Math.round(data.avg_rank) + '위' : '-'}</text>
 
   <!-- 통계 -->
-  <text x="190" y="78" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">키워드 ${data.keyword_count}개</text>
-  <text x="190" y="90" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">TOP 10 ${data.top10_count}개</text>
-  <text x="190" y="102" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">평균 ${data.avg_rank > 0 ? Math.round(data.avg_rank) + '위' : '—'}</text>
+  <text x="190" y="78" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">${data.ranked_count}/${data.keyword_count} 노출</text>
+  <text x="190" y="90" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">TOP5 ${data.top5_count}개</text>
+  <text x="190" y="102" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">키워드 ${data.keyword_count}개</text>
 
   <!-- 하단 구분선 + 날짜 -->
   <line x1="14" y1="118" x2="266" y2="118" stroke="#F3F4F6" stroke-width="1"/>
@@ -126,14 +127,8 @@ export async function GET(
       .single();
 
     if (!data) {
-      // 데이터 없을 때 기본 위젯
       const svg = generateWidgetSVG({
         blog_name: blogId,
-        total_score: 0,
-        crank_score: 0,
-        dia_score: 0,
-        diaplus_score: 0,
-        grade: 'D',
         keyword_count: 0,
         ranked_count: 0,
         avg_rank: 0,

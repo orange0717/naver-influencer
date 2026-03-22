@@ -223,6 +223,24 @@ export async function GET(request: NextRequest) {
             ? ranked.reduce((sum, r) => sum + (r.rank_position || 0), 0) / ranked.length
             : 0;
 
+          // 노출 기반 등급 계산
+          const exposureRate = kwList.length > 0 ? ranked.length / kwList.length : 0;
+          const qualityScore = kwList.length > 0
+            ? Math.min(30, (top10.length / kwList.length) * 30)
+            : 0;
+          const rankScore = avgRank > 0
+            ? Math.min(30, Math.max(0, 30 - (avgRank - 1)))
+            : 0;
+          const exposureScore = Math.round(exposureRate * 40 + qualityScore + rankScore);
+
+          function getExposureGrade(score: number): string {
+            if (score >= 80) return 'S';
+            if (score >= 60) return 'A';
+            if (score >= 40) return 'B';
+            if (score >= 20) return 'C';
+            return 'D';
+          }
+
           await supabase
             .from('blog_scores')
             .upsert({
@@ -232,6 +250,9 @@ export async function GET(request: NextRequest) {
               avg_rank: Math.round(avgRank * 100) / 100,
               top5_count: top5.length,
               top10_count: top10.length,
+              exposure_rate: Math.round(exposureRate * 100) / 100,
+              exposure_score: exposureScore,
+              exposure_grade: getExposureGrade(exposureScore),
               scored_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             }, {

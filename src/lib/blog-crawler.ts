@@ -198,3 +198,94 @@ export async function extractBlogKeywords(blogId: string): Promise<ExtractedKeyw
   const titles = posts.map(p => p.title);
   return extractKeywordsFromTitles(titles);
 }
+
+// ─── 블로그 방문자수 크롤링 ───
+
+interface BlogVisitorData {
+  date: string;
+  visitors: number;
+}
+
+/**
+ * 네이버 블로그 방문자수를 크롤링한다.
+ * NVisitorgp4Ajax 엔드포인트에서 일별 방문자 데이터를 가져온다.
+ */
+export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData[]> {
+  const results: BlogVisitorData[] = [];
+
+  try {
+    const url = `https://blog.naver.com/NVisitorgp4Ajax.naver?blogId=${blogId}`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/javascript, */*',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+        'Referer': `https://blog.naver.com/${blogId}`,
+      },
+    });
+
+    if (!res.ok) return results;
+
+    const text = await res.text();
+
+    // NVisitorgp4Ajax는 JSON 또는 JS 콜백 형태로 반환
+    // "visitorcnt" 필드에서 일별 방문자수 추출
+    const countMatches = text.match(/"cnt"\s*:\s*(\d+)/g);
+    const dateMatches = text.match(/"date"\s*:\s*"(\d{8})"/g);
+
+    if (countMatches && dateMatches) {
+      for (let i = 0; i < Math.min(countMatches.length, dateMatches.length); i++) {
+        const cnt = parseInt(countMatches[i].replace(/[^0-9]/g, ''));
+        const dateRaw = dateMatches[i].replace(/[^0-9]/g, '');
+        const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+        results.push({ date, visitors: cnt });
+      }
+    }
+
+    // JSON 파싱 시도 (정규식 실패 시)
+    if (results.length === 0) {
+      try {
+        const json = JSON.parse(text.replace(/^[^{[]*/, '').replace(/[^}\]]*$/, ''));
+        const items = json?.visitorcnts || json?.items || json?.result || [];
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            if (item.cnt !== undefined && item.date) {
+              const d = String(item.date);
+              const date = d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
+              results.push({ date, visitors: Number(item.cnt) || 0 });
+            }
+          }
+        }
+      } catch {
+        // JSON 파싱 실패 무시
+      }
+    }
+
+    // 폴백: 블로그 메인 페이지에서 방문자 위젯 파싱
+    if (results.length === 0) {
+      try {
+        const mainRes = await fetch(`https://blog.naver.com/${blogId}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'ko-KR,ko;q=0.9',
+          },
+        });
+        if (mainRes.ok) {
+          const html = await mainRes.text();
+          // 오늘 방문자수 추출 (다양한 패턴)
+          const todayMatch = html.match(/오늘\s*(\d[\d,]*)/);
+          if (todayMatch) {
+            const today = new Date().toISOString().slice(0, 10);
+            results.push({ date: today, visitors: parseInt(todayMatch[1].replace(/,/g, '')) });
+          }
+        }
+      } catch {
+        // 폴백 실패 무시
+      }
+    }
+  } catch (err) {
+    console.error(`[blog-crawler] fetchBlogVisitors error for ${blogId}:`, err instanceof Error ? err.message : err);
+  }
+
+  return results.sort((a, b) => a.date.localeCompare(b.date));
+}

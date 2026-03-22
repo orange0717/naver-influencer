@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
       avg_rank,
       top5_count,
       top10_count,
+      exposure_rate,
+      exposure_score,
+      exposure_grade,
     } = body;
 
     if (!blog_id) {
@@ -47,6 +50,9 @@ export async function POST(req: NextRequest) {
           avg_rank: avg_rank || 0,
           top5_count: top5_count || 0,
           top10_count: top10_count || 0,
+          exposure_rate: exposure_rate ?? 0,
+          exposure_score: exposure_score ?? 0,
+          exposure_grade: exposure_grade || 'D',
           scored_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -83,7 +89,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '점수 데이터가 없습니다.' }, { status: 404 });
     }
 
-    // 전체 블로거 중 랭킹(등수) 계산
+    // 전체 블로거 중 랭킹(등수) 계산 (노출 점수 기반)
     const { count: totalBloggers } = await supabase
       .from('blog_scores')
       .select('*', { count: 'exact', head: true });
@@ -91,33 +97,12 @@ export async function GET(req: NextRequest) {
     const { count: higherCount } = await supabase
       .from('blog_scores')
       .select('*', { count: 'exact', head: true })
-      .gt('total_score', data.total_score);
-
-    // 세부 카테고리별 랭킹도 계산
-    const { count: higherCrank } = await supabase
-      .from('blog_scores')
-      .select('*', { count: 'exact', head: true })
-      .gt('crank_score', data.crank_score);
-
-    const { count: higherDia } = await supabase
-      .from('blog_scores')
-      .select('*', { count: 'exact', head: true })
-      .gt('dia_score', data.dia_score);
-
-    const { count: higherDiaplus } = await supabase
-      .from('blog_scores')
-      .select('*', { count: 'exact', head: true })
-      .gt('diaplus_score', data.diaplus_score);
+      .gt('exposure_score', data.exposure_score || 0);
 
     return NextResponse.json({
       ...data,
       rank: (higherCount || 0) + 1,
       totalBloggers: totalBloggers || 1,
-      categoryRanks: {
-        reliabilityOriginality: (higherCrank || 0) + 1,  // crank = 신뢰성+독창성
-        experienceDepth: (higherDia || 0) + 1,            // dia = 경험+심층성
-        readabilityConsistency: (higherDiaplus || 0) + 1, // diaplus = 가독성+꾸준함
-      },
     });
   } catch (err) {
     console.error('[blog/score] GET error:', err);

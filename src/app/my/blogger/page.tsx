@@ -670,65 +670,76 @@ export default function BloggerDashboard() {
         />
       </div>
 
-      {/* ─── 3. 내 블로그 종합 점수 ─── */}
+      {/* ─── 3. 블로그탭 노출 등급 ─── */}
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-bold text-[15px]">내 블로그 종합 점수</h3>
-            <p className="text-[11px] text-dim mt-0.5">네이버 &ldquo;좋은 문서의 특성&rdquo; 기반 · 본문 {pa ? '10' : ''}개 글 분석</p>
+            <h3 className="font-bold text-[15px]">블로그탭 노출 등급</h3>
+            <p className="text-[11px] text-dim mt-0.5">등록 키워드의 네이버 블로그탭 노출 현황 기반</p>
           </div>
           <div className="text-right">
-            {(hasData || blogPosts.length > 0) && totalScore > 0 ? (
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-black">{totalScore}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gradeInfo.bg} ${gradeInfo.color}`}>
-                  {gradeInfo.grade}등급
-                </span>
-              </div>
-            ) : null}
+            {keywords.length > 0 ? (() => {
+              const expRate = keywords.length > 0 ? rankedCount / keywords.length : 0;
+              const qualityS = keywords.length > 0 ? Math.min(30, (top10Count / keywords.length) * 30) : 0;
+              const rankS = avgRank > 0 ? Math.min(30, Math.max(0, 30 - (avgRank - 1))) : 0;
+              const expScore = Math.round(expRate * 40 + qualityS + rankS);
+              const expGrade = expScore >= 80 ? 'S' : expScore >= 60 ? 'A' : expScore >= 40 ? 'B' : expScore >= 20 ? 'C' : 'D';
+              const gradeColors: Record<string, { bg: string; color: string }> = {
+                S: { bg: 'bg-accent/15', color: 'text-accent' },
+                A: { bg: 'bg-up/15', color: 'text-up' },
+                B: { bg: 'bg-green-500/15', color: 'text-green-600' },
+                C: { bg: 'bg-yellow-500/15', color: 'text-yellow-600' },
+                D: { bg: 'bg-dim/15', color: 'text-dim' },
+              };
+              const gc = gradeColors[expGrade] || gradeColors.D;
+              return (
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-black">{expScore}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gc.bg} ${gc.color}`}>
+                    {expGrade}등급
+                  </span>
+                </div>
+              );
+            })() : null}
           </div>
         </div>
 
-        {!hasData && blogPosts.length === 0 ? (
+        {keywords.length === 0 ? (
           <div className="text-center py-6 text-dim text-sm">
             <p>키워드를 등록하고 순위를 확인하면</p>
-            <p>내 블로그 종합 등급이 계산됩니다.</p>
+            <p>블로그탭 노출 등급이 계산됩니다.</p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <GradeGauge score={reliabilityScore} label="신뢰성" description="출처 · 인용문 · 검색 평판" color="#3B82F6" delay={100} />
-              <GradeGauge score={experienceScore} label="경험" description="직접 촬영 · 1인칭 서술" color="#F59E0B" delay={150} />
-              <GradeGauge score={originalityScore} label="독창성" description="고유 단어 · 원본 콘텐츠" color="#8B5CF6" delay={200} />
-              <GradeGauge score={depthScore} label="심층성" description="글자 수 · 리스트 · 구조" color="#10B981" delay={250} />
-              <GradeGauge score={readabilityScore} label="가독성" description="소제목 · 리스트 · 이미지" color="#EC4899" delay={300} />
-              <GradeGauge score={consistencyScore} label="꾸준함" description="포스팅 빈도 · 정기성" color="#6366F1" delay={350} />
+              <GradeGauge
+                score={Math.round((rankedCount / Math.max(keywords.length, 1)) * 100)}
+                label="노출률"
+                description={`${rankedCount}/${keywords.length} 키워드`}
+                color="#F29C68"
+                delay={100}
+              />
+              <GradeGauge
+                score={Math.round((top10Count / Math.max(keywords.length, 1)) * 100)}
+                label="노출 품질"
+                description={`TOP10 ${top10Count}개`}
+                color="#22C55E"
+                delay={150}
+              />
+              <GradeGauge
+                score={avgRank > 0 ? Math.max(0, Math.round(100 - (avgRank - 1) * 3.3)) : 0}
+                label="평균 순위"
+                description={avgRank > 0 ? `${Math.round(avgRank)}위` : '-'}
+                color="#3B82F6"
+                delay={200}
+              />
             </div>
-            {analysisLoading && (
-              <div className="mt-3 flex items-center gap-2 text-[11px] text-dim">
-                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-                블로그 글 본문을 분석하고 있습니다...
-              </div>
-            )}
-            {pa && (
-              <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-dim">
-                <span className="bg-bg px-2 py-1 rounded-md">평균 {pa.averages.charCount.toLocaleString()}자</span>
-                <span className="bg-bg px-2 py-1 rounded-md">이미지 {pa.averages.imageCount.toFixed(1)}장</span>
-                {pa.metrics.avgImageSizeKB > 0 && (
-                  <span className={`px-2 py-1 rounded-md ${pa.metrics.originalImageRatio >= 0.5 ? 'bg-up/10 text-up' : 'bg-bg'}`}>
-                    원본사진 {Math.round(pa.metrics.originalImageRatio * 100)}%
-                  </span>
-                )}
-                <span className="bg-bg px-2 py-1 rounded-md">문단 {pa.averages.paragraphCount}개</span>
-                {pa.averages.headingCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">소제목 {pa.averages.headingCount.toFixed(1)}개</span>}
-                {pa.averages.linkCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">출처 {pa.averages.linkCount.toFixed(1)}개</span>}
-                {pa.averages.personalPronounCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">경험표현 {pa.averages.personalPronounCount.toFixed(1)}회</span>}
-                {pa.metrics.avgUniqueWordRatio > 0 && <span className="bg-bg px-2 py-1 rounded-md">고유단어 {Math.round(pa.metrics.avgUniqueWordRatio * 100)}%</span>}
-                {pa.averages.listItemCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">리스트 {pa.averages.listItemCount.toFixed(1)}개</span>}
-                {pa.averages.quotationCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">인용문 {pa.averages.quotationCount.toFixed(1)}개</span>}
-                {pa.averages.videoCount > 0 && <span className="bg-bg px-2 py-1 rounded-md">영상 {pa.averages.videoCount.toFixed(1)}개</span>}
-              </div>
-            )}
+            <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-dim">
+              <span className="bg-bg px-2 py-1 rounded-md">{rankedCount}/{keywords.length} 키워드 노출</span>
+              {avgRank > 0 && <span className="bg-bg px-2 py-1 rounded-md">평균 {Math.round(avgRank)}위</span>}
+              {top5Count > 0 && <span className="bg-up/10 text-up px-2 py-1 rounded-md">TOP5 {top5Count}개</span>}
+              <span className="bg-bg px-2 py-1 rounded-md">TOP10 {top10Count}개</span>
+            </div>
           </>
         )}
       </GlassCard>
