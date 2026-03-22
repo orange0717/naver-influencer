@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchInfluencersForCategory, fetchAllInfluencersSummary, fetchCategories } from '@/lib/naver-api';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
-  if (searchLimiter.check(ip)) return rateLimitResponse();
+  if (await searchLimiter.check(ip)) return rateLimitResponse();
 
   const { searchParams } = request.nextUrl;
   const category = searchParams.get('category') || undefined;
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     // DB에 데이터 없으면 실시간 API 폴백
     return await getInfluencersFromAPI({ category, search, page, limit });
   } catch (err) {
-    console.error('[influencers]', err);
+    logger.error('influencers', 'data fetch error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: '인플루언서 데이터를 불러오는 중 오류가 발생했습니다.' },
       { status: 500 },
@@ -60,17 +61,17 @@ async function getInfluencersFromDB(
     .from('influencers')
     .select('*', { count: 'exact' });
 
-  // 카테고리 필터 (특수문자 제거)
+  // 카테고리 필터 (화이트리스트: 한글/영문/숫자/공백/특수구분자만 허용)
   if (category && category !== '전체') {
-    const safeCategory = category.replace(/[.,()%_'"\\]/g, '');
+    const safeCategory = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&]/g, '');
     if (safeCategory) {
       query = query.or(`my_keyword_category.eq.${safeCategory},category.eq.${safeCategory}`);
     }
   }
 
-  // 검색 필터 (특수문자 이스케이프)
+  // 검색 필터 (화이트리스트: 한글/영문/숫자/공백만 허용)
   if (search?.trim()) {
-    const q = search.trim().replace(/[%_'"\\.,()]/g, '');
+    const q = search.trim().replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s]/g, '');
     if (q) {
       query = query.or(
         `display_name.ilike.%${q}%,naver_id.ilike.%${q}%,my_keyword_category.ilike.%${q}%,my_keyword.ilike.%${q}%,category_my_type.ilike.%${q}%`,

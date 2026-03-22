@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { widgetResponse } from '@/lib/widget-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,22 +141,12 @@ export async function GET(
         top10_count: 0,
         scored_at: new Date().toISOString(),
       });
-      return new NextResponse(svg, {
-        headers: {
-          'Content-Type': 'image/svg+xml',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
+      return widgetResponse(svg);
     }
 
     const svg = generateWidgetSVG(data);
 
-    return new NextResponse(svg, {
-      headers: {
-        'Content-Type': 'image/svg+xml',
-        'Cache-Control': 'public, max-age=3600', // 1시간 캐시
-      },
-    });
+    return widgetResponse(svg);
   } catch (err) {
     console.error('[widget] error:', err);
     return new NextResponse('Error generating widget', { status: 500 });

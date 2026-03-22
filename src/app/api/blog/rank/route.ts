@@ -154,7 +154,7 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
 export async function GET(request: NextRequest) {
   try {
     const ip = getClientIp(request);
-    if (blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
+    if (await blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
     const v = validateSearchParams(blogRankQuerySchema, new URL(request.url).searchParams);
     if (!v.success) return v.response;

@@ -108,7 +108,7 @@ export async function fetchBlogDisplayName(blogId: string): Promise<string | nul
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
-    if (authLimiter.check(ip)) return rateLimitResponse();
+    if (await authLimiter.check(ip)) return rateLimitResponse();
 
     const body = await request.json();
     const v = validateBody(bloggerLoginSchema, body);

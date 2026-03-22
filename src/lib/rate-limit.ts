@@ -1,58 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
-interface RateLimitOptions {
-  /** 윈도우 내 최대 요청 수 */
-  limit: number;
-  /** 윈도우 크기 (ms) */
-  windowMs: number;
-}
+// ─── Upstash Redis 연결 (환경변수 없으면 인메모리 폴백) ───
 
-interface RateLimitEntry {
-  timestamps: number[];
-}
+const hasRedis = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 /**
- * 인메모리 슬라이딩 윈도우 Rate Limiter.
- * Vercel Serverless 환경에서는 인스턴스별로 독립 동작한다.
+ * Upstash 기반 Rate Limiter를 생성한다.
+ * Redis 환경변수가 없으면 인메모리 슬라이딩 윈도우로 폴백한다.
+ * (로컬 개발 시 Redis 없이 동작)
  */
-export function createRateLimiter(options: RateLimitOptions) {
-  const { limit, windowMs } = options;
-  const store = new Map<string, RateLimitEntry>();
-  let lastCleanup = Date.now();
+function createRateLimiter(opts: { limit: number; windowMs: number }) {
+  const { limit, windowMs } = opts;
+  const windowSec = Math.ceil(windowMs / 1000);
 
-  function cleanup() {
-    const now = Date.now();
-    // 5분마다 만료된 엔트리 정리
-    if (now - lastCleanup < 5 * 60 * 1000) return;
-    lastCleanup = now;
-    const cutoff = now - windowMs;
-    for (const [key, entry] of store) {
-      entry.timestamps = entry.timestamps.filter((t) => t > cutoff);
-      if (entry.timestamps.length === 0) store.delete(key);
-    }
+  if (hasRedis) {
+    const ratelimit = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
+      prefix: 'ninfl_rl',
+    });
+    return {
+      async check(key: string): Promise<boolean> {
+        const { success } = await ratelimit.limit(key);
+        return !success; // true = 제한 초과
+      },
+    };
   }
 
+  // ─── 인메모리 폴백 (로컬 개발용) ───
+  const store = new Map<string, number[]>();
+  let lastCleanup = Date.now();
+
   return {
-    /**
-     * 요청이 제한을 초과하면 true를 반환한다.
-     */
-    check(key: string): boolean {
-      cleanup();
+    async check(key: string): Promise<boolean> {
       const now = Date.now();
+      if (now - lastCleanup > 5 * 60 * 1000) {
+        lastCleanup = now;
+        const cutoff = now - windowMs;
+        for (const [k, timestamps] of store) {
+          const filtered = timestamps.filter((t) => t > cutoff);
+          if (filtered.length === 0) store.delete(k);
+          else store.set(k, filtered);
+        }
+      }
+
       const cutoff = now - windowMs;
-      const entry = store.get(key);
+      const timestamps = (store.get(key) || []).filter((t) => t > cutoff);
 
-      if (!entry) {
-        store.set(key, { timestamps: [now] });
-        return false;
+      if (timestamps.length >= limit) {
+        store.set(key, timestamps);
+        return true;
       }
 
-      entry.timestamps = entry.timestamps.filter((t) => t > cutoff);
-      if (entry.timestamps.length >= limit) {
-        return true; // 제한 초과
-      }
-
-      entry.timestamps.push(now);
+      timestamps.push(now);
+      store.set(key, timestamps);
       return false;
     },
   };
@@ -62,7 +65,6 @@ export function createRateLimiter(options: RateLimitOptions) {
  * NextRequest에서 클라이언트 IP를 추출한다.
  */
 export function getClientIp(request: NextRequest): string {
-  // Vercel 환경: 마지막 IP가 실제 클라이언트 (프록시 체인에서 가장 신뢰)
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
     const ips = forwarded.split(',').map(ip => ip.trim());
@@ -103,3 +105,6 @@ export const dashboardLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 10
 
 /** 검색 (인플루언서/키워드): 1분에 30회 */
 export const searchLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });
+
+/** 프로필 삭제: 1시간에 3회 */
+export const deleteAccountLimiter = createRateLimiter({ limit: 3, windowMs: 60 * 60 * 1000 });

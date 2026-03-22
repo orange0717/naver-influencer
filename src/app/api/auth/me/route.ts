@@ -43,12 +43,18 @@ export async function GET() {
     const blogId = cookieStore.get('blog_id')?.value;
     const blogName = cookieStore.get('blog_name')?.value;
 
+    const safeDecode = (val: string | undefined): string | null => {
+      if (!val) return null;
+      try { return decodeURIComponent(val); }
+      catch { return val; }
+    };
+
     if (userType === 'unified' && naverId) {
       return NextResponse.json({
         type: 'unified',
         id: naverId,
         blogId: blogId || null,
-        name: blogName ? decodeURIComponent(blogName) : null,
+        name: safeDecode(blogName),
       });
     }
 
@@ -64,7 +70,7 @@ export async function GET() {
       return NextResponse.json({
         type: 'blogger',
         id: blogId,
-        name: blogName ? decodeURIComponent(blogName) : blogId,
+        name: safeDecode(blogName) || blogId,
       });
     }
 

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { Keyword } from '@/lib/types';
 import { getSubcategory } from '@/data/subcategory-map';
+import CategoryFilter from '@/components/CategoryFilter';
 
 interface CategoryGroup {
   category: string;
@@ -136,14 +137,7 @@ export default function KeywordsPage() {
       <input type="text" placeholder="키워드 검색..." value={search} onChange={e => handleSearchChange(e.target.value)}
         className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors" />
 
-      <div className="flex flex-wrap gap-2 items-center">
-        {categories.map(cat => (
-          <button key={cat} onClick={() => handleCategoryChange(cat)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-              category === cat ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:border-accent/40'
-            }`}>{cat}</button>
-        ))}
-      </div>
+      <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} />
 
       {/* 세부분류 필터 (버튼 + 드롭다운) */}
       {subCategories.length > 2 && (

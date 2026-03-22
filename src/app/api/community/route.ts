@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    if (communityLimiter.check(ip)) return rateLimitResponse();
+    if (await communityLimiter.check(ip)) return rateLimitResponse();
 
     const cookieUser = await getCookieUser();
     if (!cookieUser) {

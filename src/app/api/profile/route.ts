@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { validateBody, profileUpdateSchema } from '@/lib/validations';
+import { deleteAccountLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthUser(request);
@@ -72,7 +74,7 @@ export async function PATCH(request: NextRequest) {
     .eq('id', auth.userId);
 
   if (error) {
-    console.error('[profile] DB error:', error.message);
+    logger.error('profile', 'DB update error', { error: error.message });
     return NextResponse.json({ error: '프로필 업데이트에 실패했습니다.' }, { status: 500 });
   }
 
@@ -81,6 +83,9 @@ export async function PATCH(request: NextRequest) {
 
 /** 회원탈퇴 */
 export async function DELETE(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (await deleteAccountLimiter.check(ip)) return rateLimitResponse();
+
   const auth = await getAuthUser(request);
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -96,19 +101,19 @@ export async function DELETE(request: NextRequest) {
       .eq('id', auth.userId);
 
     if (deleteError) {
-      console.error('[DELETE /api/profile] users delete error:', deleteError.message);
+      logger.error('profile', 'users delete error', { error: deleteError.message });
       return NextResponse.json({ error: '회원 탈퇴 처리 중 오류가 발생했습니다.' }, { status: 500 });
     }
 
     // 3. Supabase Auth 계정 삭제
     const { error: authError } = await supabase.auth.admin.deleteUser(auth.authId);
     if (authError) {
-      console.error('[DELETE /api/profile] auth delete error:', authError.message);
+      logger.error('profile', 'auth delete error', { error: authError.message });
     }
 
     return NextResponse.json({ success: true, message: '회원 탈퇴가 완료되었습니다.' });
   } catch (err) {
-    console.error('[DELETE /api/profile] error:', err);
+    logger.error('profile', 'delete error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: '회원 탈퇴 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
 }

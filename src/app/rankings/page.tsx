@@ -168,7 +168,7 @@ export default function RankingsPage() {
                       <td className="py-4 px-4">
                         <Link href={`/influencers/${inf.naverId}`} className="flex items-center gap-3 group">
                           {inf.imageUrl ? (
-                            <img src={inf.imageUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                            <img src={inf.imageUrl} alt={inf.displayName} className="w-9 h-9 rounded-full object-cover shrink-0" />
                           ) : (
                             <span className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs shrink-0">
                               {inf.displayName.charAt(0)}
@@ -233,7 +233,7 @@ export default function RankingsPage() {
 
                     {/* 프로필 */}
                     {inf.imageUrl ? (
-                      <img src={inf.imageUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                      <img src={inf.imageUrl} alt={inf.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
                     ) : (
                       <span className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-sm shrink-0">
                         {inf.displayName.charAt(0)}

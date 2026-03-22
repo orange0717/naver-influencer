@@ -45,7 +45,7 @@ export default function CompetitorBarChart({ data }: Props) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           formatter={(value: any, _name: any, entry: any) => [
             `${value}위`,
-            entry?.payload?.isMe ? '나' : entry?.payload?.name,
+            (entry?.payload as Competitor)?.isMe ? '나' : (entry?.payload as Competitor)?.name,
           ]}
         />
         <Bar dataKey="rank" radius={[0, 4, 4, 0]} barSize={20}>

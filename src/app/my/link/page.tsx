@@ -123,7 +123,7 @@ export default function LinkInfluencer() {
               className="bg-surface border-2 border-accent/30 rounded-xl p-4 hover:border-accent/50 transition">
               <div className="flex items-center gap-3 mb-3">
                 {inf.imageUrl ? (
-                  <img src={inf.imageUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  <img src={inf.imageUrl} alt={inf.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
                 ) : (
                   <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center text-lg font-bold text-accent shrink-0">
                     {inf.name.charAt(0)}

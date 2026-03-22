@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { formatCount } from '@/lib/format';
+import CategoryFilter from '@/components/CategoryFilter';
 
 interface InfluencerItem {
   name: string;
@@ -95,14 +96,7 @@ export default function InfluencersPage() {
         className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
       />
 
-      <div className="flex flex-wrap gap-2 items-center">
-        {categories.map(cat => (
-          <button key={cat} onClick={() => handleCategoryChange(cat)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              category === cat ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:border-accent/40'
-            }`}>{cat}</button>
-        ))}
-      </div>
+      <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} size="sm" />
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -132,7 +126,7 @@ export default function InfluencersPage() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
                         {inf.imageUrl ? (
-                          <img src={inf.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          <img src={inf.imageUrl} alt={inf.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
                         ) : (
                           <span className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs shrink-0">
                             {inf.name.charAt(0)}
@@ -182,7 +176,7 @@ export default function InfluencersPage() {
                 className="bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
                 <div className="flex items-center gap-3 mb-2">
                   {inf.imageUrl ? (
-                    <img src={inf.imageUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                    <img src={inf.imageUrl} alt={inf.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
                   ) : (
                     <span className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-sm shrink-0">
                       {inf.name.charAt(0)}

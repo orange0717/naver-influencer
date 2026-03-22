@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { widgetResponse } from '@/lib/widget-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -198,9 +199,7 @@ export async function GET(
         topKeywords: [],
         scoredAt: now,
       });
-      return new NextResponse(svg, {
-        headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
-      });
+      return widgetResponse(svg);
     }
 
     const svg = generateBloggerRankWidgetSVG({
@@ -218,9 +217,7 @@ export async function GET(
       scoredAt: score.scored_at ? formatDate(new Date(score.scored_at)) : now,
     });
 
-    return new NextResponse(svg, {
-      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
-    });
+    return widgetResponse(svg);
   } catch (err) {
     console.error('[widget/rank/blogger] error:', err);
     return new NextResponse('Error generating widget', { status: 500 });

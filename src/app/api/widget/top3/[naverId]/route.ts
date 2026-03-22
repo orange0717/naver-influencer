@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { widgetResponse } from '@/lib/widget-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,9 +86,7 @@ export async function GET(
         top3Rate: 0,
         snapshotDate: formatDate(new Date()),
       });
-      return new NextResponse(svg, {
-        headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
-      });
+      return widgetResponse(svg);
     }
 
     const { data: rankings } = await supabase
@@ -113,9 +112,7 @@ export async function GET(
       snapshotDate: typeof latestDate === 'string' ? latestDate.replace(/-/g, '.') : formatDate(new Date()),
     });
 
-    return new NextResponse(svg, {
-      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
-    });
+    return widgetResponse(svg);
   } catch (err) {
     console.error('[widget/top3] error:', err);
     return new NextResponse('Error generating widget', { status: 500 });

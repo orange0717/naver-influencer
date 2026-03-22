@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, createRouteHandlerClient, createAnonClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { getAuthUser } from '@/lib/auth';
 
 interface JoinedKeywordChallenge {
   keyword: string;
@@ -19,55 +20,21 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
-  if (dashboardLimiter.check(ip)) return rateLimitResponse();
-  // 1순위: Bearer 토큰 인증
-  let authUser = null;
-  const authHeader = request.headers.get('authorization');
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (await dashboardLimiter.check(ip)) return rateLimitResponse();
 
-  if (token) {
-    const anonClient = createAnonClient();
-    const { data: { user } } = await anonClient.auth.getUser(token);
-    authUser = user;
-  }
-
-  // 2순위: 쿠키 기반 인증 (폴백)
-  if (!authUser) {
-    try {
-      const supabaseAuth = await createRouteHandlerClient();
-      const { data: { user } } = await supabaseAuth.auth.getUser();
-      authUser = user;
-    } catch {
-      // 쿠키 인증 실패 무시
-    }
-  }
-
-  if (!authUser) {
+  const auth = await getAuthUser(request);
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = createServiceClient();
 
-  // users 테이블에서 프로필 조회
-  let { data: userProfile } = await supabase
+  // users 테이블에서 프로필 조회 (getAuthUser에서 이미 확인되었으므로 존재 보장)
+  const { data: userProfile } = await supabase
     .from('users')
     .select('id, nickname, linked_influencer_id, subscription_status, subscription_expires_at')
-    .eq('auth_id', authUser.id)
+    .eq('id', auth.userId)
     .single();
-
-  // users 레코드가 없으면 자동 생성
-  if (!userProfile) {
-    const { data: newUser } = await supabase
-      .from('users')
-      .insert({
-        auth_id: authUser.id,
-        email: authUser.email,
-        nickname: authUser.email?.split('@')[0] || 'User',
-      })
-      .select('id, nickname, linked_influencer_id, subscription_status, subscription_expires_at')
-      .single();
-    userProfile = newUser;
-  }
 
   if (!userProfile || !userProfile.linked_influencer_id) {
     return NextResponse.json({
@@ -80,10 +47,10 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // 인플루언서 정보
+  // 인플루언서 정보 (필요한 필드만 선택)
   const { data: influencer } = await supabase
     .from('influencers')
-    .select('*')
+    .select('id, naver_id, display_name, category, my_keyword_category, image_url, subscriber_count, total_follower_count')
     .eq('id', userProfile.linked_influencer_id)
     .single();
 
@@ -106,7 +73,7 @@ export async function GET(request: NextRequest) {
     .eq('influencer_id', userProfile.linked_influencer_id)
     .gte('snapshot_date', thirtyDaysAgo.toISOString().slice(0, 10))
     .order('snapshot_date', { ascending: false })
-    .limit(1000);
+    .limit(500);
 
   // 최신 날짜의 순위만 추출 (같은 키워드 중복 제거)
   const latestByKeyword = new Map<string, typeof latestRankings extends (infer T)[] | null ? T : never>();

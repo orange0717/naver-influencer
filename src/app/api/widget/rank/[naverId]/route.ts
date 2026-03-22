@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { logger } from '@/lib/logger';
+import { widgetResponse } from '@/lib/widget-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,9 +138,7 @@ export async function GET(
         topKeywords: [],
         snapshotDate: formatDate(new Date()),
       });
-      return new NextResponse(svg, {
-        headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
-      });
+      return widgetResponse(svg);
     }
 
     // 최신 순위 데이터
@@ -187,11 +187,9 @@ export async function GET(
       snapshotDate: typeof latestDate === 'string' ? latestDate.replace(/-/g, '.') : formatDate(new Date()),
     });
 
-    return new NextResponse(svg, {
-      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
-    });
+    return widgetResponse(svg);
   } catch (err) {
-    console.error('[widget/rank] error:', err);
+    logger.error('widget/rank', 'SVG generation error', { error: err instanceof Error ? err.message : String(err) });
     return new NextResponse('Error generating widget', { status: 500 });
   }
 }

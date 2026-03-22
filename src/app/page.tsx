@@ -131,7 +131,7 @@ export default function LandingPage() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {inf.image_url ? (
-                      <img src={inf.image_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      <img src={inf.image_url} alt={inf.display_name} className="w-9 h-9 rounded-full object-cover shrink-0" />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center text-accent font-bold text-sm shrink-0">
                         {inf.display_name.charAt(0)}
