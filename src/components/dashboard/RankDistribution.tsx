@@ -42,7 +42,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
       <div className="flex items-center justify-between mb-3">
         <p className="text-[11px] text-dim font-semibold">순위별 키워드 분포</p>
         {!selectedRank && (
-          <p className="text-[10px] text-accent">순위를 눌러 키워드를 확인하세요</p>
+          <p className="text-xs text-accent font-semibold">순위를 눌러 키워드를 확인하세요</p>
         )}
       </div>
       <div className="grid grid-cols-5 gap-2 text-center">
