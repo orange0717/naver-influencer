@@ -229,7 +229,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ 추천 대상 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24 text-center">
+      <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
