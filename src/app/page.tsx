@@ -257,8 +257,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ 서비스 미리보기 (bg) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24">
+      {/* ═══════════ 서비스 미리보기 (surface) ═══════════ */}
+      <section className="bg-surface px-4 py-20 md:py-24">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PREVIEW</p>
