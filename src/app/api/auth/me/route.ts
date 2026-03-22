@@ -24,12 +24,25 @@ export async function GET() {
         .single();
 
       if (profile) {
-        // linked_influencer_id가 있으면 인플루언서, 없으면 블로거
+        // linked_influencer_id가 있으면 인플루언서 이름 조회
+        let displayName = profile.nickname || authUser.email?.split('@')[0] || null;
         const type = profile.linked_influencer_id ? 'influencer' : 'blogger';
+
+        if (profile.linked_influencer_id) {
+          const { data: inf } = await supabase
+            .from('influencers')
+            .select('display_name, naver_id')
+            .eq('id', profile.linked_influencer_id)
+            .single();
+          if (inf) {
+            displayName = inf.display_name || inf.naver_id || displayName;
+          }
+        }
+
         return NextResponse.json({
           type,
           id: profile.id,
-          name: profile.nickname || authUser.email?.split('@')[0] || null,
+          name: displayName,
           email: authUser.email,
           authId: authUser.id,
         });
