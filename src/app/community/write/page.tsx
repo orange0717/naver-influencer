@@ -19,6 +19,9 @@ export default function CommunityWritePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [user, setUser] = useState<{ type: string; id: string; name: string | null } | null>(null);
+  const [pollEnabled, setPollEnabled] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -39,21 +42,37 @@ export default function CommunityWritePage() {
     if (title.trim().length < 2) { setError('제목을 2자 이상 입력해주세요.'); return; }
     if (content.trim().length < 5) { setError('내용을 5자 이상 입력해주세요.'); return; }
 
+    if (pollEnabled) {
+      const validOptions = pollOptions.filter(o => o.trim());
+      if (!pollQuestion.trim()) { setError('투표 질문을 입력해주세요.'); return; }
+      if (validOptions.length < 2) { setError('투표 선택지를 2개 이상 입력해주세요.'); return; }
+    }
+
     setSubmitting(true);
     setError('');
 
     try {
+      const payload: Record<string, unknown> = {
+        category,
+        title: title.trim(),
+        content: content.trim(),
+        author_id: user?.id,
+        author_type: user?.type,
+        author_name: user?.name || user?.id,
+      };
+
+      if (pollEnabled && pollQuestion.trim()) {
+        payload.poll = {
+          question: pollQuestion.trim(),
+          options: pollOptions.filter(o => o.trim()).map(o => ({ label: o.trim() })),
+          is_multiple: false,
+        };
+      }
+
       const res = await fetch('/api/community', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category,
-          title: title.trim(),
-          content: content.trim(),
-          author_id: user?.id,
-          author_type: user?.type,
-          author_name: user?.name || user?.id,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -139,6 +158,69 @@ export default function CommunityWritePage() {
           />
           <p className="text-xs text-dim mt-1 text-right">{content.length}/5,000</p>
         </div>
+
+        {/* 투표 추가 */}
+        <div>
+          <button
+            type="button"
+            onClick={() => { setPollEnabled(!pollEnabled); if (pollEnabled) { setPollQuestion(''); setPollOptions(['', '']); } }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer ${
+              pollEnabled ? 'bg-accent text-white' : 'bg-bg border border-border text-dim hover:text-text'
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+            {pollEnabled ? '투표 제거' : '투표 추가'}
+          </button>
+        </div>
+
+        {pollEnabled && (
+          <div className="bg-bg rounded-xl border border-border p-4 space-y-3">
+            <label className="block text-xs font-bold text-dim">투표 질문</label>
+            <input
+              type="text"
+              value={pollQuestion}
+              onChange={e => setPollQuestion(e.target.value)}
+              placeholder="투표 질문을 입력하세요"
+              maxLength={200}
+              className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition"
+            />
+            <label className="block text-xs font-bold text-dim">선택지 (2~5개)</label>
+            {pollOptions.map((opt, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={opt}
+                  onChange={e => {
+                    const next = [...pollOptions];
+                    next[idx] = e.target.value;
+                    setPollOptions(next);
+                  }}
+                  placeholder={`선택지 ${idx + 1}`}
+                  maxLength={100}
+                  className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition"
+                />
+                {pollOptions.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))}
+                    className="w-8 h-8 rounded-lg hover:bg-border/30 flex items-center justify-center text-dim cursor-pointer"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                )}
+              </div>
+            ))}
+            {pollOptions.length < 5 && (
+              <button
+                type="button"
+                onClick={() => setPollOptions([...pollOptions, ''])}
+                className="text-xs text-accent font-semibold hover:underline cursor-pointer"
+              >
+                + 선택지 추가
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 에러 메시지 */}
         {error && (

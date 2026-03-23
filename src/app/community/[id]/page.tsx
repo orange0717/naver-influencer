@@ -48,6 +48,12 @@ export default function CommunityPostPage() {
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [poll, setPoll] = useState<{
+    id: string; question: string; is_multiple: boolean; ends_at: string | null;
+    options: { id: string; label: string; vote_count: number; sort_order: number }[];
+    totalVotes: number; userVoteOptionId: string | null;
+  } | null>(null);
+  const [voting, setVoting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -79,6 +85,7 @@ export default function CommunityPostPage() {
       const data = await res.json();
       setPost(data.post);
       setComments(data.comments || []);
+      setPoll(data.poll || null);
     } catch {
       router.push('/community');
     } finally {
@@ -110,6 +117,23 @@ export default function CommunityPostPage() {
         setPost(prev => prev ? { ...prev, like_count: prev.like_count + 1 } : null);
       }
     } catch { /* ignore */ }
+  };
+
+  const handleVote = async (optionId: string) => {
+    if (!user || voting || poll?.userVoteOptionId) return;
+    setVoting(true);
+    try {
+      const res = await fetch(`/api/community/${postId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ option_id: optionId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPoll(prev => prev ? { ...prev, options: data.options, totalVotes: data.totalVotes, userVoteOptionId: data.userVoteOptionId } : null);
+      }
+    } catch { /* ignore */ }
+    finally { setVoting(false); }
   };
 
   const handleComment = async () => {
@@ -262,6 +286,44 @@ export default function CommunityPostPage() {
             {post.content}
           </div>
         </div>
+
+        {/* 투표 */}
+        {poll && (
+          <div className="px-6 pb-4">
+            <div className="bg-bg rounded-xl border border-border p-4 space-y-3">
+              <p className="text-sm font-bold text-text">{poll.question}</p>
+              <div className="space-y-2">
+                {poll.options.map(opt => {
+                  const pct = poll.totalVotes > 0 ? Math.round((opt.vote_count / poll.totalVotes) * 100) : 0;
+                  const isVoted = poll.userVoteOptionId === opt.id;
+                  const hasVoted = !!poll.userVoteOptionId;
+
+                  return hasVoted ? (
+                    <div key={opt.id} className="relative">
+                      <div className={`rounded-lg border px-4 py-2.5 text-sm ${isVoted ? 'border-accent bg-accent/5' : 'border-border'}`}>
+                        <div className="absolute inset-0 rounded-lg bg-accent/10" style={{ width: `${pct}%` }} />
+                        <div className="relative flex items-center justify-between">
+                          <span className={`font-semibold ${isVoted ? 'text-accent' : 'text-text'}`}>{opt.label}</span>
+                          <span className="text-xs text-dim font-bold">{pct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      key={opt.id}
+                      onClick={() => handleVote(opt.id)}
+                      disabled={voting || !user}
+                      className="w-full text-left px-4 py-2.5 rounded-lg border border-border text-sm font-semibold text-text hover:border-accent hover:bg-accent/5 transition cursor-pointer disabled:opacity-50 disabled:cursor-default"
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-dim">{poll.totalVotes}명 투표</p>
+            </div>
+          </div>
+        )}
 
         {/* 좋아요 */}
         <div className="px-6 pb-5 flex justify-center">

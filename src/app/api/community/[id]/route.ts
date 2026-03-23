@@ -39,9 +39,48 @@ export async function GET(
       .eq('is_deleted', false)
       .order('created_at', { ascending: true });
 
+    // 투표 조회
+    let poll = null;
+    const { data: pollData } = await supabase
+      .from('community_polls')
+      .select('id, question, is_multiple, ends_at')
+      .eq('post_id', id)
+      .single();
+
+    if (pollData) {
+      const { data: options } = await supabase
+        .from('community_poll_options')
+        .select('id, label, vote_count, sort_order')
+        .eq('poll_id', pollData.id)
+        .order('sort_order', { ascending: true });
+
+      // 현재 사용자의 투표 여부
+      const cookieUser = await getCookieUser();
+      let userVoteOptionId: string | null = null;
+      if (cookieUser) {
+        const { data: vote } = await supabase
+          .from('community_poll_votes')
+          .select('option_id')
+          .eq('poll_id', pollData.id)
+          .eq('user_id', cookieUser.id)
+          .single();
+        userVoteOptionId = vote?.option_id || null;
+      }
+
+      const totalVotes = (options || []).reduce((sum, o) => sum + (o.vote_count || 0), 0);
+
+      poll = {
+        ...pollData,
+        options: options || [],
+        totalVotes,
+        userVoteOptionId,
+      };
+    }
+
     return NextResponse.json({
       post: { ...post, view_count: newViewCount ?? post.view_count + 1 },
       comments: comments || [],
+      poll,
     });
   } catch (err) {
     console.error('[community] GET detail error:', err);

@@ -106,6 +106,29 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
 
+    // 투표가 있으면 함께 저장
+    const { poll } = v.data;
+    if (poll) {
+      const { data: pollData, error: pollError } = await supabase
+        .from('community_polls')
+        .insert({
+          post_id: data.id,
+          question: poll.question,
+          is_multiple: poll.is_multiple,
+        })
+        .select('id')
+        .single();
+
+      if (!pollError && pollData) {
+        const optionRows = poll.options.map((opt, idx) => ({
+          poll_id: pollData.id,
+          label: opt.label,
+          sort_order: idx,
+        }));
+        await supabase.from('community_poll_options').insert(optionRows);
+      }
+    }
+
     return NextResponse.json({ id: data.id }, { status: 201 });
   } catch (err) {
     console.error('[community] POST error:', err);
