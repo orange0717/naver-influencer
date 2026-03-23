@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
 import { isAllowedUrl } from '@/lib/crawler';
+import { validateBody } from '@/lib/validations';
+import { blogIdSchema } from '@/lib/validations';
+import { z } from 'zod';
+import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+
+const addBlogSchema = z.object({
+  blog_id: blogIdSchema,
+  blog_name: z.string().max(100).optional(),
+});
+
+const deleteBlogSchema = z.object({
+  blog_id: blogIdSchema,
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -66,19 +79,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
+  const ip = getClientIp(req);
+  if (await communityLimiter.check(`agency-blog:${ip}`)) {
+    return rateLimitResponse();
+  }
+
   try {
-    const { blog_id, blog_name } = await req.json();
+    const body = await req.json();
+    const v = validateBody(addBlogSchema, body);
+    if (!v.success) return v.response;
 
-    if (!blog_id || typeof blog_id !== 'string') {
-      return NextResponse.json({ error: '블로그 ID를 입력해주세요.' }, { status: 400 });
-    }
-
-    const cleanBlogId = blog_id.trim().replace(/^https?:\/\/blog\.naver\.com\//, '').replace(/\/$/, '');
-
-    // 블로그 ID 형식 검증 (영문, 숫자, 밑줄, 하이픈만 허용)
-    if (!/^[a-zA-Z0-9_-]{2,30}$/.test(cleanBlogId)) {
-      return NextResponse.json({ error: '올바른 블로그 ID 형식이 아닙니다.' }, { status: 400 });
-    }
+    const cleanBlogId = v.data.blog_id;
+    const blog_name = v.data.blog_name;
 
     const supabase = createServiceClient();
 
@@ -176,12 +188,17 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
-  try {
-    const { blog_id } = await req.json();
+  const ip = getClientIp(req);
+  if (await communityLimiter.check(`agency-blog-del:${ip}`)) {
+    return rateLimitResponse();
+  }
 
-    if (!blog_id) {
-      return NextResponse.json({ error: '블로그 ID가 필요합니다.' }, { status: 400 });
-    }
+  try {
+    const body = await req.json();
+    const v = validateBody(deleteBlogSchema, body);
+    if (!v.success) return v.response;
+
+    const blog_id = v.data.blog_id;
 
     const supabase = createServiceClient();
 

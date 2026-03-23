@@ -65,12 +65,16 @@ function createRateLimiter(opts: { limit: number; windowMs: number }) {
  * NextRequest에서 클라이언트 IP를 추출한다.
  */
 export function getClientIp(request: NextRequest): string {
+  // Vercel에서는 x-real-ip가 가장 신뢰할 수 있는 클라이언트 IP
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) return realIp;
+
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
     const ips = forwarded.split(',').map(ip => ip.trim());
-    return ips[ips.length - 1] || ips[0] || 'unknown';
+    return ips[0] || 'unknown';
   }
-  return request.headers.get('x-real-ip') || 'unknown';
+  return 'unknown';
 }
 
 /**

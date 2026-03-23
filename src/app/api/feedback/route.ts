@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { validateBody } from '@/lib/validations';
 import { feedbackSchema } from '@/lib/validations/community';
+import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    if (await communityLimiter.check(`feedback:${ip}`)) {
+      return rateLimitResponse();
+    }
+
     const body = await request.json();
     const v = validateBody(feedbackSchema, body);
     if (!v.success) return v.response;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 
 const CATEGORIES = [
@@ -15,11 +15,28 @@ export default function FeedbackButton() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
   const pathname = usePathname();
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    setError('');
+  }, []);
+
+  // Escape 키로 모달 닫기
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, handleClose]);
 
   const handleSubmit = async () => {
     if (!message.trim() || sending) return;
     setSending(true);
+    setError('');
 
     try {
       const res = await fetch('/api/feedback', {
@@ -39,10 +56,13 @@ export default function FeedbackButton() {
           setDone(false);
           setMessage('');
           setCategory('general');
+          setError('');
         }, 1500);
+      } else {
+        setError('전송에 실패했습니다. 다시 시도해주세요.');
       }
     } catch {
-      // silent
+      setError('네트워크 오류가 발생했습니다.');
     } finally {
       setSending(false);
     }
@@ -55,6 +75,7 @@ export default function FeedbackButton() {
         onClick={() => setOpen(true)}
         className="fixed bottom-24 right-6 z-40 w-14 h-14 rounded-full bg-white text-accent shadow-lg border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center cursor-pointer"
         title="피드백 보내기"
+        aria-label="피드백 보내기"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -63,8 +84,17 @@ export default function FeedbackButton() {
 
       {/* 모달 */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-surface rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-md mx-0 sm:mx-4 p-6 shadow-2xl animate-fade-in-up">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={handleClose}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="feedback-title"
+        >
+          <div
+            className="bg-surface rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-md mx-0 sm:mx-4 p-6 shadow-2xl animate-fade-in-up"
+            onClick={e => e.stopPropagation()}
+          >
             {done ? (
               <div className="text-center py-8">
                 <div className="w-12 h-12 mx-auto rounded-full bg-up/15 flex items-center justify-center text-up mb-3">
@@ -76,20 +106,23 @@ export default function FeedbackButton() {
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-base">피드백 보내기</h3>
+                  <h3 id="feedback-title" className="font-bold text-base">피드백 보내기</h3>
                   <button
-                    onClick={() => setOpen(false)}
+                    onClick={handleClose}
                     className="w-8 h-8 rounded-lg hover:bg-border/30 flex items-center justify-center text-dim cursor-pointer"
+                    aria-label="닫기"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>
                 </div>
 
-                <div className="flex gap-1.5 mb-3">
+                <div className="flex gap-1.5 mb-3" role="radiogroup" aria-label="피드백 카테고리">
                   {CATEGORIES.map(c => (
                     <button
                       key={c.value}
                       onClick={() => setCategory(c.value)}
+                      role="radio"
+                      aria-checked={category === c.value}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                         category === c.value
                           ? 'bg-accent text-white'
@@ -110,6 +143,10 @@ export default function FeedbackButton() {
                   className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent resize-none"
                   autoFocus
                 />
+
+                {error && (
+                  <p className="text-xs text-down mt-2">{error}</p>
+                )}
 
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-[10px] text-dim">{message.length}/1000</span>

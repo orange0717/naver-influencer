@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServiceClient } from '@/lib/supabase-server';
+import { validateBody } from '@/lib/validations';
+import { z } from 'zod';
+import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { naverIdSchema } from '@/lib/validations';
 
 export const dynamic = 'force-dynamic';
 
 const TRIAL_DAYS = 3;
 const TRIAL_MAX_AGE = 60 * 60 * 24 * TRIAL_DAYS;
+
+const trialSchema = z.object({
+  naverId: naverIdSchema,
+});
 
 /**
  * POST /api/auth/trial
@@ -13,12 +21,16 @@ const TRIAL_MAX_AGE = 60 * 60 * 24 * TRIAL_DAYS;
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const naverId = (body.naverId || '').trim().toLowerCase();
-
-    if (!naverId || !/^[a-zA-Z0-9_-]{2,30}$/.test(naverId)) {
-      return NextResponse.json({ error: '올바른 인플루언서 ID를 입력해주세요.' }, { status: 400 });
+    const ip = getClientIp(request);
+    if (await authLimiter.check(`trial:${ip}`)) {
+      return rateLimitResponse();
     }
+
+    const body = await request.json();
+    const v = validateBody(trialSchema, body);
+    if (!v.success) return v.response;
+
+    const naverId = v.data.naverId;
 
     // 인플루언서 존재 확인
     const supabase = createServiceClient();

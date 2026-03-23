@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { dashboardLimiter, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,12 @@ const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|previ
 /** 페이지 방문 추적 (홈페이지에서 호출) */
 export async function POST(req: NextRequest) {
   try {
+    // Rate Limiting
+    const ip = getClientIp(req);
+    if (await dashboardLimiter.check(`track:${ip}`)) {
+      return NextResponse.json({ ok: true, skipped: 'rate_limit' });
+    }
+
     // 봇·크롤러·프리뷰 요청 필터링
     const ua = req.headers.get('user-agent') || '';
     if (BOT_PATTERNS.test(ua)) {
