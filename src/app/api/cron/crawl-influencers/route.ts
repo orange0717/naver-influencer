@@ -5,17 +5,6 @@ import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob
 const FEED_API_BASE = 'https://gw.in.naver.com/feed/query/v1';
 const BATCH_SIZE = 12; // Vercel 60초 제한 내 안전한 키워드 수
 
-// 요일별 카테고리 로테이션 — 전체 20개 균등 배분 (crawl-rankings와 동일)
-const DAY_CATEGORIES: Record<number, string[]> = {
-  0: ['여행', '푸드', '리빙'],                  // 일 (대형 3)
-  1: ['뷰티', '패션', '육아'],                  // 월
-  2: ['생활건강', 'IT테크', '자동차'],           // 화
-  3: ['게임', '운동/레저', '프로스포츠'],         // 수
-  4: ['방송/연예', '영화', '대중음악'],           // 목
-  5: ['공연/전시/예술', '도서', '경제/비즈니스'],  // 금
-  6: ['어학/교육', '동물/펫'],                   // 토
-};
-
 interface FeedCreator {
   urlId?: string;
   nickname?: string;
@@ -68,39 +57,46 @@ async function fetchInfluencersByKeywordId(
   return results;
 }
 
-/** 오늘 크롤할 키워드 목록 (naver_keyword_id가 있는 것만) */
+/** 오늘 크롤할 키워드: Tier 1(상위 6개) + Tier 2(라운드 로빈 6개) */
 async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClient>) {
-  const dayOfWeek = new Date().getDay();
-  const todayCategories = DAY_CATEGORIES[dayOfWeek] || [];
+  const TIER1_SIZE = 6;
+  const TIER2_SIZE = BATCH_SIZE - TIER1_SIZE;
 
-  // Tier 1: 참여자 수 상위 키워드 (매일)
+  // Tier 1: 참여자 수 상위 키워드 (매 실행마다 크롤, 중요 키워드)
   const { data: tier1 } = await supabase
     .from('keyword_challenges')
     .select('id, keyword, category, naver_keyword_id')
     .eq('is_active', true)
     .not('naver_keyword_id', 'is', null)
     .order('participant_count', { ascending: false })
-    .limit(50);
+    .limit(TIER1_SIZE);
 
-  // Tier 2: 오늘 해당 카테고리 (요일 로테이션)
-  let tier2: typeof tier1 = [];
-  if (todayCategories.length > 0) {
-    const { data } = await supabase
-      .from('keyword_challenges')
-      .select('id, keyword, category, naver_keyword_id')
-      .eq('is_active', true)
-      .not('naver_keyword_id', 'is', null)
-      .in('category', todayCategories)
-      .order('participant_count', { ascending: false })
-      .limit(100);
-    tier2 = data || [];
+  // Tier 2: 라운드 로빈 (가장 오래전에 크롤된 키워드 우선, NULL 최우선)
+  const tier1Ids = (tier1 || []).map(k => k.id);
+  let tier2Query = supabase
+    .from('keyword_challenges')
+    .select('id, keyword, category, naver_keyword_id')
+    .eq('is_active', true)
+    .not('naver_keyword_id', 'is', null)
+    .order('influencer_crawled_at', { ascending: true, nullsFirst: true })
+    .limit(TIER2_SIZE + TIER1_SIZE); // 여유분 확보 (Tier 1 중복 제거용)
+
+  if (tier1Ids.length > 0) {
+    // Supabase JS는 NOT IN을 직접 지원하지 않으므로 여유분 가져온 뒤 필터
+    tier2Query = tier2Query;
   }
 
-  // 중복 제거 + BATCH_SIZE 제한
+  const { data: tier2Raw } = await tier2Query;
+
+  // Tier 1과 중복 제거
+  const tier1IdSet = new Set(tier1Ids);
+  const tier2 = (tier2Raw || []).filter(k => !tier1IdSet.has(k.id)).slice(0, TIER2_SIZE);
+
+  // 합산
   const seen = new Set<string>();
   const result: { id: string; keyword: string; category: string; naver_keyword_id: number }[] = [];
 
-  for (const item of [...(tier1 || []), ...(tier2 || [])]) {
+  for (const item of [...(tier1 || []), ...tier2]) {
     if (!seen.has(item.id) && result.length < BATCH_SIZE && item.naver_keyword_id) {
       seen.add(item.id);
       result.push(item as { id: string; keyword: string; category: string; naver_keyword_id: number });
@@ -108,6 +104,22 @@ async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClien
   }
 
   return result;
+}
+
+/** 크롤 완료된 키워드의 influencer_crawled_at 업데이트 */
+async function updateKeywordCrawledAt(
+  supabase: ReturnType<typeof createServiceClient>,
+  keywordIds: string[],
+) {
+  if (keywordIds.length === 0) return;
+  const now = new Date().toISOString();
+  for (let i = 0; i < keywordIds.length; i += 20) {
+    const batch = keywordIds.slice(i, i + 20);
+    await supabase
+      .from('keyword_challenges')
+      .update({ influencer_crawled_at: now })
+      .in('id', batch);
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -211,6 +223,10 @@ export async function GET(request: NextRequest) {
         await sleep(500);
       }
     }
+
+    // 처리 완료된 키워드의 influencer_crawled_at 업데이트
+    const processedIds = keywords.map(k => k.id);
+    await updateKeywordCrawledAt(supabase, processedIds);
 
     await updateCrawlJob(jobId, {
       status: 'success',
