@@ -579,6 +579,13 @@ export default async function MyDashboard() {
           rank3={rankKeywords(3)}
           rank4={rankKeywords(4)}
           rank5={rankKeywords(5)}
+          rankOut={rankings.filter(r => r.rank_position > 5).map(r => ({
+            keyword_id: r.keyword_id,
+            keyword: r.keyword,
+            rank_position: r.rank_position,
+            rank_change: r.rank_change,
+            category: r.category,
+          }))}
         />
       </GlassCard>
 

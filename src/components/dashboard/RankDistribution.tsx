@@ -17,20 +17,22 @@ interface Props {
   rank3: RankKeyword[];
   rank4: RankKeyword[];
   rank5: RankKeyword[];
+  rankOut?: RankKeyword[];
 }
 
 const PAGE_SIZE = 5;
 
-export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: Props) {
+export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5, rankOut = [] }: Props) {
   const [selectedRank, setSelectedRank] = useState<number | null>(null);
   const [page, setPage] = useState(1);
 
   const rankData = [
-    { rank: 1, count: rank1.length, keywords: rank1, color: 'text-gold', bg: 'bg-gold/10' },
-    { rank: 2, count: rank2.length, keywords: rank2, color: 'text-accent', bg: 'bg-accent/10' },
-    { rank: 3, count: rank3.length, keywords: rank3, color: 'text-accent', bg: 'bg-accent/10' },
-    { rank: 4, count: rank4.length, keywords: rank4, color: 'text-dim', bg: 'bg-border/30' },
-    { rank: 5, count: rank5.length, keywords: rank5, color: 'text-dim', bg: 'bg-border/30' },
+    { rank: 1, label: '1위', count: rank1.length, keywords: rank1, color: 'text-gold', bg: 'bg-gold/10' },
+    { rank: 2, label: '2위', count: rank2.length, keywords: rank2, color: 'text-accent', bg: 'bg-accent/10' },
+    { rank: 3, label: '3위', count: rank3.length, keywords: rank3, color: 'text-accent', bg: 'bg-accent/10' },
+    { rank: 4, label: '4위', count: rank4.length, keywords: rank4, color: 'text-dim', bg: 'bg-border/30' },
+    { rank: 5, label: '5위', count: rank5.length, keywords: rank5, color: 'text-dim', bg: 'bg-border/30' },
+    { rank: 6, label: '6위+', count: rankOut.length, keywords: rankOut, color: 'text-dim', bg: 'bg-border/20' },
   ];
 
   const selected = rankData.find(r => r.rank === selectedRank);
@@ -45,7 +47,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
           <p className="text-xs text-accent font-semibold">순위를 눌러 키워드를 확인하세요</p>
         )}
       </div>
-      <div className="grid grid-cols-5 gap-2 text-center">
+      <div className="grid grid-cols-6 gap-2 text-center">
         {rankData.map(r => (
           <button
             key={r.rank}
@@ -55,7 +57,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
             }`}
           >
             <p className={`text-lg font-black ${r.color}`}>{r.count}</p>
-            <p className="text-[10px] text-dim font-semibold mt-0.5">{r.rank}위</p>
+            <p className="text-[10px] text-dim font-semibold mt-0.5">{r.label}</p>
           </button>
         ))}
       </div>
@@ -63,7 +65,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
       {selected && selected.keywords.length > 0 && (
         <div className="mt-3 rounded-xl border border-border bg-surface overflow-hidden">
           <div className="px-4 py-2 bg-bg/30 border-b border-border/50 flex items-center justify-between">
-            <span className="text-xs font-bold">{selectedRank}위 키워드 ({selected.keywords.length}개)</span>
+            <span className="text-xs font-bold">{selected.label} 키워드 ({selected.keywords.length}개)</span>
             {totalPages > 1 && (
               <span className="text-[10px] text-dim">{page}/{totalPages}</span>
             )}
@@ -79,11 +81,16 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5 }: 
                   <span className="text-sm font-semibold">{kw.keyword}</span>
                   <span className="text-[11px] text-dim ml-1.5">{kw.category}</span>
                 </div>
-                {kw.rank_change !== 0 && (
-                  <span className={`text-xs font-bold shrink-0 ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
-                    {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
-                  </span>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {kw.rank_position > 5 && (
+                    <span className="text-[11px] text-dim">{kw.rank_position}위</span>
+                  )}
+                  {kw.rank_change !== 0 && (
+                    <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
+                      {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
+                    </span>
+                  )}
+                </div>
               </Link>
             ))}
           </div>
