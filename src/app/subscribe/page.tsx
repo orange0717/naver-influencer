@@ -16,6 +16,7 @@ const DASHBOARD_FEATURES = [
   '스마트 알림 (하락 위험/기회)',
   '블로그 방문자수 추이',
   'TOP3 달성률 위젯',
+  '커뮤니티',
 ];
 
 export default function SubscribePage() {
@@ -40,7 +41,7 @@ export default function SubscribePage() {
               </div>
             </div>
             <p className="text-sm text-dim leading-relaxed">
-              회원가입 없이 인플루언서 리스트, 키워드 리스트, 커뮤니티를 자유롭게 이용하세요.
+              회원가입 없이 인플루언서 리스트, 키워드 리스트를 자유롭게 이용하세요.
             </p>
             <Link
               href="/influencers"
@@ -56,10 +57,6 @@ export default function SubscribePage() {
               <li className="flex items-center gap-2.5">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-up shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
                 <span className="text-text">키워드 리스트</span>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-up shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
-                <span className="text-text">커뮤니티</span>
               </li>
             </ul>
           </div>
