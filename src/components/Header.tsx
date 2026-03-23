@@ -5,8 +5,17 @@ import { useState, useEffect, useRef } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
 
-/* ── 메인 네비게이션 ── */
-const NAV_ITEMS = [
+/* ── 메인 네비게이션 (비로그인) ── */
+const NAV_ITEMS_PUBLIC = [
+  { href: '/influencers', label: '인플루언서 리스트' },
+  { href: '/keywords', label: '키워드 리스트' },
+  { href: '/community', label: '커뮤니티' },
+  { href: '/subscribe', label: '이용권' },
+];
+
+/* ── 메인 네비게이션 (로그인) ── */
+const NAV_ITEMS_AUTH = [
+  { href: '/my', label: '대시보드' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드 리스트' },
   { href: '/community', label: '커뮤니티' },
@@ -118,7 +127,7 @@ export default function Header({ serverUser }: HeaderProps) {
 
               <div className="w-px h-5 bg-white/20 mx-1" />
 
-              {NAV_ITEMS.map(item => (
+              {(user.id ? NAV_ITEMS_AUTH : NAV_ITEMS_PUBLIC).map(item => (
                 <Link key={item.href} href={item.href}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                     isActive(item.href) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -126,17 +135,6 @@ export default function Header({ serverUser }: HeaderProps) {
                   {item.label}
                 </Link>
               ))}
-              {user.id && (
-                <>
-                  <div className="w-px h-5 bg-white/20 mx-1" />
-                  <Link href="/my"
-                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                      pathname === '/my' ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
-                    }`}>
-                    대시보드
-                  </Link>
-                </>
-              )}
             </nav>
           </div>
 
@@ -179,7 +177,7 @@ export default function Header({ serverUser }: HeaderProps) {
       {mobileOpen && (
         <div id="mobile-menu" className="lg:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border overflow-y-auto">
           <nav aria-label="모바일 네비게이션" className="flex flex-col p-4 gap-0.5">
-            {NAV_ITEMS.map(item => (
+            {(user.id ? NAV_ITEMS_AUTH : NAV_ITEMS_PUBLIC).map(item => (
               <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
                   isActive(item.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
