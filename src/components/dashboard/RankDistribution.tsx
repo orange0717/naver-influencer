@@ -47,7 +47,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5, ra
           <p className="text-xs text-accent font-semibold">순위를 눌러 키워드를 확인하세요</p>
         )}
       </div>
-      <div className="grid grid-cols-6 gap-2 text-center">
+      <div className="grid grid-cols-3 gap-2 text-center">
         {rankData.map(r => (
           <button
             key={r.rank}
