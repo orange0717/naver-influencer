@@ -53,10 +53,10 @@ export default function FeedbackButton() {
       {/* 플로팅 버튼 */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-6 z-40 w-11 h-11 rounded-full bg-accent text-white shadow-lg hover:bg-accent-hover transition flex items-center justify-center cursor-pointer"
+        className="fixed bottom-24 right-6 z-40 w-14 h-14 rounded-full bg-white text-accent shadow-lg border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center cursor-pointer"
         title="피드백 보내기"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
       </button>
