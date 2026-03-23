@@ -4,7 +4,7 @@ import Header from './Header';
 
 /** 서버에서 인증 상태를 읽어 Header 클라이언트 컴포넌트에 전달 */
 export default async function HeaderWrapper() {
-  let serverUser: { type: string; id: string; name: string } | null = null;
+  let serverUser: { type: string; id: string; name: string; imageUrl?: string } | null = null;
 
   try {
     const cookieStore = await cookies();
@@ -35,16 +35,18 @@ export default async function HeaderWrapper() {
         if (profile) {
           let displayName = profile.nickname || authUser.email?.split('@')[0] || '';
           let naverId: string | null = null;
+          let imageUrl: string | undefined;
 
           if (profile.linked_influencer_id) {
             const { data: inf } = await supabase
               .from('influencers')
-              .select('display_name, naver_id')
+              .select('display_name, naver_id, image_url')
               .eq('id', profile.linked_influencer_id)
               .single();
             if (inf) {
               displayName = inf.display_name || inf.naver_id || displayName;
               naverId = inf.naver_id;
+              imageUrl = inf.image_url || undefined;
             }
           }
 
@@ -52,6 +54,7 @@ export default async function HeaderWrapper() {
             type: profile.linked_influencer_id ? 'influencer' : 'blogger',
             id: naverId || profile.id,
             name: displayName,
+            imageUrl,
           };
         }
       }
@@ -66,7 +69,7 @@ export default async function HeaderWrapper() {
         const supabase = createServiceClient();
         const { data: inf } = await supabase
           .from('influencers')
-          .select('display_name')
+          .select('display_name, image_url')
           .eq('naver_id', naverId)
           .single();
 
@@ -74,6 +77,7 @@ export default async function HeaderWrapper() {
           type: 'influencer',
           id: naverId,
           name: inf?.display_name || naverId,
+          imageUrl: inf?.image_url || undefined,
         };
       }
     }
