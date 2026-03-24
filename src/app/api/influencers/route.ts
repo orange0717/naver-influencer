@@ -99,9 +99,9 @@ async function getInfluencersFromDB(
   const sortColumn = allowedSorts[sortBy] || 'naver_created_at';
   const ascending = order === 'asc';
   const isDateSort = sortColumn === 'naver_created_at';
+  // 선정일 정렬: NULL(아직 미수집)은 최신 등록으로 취급 → DESC일 때 맨 위
   query = query
-    .order(sortColumn, { ascending, nullsFirst: false });
-  // 선정일 정렬 시 NULL은 first_seen_at로 2차 정렬 (DB 등록일 기준)
+    .order(sortColumn, { ascending, nullsFirst: isDateSort ? !ascending : false });
   if (isDateSort) {
     query = query.order('first_seen_at', { ascending });
   }
