@@ -128,7 +128,7 @@ export default function InfluencersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold">신규 인플루언서 목록</h1>
+          <h1 className="text-xl font-extrabold">인플루언서 리스트 <span className="text-sm font-normal text-dim">(구. 파워블로거 2016년도 폐지)</span></h1>
           <p className="text-xs text-dim mt-0.5">최근 선정된 인플루언서부터 표시</p>
         </div>
         <div className="text-right">
