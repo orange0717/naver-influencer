@@ -5,6 +5,8 @@ import {
   searchKeywordsAcrossCategories,
   fetchCategories,
 } from '@/lib/naver-api';
+import { createServiceClient } from '@/lib/supabase-server';
+import { getCompetitionLevel, getCompetitionLevelAdvanced } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,8 +25,9 @@ export async function GET(request: NextRequest) {
     if (search?.trim()) {
       const result = await searchKeywordsAcrossCategories(search.trim(), 100);
       const keywords = result.keywords.map(kw => toUIKeyword(kw));
+      const enriched = await enrichWithDB(keywords);
       return NextResponse.json({
-        keywords,
+        keywords: enriched,
         categories: categoryNames,
         total: result.total,
         nextCursor: null,
@@ -35,8 +38,9 @@ export async function GET(request: NextRequest) {
     if (category && category !== '전체') {
       const result = await fetchCategoryPage(category, limit, cursor, undefined);
       const keywords = result.keywords.map(kw => toUIKeyword(kw));
+      const enriched = await enrichWithDB(keywords);
       return NextResponse.json({
-        keywords,
+        keywords: enriched,
         categories: categoryNames,
         total: result.total,
         nextCursor: result.nextCursor,
@@ -58,6 +62,11 @@ export async function GET(request: NextRequest) {
       grouped[catName].keywords.push(toUIKeyword(kw));
     }
 
+    // DB 보강 (전체 뷰의 키워드들)
+    const allKws = Object.values(grouped).flatMap(g => g.keywords);
+    const enrichedAll = await enrichWithDB(allKws);
+    const enrichedMap = new Map(enrichedAll.map(kw => [kw.id, kw]));
+
     // 키워드 수 기준 정렬
     const groupedList = Object.entries(grouped)
       .filter(([, v]) => v.keywords.length > 0)
@@ -65,7 +74,7 @@ export async function GET(request: NextRequest) {
       .map(([name, data]) => ({
         category: name,
         total: data.total,
-        keywords: data.keywords.slice(0, 10), // 카테고리당 TOP 10
+        keywords: data.keywords.slice(0, 10).map(kw => enrichedMap.get(kw.id) || kw),
       }));
 
     return NextResponse.json({
@@ -94,11 +103,53 @@ function toUIKeyword(kw: { id: number; name: string; categoryName: string; parti
     search_volume_monthly: 0,
     search_volume_pc: 0,
     search_volume_mobile: 0,
-    competition_level: kw.participantCount > 100 ? 'high' : kw.participantCount > 30 ? 'medium' : 'low',
+    competition_level: getCompetitionLevel(kw.participantCount),
     recommendation_score: 0,
     trend_direction: 'stable' as const,
     trend_percentage: 0,
     is_new: false,
     first_seen_at: '',
   };
+}
+
+/** DB에서 월검색량, 등록일 등 보강 데이터 가져오기 */
+async function enrichWithDB(keywords: ReturnType<typeof toUIKeyword>[]) {
+  if (keywords.length === 0) return keywords;
+
+  try {
+    const supabase = createServiceClient();
+    const keywordNames = keywords.map(kw => kw.keyword);
+
+    const { data: dbKeywords } = await supabase
+      .from('keyword_challenges')
+      .select('keyword, category, search_volume_monthly, first_seen_at, participant_count')
+      .in('keyword', keywordNames);
+
+    if (!dbKeywords || dbKeywords.length === 0) return keywords;
+
+    // keyword+category로 매칭
+    const dbMap = new Map<string, typeof dbKeywords[0]>();
+    for (const dbKw of dbKeywords) {
+      dbMap.set(`${dbKw.keyword}::${dbKw.category}`, dbKw);
+    }
+
+    return keywords.map(kw => {
+      const dbData = dbMap.get(`${kw.keyword}::${kw.category}`);
+      if (!dbData) return kw;
+
+      const participantCount = dbData.participant_count || kw.participant_count;
+      const searchVolume = dbData.search_volume_monthly || 0;
+
+      return {
+        ...kw,
+        search_volume_monthly: searchVolume,
+        first_seen_at: dbData.first_seen_at || '',
+        participant_count: participantCount,
+        competition_level: getCompetitionLevelAdvanced(participantCount, searchVolume, dbData.first_seen_at || undefined),
+      };
+    });
+  } catch {
+    // DB 조회 실패해도 기본 데이터 반환
+    return keywords;
+  }
 }

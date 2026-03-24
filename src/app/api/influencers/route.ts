@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50));
   const newOnly = searchParams.get('new') === 'true';
+  const sortBy = searchParams.get('sort') || 'first_seen_at';
+  const order = searchParams.get('order') || 'desc';
 
   // service client 사용 (RLS 우회 — 인플루언서 테이블은 공개 데이터)
   const supabase = createServiceClient();
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (hasDbData) {
       // DB 기반 조회
-      return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly });
+      return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly, sortBy, order });
     }
 
     // DB에 데이터 없으면 실시간 API 폴백
@@ -47,9 +49,9 @@ export async function GET(request: NextRequest) {
 /** DB 기반 인플루언서 조회 */
 async function getInfluencersFromDB(
   supabase: ReturnType<typeof createServiceClient>,
-  opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean },
+  opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean; sortBy: string; order: string },
 ) {
-  const { category, search, page, limit, newOnly } = opts;
+  const { category, search, page, limit, newOnly, sortBy, order } = opts;
   const offset = (page - 1) * limit;
 
   // 카테고리 목록: 키워드 페이지와 동일한 소스 사용 (네이버 API)
@@ -63,7 +65,7 @@ async function getInfluencersFromDB(
 
   // 카테고리 필터 (화이트리스트: 한글/영문/숫자/공백/특수구분자만 허용)
   if (category && category !== '전체') {
-    const safeCategory = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&]/g, '');
+    const safeCategory = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&.]/g, '');
     if (safeCategory) {
       query = query.or(`my_keyword_category.eq.${safeCategory},category.eq.${safeCategory}`);
     }
@@ -71,7 +73,7 @@ async function getInfluencersFromDB(
 
   // 검색 필터 (화이트리스트: 한글/영문/숫자/공백만 허용)
   if (search?.trim()) {
-    const q = search.trim().replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s]/g, '');
+    const q = search.trim().replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s._-]/g, '');
     if (q) {
       query = query.or(
         `display_name.ilike.%${q}%,naver_id.ilike.%${q}%,my_keyword_category.ilike.%${q}%,my_keyword.ilike.%${q}%,category_my_type.ilike.%${q}%`,
@@ -87,8 +89,17 @@ async function getInfluencersFromDB(
   }
 
   // 정렬 + 페이지네이션
+  const allowedSorts: Record<string, string> = {
+    subscriber_count: 'subscriber_count',
+    first_seen_at: 'first_seen_at',
+    last_crawled_at: 'last_crawled_at',
+    total_keywords: 'total_keywords',
+    integrated_top3_count: 'integrated_top3_count',
+  };
+  const sortColumn = allowedSorts[sortBy] || 'first_seen_at';
+  const ascending = order === 'asc';
   query = query
-    .order('subscriber_count', { ascending: false })
+    .order(sortColumn, { ascending, nullsFirst: false })
     .range(offset, offset + limit - 1);
 
   const { data: influencers, count, error } = await query;
@@ -142,6 +153,8 @@ async function getInfluencersFromDB(
     myKeyword: inf.my_keyword || '',
     categoryMyType: inf.category_my_type || '',
     foundInKeywords: keywordMap.get(inf.id) || [],
+    totalKeywords: inf.total_keywords || 0,
+    integratedTop3Count: inf.integrated_top3_count || 0,
     firstSeenAt: inf.naver_created_at || inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
   }));

@@ -15,13 +15,31 @@ interface InfluencerItem {
   myKeyword: string;
   categoryMyType: string;
   foundInKeywords: string[];
+  totalKeywords?: number;
+  integratedTop3Count?: number;
   firstSeenAt?: string;
   lastCrawledAt?: string;
 }
 
+type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'last_crawled_at';
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'first_seen_at', label: '선정일순' },
+  { key: 'subscriber_count', label: '구독자순' },
+  { key: 'total_keywords', label: '챌린지수순' },
+  { key: 'integrated_top3_count', label: 'TOP3순' },
+  { key: 'last_crawled_at', label: '최근 참여순' },
+];
+
 function formatDate(d: string | null | undefined): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function isNew(d: string | null | undefined): boolean {
+  if (!d) return false;
+  const diff = Date.now() - new Date(d).getTime();
+  return diff < 30 * 24 * 60 * 60 * 1000; // 30일 이내
 }
 
 export default function InfluencersPage() {
@@ -33,12 +51,17 @@ export default function InfluencersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortKey>('first_seen_at');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(page),
         limit: '50',
+        sort: sortBy,
+        order,
       });
       if (category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
@@ -55,7 +78,7 @@ export default function InfluencersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, category, search]);
+  }, [page, category, search, sortBy, order]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -69,12 +92,44 @@ export default function InfluencersPage() {
     setPage(1);
   };
 
+  const handleSortChange = (key: SortKey) => {
+    if (sortBy === key) {
+      setOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy(key);
+      setOrder('desc');
+    }
+    setPage(1);
+  };
+
+  // 페이지네이션 번호 생성
+  const getPageNumbers = () => {
+    const pages: (number | '...')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push('...');
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (page < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  const sortArrow = (key: SortKey) => {
+    if (sortBy !== key) return '';
+    return order === 'desc' ? ' ↓' : ' ↑';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold">인플루언서(구. 파워블로거 2016년 폐지) 목록</h1>
-          <p className="text-xs text-dim mt-0.5">키워드 챌린지 참여 인플루언서</p>
+          <h1 className="text-xl font-extrabold">신규 인플루언서 목록</h1>
+          <p className="text-xs text-dim mt-0.5">최근 선정된 인플루언서부터 표시</p>
         </div>
         <div className="text-right">
           <span className="text-xs text-dim font-rank">
@@ -99,6 +154,24 @@ export default function InfluencersPage() {
 
       <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} size="sm" />
 
+      {/* 정렬 옵션 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-dim font-semibold">정렬</span>
+        {SORT_OPTIONS.map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => handleSortChange(opt.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              sortBy === opt.key
+                ? 'bg-accent/20 text-accent border border-accent/40'
+                : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
+            }`}
+          >
+            {opt.label}{sortArrow(opt.key)}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
@@ -116,9 +189,21 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs w-8">#</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">인플루언서</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">활동 분야</th>
-                  <th className="text-right py-3 px-4 font-semibold text-dim text-xs">구독자</th>
-                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">선정일</th>
-                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">마지막 챌린지 참여</th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('subscriber_count')}>
+                    구독자{sortArrow('subscriber_count')}
+                  </th>
+                  <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('total_keywords')}>
+                    챌린지{sortArrow('total_keywords')}
+                  </th>
+                  <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('integrated_top3_count')}>
+                    TOP3{sortArrow('integrated_top3_count')}
+                  </th>
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('first_seen_at')}>
+                    선정일{sortArrow('first_seen_at')}
+                  </th>
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_crawled_at')}>
+                    최근 참여{sortArrow('last_crawled_at')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -140,6 +225,9 @@ export default function InfluencersPage() {
                               className="font-bold hover:text-accent transition-colors truncate max-w-[180px]">
                               {inf.name}
                             </a>
+                            {isNew(inf.firstSeenAt) && (
+                              <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
+                            )}
                           </div>
                           <span className="text-xs text-dim">@{inf.naverId}</span>
                         </div>
@@ -156,13 +244,27 @@ export default function InfluencersPage() {
                         <div className="text-[10px] text-dim mt-0.5">{inf.myKeyword}</div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right text-xs font-bold font-rank text-accent">
+                    <td className="py-3 px-3 text-right text-xs font-bold font-rank text-accent">
                       {formatCount(inf.subscriberCount)}
                     </td>
-                    <td className="py-3 px-4 text-xs text-dim">
+                    <td className="py-3 px-3 text-center text-xs font-rank">
+                      {(inf.totalKeywords || 0) > 0 ? (
+                        <span className="font-bold">{inf.totalKeywords}</span>
+                      ) : (
+                        <span className="text-dim">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-center text-xs font-rank">
+                      {(inf.integratedTop3Count || 0) > 0 ? (
+                        <span className="font-bold text-gold">{inf.integratedTop3Count}</span>
+                      ) : (
+                        <span className="text-dim">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-xs text-dim">
                       {formatDate(inf.firstSeenAt)}
                     </td>
-                    <td className="py-3 px-4 text-xs text-dim">
+                    <td className="py-3 px-3 text-xs text-dim">
                       {formatDate(inf.lastCrawledAt)}
                     </td>
                   </tr>
@@ -193,6 +295,9 @@ export default function InfluencersPage() {
                         className="font-bold text-sm hover:text-accent transition-colors truncate">
                         {inf.name}
                       </a>
+                      {isNew(inf.firstSeenAt) && (
+                        <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
+                      )}
                     </div>
                     <span className="text-xs text-dim">@{inf.naverId}</span>
                   </div>
@@ -206,9 +311,11 @@ export default function InfluencersPage() {
                     {inf.myKeywordCategory}{inf.categoryMyType ? ` · ${inf.categoryMyType}` : ''}
                   </div>
                 </div>
-                <div className="flex gap-3 text-[10px] text-dim">
+                <div className="flex flex-wrap gap-3 text-[10px] text-dim">
+                  {(inf.totalKeywords || 0) > 0 && <span>챌린지 {inf.totalKeywords}개</span>}
+                  {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
                   {inf.firstSeenAt && <span>선정일 {formatDate(inf.firstSeenAt)}</span>}
-                  {inf.lastCrawledAt && <span>챌린지 {formatDate(inf.lastCrawledAt)}</span>}
+                  {inf.lastCrawledAt && <span>최근 참여 {formatDate(inf.lastCrawledAt)}</span>}
                 </div>
               </div>
             ))}
@@ -219,19 +326,48 @@ export default function InfluencersPage() {
 
           {/* 페이지네이션 */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-4">
+            <div className="flex items-center justify-center gap-1.5 pt-4 flex-wrap">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(1)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                title="첫 페이지">
+                ≪
+              </button>
               <button
                 disabled={page <= 1}
                 onClick={() => setPage(p => p - 1)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
                 이전
               </button>
-              <span className="text-xs text-dim font-rank">{page} / {totalPages}</span>
+              {getPageNumbers().map((p, idx) =>
+                p === '...' ? (
+                  <span key={`dots-${idx}`} className="px-2 py-1.5 text-xs text-dim">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                      page === p
+                        ? 'bg-accent text-white'
+                        : 'bg-surface border border-border text-dim hover:border-accent/40'
+                    }`}>
+                    {p}
+                  </button>
+                ),
+              )}
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage(p => p + 1)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
                 다음
+              </button>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage(totalPages)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                title="마지막 페이지">
+                ≫
               </button>
             </div>
           )}

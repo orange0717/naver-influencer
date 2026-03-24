@@ -254,8 +254,10 @@ export default function KeywordsPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-sm">키워드</th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-sm">카테고리</th>
                   <th className="text-left py-3 px-2 font-semibold text-dim text-sm">세부분류</th>
-                  <th className="text-right py-3 px-4 font-semibold text-dim text-sm">참여자</th>
-                  <th className="text-center py-3 px-4 font-semibold text-dim text-sm">경쟁도</th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm">참여자</th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm">월 검색량</th>
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-sm">등록일</th>
+                  <th className="text-center py-3 px-3 font-semibold text-dim text-sm">경쟁도</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,8 +273,14 @@ export default function KeywordsPage() {
                     </td>
                     <td className="py-3.5 px-3 text-sm text-dim">{kw.category}</td>
                     <td className="py-3.5 px-2 text-sm text-accent font-semibold">{sub || '—'}</td>
-                    <td className="py-3.5 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}</td>
-                    <td className="py-3.5 px-4 text-center">{compBadge(kw.competition_level)}</td>
+                    <td className="py-3.5 px-3 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}</td>
+                    <td className="py-3.5 px-3 text-right font-rank text-sm">
+                      {kw.search_volume_monthly > 0 ? kw.search_volume_monthly.toLocaleString() : <span className="text-dim">—</span>}
+                    </td>
+                    <td className="py-3.5 px-3 text-sm text-dim">
+                      {kw.first_seen_at ? new Date(kw.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '—'}
+                    </td>
+                    <td className="py-3.5 px-3 text-center">{compBadge(kw.competition_level)}</td>
                   </tr>
                   );
                 })}
@@ -298,6 +306,7 @@ export default function KeywordsPage() {
                 </div>
                 <div className="flex items-center gap-3 text-sm text-dim">
                   <span>참여자 {kw.participant_count.toLocaleString()}명</span>
+                  {kw.search_volume_monthly > 0 && <span>월 {kw.search_volume_monthly.toLocaleString()}회</span>}
                 </div>
               </Link>
               );

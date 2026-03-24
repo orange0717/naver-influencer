@@ -2,10 +2,8 @@
  * 공통 포매팅 유틸리티
  */
 
-/** 숫자를 한국식 약어로 변환 (10000 → 1만, 1500 → 1.5K) */
+/** 숫자를 읽기 쉬운 형태로 변환 (1500 → 1,500) */
 export function formatCount(n: number): string {
-  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return n.toLocaleString();
 }
 
