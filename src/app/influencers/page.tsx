@@ -17,6 +17,7 @@ interface InfluencerItem {
   foundInKeywords: string[];
   totalKeywords?: number;
   integratedTop3Count?: number;
+  naverCreatedAt?: string;
   firstSeenAt?: string;
   lastCrawledAt?: string;
 }
@@ -262,7 +263,7 @@ export default function InfluencersPage() {
                       )}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
-                      {formatDate(inf.firstSeenAt)}
+                      {inf.naverCreatedAt ? formatDate(inf.naverCreatedAt) : '—'}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
                       {formatDate(inf.lastCrawledAt)}
@@ -314,7 +315,7 @@ export default function InfluencersPage() {
                 <div className="flex flex-wrap gap-3 text-[10px] text-dim">
                   {(inf.totalKeywords || 0) > 0 && <span>챌린지 {inf.totalKeywords}개</span>}
                   {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
-                  {inf.firstSeenAt && <span>선정일 {formatDate(inf.firstSeenAt)}</span>}
+                  {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
                   {inf.lastCrawledAt && <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>}
                 </div>
               </div>

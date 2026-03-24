@@ -100,8 +100,8 @@ async function getInfluencersFromDB(
   const ascending = order === 'asc';
   const isDateSort = sortColumn === 'naver_created_at';
   query = query
-    .order(sortColumn, { ascending, nullsFirst: isDateSort ? !ascending : false });
-  // 선정일 정렬 시 NULL(아직 수집 안 된 인플루언서)은 first_seen_at로 2차 정렬
+    .order(sortColumn, { ascending, nullsFirst: false });
+  // 선정일 정렬 시 NULL은 first_seen_at로 2차 정렬 (DB 등록일 기준)
   if (isDateSort) {
     query = query.order('first_seen_at', { ascending });
   }
@@ -160,7 +160,8 @@ async function getInfluencersFromDB(
     foundInKeywords: keywordMap.get(inf.id) || [],
     totalKeywords: inf.total_keywords || 0,
     integratedTop3Count: inf.integrated_top3_count || 0,
-    firstSeenAt: inf.naver_created_at || inf.first_seen_at || inf.created_at,
+    naverCreatedAt: inf.naver_created_at || null,
+    firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
   }));
 
