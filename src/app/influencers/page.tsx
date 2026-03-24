@@ -28,7 +28,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'subscriber_count', label: '구독자순' },
   { key: 'total_keywords', label: '챌린지수순' },
   { key: 'integrated_top3_count', label: 'TOP3순' },
-  { key: 'last_crawled_at', label: '최근 참여순' },
+  { key: 'last_crawled_at', label: '마지막 참여일순' },
 ];
 
 function formatDate(d: string | null | undefined): string {
@@ -202,7 +202,7 @@ export default function InfluencersPage() {
                     선정일{sortArrow('first_seen_at')}
                   </th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_crawled_at')}>
-                    최근 참여{sortArrow('last_crawled_at')}
+                    마지막 참여일{sortArrow('last_crawled_at')}
                   </th>
                 </tr>
               </thead>
@@ -315,7 +315,7 @@ export default function InfluencersPage() {
                   {(inf.totalKeywords || 0) > 0 && <span>챌린지 {inf.totalKeywords}개</span>}
                   {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
                   {inf.firstSeenAt && <span>선정일 {formatDate(inf.firstSeenAt)}</span>}
-                  {inf.lastCrawledAt && <span>최근 참여 {formatDate(inf.lastCrawledAt)}</span>}
+                  {inf.lastCrawledAt && <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>}
                 </div>
               </div>
             ))}

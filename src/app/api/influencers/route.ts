@@ -91,12 +91,12 @@ async function getInfluencersFromDB(
   // 정렬 + 페이지네이션
   const allowedSorts: Record<string, string> = {
     subscriber_count: 'subscriber_count',
-    first_seen_at: 'first_seen_at',
+    first_seen_at: 'naver_created_at',
     last_crawled_at: 'last_crawled_at',
     total_keywords: 'total_keywords',
     integrated_top3_count: 'integrated_top3_count',
   };
-  const sortColumn = allowedSorts[sortBy] || 'first_seen_at';
+  const sortColumn = allowedSorts[sortBy] || 'naver_created_at';
   const ascending = order === 'asc';
   query = query
     .order(sortColumn, { ascending, nullsFirst: false })
