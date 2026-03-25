@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/crawl-selection-dates",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/demo-expiry",
+      "schedule": "0 9 * * *"
     }
   ]
 }

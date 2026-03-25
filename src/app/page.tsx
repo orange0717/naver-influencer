@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import DemoModal from '@/components/DemoModal';
 
 /* ── 실시간 DB 통계 ── */
 function useStats() {
@@ -59,6 +60,7 @@ export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
   const newInfluencers = useNewInfluencers();
+  const [demoOpen, setDemoOpen] = useState(false);
 
   return (
     <div className="-mt-6 -mb-10 w-screen relative left-1/2 -ml-[50vw]">
@@ -89,15 +91,18 @@ export default function LandingPage() {
           </Link>
         </div>
 
-        <Link href="/trial"
-          className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm">
-          3일 무료로 시작하기 →
-        </Link>
+        <button
+          onClick={() => setDemoOpen(true)}
+          className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm"
+        >
+          30일 데모체험 →
+        </button>
 
         <p className="text-xs text-dim mt-5">
-          가입 즉시 키워드 분석을 시작할 수 있습니다.<br />
-          별도 결제 없이 무료로 이용 가능합니다.
+          이메일 인증 후 30일간 모든 기능을 무료로 이용할 수 있습니다.
         </p>
+
+        <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
 
       {/* ═══════════ 신규 인플루언서 (surface) ═══════════ */}

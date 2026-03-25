@@ -108,10 +108,12 @@ export async function GET(request: NextRequest) {
         .single();
 
       const trialStarted = cookieStore.get('trial_started')?.value;
+      const isDemo = cookieStore.get('demo_mode')?.value === 'true';
+      const durationDays = isDemo ? 30 : 3;
       let trialDaysLeft: number | undefined;
       if (trialStarted) {
         const elapsed = Date.now() - Number(trialStarted);
-        const remaining = Math.ceil((3 * 24 * 60 * 60 * 1000 - elapsed) / (24 * 60 * 60 * 1000));
+        const remaining = Math.ceil((durationDays * 24 * 60 * 60 * 1000 - elapsed) / (24 * 60 * 60 * 1000));
         trialDaysLeft = Math.max(0, remaining);
       }
 
@@ -120,6 +122,7 @@ export async function GET(request: NextRequest) {
         id: naverId,
         name: inf?.display_name || naverId,
         ...(trialDaysLeft !== undefined && { trialDaysLeft }),
+        ...(isDemo && { isDemo: true }),
       });
     }
 

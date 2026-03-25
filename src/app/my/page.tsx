@@ -55,13 +55,15 @@ export default async function MyDashboard() {
     redirect('/auth/login');
   }
 
-  // 체험 만료 체크
+  // 체험/데모 만료 체크
   const trialStarted = cookieStore.get('trial_started')?.value;
+  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
   const isTrial = !!trialStarted;
+  const durationMs = (isDemo ? 30 : 3) * 24 * 60 * 60 * 1000;
   let trialExpired = false;
   if (trialStarted) {
     const elapsed = Date.now() - Number(trialStarted);
-    trialExpired = elapsed > 3 * 24 * 60 * 60 * 1000;
+    trialExpired = elapsed > durationMs;
   }
   if (trialExpired) {
     redirect('/subscribe');
@@ -441,8 +443,8 @@ export default async function MyDashboard() {
   return (
     <div className="space-y-6">
 
-      {/* ─── 체험 배너 ─── */}
-      {isTrial && <TrialBanner />}
+      {/* ─── 체험/데모 배너 ─── */}
+      {isTrial && <TrialBanner isDemo={isDemo} />}
 
       {/* ─── 1. 프로필 헤더 ─── */}
       <ProfileHeader

@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-export default function TrialBanner() {
+interface TrialBannerProps {
+  isDemo?: boolean;
+}
+
+export default function TrialBanner({ isDemo = false }: TrialBannerProps) {
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    // trial_started 쿠키 확인 (httpOnly가 아닌 경우)
-    // 서버에서 전달받는 방식으로 대체
     fetch('/api/auth/me')
       .then(res => res.json())
       .then(data => {
@@ -20,6 +22,30 @@ export default function TrialBanner() {
   }, []);
 
   if (daysLeft === null) return null;
+
+  if (isDemo) {
+    return (
+      <div className="bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-xl border border-blue-500/20 px-5 py-3 flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-500/15 rounded-lg flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-text">
+              데모 체험 중 <span className="text-blue-500">{daysLeft}일 남음</span>
+            </p>
+            <p className="text-[11px] text-dim">샘플 데이터입니다. 내 데이터를 보려면 무료 체험을 시작하세요.</p>
+          </div>
+        </div>
+        <Link
+          href="/trial"
+          className="px-4 py-2 bg-accent text-white text-xs font-bold rounded-lg hover:bg-accent-hover transition shrink-0"
+        >
+          내 대시보드 시작
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-xl border border-accent/20 px-5 py-3 flex items-center justify-between mb-4">
