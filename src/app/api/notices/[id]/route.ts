@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase-server';
+import { getAuthUser } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
+
+const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+
+/**
+ * GET /api/notices/[id] — 공지 상세 + 댓글
+ */
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  try {
+    const supabase = createServiceClient();
+
+    const { data: notice, error } = await supabase
+      .from('notices')
+      .select('*')
+      .eq('id', id)
+      .eq('is_deleted', false)
+      .single();
+
+    if (error || !notice) {
+      return NextResponse.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
+    }
+
+    // 조회수 증가
+    const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
+
+    // 댓글 조회
+    const { data: comments } = await supabase
+      .from('notice_comments')
+      .select('id, content, author_id, author_name, author_type, created_at')
+      .eq('notice_id', id)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: true });
+
+    return NextResponse.json({
+      notice: { ...notice, view_count: newViewCount ?? notice.view_count + 1 },
+      comments: comments || [],
+    });
+  } catch (err) {
+    console.error('[notices] GET detail error:', err);
+    return NextResponse.json({ error: '서버 오류' }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/notices/[id] — 공지 삭제 (관리자만)
+ */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  try {
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
+
+    if (!ADMIN_IDS.includes(authUser.userId)) {
+      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+    }
+
+    const supabase = createServiceClient();
+    await supabase
+      .from('notices')
+      .update({ is_deleted: true })
+      .eq('id', id);
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('[notices] DELETE error:', err);
+    return NextResponse.json({ error: '삭제에 실패했습니다.' }, { status: 500 });
+  }
+}
