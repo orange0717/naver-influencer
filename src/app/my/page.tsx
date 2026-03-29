@@ -60,7 +60,7 @@ export default async function MyDashboard() {
   const trialStarted = cookieStore.get('trial_started')?.value;
   const isDemo = cookieStore.get('demo_mode')?.value === 'true';
   const isTrial = !!trialStarted;
-  const durationMs = (isDemo ? 30 : 3) * 24 * 60 * 60 * 1000;
+  const durationMs = (isDemo ? 7 : 3) * 24 * 60 * 60 * 1000;
   let trialExpired = false;
   if (trialStarted) {
     const elapsed = Date.now() - Number(trialStarted);

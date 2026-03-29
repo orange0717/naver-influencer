@@ -7,7 +7,7 @@ import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_DAYS = 30;
+const DEMO_DAYS = 7;
 const DEMO_MAX_AGE = 60 * 60 * 24 * DEMO_DAYS;
 
 const verifySchema = z.object({
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', session.id);
 
-    // 쿠키 설정 (30일)
+    // 쿠키 설정 (7일)
     const cookieStore = await cookies();
     const cookieOptions = {
       httpOnly: true,

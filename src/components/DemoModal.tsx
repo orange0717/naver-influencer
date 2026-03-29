@@ -10,7 +10,7 @@ interface DemoModalProps {
 
 function extractNaverId(input: string): string {
   const trimmed = input.trim();
-  const urlMatch = trimmed.match(/(?:https?:\/\/)?in\.naver\.com\/([a-zA-Z0-9_-]+)/);
+  const urlMatch = trimmed.match(/(?:https?:\/\/)?in\.naver\.com\/([a-zA-Z0-9._-]+)/);
   if (urlMatch) return urlMatch[1].toLowerCase();
   return trimmed.replace(/^@/, '').toLowerCase();
 }
@@ -116,16 +116,16 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
             {/* 배지 */}
             <div className="text-center mb-6">
               <span className="inline-block px-4 py-1.5 bg-accent/10 text-accent text-xs font-bold rounded-full">
-                30일 무료
+                7일 무료
               </span>
             </div>
 
             <h2 className="text-lg font-bold text-text text-center mb-2">
-              30일 데모체험을 시작하시겠습니까?
+              7일 데모체험을 시작하시겠습니까?
             </h2>
             <p className="text-sm text-dim text-center mb-8 leading-relaxed">
               이메일로 데모 인증번호를 보내드립니다.<br />
-              인증 후 30일간 모든 기능을 무료로 이용할 수 있습니다.
+              인증 후 7일간 모든 기능을 무료로 이용할 수 있습니다.
             </p>
 
             <div className="space-y-3 mb-6">

@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
 
       const trialStarted = cookieStore.get('trial_started')?.value;
       const isDemo = cookieStore.get('demo_mode')?.value === 'true';
-      const durationDays = isDemo ? 30 : 3;
+      const durationDays = isDemo ? 7 : 3;
       let trialDaysLeft: number | undefined;
       if (trialStarted) {
         const elapsed = Date.now() - Number(trialStarted);

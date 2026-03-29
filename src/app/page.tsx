@@ -95,11 +95,11 @@ export default function LandingPage() {
           onClick={() => setDemoOpen(true)}
           className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm"
         >
-          30일 데모체험 →
+          7일 데모체험 →
         </button>
 
         <p className="text-xs text-dim mt-5">
-          이메일 인증 후 30일간 모든 기능을 무료로 이용할 수 있습니다.
+          이메일 인증 후 7일간 모든 기능을 무료로 이용할 수 있습니다.
         </p>
 
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
