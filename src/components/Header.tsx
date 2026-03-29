@@ -7,21 +7,21 @@ import { useAuth } from '@/hooks/useAuth';
 
 /* ── 메인 네비게이션 (비로그인) ── */
 const NAV_ITEMS_PUBLIC = [
+  { href: '/notice', label: '공지사항' },
   { href: '/my', label: '대시보드' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드 리스트' },
   { href: '/community', label: '커뮤니티' },
-  { href: '/notice', label: '공지사항' },
   { href: '/subscribe', label: '이용권' },
 ];
 
 /* ── 메인 네비게이션 (로그인) ── */
 const NAV_ITEMS_AUTH = [
+  { href: '/notice', label: '공지사항' },
   { href: '/my', label: '대시보드' },
   { href: '/influencers', label: '인플루언서 리스트' },
   { href: '/keywords', label: '키워드 리스트' },
   { href: '/community', label: '커뮤니티' },
-  { href: '/notice', label: '공지사항' },
   { href: '/subscribe', label: '이용권' },
 ];
 
