@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -39,7 +39,19 @@ export default function Header({ serverUser }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const { user: clientUser, isLoading: authLoading, logout: authLogout } = useAuth();
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
   const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser);
@@ -98,19 +110,37 @@ export default function Header({ serverUser }: HeaderProps) {
                 <button className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition cursor-pointer" title="알림" aria-label="알림">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/70"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
-                  title="클릭하여 로그아웃">
-                  {serverUser?.imageUrl ? (
-                    <img src={serverUser.imageUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
-                  ) : (
-                    <div className={`w-7 h-7 rounded-full ${badgeColor} flex items-center justify-center text-white font-bold text-[10px]`}>
-                      {displayChar}
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                    title="프로필 메뉴">
+                    {serverUser?.imageUrl ? (
+                      <img src={serverUser.imageUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+                    ) : (
+                      <div className={`w-7 h-7 rounded-full ${badgeColor} flex items-center justify-center text-white font-bold text-[10px]`}>
+                        {displayChar}
+                      </div>
+                    )}
+                    <span className="text-xs text-white font-semibold hidden sm:block">@{user.name || user.id}</span>
+                  </button>
+                  {profileOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-xl border border-border shadow-lg py-2 z-50">
+                      <div className="px-4 py-2.5 border-b border-border">
+                        <p className="text-sm font-bold text-text">{user.name || user.id}</p>
+                        {user.email && <p className="text-xs text-dim mt-0.5">{user.email}</p>}
+                      </div>
+                      <Link href="/my" onClick={() => setProfileOpen(false)}
+                        className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
+                        마이페이지
+                      </Link>
+                      <button onClick={() => { setProfileOpen(false); handleLogout(); }}
+                        className="w-full flex items-center px-4 py-2.5 text-sm text-down hover:bg-bg transition cursor-pointer">
+                        로그아웃
+                      </button>
                     </div>
                   )}
-                  <span className="text-xs text-white font-semibold hidden sm:block">@{user.name || user.id}</span>
-                </button>
+                </div>
               </div>
             ) : (
               <Link href="/auth/login"

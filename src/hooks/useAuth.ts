@@ -8,9 +8,10 @@ type UserInfo = {
   id: string | null;
   blogId?: string | null;
   name: string | null;
+  email?: string | null;
 };
 
-const defaultUser: UserInfo = { type: null, id: null, name: null };
+const defaultUser: UserInfo = { type: null, id: null, name: null, email: null };
 
 async function fetchUser(): Promise<UserInfo> {
   // Supabase 세션에서 토큰을 가져와 Bearer 헤더로 전달

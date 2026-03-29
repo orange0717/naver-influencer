@@ -17,11 +17,16 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    if (!email.trim()) {
+    // 브라우저 autofill은 React onChange를 트리거하지 않으므로 DOM에서 직접 읽기
+    const form = e.target as HTMLFormElement;
+    const emailValue = (form.elements.namedItem('email') as HTMLInputElement)?.value || email;
+    const passwordValue = (form.elements.namedItem('password') as HTMLInputElement)?.value || password;
+
+    if (!emailValue.trim()) {
       setError('이메일을 입력해주세요.');
       return;
     }
-    if (!password) {
+    if (!passwordValue) {
       setError('비밀번호를 입력해주세요.');
       return;
     }
@@ -32,8 +37,8 @@ export default function LoginPage() {
       const supabase = createSupabaseBrowserClient();
 
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+        email: emailValue.trim(),
+        password: passwordValue,
       });
 
       if (authError) {
@@ -94,6 +99,7 @@ export default function LoginPage() {
               <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
               <input
                 type="email"
+                name="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="example@email.com"
@@ -106,6 +112,7 @@ export default function LoginPage() {
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호</label>
               <input
                 type="password"
+                name="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="비밀번호를 입력해주세요"
