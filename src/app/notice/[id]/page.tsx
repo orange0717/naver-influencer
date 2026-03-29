@@ -13,9 +13,9 @@ const TAG_LABEL: Record<string, string> = {
 };
 
 const TAG_COLOR: Record<string, string> = {
-  notice: 'bg-accent/15 text-accent',
-  update: 'bg-up/15 text-up',
-  event: 'bg-[#F29C68]/15 text-[#F29C68]',
+  notice: 'bg-[#c8816b]/15 text-[#c8816b]',
+  update: 'bg-[#8b5e4b]/15 text-[#8b5e4b]',
+  event: 'bg-[#d4956e]/15 text-[#d4956e]',
 };
 
 interface Notice {
@@ -144,7 +144,7 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
-        <span className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+        <span className="w-6 h-6 border-2 border-[#c8816b]/30 border-t-[#c8816b] rounded-full animate-spin inline-block" />
       </div>
     );
   }
@@ -153,66 +153,82 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
         <p className="text-dim text-sm">공지를 찾을 수 없습니다.</p>
-        <Link href="/notice" className="text-accent text-sm mt-4 inline-block">목록으로 돌아가기</Link>
+        <Link href="/notice" className="text-[#c8816b] text-sm mt-4 inline-block hover:underline">목록으로 돌아가기</Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto">
       {/* 상단 네비 */}
-      <Link href="/notice" className="text-sm text-dim hover:text-accent transition">
-        &larr; 공지사항 목록
+      <Link href="/notice" className="inline-flex items-center gap-1.5 text-sm text-dim hover:text-[#c8816b] transition mb-6">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        공지사항 목록
       </Link>
 
-      {/* 공지 본문 */}
-      <div className="bg-surface rounded-xl border border-border p-6">
+      {/* 공지 헤더 */}
+      <div className="bg-gradient-to-r from-[#3d2020] to-[#4a2828] rounded-2xl px-8 py-7 mb-6">
         <div className="flex items-center gap-2 mb-3">
           {notice.is_pinned && (
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent">고정</span>
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#c8816b] text-white">고정</span>
           )}
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TAG_COLOR[notice.tag] || ''}`}>
+          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${TAG_COLOR[notice.tag] || 'bg-white/10 text-white/60'}`}>
             {TAG_LABEL[notice.tag] || notice.tag}
           </span>
-          <span className="text-xs text-dim">{formatFullDate(notice.created_at)}</span>
         </div>
+        <h1 className="text-xl font-bold text-[#f5d5c8] mb-3">{notice.title}</h1>
+        <div className="flex items-center gap-4 text-xs text-[#c8816b]">
+          <span className="font-medium">{notice.author_name}</span>
+          <span>{formatFullDate(notice.created_at)}</span>
+          <span className="flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            {notice.view_count}
+          </span>
+          <span className="flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            {notice.comment_count}
+          </span>
+        </div>
+      </div>
 
-        <h1 className="text-xl font-bold mb-4">{notice.title}</h1>
-
-        <div className="text-sm text-text leading-relaxed whitespace-pre-wrap mb-4">
+      {/* 공지 본문 */}
+      <div className="bg-surface rounded-2xl border border-border px-8 py-8 mb-6">
+        <div className="text-sm text-text leading-relaxed whitespace-pre-wrap">
           {notice.content}
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <div className="flex items-center gap-3 text-xs text-dim">
-            <span>{notice.author_name}</span>
-            <span>조회 {notice.view_count}</span>
-            <span>댓글 {notice.comment_count}</span>
-          </div>
-          {user.id && (
+        {/* 삭제 버튼 */}
+        {user.id && (
+          <div className="mt-8 pt-4 border-t border-border flex justify-end">
             <button onClick={handleDelete} disabled={deleting}
               className="text-xs text-down hover:text-down/70 transition cursor-pointer disabled:opacity-50">
               삭제
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 댓글 섹션 */}
-      <div className="bg-surface rounded-xl border border-border p-6">
-        <h3 className="font-bold text-sm mb-4">댓글 {comments.length}개</h3>
+      <div className="bg-surface rounded-2xl border border-border px-8 py-6">
+        <h3 className="font-bold text-sm text-text mb-4 flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#c8816b]"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          댓글 {comments.length}개
+        </h3>
 
         {comments.length === 0 ? (
-          <p className="text-sm text-dim py-4 text-center">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
+          <p className="text-sm text-dim py-6 text-center">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
         ) : (
           <div className="space-y-4 mb-4">
             {comments.map(c => (
               <div key={c.id} className="border-b border-border/50 pb-3 last:border-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-6 h-6 bg-[#c8816b]/15 rounded-full flex items-center justify-center text-[10px] font-bold text-[#c8816b]">
+                    {c.author_name.charAt(0)}
+                  </span>
                   <span className="text-xs font-semibold text-text">{c.author_name}</span>
                   <span className="text-[11px] text-dim">{formatDate(c.created_at)}</span>
                 </div>
-                <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                <p className="text-sm text-text leading-relaxed whitespace-pre-wrap pl-8">{c.content}</p>
               </div>
             ))}
           </div>
@@ -220,25 +236,25 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
 
         {/* 댓글 작성 폼 */}
         {user.id ? (
-          <div className="flex gap-2 pt-3 border-t border-border">
+          <div className="flex gap-2 pt-4 border-t border-border">
             <textarea
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
               placeholder="댓글을 입력해주세요..."
               maxLength={1000}
               rows={2}
-              className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 resize-none transition"
+              className="flex-1 px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-[#c8816b] focus:ring-1 focus:ring-[#c8816b]/30 resize-none transition"
             />
             <button
               onClick={handleComment}
               disabled={!commentText.trim() || submitting}
-              className="px-4 py-2 bg-accent text-white text-sm font-semibold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed self-end">
+              className="px-5 py-2 bg-[#c8816b] text-white text-sm font-semibold rounded-xl hover:bg-[#b5725e] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed self-end shadow-sm">
               {submitting ? '...' : '등록'}
             </button>
           </div>
         ) : (
-          <p className="text-xs text-dim text-center pt-3 border-t border-border">
-            댓글을 작성하려면 <Link href="/auth/login" className="text-accent underline">로그인</Link>이 필요합니다.
+          <p className="text-xs text-dim text-center pt-4 border-t border-border">
+            댓글을 작성하려면 <Link href="/auth/login" className="text-[#c8816b] font-semibold hover:underline">로그인</Link>이 필요합니다.
           </p>
         )}
       </div>
