@@ -29,8 +29,16 @@ export async function GET(
       return NextResponse.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // 조회수 증가
-    const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
+    // 조회수 증가: bot/preview가 아닌 실제 브라우저 요청만 카운트
+    const ua = _req.headers.get('user-agent') || '';
+    const isBot = /bot|crawl|spider|preview|headless|phantom|puppeteer|playwright/i.test(ua);
+    const isSecFetch = _req.headers.get('sec-fetch-dest'); // 브라우저만 보냄
+    let viewCount = notice.view_count;
+
+    if (!isBot && isSecFetch) {
+      const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
+      viewCount = newViewCount ?? notice.view_count + 1;
+    }
 
     // 댓글 조회
     const { data: comments } = await supabase
@@ -41,7 +49,7 @@ export async function GET(
       .order('created_at', { ascending: true });
 
     return NextResponse.json({
-      notice: { ...notice, view_count: newViewCount ?? notice.view_count + 1 },
+      notice: { ...notice, view_count: viewCount },
       comments: comments || [],
     });
   } catch (err) {
