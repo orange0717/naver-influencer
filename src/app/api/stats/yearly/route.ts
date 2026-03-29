@@ -27,7 +27,7 @@ function toMainCategory(cat: string | null): string {
 export async function GET() {
   try {
     const supabase = createServiceClient();
-    const years = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
+    const years = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
     // 전체 인플루언서 조회 (total_keywords로 챌린지 참여 여부 판단)
     let all: { category: string | null; naver_created_at: string | null; total_keywords: number | null }[] = [];
@@ -59,7 +59,7 @@ export async function GET() {
 
       if (row.naver_created_at) {
         const y = new Date(row.naver_created_at).getFullYear();
-        if (y >= 2019 && y <= 2025) {
+        if (y >= 2019 && y <= 2026) {
           const key = `${cat}|${y}`;
           stats[key] = (stats[key] || 0) + 1;
         }
