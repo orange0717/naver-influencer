@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -23,11 +23,6 @@ const NAV_ITEMS_AUTH = [
   { href: '/subscribe', label: '이용권' },
 ];
 
-/* ── N인플 소개 메뉴 ── */
-const INFO_GROUP = [
-  { href: '/guide', label: '서비스 가이드' },
-  { href: '/notice', label: '공지사항' },
-];
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | 'unified' | null;
@@ -44,9 +39,7 @@ export default function Header({ serverUser }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [infoOpen, setInfoOpen] = useState(false);
   const { user: clientUser, isLoading: authLoading, logout: authLogout } = useAuth();
-  const infoRef = useRef<HTMLDivElement>(null);
 
   // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
   const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser);
@@ -60,16 +53,7 @@ export default function Header({ serverUser }: HeaderProps) {
     router.refresh();
   };
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (infoRef.current && !infoRef.current.contains(e.target as Node)) setInfoOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const isActive = (href: string) => pathname.startsWith(href);
-  const infoActive = INFO_GROUP.some(n => pathname === n.href);
 
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
@@ -94,40 +78,6 @@ export default function Header({ serverUser }: HeaderProps) {
 
             {/* ── 데스크탑 네비게이션 ── */}
             <nav aria-label="메인 네비게이션" className="hidden lg:flex items-center gap-1">
-              {/* N인플 드롭다운 */}
-              <div className="relative" ref={infoRef}>
-                <button
-                  onClick={() => setInfoOpen(prev => !prev)}
-                  aria-expanded={infoOpen}
-                  aria-controls="info-dropdown"
-                  aria-label="N인플 메뉴"
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
-                    infoActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}>
-                  N인플
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
-                    aria-hidden="true"
-                    className={`transition-transform ${infoOpen ? 'rotate-180' : ''}`}>
-                    <path d="M3 5l3 3 3-3" />
-                  </svg>
-                </button>
-                {infoOpen && (
-                  <div id="info-dropdown" role="menu" className="absolute top-full left-0 mt-1 bg-surface rounded-xl shadow-lg border border-border py-1.5 z-50 min-w-[140px]">
-                    {INFO_GROUP.map(s => (
-                      <Link key={s.href} href={s.href}
-                        onClick={() => setInfoOpen(false)}
-                        className={`block px-4 py-2.5 transition-colors text-sm ${
-                          pathname === s.href ? 'text-accent font-semibold bg-accent/5' : 'text-text hover:bg-surface-hover hover:text-accent'
-                        }`}>
-                        {s.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="w-px h-5 bg-white/20 mx-1" />
-
               {(user.id ? NAV_ITEMS_AUTH : NAV_ITEMS_PUBLIC).map(item => (
                 <Link key={item.href} href={item.href}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
@@ -190,18 +140,6 @@ export default function Header({ serverUser }: HeaderProps) {
                   isActive(item.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                 }`}>
                 {item.label}
-              </Link>
-            ))}
-
-            {/* N인플 */}
-            <div className="border-t border-border/50 my-3 mx-2" />
-            <div className="px-3 py-2.5 text-[11px] font-extrabold text-dim tracking-widest uppercase">N인플</div>
-            {INFO_GROUP.map(s => (
-              <Link key={s.href} href={s.href} onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                  pathname === s.href ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
-                }`}>
-                {s.label}
               </Link>
             ))}
 

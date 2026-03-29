@@ -119,12 +119,14 @@ export default function SignupPage() {
 
       if (!res.ok) {
         const data = await res.json();
+        await supabase.auth.signOut();
         setError(data.error || '프로필 생성에 실패했습니다.');
         return;
       }
 
       const result = await res.json();
       if (!result.linked) {
+        await supabase.auth.signOut();
         setError('등록되지 않은 인플루언서입니다. 인플루언서홈 주소를 확인해주세요.');
         return;
       }

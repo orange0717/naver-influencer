@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +22,9 @@ export async function GET(
   if (!influencer) {
     return NextResponse.json({ error: '인플루언서를 찾을 수 없습니다' }, { status: 404 });
   }
+
+  // 팔로워수 실시간 갱신 (6시간 캐시, 병렬 실행)
+  const followerRefresh = refreshFollowerCount(supabase, influencer.id, influencer.naver_id, influencer.last_crawled_at);
 
   // 1) influencer_keywords 테이블에서 참여 키워드 조회
   const { data: ikKeywords } = await supabase
@@ -107,9 +111,13 @@ export async function GET(
     });
   });
 
+  // 팔로워수 갱신 대기
+  const freshFollowerCount = await followerRefresh;
+
   return NextResponse.json({
     influencer: {
       ...influencer,
+      total_follower_count: freshFollowerCount || influencer.total_follower_count,
       keywords: keywordsWithRank,
       recent_rankings: rankings || [],
       rank_history: rankHistory,

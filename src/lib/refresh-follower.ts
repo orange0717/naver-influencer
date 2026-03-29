@@ -1,0 +1,53 @@
+import { createServiceClient } from '@/lib/supabase-server';
+
+const PROFILE_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+/** 네이버 프로필에서 최신 팔로워수 가져와 DB 갱신 (6시간 캐시) */
+export async function refreshFollowerCount(
+  supabase: ReturnType<typeof createServiceClient>,
+  influencerId: string,
+  naverId: string,
+  lastCrawledAt: string | null,
+): Promise<number | null> {
+  // 6시간 이내 갱신된 경우 스킵
+  if (lastCrawledAt) {
+    const elapsed = Date.now() - new Date(lastCrawledAt).getTime();
+    if (elapsed < 6 * 60 * 60 * 1000) return null;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(`https://in.naver.com/${naverId}`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': PROFILE_UA, 'Accept-Language': 'ko-KR,ko;q=0.9', Referer: 'https://in.naver.com/' },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    const idx = html.indexOf('__PRELOADED_STATE__');
+    if (idx === -1) return null;
+
+    const jsonStart = html.indexOf('{', idx);
+    let depth = 0, jsonEnd = -1;
+    for (let i = jsonStart; i < html.length; i++) {
+      if (html[i] === '{') depth++;
+      if (html[i] === '}') { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+    }
+    if (jsonEnd === -1) return null;
+
+    const state = JSON.parse(html.substring(jsonStart, jsonEnd));
+    const followerCount = state?.space?.data?.totalFollowerCount;
+
+    if (followerCount && followerCount > 0) {
+      await supabase.from('influencers').update({
+        total_follower_count: followerCount,
+        last_crawled_at: new Date().toISOString(),
+      }).eq('id', influencerId);
+      return followerCount;
+    }
+  } catch { /* 실패해도 기존 데이터 유지 */ }
+  return null;
+}

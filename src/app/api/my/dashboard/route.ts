@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getAuthUser } from '@/lib/auth';
+import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 interface JoinedKeywordChallenge {
   keyword: string;
@@ -50,13 +51,16 @@ export async function GET(request: NextRequest) {
   // 인플루언서 정보 (필요한 필드만 선택)
   const { data: influencer } = await supabase
     .from('influencers')
-    .select('id, naver_id, display_name, category, my_keyword_category, image_url, subscriber_count, total_follower_count')
+    .select('id, naver_id, display_name, category, my_keyword_category, image_url, subscriber_count, total_follower_count, last_crawled_at')
     .eq('id', userProfile.linked_influencer_id)
     .single();
 
   if (!influencer) {
     return NextResponse.json({ linked: false, influencer: null, stats: null, rankings: [], competitors: [], guide: [] });
   }
+
+  // 팔로워수 실시간 갱신 (6시간 캐시, 백그라운드 병렬 실행)
+  const followerRefresh = refreshFollowerCount(supabase, influencer.id, influencer.naver_id, influencer.last_crawled_at);
 
   // 최신 순위 데이터 (keyword_rankings) - 최근 30일로 제한
   const today = new Date().toISOString().slice(0, 10);
@@ -224,6 +228,9 @@ export async function GET(request: NextRequest) {
     };
   }).sort((a, b) => a.rank_position - b.rank_position);
 
+  // 팔로워수 갱신 대기 (최대 8초, 실패해도 기존 데이터 사용)
+  const freshFollowerCount = await followerRefresh;
+
   return NextResponse.json({
     linked: true,
     influencer: {
@@ -233,7 +240,7 @@ export async function GET(request: NextRequest) {
       category: influencer.my_keyword_category || influencer.category,
       image_url: influencer.image_url,
       subscriber_count: influencer.subscriber_count,
-      total_follower_count: influencer.total_follower_count,
+      total_follower_count: freshFollowerCount || influencer.total_follower_count,
     },
     stats,
     rankings,

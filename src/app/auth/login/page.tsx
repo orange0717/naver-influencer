@@ -31,7 +31,7 @@ export default function LoginPage() {
     try {
       const supabase = createSupabaseBrowserClient();
 
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -42,6 +42,19 @@ export default function LoginPage() {
         } else {
           setError(authError.message);
         }
+        return;
+      }
+
+      // users 테이블에 레코드가 있는지 확인 (회원가입 완료 여부)
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_id', authData.user?.id)
+        .single();
+
+      if (!userRecord) {
+        await supabase.auth.signOut();
+        setError('회원가입이 완료되지 않은 계정입니다. 회원가입 페이지에서 다시 가입해주세요.');
         return;
       }
 
