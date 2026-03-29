@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const TAG_LABEL: Record<string, string> = {
   notice: '공지',
@@ -64,6 +65,18 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
   const router = useRouter();
   const { user } = useAuth();
 
+  const getAuthHeaders = useCallback(async () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+    } catch { /* ignore */ }
+    return headers;
+  }, []);
+
   useEffect(() => {
     params.then(p => setNoticeId(p.id));
   }, [params]);
@@ -87,9 +100,10 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
     if (!commentText.trim() || submitting) return;
     setSubmitting(true);
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch(`/api/notices/${noticeId}/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ content: commentText.trim() }),
       });
       if (!res.ok) {
@@ -112,7 +126,8 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
     if (!confirm('정말 삭제하시겠습니까?')) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE' });
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE', headers });
       if (res.ok) {
         router.push('/notice');
       } else {

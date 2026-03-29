@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const TAGS = [
   { value: 'notice', label: '공지' },
@@ -32,9 +33,17 @@ export default function NoticeWritePage() {
 
     setLoading(true);
     try {
+      // Supabase 세션에서 토큰을 가져와 Bearer 인증
+      const supabase = createSupabaseBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch('/api/notices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ tag, title: title.trim(), content: content.trim() }),
       });
 
