@@ -12,7 +12,7 @@ export default function TrialPage() {
 
   const extractNaverId = (input: string): string => {
     const trimmed = input.trim();
-    const urlMatch = trimmed.match(/(?:https?:\/\/)?in\.naver\.com\/([a-zA-Z0-9_]+)/);
+    const urlMatch = trimmed.match(/(?:https?:\/\/)?in\.naver\.com\/([a-zA-Z0-9._-]+)/);
     if (urlMatch) return urlMatch[1].toLowerCase();
     return trimmed.replace(/^@/, '').toLowerCase();
   };

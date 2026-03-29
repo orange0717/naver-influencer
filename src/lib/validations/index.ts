@@ -44,12 +44,12 @@ export function validateSearchParams<T>(schema: ZodSchema<T>, params: URLSearchP
 
 // ─── 공용 스키마 ───
 
-/** 네이버 ID (인플루언서/블로거) — 영문, 숫자, 밑줄, 하이픈만 허용 */
+/** 네이버 ID (인플루언서/블로거) — 영문, 숫자, 밑줄, 하이픈, 마침표 허용 */
 export const naverIdSchema = z
   .string()
   .min(2, '2자 이상 입력해주세요.')
   .max(30, '30자 이하로 입력해주세요.')
-  .regex(/^[a-zA-Z0-9_-]+$/, '영문, 숫자, 밑줄, 하이픈만 사용 가능합니다.')
+  .regex(/^[a-zA-Z0-9._-]+$/, '영문, 숫자, 밑줄, 하이픈, 마침표만 사용 가능합니다.')
   .transform((v) => v.trim().toLowerCase());
 
 /** 블로그 ID (영문,숫자,밑줄,하이픈) */
