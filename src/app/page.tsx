@@ -56,6 +56,15 @@ function useNewInfluencers() {
   return list;
 }
 
+/* ── 섹션 구분선 ── */
+function SectionDivider() {
+  return (
+    <div className="flex justify-center py-0">
+      <div className="w-16 h-[2px] bg-accent/25 rounded-full" />
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
@@ -105,49 +114,56 @@ export default function LandingPage() {
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
 
+      <SectionDivider />
+
       {/* ═══════════ 신규 인플루언서 (surface) ═══════════ */}
-      {newInfluencers.length > 0 && (
-        <section className="bg-surface px-4 py-16 md:py-20">
+      <section className="bg-surface px-4 py-16 md:py-20">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
               <p className="text-xs text-accent font-semibold tracking-widest mb-3">NEW INFLUENCERS</p>
               <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">신규 인플루언서</h2>
-              <p className="text-sm text-dim">최근 등록된 인플루언서들입니다</p>
+              <p className="text-sm text-dim">최근 선정된 인플루언서들입니다</p>
             </div>
 
-            <div className="grid gap-3">
-              {newInfluencers.slice(0, 8).map((inf) => (
-                <a
-                  key={inf.id}
-                  href={`https://in.naver.com/${inf.naver_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between px-5 py-4 rounded-xl border border-border bg-bg hover:border-accent/40 transition"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {inf.image_url ? (
-                      <img src={inf.image_url} alt={inf.display_name} className="w-9 h-9 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center text-accent font-bold text-sm shrink-0">
-                        {inf.display_name.charAt(0)}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <span className="font-semibold text-sm block truncate">{inf.display_name}</span>
-                      <span className="text-[11px] text-dim">@{inf.naver_id} · {inf.category}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 text-right">
-                    <div>
-                      <span className="text-xs text-dim block">팬 {inf.subscriber_count.toLocaleString()}</span>
-                      {inf.first_seen_at && (
-                        <span className="text-[10px] text-dim/70">{new Date(inf.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 선정</span>
+            {newInfluencers.length > 0 ? (
+              <div className="grid gap-3">
+                {newInfluencers.slice(0, 10).map((inf) => (
+                  <a
+                    key={inf.id}
+                    href={`https://in.naver.com/${inf.naver_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-5 py-4 rounded-xl border border-border bg-bg hover:border-accent/40 transition"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {inf.image_url ? (
+                        <img src={inf.image_url} alt={inf.display_name} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center text-accent font-bold text-sm shrink-0">
+                          {inf.display_name.charAt(0)}
+                        </div>
                       )}
+                      <div className="min-w-0">
+                        <span className="font-semibold text-sm block truncate">{inf.display_name}</span>
+                        <span className="text-[11px] text-dim">@{inf.naver_id} · {inf.category}</span>
+                      </div>
                     </div>
-                  </div>
-                </a>
-              ))}
-            </div>
+                    <div className="flex items-center gap-2 shrink-0 text-right">
+                      <div>
+                        <span className="text-xs text-dim block">팬 {inf.subscriber_count.toLocaleString()}</span>
+                        {inf.first_seen_at && (
+                          <span className="text-[10px] text-dim/70">{new Date(inf.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 선정</span>
+                        )}
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-sm text-dim">
+                최근 선정된 인플루언서 정보를 불러오는 중...
+              </div>
+            )}
 
             <div className="text-center mt-6">
               <Link href="/influencers" className="text-sm text-accent font-semibold hover:underline">
@@ -156,7 +172,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-      )}
+
+      <SectionDivider />
 
       {/* ═══════════ 데이터 현황 (bg) ═══════════ */}
       <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
@@ -179,6 +196,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <SectionDivider />
 
       {/* ═══════════ 핵심 기능 (surface) ═══════════ */}
       <section className="bg-surface px-4 py-20 md:py-24">
@@ -233,6 +252,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <SectionDivider />
+
       {/* ═══════════ 추천 대상 (surface) ═══════════ */}
       <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
@@ -261,6 +282,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <SectionDivider />
 
       {/* ═══════════ 서비스 미리보기 (surface) ═══════════ */}
       <section className="bg-surface px-4 py-20 md:py-24">
@@ -416,6 +439,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <SectionDivider />
 
       {/* ═══════════ 하단 CTA (bg) ═══════════ */}
       <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
