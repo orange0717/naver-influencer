@@ -27,7 +27,7 @@ interface InfluencerItem {
   isStopped?: boolean;
 }
 
-type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'last_crawled_at';
+type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'first_seen_at', label: '선정일순' },
@@ -207,9 +207,15 @@ export default function InfluencersPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('integrated_top3_count')}>
                     TOP3{sortArrow('integrated_top3_count')}
                   </th>
-                  <th className="text-center py-3 px-2 font-semibold text-dim text-[10px]">1위</th>
-                  <th className="text-center py-3 px-2 font-semibold text-dim text-[10px]">2위</th>
-                  <th className="text-center py-3 px-2 font-semibold text-dim text-[10px]">3위</th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top1_count')}>
+                    1위{sortArrow('top1_count')}
+                  </th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top2_count')}>
+                    2위{sortArrow('top2_count')}
+                  </th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top3_count')}>
+                    3위{sortArrow('top3_count')}
+                  </th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('first_seen_at')}>
                     선정일{sortArrow('first_seen_at')}
                   </th>

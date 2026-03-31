@@ -96,6 +96,9 @@ async function getInfluencersFromDB(
     last_crawled_at: 'last_crawled_at',
     total_keywords: 'total_keywords',
     integrated_top3_count: 'integrated_top3_count',
+    top1_count: 'top1_count',
+    top2_count: 'top2_count',
+    top3_count: 'top3_count',
   };
   const sortColumn = allowedSorts[sortBy] || 'naver_created_at';
   const ascending = order === 'asc';
