@@ -168,53 +168,53 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, processed: 0 });
     }
 
-    // 배치 처리
+    // 배치 처리 — SearchAd API는 관련 키워드도 반환하므로 DB 일괄 매칭
+    // 1단계: 전체 키워드 ID 맵 구성 (keyword → id)
+    const allKeywordIds = new Map<string, string>();
+    for (const kw of keywords) {
+      allKeywordIds.set(kw.keyword, kw.id);
+    }
+
     for (let i = 0; i < keywords.length; i += BATCH_SIZE) {
       const batch = keywords.slice(i, i + BATCH_SIZE);
       const kwNames = batch.map(k => k.keyword);
 
       try {
-        // 검색광고 API (검색량)
+        // 검색광고 API (검색량) — 관련 키워드 포함 전체 반환
         const volumes = hasSearchAdKey ? await getSearchVolumes(kwNames) : new Map();
 
-        // DataLab API (트렌드)
+        // DataLab API (트렌드) — hint 키워드만
         const trends = hasDatalabKey ? await getTrendData(kwNames) : new Map();
 
-        for (const kw of batch) {
-          const vol = volumes.get(kw.keyword);
-          const trend = trends.get(kw.keyword);
+        // 2단계: API 반환 키워드 중 DB에 있는 것 모두 업데이트
+        const matchedKeywordIds = new Set<string>();
 
-          const updates: Record<string, unknown> = {
-            search_volume_updated_at: new Date().toISOString(),
-          };
+        if (volumes.size > 0) {
+          // 반환된 전체 키워드 중 DB에 있는 것 찾기 (배치 100개 범위 내)
+          const returnedKeywords = [...volumes.keys()];
+          const dbMatchIds: string[] = [];
 
-          if (vol) {
-            updates.search_volume_pc = vol.pc;
-            updates.search_volume_mobile = vol.mobile;
-            updates.search_volume_monthly = vol.pc + vol.mobile;
-            updates.competition_level = mapCompetition(vol.comp);
-          }
+          // 현재 배치의 hint 키워드 + API 반환 키워드 모두 매칭
+          for (const [keyword, vol] of volumes) {
+            const kwId = allKeywordIds.get(keyword);
+            if (kwId) {
+              dbMatchIds.push(kwId);
+              matchedKeywordIds.add(kwId);
+              const updates: Record<string, unknown> = {
+                search_volume_updated_at: new Date().toISOString(),
+                search_volume_pc: vol.pc,
+                search_volume_mobile: vol.mobile,
+                search_volume_monthly: vol.pc + vol.mobile,
+                competition_level: mapCompetition(vol.comp),
+              };
 
-          if (trend) {
-            updates.trend_direction = trend.direction;
-            updates.trend_percentage = trend.percentage;
-          }
+              await supabase.from('keyword_challenges').update(updates).eq('id', kwId);
 
-          const { error } = await supabase
-            .from('keyword_challenges')
-            .update(updates)
-            .eq('id', kw.id);
-
-          if (error) {
-            console.error(`[update-volumes] DB error for "${kw.keyword}":`, error.message);
-            totalFailed++;
-          } else {
-            // search_volume_history에도 기록
-            if (vol) {
+              // search_volume_history 기록
               const today = new Date().toISOString().slice(0, 10);
               await supabase.from('search_volume_history').upsert(
                 {
-                  keyword_id: kw.id,
+                  keyword_id: kwId,
                   period_start: today,
                   period_end: today,
                   period_type: 'daily',
@@ -224,8 +224,62 @@ export async function GET(request: NextRequest) {
                 },
                 { onConflict: 'keyword_id,period_start,period_type' },
               );
+              totalProcessed++;
             }
-            totalProcessed++;
+          }
+
+          // DB에 없는 반환 키워드도 keyword_clean으로 추가 매칭
+          if (returnedKeywords.length > dbMatchIds.length) {
+            const unmatchedKws = returnedKeywords.filter(kw => !allKeywordIds.has(kw));
+            if (unmatchedKws.length > 0) {
+              const cleanNames = unmatchedKws.map(kw => kw.replace(/\s+/g, '').toLowerCase());
+              for (let j = 0; j < cleanNames.length; j += 50) {
+                const cleanBatch = cleanNames.slice(j, j + 50);
+                const origBatch = unmatchedKws.slice(j, j + 50);
+                const { data: dbMatches } = await supabase
+                  .from('keyword_challenges')
+                  .select('id, keyword_clean')
+                  .in('keyword_clean', cleanBatch);
+
+                if (dbMatches) {
+                  const cleanToOrig = new Map<string, string>();
+                  origBatch.forEach((kw, idx) => cleanToOrig.set(cleanBatch[idx], kw));
+
+                  for (const match of dbMatches) {
+                    const origKw = cleanToOrig.get(match.keyword_clean);
+                    const vol = origKw ? volumes.get(origKw) : null;
+                    if (vol && !matchedKeywordIds.has(match.id)) {
+                      matchedKeywordIds.add(match.id);
+                      await supabase.from('keyword_challenges').update({
+                        search_volume_updated_at: new Date().toISOString(),
+                        search_volume_pc: vol.pc,
+                        search_volume_mobile: vol.mobile,
+                        search_volume_monthly: vol.pc + vol.mobile,
+                        competition_level: mapCompetition(vol.comp),
+                      }).eq('id', match.id);
+                      totalProcessed++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // hint 키워드에 트렌드 데이터 적용
+        for (const kw of batch) {
+          const trend = trends.get(kw.keyword);
+          if (trend) {
+            await supabase.from('keyword_challenges').update({
+              trend_direction: trend.direction,
+              trend_percentage: trend.percentage,
+            }).eq('id', kw.id);
+          }
+
+          // 볼륨 매칭 안 된 hint 키워드: updated_at 갱신하지 않음 (다음에 재시도)
+          if (!matchedKeywordIds.has(kw.id) && !volumes.has(kw.keyword)) {
+            // search_volume_updated_at을 갱신하지 않아서 다음 크론에서 재시도
+            totalFailed++;
           }
         }
 
