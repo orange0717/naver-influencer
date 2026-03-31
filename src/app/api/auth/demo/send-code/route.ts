@@ -76,7 +76,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[send-code] 실패:', err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: '인증번호 발송에 실패했습니다.' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[send-code] 실패:', msg);
+    return NextResponse.json({ error: '인증번호 발송에 실패했습니다.', debug: msg }, { status: 500 });
   }
 }
