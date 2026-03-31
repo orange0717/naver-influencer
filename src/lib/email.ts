@@ -12,7 +12,7 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'N인플 <noreply@ninfl.co.k
 
 /** 데모 인증번호 이메일 */
 export async function sendDemoVerificationEmail(to: string, code: string) {
-  return getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to,
     subject: `[N인플] 데모 체험 인증번호: ${code}`,
@@ -36,11 +36,15 @@ export async function sendDemoVerificationEmail(to: string, code: string) {
       </div>
     `,
   });
+  if (error) {
+    console.error('[email] 데모 인증번호 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
 }
 
 /** 데모 만료 알림 이메일 */
 export async function sendDemoExpiredEmail(to: string, displayName: string) {
-  return getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to,
     subject: `[N인플] ${displayName}님의 데모 체험이 종료되었습니다`,
@@ -69,11 +73,15 @@ export async function sendDemoExpiredEmail(to: string, displayName: string) {
       </div>
     `,
   });
+  if (error) {
+    console.error('[email] 데모 만료 알림 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
 }
 
 /** 데모 만료 3일 전 리마인더 이메일 */
 export async function sendDemoReminderEmail(to: string, displayName: string, daysLeft: number) {
-  return getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to,
     subject: `[N인플] 데모 체험이 ${daysLeft}일 후 종료됩니다`,
@@ -102,4 +110,8 @@ export async function sendDemoReminderEmail(to: string, displayName: string, day
       </div>
     `,
   });
+  if (error) {
+    console.error('[email] 데모 리마인더 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
 }
