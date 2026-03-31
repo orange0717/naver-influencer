@@ -384,13 +384,20 @@ export async function GET(request: NextRequest) {
           ? new Date(Math.max(...challengeDates)).toISOString()
           : null;
 
+        const top1 = rankedKeywords.filter(k => k.rank === 1).length;
+        const top2 = rankedKeywords.filter(k => k.rank === 2).length;
+        const top3 = rankedKeywords.filter(k => k.rank === 3).length;
+
         const updateData: Record<string, unknown> = {
           total_keywords: keywords.length,
           best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
           avg_rank: rankedKeywords.length > 0
             ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
             : null,
-          integrated_top3_count: rankedKeywords.filter(k => k.rank <= 3).length,
+          integrated_top3_count: top1 + top2 + top3,
+          top1_count: top1,
+          top2_count: top2,
+          top3_count: top3,
         };
 
         // 실제 참여일이 있을 때만 last_crawled_at 업데이트
