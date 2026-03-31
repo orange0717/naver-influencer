@@ -125,7 +125,7 @@ export default function InfluencersPage() {
   };
 
   const sortArrow = (key: SortKey) => {
-    if (sortBy !== key) return '';
+    if (sortBy !== key) return ' ↕';
     return order === 'desc' ? ' ↓' : ' ↑';
   };
 
