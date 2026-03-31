@@ -42,7 +42,7 @@
     },
     {
       "path": "/api/cron/update-followers",
-      "schedule": "30 23 * * *"
+      "schedule": "0 21 * * *"
     },
     {
       "path": "/api/cron/demo-expiry",
