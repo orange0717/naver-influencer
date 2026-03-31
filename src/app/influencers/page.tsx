@@ -55,6 +55,7 @@ export default function InfluencersPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortKey>('first_seen_at');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const [showInactive, setShowInactive] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -67,6 +68,7 @@ export default function InfluencersPage() {
       });
       if (category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
+      if (showInactive) params.set('inactive', 'true');
 
       const res = await fetch(`/api/influencers?${params}`);
       const data = await res.json();
@@ -80,7 +82,7 @@ export default function InfluencersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, category, search, sortBy, order]);
+  }, [page, category, search, sortBy, order, showInactive]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -171,6 +173,17 @@ export default function InfluencersPage() {
             {opt.label}{sortArrow(opt.key)}
           </button>
         ))}
+        <span className="mx-1 text-border">|</span>
+        <button
+          onClick={() => { setShowInactive(v => !v); setPage(1); }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            showInactive
+              ? 'bg-gray-200 text-gray-600 border border-gray-300'
+              : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
+          }`}
+        >
+          비활성 포함{showInactive ? ' ON' : ''}
+        </button>
       </div>
 
       {loading ? (

@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50));
   const newOnly = searchParams.get('new') === 'true';
+  const showInactive = searchParams.get('inactive') === 'true';
   const sortBy = searchParams.get('sort') || 'first_seen_at';
   const order = searchParams.get('order') || 'desc';
 
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     if (hasDbData) {
       // DB 기반 조회
-      return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly, sortBy, order });
+      return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly, showInactive, sortBy, order });
     }
 
     // DB에 데이터 없으면 실시간 API 폴백
@@ -49,9 +50,9 @@ export async function GET(request: NextRequest) {
 /** DB 기반 인플루언서 조회 */
 async function getInfluencersFromDB(
   supabase: ReturnType<typeof createServiceClient>,
-  opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean; sortBy: string; order: string },
+  opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean; showInactive: boolean; sortBy: string; order: string },
 ) {
-  const { category, search, page, limit, newOnly, sortBy, order } = opts;
+  const { category, search, page, limit, newOnly, showInactive, sortBy, order } = opts;
   const offset = (page - 1) * limit;
 
   // 카테고리 목록: 키워드 페이지와 동일한 소스 사용 (네이버 API)
@@ -81,6 +82,11 @@ async function getInfluencersFromDB(
     }
   }
 
+  // 비활성 인플루언서 제외 (기본값: 이미지 없고 구독자 0인 계정 숨김)
+  if (!showInactive) {
+    query = query.gt('subscriber_count', 0);
+  }
+
   // 신규 인플루언서만
   if (newOnly) {
     const sevenDaysAgo = new Date();
@@ -98,10 +104,10 @@ async function getInfluencersFromDB(
   };
   const sortColumn = allowedSorts[sortBy] || 'naver_created_at';
   const ascending = order === 'asc';
+  // NULL은 항상 맨 뒤로
   const isDateSort = sortColumn === 'naver_created_at';
-  // 선정일 정렬: NULL(아직 미수집)은 최신 등록으로 취급 → DESC일 때 맨 위
   query = query
-    .order(sortColumn, { ascending, nullsFirst: isDateSort ? !ascending : false });
+    .order(sortColumn, { ascending, nullsFirst: false });
   if (isDateSort) {
     query = query.order('first_seen_at', { ascending });
   }
