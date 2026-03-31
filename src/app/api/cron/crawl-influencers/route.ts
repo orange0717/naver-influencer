@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
             my_keyword: c.myKeyword || '',
             category_my_type: c.categoryMyType || '',
             category: c.myKeywordCategory || kw.category,
-            last_crawled_at: new Date().toISOString(),
+            // last_crawled_at은 갱신하지 않음 — crawl-challenge-ranks에서 실제 참여일로 설정
           }));
 
           const { error } = await supabase

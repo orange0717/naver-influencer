@@ -20,6 +20,7 @@ interface InfluencerItem {
   naverCreatedAt?: string;
   firstSeenAt?: string;
   lastCrawledAt?: string;
+  isInactive?: boolean;
 }
 
 type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'last_crawled_at';
@@ -228,6 +229,9 @@ export default function InfluencersPage() {
                             {isNew(inf.firstSeenAt) && (
                               <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                             )}
+                            {inf.isInactive && (
+                              <span className="text-[9px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">1년이상 활동이력 없음</span>
+                            )}
                           </div>
                           <span className="text-xs text-dim">@{inf.naverId}</span>
                         </div>
@@ -297,6 +301,9 @@ export default function InfluencersPage() {
                       </a>
                       {isNew(inf.firstSeenAt) && (
                         <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
+                      )}
+                      {inf.isInactive && (
+                        <span className="text-[9px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">1년이상 활동이력 없음</span>
                       )}
                     </div>
                     <span className="text-xs text-dim">@{inf.naverId}</span>

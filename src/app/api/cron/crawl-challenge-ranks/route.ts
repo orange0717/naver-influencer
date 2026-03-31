@@ -373,17 +373,34 @@ export async function GET(request: NextRequest) {
 
         // 6. influencers 테이블 집계 업데이트 (rank가 유효한 것만)
         const rankedKeywords = keywords.filter(k => k.rank != null && k.rank > 0);
+
+        // 마지막 참여일: 네이버 API의 lastChallengedAt 중 가장 최근 날짜 사용
+        const challengeDates = keywords
+          .map(k => k.lastChallengedAt)
+          .filter(Boolean)
+          .map(d => new Date(d).getTime())
+          .filter(t => !isNaN(t));
+        const lastChallengedAt = challengeDates.length > 0
+          ? new Date(Math.max(...challengeDates)).toISOString()
+          : null;
+
+        const updateData: Record<string, unknown> = {
+          total_keywords: keywords.length,
+          best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
+          avg_rank: rankedKeywords.length > 0
+            ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
+            : null,
+          integrated_top3_count: rankedKeywords.filter(k => k.rank <= 3).length,
+        };
+
+        // 실제 참여일이 있을 때만 last_crawled_at 업데이트
+        if (lastChallengedAt) {
+          updateData.last_crawled_at = lastChallengedAt;
+        }
+
         await supabase
           .from('influencers')
-          .update({
-            total_keywords: keywords.length,
-            best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
-            avg_rank: rankedKeywords.length > 0
-              ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
-              : null,
-            integrated_top3_count: rankedKeywords.filter(k => k.rank <= 3).length,
-            last_crawled_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', inf.id);
 
         totalProcessed++;

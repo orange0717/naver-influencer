@@ -163,6 +163,7 @@ async function getInfluencersFromDB(
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
+    isInactive: !inf.image_url && (inf.subscriber_count || 0) === 0,
   }));
 
   return NextResponse.json({
