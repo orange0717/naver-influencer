@@ -12,10 +12,12 @@ import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob
  *  1) subscriber_count = 0인 인플루언서 우선
  *  2) 나머지: updated_at 오래된 순
  *
- * 배치: 40건/실행 (Vercel 60초 제한 내)
+ * 배치: 250건/실행 (Vercel Pro 300초 제한 내)
  */
 
-const BATCH_SIZE = 40;
+export const maxDuration = 300;
+
+const BATCH_SIZE = 250;
 
 /** 네이버 프로필에서 팔로워 데이터 추출 */
 async function fetchProfileData(naverId: string) {
