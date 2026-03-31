@@ -26,15 +26,15 @@ export interface UpdateItem {
  */
 export const UPDATES: UpdateItem[] = [
   {
-    version: '2026-03-31',
-    date: '2026.03.31',
-    title: '3월 업데이트 요약',
+    version: '2026-03-29',
+    date: '2026.03.29',
+    title: 'N인플 업데이트 현황',
     changes: [
-      '인플루언서 상세 페이지 개편',
-      '키워드 검색량 분석 기능 추가',
-      '대시보드 순위 추이 차트 개선',
+      '팬 수 전체 표기',
+      '7일 무료 데모체험',
+      '연도별 인플루언서 현황',
     ],
-    href: '/notice',
+    href: '/notice/f424ae0f-6827-4d64-aa8b-737e519a8367',
   },
 ];
 
