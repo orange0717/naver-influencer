@@ -39,6 +39,7 @@ export interface NaverRanking {
   fanCount: string;
   category: string;
   postTitle: string | null;
+  postUrl: string | null;
 }
 
 // ─── 설정 상수 ───
@@ -325,6 +326,7 @@ export async function fetchRankings(keyword: string): Promise<NaverRanking[]> {
       if (t) categories.push(t);
     });
     const postTitle = $el.find('.elss.tit').text().trim();
+    const postLink = $el.find('a.title_link, a[href*="blog.naver.com"], a[href*="post.naver.com"], .detail_area a').first().attr('href') || '';
 
     rankings.push({
       rank: i + 1,
@@ -334,6 +336,7 @@ export async function fetchRankings(keyword: string): Promise<NaverRanking[]> {
       fanCount: fanText,
       category: categories.join(' · '),
       postTitle: postTitle || null,
+      postUrl: postLink || null,
     });
   });
 

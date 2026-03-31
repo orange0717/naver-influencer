@@ -11,6 +11,7 @@ interface KeywordDetail {
   category: string;
   participant_count: number;
   competition_level: string;
+  search_volume_monthly?: number;
 }
 
 interface RankingItem {
@@ -22,6 +23,7 @@ interface RankingItem {
   fan_count?: string;
   naver_id?: string;
   post_title?: string;
+  post_url?: string;
   rank_change: number;
 }
 
@@ -84,7 +86,6 @@ export default function KeywordDetailPage() {
         const res = await fetch(`/api/keywords/${id}/trend`);
         if (!res.ok) return;
         const data = await res.json();
-        // API returns { date, volume } -> chart expects { week, volume }
         setTrendData(
           (data.trendData || []).map((d: { date: string; volume: number }) => ({
             week: d.date,
@@ -114,14 +115,17 @@ export default function KeywordDetailPage() {
     return (
       <div className="text-center py-20">
         <p className="text-dim">키워드를 찾을 수 없습니다.</p>
-        <Link href="/keywords" className="text-accent text-sm hover:underline mt-2 inline-block">← 키워드 목록</Link>
+        <Link href="/keywords" className="text-accent text-sm hover:underline mt-2 inline-block">키워드 목록</Link>
       </div>
     );
   }
 
+  const top3Rankings = rankings.filter(r => r.rank_position <= 3);
+  const otherRankings = rankings.filter(r => r.rank_position > 3);
+
   return (
     <div className="space-y-6">
-      <Link href="/keywords" className="text-xs text-accent font-bold hover:underline">← 키워드 목록</Link>
+      <Link href="/keywords" className="text-xs text-accent font-bold hover:underline">키워드 목록</Link>
 
       {/* 헤더 */}
       <div className="bg-surface rounded-xl border border-border p-6">
@@ -193,14 +197,74 @@ export default function KeywordDetailPage() {
         </div>
       )}
 
-      {/* 실시간 인플루언서 순위 */}
+      {/* TOP 3 인플루언서 카드 */}
+      {!rankLoading && top3Rankings.length > 0 && (
+        <div className="bg-surface rounded-xl border border-border">
+          <div className="flex items-center justify-between p-5 border-b border-border">
+            <div className="text-sm font-bold">
+              TOP 3 인플루언서
+              <span className="ml-2 text-xs font-normal text-up bg-up/12 px-2 py-0.5 rounded">LIVE</span>
+            </div>
+            <span className="text-xs text-dim">네이버 검색 기반</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/30">
+            {top3Rankings.map(r => {
+              const medalColors = [
+                'text-yellow-500 bg-yellow-500/10 border-yellow-500/30',
+                'text-gray-400 bg-gray-400/10 border-gray-400/30',
+                'text-amber-700 bg-amber-700/10 border-amber-700/30',
+              ];
+              const medalLabels = ['1st', '2nd', '3rd'];
+              const idx = r.rank_position - 1;
+              return (
+                <div key={r.id} className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border ${medalColors[idx]}`}>
+                      {medalLabels[idx]}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {r.naver_id ? (
+                        <a href={`https://in.naver.com/${r.naver_id}`} target="_blank" rel="noopener noreferrer"
+                          className="font-bold text-sm hover:text-accent transition-colors truncate block">
+                          {r.influencer_name}
+                        </a>
+                      ) : (
+                        <span className="font-bold text-sm truncate block">{r.influencer_name}</span>
+                      )}
+                      <div className="flex items-center gap-1.5 text-xs text-dim">
+                        {r.naver_id && <span>@{r.naver_id}</span>}
+                        {r.fan_count && <span>· {r.fan_count}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-dim mb-1">{r.influencer_category}</div>
+                  {r.post_title && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-bg/50 border border-border/50">
+                      <p className="text-[10px] text-dim font-semibold mb-1">최근 포스트</p>
+                      {r.post_url ? (
+                        <a href={r.post_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-text hover:text-accent transition-colors line-clamp-2 leading-relaxed">
+                          {r.post_title}
+                        </a>
+                      ) : (
+                        <p className="text-xs text-text line-clamp-2 leading-relaxed">{r.post_title}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 전체 인플루언서 순위 */}
       <div className="bg-surface rounded-xl border border-border">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="text-sm font-bold">
-            실시간 인플루언서 순위
-            <span className="ml-2 text-xs font-normal text-up bg-up/12 px-2 py-0.5 rounded">LIVE</span>
+            전체 인플루언서 순위
+            <span className="ml-2 text-[11px] font-normal text-dim">{rankings.length}명</span>
           </div>
-          <span className="text-xs text-dim">네이버 검색 기반</span>
         </div>
 
         {rankLoading ? (
@@ -230,17 +294,19 @@ export default function KeywordDetailPage() {
               </thead>
               <tbody>
                 {rankings.map(r => (
-                  <tr key={r.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
+                  <tr key={r.id} className={`border-b border-border/50 hover:bg-surface-hover transition-colors ${
+                    r.rank_position <= 3 ? 'bg-accent/[0.03]' : ''
+                  }`}>
                     <td className="py-3 px-4"><RankBadge rank={r.rank_position} size="sm" /></td>
                     <td className="py-3 px-4 text-center">
                       <RankChange change={r.rank_change} />
                     </td>
                     <td className="py-3 px-4">
                       {r.naver_id ? (
-                        <Link href={`/influencers/${r.naver_id}`}
+                        <a href={`https://in.naver.com/${r.naver_id}`} target="_blank" rel="noopener noreferrer"
                           className="font-semibold hover:text-accent transition-colors">
                           {r.influencer_name}
-                        </Link>
+                        </a>
                       ) : r.influencer_url ? (
                         <a href={r.influencer_url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold hover:text-accent transition-colors">
@@ -253,7 +319,16 @@ export default function KeywordDetailPage() {
                     </td>
                     <td className="py-3 px-4 text-right text-xs text-dim">{r.influencer_category}</td>
                     <td className="py-3 px-4 text-right text-xs font-bold font-rank">{r.fan_count || '-'}</td>
-                    <td className="py-3 px-4 text-xs text-dim truncate max-w-[200px] hidden lg:table-cell">{r.post_title || '-'}</td>
+                    <td className="py-3 px-4 text-xs text-dim truncate max-w-[200px] hidden lg:table-cell">
+                      {r.post_url ? (
+                        <a href={r.post_url} target="_blank" rel="noopener noreferrer"
+                          className="hover:text-accent transition-colors">
+                          {r.post_title || '-'}
+                        </a>
+                      ) : (
+                        r.post_title || '-'
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -262,14 +337,16 @@ export default function KeywordDetailPage() {
             {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-border/50">
               {rankings.map(r => (
-                <div key={r.id} className="p-4 flex items-center gap-3">
+                <div key={r.id} className={`p-4 flex items-center gap-3 ${
+                  r.rank_position <= 3 ? 'bg-accent/[0.03]' : ''
+                }`}>
                   <RankBadge rank={r.rank_position} size="sm" />
                   <div className="flex-1 min-w-0">
                     {r.naver_id ? (
-                      <Link href={`/influencers/${r.naver_id}`}
+                      <a href={`https://in.naver.com/${r.naver_id}`} target="_blank" rel="noopener noreferrer"
                         className="font-semibold text-sm truncate block hover:text-accent">
                         {r.influencer_name}
-                      </Link>
+                      </a>
                     ) : r.influencer_url ? (
                       <a href={r.influencer_url} target="_blank" rel="noopener noreferrer"
                         className="font-semibold text-sm truncate block hover:text-accent">
@@ -284,6 +361,18 @@ export default function KeywordDetailPage() {
                       <span>{r.fan_count || '팬 정보 없음'}</span>
                       <RankChange change={r.rank_change} />
                     </div>
+                    {r.post_title && (
+                      <p className="text-[11px] text-dim mt-1 truncate">
+                        {r.post_url ? (
+                          <a href={r.post_url} target="_blank" rel="noopener noreferrer"
+                            className="hover:text-accent transition-colors">
+                            {r.post_title}
+                          </a>
+                        ) : (
+                          r.post_title
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

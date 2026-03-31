@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import GlassCard from './GlassCard';
 import { formatCount } from '@/lib/format';
@@ -16,8 +19,58 @@ interface Top5KeywordsProps {
   totalNotParticipated: number;
 }
 
+const DISPLAY_COUNT = 5;
+
 export default function Top5Keywords({ recommendations, totalNotParticipated }: Top5KeywordsProps) {
-  const top5 = recommendations.slice(0, 5);
+  const [displayed, setDisplayed] = useState<RecommendedKeyword[]>(recommendations.slice(0, DISPLAY_COUNT));
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    if (recommendations.length <= DISPLAY_COUNT) return;
+    setIsRefreshing(true);
+
+    // 현재 표시 중인 키워드 ID
+    const currentIds = new Set(displayed.map(d => d.keyword_id));
+
+    // 가중 랜덤 셔플: score 높은 키워드가 더 자주 선택되도록
+    const pool = recommendations.filter(kw => !currentIds.has(kw.keyword_id));
+    const source = pool.length >= DISPLAY_COUNT ? pool : [...recommendations];
+
+    // Fisher-Yates 셔플
+    const shuffled = [...source];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // score 기반 가중치: 상위 50%에서 3개, 나머지에서 2개 (가능한 경우)
+    const sorted = shuffled.sort((a, b) => b.score - a.score);
+    const topHalf = sorted.slice(0, Math.ceil(sorted.length / 2));
+    const bottomHalf = sorted.slice(Math.ceil(sorted.length / 2));
+
+    const picked: RecommendedKeyword[] = [];
+    const topPick = Math.min(3, topHalf.length);
+    for (let i = 0; i < topPick; i++) picked.push(topHalf[i]);
+    const remaining = DISPLAY_COUNT - picked.length;
+    for (let i = 0; i < Math.min(remaining, bottomHalf.length); i++) picked.push(bottomHalf[i]);
+    // 부족한 경우 topHalf에서 추가
+    if (picked.length < DISPLAY_COUNT) {
+      for (let i = topPick; i < topHalf.length && picked.length < DISPLAY_COUNT; i++) {
+        picked.push(topHalf[i]);
+      }
+    }
+
+    // 순서 랜덤화
+    for (let i = picked.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [picked[i], picked[j]] = [picked[j], picked[i]];
+    }
+
+    setTimeout(() => {
+      setDisplayed(picked);
+      setIsRefreshing(false);
+    }, 300);
+  }, [recommendations, displayed]);
 
   return (
     <GlassCard padding="none">
@@ -26,13 +79,31 @@ export default function Top5Keywords({ recommendations, totalNotParticipated }: 
           <h3 className="font-bold text-[15px]">오늘의 추천키워드</h3>
           <p className="text-[10px] text-dim mt-0.5">미참여 키워드 중 경쟁도 낮고 검색량 높은 키워드</p>
         </div>
-        {top5.length > 0 && (
-          <span className="text-[11px] text-dim">{totalNotParticipated}개 중</span>
-        )}
+        <div className="flex items-center gap-2">
+          {displayed.length > 0 && (
+            <span className="text-[11px] text-dim">{totalNotParticipated}개 중</span>
+          )}
+          {recommendations.length > DISPLAY_COUNT && (
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="w-7 h-7 rounded-lg flex items-center justify-center bg-border/30 hover:bg-accent/15 hover:text-accent text-dim transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default"
+              title="다른 추천 보기"
+            >
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className={`transition-transform ${isRefreshing ? 'animate-spin' : ''}`}
+              >
+                <path d="M21 12a9 9 0 1 1-6.22-8.56" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
-      {top5.length > 0 ? (
-        <div className="divide-y divide-border/20">
-          {top5.map((r, i) => (
+      {displayed.length > 0 ? (
+        <div className={`divide-y divide-border/20 transition-opacity duration-200 ${isRefreshing ? 'opacity-30' : 'opacity-100'}`}>
+          {displayed.map((r, i) => (
             <Link key={r.keyword_id} href={`/keywords/${r.keyword_id}`}
               className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-hover transition group">
               <div className="flex items-center gap-3 min-w-0">

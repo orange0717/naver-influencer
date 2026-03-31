@@ -622,7 +622,7 @@ export default async function MyDashboard() {
             score: (kw.search_volume > 0 ? Math.log10(kw.search_volume) * 10 : 0) + Math.max(0, 50 - kw.participant_count),
           }))
           .sort((a, b) => b.score - a.score)
-          .slice(0, 5)}
+          .slice(0, 20)}
         totalNotParticipated={notParticipatedKeywords.length}
       />
 

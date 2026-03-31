@@ -32,6 +32,7 @@ export async function GET(
       fan_count: r.fanCount,
       naver_id: r.naverId,
       post_title: r.postTitle,
+      post_url: r.postUrl,
       snapshot_date: new Date().toISOString().split('T')[0],
     }));
 
