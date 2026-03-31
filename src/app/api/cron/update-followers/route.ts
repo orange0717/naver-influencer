@@ -3,21 +3,15 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
 /**
- * 인플루언서 팔로워/구독자수 주기적 갱신 Cron
+ * 가입자 인플루언서 팔로워/구독자수 갱신 Cron
  *
- * 네이버 프로필 페이지의 __PRELOADED_STATE__에서
- * totalFollowerCount, subscriberCount, createdAt 추출 후 DB 업데이트.
+ * users 테이블에 linked_influencer_id가 있는 (가입한) 인플루언서만 대상.
+ * 네이버 프로필 __PRELOADED_STATE__에서 subscriberCount, totalFollowerCount 추출.
  *
- * 처리 순서:
- *  1) subscriber_count = 0인 인플루언서 우선
- *  2) 나머지: updated_at 오래된 순
- *
- * 배치: 250건/실행 (Vercel Pro 300초 제한 내)
+ * 매일 KST 06:00 실행.
  */
 
 export const maxDuration = 300;
-
-const BATCH_SIZE = 250;
 
 /** 네이버 프로필에서 팔로워 데이터 추출 */
 async function fetchProfileData(naverId: string) {
@@ -67,46 +61,29 @@ export async function GET(request: NextRequest) {
   console.log('[Cron] update-followers started at', new Date().toISOString());
 
   try {
-    // 1) subscriber_count = 0인 인플루언서 우선 (아직 팔로워 데이터 없음)
-    const { data: zeroSubs } = await supabase
+    // 가입자(users.linked_influencer_id)에 연결된 인플루언서만 조회
+    const { data: users } = await supabase
+      .from('users')
+      .select('linked_influencer_id')
+      .not('linked_influencer_id', 'is', null);
+
+    const linkedIds = [...new Set((users || []).map(u => u.linked_influencer_id).filter(Boolean))];
+
+    if (linkedIds.length === 0) {
+      console.log('[update-followers] No linked influencers found');
+      await updateCrawlJob(jobId, { status: 'success', total_items: 0, processed_items: 0 });
+      return NextResponse.json({ success: true, processed: 0, message: 'No linked influencers' });
+    }
+
+    // 해당 인플루언서 정보 조회
+    const { data: influencers } = await supabase
       .from('influencers')
       .select('id, naver_id')
-      .eq('subscriber_count', 0)
-      .order('created_at', { ascending: true })
-      .limit(BATCH_SIZE);
+      .in('id', linkedIds);
 
-    const targets: { id: string; naver_id: string }[] = [...(zeroSubs || [])];
+    const targets = influencers || [];
 
-    // 2) 배치 미달이면 updated_at 오래된 순으로 채우기
-    if (targets.length < BATCH_SIZE) {
-      const remaining = BATCH_SIZE - targets.length;
-      const existingIds = targets.map(t => t.id);
-
-      const { data: oldUpdated } = await supabase
-        .from('influencers')
-        .select('id, naver_id')
-        .gt('subscriber_count', 0)
-        .order('updated_at', { ascending: true, nullsFirst: true })
-        .limit(remaining + existingIds.length);
-
-      if (oldUpdated) {
-        const existingSet = new Set(existingIds);
-        for (const inf of oldUpdated) {
-          if (targets.length >= BATCH_SIZE) break;
-          if (!existingSet.has(inf.id)) {
-            targets.push(inf);
-          }
-        }
-      }
-    }
-
-    if (targets.length === 0) {
-      console.log('[update-followers] No influencers to process');
-      await updateCrawlJob(jobId, { status: 'success', total_items: 0, processed_items: 0 });
-      return NextResponse.json({ success: true, processed: 0 });
-    }
-
-    console.log(`[update-followers] Processing ${targets.length} influencers`);
+    console.log(`[update-followers] Processing ${targets.length} linked influencers`);
 
     let updated = 0;
     let skipped = 0;
