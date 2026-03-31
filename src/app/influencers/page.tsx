@@ -21,6 +21,7 @@ interface InfluencerItem {
   firstSeenAt?: string;
   lastCrawledAt?: string;
   isInactive?: boolean;
+  isStopped?: boolean;
 }
 
 type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'last_crawled_at';
@@ -55,7 +56,6 @@ export default function InfluencersPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortKey>('first_seen_at');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-  const [showInactive, setShowInactive] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -68,7 +68,6 @@ export default function InfluencersPage() {
       });
       if (category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
-      if (showInactive) params.set('inactive', 'true');
 
       const res = await fetch(`/api/influencers?${params}`);
       const data = await res.json();
@@ -82,7 +81,7 @@ export default function InfluencersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, category, search, sortBy, order, showInactive]);
+  }, [page, category, search, sortBy, order]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -173,17 +172,6 @@ export default function InfluencersPage() {
             {opt.label}{sortArrow(opt.key)}
           </button>
         ))}
-        <span className="mx-1 text-border">|</span>
-        <button
-          onClick={() => { setShowInactive(v => !v); setPage(1); }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-            showInactive
-              ? 'bg-gray-200 text-gray-600 border border-gray-300'
-              : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
-          }`}
-        >
-          비활성 포함{showInactive ? ' ON' : ''}
-        </button>
       </div>
 
       {loading ? (
@@ -244,6 +232,9 @@ export default function InfluencersPage() {
                             )}
                             {inf.isInactive && (
                               <span className="text-[9px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">1년이상 활동이력 없음</span>
+                            )}
+                            {inf.isStopped && !inf.isInactive && (
+                              <span className="text-[9px] font-medium text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded shrink-0">활동 중단</span>
                             )}
                           </div>
                           <span className="text-xs text-dim">@{inf.naverId}</span>
@@ -317,6 +308,9 @@ export default function InfluencersPage() {
                       )}
                       {inf.isInactive && (
                         <span className="text-[9px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">1년이상 활동이력 없음</span>
+                      )}
+                      {inf.isStopped && !inf.isInactive && (
+                        <span className="text-[9px] font-medium text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded shrink-0">활동 중단</span>
                       )}
                     </div>
                     <span className="text-xs text-dim">@{inf.naverId}</span>

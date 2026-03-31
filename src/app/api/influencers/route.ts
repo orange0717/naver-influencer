@@ -82,11 +82,6 @@ async function getInfluencersFromDB(
     }
   }
 
-  // 비활성 인플루언서 제외 (기본값: 이미지 없고 구독자 0인 계정 숨김)
-  if (!showInactive) {
-    query = query.gt('subscriber_count', 0);
-  }
-
   // 신규 인플루언서만
   if (newOnly) {
     const sevenDaysAgo = new Date();
@@ -170,6 +165,9 @@ async function getInfluencersFromDB(
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
     isInactive: !inf.image_url && (inf.subscriber_count || 0) === 0,
+    isStopped: inf.last_crawled_at
+      ? (Date.now() - new Date(inf.last_crawled_at).getTime()) > 365 * 24 * 60 * 60 * 1000
+      : false,
   }));
 
   return NextResponse.json({
