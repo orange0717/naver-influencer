@@ -8,7 +8,7 @@ function getResend() {
   return _resend;
 }
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'N인플 <noreply@ninfl.co.kr>';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'N인플 <onboarding@resend.dev>';
 
 /** 데모 인증번호 이메일 */
 export async function sendDemoVerificationEmail(to: string, code: string) {
