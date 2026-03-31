@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
     await sendDemoVerificationEmail(email, code);
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[send-code] 실패:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: '인증번호 발송에 실패했습니다.' }, { status: 500 });
   }
 }
