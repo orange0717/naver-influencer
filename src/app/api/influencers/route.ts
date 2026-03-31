@@ -146,6 +146,40 @@ async function getInfluencersFromDB(
     }
   }
 
+  // TOP3 순위별 카운트 조회 (1위/2위/3위 각각)
+  let rankBreakdownMap = new Map<string, [number, number, number]>();
+  if (influencerIds.length > 0) {
+    // 최근 7일 내 keyword_rankings에서 TOP3 데이터 가져오기
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data: rankData } = await supabase
+      .from('keyword_rankings')
+      .select('influencer_id, keyword_id, rank_position, snapshot_date')
+      .in('influencer_id', influencerIds)
+      .lte('rank_position', 3)
+      .gte('snapshot_date', sevenDaysAgo.toISOString().slice(0, 10))
+      .order('snapshot_date', { ascending: false });
+
+    if (rankData && rankData.length > 0) {
+      // keyword_id 기준 중복 제거 (최신 snapshot만 유지)
+      const seen = new Set<string>();
+      for (const r of rankData) {
+        const key = `${r.influencer_id}:${r.keyword_id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (!rankBreakdownMap.has(r.influencer_id)) {
+          rankBreakdownMap.set(r.influencer_id, [0, 0, 0]);
+        }
+        const counts = rankBreakdownMap.get(r.influencer_id)!;
+        if (r.rank_position === 1) counts[0]++;
+        else if (r.rank_position === 2) counts[1]++;
+        else if (r.rank_position === 3) counts[2]++;
+      }
+    }
+  }
+
   // 응답 형식 맞추기
   const items = (influencers || []).map(inf => ({
     name: inf.display_name,
@@ -161,6 +195,9 @@ async function getInfluencersFromDB(
     foundInKeywords: keywordMap.get(inf.id) || [],
     totalKeywords: inf.total_keywords || 0,
     integratedTop3Count: inf.integrated_top3_count || 0,
+    top1Count: rankBreakdownMap.get(inf.id)?.[0] || 0,
+    top2Count: rankBreakdownMap.get(inf.id)?.[1] || 0,
+    top3Count: rankBreakdownMap.get(inf.id)?.[2] || 0,
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,

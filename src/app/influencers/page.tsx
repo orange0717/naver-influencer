@@ -17,6 +17,9 @@ interface InfluencerItem {
   foundInKeywords: string[];
   totalKeywords?: number;
   integratedTop3Count?: number;
+  top1Count?: number;
+  top2Count?: number;
+  top3Count?: number;
   naverCreatedAt?: string;
   firstSeenAt?: string;
   lastCrawledAt?: string;
@@ -204,6 +207,9 @@ export default function InfluencersPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('integrated_top3_count')}>
                     TOP3{sortArrow('integrated_top3_count')}
                   </th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-[10px]">1위</th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-[10px]">2위</th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-[10px]">3위</th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('first_seen_at')}>
                     선정일{sortArrow('first_seen_at')}
                   </th>
@@ -273,6 +279,15 @@ export default function InfluencersPage() {
                         <span className="text-dim">—</span>
                       )}
                     </td>
+                    <td className="py-3 px-2 text-center text-xs font-rank">
+                      {(inf.top1Count || 0) > 0 ? <span className="font-bold text-red-500">{inf.top1Count}</span> : <span className="text-dim">—</span>}
+                    </td>
+                    <td className="py-3 px-2 text-center text-xs font-rank">
+                      {(inf.top2Count || 0) > 0 ? <span className="font-bold text-blue-500">{inf.top2Count}</span> : <span className="text-dim">—</span>}
+                    </td>
+                    <td className="py-3 px-2 text-center text-xs font-rank">
+                      {(inf.top3Count || 0) > 0 ? <span className="font-bold text-green-600">{inf.top3Count}</span> : <span className="text-dim">—</span>}
+                    </td>
                     <td className="py-3 px-3 text-xs text-dim">
                       {inf.naverCreatedAt ? formatDate(inf.naverCreatedAt) : '—'}
                     </td>
@@ -332,6 +347,9 @@ export default function InfluencersPage() {
                 <div className="flex flex-wrap gap-3 text-[10px] text-dim">
                   {(inf.totalKeywords || 0) > 0 && <span>챌린지 {inf.totalKeywords}개</span>}
                   {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
+                  {(inf.top1Count || 0) > 0 && <span className="text-red-500 font-bold">1위 {inf.top1Count}</span>}
+                  {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
+                  {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
                   {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
                   {inf.lastCrawledAt && <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>}
                 </div>
