@@ -42,10 +42,16 @@ export async function refreshFollowerCount(
     const followerCount = state?.space?.data?.totalFollowerCount;
 
     if (followerCount && followerCount > 0) {
-      await supabase.from('influencers').update({
+      const updateData: Record<string, unknown> = {
         total_follower_count: followerCount,
-        last_crawled_at: new Date().toISOString(),
-      }).eq('id', influencerId);
+      };
+      // subscriberCount(팬수)도 있으면 함께 업데이트
+      const subscriberCount = state?.space?.data?.subscriberCount;
+      if (subscriberCount && subscriberCount > 0) {
+        updateData.subscriber_count = subscriberCount;
+      }
+      // last_crawled_at은 업데이트하지 않음 (마지막 참여일 의미 보존 - crawl-influencers cron만 갱신)
+      await supabase.from('influencers').update(updateData).eq('id', influencerId);
       return followerCount;
     }
   } catch { /* 실패해도 기존 데이터 유지 */ }

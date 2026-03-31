@@ -42,7 +42,7 @@ export async function fetchNaverProfile(naverId: string) {
       category: '',
       my_keyword_category: '',
       category_my_type: '',
-      last_crawled_at: new Date().toISOString(),
+      // last_crawled_at 미설정: 마지막 참여일은 crawl-influencers cron에서만 갱신
       first_seen_at: new Date().toISOString(),
     };
   } catch {

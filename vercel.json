@@ -41,6 +41,10 @@
       "schedule": "0 23 * * *"
     },
     {
+      "path": "/api/cron/update-followers",
+      "schedule": "0 2,8,14 * * *"
+    },
+    {
       "path": "/api/cron/demo-expiry",
       "schedule": "0 9 * * *"
     }
