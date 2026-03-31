@@ -170,10 +170,17 @@ async function getInfluencersFromDB(
       : false,
   }));
 
+  // 활성 인플루언서 수 (구독자 > 0)
+  const { count: activeCount } = await supabase
+    .from('influencers')
+    .select('*', { count: 'exact', head: true })
+    .gt('subscriber_count', 0);
+
   return NextResponse.json({
     influencers: items,
     categories,
     total,
+    activeTotal: activeCount || 0,
     page,
     total_pages: totalPages,
     source: 'db',

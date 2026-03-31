@@ -51,6 +51,7 @@ export default function InfluencersPage() {
   const [category, setCategory] = useState('전체');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
+  const [activeTotal, setActiveTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -75,6 +76,7 @@ export default function InfluencersPage() {
       setInfluencers(data.influencers || []);
       setCategories(data.categories || ['전체']);
       setTotal(data.total || 0);
+      setActiveTotal(data.activeTotal || 0);
       setTotalPages(data.total_pages || 1);
     } catch (err) {
       console.error('인플루언서 로드 실패:', err);
@@ -135,7 +137,9 @@ export default function InfluencersPage() {
         </div>
         <div className="text-right">
           <span className="text-xs text-dim font-rank">
-            {loading ? '수집 중...' : category === '전체' ? `총 ${total.toLocaleString()}명` : `${category} ${total.toLocaleString()}명`}
+            {loading ? '수집 중...' : category === '전체'
+              ? <><span className="text-accent font-bold">{activeTotal.toLocaleString()}</span> / {total.toLocaleString()}명</>
+              : `${category} ${total.toLocaleString()}명`}
           </span>
           {!loading && (
             <div className="flex items-center gap-1 mt-0.5">
