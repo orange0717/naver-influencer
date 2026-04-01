@@ -34,6 +34,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'subscriber_count', label: '구독자순' },
   { key: 'total_keywords', label: '챌린지수순' },
   { key: 'integrated_top3_count', label: 'TOP3순' },
+  { key: 'top3_ratio', label: '비율순' },
   { key: 'last_crawled_at', label: '마지막 참여일순' },
 ];
 
