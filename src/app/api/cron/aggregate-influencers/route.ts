@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         supabase
           .from('influencers')
           .update({
-            total_keywords: Number(s.total_keywords),
+            // total_keywords는 여기서 업데이트하지 않음 (네이버 원본 데이터 유지)
             avg_rank: Number(s.avg_rank),
             best_rank: s.best_rank,
             integrated_top3_count: Number(s.integrated_top3_count),
