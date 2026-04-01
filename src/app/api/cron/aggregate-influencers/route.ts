@@ -57,31 +57,8 @@ export async function GET(request: NextRequest) {
       grouped.set(r.influencer_id, g);
     }
 
-    // influencer_keywords 테이블에서 실제 참여 키워드 수 가져오기
-    const influencerIds = Array.from(grouped.keys());
-    const ikCounts = new Map<string, number>();
-
-    // 배치로 조회 (500개씩)
-    for (let i = 0; i < influencerIds.length; i += 500) {
-      const batch = influencerIds.slice(i, i + 500);
-      const { data: ikData } = await supabase
-        .from('influencer_keywords')
-        .select('influencer_id')
-        .in('influencer_id', batch);
-
-      if (ikData) {
-        for (const ik of ikData) {
-          ikCounts.set(ik.influencer_id, (ikCounts.get(ik.influencer_id) || 0) + 1);
-        }
-      }
-    }
-
-    console.log(`[aggregate-influencers] influencer_keywords 카운트 완료: ${ikCounts.size}명`);
-
     const stats = Array.from(grouped.entries()).map(([id, g]) => ({
       influencer_id: id,
-      // influencer_keywords 기반 참여 키워드 수 (없으면 keyword_rankings 기반 유니크 수)
-      total_keywords: ikCounts.get(id) || g.keywordIds.size,
       avg_rank: Math.round((g.ranks.reduce((a, b) => a + b, 0) / g.ranks.length) * 100) / 100,
       best_rank: Math.min(...g.ranks),
       integrated_top3_count: g.top3,
