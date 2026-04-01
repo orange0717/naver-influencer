@@ -346,7 +346,7 @@ export default function KeywordsPage() {
                                   r.rank_position === 1 ? 'bg-gold' : r.rank_position === 2 ? 'bg-silver' : 'bg-bronze'
                                 }`}>{r.rank_position}</span>
                                 <Link
-                                  href={`/influencers/${r.naver_id}`}
+                                  href={`/influencers/${encodeURIComponent(r.naver_id)}`}
                                   className="text-sm font-semibold hover:text-accent transition-colors"
                                   onClick={e => e.stopPropagation()}
                                 >

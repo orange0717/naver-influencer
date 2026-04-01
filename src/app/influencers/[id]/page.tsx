@@ -45,7 +45,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
   useEffect(() => {
     async function loadInfluencer() {
       try {
-        const res = await fetch(`/api/influencers/${id}`);
+        const res = await fetch(`/api/influencers/${encodeURIComponent(id)}`);
         if (!res.ok) {
           setError(true);
           return;
@@ -60,6 +60,28 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
     }
     loadInfluencer();
   }, [id]);
+
+  const keywords = influencer?.keywords || [];
+  const totalKeywords = influencer?.total_keywords || keywords.length;
+
+  // 카테고리 목록 추출 (Hooks는 조건부 return 전에 호출)
+  const kwCategories = useMemo(() => {
+    const cats = [...new Set(keywords.map(k => k.category).filter(Boolean))];
+    return ['전체', ...cats.sort()];
+  }, [keywords]);
+
+  // 검색 + 카테고리 필터링
+  const filteredKeywords = useMemo(() => {
+    let list = [...keywords];
+    if (kwCategory !== '전체') {
+      list = list.filter(k => k.category === kwCategory);
+    }
+    if (kwSearch.trim()) {
+      const q = kwSearch.trim().toLowerCase();
+      list = list.filter(k => k.keyword.toLowerCase().includes(q));
+    }
+    return list;
+  }, [keywords, kwCategory, kwSearch]);
 
   if (loading) {
     return (
@@ -81,28 +103,6 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
       </div>
     );
   }
-
-  const keywords = influencer.keywords || [];
-  const totalKeywords = influencer.total_keywords || keywords.length;
-
-  // 카테고리 목록 추출
-  const kwCategories = useMemo(() => {
-    const cats = [...new Set(keywords.map(k => k.category).filter(Boolean))];
-    return ['전체', ...cats.sort()];
-  }, [keywords]);
-
-  // 검색 + 카테고리 필터링
-  const filteredKeywords = useMemo(() => {
-    let list = [...keywords];
-    if (kwCategory !== '전체') {
-      list = list.filter(k => k.category === kwCategory);
-    }
-    if (kwSearch.trim()) {
-      const q = kwSearch.trim().toLowerCase();
-      list = list.filter(k => k.keyword.toLowerCase().includes(q));
-    }
-    return list;
-  }, [keywords, kwCategory, kwSearch]);
   const avgRank = influencer.avg_rank || (keywords.length > 0
     ? Math.round(keywords.reduce((sum, k) => sum + (k.rank_position || 0), 0) / (keywords.filter(k => k.rank_position).length || 1))
     : '-');
