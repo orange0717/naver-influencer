@@ -290,7 +290,7 @@ export default function InfluencersPage() {
                       {(inf.integratedTop3Count || 0) > 0 && (inf.totalKeywords || 0) > 0 ? (
                         <span className={`font-bold ${
                           (inf.integratedTop3Count / inf.totalKeywords) >= 0.5 ? 'text-gold' :
-                          (inf.integratedTop3Count / inf.totalKeywords) >= 0.2 ? 'text-up' : 'text-dim'
+                          (inf.integratedTop3Count / inf.totalKeywords) >= 0.3 ? 'text-up' : 'text-dim'
                         }`}>
                           {Math.round((inf.integratedTop3Count / inf.totalKeywords) * 100)}%
                         </span>
