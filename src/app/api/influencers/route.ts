@@ -124,10 +124,8 @@ async function getInfluencersFromDB(
   // 비율 정렬 시 서버에서 정렬 + 페이지네이션
   if (isRatioSort && influencers) {
     influencers.sort((a, b) => {
-      const t3A = (a.top1_count || 0) + (a.top2_count || 0) + (a.top3_count || 0);
-      const t3B = (b.top1_count || 0) + (b.top2_count || 0) + (b.top3_count || 0);
-      const ratioA = (a.total_keywords || 0) > 0 ? Math.min(t3A / a.total_keywords, 1) : 0;
-      const ratioB = (b.total_keywords || 0) > 0 ? Math.min(t3B / b.total_keywords, 1) : 0;
+      const ratioA = (a.total_keywords || 0) > 0 ? (a.integrated_top3_count || 0) / a.total_keywords : 0;
+      const ratioB = (b.total_keywords || 0) > 0 ? (b.integrated_top3_count || 0) / b.total_keywords : 0;
       return ascending ? ratioA - ratioB : ratioB - ratioA;
     });
     count = influencers.length;
