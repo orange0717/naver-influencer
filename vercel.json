@@ -50,7 +50,7 @@
     },
     {
       "path": "/api/cron/send-rank-notifications",
-      "schedule": "30 19 * * *"
+      "schedule": "0 21 * * *"
     }
   ]
 }

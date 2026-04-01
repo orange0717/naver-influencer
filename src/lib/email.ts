@@ -10,6 +10,11 @@ function getResend() {
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'N인플 <orange@orangelibrary.co.kr>';
 
+/** HTML 특수문자 이스케이프 */
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 /** 데모 인증번호 이메일 */
 export async function sendDemoVerificationEmail(to: string, code: string) {
   const { error } = await getResend().emails.send({
@@ -98,14 +103,17 @@ export async function sendRankChangeEmail(
   const top3Items = changes.filter(c => c.type === 'new_top3' || c.type === 'lost_top3');
   const otherItems = changes.filter(c => c.type === 'rank_up' || c.type === 'rank_down');
 
+  const safeName = escapeHtml(displayName);
+
   const renderItem = (item: RankChangeItem) => {
     const isUp = item.type === 'new_top3' || item.type === 'rank_up';
     const color = isUp ? '#2E8B57' : '#D94848';
     const arrow = isUp ? '↑' : '↓';
     const label = item.type === 'new_top3' ? 'TOP3 진입' : item.type === 'lost_top3' ? 'TOP3 이탈' : isUp ? '상승' : '하락';
+    const safeKeyword = escapeHtml(item.keyword);
     return `
       <tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:14px">${item.keyword}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:14px">${safeKeyword}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:14px;text-align:center">${item.from_rank}위</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:14px;text-align:center;color:${color};font-weight:bold">${arrow} ${item.to_rank}위</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:12px;text-align:center"><span style="background:${isUp ? '#e8f5e9' : '#fde8e8'};color:${color};padding:2px 8px;border-radius:10px;font-weight:bold">${label}</span></td>
@@ -148,7 +156,7 @@ export async function sendRankChangeEmail(
           <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
         </div>
         <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
-          <p style="font-size:16px;font-weight:bold;margin:0 0 8px">${displayName}님, 오늘의 순위 변동 알림입니다.</p>
+          <p style="font-size:16px;font-weight:bold;margin:0 0 8px">${safeName}님, 오늘의 순위 변동 알림입니다.</p>
           <p style="font-size:13px;color:#999;margin:0 0 16px">${snapshotDate} 기준</p>
           ${body}
           <div style="text-align:center;margin:28px 0 16px">

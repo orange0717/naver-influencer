@@ -7,8 +7,6 @@
  * 3. 환경변수 설정: KAKAO_REST_API_KEY, KAKAO_SENDER_KEY
  */
 
-const KAKAO_API_URL = 'https://kapi.kakao.com/v2/api/talk/memo/default/send';
-
 interface KakaoAlimtalkParams {
   phone: string;
   templateCode: string;
