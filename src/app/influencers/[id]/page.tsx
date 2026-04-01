@@ -153,7 +153,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
+        <div className="grid grid-cols-5 gap-3 mt-4 pt-4 border-t border-border">
           <div className="text-center">
             <p className="text-lg font-bold text-accent font-rank">{totalKeywords}</p>
             <p className="text-xs text-dim">참여 키워드</p>
@@ -169,6 +169,22 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           <div className="text-center">
             <p className="text-lg font-bold text-gold font-rank">{top3Count}</p>
             <p className="text-xs text-dim">통합 TOP3</p>
+          </div>
+          <div className="text-center">
+            {(() => {
+              const ranked = keywords.filter(k => k.rank_position && k.rank_position <= 3).length;
+              const total = totalKeywords || 0;
+              if (ranked > 0 && total > 0) {
+                const ratio = Math.min(ranked / total, 1);
+                return (
+                  <p className={`text-lg font-bold font-rank ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
+                    {(ratio * 100).toFixed(1)}%
+                  </p>
+                );
+              }
+              return <p className="text-lg font-bold font-rank text-dim">-</p>;
+            })()}
+            <p className="text-xs text-dim">TOP3 비율</p>
           </div>
         </div>
       </div>
