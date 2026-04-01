@@ -13,51 +13,30 @@ export async function GET(request: NextRequest) {
   console.log('[Cron] aggregate-influencers started at', new Date().toISOString());
 
   try {
-    console.log(`[aggregate-influencers] 전체 데이터 기준 집계 시작`);
+    // 최근 7일 이내 snapshot 기준으로 집계 (원래 로직)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sinceDate = sevenDaysAgo.toISOString().slice(0, 10);
 
-    // 전체 랭킹 데이터 (페이지네이션으로 가져오기)
-    const allRankings: { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean; snapshot_date: string }[] = [];
-    const PAGE_SIZE = 10000;
-    let from = 0;
-    let hasMore = true;
+    console.log(`[aggregate-influencers] 집계 범위: ${sinceDate} ~ 현재`);
 
-    while (hasMore) {
-      const { data: batch, error: fetchErr } = await supabase
-        .from('keyword_rankings')
-        .select('influencer_id, keyword_id, rank_position, is_integrated_top3, snapshot_date')
-        .range(from, from + PAGE_SIZE - 1);
+    // keyword_rankings에서 집계
+    const { data: rankings, error: fetchErr } = await supabase
+      .from('keyword_rankings')
+      .select('influencer_id, keyword_id, rank_position, is_integrated_top3')
+      .gte('snapshot_date', sinceDate);
 
-      if (fetchErr) throw new Error(fetchErr.message);
-      if (batch && batch.length > 0) {
-        allRankings.push(...batch);
-        from += PAGE_SIZE;
-        hasMore = batch.length === PAGE_SIZE;
-      } else {
-        hasMore = false;
-      }
-    }
+    if (fetchErr) throw new Error(fetchErr.message);
 
-    console.log(`[aggregate-influencers] 전체 랭킹 ${allRankings.length}건 로드`);
-
-    if (allRankings.length === 0) {
+    if (!rankings || rankings.length === 0) {
       console.log('[aggregate-influencers] No ranking data found');
       await updateCrawlJob(jobId, { status: 'success', total_items: 0, processed_items: 0 });
       return NextResponse.json({ success: true, processed: 0 });
     }
 
-    // 인플루언서+키워드별 최신 스냅샷만 유지 (중복 제거)
-    const latestByKey = new Map<string, typeof allRankings[0]>();
-    for (const r of allRankings) {
-      const key = `${r.influencer_id}:${r.keyword_id}`;
-      const existing = latestByKey.get(key);
-      if (!existing || r.snapshot_date > existing.snapshot_date) {
-        latestByKey.set(key, r);
-      }
-    }
+    console.log(`[aggregate-influencers] 랭킹 ${rankings.length}건 로드`);
 
-    console.log(`[aggregate-influencers] 중복 제거 후 ${latestByKey.size}건`);
-
-    // 중복 제거된 데이터로 집계
+    // JS에서 GROUP BY 처리
     const grouped = new Map<string, {
       keywordIds: Set<string>;
       ranks: number[];
@@ -67,11 +46,11 @@ export async function GET(request: NextRequest) {
       top3Only: number;
     }>();
 
-    for (const r of latestByKey.values()) {
+    for (const r of (rankings as { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean }[])) {
       const g = grouped.get(r.influencer_id) || { keywordIds: new Set(), ranks: [], top3: 0, top1: 0, top2: 0, top3Only: 0 };
       g.keywordIds.add(r.keyword_id);
       g.ranks.push(r.rank_position);
-      if (r.rank_position <= 3) g.top3++;
+      if (r.is_integrated_top3) g.top3++;
       if (r.rank_position === 1) g.top1++;
       else if (r.rank_position === 2) g.top2++;
       else if (r.rank_position === 3) g.top3Only++;
