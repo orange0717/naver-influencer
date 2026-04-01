@@ -65,16 +65,21 @@ export default function CommunityPostPage() {
   const [reportReason, setReportReason] = useState<string>('spam');
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
+  const [authChecked, setAuthChecked] = useState(false);
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.json())
       .then(data => {
         if (data.id) setUser({ type: data.type, id: data.id, name: data.name });
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setAuthChecked(true));
   }, []);
 
   const fetchPost = useCallback(async () => {
+    if (!authChecked) return;
+    if (!user) return; // 비로그인이면 게시글 로드하지 않음
     setLoading(true);
     try {
       const res = await fetch(`/api/community/${postId}`);
@@ -95,7 +100,7 @@ export default function CommunityPostPage() {
 
   useEffect(() => {
     fetchPost();
-  }, [fetchPost]);
+  }, [fetchPost, user, authChecked]);
 
   // 좋아요 로컬 체크
   useEffect(() => {
@@ -210,6 +215,29 @@ export default function CommunityPostPage() {
     const d = new Date(dateStr);
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
+
+  // 비로그인 시 로그인 유도
+  if (authChecked && !user) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 text-center">
+        <div className="bg-surface rounded-2xl border border-border p-8 space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-full bg-accent/15 flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h2 className="text-lg font-bold">로그인이 필요합니다</h2>
+          <p className="text-sm text-dim">커뮤니티 글은 로그인한 회원만 볼 수 있습니다.</p>
+          <div className="flex justify-center gap-3 pt-2">
+            <Link href="/auth/login" className="px-6 py-2.5 bg-accent text-white rounded-lg text-sm font-bold hover:bg-accent-hover transition">
+              로그인
+            </Link>
+            <Link href="/community" className="px-6 py-2.5 bg-surface border border-border text-dim rounded-lg text-sm font-semibold hover:border-accent/40 transition">
+              목록으로
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -98,7 +98,7 @@ export default function CommunityPage() {
           <h1 className="font-title text-2xl md:text-3xl font-extrabold text-text">
             커뮤니티
           </h1>
-          <p className="text-sm text-dim mt-1">블로거들의 소통 공간</p>
+          <p className="text-sm text-dim mt-1">네이버 인플루언서들의 소통 공간</p>
         </div>
         {isLoggedIn && (
           <Link href="/community/write"

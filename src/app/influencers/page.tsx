@@ -207,6 +207,7 @@ export default function InfluencersPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('integrated_top3_count')}>
                     TOP3{sortArrow('integrated_top3_count')}
                   </th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-xs">비율</th>
                   <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top1_count')}>
                     1위{sortArrow('top1_count')}
                   </th>
@@ -281,6 +282,18 @@ export default function InfluencersPage() {
                     <td className="py-3 px-3 text-center text-xs font-rank">
                       {(inf.integratedTop3Count || 0) > 0 ? (
                         <span className="font-bold text-gold">{inf.integratedTop3Count}</span>
+                      ) : (
+                        <span className="text-dim">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-2 text-center text-xs font-rank">
+                      {(inf.integratedTop3Count || 0) > 0 && (inf.totalKeywords || 0) > 0 ? (
+                        <span className={`font-bold ${
+                          (inf.integratedTop3Count / inf.totalKeywords) >= 0.5 ? 'text-gold' :
+                          (inf.integratedTop3Count / inf.totalKeywords) >= 0.2 ? 'text-up' : 'text-dim'
+                        }`}>
+                          {Math.round((inf.integratedTop3Count / inf.totalKeywords) * 100)}%
+                        </span>
                       ) : (
                         <span className="text-dim">—</span>
                       )}
