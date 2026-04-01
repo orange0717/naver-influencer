@@ -208,6 +208,9 @@ export default function InfluencersPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('integrated_top3_count')}>
                     TOP3{sortArrow('integrated_top3_count')}
                   </th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top3_ratio')}>
+                    비율{sortArrow('top3_ratio')}
+                  </th>
                   <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top1_count')}>
                     1위{sortArrow('top1_count')}
                   </th>
@@ -285,6 +288,21 @@ export default function InfluencersPage() {
                       ) : (
                         <span className="text-dim">—</span>
                       )}
+                    </td>
+                    <td className="py-3 px-2 text-center text-xs font-rank">
+                      {(() => {
+                        const t3 = (inf.top1Count || 0) + (inf.top2Count || 0) + (inf.top3Count || 0);
+                        const total = inf.totalKeywords || 0;
+                        if (t3 > 0 && total > 0) {
+                          const ratio = Math.min(t3 / total, 1);
+                          return (
+                            <span className={`font-bold ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
+                              {(ratio * 100).toFixed(1)}%
+                            </span>
+                          );
+                        }
+                        return <span className="text-dim">—</span>;
+                      })()}
                     </td>
                     <td className="py-3 px-2 text-center text-xs font-rank">
                       {(inf.top1Count || 0) > 0 ? <span className="font-bold text-red-500">{inf.top1Count}</span> : <span className="text-dim">—</span>}
