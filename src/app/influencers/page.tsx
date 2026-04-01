@@ -287,16 +287,19 @@ export default function InfluencersPage() {
                       )}
                     </td>
                     <td className="py-3 px-2 text-center text-xs font-rank">
-                      {(inf.integratedTop3Count || 0) > 0 && (inf.totalKeywords || 0) > 0 ? (
-                        <span className={`font-bold ${
-                          (inf.integratedTop3Count / inf.totalKeywords) >= 0.5 ? 'text-gold' :
-                          (inf.integratedTop3Count / inf.totalKeywords) >= 0.3 ? 'text-up' : 'text-dim'
-                        }`}>
-                          {Math.round((inf.integratedTop3Count / inf.totalKeywords) * 100)}%
-                        </span>
-                      ) : (
-                        <span className="text-dim">—</span>
-                      )}
+                      {(() => {
+                        const t3 = inf.integratedTop3Count || 0;
+                        const total = inf.totalKeywords || 0;
+                        if (t3 > 0 && total > 0) {
+                          const ratio = t3 / total;
+                          return (
+                            <span className={`font-bold ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
+                              {Math.round(ratio * 100)}%
+                            </span>
+                          );
+                        }
+                        return <span className="text-dim">—</span>;
+                      })()}
                     </td>
                     <td className="py-3 px-2 text-center text-xs font-rank">
                       {(inf.top1Count || 0) > 0 ? <span className="font-bold text-red-500">{inf.top1Count}</span> : <span className="text-dim">—</span>}
