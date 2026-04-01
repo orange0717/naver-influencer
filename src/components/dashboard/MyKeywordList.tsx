@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import GlassCard from './GlassCard';
 import KeywordSyncButton from './KeywordSyncButton';
 import { formatCount } from '@/lib/format';
+
+interface RankingInfo {
+  influencer_name: string;
+  rank_position: number;
+  fan_count: number;
+  naver_id: string;
+}
 
 interface KeywordItem {
   keyword_id: string;
@@ -57,6 +64,29 @@ export default function MyKeywordList({
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
+
+  // TOP3 펼치기
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
+  const [rankingsLoading, setRankingsLoading] = useState<string | null>(null);
+
+  const toggleRankings = async (kwId: string) => {
+    if (expandedId === kwId) { setExpandedId(null); return; }
+    setExpandedId(kwId);
+    if (rankingsCache[kwId]) return;
+    setRankingsLoading(kwId);
+    try {
+      const res = await fetch(`/api/keywords/${kwId}/rankings`);
+      if (res.ok) {
+        const data = await res.json();
+        setRankingsCache(prev => ({ ...prev, [kwId]: (data.rankings || []).slice(0, 3) }));
+      }
+    } catch {
+      setRankingsCache(prev => ({ ...prev, [kwId]: [] }));
+    } finally {
+      setRankingsLoading(null);
+    }
+  };
 
   const notParticipatedCount = totalKeywords - participatedCount;
 
@@ -249,13 +279,23 @@ export default function MyKeywordList({
                 {displayList.map(kw => {
                   const comp = getCompLevel(kw.participant_count);
                   const dimmed = !kw.is_participated;
+                  const isExpanded = expandedId === kw.keyword_id;
+                  const rankings = rankingsCache[kw.keyword_id];
+                  const isLoadingRank = rankingsLoading === kw.keyword_id;
                   return (
-                    <tr key={kw.keyword_id} className={`hover:bg-surface-hover transition ${dimmed ? 'opacity-60' : ''}`}>
+                    <React.Fragment key={kw.keyword_id}>
+                    <tr
+                      className={`hover:bg-surface-hover transition cursor-pointer ${dimmed ? 'opacity-60' : ''} ${isExpanded ? 'bg-accent/5' : ''}`}
+                      onClick={() => toggleRankings(kw.keyword_id)}
+                    >
                       <td className="px-5 py-3">
-                        <Link href={`/keywords/${kw.keyword_id}`} className="hover:text-accent transition">
-                          <span className="text-sm font-semibold">{kw.keyword}</span>
-                          <span className="text-[11px] text-dim ml-1.5">{kw.category}</span>
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <Link href={`/keywords/${kw.keyword_id}`} className="hover:text-accent transition" onClick={e => e.stopPropagation()}>
+                            <span className="text-sm font-semibold">{kw.keyword}</span>
+                            <span className="text-[11px] text-dim ml-1.5">{kw.category}</span>
+                          </Link>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+                        </div>
                       </td>
                       <td className="text-center px-3 py-3">
                         {kw.is_participated && kw.rank_position !== null ? (
@@ -305,6 +345,44 @@ export default function MyKeywordList({
                         )}
                       </td>
                     </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={7} className="px-5 py-3 bg-bg/60">
+                          {isLoadingRank ? (
+                            <div className="flex items-center gap-2 py-1 pl-4">
+                              <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
+                              <span className="text-xs text-dim">순위 불러오는 중...</span>
+                            </div>
+                          ) : rankings && rankings.length > 0 ? (
+                            <div className="pl-4 space-y-1.5">
+                              <p className="text-[11px] font-bold text-dim mb-1.5">실시간 TOP 3</p>
+                              {rankings.map(r => (
+                                <div key={r.rank_position} className="flex items-center gap-2.5">
+                                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                                    r.rank_position === 1 ? 'bg-gold' : r.rank_position === 2 ? 'bg-silver' : 'bg-bronze'
+                                  }`}>{r.rank_position}</span>
+                                  <Link
+                                    href={`/influencers/${encodeURIComponent(r.naver_id)}`}
+                                    className="text-sm font-semibold hover:text-accent transition"
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    {r.influencer_name}
+                                  </Link>
+                                  {r.fan_count > 0 && (
+                                    <span className="text-[11px] text-dim font-rank">
+                                      {r.fan_count >= 10000 ? `${(r.fan_count / 10000).toFixed(1)}만` : r.fan_count.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="pl-4 py-1 text-xs text-dim">순위 정보가 없습니다</div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
