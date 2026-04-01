@@ -4,8 +4,58 @@ import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
-/** DB에 없는 인플루언서를 네이버에서 실시간으로 가져오기 */
+/** DB에 없는 인플루언서를 네이버 Feed API로 가져오기 */
 async function fetchFromNaver(naverId: string) {
+  try {
+    // Feed API로 프로필 조회 (CSR 파싱 대신 구조화된 JSON)
+    const apiUrl = `https://gw.in.naver.com/feed/query/v1/user/${naverId}/profile`;
+    const res = await fetch(apiUrl, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+        'Referer': `https://in.naver.com/${naverId}`,
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const profile = data?.result || data;
+
+    const nickname = profile.nickname || profile.urlId || naverId;
+    if (!nickname || nickname === naverId) {
+      // Feed API 실패 시 HTML 폴백
+      return await fetchFromNaverHtml(naverId);
+    }
+
+    return {
+      id: `live-${naverId}`,
+      naver_id: naverId,
+      display_name: nickname,
+      category: profile.myKeywordCategory || profile.category || '',
+      my_keyword_category: profile.myKeywordCategory || '',
+      image_url: profile.imageUrl || '',
+      introduction: profile.introduction || '',
+      subscriber_count: profile.subscriberCount || 0,
+      total_follower_count: profile.followerCount || profile.subscriberCount || 0,
+      profile_url: `https://in.naver.com/${naverId}`,
+      total_keywords: 0,
+      avg_rank: 0,
+      best_rank: 0,
+      integrated_top3_count: 0,
+      top1_count: 0,
+      top2_count: 0,
+      top3_count: 0,
+    };
+  } catch {
+    // Feed API 실패 시 HTML 폴백
+    return await fetchFromNaverHtml(naverId);
+  }
+}
+
+/** HTML 폴백 (Feed API 실패 시) */
+async function fetchFromNaverHtml(naverId: string) {
   try {
     const res = await fetch(`https://in.naver.com/${naverId}`, {
       headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'ko-KR,ko;q=0.9' },
@@ -14,14 +64,11 @@ async function fetchFromNaver(naverId: string) {
     if (!res.ok) return null;
 
     const html = await res.text();
-
-    // JSON-LD 또는 window.__APOLLO_STATE__ 에서 데이터 추출
     const nameMatch = html.match(/"nickname"\s*:\s*"([^"]+)"/);
     const subMatch = html.match(/"subscriberCount"\s*:\s*(\d+)/);
     const followerMatch = html.match(/"followerCount"\s*:\s*(\d+)/);
     const categoryMatch = html.match(/"myKeywordCategory"\s*:\s*"([^"]+)"/);
     const imageMatch = html.match(/"imageUrl"\s*:\s*"([^"]+)"/);
-    const introMatch = html.match(/"introduction"\s*:\s*"([^"]*?)"/);
 
     if (!nameMatch) return null;
 
@@ -32,17 +79,12 @@ async function fetchFromNaver(naverId: string) {
       category: categoryMatch?.[1] || '',
       my_keyword_category: categoryMatch?.[1] || '',
       image_url: imageMatch?.[1]?.replace(/\\u002F/g, '/') || '',
-      introduction: introMatch?.[1]?.replace(/\\n/g, '\n') || '',
+      introduction: '',
       subscriber_count: parseInt(subMatch?.[1] || '0'),
       total_follower_count: parseInt(followerMatch?.[1] || '0'),
       profile_url: `https://in.naver.com/${naverId}`,
-      total_keywords: 0,
-      avg_rank: 0,
-      best_rank: 0,
-      integrated_top3_count: 0,
-      top1_count: 0,
-      top2_count: 0,
-      top3_count: 0,
+      total_keywords: 0, avg_rank: 0, best_rank: 0,
+      integrated_top3_count: 0, top1_count: 0, top2_count: 0, top3_count: 0,
     };
   } catch {
     return null;

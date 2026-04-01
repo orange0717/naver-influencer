@@ -26,7 +26,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return {};
 }
 
-export function useNotifications(page = 1) {
+export function useNotifications(page = 1, enabled = true) {
   return useQuery({
     queryKey: ['notifications', page],
     queryFn: async () => {
@@ -39,8 +39,9 @@ export function useNotifications(page = 1) {
         unreadCount: number;
       }>;
     },
+    enabled,
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: enabled ? 60_000 : false,
   });
 }
 

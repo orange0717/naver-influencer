@@ -122,17 +122,24 @@ export async function getNotificationRecipients(
     .not('verified_at', 'is', null)
     .gt('expires_at', now);
 
+  // naver_id 배치 조회 (N+1 방지)
+  const demoNaverIds = (demos || []).map(d => d.naver_id).filter(Boolean) as string[];
+  const naverIdToInfluencerId = new Map<string, string>();
+  if (demoNaverIds.length > 0) {
+    const { data: infData } = await supabase
+      .from('influencers')
+      .select('id, naver_id')
+      .in('naver_id', demoNaverIds);
+    for (const inf of infData || []) {
+      naverIdToInfluencerId.set(inf.naver_id, inf.id);
+    }
+  }
+
   for (const d of demos || []) {
     if (!d.email || !d.naver_id) continue;
 
-    // naver_id로 influencer_id 조회
-    const { data: inf } = await supabase
-      .from('influencers')
-      .select('id')
-      .eq('naver_id', d.naver_id)
-      .single();
-
-    if (!inf) continue;
+    const influencerId = naverIdToInfluencerId.get(d.naver_id);
+    if (!influencerId) continue;
 
     const settingsRaw = d.notification_settings;
     const settings = Array.isArray(settingsRaw) ? settingsRaw[0] ?? null : settingsRaw ?? null;
@@ -142,7 +149,7 @@ export async function getNotificationRecipients(
       id: d.id,
       email: d.email,
       displayName: d.display_name || d.naver_id,
-      influencerId: inf.id,
+      influencerId,
       settings: settings as NotificationSettings | null,
     });
   }

@@ -35,11 +35,11 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
       <span className="text-sm text-text">{label}</span>
       <button
         onClick={() => onChange(!checked)}
-        className={`relative w-10 h-5.5 rounded-full transition-colors cursor-pointer ${checked ? 'bg-accent' : 'bg-border'}`}
+        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${checked ? 'bg-accent' : 'bg-border'}`}
         role="switch"
         aria-checked={checked}
       >
-        <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-[18px]' : ''}`} />
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
       </button>
     </div>
   );

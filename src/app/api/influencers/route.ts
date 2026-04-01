@@ -113,8 +113,8 @@ async function getInfluencersFromDB(
     }
     query = query.range(offset, offset + limit - 1);
   } else {
-    // 비율 정렬: DB에서 전체 가져온 후 서버에서 정렬
-    query = query.not('total_keywords', 'is', null).gt('total_keywords', 0);
+    // 비율 정렬: 키워드 참여 인플루언서만 가져와서 서버에서 정렬 (최대 5000건)
+    query = query.not('total_keywords', 'is', null).gt('total_keywords', 0).limit(5000);
   }
 
   let { data: influencers, count, error } = await query;

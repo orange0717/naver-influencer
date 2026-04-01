@@ -83,7 +83,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { data: unreadCount = 0 } = useUnreadCount();
-  const { data } = useNotifications(1);
+  const { data } = useNotifications(1, open);
   const markAsRead = useMarkAsRead();
 
   useEffect(() => {

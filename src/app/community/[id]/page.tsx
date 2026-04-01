@@ -96,11 +96,11 @@ export default function CommunityPostPage() {
     } finally {
       setLoading(false);
     }
-  }, [postId, router]);
+  }, [postId, router, user, authChecked]);
 
   useEffect(() => {
     fetchPost();
-  }, [fetchPost, user, authChecked]);
+  }, [fetchPost]);
 
   // 좋아요 로컬 체크
   useEffect(() => {
