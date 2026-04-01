@@ -57,9 +57,10 @@ async function fetchOwnerId(naverId: string): Promise<string | null> {
 }
 
 /** participated-keywords API로 전체 참여 키워드 가져오기 */
-async function fetchAllParticipatedKeywords(ownerId: string): Promise<ParticipatedKeyword[]> {
+async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null }> {
   const results: ParticipatedKeyword[] = [];
   let cursor: string | undefined;
+  let totalFromApi: number | null = null;
 
   for (let page = 0; page < 100; page++) {
     let url = `${PARTICIPATED_API}?ownerId=${ownerId}&limit=${PAGE_LIMIT}`;
@@ -77,6 +78,12 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<Participat
 
       const json = await res.json();
       const items: ParticipatedKeyword[] = json?.data || [];
+
+      // 첫 페이지에서 API가 알려주는 전체 개수 저장
+      if (page === 0 && json?.paging?.total != null) {
+        totalFromApi = json.paging.total;
+      }
+
       results.push(...items);
 
       cursor = json?.paging?.nextCursor;
@@ -89,7 +96,7 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<Participat
     }
   }
 
-  return results;
+  return { keywords: results, totalFromApi };
 }
 
 /** keyword를 정규화 (keyword_clean 생성용) */
@@ -174,7 +181,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 전체 참여 키워드 가져오기
-    const apiKeywords = await fetchAllParticipatedKeywords(ownerId);
+    const { keywords: apiKeywords, totalFromApi } = await fetchAllParticipatedKeywords(ownerId);
     if (apiKeywords.length === 0) {
       return NextResponse.json({
         matched: 0,
@@ -365,7 +372,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('influencers')
       .update({
-        total_keywords: apiKeywords.length,
+        total_keywords: totalFromApi ?? apiKeywords.length,
         best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
         avg_rank: rankedKeywords.length > 0
           ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)

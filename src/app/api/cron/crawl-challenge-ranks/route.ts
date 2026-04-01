@@ -66,9 +66,10 @@ async function fetchOwnerId(naverId: string): Promise<string | null> {
 }
 
 /** REST API로 인플루언서의 전체 참여 키워드+순위 가져오기 */
-async function fetchAllParticipatedKeywords(ownerId: string): Promise<ParticipatedKeyword[]> {
+async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null }> {
   const results: ParticipatedKeyword[] = [];
   let cursor: string | undefined;
+  let totalFromApi: number | null = null;
 
   for (let page = 0; page < 100; page++) {
     let url = `${PARTICIPATED_API}?ownerId=${ownerId}&limit=${PAGE_LIMIT}`;
@@ -80,6 +81,11 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<Participat
       });
       const json = await res.json();
       const items: ParticipatedKeyword[] = json?.data || [];
+
+      // 첫 페이지에서 API가 알려주는 전체 개수 저장
+      if (page === 0 && json?.paging?.total != null) {
+        totalFromApi = json.paging.total;
+      }
 
       results.push(...items);
 
@@ -93,7 +99,7 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<Participat
     }
   }
 
-  return results;
+  return { keywords: results, totalFromApi };
 }
 
 /** DB에 없는 키워드를 keyword_challenges에 생성하고 매핑에 추가 */
@@ -268,7 +274,7 @@ export async function GET(request: NextRequest) {
         }
 
         // 2. 전체 참여 키워드+순위 가져오기
-        const keywords = await fetchAllParticipatedKeywords(ownerId);
+        const { keywords, totalFromApi } = await fetchAllParticipatedKeywords(ownerId);
         if (keywords.length === 0) {
           console.log(`[crawl-challenge-ranks] No keywords for ${inf.naver_id}`);
           totalFailed++;
@@ -375,10 +381,11 @@ export async function GET(request: NextRequest) {
         const rankedKeywords = keywords.filter(k => k.rank != null && k.rank > 0);
 
         // 마지막 참여일: 네이버 API의 lastChallengedAt 중 가장 최근 날짜 사용
+        // 네이버 API는 KST 시간을 타임존 없이 반환하므로 +09:00 명시
         const challengeDates = keywords
           .map(k => k.lastChallengedAt)
           .filter(Boolean)
-          .map(d => new Date(d).getTime())
+          .map(d => new Date(d + '+09:00').getTime())
           .filter(t => !isNaN(t));
         const lastChallengedAt = challengeDates.length > 0
           ? new Date(Math.max(...challengeDates)).toISOString()
@@ -389,7 +396,7 @@ export async function GET(request: NextRequest) {
         const top3 = rankedKeywords.filter(k => k.rank === 3).length;
 
         const updateData: Record<string, unknown> = {
-          total_keywords: keywords.length,
+          total_keywords: totalFromApi ?? keywords.length,
           best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
           avg_rank: rankedKeywords.length > 0
             ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)

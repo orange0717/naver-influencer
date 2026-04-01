@@ -172,10 +172,9 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
           <div className="text-center">
             {(() => {
-              const ranked = keywords.filter(k => k.rank_position && k.rank_position <= 3).length;
               const total = totalKeywords || 0;
-              if (ranked > 0 && total > 0) {
-                const ratio = Math.min(ranked / total, 1);
+              if (top3Count > 0 && total > 0) {
+                const ratio = Math.min(top3Count / total, 1);
                 return (
                   <p className={`text-lg font-bold font-rank ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
                     {(ratio * 100).toFixed(1)}%
