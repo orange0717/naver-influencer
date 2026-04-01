@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { useNotificationSettings } from '@/hooks/useNotifications';
 
 interface UserProfile {
   id: string;
@@ -26,6 +27,51 @@ interface Transaction {
   tx_type: string;
   description: string;
   created_at: string;
+}
+
+function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-sm text-text">{label}</span>
+      <button
+        onClick={() => onChange(!checked)}
+        className={`relative w-10 h-5.5 rounded-full transition-colors cursor-pointer ${checked ? 'bg-accent' : 'bg-border'}`}
+        role="switch"
+        aria-checked={checked}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-[18px]' : ''}`} />
+      </button>
+    </div>
+  );
+}
+
+function NotificationSettingsSection() {
+  const { settings, isLoading, updateSettings } = useNotificationSettings();
+
+  if (isLoading || !settings) return null;
+
+  const handleChange = (key: string, value: boolean) => {
+    updateSettings({ [key]: value });
+  };
+
+  return (
+    <div id="notification-settings" className="bg-surface rounded-xl border border-border p-5">
+      <h3 className="font-bold text-sm mb-3">알림 설정</h3>
+      <div className="space-y-2">
+        <p className="text-xs text-dim mb-2">알림 채널</p>
+        <ToggleRow label="이메일 알림" checked={settings.email_enabled} onChange={(v) => handleChange('email_enabled', v)} />
+        <ToggleRow label="카카오 알림톡" checked={settings.kakao_enabled} onChange={(v) => handleChange('kakao_enabled', v)} />
+        <ToggleRow label="인앱 알림" checked={settings.in_app_enabled} onChange={(v) => handleChange('in_app_enabled', v)} />
+
+        <hr className="border-border my-2" />
+
+        <p className="text-xs text-dim mb-2">알림 유형</p>
+        <ToggleRow label="TOP3 진입 알림" checked={settings.notify_top3_entry} onChange={(v) => handleChange('notify_top3_entry', v)} />
+        <ToggleRow label="TOP3 이탈 알림" checked={settings.notify_top3_exit} onChange={(v) => handleChange('notify_top3_exit', v)} />
+        <ToggleRow label="순위 큰 변동 알림 (3단계 이상)" checked={settings.notify_significant_change} onChange={(v) => handleChange('notify_significant_change', v)} />
+      </div>
+    </div>
+  );
 }
 
 export default function ProfilePage() {
@@ -264,6 +310,9 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* 알림 설정 */}
+      <NotificationSettingsSection />
 
       {/* 사용 내역 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">

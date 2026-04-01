@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/auth';
 import { validateBody, validateSearchParams, paginationSchema } from '@/lib/validations';
 import { createNoticeSchema } from '@/lib/validations/notice';
 import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { createNoticeNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +88,11 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // 전체 사용자에게 공지 알림 (비동기, 실패해도 공지 생성은 성공)
+    createNoticeNotification(supabase, data.id, title).catch(err =>
+      console.error('[notices] 알림 생성 실패:', err)
+    );
 
     return NextResponse.json({ id: data.id }, { status: 201 });
   } catch (err) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
+import { createCommunityReactionNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,24 @@ export async function POST(
 
     if (error) {
       return NextResponse.json({ error: '게시글을 찾을 수 없습니다.' }, { status: 404 });
+    }
+
+    // 글 작성자에게 좋아요 알림 (자기 글에 자기가 좋아요 제외)
+    const { data: postData } = await supabase
+      .from('community_posts')
+      .select('title, author_id, author_type')
+      .eq('id', id)
+      .single();
+
+    if (postData && postData.author_id !== cookieUser.id) {
+      createCommunityReactionNotification(supabase, {
+        postId: id,
+        postTitle: postData.title,
+        authorId: postData.author_id,
+        authorType: postData.author_type,
+        reactorName: cookieUser.id,
+        reactionType: 'like',
+      }).catch(err => console.error('[community] 좋아요 알림 실패:', err));
     }
 
     return NextResponse.json({ like_count: newLikeCount });

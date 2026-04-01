@@ -112,3 +112,6 @@ export const searchLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 
 
 /** 프로필 삭제: 1시간에 3회 */
 export const deleteAccountLimiter = createRateLimiter({ limit: 3, windowMs: 60 * 60 * 1000 });
+
+/** 알림 API: 1분에 30회 */
+export const notificationLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });

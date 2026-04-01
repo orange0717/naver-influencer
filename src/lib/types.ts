@@ -138,3 +138,14 @@ export interface CompetitorChangeEvent {
   myRank: number | null;
   date: string;
 }
+
+/** 알림 레코드 */
+export interface NotificationRecord {
+  id: string;
+  notification_type: 'new_top3' | 'lost_top3' | 'rank_up_significant' | 'rank_down_significant' | 'momentum_up' | 'top3_opportunity' | 'daily_summary';
+  title: string;
+  body: string;
+  metadata: Record<string, unknown>;
+  is_read: boolean;
+  created_at: string;
+}

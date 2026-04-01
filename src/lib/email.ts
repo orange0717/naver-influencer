@@ -79,6 +79,99 @@ export async function sendDemoExpiredEmail(to: string, displayName: string) {
   }
 }
 
+/** 순위 변동 알림 이메일 */
+export interface RankChangeItem {
+  keyword: string;
+  keyword_id: string;
+  from_rank: number;
+  to_rank: number;
+  change: number;
+  type: 'new_top3' | 'lost_top3' | 'rank_up' | 'rank_down';
+}
+
+export async function sendRankChangeEmail(
+  to: string,
+  displayName: string,
+  changes: RankChangeItem[],
+  snapshotDate: string,
+) {
+  const top3Items = changes.filter(c => c.type === 'new_top3' || c.type === 'lost_top3');
+  const otherItems = changes.filter(c => c.type === 'rank_up' || c.type === 'rank_down');
+
+  const renderItem = (item: RankChangeItem) => {
+    const isUp = item.type === 'new_top3' || item.type === 'rank_up';
+    const color = isUp ? '#2E8B57' : '#D94848';
+    const arrow = isUp ? '↑' : '↓';
+    const label = item.type === 'new_top3' ? 'TOP3 진입' : item.type === 'lost_top3' ? 'TOP3 이탈' : isUp ? '상승' : '하락';
+    return `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:14px">${item.keyword}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:14px;text-align:center">${item.from_rank}위</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:14px;text-align:center;color:${color};font-weight:bold">${arrow} ${item.to_rank}위</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0e8e5;font-size:12px;text-align:center"><span style="background:${isUp ? '#e8f5e9' : '#fde8e8'};color:${color};padding:2px 8px;border-radius:10px;font-weight:bold">${label}</span></td>
+      </tr>`;
+  };
+
+  const tableHeader = `
+    <table style="width:100%;border-collapse:collapse;margin:16px 0">
+      <thead>
+        <tr style="background:#f8f4f2">
+          <th style="padding:8px 12px;text-align:left;font-size:12px;color:#8C7A6E;border-bottom:2px solid #e8ddd8">키워드</th>
+          <th style="padding:8px 12px;text-align:center;font-size:12px;color:#8C7A6E;border-bottom:2px solid #e8ddd8">이전</th>
+          <th style="padding:8px 12px;text-align:center;font-size:12px;color:#8C7A6E;border-bottom:2px solid #e8ddd8">현재</th>
+          <th style="padding:8px 12px;text-align:center;font-size:12px;color:#8C7A6E;border-bottom:2px solid #e8ddd8">상태</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  let body = '';
+
+  if (top3Items.length > 0) {
+    body += `<p style="font-size:14px;font-weight:bold;margin:20px 0 4px;color:#D4A017">TOP3 변동</p>`;
+    body += tableHeader + top3Items.map(renderItem).join('') + '</tbody></table>';
+  }
+
+  if (otherItems.length > 0) {
+    body += `<p style="font-size:14px;font-weight:bold;margin:20px 0 4px;color:#8C7A6E">순위 변동 (3단계 이상)</p>`;
+    body += tableHeader + otherItems.map(renderItem).join('') + '</tbody></table>';
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfl.co.kr';
+
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `[N인플] ${displayName}님의 순위 변동 알림 (${changes.length}건)`,
+    html: `
+      <div style="max-width:520px;margin:0 auto;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#333">
+        <div style="background:#c8816b;padding:24px 20px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
+        </div>
+        <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
+          <p style="font-size:16px;font-weight:bold;margin:0 0 8px">${displayName}님, 오늘의 순위 변동 알림입니다.</p>
+          <p style="font-size:13px;color:#999;margin:0 0 16px">${snapshotDate} 기준</p>
+          ${body}
+          <div style="text-align:center;margin:28px 0 16px">
+            <a href="${baseUrl}/my"
+               style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
+              대시보드에서 확인하기
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:11px;color:#999;text-align:center;margin:0">
+            본 메일은 N인플 순위 알림 설정에 의해 발송되었습니다.<br>
+            알림 설정은 <a href="${baseUrl}/profile" style="color:#c8816b">프로필</a>에서 변경할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('[email] 순위 변동 알림 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
+}
+
 /** 데모 만료 3일 전 리마인더 이메일 */
 export async function sendDemoReminderEmail(to: string, displayName: string, daysLeft: number) {
   const { error } = await getResend().emails.send({

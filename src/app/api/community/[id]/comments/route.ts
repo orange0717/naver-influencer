@@ -4,6 +4,7 @@ import { getCookieUser } from '@/lib/auth';
 import { validateBody } from '@/lib/validations';
 import { createCommentSchema } from '@/lib/validations/community';
 import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { createCommunityReactionNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,25 @@ export async function POST(
     if (error) throw error;
 
     await supabase.rpc('increment_comment_count', { post_id });
+
+    // 글 작성자에게 댓글 알림 (자기 글에 자기가 댓글 달면 제외)
+    const { data: postData } = await supabase
+      .from('community_posts')
+      .select('title, author_id, author_type')
+      .eq('id', post_id)
+      .single();
+
+    if (postData && postData.author_id !== cookieUser.id) {
+      createCommunityReactionNotification(supabase, {
+        postId: post_id,
+        postTitle: postData.title,
+        authorId: postData.author_id,
+        authorType: postData.author_type,
+        reactorName: (author_name || cookieUser.id).slice(0, 20),
+        reactionType: 'comment',
+        commentPreview: content.slice(0, 100),
+      }).catch(err => console.error('[community] 댓글 알림 실패:', err));
+    }
 
     return NextResponse.json({ comment }, { status: 201 });
   } catch (err) {
