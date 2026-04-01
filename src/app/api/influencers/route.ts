@@ -100,20 +100,37 @@ async function getInfluencersFromDB(
     top2_count: 'top2_count',
     top3_count: 'top3_count',
   };
-  const sortColumn = allowedSorts[sortBy] || 'naver_created_at';
+  const isRatioSort = sortBy === 'top3_ratio';
+  const sortColumn = isRatioSort ? 'integrated_top3_count' : (allowedSorts[sortBy] || 'naver_created_at');
   const ascending = order === 'asc';
   // NULL은 항상 맨 뒤로
   const isDateSort = sortColumn === 'naver_created_at';
-  query = query
-    .order(sortColumn, { ascending, nullsFirst: false });
-  if (isDateSort) {
-    query = query.order('first_seen_at', { ascending });
-  }
-  query = query.range(offset, offset + limit - 1);
 
-  const { data: influencers, count, error } = await query;
+  if (!isRatioSort) {
+    query = query.order(sortColumn, { ascending, nullsFirst: false });
+    if (isDateSort) {
+      query = query.order('first_seen_at', { ascending });
+    }
+    query = query.range(offset, offset + limit - 1);
+  } else {
+    // 비율 정렬: DB에서 전체 가져온 후 서버에서 정렬
+    query = query.not('total_keywords', 'is', null).gt('total_keywords', 0);
+  }
+
+  let { data: influencers, count, error } = await query;
 
   if (error) throw new Error(error.message);
+
+  // 비율 정렬 시 서버에서 정렬 + 페이지네이션
+  if (isRatioSort && influencers) {
+    influencers.sort((a, b) => {
+      const ratioA = (a.total_keywords || 0) > 0 ? (a.integrated_top3_count || 0) / a.total_keywords : 0;
+      const ratioB = (b.total_keywords || 0) > 0 ? (b.integrated_top3_count || 0) / b.total_keywords : 0;
+      return ascending ? ratioA - ratioB : ratioB - ratioA;
+    });
+    count = influencers.length;
+    influencers = influencers.slice(offset, offset + limit);
+  }
 
   const total = count || 0;
   const totalPages = Math.ceil(total / limit);

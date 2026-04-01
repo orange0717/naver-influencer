@@ -27,7 +27,7 @@ interface InfluencerItem {
   isStopped?: boolean;
 }
 
-type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at';
+type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'first_seen_at', label: '선정일순' },
@@ -207,7 +207,9 @@ export default function InfluencersPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('integrated_top3_count')}>
                     TOP3{sortArrow('integrated_top3_count')}
                   </th>
-                  <th className="text-center py-3 px-2 font-semibold text-dim text-xs">비율</th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top3_ratio')}>
+                    비율{sortArrow('top3_ratio')}
+                  </th>
                   <th className="text-center py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('top1_count')}>
                     1위{sortArrow('top1_count')}
                   </th>
