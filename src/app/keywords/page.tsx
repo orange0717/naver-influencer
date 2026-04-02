@@ -82,7 +82,7 @@ export default function KeywordsPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const loadedCountRef = useRef(0);
 
-  const fetchData = useCallback(async (cursor?: string | null) => {
+  const fetchData = useCallback(async (cursor?: string | null, searchQuery?: string) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: '50' });
@@ -100,8 +100,7 @@ export default function KeywordsPage() {
         params.set('page', String(currentPageIndex + 1));
       }
 
-      // 정렬 모드에서는 클라이언트 검색 (API 재호출 불필요)
-      if (search.trim() && !sortKey) params.set('search', search.trim());
+      if (searchQuery) params.set('search', searchQuery);
 
       const res = await fetch(`/api/keywords?${params}`);
       const data = await res.json();
@@ -116,21 +115,25 @@ export default function KeywordsPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, search, currentPageIndex, sortKey, sortOrder]);
+  }, [category, currentPageIndex, sortKey, sortOrder]);
 
+  // 카테고리/페이지/정렬 변경 시 fetch
   useEffect(() => {
-    const abortController = new AbortController();
+    const cursor = cursorHistory[currentPageIndex];
+    fetchData(cursor, sortKey ? undefined : search.trim() || undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, currentPageIndex, sortKey, sortOrder]);
+
+  // 검색어 변경 시 fetch (정렬 모드가 아닐 때만 - 정렬 모드는 클라이언트 필터링)
+  useEffect(() => {
+    if (sortKey) return;
     const timer = setTimeout(() => {
       const cursor = cursorHistory[currentPageIndex];
-      if (!abortController.signal.aborted) {
-        fetchData(cursor);
-      }
-    }, search ? 500 : 0);
-    return () => {
-      clearTimeout(timer);
-      abortController.abort();
-    };
-  }, [fetchData, search, currentPageIndex, cursorHistory]);
+      fetchData(cursor, search.trim() || undefined);
+    }, 500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
