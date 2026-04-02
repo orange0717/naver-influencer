@@ -27,25 +27,28 @@ export async function POST(req: NextRequest) {
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const today = kst.toISOString().slice(0, 10);
 
-    // 1) 기존 site_visits 일별 집계 (유지)
-    const { error } = await supabase.rpc('increment_visit', { p_date: today });
+    // 1) site_visits 일별 집계 — 세션 첫 방문(순 방문자)일 때만 카운트
+    const isFirstVisit = body.first_visit === true;
+    if (isFirstVisit) {
+      const { error } = await supabase.rpc('increment_visit', { p_date: today });
 
-    if (error) {
-      const { data: existing } = await supabase
-        .from('site_visits')
-        .select('visit_count')
-        .eq('visit_date', today)
-        .single();
+      if (error) {
+        const { data: existing } = await supabase
+          .from('site_visits')
+          .select('visit_count')
+          .eq('visit_date', today)
+          .single();
 
-      if (existing) {
-        await supabase
-          .from('site_visits')
-          .update({ visit_count: (existing.visit_count || 0) + 1 })
-          .eq('visit_date', today);
-      } else {
-        await supabase
-          .from('site_visits')
-          .insert({ visit_date: today, visit_count: 1, unique_visitors: 1 });
+        if (existing) {
+          await supabase
+            .from('site_visits')
+            .update({ visit_count: (existing.visit_count || 0) + 1 })
+            .eq('visit_date', today);
+        } else {
+          await supabase
+            .from('site_visits')
+            .insert({ visit_date: today, visit_count: 1, unique_visitors: 1 });
+        }
       }
     }
 
