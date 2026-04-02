@@ -123,10 +123,15 @@ async function getInfluencersFromDB(
 
   // 비율 정렬 시 서버에서 정렬 + 페이지네이션
   if (isRatioSort && influencers) {
+    const getTop3 = (inf: Record<string, unknown>) => (Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0);
     influencers.sort((a, b) => {
-      const ratioA = (a.total_keywords || 0) > 0 ? (a.integrated_top3_count || 0) / a.total_keywords : 0;
-      const ratioB = (b.total_keywords || 0) > 0 ? (b.integrated_top3_count || 0) / b.total_keywords : 0;
-      return ascending ? ratioA - ratioB : ratioB - ratioA;
+      const top3A = getTop3(a);
+      const top3B = getTop3(b);
+      const ratioA = (a.total_keywords || 0) > 0 ? top3A / (a.total_keywords as number) : 0;
+      const ratioB = (b.total_keywords || 0) > 0 ? top3B / (b.total_keywords as number) : 0;
+      if (ratioA !== ratioB) return ascending ? ratioA - ratioB : ratioB - ratioA;
+      // 비율 같으면 TOP3 개수순
+      return ascending ? top3A - top3B : top3B - top3A;
     });
     count = influencers.length;
     influencers = influencers.slice(offset, offset + limit);
