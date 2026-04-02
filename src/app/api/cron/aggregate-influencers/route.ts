@@ -13,22 +13,34 @@ export async function GET(request: NextRequest) {
   console.log('[Cron] aggregate-influencers started at', new Date().toISOString());
 
   try {
-    // 최근 7일 이내 snapshot 기준으로 집계 (원래 로직)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sinceDate = sevenDaysAgo.toISOString().slice(0, 10);
+    // 전체 keyword_rankings에서 키워드당 최신 스냅샷 기준으로 집계
+    // 페이징으로 전체 데이터 로드 (Supabase 1000건 제한 우회)
+    console.log(`[aggregate-influencers] 전체 랭킹 데이터 로드 시작`);
 
-    console.log(`[aggregate-influencers] 집계 범위: ${sinceDate} ~ 현재`);
+    const PAGE_SIZE = 10000;
+    let allRankings: { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean; snapshot_date: string }[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    // keyword_rankings에서 집계
-    const { data: rankings, error: fetchErr } = await supabase
-      .from('keyword_rankings')
-      .select('influencer_id, keyword_id, rank_position, is_integrated_top3, snapshot_date')
-      .gte('snapshot_date', sinceDate);
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('keyword_rankings')
+        .select('influencer_id, keyword_id, rank_position, is_integrated_top3, snapshot_date')
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (fetchErr) throw new Error(fetchErr.message);
+      if (error) throw new Error(error.message);
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        allRankings = allRankings.concat(data as typeof allRankings);
+        from += PAGE_SIZE;
+        if (data.length < PAGE_SIZE) hasMore = false;
+      }
+    }
 
-    if (!rankings || rankings.length === 0) {
+    const rankings = allRankings;
+
+    if (rankings.length === 0) {
       console.log('[aggregate-influencers] No ranking data found');
       await updateCrawlJob(jobId, { status: 'success', total_items: 0, processed_items: 0 });
       return NextResponse.json({ success: true, processed: 0 });
@@ -37,12 +49,11 @@ export async function GET(request: NextRequest) {
     console.log(`[aggregate-influencers] 랭킹 ${rankings.length}건 로드`);
 
     // 인플루언서별로 키워드당 최신 스냅샷만 사용 (중복 방지)
-    type RankingRow = { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean; snapshot_date: string };
-    const typedRankings = rankings as RankingRow[];
+    type RankingRow = typeof rankings[number];
 
     // 인플루언서+키워드별 최신 레코드만 추출
     const latestMap = new Map<string, RankingRow>();
-    for (const r of typedRankings) {
+    for (const r of rankings) {
       const key = `${r.influencer_id}:${r.keyword_id}`;
       const existing = latestMap.get(key);
       if (!existing || r.snapshot_date > existing.snapshot_date) {
