@@ -394,9 +394,10 @@ export async function GET(request: NextRequest) {
         const top1 = rankedKeywords.filter(k => k.rank === 1).length;
         const top2 = rankedKeywords.filter(k => k.rank === 2).length;
         const top3 = rankedKeywords.filter(k => k.rank === 3).length;
+        const totalKw = totalFromApi ?? keywords.length;
 
         const updateData: Record<string, unknown> = {
-          total_keywords: totalFromApi ?? keywords.length,
+          total_keywords: totalKw,
           best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
           avg_rank: rankedKeywords.length > 0
             ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
@@ -405,6 +406,7 @@ export async function GET(request: NextRequest) {
           top1_count: top1,
           top2_count: top2,
           top3_count: top3,
+          top3_ratio: totalKw > 0 ? +((top1 + top2 + top3) / totalKw).toFixed(4) : 0,
         };
 
         // 실제 참여일이 있을 때만 업데이트
