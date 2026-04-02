@@ -17,6 +17,7 @@ import DeleteAccountButton from '@/components/dashboard/DeleteAccountButton';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
+import AdProfileForm from '@/components/dashboard/AdProfileForm';
 import TrialBanner from '@/components/TrialBanner';
 
 export const dynamic = 'force-dynamic';
@@ -627,41 +628,14 @@ export default async function MyDashboard() {
         totalNotParticipated={notParticipatedKeywords.length}
       />
 
-      {/* ─── 광고 프로필 ─── */}
-      {(influencer.ad_fee_amount || influencer.ad_fee_text || influencer.ad_process) ? (
-        <GlassCard>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-[15px]">광고 프로필</h3>
-            <a href="/profile" className="text-xs text-accent hover:underline">편집 →</a>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(influencer.ad_fee_amount || influencer.ad_fee_text) && (
-              <div className="bg-bg rounded-xl p-3 space-y-1">
-                <p className="text-xs text-dim font-semibold">원고료</p>
-                {influencer.ad_fee_amount ? (
-                  <p className="text-lg font-bold text-accent font-rank">{influencer.ad_fee_amount.toLocaleString()}원</p>
-                ) : null}
-                {influencer.ad_fee_text && <p className="text-sm text-text">{influencer.ad_fee_text}</p>}
-              </div>
-            )}
-            {influencer.ad_process && (
-              <div className="bg-bg rounded-xl p-3 space-y-1">
-                <p className="text-xs text-dim font-semibold">진행방법</p>
-                <p className="text-sm text-text whitespace-pre-line">{influencer.ad_process}</p>
-              </div>
-            )}
-          </div>
-        </GlassCard>
-      ) : (
-        <GlassCard>
-          <div className="text-center py-4 space-y-2">
-            <p className="text-sm text-dim">광고 프로필을 등록하면 인플루언서 상세 페이지에 표시됩니다.</p>
-            <a href="/profile" className="inline-block px-4 py-2 bg-accent/12 text-accent font-semibold text-sm rounded-lg">
-              원고료/진행방법 등록하기 →
-            </a>
-          </div>
-        </GlassCard>
-      )}
+      {/* ─── 광고 프로필 (직접 입력 가능) ─── */}
+      <GlassCard>
+        <AdProfileForm
+          initialFeeAmount={influencer.ad_fee_amount ?? null}
+          initialFeeText={influencer.ad_fee_text || ''}
+          initialProcess={influencer.ad_process || ''}
+        />
+      </GlassCard>
 
       {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
       <WidgetSection naverId={naverId} />
