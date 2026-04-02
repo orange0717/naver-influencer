@@ -353,21 +353,20 @@ export default function CommunityPostPage() {
           </div>
         )}
 
-        {/* 좋아요 */}
-        <div className="px-6 pb-5 flex justify-center">
+        {/* 하단 정보 */}
+        <div className="px-6 pb-5 flex items-center gap-3 text-xs text-dim">
           <button
             onClick={handleLike}
             disabled={liked || !user}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
-              liked
-                ? 'bg-red-50 text-red-500 border border-red-200'
-                : 'bg-bg border border-border text-dim hover:text-red-500 hover:border-red-200'
+            className={`flex items-center gap-1 transition cursor-pointer disabled:cursor-default ${
+              liked ? 'text-red-500' : 'hover:text-red-500'
             }`}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
               <path d="M8 14s-5.5-3.5-5.5-7.5C2.5 4 4 2.5 5.5 2.5c1 0 2 .5 2.5 1.5.5-1 1.5-1.5 2.5-1.5C12 2.5 13.5 4 13.5 6.5 13.5 10.5 8 14 8 14z"/>
             </svg>
-            좋아요 {post.like_count > 0 && post.like_count}
+            {post.like_count > 0 ? post.like_count : '좋아요'}
           </button>
+          <span>댓글 {comments.length}</span>
         </div>
       </article>
 
