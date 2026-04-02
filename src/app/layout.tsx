@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import HeaderWrapper from "@/components/HeaderWrapper";
 import Footer from "@/components/Footer";
@@ -34,7 +35,7 @@ export default function RootLayout({
         <Providers>
           <HeaderWrapper />
           <UpdateBanner />
-          <VisitTracker />
+          <Suspense fallback={null}><VisitTracker /></Suspense>
           <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
             {children}
           </main>
