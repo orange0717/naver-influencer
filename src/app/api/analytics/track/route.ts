@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const supabase = createServiceClient();
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const today = kst.toISOString().slice(0, 10);
 
     // 1) 기존 site_visits 일별 집계 (유지)
     const { error } = await supabase.rpc('increment_visit', { p_date: today });

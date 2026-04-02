@@ -42,10 +42,10 @@ export default function DeleteAccountButton() {
 
   if (step === 'idle') {
     return (
-      <div className="border-t border-border/50 pt-6 mt-8">
+      <div className="border-t border-border/50 pt-8 mt-10 text-center">
         <button
           onClick={() => setStep('confirm')}
-          className="text-xs text-dim hover:text-down transition cursor-pointer"
+          className="text-sm text-dim/70 hover:text-down transition cursor-pointer underline underline-offset-4"
         >
           회원탈퇴
         </button>

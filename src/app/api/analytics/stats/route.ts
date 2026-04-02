@@ -6,7 +6,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const supabase = createServiceClient();
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const today = kst.toISOString().slice(0, 10);
 
     // 오늘 방문자 (site_visits 테이블)
     let todayVisits = 0;
