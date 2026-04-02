@@ -87,7 +87,11 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     if (!noticeId) return;
-    fetch(`/api/notices/${noticeId}`)
+    const viewKey = `notice_viewed_${noticeId}`;
+    const alreadyViewed = sessionStorage.getItem(viewKey);
+    const url = alreadyViewed ? `/api/notices/${noticeId}?skip_view=1` : `/api/notices/${noticeId}`;
+    sessionStorage.setItem(viewKey, '1');
+    fetch(url)
       .then(r => {
         if (!r.ok) throw new Error();
         return r.json();

@@ -28,8 +28,13 @@ export async function GET(
       return NextResponse.json({ error: '게시글을 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // 조회수 atomic 증가
-    const { data: newViewCount } = await supabase.rpc('increment_view_count', { post_id: id });
+    // 조회수 증가 (skip_view로 세션 중복 방지)
+    const skipView = _req.nextUrl.searchParams.get('skip_view') === '1';
+    let newViewCount = post.view_count;
+    if (!skipView) {
+      const { data } = await supabase.rpc('increment_view_count', { post_id: id });
+      newViewCount = data ?? post.view_count + 1;
+    }
 
     // 댓글 조회
     const { data: comments } = await supabase

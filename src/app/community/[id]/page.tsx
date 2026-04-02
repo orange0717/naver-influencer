@@ -82,7 +82,10 @@ export default function CommunityPostPage() {
     if (!user) return; // 비로그인이면 게시글 로드하지 않음
     setLoading(true);
     try {
-      const res = await fetch(`/api/community/${postId}`);
+      const viewKey = `community_viewed_${postId}`;
+      const alreadyViewed = sessionStorage.getItem(viewKey);
+      sessionStorage.setItem(viewKey, '1');
+      const res = await fetch(`/api/community/${postId}${alreadyViewed ? '?skip_view=1' : ''}`);
       if (!res.ok) {
         router.push('/community');
         return;

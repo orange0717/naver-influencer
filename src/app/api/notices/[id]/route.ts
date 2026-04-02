@@ -29,13 +29,14 @@ export async function GET(
       return NextResponse.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // 조회수 증가: bot/preview가 아닌 실제 브라우저 요청만 카운트
+    // 조회수 증가: bot/preview 제외 + 세션 중복 방지(skip_view)
+    const skipView = _req.nextUrl.searchParams.get('skip_view') === '1';
     const ua = _req.headers.get('user-agent') || '';
     const isBot = /bot|crawl|spider|preview|headless|phantom|puppeteer|playwright/i.test(ua);
-    const isSecFetch = _req.headers.get('sec-fetch-dest'); // 브라우저만 보냄
+    const isSecFetch = _req.headers.get('sec-fetch-dest');
     let viewCount = notice.view_count;
 
-    if (!isBot && isSecFetch) {
+    if (!skipView && !isBot && isSecFetch) {
       const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
       viewCount = newViewCount ?? notice.view_count + 1;
     }
