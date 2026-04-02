@@ -299,49 +299,49 @@ export default function MyKeywordList({
                       </td>
                       <td className="text-center px-3 py-3">
                         {kw.is_participated && kw.rank_position !== null ? (
-                          <span className={`text-sm font-black font-rank ${
+                          <span className={`text-[15px] font-black font-rank ${
                             kw.rank_position === 1 ? 'text-gold' : kw.rank_position <= 3 ? 'text-accent' : ''
                           }`}>
                             {kw.rank_position}위
                           </span>
                         ) : (
-                          <span className="text-xs text-dim">-</span>
+                          <span className="text-sm text-dim">-</span>
                         )}
                       </td>
                       <td className="text-center px-3 py-3">
                         {kw.is_participated && kw.rank_change !== 0 ? (
-                          <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
+                          <span className={`text-sm font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
                             {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
                           </span>
                         ) : (
-                          <span className="text-xs text-dim">-</span>
+                          <span className="text-sm text-dim">-</span>
                         )}
                       </td>
                       <td className="text-center px-3 py-3">
-                        <span className="text-sm font-rank">{kw.participant_count}명</span>
+                        <span className="text-sm font-bold font-rank">{kw.participant_count}명</span>
                       </td>
                       <td className="text-center px-3 py-3">
-                        <span className="text-sm font-rank">
+                        <span className="text-sm font-bold font-rank">
                           {kw.search_volume > 0 ? formatCount(kw.search_volume) : '-'}
                         </span>
                       </td>
                       <td className="text-center px-3 py-3">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${compLabels[comp].className}`}>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${compLabels[comp].className}`}>
                           {compLabels[comp].label}
                         </span>
                       </td>
                       <td className="text-center px-3 py-3">
                         {!kw.is_participated ? (
-                          <span className="text-[10px] font-bold text-dim bg-border/30 px-1.5 py-0.5 rounded">미참여</span>
+                          <span className="text-xs font-bold text-dim bg-border/30 px-1.5 py-0.5 rounded">미참여</span>
                         ) : kw.rank_position !== null ? (
                           <div className="flex items-center justify-center gap-1">
-                            <span className="text-[10px] font-bold text-up bg-up/10 px-1.5 py-0.5 rounded">노출</span>
+                            <span className="text-xs font-bold text-up bg-up/10 px-1.5 py-0.5 rounded">노출</span>
                             {kw.is_integrated_top3 && (
-                              <span className="text-[10px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded">T3</span>
+                              <span className="text-xs font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded">T3</span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-[10px] font-bold text-down bg-down/10 px-1.5 py-0.5 rounded">미노출</span>
+                          <span className="text-xs font-bold text-down bg-down/10 px-1.5 py-0.5 rounded">미노출</span>
                         )}
                       </td>
                     </tr>
@@ -399,15 +399,15 @@ export default function MyKeywordList({
                   className={`flex items-center justify-between px-4 py-3.5 hover:bg-surface-hover transition ${dimmed ? 'opacity-60' : ''}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold truncate">{kw.keyword}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${compLabels[comp].className}`}>
+                      <span className="text-[15px] font-bold truncate">{kw.keyword}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${compLabels[comp].className}`}>
                         {compLabels[comp].label}
                       </span>
                       {kw.is_participated && kw.is_integrated_top3 && (
                         <span className="text-[9px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full shrink-0">T3</span>
                       )}
                     </div>
-                    <div className="text-[11px] text-dim mt-0.5">
+                    <div className="text-xs text-dim mt-0.5">
                       {kw.category} · {kw.participant_count}명
                       {kw.search_volume > 0 ? ` · 월 ${formatCount(kw.search_volume)}` : ''}
                     </div>
