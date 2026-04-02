@@ -100,7 +100,8 @@ export default function KeywordsPage() {
         params.set('page', String(currentPageIndex + 1));
       }
 
-      if (search.trim()) params.set('search', search.trim());
+      // 정렬 모드에서는 클라이언트 검색 (API 재호출 불필요)
+      if (search.trim() && !sortKey) params.set('search', search.trim());
 
       const res = await fetch(`/api/keywords?${params}`);
       const data = await res.json();
@@ -183,6 +184,11 @@ export default function KeywordsPage() {
 
   const displayKeywords = useMemo(() => {
     let list = subFilter === '전체' ? [...keywords] : keywords.filter(kw => getSubcategory(kw.category, kw.keyword) === subFilter);
+    // 정렬 모드에서 클라이언트 검색 (전체 데이터가 로드되어 있으므로)
+    if (sortKey && search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(kw => kw.keyword.toLowerCase().includes(q));
+    }
     if (sortKey) {
       const compOrder: Record<string, number> = { low: 1, medium: 2, high: 3 };
       list = [...list].sort((a, b) => {
@@ -196,7 +202,7 @@ export default function KeywordsPage() {
       });
     }
     return list;
-  }, [keywords, subFilter, sortKey, sortOrder]);
+  }, [keywords, subFilter, sortKey, sortOrder, search]);
 
   return (
     <div className="space-y-6">
