@@ -13,10 +13,14 @@ export async function GET(request: NextRequest) {
   console.log('[Cron] aggregate-influencers started at', new Date().toISOString());
 
   try {
-    // 전체 keyword_rankings에서 키워드당 최신 스냅샷 기준으로 집계
-    // 페이징으로 전체 데이터 로드 (Supabase 1000건 제한 우회)
-    console.log(`[aggregate-influencers] 전체 랭킹 데이터 로드 시작`);
+    // 최근 30일 키워드 랭킹 기준으로 집계 (대시보드와 동일한 기간)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sinceDate = thirtyDaysAgo.toISOString().slice(0, 10);
 
+    console.log(`[aggregate-influencers] 집계 범위: ${sinceDate} ~ 현재`);
+
+    // 페이징으로 데이터 로드 (Supabase 1000건 제한 우회)
     const PAGE_SIZE = 1000;
     let allRankings: { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean; snapshot_date: string }[] = [];
     let from = 0;
@@ -26,6 +30,7 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase
         .from('keyword_rankings')
         .select('influencer_id, keyword_id, rank_position, is_integrated_top3, snapshot_date')
+        .gte('snapshot_date', sinceDate)
         .range(from, from + PAGE_SIZE - 1);
 
       if (error) throw new Error(error.message);
