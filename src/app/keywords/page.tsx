@@ -57,24 +57,28 @@ export default function KeywordsPage() {
 
   // 키워드 목록 로드 시 배치로 TOP3 가져오기 (keyword name 기반)
   useEffect(() => {
-    if (keywords.length === 0) return;
-    const names = keywords.slice(0, 20).map(kw => kw.keyword);
+    // 카테고리 뷰: keywords 사용, 전체 뷰: grouped의 모든 키워드 사용
+    const allKws = keywords.length > 0
+      ? keywords
+      : grouped.flatMap(g => g.keywords);
+    if (allKws.length === 0) return;
+
+    const names = allKws.slice(0, 50).map(kw => kw.keyword);
     fetch(`/api/keywords/batch-top3?keywords=${encodeURIComponent(names.join(','))}`)
       .then(res => res.json())
       .then(data => {
         if (data.top3) {
-          // keyword name -> kw.id 매핑
           const mapped: Record<string, typeof data.top3[string]> = {};
-          for (const kw of keywords) {
+          for (const kw of allKws) {
             if (data.top3[kw.keyword]) {
               mapped[kw.id] = data.top3[kw.keyword];
             }
           }
-          setTop3Map(mapped);
+          setTop3Map(prev => ({ ...prev, ...mapped }));
         }
       })
       .catch(() => {});
-  }, [keywords]);
+  }, [keywords, grouped]);
 
   const toggleRankings = async (kwId: string) => {
     if (expandedId === kwId) {
@@ -315,9 +319,22 @@ export default function KeywordsPage() {
                     <tr key={kw.id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
                       <td className="py-3 px-4 font-bold text-dim font-rank text-sm w-8">{i + 1}</td>
                       <td className="py-3 px-4">
-                        <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors">
-                          {kw.keyword}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors shrink-0">
+                            {kw.keyword}
+                          </Link>
+                          {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
+                            <span className="text-[11px] text-dim truncate">
+                              {top3Map[kw.id].map((t, idx) => (
+                                <span key={t.naver_id}>
+                                  <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
+                                  <span className="ml-0.5">{t.name}</span>
+                                  {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">|</span>}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-3 text-sm text-dim">{kw.category}</td>
                       {sub && <td className="py-3 px-2 text-sm text-accent font-semibold">{sub}</td>}
@@ -335,16 +352,29 @@ export default function KeywordsPage() {
                   const sub = getSubcategory(kw.category, kw.keyword);
                   return (
                   <Link key={kw.id} href={`/keywords/${kw.id}`}
-                    className="flex items-center justify-between px-4 py-3 hover:bg-surface-hover transition">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
-                      <span className="font-medium text-sm">{kw.keyword}</span>
-                      {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
+                    className="block px-4 py-3 hover:bg-surface-hover transition">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
+                        <span className="font-medium text-sm">{kw.keyword}</span>
+                        {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
+                        {compBadge(kw.competition_level)}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
-                      {compBadge(kw.competition_level)}
-                    </div>
+                    {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
+                      <div className="text-[10px] text-dim mt-1 ml-7">
+                        {top3Map[kw.id].map((t, idx) => (
+                          <span key={t.naver_id}>
+                            <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
+                            <span className="ml-0.5">{t.name}</span>
+                            {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">|</span>}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </Link>
                   );
                 })}

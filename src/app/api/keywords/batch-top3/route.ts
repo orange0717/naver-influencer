@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'keywords parameter required' }, { status: 400 });
   }
 
-  const keywords = keywordsParam.split(',').slice(0, 20); // 최대 20개
+  const keywords = keywordsParam.split(',').filter(Boolean).slice(0, 50); // 최대 50개
   if (keywords.length === 0) {
     return NextResponse.json({ top3: {} });
   }
