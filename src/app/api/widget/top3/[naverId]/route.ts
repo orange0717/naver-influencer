@@ -17,29 +17,29 @@ function generateTop3WidgetSVG(data: {
   snapshotDate: string;
 }) {
   const W = 160;
-  const H = 160;
+  const H = 172;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <!-- \uCE74\uB4DC \uBC30\uACBD -->
+  <!-- 카드 배경 -->
   <rect width="${W}" height="${H}" rx="16" fill="#FDF6F3"/>
 
-  <!-- TOP 3 \uB2EC\uC131\uB960 \uD14D\uC2A4\uD2B8 -->
-  <text x="${W/2}" y="30" font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#BF877A" text-anchor="middle">TOP 3 \uB2EC\uC131\uB960</text>
+  <!-- TOP 3 달성률 텍스트 -->
+  <text x="${W/2}" y="32" font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#BF877A" text-anchor="middle">TOP 3 달성률</text>
 
-  <!-- \uD070 \uD37C\uC13C\uD2B8 -->
-  <text x="${W/2}" y="72" font-family="Arial,sans-serif" font-size="36" font-weight="900" fill="#BF877A" text-anchor="middle">${data.top3Rate}<tspan font-size="18">%</tspan></text>
+  <!-- 큰 퍼센트 -->
+  <text x="${W/2}" y="78" font-family="Arial,sans-serif" font-size="36" font-weight="900" fill="#BF877A" text-anchor="middle">${data.top3Rate}<tspan font-size="18">%</tspan></text>
 
-  <!-- \uC0C1\uC138 \uC815\uBCF4 -->
-  <text x="${W/2}" y="95" font-family="Arial,sans-serif" font-size="11" fill="#8C7A6E" text-anchor="middle">${data.top3Count}/${data.totalKeywords}\uAC1C</text>
+  <!-- 상세 정보 -->
+  <text x="${W/2}" y="101" font-family="Arial,sans-serif" font-size="11" fill="#8C7A6E" text-anchor="middle">${data.top3Count}/${data.totalKeywords}개</text>
 
-  <!-- \uAD6C\uBD84\uC120 -->
-  <line x1="30" y1="110" x2="${W-30}" y2="110" stroke="#E8DDD8" stroke-width="0.5"/>
+  <!-- 구분선 -->
+  <line x1="30" y1="116" x2="${W-30}" y2="116" stroke="#E8DDD8" stroke-width="0.5"/>
 
-  <!-- \uD558\uB2E8: TODAY + \uB0A0\uC9DC -->
-  <text x="${W/2}" y="128" font-family="Arial,sans-serif" font-size="9" fill="#BF877A" font-weight="bold" text-anchor="middle">TODAY ${data.snapshotDate}</text>
+  <!-- 하단: TODAY + 날짜 -->
+  <text x="${W/2}" y="134" font-family="Arial,sans-serif" font-size="9" fill="#BF877A" font-weight="bold" text-anchor="middle">TODAY ${data.snapshotDate}</text>
 
-  <!-- \uD558\uB2E8: \uC774\uB984 + N\uC778\uD50C -->
-  <text x="${W/2}" y="145" font-family="Arial,sans-serif" font-size="10" fill="#8C7A6E" font-weight="600" text-anchor="middle">${data.displayName} N\uC778\uD50C</text>
+  <!-- 하단: 이름 + N인플 -->
+  <text x="${W/2}" y="152" font-family="Arial,sans-serif" font-size="10" fill="#8C7A6E" font-weight="600" text-anchor="middle">${data.displayName} N인플</text>
 </svg>`;
 }
 

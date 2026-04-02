@@ -382,6 +382,7 @@ export default async function MyDashboard() {
         .in('category', participatedCategories)
         .eq('is_active', true)
         .order('participant_count', { ascending: false })
+        .order('id')
         .range(from, from + PAGE_SIZE - 1);
       if (batch && batch.length > 0) {
         categoryAllKeywords.push(...batch);
@@ -392,6 +393,14 @@ export default async function MyDashboard() {
       }
     }
   }
+
+  // 페이지네이션 경계 중복 제거
+  const seenIds = new Set<string>();
+  categoryAllKeywords = categoryAllKeywords.filter(kw => {
+    if (seenIds.has(kw.id)) return false;
+    seenIds.add(kw.id);
+    return true;
+  });
 
   // 미참여 키워드 추가 (keyword_id + keyword 이름 기준 중복 제거)
   const participatedKeywordNames = new Set(participatedKeywords.map(kw => kw.keyword.toLowerCase()));
