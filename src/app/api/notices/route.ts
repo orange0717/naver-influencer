@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     const { data: notices, error } = await supabase
       .from('notices')
-      .select('id, title, tag, author_name, view_count, comment_count, is_pinned, created_at')
+      .select('id, title, tag, author_name, view_count, comment_count, like_count, is_pinned, created_at')
       .eq('is_deleted', false)
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })

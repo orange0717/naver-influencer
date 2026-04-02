@@ -23,6 +23,7 @@ interface Notice {
   author_name: string;
   view_count: number;
   comment_count: number;
+  like_count: number;
   is_pinned: boolean;
   created_at: string;
 }
@@ -94,6 +95,7 @@ export default function NoticePage() {
               <h2 className="font-bold text-base mb-1">{notice.title}</h2>
               <div className="flex items-center gap-3 text-xs text-dim">
                 <span>조회 {notice.view_count}</span>
+                <span>♡ {notice.like_count || 0}</span>
                 <span>댓글 {notice.comment_count}</span>
               </div>
             </Link>
