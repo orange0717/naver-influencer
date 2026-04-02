@@ -34,8 +34,23 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 특정 카테고리 선택 → 커서 기반 페이지네이션
+    // 특정 카테고리 선택
     if (category && category !== '전체') {
+      const sort = searchParams.get('sort') || undefined;
+
+      // 정렬 모드: DB에서 해당 카테고리 전체 키워드 조회
+      if (sort) {
+        const sortOrder = searchParams.get('order') === 'asc' ? true : false;
+        const dbKeywords = await getAllKeywordsFromDB(category, sort, sortOrder);
+        return NextResponse.json({
+          keywords: dbKeywords,
+          categories: categoryNames,
+          total: dbKeywords.length,
+          nextCursor: null,
+        });
+      }
+
+      // 기본: 커서 기반 페이지네이션 (네이버 API)
       const result = await fetchCategoryPage(category, limit, cursor, undefined);
       const keywords = result.keywords.map(kw => toUIKeyword(kw));
       const enriched = await enrichWithDB(keywords);
@@ -110,6 +125,61 @@ function toUIKeyword(kw: { id: number; name: string; categoryName: string; parti
     is_new: false,
     first_seen_at: '',
   };
+}
+
+/** DB에서 카테고리 전체 키워드 조회 (정렬 모드용) */
+async function getAllKeywordsFromDB(category: string, sort: string, ascending: boolean) {
+  const supabase = createServiceClient();
+  const sortColumn = sort === 'competition_level' ? 'participant_count' : 'participant_count';
+
+  const allKeywords: {
+    id: string; keyword: string; category: string;
+    participant_count: number; search_volume_monthly: number;
+    first_seen_at: string; is_active: boolean;
+  }[] = [];
+
+  const PAGE = 1000;
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: batch } = await supabase
+      .from('keyword_challenges')
+      .select('id, keyword, category, participant_count, search_volume_monthly, first_seen_at, is_active')
+      .eq('category', category)
+      .eq('is_active', true)
+      .order(sortColumn, { ascending })
+      .range(from, from + PAGE - 1);
+
+    if (batch && batch.length > 0) {
+      allKeywords.push(...batch);
+      from += PAGE;
+      hasMore = batch.length === PAGE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allKeywords.map(kw => ({
+    id: kw.id,
+    keyword: kw.keyword,
+    category: kw.category,
+    participant_count: kw.participant_count || 0,
+    content_count: 0,
+    search_volume_monthly: kw.search_volume_monthly || 0,
+    search_volume_pc: 0,
+    search_volume_mobile: 0,
+    competition_level: getCompetitionLevelAdvanced(
+      kw.participant_count || 0,
+      kw.search_volume_monthly || 0,
+      kw.first_seen_at || undefined,
+    ),
+    recommendation_score: 0,
+    trend_direction: 'stable' as const,
+    trend_percentage: 0,
+    is_new: false,
+    first_seen_at: kw.first_seen_at || '',
+  }));
 }
 
 /** DB에서 월검색량, 등록일 등 보강 데이터 가져오기 */

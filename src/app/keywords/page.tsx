@@ -89,7 +89,13 @@ export default function KeywordsPage() {
 
       if (category !== '전체') {
         params.set('category', category);
-        if (cursor) params.set('cursor', cursor);
+        // 정렬 모드: DB에서 전체 키워드 조회
+        if (sortKey) {
+          params.set('sort', sortKey);
+          params.set('order', sortOrder);
+        } else if (cursor) {
+          params.set('cursor', cursor);
+        }
       } else {
         params.set('page', String(currentPageIndex + 1));
       }
@@ -109,7 +115,7 @@ export default function KeywordsPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, search, currentPageIndex]);
+  }, [category, search, currentPageIndex, sortKey, sortOrder]);
 
   useEffect(() => {
     const abortController = new AbortController();
