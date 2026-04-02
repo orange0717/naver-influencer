@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
 
     const stats = Array.from(grouped.entries()).map(([id, g]) => ({
       influencer_id: id,
-      total_keywords: g.keywordIds.size,
       avg_rank: Math.round((g.ranks.reduce((a, b) => a + b, 0) / g.ranks.length) * 100) / 100,
       best_rank: Math.min(...g.ranks),
       integrated_top3_count: g.top3,
@@ -99,7 +98,7 @@ export async function GET(request: NextRequest) {
         supabase
           .from('influencers')
           .update({
-            total_keywords: s.total_keywords, // 실제 랭킹 데이터 기준 키워드 수
+            // total_keywords는 여기서 업데이트하지 않음 (네이버 원본 데이터 유지)
             avg_rank: Number(s.avg_rank),
             best_rank: s.best_rank,
             integrated_top3_count: Number(s.integrated_top3_count),
