@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|vercel|uptime/i;
 
-/** 페이지 방문 추적 (홈페이지에서 호출) */
+/** 페이지 방문 추적 (VisitTracker에서 호출) */
 export async function POST(req: NextRequest) {
   try {
     // Rate Limiting
@@ -20,14 +20,15 @@ export async function POST(req: NextRequest) {
     if (BOT_PATTERNS.test(ua)) {
       return NextResponse.json({ ok: true, skipped: 'bot' });
     }
+
+    const body = await req.json().catch(() => ({}));
     const supabase = createServiceClient();
     const today = new Date().toISOString().slice(0, 10);
 
-    // site_visits 테이블에 오늘 방문 +1
+    // 1) 기존 site_visits 일별 집계 (유지)
     const { error } = await supabase.rpc('increment_visit', { p_date: today });
 
     if (error) {
-      // RPC가 없으면 직접 upsert 시도
       const { data: existing } = await supabase
         .from('site_visits')
         .select('visit_count')
@@ -45,6 +46,27 @@ export async function POST(req: NextRequest) {
           .insert({ visit_date: today, visit_count: 1, unique_visitors: 1 });
       }
     }
+
+    // 2) visit_logs 개별 기록 (유입경로 추적)
+    const pagePath = typeof body.path === 'string' ? body.path.slice(0, 500) : '/';
+    const referrer = typeof body.referrer === 'string' ? body.referrer.slice(0, 1000) : '';
+    const referrerDomain = typeof body.referrer_domain === 'string' ? body.referrer_domain.slice(0, 200) : null;
+    const utmSource = typeof body.utm_source === 'string' ? body.utm_source.slice(0, 100) : null;
+    const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
+    const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
+    const deviceType = ['mobile', 'tablet', 'desktop'].includes(body.device_type)
+      ? body.device_type
+      : 'desktop';
+
+    await supabase.from('visit_logs').insert({
+      page_path: pagePath,
+      referrer: referrer || null,
+      referrer_domain: referrerDomain,
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      device_type: deviceType,
+    });
 
     return NextResponse.json({ ok: true });
   } catch {

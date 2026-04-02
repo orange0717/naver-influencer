@@ -407,9 +407,10 @@ export async function GET(request: NextRequest) {
           top3_count: top3,
         };
 
-        // 실제 참여일이 있을 때만 last_crawled_at 업데이트
+        // 실제 참여일이 있을 때만 업데이트
         if (lastChallengedAt) {
           updateData.last_crawled_at = lastChallengedAt;
+          updateData.last_challenged_at = lastChallengedAt;
         }
 
         await supabase
