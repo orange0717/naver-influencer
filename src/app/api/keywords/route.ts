@@ -258,7 +258,7 @@ async function enrichWithDB(keywords: ReturnType<typeof toUIKeyword>[]) {
 
     const { data: dbKeywords } = await supabase
       .from('keyword_challenges')
-      .select('keyword, category, search_volume_monthly, first_seen_at, participant_count')
+      .select('id, keyword, category, search_volume_monthly, first_seen_at, participant_count')
       .in('keyword', keywordNames);
 
     if (!dbKeywords || dbKeywords.length === 0) return keywords;
@@ -278,6 +278,7 @@ async function enrichWithDB(keywords: ReturnType<typeof toUIKeyword>[]) {
 
       return {
         ...kw,
+        db_id: dbData.id || null,
         search_volume_monthly: searchVolume,
         first_seen_at: dbData.first_seen_at || '',
         participant_count: participantCount,

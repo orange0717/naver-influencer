@@ -1,5 +1,6 @@
 export interface Keyword {
   id: string;
+  db_id?: string | null;
   keyword: string;
   category: string;
   participant_count: number;

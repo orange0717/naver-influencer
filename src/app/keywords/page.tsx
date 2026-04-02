@@ -47,10 +47,34 @@ export default function KeywordsPage() {
     return sortOrder === 'desc' ? ' ↓' : ' ↑';
   };
 
+  // TOP3 인라인 표시 (DB 스냅샷 기반)
+  const [top3Map, setTop3Map] = useState<Record<string, { rank: number; name: string; naver_id: string }[]>>({});
+
   // TOP3 펼치기 상태
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
   const [rankingsLoading, setRankingsLoading] = useState<string | null>(null);
+
+  // 키워드 목록 로드 시 배치로 TOP3 가져오기 (keyword name 기반)
+  useEffect(() => {
+    if (keywords.length === 0) return;
+    const names = keywords.slice(0, 20).map(kw => kw.keyword);
+    fetch(`/api/keywords/batch-top3?keywords=${encodeURIComponent(names.join(','))}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.top3) {
+          // keyword name -> kw.id 매핑
+          const mapped: Record<string, typeof data.top3[string]> = {};
+          for (const kw of keywords) {
+            if (data.top3[kw.keyword]) {
+              mapped[kw.id] = data.top3[kw.keyword];
+            }
+          }
+          setTop3Map(mapped);
+        }
+      })
+      .catch(() => {});
+  }, [keywords]);
 
   const toggleRankings = async (kwId: string) => {
     if (expandedId === kwId) {
@@ -364,10 +388,21 @@ export default function KeywordsPage() {
                     <td className="py-3.5 px-4 font-bold text-dim font-rank text-sm">{startNum + i + 1}</td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2">
-                        <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors" onClick={e => e.stopPropagation()}>
+                        <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors shrink-0" onClick={e => e.stopPropagation()}>
                           {kw.keyword}
                         </Link>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+                        {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
+                          <span className="text-[11px] text-dim truncate">
+                            {top3Map[kw.id].map((t, idx) => (
+                              <span key={t.naver_id}>
+                                <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
+                                <span className="ml-0.5">{t.name}</span>
+                                {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">|</span>}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-sm text-dim">{kw.category}</td>
