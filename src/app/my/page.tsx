@@ -638,7 +638,7 @@ export default async function MyDashboard() {
       </GlassCard>
 
       {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
-      <WidgetSection naverId={naverId} />
+      <WidgetSection naverId={naverId} displayName={influencer.display_name || naverId} />
 
 
       {/* ─── 7. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
