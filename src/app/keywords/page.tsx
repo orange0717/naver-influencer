@@ -138,6 +138,9 @@ export default function KeywordsPage() {
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
     setSubFilter('전체');
+    setSearch('');
+    setSortKey(null);
+    setSortOrder('desc');
     setCursorHistory([null]);
     setCurrentPageIndex(0);
     setNextCursor(null);
