@@ -392,9 +392,10 @@ export default async function MyDashboard() {
     }
   }
 
-  // 미참여 키워드 추가
+  // 미참여 키워드 추가 (keyword_id + keyword 이름 기준 중복 제거)
+  const participatedKeywordNames = new Set(participatedKeywords.map(kw => kw.keyword.toLowerCase()));
   const notParticipatedKeywords = categoryAllKeywords
-    .filter(kw => !participatedKeywordIds.has(kw.id))
+    .filter(kw => !participatedKeywordIds.has(kw.id) && !participatedKeywordNames.has(kw.keyword.toLowerCase()))
     .map(kw => ({
       keyword_id: kw.id,
       keyword: kw.keyword || '',

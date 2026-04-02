@@ -265,7 +265,7 @@ export default function MyKeywordList({
           <div className="hidden lg:block">
             <table className="w-full">
               <thead>
-                <tr className="text-[11px] text-dim border-b border-border/50 bg-bg/30">
+                <tr className="text-xs text-dim border-b border-border/50 bg-bg/30">
                   <th className="text-left px-5 py-2.5 font-semibold">키워드</th>
                   <th className="text-center px-3 py-2.5 font-semibold">순위</th>
                   <th className="text-center px-3 py-2.5 font-semibold">변동</th>
@@ -291,8 +291,8 @@ export default function MyKeywordList({
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1.5">
                           <Link href={`/keywords/${kw.keyword_id}`} className="hover:text-accent transition" onClick={e => e.stopPropagation()}>
-                            <span className="text-sm font-semibold">{kw.keyword}</span>
-                            <span className="text-[11px] text-dim ml-1.5">{kw.category}</span>
+                            <span className="text-[15px] font-bold">{kw.keyword}</span>
+                            <span className="text-xs text-dim ml-1.5">{kw.category}</span>
                           </Link>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
                         </div>
@@ -318,10 +318,10 @@ export default function MyKeywordList({
                         )}
                       </td>
                       <td className="text-center px-3 py-3">
-                        <span className="text-xs text-dim">{kw.participant_count}명</span>
+                        <span className="text-sm font-rank">{kw.participant_count}명</span>
                       </td>
                       <td className="text-center px-3 py-3">
-                        <span className="text-xs text-dim">
+                        <span className="text-sm font-rank">
                           {kw.search_volume > 0 ? formatCount(kw.search_volume) : '-'}
                         </span>
                       </td>
