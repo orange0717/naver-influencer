@@ -21,19 +21,6 @@ export async function GET(request: NextRequest) {
     const categories = await fetchCategories();
     const categoryNames = ['전체', ...categories.map(c => c.name)];
 
-    // 검색어가 있으면 → 전체 카테고리에서 검색
-    if (search?.trim()) {
-      const result = await searchKeywordsAcrossCategories(search.trim(), 100);
-      const keywords = result.keywords.map(kw => toUIKeyword(kw));
-      const enriched = await enrichWithDB(keywords);
-      return NextResponse.json({
-        keywords: enriched,
-        categories: categoryNames,
-        total: result.total,
-        nextCursor: null,
-      });
-    }
-
     // 특정 카테고리 선택
     if (category && category !== '전체') {
       const sort = searchParams.get('sort') || undefined;
@@ -42,6 +29,17 @@ export async function GET(request: NextRequest) {
       if (sort) {
         const sortOrder = searchParams.get('order') === 'asc' ? true : false;
         const dbKeywords = await getAllKeywordsFromDB(category, sort, sortOrder);
+        return NextResponse.json({
+          keywords: dbKeywords,
+          categories: categoryNames,
+          total: dbKeywords.length,
+          nextCursor: null,
+        });
+      }
+
+      // 카테고리 + 검색: DB에서 해당 카테고리 내 키워드 검색
+      if (search?.trim()) {
+        const dbKeywords = await searchKeywordsInCategory(category, search.trim());
         return NextResponse.json({
           keywords: dbKeywords,
           categories: categoryNames,
@@ -59,6 +57,19 @@ export async function GET(request: NextRequest) {
         categories: categoryNames,
         total: result.total,
         nextCursor: result.nextCursor,
+      });
+    }
+
+    // 전체 카테고리에서 검색
+    if (search?.trim()) {
+      const result = await searchKeywordsAcrossCategories(search.trim(), 100);
+      const keywords = result.keywords.map(kw => toUIKeyword(kw));
+      const enriched = await enrichWithDB(keywords);
+      return NextResponse.json({
+        keywords: enriched,
+        categories: categoryNames,
+        total: result.total,
+        nextCursor: null,
       });
     }
 
@@ -125,6 +136,61 @@ function toUIKeyword(kw: { id: number; name: string; categoryName: string; parti
     is_new: false,
     first_seen_at: '',
   };
+}
+
+/** DB에서 카테고리 내 키워드 검색 */
+async function searchKeywordsInCategory(category: string, search: string) {
+  const supabase = createServiceClient();
+
+  const allKeywords: {
+    id: string; keyword: string; category: string;
+    participant_count: number; search_volume_monthly: number;
+    first_seen_at: string;
+  }[] = [];
+
+  const PAGE = 500;
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: batch } = await supabase
+      .from('keyword_challenges')
+      .select('id, keyword, category, participant_count, search_volume_monthly, first_seen_at')
+      .eq('category', category)
+      .eq('is_active', true)
+      .ilike('keyword', `%${search}%`)
+      .order('participant_count', { ascending: false })
+      .range(from, from + PAGE - 1);
+
+    if (batch && batch.length > 0) {
+      allKeywords.push(...batch);
+      from += PAGE;
+      hasMore = batch.length === PAGE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allKeywords.map(kw => ({
+    id: kw.id,
+    keyword: kw.keyword,
+    category: kw.category,
+    participant_count: kw.participant_count || 0,
+    content_count: 0,
+    search_volume_monthly: kw.search_volume_monthly || 0,
+    search_volume_pc: 0,
+    search_volume_mobile: 0,
+    competition_level: getCompetitionLevelAdvanced(
+      kw.participant_count || 0,
+      kw.search_volume_monthly || 0,
+      kw.first_seen_at || undefined,
+    ),
+    recommendation_score: 0,
+    trend_direction: 'stable' as const,
+    trend_percentage: 0,
+    is_new: false,
+    first_seen_at: kw.first_seen_at || '',
+  }));
 }
 
 /** DB에서 카테고리 전체 키워드 조회 (정렬 모드용) */
