@@ -55,29 +55,36 @@ export default function KeywordsPage() {
   const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
   const [rankingsLoading, setRankingsLoading] = useState<string | null>(null);
 
-  // 키워드 목록 로드 시 배치로 TOP3 가져오기 (keyword name 기반)
+  // 키워드 목록 로드 시 배치로 TOP3 가져오기 (20개씩 병렬 요청)
   useEffect(() => {
-    // 카테고리 뷰: keywords 사용, 전체 뷰: grouped의 모든 키워드 사용
     const allKws = keywords.length > 0
       ? keywords
       : grouped.flatMap(g => g.keywords);
     if (allKws.length === 0) return;
 
-    const names = allKws.slice(0, 50).map(kw => kw.keyword);
-    fetch(`/api/keywords/batch-top3?keywords=${encodeURIComponent(names.join(','))}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.top3) {
-          const mapped: Record<string, typeof data.top3[string]> = {};
-          for (const kw of allKws) {
-            if (data.top3[kw.keyword]) {
-              mapped[kw.id] = data.top3[kw.keyword];
-            }
-          }
-          setTop3Map(prev => ({ ...prev, ...mapped }));
+    const BATCH = 20;
+    const chunks: string[][] = [];
+    for (let i = 0; i < allKws.length; i += BATCH) {
+      chunks.push(allKws.slice(i, i + BATCH).map(kw => kw.keyword));
+    }
+
+    // 모든 청크 병렬 요청
+    Promise.all(
+      chunks.map(names =>
+        fetch(`/api/keywords/batch-top3?keywords=${encodeURIComponent(names.join(','))}`)
+          .then(res => res.json())
+          .catch(() => ({ top3: {} }))
+      )
+    ).then(results => {
+      const merged: Record<string, { rank: number; name: string; naver_id: string }[]> = {};
+      const allTop3 = Object.assign({}, ...results.map(r => r.top3 || {}));
+      for (const kw of allKws) {
+        if (allTop3[kw.keyword]) {
+          merged[kw.id] = allTop3[kw.keyword];
         }
-      })
-      .catch(() => {});
+      }
+      setTop3Map(prev => ({ ...prev, ...merged }));
+    });
   }, [keywords, grouped]);
 
   const toggleRankings = async (kwId: string) => {
