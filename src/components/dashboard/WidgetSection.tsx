@@ -11,7 +11,7 @@ export default function WidgetSection({ naverId, displayName }: WidgetSectionPro
   const top3WidgetUrl = `${baseUrl}/api/widget/top3/${naverId}`;
   const profileUrl = `${baseUrl}/influencers/${naverId}`;
 
-  const embedHtml = `<a href="${profileUrl}" target="_blank"><img src="${top3WidgetUrl}" alt="${displayName} N인플 TOP3 달성률" width="160" style="border-radius:16px;" /></a>`;
+  const embedHtml = `<a href="${profileUrl}" target="_blank"><img src="${top3WidgetUrl}" alt="${displayName} N인플 TOP3 달성률" width="160" height="172" style="border-radius:16px;" /></a>`;
   const blogHashtag = `#N인플 #${displayName} #키워드챌린지 #TOP3달성률 #네이버인플루언서`;
 
   return (
@@ -28,7 +28,7 @@ export default function WidgetSection({ naverId, displayName }: WidgetSectionPro
         <div className="flex flex-col items-center p-4 bg-bg rounded-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <a href={`/api/widget/top3/${naverId}`} download={`ninfl-top3-${naverId}.svg`} title="클릭하여 이미지 다운로드">
-            <img src={`/api/widget/top3/${naverId}`} alt="TOP 3 달성률 위젯" width={160} height={160} className="rounded-2xl cursor-pointer hover:opacity-80 transition" />
+            <img src={`/api/widget/top3/${naverId}`} alt="TOP 3 달성률 위젯" width={160} height={172} className="rounded-2xl cursor-pointer hover:opacity-80 transition" />
           </a>
           <p className="text-[10px] text-dim mt-2">키워드챌린지 TOP 3 달성률</p>
         </div>
