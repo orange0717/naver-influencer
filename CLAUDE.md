@@ -125,5 +125,16 @@ NAVER_DATALAB_CLIENT_ID=
 NAVER_DATALAB_CLIENT_SECRET=
 ```
 
+## 전체 인플루언서 순위 로직 (예정)
+1. 포스팅 빈도수
+2. 전체 참여한 게시글 수
+3. 전체 참여한 챌린지 수
+4. TOP3 비율
+5. 키워드 검색량
+6. 모든 키워드의 전체 순위분포
+7. 토픽 수
+8. 구독자수 (모든 플랫폼)
+9. 팬수
+
 ## 스펙 원본
 `/Users/orange/Downloads/naver-influencer-platform-spec (4).html`
