@@ -19,6 +19,7 @@ import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import AdProfileForm from '@/components/dashboard/AdProfileForm';
 import TrialBanner from '@/components/TrialBanner';
+import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,23 @@ export default async function MyDashboard() {
     .select('*')
     .eq('id', influencerId)
     .single();
+
+  // 팬수 갱신 (6시간 캐시)
+  if (influencer) {
+    const updated = await refreshFollowerCount(supabase, influencerId, naverId!, influencer.last_crawled_at);
+    if (updated !== null) {
+      // DB 갱신 후 현재 객체에도 반영
+      const { data: refreshed } = await supabase
+        .from('influencers')
+        .select('subscriber_count, total_follower_count')
+        .eq('id', influencerId)
+        .single();
+      if (refreshed) {
+        influencer.subscriber_count = refreshed.subscriber_count;
+        influencer.total_follower_count = refreshed.total_follower_count;
+      }
+    }
+  }
 
   // 모든 기능 무료 개방
   const canAccess = true;

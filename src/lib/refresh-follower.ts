@@ -50,6 +50,7 @@ export async function refreshFollowerCount(
     if (followerCount && followerCount > 0) {
       const updateData: Record<string, unknown> = {
         total_follower_count: followerCount,
+        updated_at: new Date().toISOString(),
       };
       // subscriberCount(팬수)도 있으면 함께 업데이트
       const subscriberCount = state?.space?.data?.subscriberCount;

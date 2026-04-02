@@ -12,7 +12,6 @@ export default function WidgetSection({ naverId, displayName }: WidgetSectionPro
   const profileUrl = `${baseUrl}/influencers/${naverId}`;
 
   const embedHtml = `<a href="${profileUrl}" target="_blank"><img src="${top3WidgetUrl}" alt="${displayName} N인플 TOP3 달성률" width="160" height="172" style="border-radius:16px;" /></a>`;
-  const blogHashtag = `#N인플 #${displayName} #키워드챌린지 #TOP3달성률 #네이버인플루언서`;
 
   return (
     <GlassCard>
@@ -36,24 +35,13 @@ export default function WidgetSection({ naverId, displayName }: WidgetSectionPro
       <p className="text-[10px] text-dim text-center mb-4">이미지를 클릭하면 다운로드할 수 있습니다</p>
 
       {/* 위젯 HTML */}
-      <div className="mb-4">
+      <div>
         <p className="text-[11px] font-semibold text-dim mb-1.5">위젯 HTML</p>
         <div className="relative">
           <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
             {embedHtml}
           </code>
           <CopyButton text={embedHtml} />
-        </div>
-      </div>
-
-      {/* 블로그 해시태그 */}
-      <div>
-        <p className="text-[11px] font-semibold text-dim mb-1.5">블로그 해시태그</p>
-        <div className="relative">
-          <div className="bg-bg border border-border rounded-lg p-3 text-sm text-accent font-semibold select-all">
-            {blogHashtag}
-          </div>
-          <CopyButton text={blogHashtag} />
         </div>
       </div>
 
