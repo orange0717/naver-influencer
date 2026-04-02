@@ -75,4 +75,7 @@ export const linkInfluencerSchema = z.object({
 export const profileUpdateSchema = z.object({
   nickname: z.string().min(1).max(20).optional(),
   unlink_influencer: z.literal(true).optional(),
+  ad_fee_amount: z.number().int().min(0).max(99999999).nullable().optional(),
+  ad_fee_text: z.string().max(200).optional(),
+  ad_process: z.string().max(1000).optional(),
 });

@@ -86,6 +86,12 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // 광고 프로필
+  const [adFeeAmount, setAdFeeAmount] = useState<number | null>(null);
+  const [adFeeText, setAdFeeText] = useState('');
+  const [adProcess, setAdProcess] = useState('');
+  const [adSaving, setAdSaving] = useState(false);
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 2500);
@@ -115,6 +121,11 @@ export default function ProfilePage() {
       setLinkedInfluencer(data.linked_influencer);
       setTransactions(data.transactions || []);
       setNicknameInput(data.user.nickname);
+      if (data.ad_profile) {
+        setAdFeeAmount(data.ad_profile.ad_fee_amount ?? null);
+        setAdFeeText(data.ad_profile.ad_fee_text || '');
+        setAdProcess(data.ad_profile.ad_process || '');
+      }
     }
 
     setLoading(false);
@@ -163,6 +174,35 @@ export default function ProfilePage() {
       setLinkedInfluencer(null);
       showToast('인플루언서 계정 연결이 해제되었습니다.');
     }
+  };
+
+  const saveAdProfile = async () => {
+    if (!user) return;
+    setAdSaving(true);
+
+    const supabase = createSupabaseBrowserClient();
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ad_fee_amount: adFeeAmount,
+        ad_fee_text: adFeeText.trim(),
+        ad_process: adProcess.trim(),
+      }),
+    });
+
+    if (res.ok) {
+      showToast('광고 프로필이 저장되었습니다.');
+    } else {
+      const data = await res.json();
+      showToast(data.error || '저장에 실패했습니다.');
+    }
+    setAdSaving(false);
   };
 
   const handleLogout = async () => {
@@ -313,6 +353,67 @@ export default function ProfilePage() {
 
       {/* 알림 설정 */}
       <NotificationSettingsSection />
+
+      {/* 광고 프로필 */}
+      {linkedInfluencer && (
+        <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+          <div>
+            <h3 className="font-bold text-sm">광고 프로필</h3>
+            <p className="text-xs text-dim mt-1">원고료와 진행방법을 등록하면 인플루언서 상세 페이지에 표시됩니다.</p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-dim font-semibold block mb-1">원고료 금액</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dim">&#8361;</span>
+                <input
+                  type="number"
+                  value={adFeeAmount ?? ''}
+                  onChange={e => setAdFeeAmount(e.target.value ? Math.max(0, parseInt(e.target.value)) : null)}
+                  placeholder="예: 30000"
+                  min="0"
+                  max="99999999"
+                  className="w-full pl-8 pr-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-dim font-semibold block mb-1">원고료 설명 <span className="text-dim font-normal">(선택)</span></label>
+              <input
+                type="text"
+                value={adFeeText}
+                onChange={e => setAdFeeText(e.target.value)}
+                placeholder="예: 협의 가능, 키워드에 따라 상이"
+                maxLength={200}
+                className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-dim font-semibold block mb-1">진행방법 <span className="text-dim font-normal">(선택)</span></label>
+              <textarea
+                value={adProcess}
+                onChange={e => setAdProcess(e.target.value)}
+                placeholder="예: 키워드 협의 후 원고 작성, 검수 1회 포함, 발행 후 30일 유지"
+                maxLength={1000}
+                rows={3}
+                className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors resize-none"
+              />
+              <p className="text-xs text-dim text-right mt-0.5">{adProcess.length}/1000</p>
+            </div>
+
+            <button
+              onClick={saveAdProfile}
+              disabled={adSaving}
+              className="px-4 py-2 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+            >
+              {adSaving ? '저장 중...' : '광고 프로필 저장'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 사용 내역 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">

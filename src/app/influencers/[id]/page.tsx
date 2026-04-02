@@ -30,6 +30,9 @@ interface InfluencerData {
   avg_rank?: number;
   best_rank?: number;
   integrated_top3_count?: number;
+  ad_fee_amount?: number | null;
+  ad_fee_text?: string | null;
+  ad_process?: string | null;
   keywords: InfluencerKeyword[];
   recent_rankings: unknown[];
 }
@@ -189,6 +192,39 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
+
+      {/* 광고 프로필 */}
+      {(influencer.ad_fee_amount || influencer.ad_fee_text || influencer.ad_process) && (
+        <div className="bg-surface rounded-2xl border border-border p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+            </svg>
+            <h3 className="font-bold text-sm">광고 문의</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(influencer.ad_fee_amount || influencer.ad_fee_text) && (
+              <div className="bg-bg rounded-xl p-3 space-y-1">
+                <p className="text-xs text-dim font-semibold">원고료</p>
+                {influencer.ad_fee_amount ? (
+                  <p className="text-lg font-bold text-accent font-rank">
+                    {influencer.ad_fee_amount.toLocaleString()}원
+                  </p>
+                ) : null}
+                {influencer.ad_fee_text && (
+                  <p className="text-sm text-text">{influencer.ad_fee_text}</p>
+                )}
+              </div>
+            )}
+            {influencer.ad_process && (
+              <div className="bg-bg rounded-xl p-3 space-y-1">
+                <p className="text-xs text-dim font-semibold">진행방법</p>
+                <p className="text-sm text-text whitespace-pre-line">{influencer.ad_process}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 참여 키워드 */}
       <div className="relative">

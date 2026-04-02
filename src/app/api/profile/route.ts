@@ -24,18 +24,21 @@ export async function GET(request: NextRequest) {
   }
 
   let linked_influencer = null;
+  let ad_profile = null;
   if (user.linked_influencer_id) {
     const { data: inf } = await supabase
       .from('influencers')
-      .select('display_name, naver_id')
+      .select('display_name, naver_id, ad_fee_amount, ad_fee_text, ad_process')
       .eq('id', user.linked_influencer_id)
       .single();
-    linked_influencer = inf;
+    linked_influencer = inf ? { display_name: inf.display_name, naver_id: inf.naver_id } : null;
+    ad_profile = inf ? { ad_fee_amount: inf.ad_fee_amount, ad_fee_text: inf.ad_fee_text, ad_process: inf.ad_process } : null;
   }
 
   return NextResponse.json({
     user,
     linked_influencer,
+    ad_profile,
   });
 }
 
@@ -50,19 +53,52 @@ export async function PATCH(request: NextRequest) {
   if (!v.success) return v.response;
 
   const supabase = createServiceClient();
-  const updates: Record<string, unknown> = {};
+  const userUpdates: Record<string, unknown> = {};
 
-  if (v.data.nickname !== undefined) updates.nickname = v.data.nickname;
-  if (v.data.unlink_influencer) updates.linked_influencer_id = null;
+  if (v.data.nickname !== undefined) userUpdates.nickname = v.data.nickname;
+  if (v.data.unlink_influencer) userUpdates.linked_influencer_id = null;
 
-  const { error } = await supabase
-    .from('users')
-    .update(updates)
-    .eq('id', auth.userId);
+  // users 테이블 업데이트
+  if (Object.keys(userUpdates).length > 0) {
+    const { error } = await supabase
+      .from('users')
+      .update(userUpdates)
+      .eq('id', auth.userId);
 
-  if (error) {
-    logger.error('profile', 'DB update error', { error: error.message });
-    return NextResponse.json({ error: '프로필 업데이트에 실패했습니다.' }, { status: 500 });
+    if (error) {
+      logger.error('profile', 'DB update error', { error: error.message });
+      return NextResponse.json({ error: '프로필 업데이트에 실패했습니다.' }, { status: 500 });
+    }
+  }
+
+  // 광고 프로필 업데이트 (influencers 테이블)
+  const hasAdFields = v.data.ad_fee_amount !== undefined || v.data.ad_fee_text !== undefined || v.data.ad_process !== undefined;
+  if (hasAdFields) {
+    // 연결된 인플루언서 확인
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('linked_influencer_id')
+      .eq('id', auth.userId)
+      .single();
+
+    if (!userRow?.linked_influencer_id) {
+      return NextResponse.json({ error: '연결된 인플루언서가 없습니다.' }, { status: 400 });
+    }
+
+    const adUpdates: Record<string, unknown> = {};
+    if (v.data.ad_fee_amount !== undefined) adUpdates.ad_fee_amount = v.data.ad_fee_amount;
+    if (v.data.ad_fee_text !== undefined) adUpdates.ad_fee_text = v.data.ad_fee_text || null;
+    if (v.data.ad_process !== undefined) adUpdates.ad_process = v.data.ad_process || null;
+
+    const { error: adError } = await supabase
+      .from('influencers')
+      .update(adUpdates)
+      .eq('id', userRow.linked_influencer_id);
+
+    if (adError) {
+      logger.error('profile', 'ad profile update error', { error: adError.message });
+      return NextResponse.json({ error: '광고 프로필 업데이트에 실패했습니다.' }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ success: true });
