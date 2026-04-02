@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import GlassCard from './GlassCard';
 import KeywordSyncButton from './KeywordSyncButton';
@@ -64,6 +64,9 @@ export default function MyKeywordList({
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
+
+  // TOP3 인라인 표시
+  const [top3Map, setTop3Map] = useState<Record<string, { rank: number; name: string; naver_id: string }[]>>({});
 
   // TOP3 펼치기
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -160,6 +163,28 @@ export default function MyKeywordList({
 
   const totalPages = Math.ceil(filteredKeywords.length / PAGE_SIZE);
   const displayList = filteredKeywords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // 현재 페이지 키워드의 TOP3 배치 조회
+  useEffect(() => {
+    if (displayList.length === 0) return;
+    const names = displayList.slice(0, 20).map(kw => kw.keyword);
+    fetch(`/api/keywords/batch-top3?keywords=${encodeURIComponent(names.join(','))}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.top3) {
+          const mapped: Record<string, typeof data.top3[string]> = {};
+          for (const kw of displayList) {
+            if (data.top3[kw.keyword]) {
+              mapped[kw.keyword_id] = data.top3[kw.keyword];
+            }
+          }
+          setTop3Map(prev => ({ ...prev, ...mapped }));
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, participationFilter, selectedCategory, compFilter, sortKey, search]);
+
   const rankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position !== null).length;
   const unrankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position === null).length;
 
@@ -290,11 +315,22 @@ export default function MyKeywordList({
                     >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Link href={`/keywords/${kw.keyword_id}`} className="hover:text-accent transition" onClick={e => e.stopPropagation()}>
+                          <Link href={`/keywords/${kw.keyword_id}`} className="hover:text-accent transition shrink-0" onClick={e => e.stopPropagation()}>
                             <span className="text-[15px] font-bold">{kw.keyword}</span>
                             <span className="text-xs text-dim ml-1.5">{kw.category}</span>
                           </Link>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+                          {top3Map[kw.keyword_id] && top3Map[kw.keyword_id].length > 0 && (
+                            <span className="text-[11px] text-dim truncate">
+                              {top3Map[kw.keyword_id].map((t, idx) => (
+                                <span key={t.naver_id}>
+                                  <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
+                                  <span className="ml-0.5">{t.name}</span>
+                                  {idx < top3Map[kw.keyword_id].length - 1 && <span className="mx-1 text-border">|</span>}
+                                </span>
+                              ))}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="text-center px-3 py-3">
@@ -396,22 +432,23 @@ export default function MyKeywordList({
               const dimmed = !kw.is_participated;
               return (
                 <Link key={kw.keyword_id} href={`/keywords/${kw.keyword_id}`}
-                  className={`flex items-center justify-between px-4 py-3.5 hover:bg-surface-hover transition ${dimmed ? 'opacity-60' : ''}`}>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[15px] font-bold truncate">{kw.keyword}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${compLabels[comp].className}`}>
-                        {compLabels[comp].label}
-                      </span>
-                      {kw.is_participated && kw.is_integrated_top3 && (
-                        <span className="text-[9px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full shrink-0">T3</span>
-                      )}
+                  className={`block px-4 py-3.5 hover:bg-surface-hover transition ${dimmed ? 'opacity-60' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[15px] font-bold truncate">{kw.keyword}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${compLabels[comp].className}`}>
+                          {compLabels[comp].label}
+                        </span>
+                        {kw.is_participated && kw.is_integrated_top3 && (
+                          <span className="text-[9px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full shrink-0">T3</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-dim mt-0.5">
+                        {kw.category} · {kw.participant_count}명
+                        {kw.search_volume > 0 ? ` · 월 ${formatCount(kw.search_volume)}` : ''}
+                      </div>
                     </div>
-                    <div className="text-xs text-dim mt-0.5">
-                      {kw.category} · {kw.participant_count}명
-                      {kw.search_volume > 0 ? ` · 월 ${formatCount(kw.search_volume)}` : ''}
-                    </div>
-                  </div>
                   <div className="flex items-center gap-2 shrink-0 ml-3">
                     {kw.is_participated && kw.rank_change !== 0 && (
                       <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
@@ -430,6 +467,18 @@ export default function MyKeywordList({
                       <span className="text-[10px] font-bold text-down bg-down/10 px-1.5 py-0.5 rounded">미노출</span>
                     )}
                   </div>
+                  </div>
+                  {top3Map[kw.keyword_id] && top3Map[kw.keyword_id].length > 0 && (
+                    <div className="text-[10px] text-dim mt-1">
+                      {top3Map[kw.keyword_id].map((t, idx) => (
+                        <span key={t.naver_id}>
+                          <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
+                          <span className="ml-0.5">{t.name}</span>
+                          {idx < top3Map[kw.keyword_id].length - 1 && <span className="mx-1 text-border">|</span>}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </Link>
               );
             })}
