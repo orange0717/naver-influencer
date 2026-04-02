@@ -22,7 +22,7 @@ export default function WidgetSection({ naverId }: WidgetSectionProps) {
         <div className="flex flex-col items-center p-4 bg-bg rounded-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <a href={`/api/widget/top3/${naverId}`} download={`ninfl-top3-${naverId}.svg`} title="클릭하여 이미지 다운로드">
-            <img src={`/api/widget/top3/${naverId}`} alt="TOP 3 달성률 위젯" width={170} height={140} className="rounded-lg cursor-pointer hover:opacity-80 transition" />
+            <img src={`/api/widget/top3/${naverId}`} alt="TOP 3 달성률 위젯" width={160} height={160} className="rounded-2xl cursor-pointer hover:opacity-80 transition" />
           </a>
           <p className="text-[10px] text-dim mt-2">키워드챌린지 TOP 3 달성률</p>
         </div>
