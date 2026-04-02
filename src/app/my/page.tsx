@@ -563,28 +563,9 @@ export default async function MyDashboard() {
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
       <GlassCard>
         <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
-        <div className="grid grid-cols-3 gap-4 text-center mb-5">
-          <div>
-            <p className="text-xl font-black font-rank">{formatCount(influencer.subscriber_count || 0)}</p>
-            <p className="text-xs text-dim mt-1">팬수</p>
-          </div>
-          <div>
-            <p className="text-xl font-black font-rank">{participatedCount}</p>
-            <p className="text-xs text-dim mt-1">참여 키워드</p>
-          </div>
-          <div>
-            <p className="text-xl font-black font-rank text-accent">{totalRankedKeywords}</p>
-            <p className="text-xs text-dim mt-1">노출 키워드</p>
-          </div>
-        </div>
         {/* 순위별 키워드 분포 (클릭 시 키워드 목록 표시) */}
         <RankDistribution
-          rank1={rankKeywords(1)}
-          rank2={rankKeywords(2)}
-          rank3={rankKeywords(3)}
-          rank4={rankKeywords(4)}
-          rank5={rankKeywords(5)}
-          rankOut={rankings.filter(r => r.rank_position > 5).map(r => ({
+          rankings={rankings.map(r => ({
             keyword_id: r.keyword_id,
             keyword: r.keyword,
             rank_position: r.rank_position,

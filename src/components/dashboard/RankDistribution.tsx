@@ -12,52 +12,65 @@ interface RankKeyword {
 }
 
 interface Props {
-  rank1: RankKeyword[];
-  rank2: RankKeyword[];
-  rank3: RankKeyword[];
-  rank4: RankKeyword[];
-  rank5: RankKeyword[];
-  rankOut?: RankKeyword[];
+  rankings: RankKeyword[];
 }
 
 const PAGE_SIZE = 5;
 
-export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5, rankOut = [] }: Props) {
-  const [selectedRank, setSelectedRank] = useState<number | null>(null);
+interface RankGroup {
+  key: string;
+  label: string;
+  min: number;
+  max: number;
+  color: string;
+  bg: string;
+}
+
+const RANK_GROUPS: RankGroup[] = [
+  { key: '1-3', label: '1-3위', min: 1, max: 3, color: 'text-gold', bg: 'bg-gold/10' },
+  { key: '4-5', label: '4-5위', min: 4, max: 5, color: 'text-accent', bg: 'bg-accent/10' },
+  { key: '6-10', label: '6-10위', min: 6, max: 10, color: 'text-accent', bg: 'bg-accent/10' },
+  { key: '11-20', label: '11-20위', min: 11, max: 20, color: 'text-dim', bg: 'bg-border/30' },
+  { key: '21-30', label: '21-30위', min: 21, max: 30, color: 'text-dim', bg: 'bg-border/30' },
+  { key: '30+', label: '30위+', min: 31, max: Infinity, color: 'text-dim', bg: 'bg-border/20' },
+];
+
+export default function RankDistribution({ rankings }: Props) {
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  const rankData = [
-    { rank: 1, label: '1위', count: rank1.length, keywords: rank1, color: 'text-gold', bg: 'bg-gold/10' },
-    { rank: 2, label: '2위', count: rank2.length, keywords: rank2, color: 'text-accent', bg: 'bg-accent/10' },
-    { rank: 3, label: '3위', count: rank3.length, keywords: rank3, color: 'text-accent', bg: 'bg-accent/10' },
-    { rank: 4, label: '4위', count: rank4.length, keywords: rank4, color: 'text-dim', bg: 'bg-border/30' },
-    { rank: 5, label: '5위', count: rank5.length, keywords: rank5, color: 'text-dim', bg: 'bg-border/30' },
-    { rank: 6, label: '6위+', count: rankOut.length, keywords: rankOut, color: 'text-dim', bg: 'bg-border/20' },
-  ];
+  const groupData = RANK_GROUPS.map(g => ({
+    ...g,
+    keywords: rankings.filter(r => r.rank_position >= g.min && r.rank_position <= g.max),
+  }));
 
-  const selected = rankData.find(r => r.rank === selectedRank);
+  const selected = groupData.find(g => g.key === selectedGroup);
   const totalPages = selected ? Math.ceil(selected.keywords.length / PAGE_SIZE) : 0;
-  const displayList = selected ? selected.keywords.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : [];
+  const displayList = selected
+    ? selected.keywords
+        .sort((a, b) => a.rank_position - b.rank_position)
+        .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : [];
 
   return (
-    <div className="border-t border-border/50 pt-4">
+    <div>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[11px] text-dim font-semibold">순위별 키워드 분포</p>
-        {!selectedRank && (
+        {!selectedGroup && (
           <p className="text-xs text-accent font-semibold">순위를 눌러 키워드를 확인하세요</p>
         )}
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
-        {rankData.map(r => (
+        {groupData.map(g => (
           <button
-            key={r.rank}
-            onClick={() => { setSelectedRank(prev => prev === r.rank ? null : r.rank); setPage(1); }}
-            className={`rounded-xl py-2.5 cursor-pointer transition-all ${r.bg} ${
-              selectedRank === r.rank ? 'ring-2 ring-accent scale-[1.02]' : 'hover:scale-[1.02]'
+            key={g.key}
+            onClick={() => { setSelectedGroup(prev => prev === g.key ? null : g.key); setPage(1); }}
+            className={`rounded-xl py-2.5 cursor-pointer transition-all ${g.bg} ${
+              selectedGroup === g.key ? 'ring-2 ring-accent scale-[1.02]' : 'hover:scale-[1.02]'
             }`}
           >
-            <p className={`text-lg font-black ${r.color}`}>{r.count}</p>
-            <p className="text-[10px] text-dim font-semibold mt-0.5">{r.label}</p>
+            <p className={`text-lg font-black ${g.color}`}>{g.keywords.length}</p>
+            <p className="text-[10px] text-dim font-semibold mt-0.5">{g.label}</p>
           </button>
         ))}
       </div>
@@ -82,9 +95,7 @@ export default function RankDistribution({ rank1, rank2, rank3, rank4, rank5, ra
                   <span className="text-[11px] text-dim ml-1.5">{kw.category}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {kw.rank_position > 5 && (
-                    <span className="text-[11px] text-dim">{kw.rank_position}위</span>
-                  )}
+                  <span className="text-[11px] text-dim">{kw.rank_position}위</span>
                   {kw.rank_change !== 0 && (
                     <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
                       {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
