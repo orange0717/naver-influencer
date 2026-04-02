@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient();
     const now = new Date();
@@ -50,11 +50,28 @@ export async function GET() {
       // users 테이블 문제 시 0
     }
 
+    // 일별 방문 추이 (site_visits 테이블)
+    let daily: { date: string; count: number }[] = [];
+    const includeDays = request.nextUrl.searchParams.get('days');
+    if (includeDays) {
+      try {
+        const daysNum = Math.min(Number(includeDays) || 30, 90);
+        const since = new Date(kst.getTime() - daysNum * 86400000).toISOString().slice(0, 10);
+        const { data: dailyRows } = await supabase
+          .from('site_visits')
+          .select('visit_date, visit_count')
+          .gte('visit_date', since)
+          .order('visit_date', { ascending: true });
+        daily = (dailyRows || []).map(r => ({ date: r.visit_date, count: r.visit_count || 0 }));
+      } catch { /* ignore */ }
+    }
+
     return NextResponse.json({
       todayVisits,
       totalVisits,
       todaySignups,
       totalSignups,
+      ...(daily.length > 0 ? { daily } : {}),
     });
   } catch {
     return NextResponse.json({
