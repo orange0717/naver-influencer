@@ -95,8 +95,9 @@ function generateRankWidgetSVG(data: {
 
   <!-- 하단 -->
   <line x1="10" y1="${H - 18}" x2="${W - 10}" y2="${H - 18}" stroke="#F3F4F6" stroke-width="1"/>
-  <text x="10" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB">${dateStr} · 평균 ${data.avgRank > 0 ? Math.round(data.avgRank) + '위' : '—'}</text>
-  <text x="${W - 10}" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB" text-anchor="end">N인플</text>
+  <text x="10" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" font-weight="bold" fill="#F29C68">TODAY</text>
+  <text x="35" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" fill="#9CA3AF">${dateStr} · ${data.avgRank > 0 ? '평균 ' + Math.round(data.avgRank) + '위' : ''}</text>
+  <text x="${W - 10}" y="${H - 6}" font-family="Arial,sans-serif" font-size="8" font-weight="bold" fill="#BF877A" text-anchor="end">${name} N인플</text>
 
   <!-- 하단 악센트 -->
   <rect y="${H - 4}" width="${W}" height="4" rx="0" fill="url(#hg)" opacity="0.15"/>

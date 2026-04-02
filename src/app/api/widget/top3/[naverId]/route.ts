@@ -52,9 +52,11 @@ function generateTop3WidgetSVG(data: {
   <text x="85" y="96" font-family="Arial,sans-serif" font-size="16" font-weight="900" fill="#F29C68" text-anchor="middle">${data.top3Rate}%</text>
   <text x="85" y="108" font-family="Arial,sans-serif" font-size="7" fill="#9CA3AF" text-anchor="middle">${data.top3Count}/${data.totalKeywords}\uAC1C</text>
 
-  <!-- \uB0A0\uC9DC -->
-  <text x="10" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB">${data.snapshotDate}</text>
-  <text x="${W - 10}" y="${H - 6}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB" text-anchor="end">N\uC778\uD50C</text>
+  <!-- TODAY + \uC774\uB984 + N\uC778\uD50C -->
+  <text x="10" y="78" font-family="Arial,sans-serif" font-size="7" font-weight="bold" fill="#F29C68">TODAY</text>
+  <text x="40" y="78" font-family="Arial,sans-serif" font-size="7" fill="#9CA3AF">${data.snapshotDate}</text>
+  <text x="10" y="${H - 6}" font-family="Arial,sans-serif" font-size="8" font-weight="bold" fill="#BF877A">${name}</text>
+  <text x="${W - 10}" y="${H - 6}" font-family="Arial,sans-serif" font-size="8" font-weight="bold" fill="#BF877A" text-anchor="end">N\uC778\uD50C</text>
 
   <!-- \uD558\uB2E8 \uC545\uC13C\uD2B8 -->
   <rect y="${H - 4}" width="${W}" height="4" rx="0" fill="url(#hg)" opacity="0.15"/>
