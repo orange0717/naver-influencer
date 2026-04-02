@@ -9,9 +9,15 @@ export async function refreshFollowerCount(
   naverId: string,
   lastCrawledAt: string | null,
 ): Promise<number | null> {
-  // 6시간 이내 갱신된 경우 스킵
-  if (lastCrawledAt) {
-    const elapsed = Date.now() - new Date(lastCrawledAt).getTime();
+  // updated_at 기반 6시간 캐시 (last_crawled_at은 마지막 참여일이므로 사용하지 않음)
+  const { data: infRow } = await supabase
+    .from('influencers')
+    .select('updated_at')
+    .eq('id', influencerId)
+    .single();
+
+  if (infRow?.updated_at) {
+    const elapsed = Date.now() - new Date(infRow.updated_at).getTime();
     if (elapsed < 6 * 60 * 60 * 1000) return null;
   }
 

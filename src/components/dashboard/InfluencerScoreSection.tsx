@@ -90,7 +90,7 @@ export default function InfluencerScoreSection({
      totalKeywords >= 15 ? 24 : totalKeywords >= 5 ? 16 :
      totalKeywords >= 1 ? 8 : 0) +
     // TOP 3 비율 (max 35)
-    Math.min(35, Math.round((top3Count / Math.max(rankedKeywords, 1)) * 35)) +
+    Math.min(35, Math.round((top3Count / Math.max(totalKeywords, 1)) * 35)) +
     // 통합검색 TOP 3 보너스 (max 25)
     (integratedTop3Count >= 5 ? 25 : integratedTop3Count >= 3 ? 20 :
      integratedTop3Count >= 1 ? 12 : 0)
@@ -105,7 +105,7 @@ export default function InfluencerScoreSection({
     (avgRank > 0 && avgRank <= 3 ? 30 : avgRank <= 5 ? 24 :
      avgRank <= 10 ? 18 : avgRank <= 15 ? 12 : avgRank <= 20 ? 6 : 3) +
     // TOP 10 비율 (max 20)
-    Math.min(20, Math.round((top10Count / Math.max(rankedKeywords, 1)) * 20))
+    Math.min(20, Math.round((top10Count / Math.max(totalKeywords, 1)) * 20))
   )) : 0;
 
   // 4. 성장성 (Growth): 순위 상승 키워드 + 상승 비율

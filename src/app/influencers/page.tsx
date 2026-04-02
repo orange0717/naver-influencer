@@ -31,7 +31,7 @@ type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integr
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'first_seen_at', label: '선정일순' },
-  { key: 'subscriber_count', label: '구독자순' },
+  { key: 'subscriber_count', label: '팬수순' },
   { key: 'total_keywords', label: '챌린지수순' },
   { key: 'top3_ratio', label: '비율순' },
   { key: 'integrated_top3_count', label: 'TOP3순' },
@@ -200,7 +200,7 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">인플루언서</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">활동 분야</th>
                   <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('subscriber_count')}>
-                    구독자{sortArrow('subscriber_count')}
+                    팬수{sortArrow('subscriber_count')}
                   </th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('total_keywords')}>
                     챌린지{sortArrow('total_keywords')}
@@ -361,7 +361,7 @@ export default function InfluencersPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-xs font-bold text-accent font-rank">{formatCount(inf.subscriberCount)}</div>
-                    <div className="text-[10px] text-dim">구독자</div>
+                    <div className="text-[10px] text-dim">팬수</div>
                   </div>
                 </div>
                 <div className="mb-2">

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // keyword_rankings에서 집계
     const { data: rankings, error: fetchErr } = await supabase
       .from('keyword_rankings')
-      .select('influencer_id, keyword_id, rank_position, is_integrated_top3')
+      .select('influencer_id, keyword_id, rank_position, is_integrated_top3, snapshot_date')
       .gte('snapshot_date', sinceDate);
 
     if (fetchErr) throw new Error(fetchErr.message);
@@ -36,6 +36,20 @@ export async function GET(request: NextRequest) {
 
     console.log(`[aggregate-influencers] 랭킹 ${rankings.length}건 로드`);
 
+    // 인플루언서별로 키워드당 최신 스냅샷만 사용 (중복 방지)
+    type RankingRow = { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean; snapshot_date: string };
+    const typedRankings = rankings as RankingRow[];
+
+    // 인플루언서+키워드별 최신 레코드만 추출
+    const latestMap = new Map<string, RankingRow>();
+    for (const r of typedRankings) {
+      const key = `${r.influencer_id}:${r.keyword_id}`;
+      const existing = latestMap.get(key);
+      if (!existing || r.snapshot_date > existing.snapshot_date) {
+        latestMap.set(key, r);
+      }
+    }
+
     // JS에서 GROUP BY 처리
     const grouped = new Map<string, {
       keywordIds: Set<string>;
@@ -46,7 +60,7 @@ export async function GET(request: NextRequest) {
       top3Only: number;
     }>();
 
-    for (const r of (rankings as { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean }[])) {
+    for (const r of latestMap.values()) {
       const g = grouped.get(r.influencer_id) || { keywordIds: new Set(), ranks: [], top3: 0, top1: 0, top2: 0, top3Only: 0 };
       g.keywordIds.add(r.keyword_id);
       g.ranks.push(r.rank_position);

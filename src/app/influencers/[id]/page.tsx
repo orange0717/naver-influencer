@@ -62,6 +62,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
   }, [id]);
 
   const keywords = influencer?.keywords || [];
+  const rankedKeywords = keywords.filter(k => k.rank_position);
   const totalKeywords = influencer?.total_keywords || keywords.length;
 
   // 카테고리 목록 추출 (Hooks는 조건부 return 전에 호출)
@@ -139,7 +140,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                 <span>팔로워 {influencer.total_follower_count.toLocaleString()}</span>
               )}
               {influencer.subscriber_count != null && influencer.subscriber_count > 0 && (
-                <span>구독자 {influencer.subscriber_count.toLocaleString()}</span>
+                <span>팬 {influencer.subscriber_count.toLocaleString()}</span>
               )}
               <a
                 href={`https://in.naver.com/${influencer.naver_id}`}
@@ -172,9 +173,10 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
           <div className="text-center">
             {(() => {
+              const t3 = top3Count || 0;
               const total = totalKeywords || 0;
-              if (top3Count > 0 && total > 0) {
-                const ratio = Math.min(top3Count / total, 1);
+              if (t3 > 0 && total > 0) {
+                const ratio = Math.min(t3 / total, 1);
                 return (
                   <p className={`text-lg font-bold font-rank ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
                     {(ratio * 100).toFixed(1)}%

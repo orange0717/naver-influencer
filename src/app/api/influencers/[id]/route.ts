@@ -127,33 +127,68 @@ export async function GET(
   // 팔로워수 실시간 갱신 (6시간 캐시, 병렬 실행)
   const followerRefresh = refreshFollowerCount(supabase, influencer.id, influencer.naver_id, influencer.last_crawled_at);
 
-  // 1) influencer_keywords 테이블에서 참여 키워드 조회
-  const { data: ikKeywords } = await supabase
-    .from('influencer_keywords')
-    .select(`
-      keyword_id,
-      keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)
-    `)
-    .eq('influencer_id', influencer.id)
-    .limit(50);
+  // 1) influencer_keywords 테이블에서 참여 키워드 조회 (전체)
+  interface KwChallenge { id: string; keyword: string; category: string; participant_count: number; search_volume_monthly: number }
+  let ikKeywords: { keyword_id: string; keyword_challenges: KwChallenge | KwChallenge[] | null }[] = [];
+  {
+    const PAGE = 500;
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data: batch } = await supabase
+        .from('influencer_keywords')
+        .select(`
+          keyword_id,
+          keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)
+        `)
+        .eq('influencer_id', influencer.id)
+        .range(from, from + PAGE - 1);
+      if (batch && batch.length > 0) {
+        ikKeywords.push(...batch);
+        from += PAGE;
+        hasMore = batch.length === PAGE;
+      } else {
+        hasMore = false;
+      }
+    }
+  }
 
-  // 2) keyword_rankings에서 최근 순위 데이터 (최근 스냅샷 기준)
-  const { data: rankings } = await supabase
+  // 2) keyword_rankings에서 최신 스냅샷 순위 데이터
+  const { data: latestDateRow } = await supabase
     .from('keyword_rankings')
-    .select(`
-      rank_position, rank_change, is_integrated_top3, snapshot_date,
-      keyword_id,
-      keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)
-    `)
+    .select('snapshot_date')
     .eq('influencer_id', influencer.id)
     .order('snapshot_date', { ascending: false })
-    .limit(100);
+    .limit(1)
+    .single();
+
+  const latestDate = latestDateRow?.snapshot_date;
+
+  const { data: rankings } = latestDate
+    ? await supabase
+        .from('keyword_rankings')
+        .select(`
+          rank_position, rank_change, is_integrated_top3, snapshot_date,
+          keyword_id,
+          keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)
+        `)
+        .eq('influencer_id', influencer.id)
+        .eq('snapshot_date', latestDate)
+    : { data: null };
 
   // 3) keyword_rankings에서 키워드 목록 추출 (influencer_keywords가 비어있을 때 fallback)
-  let keywordsResult = ikKeywords?.map(k => ({
-    keyword_id: k.keyword_id,
-    ...k.keyword_challenges,
-  })) || [];
+  function resolveKw(kc: KwChallenge | KwChallenge[] | null): KwChallenge | null {
+    if (!kc) return null;
+    if (Array.isArray(kc)) return kc[0] || null;
+    return kc;
+  }
+  let keywordsResult = ikKeywords?.map(k => {
+    const kw = resolveKw(k.keyword_challenges);
+    return {
+      keyword_id: k.keyword_id,
+      ...(kw || { id: '', keyword: '', category: '', participant_count: 0, search_volume_monthly: 0 }),
+    };
+  }) || [];
 
   if (keywordsResult.length === 0 && rankings && rankings.length > 0) {
     // keyword_rankings에서 unique keyword 추출
@@ -164,10 +199,14 @@ export async function GET(
         seen.add(r.keyword_id);
         return true;
       })
-      .map(r => ({
-        keyword_id: r.keyword_id,
-        ...r.keyword_challenges,
-      }));
+      .map(r => {
+        const kw = r.keyword_challenges as unknown as KwChallenge | KwChallenge[] | null;
+        const resolved = resolveKw(kw);
+        return {
+          keyword_id: r.keyword_id,
+          ...(resolved || { id: '', keyword: '', category: '', participant_count: 0, search_volume_monthly: 0 }),
+        };
+      });
   }
 
   // 4) 키워드별 최신 순위 정보 매핑

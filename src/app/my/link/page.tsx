@@ -133,7 +133,7 @@ export default function LinkInfluencer() {
                   <p className="font-bold truncate">{inf.name}</p>
                   <p className="text-xs text-dim">@{inf.naverId}</p>
                   <p className="text-xs text-dim">
-                    {inf.myKeywordCategory} · 구독자 {(inf.subscriberCount || 0).toLocaleString()}
+                    {inf.myKeywordCategory} · 팬 {(inf.subscriberCount || 0).toLocaleString()}
                   </p>
                 </div>
               </div>

@@ -598,7 +598,7 @@ export default async function MyDashboard() {
         rankedKeywords={top10Count}
         rank1Count={rank1Count}
         top3Count={top3Count}
-        integratedTop3Count={top3Count}
+        integratedTop3Count={integratedCount}
         avgParticipants={avgParticipants}
         compLow={compLow}
         compMid={compMid}
