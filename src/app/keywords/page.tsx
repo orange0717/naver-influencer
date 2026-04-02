@@ -29,6 +29,24 @@ export default function KeywordsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // 정렬 상태
+  const [sortKey, setSortKey] = useState<'participant_count' | 'competition_level' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (key: 'participant_count' | 'competition_level') => {
+    if (sortKey === key) {
+      setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
+    }
+  };
+
+  const sortArrow = (key: string) => {
+    if (sortKey !== key) return ' ↕';
+    return sortOrder === 'desc' ? ' ↓' : ' ↑';
+  };
+
   // TOP3 펼치기 상태
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
@@ -158,9 +176,21 @@ export default function KeywordsPage() {
   }, [keywords]);
 
   const displayKeywords = useMemo(() => {
-    if (subFilter === '전체') return keywords;
-    return keywords.filter(kw => getSubcategory(kw.category, kw.keyword) === subFilter);
-  }, [keywords, subFilter]);
+    let list = subFilter === '전체' ? [...keywords] : keywords.filter(kw => getSubcategory(kw.category, kw.keyword) === subFilter);
+    if (sortKey) {
+      const compOrder: Record<string, number> = { low: 1, medium: 2, high: 3 };
+      list = [...list].sort((a, b) => {
+        let diff = 0;
+        if (sortKey === 'participant_count') {
+          diff = a.participant_count - b.participant_count;
+        } else if (sortKey === 'competition_level') {
+          diff = (compOrder[a.competition_level] || 0) - (compOrder[b.competition_level] || 0);
+        }
+        return sortOrder === 'asc' ? diff : -diff;
+      });
+    }
+    return list;
+  }, [keywords, subFilter, sortKey, sortOrder]);
 
   return (
     <div className="space-y-6">
@@ -291,10 +321,14 @@ export default function KeywordsPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-sm">키워드</th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-sm">카테고리</th>
                   <th className="text-left py-3 px-2 font-semibold text-dim text-sm">세부분류</th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm">참여자</th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('participant_count')}>
+                    참여자{sortArrow('participant_count')}
+                  </th>
                   <th className="text-right py-3 px-3 font-semibold text-dim text-sm">월 검색량</th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-sm">등록일</th>
-                  <th className="text-center py-3 px-3 font-semibold text-dim text-sm">경쟁도</th>
+                  <th className="text-center py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('competition_level')}>
+                    경쟁도{sortArrow('competition_level')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
