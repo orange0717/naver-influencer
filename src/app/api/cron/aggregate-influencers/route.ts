@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     // 페이징으로 전체 데이터 로드 (Supabase 1000건 제한 우회)
     console.log(`[aggregate-influencers] 전체 랭킹 데이터 로드 시작`);
 
-    const PAGE_SIZE = 10000;
+    const PAGE_SIZE = 1000;
     let allRankings: { influencer_id: string; keyword_id: string; rank_position: number; is_integrated_top3: boolean; snapshot_date: string }[] = [];
     let from = 0;
     let hasMore = true;
@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         hasMore = false;
       } else {
         allRankings = allRankings.concat(data as typeof allRankings);
+        console.log(`[aggregate-influencers] 페이지 로드: ${data.length}건 (누적: ${allRankings.length}건)`);
         from += PAGE_SIZE;
         if (data.length < PAGE_SIZE) hasMore = false;
       }
