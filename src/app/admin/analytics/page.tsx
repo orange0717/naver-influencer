@@ -73,17 +73,24 @@ export default function AdminAnalyticsPage() {
       {/* 기간 선택 */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-dim font-semibold">기간</span>
-        {[1, 7, 14, 30, 90].map(d => (
+        {[
+          { value: 1, label: '오늘' },
+          { value: 2, label: '어제' },
+          { value: 7, label: '7일' },
+          { value: 14, label: '14일' },
+          { value: 30, label: '30일' },
+          { value: 90, label: '90일' },
+        ].map(d => (
           <button
-            key={d}
-            onClick={() => { setLoading(true); setDays(d); }}
+            key={d.value}
+            onClick={() => { setLoading(true); setDays(d.value); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              days === d
+              days === d.value
                 ? 'bg-accent/20 text-accent border border-accent/40'
                 : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
             }`}
           >
-            {d === 1 ? '오늘' : `${d}일`}
+            {d.label}
           </button>
         ))}
         <span className="text-xs text-dim ml-2">총 {referrers?.total || 0}건</span>
