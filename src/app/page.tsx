@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DemoModal from '@/components/DemoModal';
+import InstallBanner from '@/components/InstallBanner';
 
 /* ── 실시간 DB 통계 ── */
 function useStats() {
@@ -113,6 +114,11 @@ export default function LandingPage() {
 
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
+
+      {/* ═══════════ PWA 설치 안내 ═══════════ */}
+      <div className="py-4">
+        <InstallBanner />
+      </div>
 
       <SectionDivider />
 
