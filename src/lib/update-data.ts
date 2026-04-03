@@ -26,13 +26,14 @@ export interface UpdateItem {
  */
 export const UPDATES: UpdateItem[] = [
   {
-    version: '2026-04-03',
+    version: '2026-04-03b',
     date: '2026.04.03',
-    title: '4월 3일 업데이트일정',
+    title: '4월 3일 업데이트 완료',
     changes: [
-      '키워드챌린지 검색량·경쟁도 로직 고도화',
-      '키워드 순위 변동 앱 알림 예정',
+      '키워드리스트 검색량 반영완료 (전체/PC/모바일)',
+      '인플루언서 비율 정확도 개선',
       '키워드챌린지 TOP 1-3위 표기',
+      '정렬 초기화 기능 추가',
     ],
     href: '/notice/45cf39e6-7378-4761-9dfd-ddc628e9e64a',
   },
