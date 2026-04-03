@@ -93,7 +93,7 @@ async function getInfluencersFromDB(
   const allowedSorts: Record<string, string> = {
     subscriber_count: 'subscriber_count',
     first_seen_at: 'naver_created_at',
-    last_crawled_at: 'last_crawled_at',
+    last_crawled_at: 'last_challenged_at',
     total_keywords: 'total_keywords',
     integrated_top3_count: 'integrated_top3_count',
     top1_count: 'top1_count',
@@ -127,8 +127,8 @@ async function getInfluencersFromDB(
     influencers.sort((a, b) => {
       const top3A = getTop3(a);
       const top3B = getTop3(b);
-      const ratioA = (a.total_keywords || 0) > 0 ? top3A / (a.total_keywords as number) : 0;
-      const ratioB = (b.total_keywords || 0) > 0 ? top3B / (b.total_keywords as number) : 0;
+      const ratioA = (a.total_keywords || 0) > 0 ? Math.min(top3A / (a.total_keywords as number), 1) : 0;
+      const ratioB = (b.total_keywords || 0) > 0 ? Math.min(top3B / (b.total_keywords as number), 1) : 0;
       if (ratioA !== ratioB) return ascending ? ratioA - ratioB : ratioB - ratioA;
       // 비율 같으면 TOP3 개수순
       return ascending ? top3A - top3B : top3B - top3A;
@@ -191,10 +191,10 @@ async function getInfluencersFromDB(
     integratedTop3Count: (inf.top1_count || 0) + (inf.top2_count || 0) + (inf.top3_count || 0),
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
-    lastCrawledAt: inf.last_crawled_at || null,
+    lastCrawledAt: inf.last_challenged_at || null,
     isInactive: !inf.image_url && (inf.subscriber_count || 0) === 0,
-    isStopped: inf.last_crawled_at
-      ? (Date.now() - new Date(inf.last_crawled_at).getTime()) > 365 * 24 * 60 * 60 * 1000
+    isStopped: inf.last_challenged_at
+      ? (Date.now() - new Date(inf.last_challenged_at).getTime()) > 365 * 24 * 60 * 60 * 1000
       : false,
   }));
 

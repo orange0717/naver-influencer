@@ -33,17 +33,14 @@ export async function GET(request: NextRequest) {
 
     for (let i = 0; i < stats.length; i += BATCH) {
       const batch = stats.slice(i, i + BATCH);
-      const promises = batch.map((s: { inf_id: string; avg_rk: number; best_rk: number; top3_cnt: number; top1_cnt: number; top2_cnt: number; top3only_cnt: number }) =>
+      const promises = batch.map((s: { inf_id: string; avg_rk: number; best_rk: number }) =>
         supabase
           .from('influencers')
           .update({
-            // total_keywords는 네이버 원본 데이터 유지
+            // avg_rank, best_rank만 업데이트
+            // TOP3 카운트/비율은 crawl-challenge-ranks에서 네이버 API 기반으로 설정하므로 덮어쓰지 않음
             avg_rank: Number(s.avg_rk),
             best_rank: s.best_rk,
-            integrated_top3_count: s.top3_cnt,
-            top1_count: s.top1_cnt,
-            top2_count: s.top2_cnt,
-            top3_count: s.top3only_cnt,
           })
           .eq('id', s.inf_id)
           .then(({ error }) => {

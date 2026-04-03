@@ -294,7 +294,7 @@ export default function InfluencersPage() {
                         const t3 = inf.integratedTop3Count || 0;
                         const total = inf.totalKeywords || 0;
                         if (t3 > 0 && total > 0) {
-                          const ratio = t3 / total;
+                          const ratio = Math.min(t3 / total, 1);
                           return (
                             <span className={`font-bold ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
                               {(ratio * 100).toFixed(1)}%
