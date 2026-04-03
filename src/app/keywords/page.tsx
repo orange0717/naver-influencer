@@ -358,7 +358,7 @@ export default function KeywordsPage() {
                             {kw.keyword}
                           </Link>
                           {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
-                            <span className="text-[11px] text-dim truncate">
+                            <span className="text-xs text-dim truncate">
                               {top3Map[kw.id].map((t, idx) => (
                                 <span key={t.naver_id}>
                                   <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
@@ -475,7 +475,7 @@ export default function KeywordsPage() {
                         </Link>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
                         {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
-                          <span className="text-[11px] text-dim truncate">
+                          <span className="text-xs text-dim truncate">
                             {top3Map[kw.id].map((t, idx) => (
                               <span key={t.naver_id}>
                                 <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
@@ -567,6 +567,8 @@ export default function KeywordsPage() {
                 <div className="flex items-center gap-3 text-sm text-dim">
                   <span>참여자 {kw.participant_count.toLocaleString()}명</span>
                   {kw.search_volume_monthly > 0 && <span>월 {kw.search_volume_monthly.toLocaleString()}회</span>}
+                  {kw.search_volume_pc > 0 && <span>PC {kw.search_volume_pc.toLocaleString()}</span>}
+                  {kw.search_volume_mobile > 0 && <span>모바일 {kw.search_volume_mobile.toLocaleString()}</span>}
                 </div>
               </Link>
               );
