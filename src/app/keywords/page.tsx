@@ -35,7 +35,12 @@ export default function KeywordsPage() {
 
   const handleSort = (key: typeof sortKey & string) => {
     if (sortKey === key) {
-      setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+      if (sortOrder === 'desc') {
+        setSortOrder('asc');
+      } else {
+        // 오름차순 → 초기화
+        setSortKey(null);
+      }
     } else {
       setSortKey(key);
       setSortOrder('desc');
