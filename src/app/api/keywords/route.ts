@@ -127,8 +127,8 @@ function toUIKeyword(kw: { id: number; name: string; categoryName: string; parti
     participant_count: kw.participantCount,
     content_count: 0,
     search_volume_monthly: 0,
-    search_volume_pc: kw.search_volume_pc || 0,
-    search_volume_mobile: kw.search_volume_mobile || 0,
+    search_volume_pc: 0,
+    search_volume_mobile: 0,
     competition_level: getCompetitionLevel(kw.participantCount),
     recommendation_score: 0,
     trend_direction: 'stable' as const,
@@ -145,6 +145,7 @@ async function searchKeywordsInCategory(category: string, search: string) {
   const allKeywords: {
     id: string; keyword: string; category: string;
     participant_count: number; search_volume_monthly: number;
+    search_volume_pc: number; search_volume_mobile: number;
     first_seen_at: string;
   }[] = [];
 
@@ -155,7 +156,7 @@ async function searchKeywordsInCategory(category: string, search: string) {
   while (hasMore) {
     const { data: batch } = await supabase
       .from('keyword_challenges')
-      .select('id, keyword, category, participant_count, search_volume_monthly, first_seen_at')
+      .select('id, keyword, category, participant_count, search_volume_monthly, search_volume_pc, search_volume_mobile, first_seen_at')
       .eq('category', category)
       .eq('is_active', true)
       .ilike('keyword', `%${search}%`)
@@ -202,6 +203,7 @@ async function getAllKeywordsFromDB(category: string, sort: string, ascending: b
   const allKeywords: {
     id: string; keyword: string; category: string;
     participant_count: number; search_volume_monthly: number;
+    search_volume_pc: number; search_volume_mobile: number;
     first_seen_at: string; is_active: boolean;
   }[] = [];
 
