@@ -188,7 +188,7 @@ async function getInfluencersFromDB(
     top1Count: inf.top1_count || 0,
     top2Count: inf.top2_count || 0,
     top3Count: inf.top3_count || 0,
-    integratedTop3Count: (inf.top1_count || 0) + (inf.top2_count || 0) + (inf.top3_count || 0),
+    integratedTop3Count: Math.min((inf.top1_count || 0) + (inf.top2_count || 0) + (inf.top3_count || 0), inf.total_keywords || Infinity),
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_challenged_at || null,
