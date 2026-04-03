@@ -127,8 +127,8 @@ function toUIKeyword(kw: { id: number; name: string; categoryName: string; parti
     participant_count: kw.participantCount,
     content_count: 0,
     search_volume_monthly: 0,
-    search_volume_pc: 0,
-    search_volume_mobile: 0,
+    search_volume_pc: kw.search_volume_pc || 0,
+    search_volume_mobile: kw.search_volume_mobile || 0,
     competition_level: getCompetitionLevel(kw.participantCount),
     recommendation_score: 0,
     trend_direction: 'stable' as const,
@@ -178,8 +178,8 @@ async function searchKeywordsInCategory(category: string, search: string) {
     participant_count: kw.participant_count || 0,
     content_count: 0,
     search_volume_monthly: kw.search_volume_monthly || 0,
-    search_volume_pc: 0,
-    search_volume_mobile: 0,
+    search_volume_pc: kw.search_volume_pc || 0,
+    search_volume_mobile: kw.search_volume_mobile || 0,
     competition_level: getCompetitionLevelAdvanced(
       kw.participant_count || 0,
       kw.search_volume_monthly || 0,
@@ -212,7 +212,7 @@ async function getAllKeywordsFromDB(category: string, sort: string, ascending: b
   while (hasMore) {
     const { data: batch } = await supabase
       .from('keyword_challenges')
-      .select('id, keyword, category, participant_count, search_volume_monthly, first_seen_at, is_active')
+      .select('id, keyword, category, participant_count, search_volume_monthly, search_volume_pc, search_volume_mobile, first_seen_at, is_active')
       .eq('category', category)
       .eq('is_active', true)
       .order(sortColumn, { ascending })
@@ -234,8 +234,8 @@ async function getAllKeywordsFromDB(category: string, sort: string, ascending: b
     participant_count: kw.participant_count || 0,
     content_count: 0,
     search_volume_monthly: kw.search_volume_monthly || 0,
-    search_volume_pc: 0,
-    search_volume_mobile: 0,
+    search_volume_pc: kw.search_volume_pc || 0,
+    search_volume_mobile: kw.search_volume_mobile || 0,
     competition_level: getCompetitionLevelAdvanced(
       kw.participant_count || 0,
       kw.search_volume_monthly || 0,
