@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { Keyword } from '@/lib/types';
-import { getSubcategory } from '@/data/subcategory-map';
+import { getSubcategory, getSubcategoryList } from '@/data/subcategory-map';
 import CategoryFilter from '@/components/CategoryFilter';
 
 interface CategoryGroup {
@@ -235,10 +235,14 @@ export default function KeywordsPage() {
 
   // 세부분류 목록 + 필터링
   const subCategories = useMemo(() => {
+    // 카테고리 정의에서 전체 세부분류 가져오기 (정렬/비정렬 상관없이 일관된 목록)
+    const definedSubs = getSubcategoryList(category);
+    if (definedSubs.length > 0) return ['전체', ...definedSubs];
+    // 정의 없는 카테고리: 로드된 키워드에서 추출
     const subs = keywords.map(kw => getSubcategory(kw.category, kw.keyword)).filter(Boolean);
     const unique = [...new Set(subs)].sort();
     return ['전체', ...unique];
-  }, [keywords]);
+  }, [category, keywords]);
 
   const displayKeywords = useMemo(() => {
     let list = subFilter === '전체' ? [...keywords] : keywords.filter(kw => getSubcategory(kw.category, kw.keyword) === subFilter);
