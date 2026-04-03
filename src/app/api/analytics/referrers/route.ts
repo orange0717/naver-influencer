@@ -10,13 +10,12 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const days = Math.min(Number(req.nextUrl.searchParams.get('days')) || 7, 90);
-    // KST 기준 날짜 계산
+    // KST 자정 기준 (UTC 서버에서도 정확하게 동작)
     const now = new Date();
-    const kstOffset = 9 * 60 * 60 * 1000;
-    const kstNow = new Date(now.getTime() + kstOffset);
-    const kstToday = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate());
-    const sinceKst = new Date(kstToday.getTime() - (days - 1) * 86400000 - kstOffset);
-    const since = sinceKst.toISOString();
+    const kstDateStr = new Date(now.getTime() + 9 * 3600000).toISOString().slice(0, 10);
+    const kstMidnightUTC = new Date(kstDateStr + 'T00:00:00Z');
+    kstMidnightUTC.setHours(kstMidnightUTC.getHours() - 9); // KST 자정 = UTC 15:00 전날
+    const since = new Date(kstMidnightUTC.getTime() - (days - 1) * 86400000).toISOString();
 
     const supabase = createServiceClient();
 
