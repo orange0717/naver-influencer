@@ -55,7 +55,7 @@ export default function KeywordsPage() {
   const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
   const [rankingsLoading, setRankingsLoading] = useState<string | null>(null);
 
-  // 키워드 목록 로드 시 배치로 TOP3 가져오기 (20개씩 병렬 요청)
+  // 키워드 목록 로드 시 배치로 TOP3 가져오기 (점진적 로딩)
   useEffect(() => {
     const allKws = keywords.length > 0
       ? keywords
@@ -63,28 +63,40 @@ export default function KeywordsPage() {
     if (allKws.length === 0) return;
 
     const BATCH = 20;
-    const chunks: string[][] = [];
+    const CONCURRENT = 5; // 5개씩 병렬, 완료되면 즉시 UI 업데이트
+    const chunks: { names: string[]; kwList: typeof allKws }[] = [];
     for (let i = 0; i < allKws.length; i += BATCH) {
-      chunks.push(allKws.slice(i, i + BATCH).map(kw => kw.keyword));
+      const slice = allKws.slice(i, i + BATCH);
+      chunks.push({ names: slice.map(kw => kw.keyword), kwList: slice });
     }
 
-    // 모든 청크 병렬 요청
-    Promise.all(
-      chunks.map(names =>
-        fetch(`/api/keywords/batch-top3?keywords=${encodeURIComponent(names.join(','))}`)
-          .then(res => res.json())
-          .catch(() => ({ top3: {} }))
-      )
-    ).then(results => {
-      const merged: Record<string, { rank: number; name: string; naver_id: string }[]> = {};
-      const allTop3 = Object.assign({}, ...results.map(r => r.top3 || {}));
-      for (const kw of allKws) {
-        if (allTop3[kw.keyword]) {
-          merged[kw.id] = allTop3[kw.keyword];
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < chunks.length; i += CONCURRENT) {
+        if (cancelled) break;
+        const batch = chunks.slice(i, i + CONCURRENT);
+        const results = await Promise.all(
+          batch.map(({ names }) =>
+            fetch(`/api/keywords/batch-top3?keywords=${encodeURIComponent(names.join(','))}`)
+              .then(res => res.json())
+              .catch(() => ({ top3: {} }))
+          )
+        );
+        if (cancelled) break;
+        const merged: Record<string, { rank: number; name: string; naver_id: string }[]> = {};
+        const allTop3 = Object.assign({}, ...results.map(r => r.top3 || {}));
+        for (const { kwList } of batch) {
+          for (const kw of kwList) {
+            if (allTop3[kw.keyword]) merged[kw.id] = allTop3[kw.keyword];
+          }
+        }
+        if (Object.keys(merged).length > 0) {
+          setTop3Map(prev => ({ ...prev, ...merged }));
         }
       }
-      setTop3Map(prev => ({ ...prev, ...merged }));
-    });
+    })();
+
+    return () => { cancelled = true; };
   }, [keywords, grouped]);
 
   const toggleRankings = async (kwId: string) => {
