@@ -50,6 +50,7 @@ function isNew(d: string | null | undefined): boolean {
 }
 
 export default function InfluencersPage() {
+  const [activeTab, setActiveTab] = useState<'list' | 'ranking'>('list');
   const [influencers, setInfluencers] = useState<InfluencerItem[]>([]);
   const [categories, setCategories] = useState<string[]>(['전체']);
   const [category, setCategory] = useState('전체');
@@ -154,6 +155,46 @@ export default function InfluencersPage() {
         </div>
       </div>
 
+      {/* 탭 */}
+      <div className="flex gap-1 border-b border-border">
+        <button
+          onClick={() => setActiveTab('list')}
+          className={`px-4 py-2 text-sm font-semibold transition-colors cursor-pointer ${
+            activeTab === 'list'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-dim hover:text-text'
+          }`}
+        >
+          인플루언서 리스트
+        </button>
+        <button
+          onClick={() => setActiveTab('ranking')}
+          className={`px-4 py-2 text-sm font-semibold transition-colors cursor-pointer ${
+            activeTab === 'ranking'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-dim hover:text-text'
+          }`}
+        >
+          전체순위 <span className="text-[10px] text-dim">(개발중)</span>
+        </button>
+      </div>
+
+      {activeTab === 'ranking' ? (
+        <div className="bg-surface rounded-xl border border-border p-8">
+          <h2 className="text-lg font-bold mb-4">전체순위 (개발중)</h2>
+          <p className="text-sm text-dim mb-6">10가지 요소를 종합한 인플루언서 순위입니다.</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            {['포스팅빈도', '게시글 수', '챌린지 수', 'TOP3비율', '키워드 검색량', '순위분포', '토픽 수', '구독자수(전체)', '팬수', '참여도'].map((item, i) => (
+              <div key={item} className="bg-bg rounded-lg p-3 text-center">
+                <div className="text-[10px] text-dim mb-1">{i + 1}</div>
+                <div className="text-xs font-semibold">{item}</div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-dim">데이터 수집 및 알고리즘 개발 진행 중입니다. 곧 공개됩니다.</p>
+        </div>
+      ) : (
+      <>
       <input
         type="text"
         placeholder="인플루언서 검색 (이름, 카테고리, 키워드, 유형)..."
@@ -433,6 +474,7 @@ export default function InfluencersPage() {
             </div>
           )}
         </>
+      </>
       )}
     </div>
   );
