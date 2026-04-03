@@ -104,7 +104,13 @@ export default function InfluencersPage() {
 
   const handleSortChange = (key: SortKey) => {
     if (sortBy === key) {
-      setOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+      if (order === 'desc') {
+        setOrder('asc');
+      } else {
+        // 오름차순 → 초기화 (기본 선정일순)
+        setSortBy('first_seen_at');
+        setOrder('desc');
+      }
     } else {
       setSortBy(key);
       setOrder('desc');
@@ -221,6 +227,14 @@ export default function InfluencersPage() {
             {opt.label}{sortArrow(opt.key)}
           </button>
         ))}
+        {sortBy !== 'first_seen_at' && (
+          <button
+            onClick={() => { setSortBy('first_seen_at'); setOrder('desc'); setPage(1); }}
+            className="px-2 py-1 text-[10px] bg-accent/10 text-accent border border-accent/30 rounded hover:bg-accent/20 transition-colors cursor-pointer"
+          >
+            초기화
+          </button>
+        )}
       </div>
 
       {loading ? (
