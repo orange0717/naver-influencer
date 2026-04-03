@@ -30,12 +30,12 @@ interface InfluencerItem {
 type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'first_seen_at', label: '선정일순' },
-  { key: 'subscriber_count', label: '팬수순' },
-  { key: 'total_keywords', label: '챌린지수순' },
-  { key: 'top3_ratio', label: '비율순' },
-  { key: 'integrated_top3_count', label: 'TOP3순' },
-  { key: 'last_crawled_at', label: '마지막 참여일순' },
+  { key: 'first_seen_at', label: '선정일' },
+  { key: 'subscriber_count', label: '팬수' },
+  { key: 'total_keywords', label: '챌린지수' },
+  { key: 'top3_ratio', label: '비율' },
+  { key: 'integrated_top3_count', label: 'TOP3' },
+  { key: 'last_crawled_at', label: '마지막 참여일' },
 ];
 
 function formatDate(d: string | null | undefined): string {
@@ -161,30 +161,6 @@ export default function InfluencersPage() {
         </div>
       </div>
 
-      {/* 탭 */}
-      <div className="flex gap-1 border-b border-border">
-        <button
-          onClick={() => setActiveTab('list')}
-          className={`px-4 py-2 text-sm font-semibold transition-colors cursor-pointer ${
-            activeTab === 'list'
-              ? 'text-accent border-b-2 border-accent'
-              : 'text-dim hover:text-text'
-          }`}
-        >
-          인플루언서 리스트
-        </button>
-        <button
-          onClick={() => setActiveTab('ranking')}
-          className={`px-4 py-2 text-sm font-semibold transition-colors cursor-pointer ${
-            activeTab === 'ranking'
-              ? 'text-accent border-b-2 border-accent'
-              : 'text-dim hover:text-text'
-          }`}
-        >
-          전체순위 <span className="text-[10px] text-dim">(개발중)</span>
-        </button>
-      </div>
-
       {activeTab === 'ranking' ? (
         <div className="bg-surface rounded-xl border border-border p-8">
           <h2 className="text-lg font-bold mb-4">전체순위 (개발중)</h2>
@@ -197,7 +173,7 @@ export default function InfluencersPage() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-dim">데이터 수집 및 알고리즘 개발 진행 중입니다. 곧 공개됩니다.</p>
+          <button onClick={() => setActiveTab('list')} className="text-xs text-accent hover:underline cursor-pointer">인플루언서 리스트로 돌아가기</button>
         </div>
       ) : (
       <>
@@ -235,6 +211,12 @@ export default function InfluencersPage() {
             초기화
           </button>
         )}
+        <button
+          onClick={() => setActiveTab('ranking')}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-dashed border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer"
+        >
+          전체순위 <span className="text-[10px] text-dim">(개발중)</span>
+        </button>
       </div>
 
       {loading ? (
