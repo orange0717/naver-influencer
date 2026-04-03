@@ -73,7 +73,7 @@ export default function AdminAnalyticsPage() {
       {/* 기간 선택 */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-dim font-semibold">기간</span>
-        {[7, 14, 30, 90].map(d => (
+        {[1, 7, 14, 30, 90].map(d => (
           <button
             key={d}
             onClick={() => { setLoading(true); setDays(d); }}
@@ -83,7 +83,7 @@ export default function AdminAnalyticsPage() {
                 : 'bg-surface border border-border/50 text-dim hover:border-accent/30'
             }`}
           >
-            {d}일
+            {d === 1 ? '오늘' : `${d}일`}
           </button>
         ))}
         <span className="text-xs text-dim ml-2">총 {referrers?.total || 0}건</span>
