@@ -419,12 +419,16 @@ export default function KeywordsPage() {
       ) : (
         /* ─── 카테고리 선택 or 검색: 기존 리스트 뷰 ─── */
         <>
-          {sortKey && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-dim">정렬: {sortKey === 'participant_count' ? '참여자' : sortKey === 'search_volume_monthly' ? '월 검색량' : sortKey === 'search_volume_pc' ? 'PC 검색량' : sortKey === 'search_volume_mobile' ? '모바일 검색량' : '경쟁도'} {sortOrder === 'desc' ? '높은순' : '낮은순'}</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-dim">
+              {sortKey
+                ? `정렬: ${sortKey === 'participant_count' ? '참여자' : sortKey === 'search_volume_monthly' ? '월 검색량' : sortKey === 'search_volume_pc' ? 'PC 검색량' : sortKey === 'search_volume_mobile' ? '모바일 검색량' : '경쟁도'} ${sortOrder === 'desc' ? '높은순' : '낮은순'}`
+                : '정렬: 기본순'}
+            </span>
+            {sortKey && (
               <button onClick={() => setSortKey(null)} className="px-2 py-0.5 text-xs bg-accent/10 text-accent border border-accent/30 rounded hover:bg-accent/20 transition-colors cursor-pointer">초기화</button>
-            </div>
-          )}
+            )}
+          </div>
           <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
