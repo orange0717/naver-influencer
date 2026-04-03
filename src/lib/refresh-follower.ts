@@ -61,6 +61,8 @@ export async function refreshFollowerCount(
       await supabase.from('influencers').update(updateData).eq('id', influencerId);
       return followerCount;
     }
-  } catch { /* 실패해도 기존 데이터 유지 */ }
+  } catch (err) {
+    console.warn(`[refresh-follower] ${naverId} 실패:`, err instanceof Error ? err.message : err);
+  }
   return null;
 }

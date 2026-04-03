@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAuthUser } from '@/lib/auth';
+import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-/** GET: 광고 프로필 조회 */
-export async function GET() {
-  const cookieStore = await cookies();
-  const naverId = cookieStore.get('naver_id')?.value;
+/** 인증된 유저의 linked_influencer_id로 naver_id 조회 */
+async function getLinkedNaverId(request: Request) {
+  const auth = await getAuthUser(request);
+  if (!auth) return null;
 
+  const linkedId = auth.user.linked_influencer_id;
+  if (!linkedId) return null;
+
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('influencers')
+    .select('naver_id')
+    .eq('id', linkedId)
+    .single();
+
+  return data?.naver_id ?? null;
+}
+
+/** GET: 광고 프로필 조회 */
+export async function GET(request: NextRequest) {
+  if (await dashboardLimiter.check(getClientIp(request))) {
+    return rateLimitResponse();
+  }
+
+  const naverId = await getLinkedNaverId(request);
   if (!naverId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -29,9 +50,11 @@ export async function GET() {
 
 /** PATCH: 광고 프로필 저장 */
 export async function PATCH(request: NextRequest) {
-  const cookieStore = await cookies();
-  const naverId = cookieStore.get('naver_id')?.value;
+  if (await dashboardLimiter.check(getClientIp(request))) {
+    return rateLimitResponse();
+  }
 
+  const naverId = await getLinkedNaverId(request);
   if (!naverId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

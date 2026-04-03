@@ -198,7 +198,7 @@ async function getInfluencersFromDB(
       : false,
   }));
 
-  // 활성 인플루언서 수 (구독자 > 0)
+  // 활성 인플루언서 수 (구독자 > 0, is_active)
   const { count: activeCount } = await supabase
     .from('influencers')
     .select('*', { count: 'exact', head: true })

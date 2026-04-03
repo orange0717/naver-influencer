@@ -62,7 +62,7 @@ export default function StatsPage() {
                   <th key={y} className="text-right px-3 py-3 font-semibold text-dim text-xs whitespace-nowrap">{y}</th>
                 ))}
                 <th className="text-right px-4 py-3 font-bold text-text text-xs">전체</th>
-                <th className="text-right px-4 py-3 font-semibold text-dim text-xs whitespace-nowrap">미참여</th>
+                <th className="text-right px-4 py-3 font-semibold text-dim text-xs whitespace-nowrap">키챌 미참여</th>
               </tr>
             </thead>
             <tbody>
@@ -96,7 +96,7 @@ export default function StatsPage() {
       </div>
 
       <p className="text-xs text-dim text-center">
-        네이버 인플루언서 선정일 기준 연도별 집계 (선정일 미확인 포함) / 미참여 = 키워드챌린지 참여 기록 없음
+        네이버 인플루언서 선정일 기준 연도별 집계 (선정일 미확인 포함) / 키챌 미참여 = 키워드챌린지 참여 기록 없음
       </p>
     </div>
   );

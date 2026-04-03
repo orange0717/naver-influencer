@@ -5,7 +5,6 @@
  * - 인플루언서 순위: HTML 파싱 (search.naver.com)
  * - 인플루언서 목록: REST API (gw.in.naver.com/feed - discover)
  */
-import * as cheerio from 'cheerio';
 import { fetchWithRetry } from './crawler';
 
 const GRAPHQL_URL = 'https://in.naver.com/graphql';
@@ -307,6 +306,7 @@ export async function fetchRankings(keyword: string): Promise<NaverRanking[]> {
   const url = `${NAVER_SEARCH_URL}?where=influencer&query=${encodeURIComponent(keyword)}`;
   const res = await fetchWithRetry(url);
   const html = await res.text();
+  const cheerio = await import('cheerio');
   const $ = cheerio.load(html);
 
   const rankings: NaverRanking[] = [];

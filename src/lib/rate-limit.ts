@@ -30,6 +30,7 @@ function createRateLimiter(opts: { limit: number; windowMs: number }) {
   }
 
   // ─── 인메모리 폴백 (로컬 개발용) ───
+  const MAX_STORE_SIZE = 10_000;
   const store = new Map<string, number[]>();
   let lastCleanup = Date.now();
 
@@ -44,6 +45,13 @@ function createRateLimiter(opts: { limit: number; windowMs: number }) {
           if (filtered.length === 0) store.delete(k);
           else store.set(k, filtered);
         }
+      }
+
+      // store 크기 제한: 초과 시 가장 오래된 엔트리 절반 제거
+      if (store.size > MAX_STORE_SIZE) {
+        const keys = Array.from(store.keys());
+        const toDelete = keys.slice(0, Math.floor(keys.length / 2));
+        for (const k of toDelete) store.delete(k);
       }
 
       const cutoff = now - windowMs;

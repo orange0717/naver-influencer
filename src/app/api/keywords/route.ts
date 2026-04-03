@@ -196,7 +196,8 @@ async function searchKeywordsInCategory(category: string, search: string) {
 /** DB에서 카테고리 전체 키워드 조회 (정렬 모드용) */
 async function getAllKeywordsFromDB(category: string, sort: string, ascending: boolean) {
   const supabase = createServiceClient();
-  const sortColumn = sort === 'competition_level' ? 'participant_count' : 'participant_count';
+  // competition_level은 DB 컬럼이 아니므로 participant_count + search_volume_monthly 기반 정렬
+  const sortColumn = sort === 'search_volume' ? 'search_volume_monthly' : 'participant_count';
 
   const allKeywords: {
     id: string; keyword: string; category: string;

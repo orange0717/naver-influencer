@@ -82,14 +82,20 @@ export default function CommunityPostPage() {
     if (!user) return; // 비로그인이면 게시글 로드하지 않음
     setLoading(true);
     try {
-      const viewKey = `community_viewed_${postId}`;
-      const alreadyViewed = sessionStorage.getItem(viewKey);
-      sessionStorage.setItem(viewKey, '1');
-      const res = await fetch(`/api/community/${postId}${alreadyViewed ? '?skip_view=1' : ''}`);
+      // sessionStorage로 세션당 1회만 조회수 증가
+      const viewedKey = `post_viewed_${postId}`;
+      const isFirstView = !sessionStorage.getItem(viewedKey);
+      const headers: Record<string, string> = {};
+      if (isFirstView) {
+        headers['X-Count-View'] = '1';
+      }
+
+      const res = await fetch(`/api/community/${postId}`, { headers });
       if (!res.ok) {
         router.push('/community');
         return;
       }
+      if (isFirstView) sessionStorage.setItem(viewedKey, '1');
       const data = await res.json();
       setPost(data.post);
       setComments(data.comments || []);

@@ -87,13 +87,19 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     if (!noticeId) return;
-    const viewKey = `notice_viewed_${noticeId}`;
-    const alreadyViewed = sessionStorage.getItem(viewKey);
-    const url = alreadyViewed ? `/api/notices/${noticeId}?skip_view=1` : `/api/notices/${noticeId}`;
-    sessionStorage.setItem(viewKey, '1');
-    fetch(url)
+
+    // sessionStorage로 세션당 1회만 조회수 증가
+    const viewedKey = `notice_viewed_${noticeId}`;
+    const isFirstView = !sessionStorage.getItem(viewedKey);
+    const headers: Record<string, string> = {};
+    if (isFirstView) {
+      headers['X-Count-View'] = '1';
+    }
+
+    fetch(`/api/notices/${noticeId}`, { headers })
       .then(r => {
         if (!r.ok) throw new Error();
+        if (isFirstView) sessionStorage.setItem(viewedKey, '1');
         return r.json();
       })
       .then(data => {

@@ -29,16 +29,17 @@ export async function GET(
       return NextResponse.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // 조회수 증가: bot/preview 제외 + 세션 중복 방지(skip_view)
-    const skipView = _req.nextUrl.searchParams.get('skip_view') === '1';
-    const ua = _req.headers.get('user-agent') || '';
-    const isBot = /bot|crawl|spider|preview|headless|phantom|puppeteer|playwright/i.test(ua);
-    const isSecFetch = _req.headers.get('sec-fetch-dest');
+    // 조회수 증가: 클라이언트가 X-Count-View 헤더를 보낸 경우만 (첫 조회)
     let viewCount = notice.view_count;
+    const shouldCount = _req.headers.get('x-count-view') === '1';
 
-    if (!skipView && !isBot && isSecFetch) {
-      const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
-      viewCount = newViewCount ?? notice.view_count + 1;
+    if (shouldCount) {
+      const ua = _req.headers.get('user-agent') || '';
+      const isBot = /bot|crawl|spider|preview|headless|phantom|puppeteer|playwright/i.test(ua);
+      if (!isBot) {
+        const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
+        viewCount = newViewCount ?? notice.view_count + 1;
+      }
     }
 
     // 댓글 조회
