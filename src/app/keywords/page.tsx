@@ -30,10 +30,10 @@ export default function KeywordsPage() {
   const [loading, setLoading] = useState(true);
 
   // 정렬 상태
-  const [sortKey, setSortKey] = useState<'participant_count' | 'competition_level' | null>(null);
+  const [sortKey, setSortKey] = useState<'participant_count' | 'competition_level' | 'search_volume_monthly' | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const handleSort = (key: 'participant_count' | 'competition_level') => {
+  const handleSort = (key: 'participant_count' | 'competition_level' | 'search_volume_monthly') => {
     if (sortKey === key) {
       setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
     } else {
@@ -236,6 +236,8 @@ export default function KeywordsPage() {
         let diff = 0;
         if (sortKey === 'participant_count') {
           diff = a.participant_count - b.participant_count;
+        } else if (sortKey === 'search_volume_monthly') {
+          diff = (a.search_volume_monthly || 0) - (b.search_volume_monthly || 0);
         } else if (sortKey === 'competition_level') {
           diff = (compOrder[a.competition_level] || 0) - (compOrder[b.competition_level] || 0);
         }
@@ -403,7 +405,9 @@ export default function KeywordsPage() {
                   <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('participant_count')}>
                     참여자{sortArrow('participant_count')}
                   </th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm">월 검색량</th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('search_volume_monthly')}>
+                    월 검색량{sortArrow('search_volume_monthly')}
+                  </th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-sm">등록일</th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('competition_level')}>
                     경쟁도{sortArrow('competition_level')}
