@@ -14,7 +14,8 @@ const FOOTER_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-footer-bg text-footer-text">
+    <footer className="bg-footer-bg text-footer-text"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* 브랜드 + 링크 */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">

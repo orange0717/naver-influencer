@@ -1,0 +1,26 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.co.kr.ninfl.app",
+        "paths": [
+          "/influencers/*",
+          "/keywords/*",
+          "/community/*",
+          "/my",
+          "/my/*",
+          "/notice/*",
+          "/profile",
+          "/subscribe",
+          "/rankings"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAM_ID.co.kr.ninfl.app"
+    ]
+  }
+}

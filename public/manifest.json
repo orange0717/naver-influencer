@@ -1,0 +1,48 @@
+{
+  "name": "N인플 — 네이버 인플루언서 분석",
+  "short_name": "N인플",
+  "description": "네이버 인플루언서 키워드 순위, 검색량, 경쟁도 분석 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF5F3",
+  "theme_color": "#E4C1B8",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ko",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "대시보드",
+      "short_name": "대시보드",
+      "url": "/my",
+      "icons": []
+    },
+    {
+      "name": "키워드 리스트",
+      "short_name": "키워드",
+      "url": "/keywords",
+      "icons": []
+    },
+    {
+      "name": "인플루언서 리스트",
+      "short_name": "인플루언서",
+      "url": "/influencers",
+      "icons": []
+    }
+  ]
+}

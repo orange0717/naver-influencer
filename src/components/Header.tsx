@@ -62,6 +62,13 @@ export default function Header({ serverUser }: HeaderProps) {
   const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser);
 
   const handleLogout = async () => {
+    // Capacitor 네이티브 앱에서 푸시 토큰 해제
+    try {
+      const { unregisterPushToken } = await import('@/lib/push-notifications');
+      await unregisterPushToken();
+    } catch {
+      // 웹 환경이거나 에러 시 무시
+    }
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -84,7 +91,8 @@ export default function Header({ serverUser }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+      <header className="sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
             {/* ── 로고 ── */}

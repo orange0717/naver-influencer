@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     console.log(
       `[send-rank-notifications] 완료: 알림 ${stats.notificationsCreated}건, ` +
       `이메일 ${stats.emailsSent}건 (실패 ${stats.emailErrors}건), ` +
-      `카카오 ${stats.kakaoSent}건`
+      `푸시 ${stats.pushSent}건, 카카오 ${stats.kakaoSent}건`
     );
 
     return NextResponse.json({

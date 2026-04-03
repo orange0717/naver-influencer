@@ -242,11 +242,12 @@ export async function processNotifications(
   supabase: SupabaseClient,
   recipients: NotificationRecipient[],
   snapshotDate: string,
-): Promise<{ notificationsCreated: number; emailsSent: number; emailErrors: number; kakaoSent: number }> {
+): Promise<{ notificationsCreated: number; emailsSent: number; emailErrors: number; kakaoSent: number; pushSent: number }> {
   let notificationsCreated = 0;
   let emailsSent = 0;
   let emailErrors = 0;
   let kakaoSent = 0;
+  let pushSent = 0;
 
   for (const recipient of recipients) {
     // 오늘 순위 변동 데이터 조회
@@ -344,6 +345,44 @@ export async function processNotifications(
       await new Promise(r => setTimeout(r, 350));
     }
 
+    // 푸시 알림 발송
+    if (settings.in_app_enabled) {
+      const recipientCol = recipient.type === 'user' ? 'user_id' : 'demo_session_id';
+      const { data: pushTokens } = await supabase
+        .from('push_tokens')
+        .select('token')
+        .eq(recipientCol, recipient.id)
+        .eq('is_active', true);
+
+      if (pushTokens && pushTokens.length > 0) {
+        try {
+          const { sendPushToMultipleDevices } = await import('./push-sender');
+          const tokens = pushTokens.map(t => t.token);
+
+          const summaryTitle = `순위 변동 ${notifications.length}건`;
+          const summaryBody = notifications.slice(0, 2).map(n => n.title).join(', ');
+
+          const { failedTokens } = await sendPushToMultipleDevices(tokens, {
+            title: summaryTitle,
+            body: summaryBody,
+            data: { url: '/my', type: 'rank_change', count: String(notifications.length) },
+          });
+
+          pushSent += tokens.length - failedTokens.length;
+
+          // 실패한 토큰 비활성화
+          if (failedTokens.length > 0) {
+            await supabase
+              .from('push_tokens')
+              .update({ is_active: false })
+              .in('token', failedTokens);
+          }
+        } catch (err) {
+          console.error(`[notifications] 푸시 발송 실패 (${recipient.displayName}):`, err);
+        }
+      }
+    }
+
     // 카카오 알림톡 발송
     if (settings.kakao_enabled) {
       const kakaoChanges = notifications.map(n => ({
@@ -360,7 +399,7 @@ export async function processNotifications(
     }
   }
 
-  return { notificationsCreated, emailsSent, emailErrors, kakaoSent };
+  return { notificationsCreated, emailsSent, emailErrors, kakaoSent, pushSent };
 }
 
 // ─── 공지사항 알림 (전체 사용자 대상) ───

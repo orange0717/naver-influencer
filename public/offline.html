@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>N인플 - 오프라인</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+      background: #FAF5F3;
+      color: #2D2D2D;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container {
+      text-align: center;
+      max-width: 360px;
+    }
+    .logo {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: #E4C1B8;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold; font-size: 22px;
+      margin: 0 auto 20px;
+    }
+    h1 { font-size: 18px; margin-bottom: 8px; }
+    p { font-size: 14px; color: #999; line-height: 1.6; }
+    button {
+      margin-top: 24px;
+      padding: 10px 28px;
+      border: none;
+      border-radius: 10px;
+      background: #CC9486;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:active { background: #BF877A; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">N</div>
+    <h1>인터넷 연결이 필요합니다</h1>
+    <p>네트워크에 연결된 후 다시 시도해주세요.</p>
+    <button onclick="location.reload()">다시 시도</button>
+  </div>
+</body>
+</html>

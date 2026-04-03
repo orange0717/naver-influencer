@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">N인플</string>
+    <string name="title_activity_main">N인플</string>
+    <string name="package_name">co.kr.ninfl.app</string>
+    <string name="custom_url_scheme">co.kr.ninfl.app</string>
+</resources>
