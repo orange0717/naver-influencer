@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const REASONS = [
-  '사용하지 않아서',
+  '서비스가 불편해서',
+  '가격이 부담되서',
   '원하는 기능이 없어서',
-  '다른 서비스를 이용해서',
-  '개인정보가 걱정되어서',
+  '불친절해서',
+  '다른 서비스를 이용하기 위해서',
   '기타',
 ];
 
