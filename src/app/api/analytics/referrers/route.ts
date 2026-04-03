@@ -10,7 +10,13 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const days = Math.min(Number(req.nextUrl.searchParams.get('days')) || 7, 90);
-    const since = new Date(Date.now() - days * 86400000).toISOString();
+    // KST 기준 날짜 계산
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstNow = new Date(now.getTime() + kstOffset);
+    const kstToday = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate());
+    const sinceKst = new Date(kstToday.getTime() - (days - 1) * 86400000 - kstOffset);
+    const since = sinceKst.toISOString();
 
     const supabase = createServiceClient();
 
