@@ -4,7 +4,7 @@ import { dashboardLimiter, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|vercel|uptime/i;
+const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|vercel|uptime|facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Telegram|Yandex|Baidu|DuckDuckBot|Sogou|Bytespider|PetalBot|GPTBot|ChatGPT|ClaudeBot|Applebot|Amazonbot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Rogerbot|DataForSeoBot|archive\.org|Mediapartners|AdsBot|Screaming Frog|CCBot|Barkrowler|Go-http-client|python-requests|curl|wget|axios|node-fetch|undici|httpx/i;
 
 /** 페이지 방문 추적 (VisitTracker에서 호출) */
 export async function POST(req: NextRequest) {
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     // 봇·크롤러·프리뷰 요청 필터링
     const ua = req.headers.get('user-agent') || '';
-    if (BOT_PATTERNS.test(ua)) {
+    if (!ua || BOT_PATTERNS.test(ua)) {
       return NextResponse.json({ ok: true, skipped: 'bot' });
     }
 

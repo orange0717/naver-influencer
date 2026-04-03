@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DemoModal from '@/components/DemoModal';
-import InstallBanner from '@/components/InstallBanner';
+import PwaAnnounceBanner from '@/components/PwaAnnounceBanner';
 
 /* ── 실시간 DB 통계 ── */
 function useStats() {
@@ -20,12 +20,7 @@ function useStats() {
 function useSiteStats() {
   const [s, setS] = useState({ totalVisits: 0, todayVisits: 0, totalSignups: 0, todaySignups: 0 });
   useEffect(() => {
-    // 방문 추적 (세션당 1회만)
-    if (!sessionStorage.getItem('visited_home')) {
-      sessionStorage.setItem('visited_home', '1');
-      fetch('/api/analytics/track', { method: 'POST' }).catch(() => {});
-    }
-    // 통계 조회
+    // 통계 조회 (방문 추적은 VisitTracker에서 처리)
     fetch('/api/analytics/stats').then(r => r.json()).then(setS).catch(err => {
       console.warn('[landing] analytics 로드 실패', err instanceof Error ? err.message : err);
     });
@@ -114,11 +109,6 @@ export default function LandingPage() {
 
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
-
-      {/* ═══════════ PWA 설치 안내 ═══════════ */}
-      <div className="py-4">
-        <InstallBanner />
-      </div>
 
       <SectionDivider />
 
@@ -445,6 +435,11 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ═══════════ PWA 앱 출시 안내 ═══════════ */}
+      <div className="bg-surface px-4 py-10 md:py-14">
+        <PwaAnnounceBanner />
+      </div>
 
       <SectionDivider />
 
