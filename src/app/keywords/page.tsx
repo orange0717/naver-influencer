@@ -408,6 +408,8 @@ export default function KeywordsPage() {
                   <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('search_volume_monthly')}>
                     월 검색량{sortArrow('search_volume_monthly')}
                   </th>
+                  <th className="text-right py-3 px-2 font-semibold text-dim text-xs">PC</th>
+                  <th className="text-right py-3 px-2 font-semibold text-dim text-xs">모바일</th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-sm">등록일</th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('competition_level')}>
                     경쟁도{sortArrow('competition_level')}
@@ -452,6 +454,12 @@ export default function KeywordsPage() {
                     <td className="py-3.5 px-3 text-right font-rank text-sm">
                       {kw.search_volume_monthly > 0 ? kw.search_volume_monthly.toLocaleString() : <span className="text-dim">—</span>}
                     </td>
+                    <td className="py-3.5 px-2 text-right font-rank text-xs text-dim">
+                      {kw.search_volume_pc > 0 ? kw.search_volume_pc.toLocaleString() : '—'}
+                    </td>
+                    <td className="py-3.5 px-2 text-right font-rank text-xs text-dim">
+                      {kw.search_volume_mobile > 0 ? kw.search_volume_mobile.toLocaleString() : '—'}
+                    </td>
                     <td className="py-3.5 px-3 text-sm text-dim">
                       {kw.first_seen_at ? new Date(kw.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '—'}
                     </td>
@@ -459,7 +467,7 @@ export default function KeywordsPage() {
                   </tr>
                   {isExpanded && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-3 bg-bg/60 border-b border-border/50">
+                      <td colSpan={10} className="px-4 py-3 bg-bg/60 border-b border-border/50">
                         {isLoadingRank ? (
                           <div className="flex items-center gap-2 py-2 pl-8">
                             <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
