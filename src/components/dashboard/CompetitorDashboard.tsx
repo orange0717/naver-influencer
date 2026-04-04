@@ -50,7 +50,7 @@ export default function CompetitorDashboard({
   const [compareData, setCompareData] = useState<Record<string, CompareData>>({});
   const [loadingCompare, setLoadingCompare] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // 경쟁자 목록 로드
   const fetchCompetitors = useCallback(async () => {
