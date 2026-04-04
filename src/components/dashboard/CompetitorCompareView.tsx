@@ -38,16 +38,16 @@ function CompareBar({ label, myValue, theirValue, unit, lowerIsBetter = false }:
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[11px]">
-        <span className={`font-bold ${iWin && !tie ? 'text-up' : 'text-dim'}`}>
-          {lowerIsBetter ? myValue.toFixed(1) : myValue}{unit}
+      <div className="flex items-center justify-between text-xs">
+        <span className={`font-bold font-rank ${iWin && !tie ? 'text-up' : 'text-dim'}`}>
+          {lowerIsBetter ? myValue.toFixed(1) : myValue.toLocaleString()}{unit}
         </span>
         <span className="text-dim font-semibold">{label}</span>
-        <span className={`font-bold ${!iWin && !tie ? 'text-up' : 'text-dim'}`}>
-          {lowerIsBetter ? theirValue.toFixed(1) : theirValue}{unit}
+        <span className={`font-bold font-rank ${!iWin && !tie ? 'text-up' : 'text-dim'}`}>
+          {lowerIsBetter ? theirValue.toFixed(1) : theirValue.toLocaleString()}{unit}
         </span>
       </div>
-      <div className="flex h-2 rounded-full overflow-hidden bg-border/20">
+      <div className="flex h-2.5 rounded-full overflow-hidden bg-border/20">
         <div
           className={`transition-all ${iWin ? 'bg-up' : tie ? 'bg-dim' : 'bg-down/60'}`}
           style={{ width: `${myPct}%` }}
@@ -91,7 +91,7 @@ export default function CompetitorCompareView({
 
       {/* 비교 바 */}
       <div className="space-y-3">
-        <div className="flex justify-between text-[10px] text-dim font-semibold">
+        <div className="flex justify-between text-xs text-dim font-semibold">
           <span>{myName}</span>
           <span>{competitorName}</span>
         </div>
@@ -105,9 +105,9 @@ export default function CompetitorCompareView({
       {/* 겹치는 키워드 테이블 */}
       {sharedKeywords.length > 0 && (
         <div className="mt-3">
-          <p className="text-[11px] text-dim font-semibold mb-2">키워드별 순위 비교</p>
+          <p className="text-xs text-dim font-semibold mb-2">키워드별 순위 비교</p>
           <div className="bg-bg rounded-lg border border-border/50 overflow-hidden">
-            <div className="grid grid-cols-3 text-[10px] text-dim font-semibold px-4 py-2 border-b border-border/30">
+            <div className="grid grid-cols-3 text-[11px] text-dim font-semibold px-4 py-2 border-b border-border/30">
               <span>키워드</span>
               <span className="text-center">나</span>
               <span className="text-center">{competitorName}</span>
@@ -117,8 +117,8 @@ export default function CompetitorCompareView({
                 const iWin = sk.myRank !== null && sk.myRank < sk.competitorRank;
                 const iLose = sk.myRank !== null && sk.myRank > sk.competitorRank;
                 return (
-                  <div key={sk.keyword_id} className="grid grid-cols-3 px-4 py-2 text-sm items-center">
-                    <span className="text-xs truncate">{sk.keyword}</span>
+                  <div key={sk.keyword_id} className="grid grid-cols-3 px-4 py-2.5 text-sm items-center">
+                    <span className="text-sm font-medium truncate">{sk.keyword}</span>
                     <span className={`text-center font-black font-rank text-xs ${iWin ? 'text-up' : iLose ? 'text-down' : ''}`}>
                       {sk.myRank ?? '-'}위
                     </span>
