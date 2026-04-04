@@ -1,6 +1,6 @@
 /**
  * 네이버 통합검색 / 블로그 검색 노출 크롤링
- * - 블로그 검색: where=blog 에서 인플루언서 블로그 포스트 순위 확인
+ * - 블로그 검색: 네이버 검색 API 사용 (정확한 결과)
  * - VIEW 탭: 통합검색에서 VIEW 섹션 내 블로그 포스트 순위 확인
  */
 
@@ -11,49 +11,53 @@ interface SearchExposureResult {
   rank: number; // 1-based
 }
 
+const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || '';
+const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
+
 /**
- * 블로그 검색에서 인플루언서 포스트 순위 확인
- * URL: https://search.naver.com/search.naver?where=blog&query={keyword}
+ * 블로그 검색에서 인플루언서 포스트 순위 확인 (네이버 검색 API)
  */
 export async function crawlBlogSearchRank(
   keyword: string,
   naverIds: string[],
 ): Promise<SearchExposureResult[]> {
-  const url = `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(keyword)}&sm=tab_opt&nso=so%3Ar%2Cp%3A`;
   const results: SearchExposureResult[] = [];
+  const naverIdSet = new Set(naverIds.map(id => id.toLowerCase()));
 
   try {
-    const res = await fetchWithRetry(url);
-    const html = await res.text();
-    const cheerio = await import('cheerio');
-    const $ = cheerio.load(html);
-
-    const naverIdSet = new Set(naverIds.map(id => id.toLowerCase()));
-    let rank = 0;
-
-    // 블로그 검색 결과의 각 포스트 링크에서 naver_id 추출
-    $('a[href]').each((_, el) => {
-      const href = $(el).attr('href') || '';
-      // blog.naver.com/{naver_id} 패턴 매칭
-      const blogMatch = href.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
-      if (!blogMatch) return;
-
-      // 검색 결과 항목의 링크인지 확인 (제목 링크)
-      const parent = $(el).closest('.title_area, .title_link, .api_txt_lines, .total_tit, .sh_blog_title, .sp_tit, .sub_txt, .detail_box');
-      if (!parent.length) {
-        // 직접 제목 링크이거나, 검색 결과 구조 내의 링크인 경우도 체크
-        const text = $(el).text().trim();
-        if (!text || text.length < 2) return;
-      }
-
-      rank++;
-      const matchedId = blogMatch[1].toLowerCase();
-      if (naverIdSet.has(matchedId)) {
-        results.push({ naver_id: blogMatch[1], rank });
-      }
+    // 네이버 검색 API로 블로그 결과 100개 조회
+    const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(keyword)}&display=100&sort=sim`;
+    const res = await fetch(url, {
+      headers: {
+        'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
+        'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
+      },
     });
 
-    // 중복 제거 (같은 naver_id가 여러 포스트에 있을 수 있음 - 최상위 순위만)
+    if (!res.ok) {
+      console.error(`[search-exposure] API error: ${res.status}`);
+      return [];
+    }
+
+    const data = await res.json();
+    const items = data.items || [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const link = item.link || '';
+      const bloggerlink = item.bloggerlink || '';
+
+      // blog.naver.com/{blogId} 패턴 매칭
+      const blogMatch = (link + ' ' + bloggerlink).match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+      if (!blogMatch) continue;
+
+      const matchedId = blogMatch[1].toLowerCase();
+      if (naverIdSet.has(matchedId)) {
+        results.push({ naver_id: blogMatch[1], rank: i + 1 });
+      }
+    }
+
+    // 중복 제거 (최상위 순위만)
     const seen = new Set<string>();
     return results.filter(r => {
       const key = r.naver_id.toLowerCase();
@@ -62,7 +66,7 @@ export async function crawlBlogSearchRank(
       return true;
     });
   } catch (err) {
-    console.error(`[search-exposure] 블로그 검색 크롤링 실패 (${keyword}):`, err);
+    console.error(`[search-exposure] 블로그 검색 API 실패 (${keyword}):`, err);
     return [];
   }
 }
