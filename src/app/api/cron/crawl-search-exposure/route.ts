@@ -205,15 +205,19 @@ export async function GET(request: NextRequest) {
       }
       if (blogIds.length === 0) continue;
 
-      // 블로그탭 크롤링
+      // 블로그탭 크롤링 (네이버 검색 API)
       const blogResults = await crawlBlogSearchRank(keyword, blogIds);
       blogFound += blogResults.length;
-      await sleep(1500);
+      await sleep(300);
 
-      // 통합검색 VIEW 크롤링
-      const viewResults = await crawlViewTabRank(keyword, blogIds);
-      viewFound += viewResults.length;
-      await sleep(1500);
+      // 통합검색 VIEW 크롤링 (skipView=1이면 스킵 - 서버사이드에서 항상 0건)
+      const skipView = request.nextUrl.searchParams.get('skipView') === '1';
+      let viewResults: { naver_id: string; rank: number }[] = [];
+      if (!skipView) {
+        viewResults = await crawlViewTabRank(keyword, blogIds);
+        viewFound += viewResults.length;
+        await sleep(1500);
+      }
 
       // DB 업데이트 (각 인플루언서의 최신 스냅샷 날짜 기준)
       for (const b of blogResults) {
