@@ -426,7 +426,7 @@ export default function KeywordsPage() {
                 : '정렬: 기본순'}
             </span>
             {sortKey && (
-              <button onClick={() => setSortKey(null)} className="px-2 py-0.5 text-xs bg-accent/10 text-accent border border-accent/30 rounded hover:bg-accent/20 transition-colors cursor-pointer">초기화</button>
+              <button onClick={() => setSortKey(null)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border/50 text-dim hover:border-accent/30 transition-colors cursor-pointer">초기화</button>
             )}
           </div>
           <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
