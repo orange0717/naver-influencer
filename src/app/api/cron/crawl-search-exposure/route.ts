@@ -118,6 +118,8 @@ export async function GET(request: NextRequest) {
 
   let crawled = 0;
   let errors = 0;
+  let blogFound = 0;
+  let viewFound = 0;
 
   // 인플루언서별 블로그 ID 추출 (latest_post_url에서)
   const blogIdMap = new Map<string, string>(); // influencer_id -> blog_id
@@ -160,10 +162,12 @@ export async function GET(request: NextRequest) {
 
       // 블로그탭 크롤링
       const blogResults = await crawlBlogSearchRank(keyword, blogIds);
+      blogFound += blogResults.length;
       await sleep(1500);
 
       // 통합검색 VIEW 크롤링
       const viewResults = await crawlViewTabRank(keyword, blogIds);
+      viewFound += viewResults.length;
       await sleep(1500);
 
       // DB 업데이트 (각 인플루언서의 최신 스냅샷 날짜 기준)
@@ -205,6 +209,9 @@ export async function GET(request: NextRequest) {
     total: allKeywords.length,
     batchStart: start,
     crawled,
+    blogFound,
+    viewFound,
+    blogIdUsed: Array.from(blogIdMap.values()).slice(0, 3),
     errors,
     nextBatch: start + BATCH_SIZE < allKeywords.length ? batchNum + 1 : null,
   });
