@@ -327,10 +327,11 @@ export default function MyKeywordList({
               </select>
               <button
                 onClick={() => { setSortDir(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
-                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border bg-surface text-dim hover:text-text transition cursor-pointer text-[11px]"
+                className="px-2 py-1.5 flex items-center gap-1 rounded-lg border border-border bg-surface text-dim hover:text-text transition cursor-pointer text-xs font-semibold"
                 title={sortDir === 'desc' ? '내림차순' : '오름차순'}
               >
                 {sortDir === 'desc' ? '\u25BC' : '\u25B2'}
+                <span>{sortDir === 'desc' ? '내림' : '오름'}</span>
               </button>
             </div>
           </div>
