@@ -97,6 +97,7 @@ export default function CompetitorCompareView({
         </div>
         <CompareBar label="평균 순위" myValue={myStats.avgRank} theirValue={competitorStats.avgRank} unit="위" lowerIsBetter />
         <CompareBar label="TOP 3" myValue={myStats.top3Count} theirValue={competitorStats.top3Count} unit="개" />
+        <CompareBar label="TOP3 비율" myValue={Math.round((myStats.top3Count / (myStats.totalKeywords || 1)) * 100)} theirValue={Math.round((competitorStats.top3Count / (competitorStats.totalKeywords || 1)) * 100)} unit="%" />
         <CompareBar label="키워드" myValue={myStats.totalKeywords} theirValue={competitorStats.totalKeywords} unit="개" />
         <CompareBar label="팬수" myValue={mySubscribers} theirValue={competitorSubscribers} unit="" />
       </div>
