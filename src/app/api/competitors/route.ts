@@ -36,26 +36,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '해당 인플루언서를 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // 경쟁자의 키워드 순위 조회
-    const { data: competitorRankings } = await supabase
+    // 경쟁자의 최신 스냅샷 날짜 조회
+    const { data: compLatest } = await supabase
       .from('keyword_rankings')
-      .select(`
-        rank_position, is_integrated_top3, keyword_id,
-        keyword_challenges!inner(keyword, category, participant_count)
-      `)
+      .select('snapshot_date')
       .eq('influencer_id', competitor.id)
       .order('snapshot_date', { ascending: false })
-      .limit(500);
+      .limit(1)
+      .single();
 
-    // 최신 날짜 기준 중복 제거
-    const latestByKeyword = new Map<string, typeof competitorRankings extends (infer T)[] | null ? T : never>();
-    for (const r of (competitorRankings || [])) {
-      if (!latestByKeyword.has(r.keyword_id)) {
-        latestByKeyword.set(r.keyword_id, r);
-      }
-    }
+    const compSnapshotDate = compLatest?.snapshot_date;
 
-    const rankings = Array.from(latestByKeyword.values()).map(r => {
+    // 해당 날짜의 전체 키워드 순위 조회 (limit 없음)
+    const { data: competitorRankings } = compSnapshotDate
+      ? await supabase
+          .from('keyword_rankings')
+          .select(`
+            rank_position, is_integrated_top3, keyword_id,
+            keyword_challenges!inner(keyword, category, participant_count)
+          `)
+          .eq('influencer_id', competitor.id)
+          .eq('snapshot_date', compSnapshotDate)
+      : { data: null };
+
+    const rankings = (competitorRankings || []).map(r => {
       const kw = r.keyword_challenges as unknown as Record<string, unknown>;
       return {
         keyword_id: r.keyword_id,
@@ -78,18 +82,28 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (myInfluencer) {
-        const { data: myRankings } = await supabase
+        // 내 최신 스냅샷 날짜 조회
+        const { data: myLatest } = await supabase
           .from('keyword_rankings')
-          .select('rank_position, keyword_id')
+          .select('snapshot_date')
           .eq('influencer_id', myInfluencer.id)
           .order('snapshot_date', { ascending: false })
-          .limit(500);
+          .limit(1)
+          .single();
+
+        const mySnapshotDate = myLatest?.snapshot_date;
+
+        const { data: myRankings } = mySnapshotDate
+          ? await supabase
+              .from('keyword_rankings')
+              .select('rank_position, keyword_id')
+              .eq('influencer_id', myInfluencer.id)
+              .eq('snapshot_date', mySnapshotDate)
+          : { data: null };
 
         const myRankMap = new Map<string, number>();
         for (const r of (myRankings || [])) {
-          if (!myRankMap.has(r.keyword_id)) {
-            myRankMap.set(r.keyword_id, r.rank_position);
-          }
+          myRankMap.set(r.keyword_id, r.rank_position);
         }
 
         // 겹치는 키워드 찾기
