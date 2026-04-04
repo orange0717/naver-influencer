@@ -18,6 +18,9 @@ import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import AdProfileForm from '@/components/dashboard/AdProfileForm';
+import KeywordPlanner from '@/components/dashboard/KeywordPlanner';
+import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
+import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
@@ -243,6 +246,19 @@ export default async function MyDashboard() {
   const integratedCount = rankings.filter(r => r.is_integrated_top3).length;
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
+
+  // ─── TOP3 진입/이탈 + 최대 변동 (브리핑용) ───
+  const top3Entered = (latestRankings || []).filter(r =>
+    r.rank_position <= 3 && r.previous_rank !== null && r.previous_rank > 3
+  ).length;
+  const top3Exited = (latestRankings || []).filter(r =>
+    r.rank_position > 3 && r.previous_rank !== null && r.previous_rank <= 3
+  ).length;
+
+  const bestUp = rankings.filter(r => r.rank_change > 0)
+    .sort((a, b) => b.rank_change - a.rank_change)[0] || null;
+  const worstDown = rankings.filter(r => r.rank_change < 0)
+    .sort((a, b) => a.rank_change - b.rank_change)[0] || null;
 
   // ─── 데이터 최신 날짜 ───
   const latestSnapshotDate = rankings.length > 0
@@ -491,6 +507,17 @@ export default async function MyDashboard() {
         naverId={naverId}
       />
 
+      {/* ─── 오늘의 브리핑 ─── */}
+      <DailyBriefing
+        rankUpCount={rankUpCount}
+        rankDownCount={rankDownCount}
+        top3Entered={top3Entered}
+        top3Exited={top3Exited}
+        bestUp={bestUp ? { keyword: bestUp.keyword, change: bestUp.rank_change } : null}
+        worstDown={worstDown ? { keyword: worstDown.keyword, change: worstDown.rank_change } : null}
+        dataDateLabel={dataDateLabel}
+      />
+
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
       <div className="space-y-6">
 
@@ -617,6 +644,26 @@ export default async function MyDashboard() {
 
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
+
+      {/* ─── 2-3. 포스팅 키워드 플래너 ─── */}
+      <KeywordPlanner
+        existingKeywords={participatedKeywords.map(kw => ({
+          id: kw.keyword_id,
+          keyword: kw.keyword,
+        }))}
+      />
+
+      {/* ─── 2-4. 경쟁자 분석 ─── */}
+      <CompetitorDashboard
+        naverId={naverId}
+        myStats={{
+          avgRank: avgRank > 0 ? Math.round(avgRank * 10) / 10 : 0,
+          totalKeywords: participatedCount,
+          top3Count,
+        }}
+        mySubscribers={influencer.subscriber_count || 0}
+        myDisplayName={influencer.display_name || naverId}
+      />
 
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />

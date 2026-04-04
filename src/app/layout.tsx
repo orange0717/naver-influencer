@@ -8,6 +8,7 @@ import ChatBot from "@/components/ChatBot";
 import FeedbackButton from "@/components/FeedbackButton";
 import Providers from "@/components/Providers";
 import UpdateBanner from "@/components/UpdateBanner";
+import PwaAnnounceBanner from "@/components/PwaAnnounceBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import NativeProvider from "@/components/NativeProvider";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
           <NativeProvider>
           <HeaderWrapper />
           <UpdateBanner />
+          <PwaAnnounceBanner />
           <Suspense fallback={null}><VisitTracker /></Suspense>
           <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
             {children}

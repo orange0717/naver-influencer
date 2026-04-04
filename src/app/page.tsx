@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DemoModal from '@/components/DemoModal';
-import PwaAnnounceBanner from '@/components/PwaAnnounceBanner';
+
 
 /* ── 실시간 DB 통계 ── */
 function useStats() {
@@ -435,11 +435,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* ═══════════ PWA 앱 출시 안내 ═══════════ */}
-      <div className="bg-surface px-4 py-10 md:py-14">
-        <PwaAnnounceBanner />
-      </div>
 
       <SectionDivider />
 

@@ -399,6 +399,81 @@ export async function processNotifications(
     }
   }
 
+  // ─── 경쟁자 변동 알림 ───
+  for (const recipient of recipients) {
+    if (recipient.type !== 'user') continue; // 가입자만
+
+    // 이 사용자의 경쟁자 목록 조회
+    const { data: watches } = await supabase
+      .from('competitor_watches')
+      .select('competitor_id, influencers!competitor_id(naver_id, display_name)')
+      .eq('user_id', recipient.id);
+
+    if (!watches || watches.length === 0) continue;
+
+    // 나의 현재 순위 조회
+    const { data: myRankings } = await supabase
+      .from('keyword_rankings')
+      .select('keyword_id, rank_position')
+      .eq('influencer_id', recipient.influencerId)
+      .eq('snapshot_date', snapshotDate);
+
+    if (!myRankings || myRankings.length === 0) continue;
+    const myRankMap = new Map(myRankings.map(r => [r.keyword_id, r.rank_position]));
+
+    const recipientField = { user_id: recipient.id };
+    const settings = recipient.settings || DEFAULT_SETTINGS;
+
+    for (const watch of watches) {
+      const comp = watch.influencers as unknown as { naver_id: string; display_name: string } | null;
+      if (!comp) continue;
+
+      // 경쟁자의 오늘 변동 조회 (겹치는 키워드에서 나를 추월한 경우만)
+      const { data: compRankings } = await supabase
+        .from('keyword_rankings')
+        .select('keyword_id, rank_position, previous_rank, rank_change, keyword_challenges!inner(keyword)')
+        .eq('influencer_id', watch.competitor_id)
+        .eq('snapshot_date', snapshotDate)
+        .neq('rank_change', 0);
+
+      if (!compRankings) continue;
+
+      for (const cr of compRankings) {
+        const myRank = myRankMap.get(cr.keyword_id);
+        if (myRank === undefined) continue; // 겹치지 않는 키워드 무시
+
+        // 경쟁자가 나를 추월한 경우만 알림
+        if (cr.rank_position < myRank && cr.previous_rank !== null && cr.previous_rank >= myRank) {
+          const kw = cr.keyword_challenges as unknown as { keyword: string };
+          const notification = {
+            ...recipientField,
+            notification_type: 'competitor_overtook',
+            title: `${comp.display_name}이(가) "${kw?.keyword}" 추월`,
+            body: `${cr.previous_rank}위에서 ${cr.rank_position}위로 올라 내 ${myRank}위를 앞섰습니다.`,
+            metadata: {
+              competitor_naver_id: comp.naver_id,
+              competitor_name: comp.display_name,
+              keyword_id: cr.keyword_id,
+              keyword: kw?.keyword || '',
+              competitor_rank: cr.rank_position,
+              my_rank: myRank,
+            },
+          };
+
+          if (settings.in_app_enabled) {
+            await supabase.from('notifications').insert({
+              ...notification,
+              is_read: false,
+              email_sent: false,
+              kakao_sent: false,
+            });
+            notificationsCreated++;
+          }
+        }
+      }
+    }
+  }
+
   return { notificationsCreated, emailsSent, emailErrors, kakaoSent, pushSent };
 }
 
