@@ -351,8 +351,8 @@ export default function MyKeywordList({
                   <th className="text-left px-5 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('keyword')}>키워드<SortArrow col="keyword" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('rank')}>순위<SortArrow col="rank" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('change')}>변동<SortArrow col="change" /></th>
-                  <th className="text-center px-2 py-2.5 font-semibold text-[11px] text-green-500/70">통합검색</th>
-                  <th className="text-center px-2 py-2.5 font-semibold text-[11px] text-blue-500/70">블로그탭</th>
+                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]">통합검색</th>
+                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]">블로그탭</th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('participants')}>참여자<SortArrow col="participants" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('volume')}>월 검색량<SortArrow col="volume" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('comp')}>경쟁도<SortArrow col="comp" /></th>
@@ -414,14 +414,14 @@ export default function MyKeywordList({
                       </td>
                       <td className="text-center px-2 py-3">
                         {kw.view_tab_rank != null ? (
-                          <span className="text-[15px] font-bold font-rank text-green-500">{kw.view_tab_rank}</span>
+                          <span className="text-[15px] font-bold font-rank">{kw.view_tab_rank}</span>
                         ) : (
                           <span className="text-sm text-dim">-</span>
                         )}
                       </td>
                       <td className="text-center px-2 py-3">
                         {kw.blog_search_rank != null ? (
-                          <span className="text-[15px] font-bold font-rank text-blue-500">{kw.blog_search_rank}</span>
+                          <span className="text-[15px] font-bold font-rank">{kw.blog_search_rank}</span>
                         ) : (
                           <span className="text-sm text-dim">-</span>
                         )}
