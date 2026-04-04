@@ -55,18 +55,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: '가입자가 없습니다.' });
   }
 
-  // 최신 스냅샷의 키워드 목록 (가입자 키워드만)
-  const today = new Date().toISOString().slice(0, 10);
-
-  // 각 가입자의 키워드 수집
+  // 각 가입자의 최신 스냅샷 날짜별 키워드 수집
   const keywordSet = new Map<string, { keyword: string; influencerIds: string[] }>();
+  const infSnapshotMap = new Map<string, string>(); // influencer_id -> snapshot_date
 
   for (const infId of userInfluencerIds) {
+    // 각 인플루언서의 최신 스냅샷 날짜 조회
+    const { data: latestRow } = await supabase
+      .from('keyword_rankings')
+      .select('snapshot_date')
+      .eq('influencer_id', infId)
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!latestRow) continue;
+    const snapshotDate = latestRow.snapshot_date;
+    infSnapshotMap.set(infId, snapshotDate);
+
     const { data: rankings } = await supabase
       .from('keyword_rankings')
       .select('keyword_id, keyword_challenges!inner(keyword)')
       .eq('influencer_id', infId)
-      .eq('snapshot_date', today)
+      .eq('snapshot_date', snapshotDate)
       .is('blog_search_rank', null); // 아직 크롤링 안 된 키워드만
 
     for (const r of (rankings || [])) {
@@ -114,30 +125,32 @@ export async function GET(request: NextRequest) {
       const viewResults = await crawlViewTabRank(keyword, naverIds);
       await sleep(1500);
 
-      // DB 업데이트
+      // DB 업데이트 (각 인플루언서의 최신 스냅샷 날짜 기준)
       const naverIdToInfId = new Map((infData || []).map(i => [i.naver_id.toLowerCase(), i.id]));
 
       for (const b of blogResults) {
         const infId = naverIdToInfId.get(b.naver_id.toLowerCase());
-        if (infId) {
+        const snapDate = infId ? infSnapshotMap.get(infId) : null;
+        if (infId && snapDate) {
           await supabase
             .from('keyword_rankings')
             .update({ blog_search_rank: b.rank })
             .eq('keyword_id', keywordId)
             .eq('influencer_id', infId)
-            .eq('snapshot_date', today);
+            .eq('snapshot_date', snapDate);
         }
       }
 
       for (const v of viewResults) {
         const infId = naverIdToInfId.get(v.naver_id.toLowerCase());
-        if (infId) {
+        const snapDate = infId ? infSnapshotMap.get(infId) : null;
+        if (infId && snapDate) {
           await supabase
             .from('keyword_rankings')
             .update({ view_tab_rank: v.rank })
             .eq('keyword_id', keywordId)
             .eq('influencer_id', infId)
-            .eq('snapshot_date', today);
+            .eq('snapshot_date', snapDate);
         }
       }
 
