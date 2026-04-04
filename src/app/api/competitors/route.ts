@@ -47,19 +47,16 @@ export async function GET(request: NextRequest) {
 
     const compSnapshotDate = compLatest?.snapshot_date;
 
-    // 해당 날짜의 전체 키워드 순위 조회 (Supabase 1000건 제한 우회)
-    let competitorRankings: { rank_position: number; is_integrated_top3: boolean; keyword_id: string; keyword_challenges: unknown }[] = [];
+    // 해당 날짜의 전체 키워드 순위 조회 (JOIN 없이 정확한 카운트)
+    const PAGE = 1000;
+    let competitorRankings: { rank_position: number; is_integrated_top3: boolean; keyword_id: string }[] = [];
     if (compSnapshotDate) {
-      const PAGE = 1000;
       let from = 0;
       let hasMore = true;
       while (hasMore) {
         const { data: batch } = await supabase
           .from('keyword_rankings')
-          .select(`
-            rank_position, is_integrated_top3, keyword_id,
-            keyword_challenges(keyword, category, participant_count)
-          `)
+          .select('rank_position, is_integrated_top3, keyword_id')
           .eq('influencer_id', competitor.id)
           .eq('snapshot_date', compSnapshotDate)
           .range(from, from + PAGE - 1);
@@ -73,17 +70,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const rankings = (competitorRankings || []).map(r => {
-      const kw = r.keyword_challenges as unknown as Record<string, unknown>;
-      return {
-        keyword_id: r.keyword_id,
-        keyword: (kw?.keyword as string) || '',
-        category: (kw?.category as string) || '',
-        rank_position: r.rank_position,
-        is_integrated_top3: r.is_integrated_top3,
-        participant_count: (kw?.participant_count as number) || 0,
-      };
-    }).sort((a, b) => a.rank_position - b.rank_position);
+    competitorRankings.sort((a, b) => a.rank_position - b.rank_position);
+
+    // 통계 (JOIN 없는 정확한 데이터 기준)
+    const totalKeywords = competitorRankings.length;
+    const top3Count = competitorRankings.filter(r => r.rank_position <= 3).length;
+    const top10Count = competitorRankings.filter(r => r.rank_position <= 10).length;
+    const avgRank = totalKeywords > 0
+      ? competitorRankings.reduce((s, r) => s + r.rank_position, 0) / totalKeywords
+      : 0;
 
     // 나의 순위도 가져와서 겹치는 키워드 비교
     let sharedKeywords: { keyword: string; keyword_id: string; myRank: number | null; competitorRank: number }[] = [];
@@ -118,11 +113,11 @@ export async function GET(request: NextRequest) {
               .select('rank_position, keyword_id')
               .eq('influencer_id', myInfluencer.id)
               .eq('snapshot_date', mySnapshotDate)
-              .range(from, from + 999);
+              .range(from, from + PAGE - 1);
             if (batch && batch.length > 0) {
               myRankingsList.push(...batch);
-              from += 1000;
-              hasMore = batch.length === 1000;
+              from += PAGE;
+              hasMore = batch.length === PAGE;
             } else {
               hasMore = false;
             }
@@ -135,28 +130,45 @@ export async function GET(request: NextRequest) {
         }
 
         // 겹치는 키워드 찾기
-        for (const cr of rankings) {
+        const sharedKeywordIds: string[] = [];
+        const sharedRankData: { keyword_id: string; myRank: number; competitorRank: number }[] = [];
+        for (const cr of competitorRankings) {
           if (myRankMap.has(cr.keyword_id)) {
-            sharedKeywords.push({
-              keyword: cr.keyword,
+            sharedKeywordIds.push(cr.keyword_id);
+            sharedRankData.push({
               keyword_id: cr.keyword_id,
-              myRank: myRankMap.get(cr.keyword_id) || null,
+              myRank: myRankMap.get(cr.keyword_id)!,
               competitorRank: cr.rank_position,
             });
           }
         }
 
+        // 겹치는 키워드 이름 조회 (별도 쿼리)
+        const kwNameMap = new Map<string, string>();
+        if (sharedKeywordIds.length > 0) {
+          // 500개씩 나눠서 조회
+          for (let i = 0; i < sharedKeywordIds.length; i += 500) {
+            const chunk = sharedKeywordIds.slice(i, i + 500);
+            const { data: kwData } = await supabase
+              .from('keyword_challenges')
+              .select('id, keyword')
+              .in('id', chunk);
+            for (const kw of (kwData || [])) {
+              kwNameMap.set(kw.id, kw.keyword);
+            }
+          }
+        }
+
+        sharedKeywords = sharedRankData.map(sr => ({
+          keyword: kwNameMap.get(sr.keyword_id) || sr.keyword_id,
+          keyword_id: sr.keyword_id,
+          myRank: sr.myRank,
+          competitorRank: sr.competitorRank,
+        }));
+
         sharedKeywords.sort((a, b) => (a.myRank || 999) - (b.myRank || 999));
       }
     }
-
-    // 통계
-    const totalKeywords = rankings.length;
-    const top3Count = rankings.filter(r => r.rank_position <= 3).length;
-    const top10Count = rankings.filter(r => r.rank_position <= 10).length;
-    const avgRank = totalKeywords > 0
-      ? rankings.reduce((s, r) => s + r.rank_position, 0) / totalKeywords
-      : 0;
 
     return NextResponse.json({
       competitor: {
@@ -173,7 +185,7 @@ export async function GET(request: NextRequest) {
         top10Count,
         avgRank: Math.round(avgRank * 10) / 10,
       },
-      top5: rankings.slice(0, 5),
+      top5: competitorRankings.slice(0, 5),
       sharedKeywords,
       sharedCount: sharedKeywords.length,
     });
