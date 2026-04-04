@@ -15,11 +15,11 @@ interface WatchedCompetitor {
 }
 
 interface SearchResult {
-  naver_id: string;
-  display_name: string;
-  image_url: string;
-  category: string;
-  subscriber_count: number;
+  naverId: string;
+  name: string;
+  imageUrl: string;
+  myKeywordCategory: string;
+  subscriberCount: number;
 }
 
 interface CompareData {
@@ -96,7 +96,7 @@ export default function CompetitorDashboard({
           existing.add(naverId);
           setSearchResults(
             (data.influencers || [])
-              .filter((inf: SearchResult) => !existing.has(inf.naver_id))
+              .filter((inf: SearchResult) => !existing.has(inf.naverId))
               .slice(0, 5)
           );
         }
@@ -115,7 +115,7 @@ export default function CompetitorDashboard({
       const res = await fetch('/api/my/competitors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ naver_id: result.naver_id }),
+        body: JSON.stringify({ naver_id: result.naverId }),
       });
       if (res.ok) {
         await fetchCompetitors();
@@ -201,20 +201,20 @@ export default function CompetitorDashboard({
             ) : (
               searchResults.map(r => (
                 <button
-                  key={r.naver_id}
+                  key={r.naverId}
                   onClick={() => addCompetitor(r)}
                   className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-accent/5 transition-colors cursor-pointer"
                 >
-                  {r.image_url ? (
-                    <img src={r.image_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  {r.imageUrl ? (
+                    <img src={r.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-border/40 flex items-center justify-center text-[10px] text-dim font-bold">
-                      {(r.display_name || r.naver_id).charAt(0)}
+                      {(r.name || r.naverId).charAt(0)}
                     </div>
                   )}
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-semibold truncate">{r.display_name || r.naver_id}</p>
-                    <p className="text-[10px] text-dim">{r.category} / 팬 {formatCount(r.subscriber_count)}</p>
+                    <p className="text-sm font-semibold truncate">{r.name || r.naverId}</p>
+                    <p className="text-[10px] text-dim">{r.myKeywordCategory} / 팬 {formatCount(r.subscriberCount)}</p>
                   </div>
                 </button>
               ))
