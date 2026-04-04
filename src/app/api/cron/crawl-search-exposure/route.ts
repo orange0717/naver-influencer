@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const batchNum = parseInt(request.nextUrl.searchParams.get('batch') || '0');
   const targetNaverId = request.nextUrl.searchParams.get('naverId');
   const reset = request.nextUrl.searchParams.get('reset') === '1';
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = parseInt(request.nextUrl.searchParams.get('size') || '20');
   const start = batchNum * BATCH_SIZE;
 
   const userInfluencerIds = new Set<string>();
