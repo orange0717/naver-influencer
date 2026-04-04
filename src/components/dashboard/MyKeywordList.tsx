@@ -22,6 +22,8 @@ interface KeywordItem {
   rank_position: number | null;
   rank_change: number;
   is_integrated_top3?: boolean;
+  blog_search_rank?: number | null;
+  view_tab_rank?: number | null;
   is_participated: boolean;
 }
 
@@ -349,6 +351,8 @@ export default function MyKeywordList({
                   <th className="text-left px-5 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('keyword')}>키워드<SortArrow col="keyword" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('rank')}>순위<SortArrow col="rank" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('change')}>변동<SortArrow col="change" /></th>
+                  <th className="text-center px-2 py-2.5 font-semibold text-blue-500/70">블로그</th>
+                  <th className="text-center px-2 py-2.5 font-semibold text-green-500/70">VIEW</th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('participants')}>참여자<SortArrow col="participants" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('volume')}>월 검색량<SortArrow col="volume" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('comp')}>경쟁도<SortArrow col="comp" /></th>
@@ -408,6 +412,20 @@ export default function MyKeywordList({
                           <span className="text-sm text-dim">-</span>
                         )}
                       </td>
+                      <td className="text-center px-2 py-3">
+                        {kw.blog_search_rank != null ? (
+                          <span className="text-sm font-bold font-rank text-blue-500">{kw.blog_search_rank}</span>
+                        ) : (
+                          <span className="text-sm text-dim">-</span>
+                        )}
+                      </td>
+                      <td className="text-center px-2 py-3">
+                        {kw.view_tab_rank != null ? (
+                          <span className="text-sm font-bold font-rank text-green-500">{kw.view_tab_rank}</span>
+                        ) : (
+                          <span className="text-sm text-dim">-</span>
+                        )}
+                      </td>
                       <td className="text-center px-3 py-3">
                         <span className="text-sm font-light font-rank">{kw.participant_count}명</span>
                       </td>
@@ -438,7 +456,7 @@ export default function MyKeywordList({
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={7} className="px-5 py-3 bg-bg/60">
+                        <td colSpan={9} className="px-5 py-3 bg-bg/60">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-4">
                             {/* 챌린지 TOP3 */}
                             <div>

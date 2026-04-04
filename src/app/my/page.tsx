@@ -145,6 +145,7 @@ export default async function MyDashboard() {
         .select(`
           rank_position, previous_rank, rank_change, is_integrated_top3,
           keyword_id, latest_post_title, latest_post_url, snapshot_date,
+          blog_search_rank, view_tab_rank,
           keyword_challenges(keyword, category, participant_count, search_volume_monthly)
         `)
         .eq('influencer_id', influencerId)
@@ -174,6 +175,8 @@ export default async function MyDashboard() {
       latest_post_title: r.latest_post_title || '',
       latest_post_url: r.latest_post_url || '',
       snapshot_date: r.snapshot_date || '',
+      blog_search_rank: (r as Record<string, unknown>).blog_search_rank as number | null,
+      view_tab_rank: (r as Record<string, unknown>).view_tab_rank as number | null,
     };
   }).sort((a, b) => a.rank_position - b.rank_position);
 
@@ -377,6 +380,8 @@ export default async function MyDashboard() {
       rank_position: ranked?.rank_position ?? null,
       rank_change: ranked?.rank_change ?? 0,
       is_integrated_top3: ranked?.is_integrated_top3 ?? false,
+      blog_search_rank: ranked?.blog_search_rank ?? null,
+      view_tab_rank: ranked?.view_tab_rank ?? null,
       is_participated: true,
     };
   });
@@ -393,6 +398,8 @@ export default async function MyDashboard() {
         rank_position: r.rank_position,
         rank_change: r.rank_change,
         is_integrated_top3: r.is_integrated_top3,
+        blog_search_rank: r.blog_search_rank ?? null,
+        view_tab_rank: r.view_tab_rank ?? null,
         is_participated: true,
       });
     }
@@ -449,6 +456,8 @@ export default async function MyDashboard() {
       rank_position: null,
       rank_change: 0,
       is_integrated_top3: false,
+      blog_search_rank: null,
+      view_tab_rank: null,
       is_participated: false,
     }));
 
@@ -658,7 +667,7 @@ export default async function MyDashboard() {
         naverId={naverId}
         myStats={{
           avgRank: avgRank > 0 ? Math.round(avgRank * 10) / 10 : 0,
-          totalKeywords: totalRankedKeywords,
+          totalKeywords: influencer.total_keywords || totalRankedKeywords,
           top3Count,
         }}
         mySubscribers={influencer.subscriber_count || 0}
