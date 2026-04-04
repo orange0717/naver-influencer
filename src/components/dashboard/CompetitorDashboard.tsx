@@ -85,10 +85,16 @@ export default function CompetitorDashboard({
       setSearchResults([]);
       return;
     }
+
+    // URL 입력 시 naver_id 자동 추출 (https://in.naver.com/xxx)
+    let searchTerm = query.trim();
+    const urlMatch = searchTerm.match(/in\.naver\.com\/([a-zA-Z0-9_-]+)/);
+    if (urlMatch) searchTerm = urlMatch[1];
+
     searchTimerRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/influencers?search=${encodeURIComponent(query)}&limit=8`);
+        const res = await fetch(`/api/influencers?search=${encodeURIComponent(searchTerm)}&limit=8`);
         if (res.ok) {
           const data = await res.json();
           // 자기 자신 + 이미 추가된 경쟁자 제외
@@ -185,7 +191,7 @@ export default function CompetitorDashboard({
               setShowSearch(true);
             }}
             onFocus={() => searchQuery.trim() && setShowSearch(true)}
-            placeholder="경쟁 인플루언서 검색 (이름 또는 ID)..."
+            placeholder="이름, ID 또는 URL (in.naver.com/xxx)..."
             className="w-full px-3 py-2 text-sm bg-bg border border-border rounded-lg outline-none focus:border-accent/40 transition-colors"
             disabled={competitors.length >= 5}
           />
