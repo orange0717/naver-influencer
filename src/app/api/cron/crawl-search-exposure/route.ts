@@ -24,13 +24,33 @@ export async function GET(request: NextRequest) {
   const BATCH_SIZE = 50;
   const start = batchNum * BATCH_SIZE;
 
-  // 가입자(구독자)의 influencer_id 목록
+  // 가입자(users.linked_influencer_id) + 데모체험자
   const { data: users } = await supabase
     .from('users')
-    .select('influencer_id')
-    .not('influencer_id', 'is', null);
+    .select('linked_influencer_id')
+    .not('linked_influencer_id', 'is', null);
 
-  const userInfluencerIds = new Set((users || []).map(u => u.influencer_id).filter(Boolean));
+  const userInfluencerIds = new Set<string>(
+    (users || []).map(u => u.linked_influencer_id).filter(Boolean),
+  );
+
+  // 데모체험 사용자도 포함
+  const { data: demoSessions } = await supabase
+    .from('demo_sessions')
+    .select('naver_id')
+    .gt('expires_at', new Date().toISOString());
+
+  const demoNaverIds = [...new Set((demoSessions || []).map(d => d.naver_id).filter(Boolean))];
+  if (demoNaverIds.length > 0) {
+    const { data: demoInf } = await supabase
+      .from('influencers')
+      .select('id')
+      .in('naver_id', demoNaverIds);
+    for (const inf of demoInf || []) {
+      userInfluencerIds.add(inf.id);
+    }
+  }
+
   if (userInfluencerIds.size === 0) {
     return NextResponse.json({ message: '가입자가 없습니다.' });
   }
