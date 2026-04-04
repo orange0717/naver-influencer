@@ -658,7 +658,7 @@ export default async function MyDashboard() {
         naverId={naverId}
         myStats={{
           avgRank: avgRank > 0 ? Math.round(avgRank * 10) / 10 : 0,
-          totalKeywords: participatedCount,
+          totalKeywords: totalRankedKeywords,
           top3Count,
         }}
         mySubscribers={influencer.subscriber_count || 0}
