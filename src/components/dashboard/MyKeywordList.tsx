@@ -225,8 +225,8 @@ export default function MyKeywordList({
   };
 
   const SortArrow = ({ col }: { col: SortKey }) => {
-    if (sortKey !== col) return <span className="text-border ml-0.5">&#8597;</span>;
-    return <span className="text-accent ml-0.5">{sortDir === 'desc' ? '&#9660;' : '&#9650;'}</span>;
+    if (sortKey !== col) return null;
+    return <span className="text-accent ml-0.5">{sortDir === 'desc' ? '\u25BC' : '\u25B2'}</span>;
   };
 
   const rankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position !== null).length;
@@ -316,14 +316,14 @@ export default function MyKeywordList({
               <select
                 value={sortKey}
                 onChange={e => { setSortKey(e.target.value as SortKey); setSortDir('desc'); setCurrentPage(1); }}
-                className="text-[11px] border border-border rounded-lg px-2 py-1.5 bg-surface font-medium"
+                className="text-xs border border-border rounded-lg px-2 py-1.5 bg-surface font-semibold"
               >
-                <option value="rank">순위순</option>
-                <option value="volume">검색량순</option>
-                <option value="participants">참여자순</option>
-                <option value="change">변동순</option>
-                <option value="keyword">이름순</option>
-                <option value="comp">경쟁도순</option>
+                <option value="rank">순위</option>
+                <option value="volume">검색량</option>
+                <option value="participants">참여자</option>
+                <option value="change">변동</option>
+                <option value="keyword">이름</option>
+                <option value="comp">경쟁도</option>
               </select>
               <button
                 onClick={() => { setSortDir(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
@@ -375,11 +375,11 @@ export default function MyKeywordList({
                           </Link>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
                           {top3Map[kw.keyword_id] && top3Map[kw.keyword_id].length > 0 && (
-                            <span className="text-[11px] text-dim truncate">
+                            <span className="text-xs text-dim truncate">
                               {top3Map[kw.keyword_id].map((t, idx) => (
                                 <span key={t.naver_id}>
                                   <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
-                                  <span className="ml-0.5">{t.name}</span>
+                                  <span className="ml-0.5 font-medium">{t.name}</span>
                                   {idx < top3Map[kw.keyword_id].length - 1 && <span className="mx-1 text-border">|</span>}
                                 </span>
                               ))}
