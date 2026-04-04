@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // 경쟁자 인플루언서 정보 조회
     const { data: competitor } = await supabase
       .from('influencers')
-      .select('id, naver_id, display_name, image_url, category, my_keyword_category, subscriber_count, first_seen_at, naver_created_at')
+      .select('id, naver_id, display_name, image_url, category, my_keyword_category, subscriber_count, first_seen_at, naver_created_at, total_keywords')
       .eq('naver_id', competitorId)
       .single();
 
@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
 
     competitorRankings.sort((a, b) => a.rank_position - b.rank_position);
 
-    // 통계 (JOIN 없는 정확한 데이터 기준)
-    const totalKeywords = competitorRankings.length;
+    // 통계 (total_keywords는 influencers 테이블에서 가져옴 = 네이버 실제 값)
+    const totalKeywords = competitor.total_keywords || competitorRankings.length;
     const top3Count = competitorRankings.filter(r => r.rank_position <= 3).length;
     const top10Count = competitorRankings.filter(r => r.rank_position <= 10).length;
     const avgRank = totalKeywords > 0
