@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const batchNum = parseInt(request.nextUrl.searchParams.get('batch') || '0');
   const targetNaverId = request.nextUrl.searchParams.get('naverId');
+  const forceBlogId = request.nextUrl.searchParams.get('blogId'); // 블로그 ID 직접 지정
   const reset = request.nextUrl.searchParams.get('reset') === '1';
   const BATCH_SIZE = parseInt(request.nextUrl.searchParams.get('size') || '20');
   const start = batchNum * BATCH_SIZE;
@@ -138,22 +139,30 @@ export async function GET(request: NextRequest) {
   let blogFound = 0;
   let viewFound = 0;
 
-  // 인플루언서별 블로그 ID 추출 (latest_post_url에서)
+  // 인플루언서별 블로그 ID 추출
   const blogIdMap = new Map<string, string>(); // influencer_id -> blog_id
-  for (const infId of userInfluencerIds) {
-    const snapDate = infSnapshotMap.get(infId);
-    if (!snapDate) continue;
-    const { data: postRow } = await supabase
-      .from('keyword_rankings')
-      .select('latest_post_url')
-      .eq('influencer_id', infId)
-      .eq('snapshot_date', snapDate)
-      .not('latest_post_url', 'is', null)
-      .limit(1)
-      .single();
-    if (postRow?.latest_post_url) {
-      const blogMatch = postRow.latest_post_url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
-      if (blogMatch) blogIdMap.set(infId, blogMatch[1]);
+  if (forceBlogId && targetNaverId) {
+    // blogId 파라미터가 있으면 직접 사용
+    for (const infId of userInfluencerIds) {
+      blogIdMap.set(infId, forceBlogId);
+    }
+  } else {
+    // latest_post_url에서 자동 추출
+    for (const infId of userInfluencerIds) {
+      const snapDate = infSnapshotMap.get(infId);
+      if (!snapDate) continue;
+      const { data: postRow } = await supabase
+        .from('keyword_rankings')
+        .select('latest_post_url')
+        .eq('influencer_id', infId)
+        .eq('snapshot_date', snapDate)
+        .not('latest_post_url', 'is', null)
+        .limit(1)
+        .single();
+      if (postRow?.latest_post_url) {
+        const blogMatch = postRow.latest_post_url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+        if (blogMatch) blogIdMap.set(infId, blogMatch[1]);
+      }
     }
   }
 
