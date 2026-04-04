@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const batchNum = parseInt(request.nextUrl.searchParams.get('batch') || '0');
   const targetNaverId = request.nextUrl.searchParams.get('naverId');
+  const reset = request.nextUrl.searchParams.get('reset') === '1';
   const BATCH_SIZE = 50;
   const start = batchNum * BATCH_SIZE;
 
@@ -66,6 +67,22 @@ export async function GET(request: NextRequest) {
 
   if (userInfluencerIds.size === 0) {
     return NextResponse.json({ message: '대상 인플루언서가 없습니다.' });
+  }
+
+  // 리셋: 기존 blog_search_rank/view_tab_rank를 NULL로 초기화
+  if (reset && batchNum === 0) {
+    for (const infId of userInfluencerIds) {
+      await supabase
+        .from('keyword_rankings')
+        .update({ blog_search_rank: null, view_tab_rank: null })
+        .eq('influencer_id', infId)
+        .not('blog_search_rank', 'is', null);
+      await supabase
+        .from('keyword_rankings')
+        .update({ blog_search_rank: null, view_tab_rank: null })
+        .eq('influencer_id', infId)
+        .not('view_tab_rank', 'is', null);
+    }
   }
 
   // 각 가입자의 최신 스냅샷 날짜별 키워드 수집
