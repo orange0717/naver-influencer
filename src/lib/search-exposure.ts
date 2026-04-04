@@ -35,7 +35,7 @@ export async function crawlBlogSearchRank(
     $('a[href]').each((_, el) => {
       const href = $(el).attr('href') || '';
       // blog.naver.com/{naver_id} 패턴 매칭
-      const blogMatch = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+      const blogMatch = href.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
       if (!blogMatch) return;
 
       // 검색 결과 항목의 링크인지 확인 (제목 링크)
@@ -100,7 +100,7 @@ export async function crawlViewTabRank(
     // VIEW 섹션 내 블로그 포스트 링크에서 naver_id 추출
     searchArea.find('a[href*="blog.naver.com"]').each((_, el) => {
       const href = $(el).attr('href') || '';
-      const blogMatch = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+      const blogMatch = href.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
       if (!blogMatch) return;
 
       // 제목이 있는 링크만 (이미지 링크 등 제외)
