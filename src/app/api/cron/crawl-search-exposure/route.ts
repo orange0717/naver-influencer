@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, sleep } from '@/lib/crawler';
-import { crawlBlogSearchRank, crawlViewTabRank } from '@/lib/search-exposure';
+import { crawlBlogSearchRank, crawlViewTabRank, extractBlogIdFromInfluencerPage } from '@/lib/search-exposure';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -147,21 +147,40 @@ export async function GET(request: NextRequest) {
       blogIdMap.set(infId, forceBlogId);
     }
   } else {
-    // latest_post_url에서 자동 추출
+    // 인플루언서 페이지에서 블로그 ID 추출
     for (const infId of userInfluencerIds) {
+      // 1) latest_post_url에서 blog.naver.com 패턴 시도
       const snapDate = infSnapshotMap.get(infId);
-      if (!snapDate) continue;
-      const { data: postRow } = await supabase
-        .from('keyword_rankings')
-        .select('latest_post_url')
-        .eq('influencer_id', infId)
-        .eq('snapshot_date', snapDate)
-        .not('latest_post_url', 'is', null)
-        .limit(1)
+      if (snapDate) {
+        const { data: postRow } = await supabase
+          .from('keyword_rankings')
+          .select('latest_post_url')
+          .eq('influencer_id', infId)
+          .eq('snapshot_date', snapDate)
+          .not('latest_post_url', 'is', null)
+          .limit(1)
+          .single();
+        if (postRow?.latest_post_url) {
+          const blogMatch = postRow.latest_post_url.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+          if (blogMatch) {
+            blogIdMap.set(infId, blogMatch[1]);
+            continue;
+          }
+        }
+      }
+
+      // 2) blog.naver.com URL이 없으면 인플루언서 페이지에서 블로그 ID 크롤링
+      const { data: inf } = await supabase
+        .from('influencers')
+        .select('naver_id')
+        .eq('id', infId)
         .single();
-      if (postRow?.latest_post_url) {
-        const blogMatch = postRow.latest_post_url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
-        if (blogMatch) blogIdMap.set(infId, blogMatch[1]);
+      if (inf?.naver_id) {
+        const blogId = await extractBlogIdFromInfluencerPage(inf.naver_id);
+        if (blogId) {
+          blogIdMap.set(infId, blogId);
+        }
+        await sleep(500);
       }
     }
   }

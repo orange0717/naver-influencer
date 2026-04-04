@@ -147,3 +147,34 @@ export async function crawlSearchExposure(
   const view = await crawlViewTabRank(keyword, naverIds);
   return { blog, view };
 }
+
+/**
+ * 인플루언서 페이지(in.naver.com/{naverId})에서 블로그 ID 추출
+ * naver_id와 blog_id가 다른 경우가 많음 (예: orangelibrary → orangelibrary_)
+ */
+export async function extractBlogIdFromInfluencerPage(
+  naverId: string,
+): Promise<string | null> {
+  try {
+    const url = `https://in.naver.com/${naverId}`;
+    const res = await fetchWithRetry(url);
+    const html = await res.text();
+
+    // blog.naver.com/{blogId} 패턴 추출 (influencer_search 등 시스템 ID 제외)
+    const allMatches = [...html.matchAll(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/g)];
+    const validIds = allMatches
+      .map(m => m[1])
+      .filter(id => id !== 'influencer_search');
+
+    // naver_id와 다른 blog ID 우선 반환 (실제 블로그 ID)
+    const differentId = validIds.find(id => id.toLowerCase() !== naverId.toLowerCase());
+    if (differentId) return differentId;
+
+    // 동일해도 반환
+    if (validIds.length > 0) return validIds[0];
+    return null;
+  } catch (err) {
+    console.error(`[search-exposure] 블로그 ID 추출 실패 (${naverId}):`, err);
+    return null;
+  }
+}
