@@ -409,10 +409,10 @@ export default function MyKeywordList({
                         )}
                       </td>
                       <td className="text-center px-3 py-3">
-                        <span className="text-sm font-bold font-rank">{kw.participant_count}명</span>
+                        <span className="text-sm font-light font-rank">{kw.participant_count}명</span>
                       </td>
                       <td className="text-center px-3 py-3">
-                        <span className="text-sm font-bold font-rank">
+                        <span className="text-sm font-light font-rank">
                           {kw.search_volume > 0 ? formatCount(kw.search_volume) : '-'}
                         </span>
                       </td>
