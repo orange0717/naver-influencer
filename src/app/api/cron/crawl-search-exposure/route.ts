@@ -21,38 +21,51 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
   const batchNum = parseInt(request.nextUrl.searchParams.get('batch') || '0');
+  const targetNaverId = request.nextUrl.searchParams.get('naverId');
   const BATCH_SIZE = 50;
   const start = batchNum * BATCH_SIZE;
 
-  // 가입자(users.linked_influencer_id) + 데모체험자
-  const { data: users } = await supabase
-    .from('users')
-    .select('linked_influencer_id')
-    .not('linked_influencer_id', 'is', null);
+  const userInfluencerIds = new Set<string>();
 
-  const userInfluencerIds = new Set<string>(
-    (users || []).map(u => u.linked_influencer_id).filter(Boolean),
-  );
-
-  // 데모체험 사용자도 포함
-  const { data: demoSessions } = await supabase
-    .from('demo_sessions')
-    .select('naver_id')
-    .gt('expires_at', new Date().toISOString());
-
-  const demoNaverIds = [...new Set((demoSessions || []).map(d => d.naver_id).filter(Boolean))];
-  if (demoNaverIds.length > 0) {
-    const { data: demoInf } = await supabase
+  // 특정 인플루언서만 크롤링
+  if (targetNaverId) {
+    const { data: inf } = await supabase
       .from('influencers')
       .select('id')
-      .in('naver_id', demoNaverIds);
-    for (const inf of demoInf || []) {
-      userInfluencerIds.add(inf.id);
+      .eq('naver_id', targetNaverId)
+      .single();
+    if (inf) userInfluencerIds.add(inf.id);
+  } else {
+    // 가입자(users.linked_influencer_id) + 데모체험자
+    const { data: users } = await supabase
+      .from('users')
+      .select('linked_influencer_id')
+      .not('linked_influencer_id', 'is', null);
+
+    for (const u of (users || [])) {
+      if (u.linked_influencer_id) userInfluencerIds.add(u.linked_influencer_id);
+    }
+
+    // 데모체험 사용자도 포함
+    const { data: demoSessions } = await supabase
+      .from('demo_sessions')
+      .select('naver_id')
+      .gt('expires_at', new Date().toISOString());
+
+    const demoNaverIds = [...new Set((demoSessions || []).map(d => d.naver_id).filter(Boolean))];
+    if (demoNaverIds.length > 0) {
+      const { data: demoInf } = await supabase
+        .from('influencers')
+        .select('id')
+        .in('naver_id', demoNaverIds);
+      for (const inf of demoInf || []) {
+        userInfluencerIds.add(inf.id);
+      }
     }
   }
 
   if (userInfluencerIds.size === 0) {
-    return NextResponse.json({ message: '가입자가 없습니다.' });
+    return NextResponse.json({ message: '대상 인플루언서가 없습니다.' });
   }
 
   // 각 가입자의 최신 스냅샷 날짜별 키워드 수집
