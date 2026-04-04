@@ -75,21 +75,42 @@ export default function MyKeywordList({
   const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
   const [rankingsLoading, setRankingsLoading] = useState<string | null>(null);
 
+  // 검색 노출 데이터
+  const [exposureCache, setExposureCache] = useState<Record<string, { blog: { naver_id: string; rank: number }[]; view: { naver_id: string; rank: number }[] }>>({});
+  const [exposureLoading, setExposureLoading] = useState<string | null>(null);
+
   const toggleRankings = async (kwId: string) => {
     if (expandedId === kwId) { setExpandedId(null); return; }
     setExpandedId(kwId);
-    if (rankingsCache[kwId]) return;
-    setRankingsLoading(kwId);
-    try {
-      const res = await fetch(`/api/keywords/${kwId}/rankings`);
-      if (res.ok) {
-        const data = await res.json();
-        setRankingsCache(prev => ({ ...prev, [kwId]: (data.rankings || []).slice(0, 3) }));
+    // TOP3 로드
+    if (!rankingsCache[kwId]) {
+      setRankingsLoading(kwId);
+      try {
+        const res = await fetch(`/api/keywords/${kwId}/rankings`);
+        if (res.ok) {
+          const data = await res.json();
+          setRankingsCache(prev => ({ ...prev, [kwId]: (data.rankings || []).slice(0, 3) }));
+        }
+      } catch {
+        setRankingsCache(prev => ({ ...prev, [kwId]: [] }));
+      } finally {
+        setRankingsLoading(null);
       }
-    } catch {
-      setRankingsCache(prev => ({ ...prev, [kwId]: [] }));
-    } finally {
-      setRankingsLoading(null);
+    }
+    // 검색 노출 로드
+    if (!exposureCache[kwId]) {
+      setExposureLoading(kwId);
+      try {
+        const res = await fetch(`/api/keywords/${kwId}/search-exposure`);
+        if (res.ok) {
+          const data = await res.json();
+          setExposureCache(prev => ({ ...prev, [kwId]: { blog: data.blog || [], view: data.view || [] } }));
+        }
+      } catch {
+        setExposureCache(prev => ({ ...prev, [kwId]: { blog: [], view: [] } }));
+      } finally {
+        setExposureLoading(null);
+      }
     }
   };
 
@@ -417,37 +438,81 @@ export default function MyKeywordList({
                     {isExpanded && (
                       <tr>
                         <td colSpan={7} className="px-5 py-3 bg-bg/60">
-                          {isLoadingRank ? (
-                            <div className="flex items-center gap-2 py-1 pl-4">
-                              <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
-                              <span className="text-xs text-dim">순위 불러오는 중...</span>
-                            </div>
-                          ) : rankings && rankings.length > 0 ? (
-                            <div className="pl-4 space-y-1.5">
-                              <p className="text-[11px] font-bold text-dim mb-1.5">실시간 TOP 3</p>
-                              {rankings.map(r => (
-                                <div key={r.rank_position} className="flex items-center gap-2.5">
-                                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
-                                    r.rank_position === 1 ? 'bg-gold' : r.rank_position === 2 ? 'bg-silver' : 'bg-bronze'
-                                  }`}>{r.rank_position}</span>
-                                  <Link
-                                    href={`/influencers/${encodeURIComponent(r.naver_id)}`}
-                                    className="text-sm font-semibold hover:text-accent transition"
-                                    onClick={e => e.stopPropagation()}
-                                  >
-                                    {r.influencer_name}
-                                  </Link>
-                                  {r.fan_count > 0 && (
-                                    <span className="text-[11px] text-dim font-rank">
-                                      {r.fan_count >= 10000 ? `${(r.fan_count / 10000).toFixed(1)}만` : r.fan_count.toLocaleString()}
-                                    </span>
-                                  )}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-4">
+                            {/* 챌린지 TOP3 */}
+                            <div>
+                              <p className="text-[11px] font-bold text-dim mb-1.5">챌린지 TOP 3</p>
+                              {isLoadingRank ? (
+                                <div className="flex items-center gap-2 py-1">
+                                  <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
+                                  <span className="text-xs text-dim">로딩...</span>
                                 </div>
-                              ))}
+                              ) : rankings && rankings.length > 0 ? (
+                                <div className="space-y-1.5">
+                                  {rankings.map(r => (
+                                    <div key={r.rank_position} className="flex items-center gap-2">
+                                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                                        r.rank_position === 1 ? 'bg-gold' : r.rank_position === 2 ? 'bg-silver' : 'bg-bronze'
+                                      }`}>{r.rank_position}</span>
+                                      <Link
+                                        href={`/influencers/${encodeURIComponent(r.naver_id)}`}
+                                        className="text-xs font-semibold hover:text-accent transition truncate"
+                                        onClick={e => e.stopPropagation()}
+                                      >
+                                        {r.influencer_name}
+                                      </Link>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-dim">데이터 없음</p>
+                              )}
                             </div>
-                          ) : (
-                            <div className="pl-4 py-1 text-xs text-dim">순위 정보가 없습니다</div>
-                          )}
+
+                            {/* 블로그 검색 노출 */}
+                            <div>
+                              <p className="text-[11px] font-bold text-dim mb-1.5">블로그 검색</p>
+                              {exposureLoading === kw.keyword_id ? (
+                                <div className="flex items-center gap-2 py-1">
+                                  <div className="animate-spin w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full" />
+                                  <span className="text-xs text-dim">크롤링 중...</span>
+                                </div>
+                              ) : exposureCache[kw.keyword_id]?.blog?.length > 0 ? (
+                                <div className="space-y-1">
+                                  {exposureCache[kw.keyword_id].blog.slice(0, 5).map((b, i) => (
+                                    <div key={i} className="flex items-center gap-2 text-xs">
+                                      <span className="font-bold font-rank text-blue-500 w-5 text-center">{b.rank}</span>
+                                      <span className="truncate">{b.naver_id}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : exposureCache[kw.keyword_id] ? (
+                                <p className="text-xs text-dim">노출 없음</p>
+                              ) : null}
+                            </div>
+
+                            {/* 통합검색 VIEW 노출 */}
+                            <div>
+                              <p className="text-[11px] font-bold text-dim mb-1.5">통합검색 VIEW</p>
+                              {exposureLoading === kw.keyword_id ? (
+                                <div className="flex items-center gap-2 py-1">
+                                  <div className="animate-spin w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full" />
+                                  <span className="text-xs text-dim">크롤링 중...</span>
+                                </div>
+                              ) : exposureCache[kw.keyword_id]?.view?.length > 0 ? (
+                                <div className="space-y-1">
+                                  {exposureCache[kw.keyword_id].view.slice(0, 5).map((v, i) => (
+                                    <div key={i} className="flex items-center gap-2 text-xs">
+                                      <span className="font-bold font-rank text-green-500 w-5 text-center">{v.rank}</span>
+                                      <span className="truncate">{v.naver_id}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : exposureCache[kw.keyword_id] ? (
+                                <p className="text-xs text-dim">노출 없음</p>
+                              ) : null}
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     )}
