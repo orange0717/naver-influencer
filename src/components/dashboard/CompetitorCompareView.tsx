@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface CompetitorStats {
   totalKeywords: number;
   top3Count: number;
@@ -70,6 +72,7 @@ export default function CompetitorCompareView({
   competitorSubscribers,
   sharedKeywords,
 }: CompetitorCompareViewProps) {
+  const [showAll, setShowAll] = useState(false);
   const winning = sharedKeywords.filter(sk => sk.myRank !== null && sk.myRank < sk.competitorRank).length;
   const losing = sharedKeywords.filter(sk => sk.myRank !== null && sk.myRank > sk.competitorRank).length;
   const tie = sharedKeywords.filter(sk => sk.myRank !== null && sk.myRank === sk.competitorRank).length;
@@ -112,8 +115,8 @@ export default function CompetitorCompareView({
               <span className="text-center">나</span>
               <span className="text-center">{competitorName}</span>
             </div>
-            <div className="divide-y divide-border/10 max-h-64 overflow-y-auto">
-              {sharedKeywords.slice(0, 20).map(sk => {
+            <div className={`divide-y divide-border/10 ${showAll ? 'max-h-96' : 'max-h-64'} overflow-y-auto`}>
+              {(showAll ? sharedKeywords : sharedKeywords.slice(0, 20)).map(sk => {
                 const iWin = sk.myRank !== null && sk.myRank < sk.competitorRank;
                 const iLose = sk.myRank !== null && sk.myRank > sk.competitorRank;
                 return (
@@ -130,9 +133,12 @@ export default function CompetitorCompareView({
               })}
             </div>
             {sharedKeywords.length > 20 && (
-              <div className="text-center py-2 text-[10px] text-dim border-t border-border/30">
-                +{sharedKeywords.length - 20}개 더
-              </div>
+              <button
+                onClick={() => setShowAll(prev => !prev)}
+                className="w-full text-center py-2 text-[11px] text-accent font-semibold border-t border-border/30 hover:bg-accent/5 transition cursor-pointer"
+              >
+                {showAll ? '접기' : `+${sharedKeywords.length - 20}개 더 보기`}
+              </button>
             )}
           </div>
         </div>
