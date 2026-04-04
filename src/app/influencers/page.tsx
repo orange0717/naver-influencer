@@ -206,7 +206,7 @@ export default function InfluencersPage() {
         {sortBy !== 'first_seen_at' && (
           <button
             onClick={() => { setSortBy('first_seen_at'); setOrder('desc'); setPage(1); }}
-            className="px-2 py-1 text-[10px] bg-accent/10 text-accent border border-accent/30 rounded hover:bg-accent/20 transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border/50 text-dim hover:border-accent/30 transition-colors cursor-pointer"
           >
             초기화
           </button>
