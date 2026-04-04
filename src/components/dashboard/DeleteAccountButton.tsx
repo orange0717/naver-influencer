@@ -58,7 +58,7 @@ export default function DeleteAccountButton() {
       <div className="border-t border-border/50 pt-8 mt-10 text-center">
         <button
           onClick={() => setStep('reason')}
-          className="px-6 py-2.5 bg-[#BF8C80] text-white text-sm font-semibold rounded-lg hover:bg-[#A87A6F] transition cursor-pointer"
+          className="px-6 py-2.5 bg-[#F2CBBD] text-[#8B6055] text-sm font-semibold rounded-lg hover:bg-[#E8B8A8] transition cursor-pointer"
         >
           회원탈퇴
         </button>

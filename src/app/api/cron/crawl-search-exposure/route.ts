@@ -119,30 +119,56 @@ export async function GET(request: NextRequest) {
   let crawled = 0;
   let errors = 0;
 
+  // 인플루언서별 블로그 ID 추출 (latest_post_url에서)
+  const blogIdMap = new Map<string, string>(); // influencer_id -> blog_id
+  for (const infId of userInfluencerIds) {
+    const snapDate = infSnapshotMap.get(infId);
+    if (!snapDate) continue;
+    const { data: postRow } = await supabase
+      .from('keyword_rankings')
+      .select('latest_post_url')
+      .eq('influencer_id', infId)
+      .eq('snapshot_date', snapDate)
+      .not('latest_post_url', 'is', null)
+      .limit(1)
+      .single();
+    if (postRow?.latest_post_url) {
+      const blogMatch = postRow.latest_post_url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+      if (blogMatch) blogIdMap.set(infId, blogMatch[1]);
+    }
+  }
+
   for (const [keywordId, { keyword, influencerIds }] of batch) {
     try {
-      // 해당 키워드에 참여하는 모든 인플루언서 naver_id 조회
+      // 해당 키워드에 참여하는 인플루언서의 블로그 ID 수집
       const { data: infData } = await supabase
         .from('influencers')
         .select('id, naver_id')
         .in('id', influencerIds);
 
-      const naverIds = (infData || []).map(i => i.naver_id).filter(Boolean);
-      if (naverIds.length === 0) continue;
+      // 블로그 ID 우선, 없으면 naver_id 사용
+      const blogIds: string[] = [];
+      const blogIdToInfId = new Map<string, string>();
+      for (const inf of (infData || [])) {
+        const blogId = blogIdMap.get(inf.id) || inf.naver_id;
+        if (blogId) {
+          blogIds.push(blogId);
+          blogIdToInfId.set(blogId.toLowerCase(), inf.id);
+        }
+      }
+      if (blogIds.length === 0) continue;
 
       // 블로그탭 크롤링
-      const blogResults = await crawlBlogSearchRank(keyword, naverIds);
+      const blogResults = await crawlBlogSearchRank(keyword, blogIds);
       await sleep(1500);
 
       // 통합검색 VIEW 크롤링
-      const viewResults = await crawlViewTabRank(keyword, naverIds);
+      const viewResults = await crawlViewTabRank(keyword, blogIds);
       await sleep(1500);
 
       // DB 업데이트 (각 인플루언서의 최신 스냅샷 날짜 기준)
-      const naverIdToInfId = new Map((infData || []).map(i => [i.naver_id.toLowerCase(), i.id]));
-
       for (const b of blogResults) {
-        const infId = naverIdToInfId.get(b.naver_id.toLowerCase());
+        const infId = blogIdToInfId.get(b.naver_id.toLowerCase());
         const snapDate = infId ? infSnapshotMap.get(infId) : null;
         if (infId && snapDate) {
           await supabase
@@ -155,7 +181,7 @@ export async function GET(request: NextRequest) {
       }
 
       for (const v of viewResults) {
-        const infId = naverIdToInfId.get(v.naver_id.toLowerCase());
+        const infId = blogIdToInfId.get(v.naver_id.toLowerCase());
         const snapDate = infId ? infSnapshotMap.get(infId) : null;
         if (infId && snapDate) {
           await supabase
