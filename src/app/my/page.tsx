@@ -145,7 +145,7 @@ export default async function MyDashboard() {
         .select(`
           rank_position, previous_rank, rank_change, is_integrated_top3,
           keyword_id, latest_post_title, latest_post_url, snapshot_date,
-          keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
+          keyword_challenges(keyword, category, participant_count, search_volume_monthly)
         `)
         .eq('influencer_id', influencerId)
         .eq('snapshot_date', mySnapshotDate)

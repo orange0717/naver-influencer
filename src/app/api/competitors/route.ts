@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
           .from('keyword_rankings')
           .select(`
             rank_position, is_integrated_top3, keyword_id,
-            keyword_challenges!inner(keyword, category, participant_count)
+            keyword_challenges(keyword, category, participant_count)
           `)
           .eq('influencer_id', competitor.id)
           .eq('snapshot_date', compSnapshotDate)
