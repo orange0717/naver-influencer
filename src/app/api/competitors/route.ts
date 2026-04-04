@@ -47,9 +47,14 @@ export async function GET(request: NextRequest) {
 
     const compSnapshotDate = compLatest?.snapshot_date;
 
-    // 해당 날짜의 전체 키워드 순위 조회 (limit 없음)
-    const { data: competitorRankings } = compSnapshotDate
-      ? await supabase
+    // 해당 날짜의 전체 키워드 순위 조회 (Supabase 1000건 제한 우회)
+    let competitorRankings: { rank_position: number; is_integrated_top3: boolean; keyword_id: string; keyword_challenges: unknown }[] = [];
+    if (compSnapshotDate) {
+      const PAGE = 1000;
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data: batch } = await supabase
           .from('keyword_rankings')
           .select(`
             rank_position, is_integrated_top3, keyword_id,
@@ -57,7 +62,16 @@ export async function GET(request: NextRequest) {
           `)
           .eq('influencer_id', competitor.id)
           .eq('snapshot_date', compSnapshotDate)
-      : { data: null };
+          .range(from, from + PAGE - 1);
+        if (batch && batch.length > 0) {
+          competitorRankings.push(...batch);
+          from += PAGE;
+          hasMore = batch.length === PAGE;
+        } else {
+          hasMore = false;
+        }
+      }
+    }
 
     const rankings = (competitorRankings || []).map(r => {
       const kw = r.keyword_challenges as unknown as Record<string, unknown>;
@@ -93,16 +107,30 @@ export async function GET(request: NextRequest) {
 
         const mySnapshotDate = myLatest?.snapshot_date;
 
-        const { data: myRankings } = mySnapshotDate
-          ? await supabase
+        // Supabase 1000건 제한 우회
+        let myRankingsList: { rank_position: number; keyword_id: string }[] = [];
+        if (mySnapshotDate) {
+          let from = 0;
+          let hasMore = true;
+          while (hasMore) {
+            const { data: batch } = await supabase
               .from('keyword_rankings')
               .select('rank_position, keyword_id')
               .eq('influencer_id', myInfluencer.id)
               .eq('snapshot_date', mySnapshotDate)
-          : { data: null };
+              .range(from, from + 999);
+            if (batch && batch.length > 0) {
+              myRankingsList.push(...batch);
+              from += 1000;
+              hasMore = batch.length === 1000;
+            } else {
+              hasMore = false;
+            }
+          }
+        }
 
         const myRankMap = new Map<string, number>();
-        for (const r of (myRankings || [])) {
+        for (const r of myRankingsList) {
           myRankMap.set(r.keyword_id, r.rank_position);
         }
 
