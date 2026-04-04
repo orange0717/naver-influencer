@@ -30,7 +30,8 @@ interface CategoryGroupData {
   keywords: KeywordItem[];
 }
 
-type SortKey = 'rank' | 'volume' | 'participants' | 'change' | 'keyword';
+type SortKey = 'rank' | 'volume' | 'participants' | 'change' | 'keyword' | 'comp';
+type SortDir = 'asc' | 'desc';
 type CompFilter = 'all' | 'low' | 'mid' | 'high';
 type ParticipationFilter = 'all' | 'participated' | 'not_participated';
 
@@ -61,6 +62,7 @@ export default function MyKeywordList({
   const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>('not_participated');
   const [rankFilter, setRankFilter] = useState<'all' | 'ranked' | 'unranked'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('rank');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -138,6 +140,7 @@ export default function MyKeywordList({
     }
 
     // 정렬
+    const dir = sortDir === 'asc' ? 1 : -1;
     list.sort((a, b) => {
       switch (sortKey) {
         case 'rank': {
@@ -147,19 +150,23 @@ export default function MyKeywordList({
           // 순위 있는 것 우선, 없으면 뒤로
           if (a.rank_position !== null && b.rank_position === null) return -1;
           if (a.rank_position === null && b.rank_position !== null) return 1;
-          if (a.rank_position !== null && b.rank_position !== null) return a.rank_position - b.rank_position;
+          if (a.rank_position !== null && b.rank_position !== null) return (a.rank_position - b.rank_position) * dir;
           return (b.search_volume || 0) - (a.search_volume || 0);
         }
-        case 'volume': return (b.search_volume || 0) - (a.search_volume || 0);
-        case 'participants': return b.participant_count - a.participant_count;
-        case 'change': return Math.abs(b.rank_change || 0) - Math.abs(a.rank_change || 0);
-        case 'keyword': return a.keyword.localeCompare(b.keyword, 'ko');
+        case 'volume': return ((b.search_volume || 0) - (a.search_volume || 0)) * dir;
+        case 'participants': return (b.participant_count - a.participant_count) * dir;
+        case 'change': return (Math.abs(b.rank_change || 0) - Math.abs(a.rank_change || 0)) * dir;
+        case 'keyword': return a.keyword.localeCompare(b.keyword, 'ko') * dir;
+        case 'comp': {
+          const compOrder = (p: number) => p <= 30 ? 1 : p <= 100 ? 2 : 3;
+          return (compOrder(a.participant_count) - compOrder(b.participant_count)) * dir;
+        }
         default: return 0;
       }
     });
 
     return list;
-  }, [allKeywords, selectedCategory, participationFilter, rankFilter, compFilter, search, sortKey]);
+  }, [allKeywords, selectedCategory, participationFilter, rankFilter, compFilter, search, sortKey, sortDir]);
 
   const totalPages = Math.ceil(filteredKeywords.length / PAGE_SIZE);
   const displayList = filteredKeywords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -184,6 +191,22 @@ export default function MyKeywordList({
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, participationFilter, selectedCategory, compFilter, sortKey, search]);
+
+  // 헤더 클릭 정렬
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+    setCurrentPage(1);
+  };
+
+  const SortArrow = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <span className="text-border ml-0.5">&#8597;</span>;
+    return <span className="text-accent ml-0.5">{sortDir === 'desc' ? '&#9660;' : '&#9650;'}</span>;
+  };
 
   const rankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position !== null).length;
   const unrankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position === null).length;
@@ -268,17 +291,27 @@ export default function MyKeywordList({
                 </button>
               ))}
             </div>
-            <select
-              value={sortKey}
-              onChange={e => setSortKey(e.target.value as SortKey)}
-              className="text-[11px] border border-border rounded-lg px-2 py-1.5 bg-surface font-medium"
-            >
-              <option value="rank">순위순</option>
-              <option value="volume">검색량순</option>
-              <option value="participants">참여자순</option>
-              <option value="change">변동순</option>
-              <option value="keyword">이름순</option>
-            </select>
+            <div className="flex items-center gap-1">
+              <select
+                value={sortKey}
+                onChange={e => { setSortKey(e.target.value as SortKey); setSortDir('desc'); setCurrentPage(1); }}
+                className="text-[11px] border border-border rounded-lg px-2 py-1.5 bg-surface font-medium"
+              >
+                <option value="rank">순위순</option>
+                <option value="volume">검색량순</option>
+                <option value="participants">참여자순</option>
+                <option value="change">변동순</option>
+                <option value="keyword">이름순</option>
+                <option value="comp">경쟁도순</option>
+              </select>
+              <button
+                onClick={() => { setSortDir(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border bg-surface text-dim hover:text-text transition cursor-pointer text-[11px]"
+                title={sortDir === 'desc' ? '내림차순' : '오름차순'}
+              >
+                {sortDir === 'desc' ? '\u25BC' : '\u25B2'}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -291,12 +324,12 @@ export default function MyKeywordList({
             <table className="w-full">
               <thead>
                 <tr className="text-xs text-dim border-b border-border/50 bg-bg/30">
-                  <th className="text-left px-5 py-2.5 font-semibold">키워드</th>
-                  <th className="text-center px-3 py-2.5 font-semibold">순위</th>
-                  <th className="text-center px-3 py-2.5 font-semibold">변동</th>
-                  <th className="text-center px-3 py-2.5 font-semibold">참여자</th>
-                  <th className="text-center px-3 py-2.5 font-semibold">월 검색량</th>
-                  <th className="text-center px-3 py-2.5 font-semibold">경쟁도</th>
+                  <th className="text-left px-5 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('keyword')}>키워드<SortArrow col="keyword" /></th>
+                  <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('rank')}>순위<SortArrow col="rank" /></th>
+                  <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('change')}>변동<SortArrow col="change" /></th>
+                  <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('participants')}>참여자<SortArrow col="participants" /></th>
+                  <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('volume')}>월 검색량<SortArrow col="volume" /></th>
+                  <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('comp')}>경쟁도<SortArrow col="comp" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold">상태</th>
                 </tr>
               </thead>
