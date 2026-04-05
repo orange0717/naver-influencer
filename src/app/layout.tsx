@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import "./globals.css";
 import HeaderWrapper from "@/components/HeaderWrapper";
 import Footer from "@/components/Footer";
-import HideOnAd from "@/components/HideOnAd";
 import VisitTracker from "@/components/VisitTracker";
 import ChatBot from "@/components/ChatBot";
 import FeedbackButton from "@/components/FeedbackButton";
@@ -51,16 +50,16 @@ export default function RootLayout({
       <body className="antialiased flex flex-col min-h-screen">
         <Providers>
           <NativeProvider>
-          <HideOnAd><HeaderWrapper /></HideOnAd>
-          <HideOnAd><UpdateBanner /></HideOnAd>
-          <HideOnAd><PwaAnnounceBanner /></HideOnAd>
+          <HeaderWrapper />
+          <UpdateBanner />
+          <PwaAnnounceBanner />
           <Suspense fallback={null}><VisitTracker /></Suspense>
           <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
             {children}
           </main>
-          <HideOnAd><Footer /></HideOnAd>
-          <HideOnAd><FeedbackButton /></HideOnAd>
-          <HideOnAd><ChatBot /></HideOnAd>
+          <Footer />
+          <FeedbackButton />
+          <ChatBot />
           <ServiceWorkerRegistrar />
           </NativeProvider>
         </Providers>
