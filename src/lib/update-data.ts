@@ -26,6 +26,16 @@ export interface UpdateItem {
  */
 export const UPDATES: UpdateItem[] = [
   {
+    version: '2026-04-06-webapp',
+    date: '2026.04.06',
+    title: 'N인플 웹앱 출시',
+    changes: [
+      'N인플 자체순위 오픈 — 투명한 계산식 공개',
+      '도서·경제·육아·뷰티 카테고리 순위 지원',
+      '광고주 페이지 오픈 — AI 인플루언서 추천',
+    ],
+  },
+  {
     version: '2026-04-03b',
     date: '2026.04.03',
     title: '4월 3일 업데이트일정',

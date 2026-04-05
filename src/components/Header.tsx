@@ -16,6 +16,7 @@ const NAV_ITEMS_PUBLIC = [
   { href: '/keywords', label: '키워드 리스트' },
   { href: '/community', label: '커뮤니티' },
   { href: '/subscribe', label: '이용권' },
+  { href: '/ad', label: '광고주' },
 ];
 
 /* ── 메인 네비게이션 (로그인) ── */
@@ -27,6 +28,7 @@ const NAV_ITEMS_AUTH = [
   { href: '/keywords', label: '키워드 리스트' },
   { href: '/community', label: '커뮤니티' },
   { href: '/subscribe', label: '이용권' },
+  { href: '/ad', label: '광고주' },
 ];
 
 
