@@ -34,7 +34,7 @@ export default function AdvertiserPage() {
               카테고리·키워드별 TOP 순위 인플루언서를 한눈에 확인하세요.
               실제 순위 데이터 기반으로 영향력을 검증할 수 있습니다.
             </p>
-            <Link href="/influencers" className="inline-block mt-4 text-sm text-blue-500 font-semibold hover:underline">
+            <Link href="/ad/search" className="inline-block mt-4 text-sm text-blue-500 font-semibold hover:underline">
               인플루언서 검색 →
             </Link>
           </div>
