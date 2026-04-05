@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { formatCount } from '@/lib/format';
+import { formatCount, formatScore } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
 
 interface InfluencerItem {
@@ -25,11 +25,18 @@ interface InfluencerItem {
   lastCrawledAt?: string;
   isInactive?: boolean;
   isStopped?: boolean;
+  lastBlogPostAt?: string | null;
+  officialNaverRank?: number | null;
+  officialRankCategory?: string | null;
+  keywordScore?: number;
 }
 
-type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at';
+type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at' | 'official_naver_rank' | 'keyword_score';
+
+type ViewTab = 'all' | 'ninfl' | 'official';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'keyword_score', label: '점수' },
   { key: 'first_seen_at', label: '선정일' },
   { key: 'subscriber_count', label: '팬수' },
   { key: 'total_keywords', label: '챌린지수' },
@@ -50,7 +57,6 @@ function isNew(d: string | null | undefined): boolean {
 }
 
 export default function InfluencersPage() {
-  const [activeTab, setActiveTab] = useState<'list' | 'ranking'>('list');
   const [influencers, setInfluencers] = useState<InfluencerItem[]>([]);
   const [categories, setCategories] = useState<string[]>(['전체']);
   const [category, setCategory] = useState('전체');
@@ -62,6 +68,7 @@ export default function InfluencersPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortKey>('first_seen_at');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const [viewTab, setViewTab] = useState<ViewTab>('all');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -74,6 +81,8 @@ export default function InfluencersPage() {
       });
       if (category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
+      if (viewTab === 'official') params.set('official', 'true');
+      if (viewTab === 'ninfl') params.set('ninfl', 'true');
 
       const res = await fetch(`/api/influencers?${params}`);
       const data = await res.json();
@@ -88,7 +97,7 @@ export default function InfluencersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, category, search, sortBy, order]);
+  }, [page, category, search, sortBy, order, viewTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -97,6 +106,21 @@ export default function InfluencersPage() {
     return () => clearTimeout(timer);
   }, [fetchData, search]);
 
+  const handleTabChange = (tab: ViewTab) => {
+    setViewTab(tab);
+    setPage(1);
+    if (tab === 'official') {
+      setSortBy('official_naver_rank');
+      setOrder('asc');
+    } else if (tab === 'ninfl') {
+      setSortBy('keyword_score');
+      setOrder('desc');
+    } else {
+      setSortBy('first_seen_at');
+      setOrder('desc');
+    }
+  };
+
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
     setPage(1);
@@ -104,13 +128,7 @@ export default function InfluencersPage() {
 
   const handleSortChange = (key: SortKey) => {
     if (sortBy === key) {
-      if (order === 'desc') {
-        setOrder('asc');
-      } else {
-        // 오름차순 → 초기화 (기본 선정일순)
-        setSortBy('first_seen_at');
-        setOrder('desc');
-      }
+      setOrder(prev => prev === 'desc' ? 'asc' : 'desc');
     } else {
       setSortBy(key);
       setOrder('desc');
@@ -161,41 +179,67 @@ export default function InfluencersPage() {
         </div>
       </div>
 
-      {activeTab === 'ranking' ? (
-        <div className="bg-surface rounded-xl border border-border p-8">
-          <h2 className="text-lg font-bold mb-4">전체순위 (개발중)</h2>
-          <p className="text-sm text-dim mb-6">10가지 요소를 종합한 인플루언서 순위입니다.</p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-            {['포스팅빈도', '게시글 수', '챌린지 수', 'TOP3비율', '키워드 검색량', '순위분포', '토픽 수', '구독자수(전체)', '팬수', '참여도'].map((item, i) => (
-              <div key={item} className="bg-bg rounded-lg p-3 text-center">
-                <div className="text-[10px] text-dim mb-1">{i + 1}</div>
-                <div className="text-xs font-semibold">{item}</div>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => setActiveTab('list')} className="text-xs text-accent hover:underline cursor-pointer">인플루언서 리스트로 돌아가기</button>
-        </div>
-      ) : (
-      <>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="인플루언서 검색 (이름, 카테고리, 키워드, 유형)..."
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
-        />
-        {(search || category !== '전체' || sortBy !== 'first_seen_at') && (
-          <button
-            onClick={() => { setSearch(''); setCategory('전체'); setSortBy('first_seen_at'); setOrder('desc'); setPage(1); }}
-            className="shrink-0 px-3 py-2.5 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
-          >
-            초기화
-          </button>
-        )}
+      {/* 뷰 탭 */}
+      <div className="flex gap-2 border-b border-border pb-1">
+        <button
+          onClick={() => handleTabChange('all')}
+          className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors ${
+            viewTab === 'all'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-dim hover:text-accent'
+          }`}
+        >
+          전체
+        </button>
+        <button
+          onClick={() => handleTabChange('official')}
+          className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors ${
+            viewTab === 'official'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-dim hover:text-accent'
+          }`}
+        >
+          네이버 공식 인플루언서 순위
+        </button>
+        <button
+          onClick={() => handleTabChange('ninfl')}
+          className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors ${
+            viewTab === 'ninfl'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-dim hover:text-accent'
+          }`}
+        >
+          N인플 자체순위
+        </button>
       </div>
 
-      <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} size="sm" />
+      {/* N인플 순위 설명 */}
+      {viewTab === 'ninfl' && (
+        <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-sm">
+          <p className="font-bold text-accent mb-1">N인플 자체 순위 — 키워드 점수 기반</p>
+          <p className="text-dim text-xs leading-relaxed">
+            <span className="font-semibold text-text">계산 방식:</span> 참여 중인 모든 키워드에 대해{' '}
+            <span className="font-mono bg-surface px-1.5 py-0.5 rounded border border-border text-[11px]">(참여자수 - 내 순위) × 월간검색량</span>
+            {' '}을 합산합니다.
+            검색량이 높은 키워드에서 상위권을 차지할수록 점수가 높아집니다. 30일 이내 최신 데이터 기준.
+          </p>
+        </div>
+      )}
+
+      <input
+        type="text"
+        placeholder="인플루언서 검색 (이름, 카테고리, 키워드, 유형)..."
+        value={search}
+        onChange={e => { setSearch(e.target.value); setPage(1); }}
+        className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+      />
+
+      <CategoryFilter
+        categories={viewTab === 'ninfl' ? ['전체', '도서', '경제/비즈니스', '육아', '뷰티'] : categories}
+        selected={category}
+        onChange={handleCategoryChange}
+        size="sm"
+      />
 
       {/* 정렬 옵션 */}
       <div className="flex flex-wrap items-center gap-2">
@@ -213,20 +257,6 @@ export default function InfluencersPage() {
             {opt.label}{sortArrow(opt.key)}
           </button>
         ))}
-        {sortBy !== 'first_seen_at' && (
-          <button
-            onClick={() => { setSortBy('first_seen_at'); setOrder('desc'); setPage(1); }}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border/50 text-dim hover:border-accent/30 transition-colors cursor-pointer"
-          >
-            초기화
-          </button>
-        )}
-        <button
-          onClick={() => setActiveTab('ranking')}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-dashed border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer"
-        >
-          전체순위 <span className="text-[10px] text-dim">(개발중)</span>
-        </button>
       </div>
 
       {loading ? (
@@ -248,6 +278,9 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">활동 분야</th>
                   <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('subscriber_count')}>
                     팬수{sortArrow('subscriber_count')}
+                  </th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('keyword_score')}>
+                    점수{sortArrow('keyword_score')}
                   </th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('total_keywords')}>
                     챌린지{sortArrow('total_keywords')}
@@ -273,12 +306,21 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_crawled_at')}>
                     마지막 참여일{sortArrow('last_crawled_at')}
                   </th>
+                  {viewTab === 'official' && (
+                    <th className="text-left py-3 px-3 font-semibold text-dim text-xs">
+                      마지막 블로그 글
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {influencers.map((inf, i) => (
-                  <tr key={inf.naverId || inf.name + i} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
-                    <td className="py-3 px-4 font-bold text-dim font-rank text-xs">{(page - 1) * 50 + i + 1}</td>
+                  <tr key={inf.naverId || inf.name + i} className={`border-b border-border/50 hover:bg-surface-hover transition-colors ${inf.isStopped || inf.isInactive ? 'opacity-50 bg-gray-50' : ''}`}>
+                    <td className="py-3 px-4 font-bold font-rank text-xs">
+                      {viewTab === 'official' && inf.officialNaverRank
+                        ? <span className="text-accent">{inf.officialNaverRank}</span>
+                        : <span className="text-dim">{(page - 1) * 50 + i + 1}</span>}
+                    </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
                         {inf.imageUrl ? (
@@ -322,6 +364,13 @@ export default function InfluencersPage() {
                     <td className="py-3 px-3 text-right text-xs font-bold font-rank text-accent">
                       {formatCount(inf.subscriberCount)}
                     </td>
+                    <td className="py-3 px-3 text-right text-xs font-rank">
+                      {(inf.keywordScore || 0) > 0 ? (
+                        <span className="font-bold text-accent">{formatScore(inf.keywordScore || 0)}</span>
+                      ) : (
+                        <span className="text-dim">—</span>
+                      )}
+                    </td>
                     <td className="py-3 px-3 text-center text-xs font-rank">
                       {(inf.totalKeywords || 0) > 0 ? (
                         <span className="font-bold">{inf.totalKeywords}</span>
@@ -341,7 +390,7 @@ export default function InfluencersPage() {
                         const t3 = inf.integratedTop3Count || 0;
                         const total = inf.totalKeywords || 0;
                         if (t3 > 0 && total > 0) {
-                          const ratio = Math.min(t3 / total, 1);
+                          const ratio = t3 / total;
                           return (
                             <span className={`font-bold ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
                               {(ratio * 100).toFixed(1)}%
@@ -366,6 +415,21 @@ export default function InfluencersPage() {
                     <td className="py-3 px-3 text-xs text-dim">
                       {formatDate(inf.lastCrawledAt)}
                     </td>
+                    {viewTab === 'official' && (
+                      <td className="py-3 px-3 text-xs">
+                        {inf.lastBlogPostAt ? (
+                          <span className={(() => {
+                            const diff = Date.now() - new Date(inf.lastBlogPostAt).getTime();
+                            const oneYear = 365 * 24 * 60 * 60 * 1000;
+                            return diff > oneYear ? 'text-red-500 font-semibold' : 'text-dim';
+                          })()}>
+                            {formatDate(inf.lastBlogPostAt)}
+                          </span>
+                        ) : (
+                          <span className="text-dim">—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -379,7 +443,7 @@ export default function InfluencersPage() {
           <div className="md:hidden space-y-3">
             {influencers.map((inf, i) => (
               <div key={inf.naverId || inf.name + i}
-                className="bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
+                className={`bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition ${inf.isStopped || inf.isInactive ? 'opacity-50' : ''}`}>
                 <div className="flex items-center gap-3 mb-2">
                   {inf.imageUrl ? (
                     <img src={inf.imageUrl} alt={inf.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
@@ -407,6 +471,9 @@ export default function InfluencersPage() {
                     <span className="text-xs text-dim">@{inf.naverId}</span>
                   </div>
                   <div className="text-right shrink-0">
+                    {viewTab === 'official' && inf.officialNaverRank && (
+                      <div className="text-xs font-bold text-accent font-rank mb-0.5">{inf.officialNaverRank}위</div>
+                    )}
                     <div className="text-xs font-bold text-accent font-rank">{formatCount(inf.subscriberCount)}</div>
                     <div className="text-[10px] text-dim">팬수</div>
                   </div>
@@ -417,6 +484,7 @@ export default function InfluencersPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 text-[10px] text-dim">
+                  {(inf.keywordScore || 0) > 0 && <span className="text-accent font-bold">점수 {formatScore(inf.keywordScore || 0)}</span>}
                   {(inf.totalKeywords || 0) > 0 && <span>챌린지 {inf.totalKeywords}개</span>}
                   {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
                   {(inf.top1Count || 0) > 0 && <span className="text-red-500 font-bold">1위 {inf.top1Count}</span>}
@@ -424,6 +492,14 @@ export default function InfluencersPage() {
                   {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
                   {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
                   {inf.lastCrawledAt && <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>}
+                  {viewTab === 'official' && inf.lastBlogPostAt && (
+                    <span className={(() => {
+                      const diff = Date.now() - new Date(inf.lastBlogPostAt).getTime();
+                      return diff > 365 * 24 * 60 * 60 * 1000 ? 'text-red-500 font-semibold' : '';
+                    })()}>
+                      마지막 블로그 글 {formatDate(inf.lastBlogPostAt)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -480,8 +556,6 @@ export default function InfluencersPage() {
             </div>
           )}
         </>
-      )}
-      </>
       )}
     </div>
   );

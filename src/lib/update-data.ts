@@ -36,7 +36,7 @@ export const UPDATES: UpdateItem[] = [
     ],
   },
   {
-    version: '2026-04-03b',
+    version: '2026-04-03',
     date: '2026.04.03',
     title: '4월 3일 업데이트일정',
     changes: [

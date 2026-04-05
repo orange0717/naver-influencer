@@ -85,6 +85,7 @@ export interface Influencer {
   avg_rank: number;
   best_rank: number;
   integrated_top3_count: number;
+  keyword_score?: number;
 }
 
 export interface MyKeywordRanking {

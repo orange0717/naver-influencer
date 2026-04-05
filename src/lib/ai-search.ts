@@ -1,0 +1,202 @@
+/**
+ * AI 자연어 인플루언서 검색 — 규칙 기반 파서
+ */
+
+export interface InfluencerSearchFilters {
+  category?: string;
+  keyword_text?: string;
+  min_subscriber_count?: number;
+  min_fan_count?: number;
+  min_total_keywords?: number;
+  min_top3_count?: number;
+  sort_by?: 'subscriber_count' | 'fan_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'last_crawled_at' | 'first_seen_at';
+  sort_order?: 'asc' | 'desc';
+  limit?: number;
+  recency_days?: number;
+  ranking_top_n?: number;
+}
+
+export const CATEGORIES = [
+  '뷰티', '도서', '여행', '맛집', '반려동물',
+  '어학·외국어', '엔터테인먼트·예술', '경제·비즈니스',
+  '패션·잡화', '생활건강', '인테리어·DIY', '육아',
+  '요리·레시피', '게임', 'IT·컴퓨터', '스포츠·레저',
+  '자동차', '음악', '영화·드라마', '사진·영상',
+] as const;
+
+// 카테고리 별칭 매핑 (자연어에서 자주 사용하는 표현 → 정식 카테고리)
+const CATEGORY_ALIASES: Record<string, string> = {
+  '뷰티': '뷰티', '화장품': '뷰티', '메이크업': '뷰티', '스킨케어': '뷰티',
+  '도서': '도서', '책': '도서', '독서': '도서',
+  '여행': '여행', '관광': '여행', '해외여행': '여행', '국내여행': '여행',
+  '맛집': '맛집', '음식': '맛집', '먹방': '맛집', '레스토랑': '맛집', '카페': '맛집',
+  '반려동물': '반려동물', '펫': '반려동물', '강아지': '반려동물', '고양이': '반려동물',
+  '어학': '어학·외국어', '외국어': '어학·외국어', '영어': '어학·외국어', '일본어': '어학·외국어',
+  '엔터테인먼트': '엔터테인먼트·예술', '예술': '엔터테인먼트·예술', '공연': '엔터테인먼트·예술',
+  '경제': '경제·비즈니스', '비즈니스': '경제·비즈니스', '재테크': '경제·비즈니스', '부동산': '경제·비즈니스', '주식': '경제·비즈니스', '금융': '경제·비즈니스',
+  '패션': '패션·잡화', '옷': '패션·잡화', '의류': '패션·잡화', '잡화': '패션·잡화',
+  '생활건강': '생활건강', '건강': '생활건강', '다이어트': '생활건강', '운동': '생활건강', '헬스': '생활건강',
+  '인테리어': '인테리어·DIY', 'DIY': '인테리어·DIY', '집꾸미기': '인테리어·DIY',
+  '육아': '육아', '아기': '육아', '아이': '육아', '임신': '육아', '출산': '육아',
+  '요리': '요리·레시피', '레시피': '요리·레시피', '요리법': '요리·레시피', '쿡': '요리·레시피',
+  '게임': '게임',
+  'IT': 'IT·컴퓨터', '컴퓨터': 'IT·컴퓨터', '테크': 'IT·컴퓨터', '프로그래밍': 'IT·컴퓨터',
+  '스포츠': '스포츠·레저', '레저': '스포츠·레저', '축구': '스포츠·레저', '야구': '스포츠·레저', '골프': '스포츠·레저',
+  '자동차': '자동차', '차': '자동차', '드라이브': '자동차',
+  '음악': '음악', '노래': '음악',
+  '영화': '영화·드라마', '드라마': '영화·드라마', '넷플릭스': '영화·드라마',
+  '사진': '사진·영상', '영상': '사진·영상', '유튜브': '사진·영상', '카메라': '사진·영상',
+};
+
+// 키워드 주제 (카테고리에 매핑되지만 keyword_text로도 검색할 주제들)
+const TOPIC_KEYWORDS = [
+  '부동산', '주식', '재테크', '다이어트', '스킨케어', '메이크업',
+  '캠핑', '등산', '낚시', '골프', '헬스', '필라테스', '요가',
+  '인테리어', '집꾸미기', '요리', '베이킹', '카페',
+  '강아지', '고양이', '육아', '임신', '출산',
+];
+
+/**
+ * 자연어 쿼리를 구조화된 필터로 변환하는 규칙 기반 파서
+ */
+export function parseQueryToFilters(query: string): InfluencerSearchFilters {
+  const filters: InfluencerSearchFilters = {};
+  const q = query.toLowerCase();
+
+  // ── 카테고리 감지 ──
+  for (const [alias, category] of Object.entries(CATEGORY_ALIASES)) {
+    if (q.includes(alias.toLowerCase())) {
+      filters.category = category;
+      break;
+    }
+  }
+
+  // ── 키워드 텍스트 감지 (토픽 키워드) ──
+  for (const topic of TOPIC_KEYWORDS) {
+    if (q.includes(topic.toLowerCase())) {
+      filters.keyword_text = topic;
+      break;
+    }
+  }
+
+  // ── 숫자 파싱 ──
+  // "상위 N명" / "탑 N" / "TOP N"
+  const topNMatch = q.match(/(?:상위|탑|top)\s*(\d+)\s*(?:명|위|개)?/i);
+  if (topNMatch) {
+    filters.ranking_top_n = parseInt(topNMatch[1]);
+    filters.limit = parseInt(topNMatch[1]);
+  }
+
+  // "N명" (단독 사용 시 limit)
+  if (!filters.limit) {
+    const limitMatch = q.match(/(\d+)\s*명/);
+    if (limitMatch) {
+      filters.limit = parseInt(limitMatch[1]);
+    }
+  }
+
+  // "팬 N만명 이상" / "구독자 N천명 이상" / "팬 N이상"
+  const fanMatch = q.match(/(?:팬|구독자|팔로워)\s*(\d+)\s*(만|천|k)?\s*(?:명)?\s*이상/i);
+  if (fanMatch) {
+    let num = parseInt(fanMatch[1]);
+    if (fanMatch[2] === '만') num *= 10000;
+    else if (fanMatch[2] === '천' || fanMatch[2]?.toLowerCase() === 'k') num *= 1000;
+    if (q.includes('팬')) filters.min_fan_count = num;
+    else filters.min_subscriber_count = num;
+  }
+
+  // "키워드 N개 이상"
+  const kwCountMatch = q.match(/키워드\s*(\d+)\s*개?\s*이상/);
+  if (kwCountMatch) {
+    filters.min_total_keywords = parseInt(kwCountMatch[1]);
+  }
+
+  // "TOP3 N회 이상"
+  const top3Match = q.match(/(?:top\s*3|탑3)\s*(\d+)\s*(?:회|번)?\s*이상/i);
+  if (top3Match) {
+    filters.min_top3_count = parseInt(top3Match[1]);
+  }
+
+  // ── 정렬 감지 ──
+  if (q.includes('top3 비율') || q.includes('탑3 비율') || q.includes('top3비율')) {
+    filters.sort_by = 'top3_ratio';
+    filters.sort_order = 'desc';
+  } else if (q.includes('구독자') && (q.includes('많은') || q.includes('높은') || q.includes('순'))) {
+    filters.sort_by = 'subscriber_count';
+    filters.sort_order = 'desc';
+  } else if (q.includes('팬') && (q.includes('많은') || q.includes('높은') || q.includes('순'))) {
+    filters.sort_by = 'fan_count';
+    filters.sort_order = 'desc';
+  } else if (q.includes('1위') || q.includes('1등')) {
+    filters.sort_by = 'top1_count';
+    filters.sort_order = 'desc';
+  } else if (q.includes('신규') || q.includes('새로') || q.includes('최근 선정') || q.includes('새로운')) {
+    filters.sort_by = 'first_seen_at';
+    filters.sort_order = 'desc';
+  } else if (q.includes('키워드') && (q.includes('많은') || q.includes('많이'))) {
+    filters.sort_by = 'total_keywords';
+    filters.sort_order = 'desc';
+  }
+
+  // ── 최근 활동 감지 ──
+  if (q.includes('꾸준히') || q.includes('꾸준한') || q.includes('활발') || q.includes('활동') || q.includes('포스팅')) {
+    filters.recency_days = filters.recency_days || 30;
+  }
+  if (q.includes('최근')) {
+    const recentMatch = q.match(/최근\s*(\d+)\s*(?:일|개월)/);
+    if (recentMatch) {
+      const num = parseInt(recentMatch[1]);
+      filters.recency_days = q.includes('개월') ? num * 30 : num;
+    } else {
+      filters.recency_days = filters.recency_days || 30;
+    }
+  }
+
+  // ── keyword_text가 있으면 카테고리 필터 제거 (너무 좁아짐) ──
+  // "부동산"은 경제·비즈니스로 매핑되지만, 실제로는 keyword_text로 검색하는 게 적합
+  if (filters.keyword_text && filters.category) {
+    delete filters.category;
+  }
+
+  // ── 기본값 ──
+  if (!filters.limit) filters.limit = 10;
+  if (!filters.sort_by) filters.sort_by = 'integrated_top3_count';
+  if (!filters.sort_order) filters.sort_order = 'desc';
+
+  return filters;
+}
+
+/**
+ * 규칙 기반 요약 생성
+ */
+export function buildRuleSummary(query: string, filters: InfluencerSearchFilters, totalResults: number): string {
+  if (totalResults === 0) {
+    return '조건에 맞는 인플루언서를 찾지 못했습니다. 검색 조건을 조정해보세요.';
+  }
+
+  const parts: string[] = [];
+
+  if (filters.category) parts.push(`${filters.category} 카테고리`);
+  if (filters.keyword_text) parts.push(`"${filters.keyword_text}" 관련`);
+  if (filters.min_subscriber_count) parts.push(`구독자 ${filters.min_subscriber_count.toLocaleString()}명 이상`);
+  if (filters.min_fan_count) parts.push(`팬 ${filters.min_fan_count.toLocaleString()}명 이상`);
+  if (filters.ranking_top_n) parts.push(`상위 ${filters.ranking_top_n}명`);
+  if (filters.recency_days) parts.push(`최근 ${filters.recency_days}일 내 활동`);
+
+  const sortLabels: Record<string, string> = {
+    subscriber_count: '구독자 수',
+    fan_count: '팬 수',
+    total_keywords: '참여 키워드 수',
+    integrated_top3_count: 'TOP3 횟수',
+    top3_ratio: 'TOP3 비율',
+    top1_count: '1위 횟수',
+    last_crawled_at: '최근 활동',
+    first_seen_at: '선정일',
+  };
+  const sortLabel = filters.sort_by ? sortLabels[filters.sort_by] || '' : '';
+
+  const condition = parts.length > 0 ? parts.join(', ') + ' 조건으로' : '';
+  const sortInfo = sortLabel ? `${sortLabel} 기준으로 정렬하여` : '';
+
+  return `${condition} ${sortInfo} 총 ${totalResults}명의 인플루언서를 찾았습니다. 상위 ${Math.min(filters.limit || 10, totalResults)}명을 표시합니다.`.trim().replace(/\s+/g, ' ');
+}

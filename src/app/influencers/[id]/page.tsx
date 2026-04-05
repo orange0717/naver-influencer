@@ -30,6 +30,7 @@ interface InfluencerData {
   avg_rank?: number;
   best_rank?: number;
   integrated_top3_count?: number;
+  keyword_score?: number;
   ad_fee_amount?: number | null;
   ad_fee_text?: string | null;
   ad_process?: string | null;
@@ -157,7 +158,19 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-3 mt-4 pt-4 border-t border-border">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-4 pt-4 border-t border-border">
+          <div className="text-center">
+            <p className="text-lg font-bold text-accent font-rank">
+              {influencer.keyword_score && influencer.keyword_score > 0
+                ? influencer.keyword_score >= 100_000_000
+                  ? (influencer.keyword_score / 100_000_000).toFixed(1).replace(/\.0$/, '') + '억'
+                  : influencer.keyword_score >= 10_000
+                    ? (influencer.keyword_score / 10_000).toFixed(0) + '만'
+                    : influencer.keyword_score.toLocaleString()
+                : '-'}
+            </p>
+            <p className="text-xs text-dim">키워드 점수</p>
+          </div>
           <div className="text-center">
             <p className="text-lg font-bold text-accent font-rank">{totalKeywords}</p>
             <p className="text-xs text-dim">참여 키워드</p>
