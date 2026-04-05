@@ -74,7 +74,7 @@ export default function AdSearchPage() {
   const [search, setSearch] = useState('');
   const [minRank, setMinRank] = useState(0);
   const [minFans, setMinFans] = useState(0);
-  const [activityLevel, setActivityLevel] = useState<'active' | 'recent' | 'all'>('active');
+  const [activityLevel, setActivityLevel] = useState<'active' | 'recent' | 'all'>('all');
   const [minTop3Ratio, setMinTop3Ratio] = useState(0);
   const [hasAdProfile, setHasAdProfile] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('integrated_top3_count');
@@ -85,7 +85,7 @@ export default function AdSearchPage() {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const isFiltered = category !== '전체' || search || minRank > 0 || minFans > 0 || activityLevel !== 'active' || minTop3Ratio > 0 || hasAdProfile;
+  const isFiltered = category !== '전체' || search || minRank > 0 || minFans > 0 || activityLevel !== 'all' || minTop3Ratio > 0 || hasAdProfile;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -128,7 +128,7 @@ export default function AdSearchPage() {
     setCategory('전체');
     setMinRank(0);
     setMinFans(0);
-    setActivityLevel('active');
+    setActivityLevel('all');
     setMinTop3Ratio(0);
     setHasAdProfile(false);
     setSortBy('integrated_top3_count');

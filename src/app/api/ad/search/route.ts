@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const minFans = parseInt(searchParams.get('minFans') || '0') || 0;
   const maxFans = parseInt(searchParams.get('maxFans') || '0') || 0;
   const minTop3Ratio = parseInt(searchParams.get('minTop3Ratio') || '0') || 0;
-  const activityLevel = searchParams.get('activityLevel') || 'active';
+  const activityLevel = searchParams.get('activityLevel') || 'all';
   const hasAdProfile = searchParams.get('hasAdProfile') === 'true';
   const sortBy = searchParams.get('sort') || 'integrated_top3_count';
   const order = searchParams.get('order') || 'desc';
