@@ -1,5 +1,8 @@
 -- migration-035: N인플 자체순위 점수 (ninfl_score)
--- 공식: avg_keyword_search_volume * (integrated_top3_count + 1) * ln(total_keywords + 1)
+-- 공식: SUM(검색량 / 순위 × 가중치)
+-- 가중치: 1위=2.0, 2위=1.5, 3위=1.2, 4위=1.1, 5위=1.05, 6위~=1.0
+-- 검색량 제한 없음 (낮은 검색량은 자연스럽게 기여도 적음)
+-- 30일 이내 데이터만 사용
 
 -- 1) ninfl_score 컬럼 추가
 ALTER TABLE influencers
@@ -9,8 +12,10 @@ ALTER TABLE influencers
 CREATE INDEX IF NOT EXISTS idx_influencers_ninfl_score
   ON influencers (ninfl_score DESC NULLS LAST);
 
--- 3) aggregate_influencer_stats RPC 확장: ninfl_score 계산 포함
-CREATE OR REPLACE FUNCTION aggregate_influencer_stats()
+-- 3) 기존 함수 삭제 후 재생성
+DROP FUNCTION IF EXISTS aggregate_influencer_stats();
+
+CREATE FUNCTION aggregate_influencer_stats()
 RETURNS TABLE(
   inf_id UUID,
   total_kw INT,
@@ -44,19 +49,27 @@ AS $$
       COUNT(*) FILTER (WHERE rank_position <= 3)::INT AS top3_cnt,
       COUNT(*) FILTER (WHERE rank_position = 1)::INT AS top1_cnt,
       COUNT(*) FILTER (WHERE rank_position = 2)::INT AS top2_cnt,
-      COUNT(*) FILTER (WHERE rank_position = 3)::INT AS top3only_cnt,
-      ARRAY_AGG(DISTINCT keyword_id) AS keyword_ids
+      COUNT(*) FILTER (WHERE rank_position = 3)::INT AS top3only_cnt
     FROM latest_rankings
     GROUP BY influencer_id
   ),
-  avg_volumes AS (
+  keyword_scores AS (
     SELECT
-      s.inf_id,
-      COALESCE(AVG(kc.search_volume_monthly), 0) AS avg_sv
-    FROM influencer_stats s
-    CROSS JOIN LATERAL UNNEST(s.keyword_ids) AS kid(keyword_id)
-    LEFT JOIN keyword_challenges kc ON kc.id = kid.keyword_id
-    GROUP BY s.inf_id
+      lr.influencer_id AS inf_id,
+      ROUND(SUM(
+        COALESCE(kc.search_volume_monthly, 0)::NUMERIC / lr.rank_position::NUMERIC
+        * CASE
+            WHEN lr.rank_position = 1 THEN 2.0
+            WHEN lr.rank_position = 2 THEN 1.5
+            WHEN lr.rank_position = 3 THEN 1.2
+            WHEN lr.rank_position = 4 THEN 1.1
+            WHEN lr.rank_position = 5 THEN 1.05
+            ELSE 1.0
+          END
+      ), 2) AS score
+    FROM latest_rankings lr
+    LEFT JOIN keyword_challenges kc ON kc.id = lr.keyword_id
+    GROUP BY lr.influencer_id
   )
   SELECT
     s.inf_id,
@@ -67,17 +80,12 @@ AS $$
     s.top1_cnt,
     s.top2_cnt,
     s.top3only_cnt,
-    ROUND(
-      COALESCE(v.avg_sv, 0)
-      * (s.top3_cnt + 1)
-      * LN(s.total_kw::NUMERIC + 1),
-      2
-    ) AS calc_ninfl_score
+    COALESCE(ks.score, 0) AS calc_ninfl_score
   FROM influencer_stats s
-  LEFT JOIN avg_volumes v ON v.inf_id = s.inf_id;
+  LEFT JOIN keyword_scores ks ON ks.inf_id = s.inf_id;
 $$;
 
--- 4) 초기 백필: 기존 데이터에 ninfl_score 계산
+-- 4) 백필: ninfl_score 재계산
 WITH scores AS (
   SELECT * FROM aggregate_influencer_stats()
 )

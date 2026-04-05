@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
     const apiCategories = await fetchCategories();
     const categories = ['전체', ...apiCategories.map(c => c.name)];
 
-    // 팬수 정렬: DB 레벨에서 직접 정렬 + 페이지네이션
-    if (sortBy === 'fans') {
-      const orderCol = 'subscriber_count';
+    // 팬수/N인플 점수 정렬: DB 레벨에서 직접 정렬 + 페이지네이션
+    if (sortBy === 'fans' || sortBy === 'score') {
+      const orderCol = sortBy === 'fans' ? 'subscriber_count' : 'ninfl_score';
 
       let countQuery = supabase.from('influencers').select('*', { count: 'exact', head: true });
       let dataQuery = supabase.from('influencers').select('*');

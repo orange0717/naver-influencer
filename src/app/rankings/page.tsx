@@ -207,7 +207,7 @@ export default function RankingsPage() {
                       {/* N인플 점수 */}
                       <td className="py-4 px-3 text-center">
                         <span className="font-black font-rank text-sm text-accent">
-                          {inf.ninflScore > 0 ? Math.round(inf.ninflScore).toLocaleString() : '-'}
+                          {inf.ninflScore > 0 ? Math.round(inf.ninflScore / 10000).toLocaleString() : '-'}
                         </span>
                       </td>
 
@@ -255,7 +255,7 @@ export default function RankingsPage() {
                       <div className="font-bold text-sm truncate">{inf.displayName}</div>
                       <div className="text-[11px] text-dim">{inf.category} · 키워드 {inf.totalKeywords}개</div>
                       {inf.ninflScore > 0 && (
-                        <div className="text-[11px] text-accent font-semibold mt-0.5">N인플 {Math.round(inf.ninflScore).toLocaleString()}점</div>
+                        <div className="text-[11px] text-accent font-semibold mt-0.5">N인플 {Math.round(inf.ninflScore / 10000).toLocaleString()}점</div>
                       )}
                     </div>
 
