@@ -123,3 +123,6 @@ export const deleteAccountLimiter = createRateLimiter({ limit: 3, windowMs: 60 *
 
 /** 알림 API: 1분에 30회 */
 export const notificationLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });
+
+/** 쪽지 발송: 10분에 5회 */
+export const messageLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 1000 });

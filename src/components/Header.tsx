@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
 import NotificationBell from './NotificationBell';
+import MessageBell from './MessageBell';
 
 /* ── 메인 네비게이션 (비로그인) ── */
 const NAV_ITEMS_PUBLIC = [
@@ -120,6 +121,7 @@ export default function Header({ serverUser }: HeaderProps) {
               <div className="w-20 h-8" />
             ) : user.id ? (
               <div className="flex items-center gap-2">
+                <MessageBell />
                 <NotificationBell />
                 <div className="relative" ref={profileRef}>
                   <button

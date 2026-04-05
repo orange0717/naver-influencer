@@ -17,10 +17,11 @@ interface RankedInfluencer {
   top10Count: number;
   integratedCount: number;
   totalKeywords: number;
+  ninflScore: number;
   firstSeenAt: string | null;
 }
 
-type SortType = 'rank1' | 'top3' | 'keywords' | 'fans';
+type SortType = 'rank1' | 'top3' | 'keywords' | 'fans' | 'score';
 
 export default function RankingsPage() {
   const [rankings, setRankings] = useState<RankedInfluencer[]>([]);
@@ -67,6 +68,7 @@ export default function RankingsPage() {
     { key: 'top3', label: 'TOP 3' },
     { key: 'keywords', label: '유효 키워드' },
     { key: 'fans', label: '팬 수' },
+    { key: 'score', label: 'N인플 점수' },
   ];
 
   const renderRankChange = (change: number, isNew: boolean) => {
@@ -150,6 +152,7 @@ export default function RankingsPage() {
                   <th className="text-center py-3 px-3 font-bold text-dim text-xs">메인 카테고리</th>
                   <th className="text-center py-3 px-3 font-bold text-dim text-xs">유효 키워드</th>
                   <th className="text-center py-3 px-3 font-bold text-dim text-xs">순위등급</th>
+                  <th className="text-center py-3 px-3 font-bold text-dim text-xs">N인플 점수</th>
                   <th className="text-center py-3 px-3 font-bold text-dim text-xs">최고랭킹</th>
                 </tr>
               </thead>
@@ -201,6 +204,13 @@ export default function RankingsPage() {
                         </span>
                       </td>
 
+                      {/* N인플 점수 */}
+                      <td className="py-4 px-3 text-center">
+                        <span className="font-black font-rank text-sm text-accent">
+                          {inf.ninflScore > 0 ? Math.round(inf.ninflScore).toLocaleString() : '-'}
+                        </span>
+                      </td>
+
                       {/* 최고랭킹 */}
                       <td className="py-4 px-3 text-center">
                         <div className="font-black font-rank text-base">
@@ -244,6 +254,9 @@ export default function RankingsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="font-bold text-sm truncate">{inf.displayName}</div>
                       <div className="text-[11px] text-dim">{inf.category} · 키워드 {inf.totalKeywords}개</div>
+                      {inf.ninflScore > 0 && (
+                        <div className="text-[11px] text-accent font-semibold mt-0.5">N인플 {Math.round(inf.ninflScore).toLocaleString()}점</div>
+                      )}
                     </div>
 
                     {/* 등급 */}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { formatCount } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
+import MessageModal from '@/components/MessageModal';
 
 interface AdInfluencer {
   naverId: string;
@@ -25,13 +26,15 @@ interface AdInfluencer {
   adFeeAmount: number | null;
   adFeeText: string | null;
   adProcess: string | null;
+  ninflScore: number;
   lastChallengedAt: string | null;
   activityLevel: 'active' | 'recent' | 'inactive';
 }
 
-type SortKey = 'integrated_top3_count' | 'top3_ratio' | 'subscriber_count' | 'total_keywords' | 'best_rank';
+type SortKey = 'integrated_top3_count' | 'top3_ratio' | 'subscriber_count' | 'total_keywords' | 'best_rank' | 'ninfl_score';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'ninfl_score', label: 'N인플 점수' },
   { key: 'integrated_top3_count', label: 'TOP3' },
   { key: 'top3_ratio', label: '비율' },
   { key: 'subscriber_count', label: '팬수' },
@@ -84,6 +87,7 @@ export default function AdSearchPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [msgTarget, setMsgTarget] = useState<{ naverId: string; name: string } | null>(null);
 
   const isFiltered = category !== '전체' || search || minRank > 0 || minFans > 0 || activityLevel !== 'all' || minTop3Ratio > 0 || hasAdProfile;
 
@@ -406,12 +410,20 @@ export default function AdSearchPage() {
                       ? `마지막 활동: ${new Date(inf.lastChallengedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`
                       : ''}
                   </span>
-                  <Link
-                    href={`/influencers/${inf.naverId}`}
-                    className="text-xs text-accent font-semibold hover:underline"
-                  >
-                    프로필 보기 →
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setMsgTarget({ naverId: inf.naverId, name: inf.displayName })}
+                      className="text-xs text-dim font-semibold hover:text-accent transition-colors cursor-pointer"
+                    >
+                      쪽지 보내기
+                    </button>
+                    <Link
+                      href={`/influencers/${inf.naverId}`}
+                      className="text-xs text-accent font-semibold hover:underline"
+                    >
+                      프로필 보기 →
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
@@ -440,6 +452,15 @@ export default function AdSearchPage() {
             </div>
           )}
         </>
+      )}
+      {/* 쪽지 모달 */}
+      {msgTarget && (
+        <MessageModal
+          receiverNaverId={msgTarget.naverId}
+          receiverName={msgTarget.name}
+          isOpen={true}
+          onClose={() => setMsgTarget(null)}
+        />
       )}
     </div>
   );

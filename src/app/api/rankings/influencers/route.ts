@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const category = rawCategory?.replace(/[.,()%_'"\\]/g, '') || undefined;
   const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50));
-  const validSorts = ['rank1', 'top3', 'keywords', 'fans'];
+  const validSorts = ['rank1', 'top3', 'keywords', 'fans', 'score'];
   const sortBy = validSorts.includes(searchParams.get('sort') || '') ? searchParams.get('sort')! : 'rank1';
   const offset = (page - 1) * limit;
 
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   try {
     let infQuery = supabase
       .from('influencers')
-      .select('id, naver_id, display_name, image_url, my_keyword_category, category, subscriber_count, category_my_type, first_seen_at, naver_created_at');
+      .select('id, naver_id, display_name, image_url, my_keyword_category, category, subscriber_count, category_my_type, first_seen_at, naver_created_at, ninfl_score');
 
     if (category && category !== '전체') {
       infQuery = infQuery.or(`my_keyword_category.eq.${category},category.eq.${category}`);
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 정렬 함수
-    function sortList(list: { rank1Count: number; top3Count: number; totalKeywords: number; subscriberCount: number }[]) {
+    function sortList(list: { rank1Count: number; top3Count: number; totalKeywords: number; subscriberCount: number; ninflScore: number }[]) {
       switch (sortBy) {
         case 'top3':
           list.sort((a, b) => b.top3Count - a.top3Count || b.rank1Count - a.rank1Count || b.totalKeywords - a.totalKeywords);
@@ -107,6 +107,9 @@ export async function GET(request: NextRequest) {
           break;
         case 'fans':
           list.sort((a, b) => b.subscriberCount - a.subscriberCount || b.rank1Count - a.rank1Count);
+          break;
+        case 'score':
+          list.sort((a, b) => b.ninflScore - a.ninflScore || b.rank1Count - a.rank1Count || b.top3Count - a.top3Count);
           break;
         default:
           list.sort((a, b) => b.rank1Count - a.rank1Count || b.top3Count - a.top3Count || b.totalKeywords - a.totalKeywords);
@@ -128,6 +131,7 @@ export async function GET(request: NextRequest) {
         category: inf.my_keyword_category || inf.category || '',
         categoryMyType: inf.category_my_type || '',
         subscriberCount: inf.subscriber_count || 0,
+        ninflScore: Number(inf.ninfl_score) || 0,
         firstSeenAt: inf.naver_created_at || inf.first_seen_at,
         ...stats,
       };
@@ -146,6 +150,7 @@ export async function GET(request: NextRequest) {
         return {
           id: inf.id,
           subscriberCount: inf.subscriber_count || 0,
+          ninflScore: Number(inf.ninfl_score) || 0,
           ...stats,
         };
       });

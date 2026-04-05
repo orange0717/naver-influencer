@@ -101,6 +101,7 @@ export async function GET(request: NextRequest) {
       total_keywords: 'total_keywords',
       best_rank: 'best_rank',
       ad_fee_amount: 'ad_fee_amount',
+      ninfl_score: 'ninfl_score',
     };
     const sortColumn = allowedSorts[sortBy] || 'integrated_top3_count';
     const ascending = sortColumn === 'best_rank' ? order !== 'desc' : order === 'asc';
@@ -147,6 +148,7 @@ export async function GET(request: NextRequest) {
         adFeeText: inf.ad_fee_text || null,
         adProcess: inf.ad_process || null,
         lastChallengedAt: inf.last_challenged_at || null,
+        ninflScore: Number(inf.ninfl_score) || 0,
         activityLevel: daysSinceActive <= 30 ? 'active' : daysSinceActive <= 90 ? 'recent' : 'inactive',
       };
     });
