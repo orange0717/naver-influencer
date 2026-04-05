@@ -281,8 +281,18 @@ export default function KeywordsPage() {
         </span>
       </div>
 
-      <input type="text" placeholder="키워드 검색..." value={search} onChange={e => handleSearchChange(e.target.value)}
-        className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors" />
+      <div className="flex items-center gap-2">
+        <input type="text" placeholder="키워드 검색..." value={search} onChange={e => handleSearchChange(e.target.value)}
+          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors" />
+        {(search || category !== '전체' || subFilter !== '전체' || sortKey) && (
+          <button
+            onClick={() => { setSearch(''); setCategory('전체'); setSubFilter('전체'); setSortKey(null); setSortOrder('desc'); setCursorHistory([null]); setCurrentPageIndex(0); setNextCursor(null); loadedCountRef.current = 0; }}
+            className="shrink-0 px-3 py-2.5 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
+          >
+            초기화
+          </button>
+        )}
+      </div>
 
       <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} />
 

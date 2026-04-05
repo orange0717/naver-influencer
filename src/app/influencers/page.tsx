@@ -177,13 +177,23 @@ export default function InfluencersPage() {
         </div>
       ) : (
       <>
-      <input
-        type="text"
-        placeholder="인플루언서 검색 (이름, 카테고리, 키워드, 유형)..."
-        value={search}
-        onChange={e => { setSearch(e.target.value); setPage(1); }}
-        className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
-      />
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="인플루언서 검색 (이름, 카테고리, 키워드, 유형)..."
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+        />
+        {(search || category !== '전체' || sortBy !== 'first_seen_at') && (
+          <button
+            onClick={() => { setSearch(''); setCategory('전체'); setSortBy('first_seen_at'); setOrder('desc'); setPage(1); }}
+            className="shrink-0 px-3 py-2.5 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
+          >
+            초기화
+          </button>
+        )}
+      </div>
 
       <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} size="sm" />
 

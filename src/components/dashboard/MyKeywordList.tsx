@@ -295,6 +295,14 @@ export default function MyKeywordList({
               <option value="participated">참여 키워드 ({participatedCount})</option>
               <option value="not_participated">미참여 키워드 ({notParticipatedCount})</option>
             </select>
+            {(search || selectedCategory !== '전체' || participationFilter !== 'not_participated' || compFilter !== 'all' || rankFilter !== 'all' || sortKey !== 'rank') && (
+              <button
+                onClick={() => { setSearch(''); setSelectedCategory('전체'); setParticipationFilter('not_participated'); setCompFilter('all'); setRankFilter('all'); setSortKey('rank'); setSortDir('desc'); setCurrentPage(1); }}
+                className="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
+              >
+                초기화
+              </button>
+            )}
           </div>
 
           {/* --- 경쟁도 + 정렬 --- */}
