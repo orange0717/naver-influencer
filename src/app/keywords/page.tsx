@@ -11,6 +11,38 @@ interface CategoryGroup {
   keywords: Keyword[];
 }
 
+/* ── 상위 주제 매핑 ── */
+const TOPIC_MAP: Record<string, string> = {
+  '여행': '여행',
+  '패션': '스타일',
+  '뷰티': '스타일',
+  '푸드': '푸드',
+  'IT테크': '테크',
+  '자동차': '테크',
+  '리빙': '라이프',
+  '육아': '라이프',
+  '생활건강': '라이프',
+  '게임': '게임',
+  '동물/펫': '동물/펫',
+  '운동/레저': '스포츠',
+  '프로스포츠': '스포츠',
+  '방송/연예': '엔터테인먼트',
+  '대중음악': '엔터테인먼트',
+  '영화': '엔터테인먼트',
+  '공연/전시/예술': '컬쳐',
+  '도서': '컬쳐',
+  '경제/비즈니스': '경제/비즈니스',
+  '어학/교육': '어학/교육',
+};
+
+const TOPIC_ORDER = ['여행', '스타일', '푸드', '테크', '라이프', '게임', '동물/펫', '스포츠', '엔터테인먼트', '컬쳐', '경제/비즈니스', '어학/교육'];
+
+interface TopicGroup {
+  topic: string;
+  categories: CategoryGroup[];
+  total: number;
+}
+
 interface RankingInfo {
   influencer_name: string;
   influencer_url: string;
@@ -237,6 +269,24 @@ export default function KeywordsPage() {
   const hasNext = category !== '전체' ? !!nextCursor : (startNum + keywords.length) < total;
   const isGroupedView = category === '전체' && !search.trim() && grouped.length > 0;
 
+  // 주제별로 카테고리 묶기
+  const topicGrouped = useMemo<TopicGroup[]>(() => {
+    if (!isGroupedView) return [];
+    const topicMap = new Map<string, CategoryGroup[]>();
+    for (const group of grouped) {
+      const topic = TOPIC_MAP[group.category] || group.category;
+      if (!topicMap.has(topic)) topicMap.set(topic, []);
+      topicMap.get(topic)!.push(group);
+    }
+    return TOPIC_ORDER
+      .filter(t => topicMap.has(t))
+      .map(topic => ({
+        topic,
+        categories: topicMap.get(topic)!,
+        total: topicMap.get(topic)!.reduce((sum, g) => sum + g.total, 0),
+      }));
+  }, [grouped, isGroupedView]);
+
   // 세부분류 목록 + 필터링
   const subCategories = useMemo(() => {
     // 카테고리 정의에서 전체 세부분류 가져오기 (정렬/비정렬 상관없이 일관된 목록)
@@ -349,74 +399,84 @@ export default function KeywordsPage() {
           </div>
         </div>
       ) : isGroupedView ? (
-        /* ─── 전체: 주제별 그룹핑 뷰 (2열) ─── */
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {grouped.map((group) => (
-            <div key={group.category} className="bg-surface rounded-xl border border-border overflow-hidden">
-              {/* 카테고리 헤더 */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg/50">
-                <button
-                  onClick={() => handleCategoryChange(group.category)}
-                  className="flex items-center gap-2 hover:text-accent transition-colors cursor-pointer"
-                >
-                  <span className="font-bold text-sm">{group.category}</span>
-                  <span className="text-xs text-accent">전체보기 →</span>
-                </button>
-                <span className="text-xs text-dim font-rank">{group.total.toLocaleString()}개</span>
+        /* ─── 전체: 주제별 그룹핑 뷰 ─── */
+        <div className="space-y-8">
+          {topicGrouped.map((topic) => (
+            <div key={topic.topic}>
+              {/* 주제 헤더 */}
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-lg font-extrabold">{topic.topic}</h2>
+                <span className="text-xs text-dim font-rank">{topic.total.toLocaleString()}개</span>
               </div>
 
-              {/* Desktop: 테이블 */}
-              <table className="w-full hidden md:table">
-                <tbody>
-                  {group.keywords.map((kw, i) => {
-                    const sub = getSubcategory(kw.category, kw.keyword);
-                    return (
-                    <tr key={kw.id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
-                      <td className="py-3 px-4 font-bold text-dim font-rank text-sm w-8">{i + 1}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors shrink-0">
-                            {kw.keyword}
-                          </Link>
-                          {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
-                            <span className="text-xs text-dim truncate">
-                              {top3Map[kw.id].map((t, idx) => (
-                                <span key={t.naver_id}>
-                                  <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
-                                  <span className="ml-0.5">{t.name}</span>
-                                  {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">|</span>}
-                                </span>
-                              ))}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-sm text-dim">{kw.category}</td>
-                      {sub && <td className="py-3 px-2 text-sm text-accent font-semibold">{sub}</td>}
-                      <td className="py-3 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
-                      <td className="py-3 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {/* 카테고리별 카드 (2열) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {topic.categories.map((group) => (
+                  <div key={group.category} className="bg-surface rounded-xl border border-border overflow-hidden">
+                    {/* 카테고리 헤더 */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg/50">
+                      <button
+                        onClick={() => handleCategoryChange(group.category)}
+                        className="flex items-center gap-2 hover:text-accent transition-colors cursor-pointer"
+                      >
+                        <span className="font-bold text-sm">{group.category}</span>
+                        <span className="text-xs text-accent">전체보기 →</span>
+                      </button>
+                      <span className="text-xs text-dim font-rank">{group.total.toLocaleString()}개</span>
+                    </div>
 
-              {/* Mobile: 카드 */}
-              <div className="md:hidden divide-y divide-border/30">
-                {group.keywords.map((kw, i) => {
-                  const sub = getSubcategory(kw.category, kw.keyword);
-                  return (
-                  <Link key={kw.id} href={`/keywords/${kw.id}`}
-                    className="block px-4 py-3 hover:bg-surface-hover transition">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
-                        <span className="font-medium text-sm">{kw.keyword}</span>
-                        {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
-                        {compBadge(kw.competition_level)}
+                    {/* Desktop: 테이블 */}
+                    <table className="w-full hidden md:table">
+                      <tbody>
+                        {group.keywords.map((kw, i) => {
+                          const sub = getSubcategory(kw.category, kw.keyword);
+                          return (
+                          <tr key={kw.id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
+                            <td className="py-3 px-4 font-bold text-dim font-rank text-sm w-8">{i + 1}</td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors shrink-0">
+                                  {kw.keyword}
+                                </Link>
+                                {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
+                                  <span className="text-xs text-dim truncate">
+                                    {top3Map[kw.id].map((t, idx) => (
+                                      <span key={t.naver_id}>
+                                        <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
+                                        <span className="ml-0.5">{t.name}</span>
+                                        {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">|</span>}
+                                      </span>
+                                    ))}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-sm text-dim">{kw.category}</td>
+                            {sub && <td className="py-3 px-2 text-sm text-accent font-semibold">{sub}</td>}
+                            <td className="py-3 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
+                            <td className="py-3 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
+                          </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    {/* Mobile: 카드 */}
+                    <div className="md:hidden divide-y divide-border/30">
+                      {group.keywords.map((kw, i) => {
+                        const sub = getSubcategory(kw.category, kw.keyword);
+                        return (
+                        <Link key={kw.id} href={`/keywords/${kw.id}`}
+                          className="block px-4 py-3 hover:bg-surface-hover transition">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
+                              <span className="font-medium text-sm">{kw.keyword}</span>
+                              {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
+                              {compBadge(kw.competition_level)}
                       </div>
                     </div>
                     {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
@@ -433,6 +493,9 @@ export default function KeywordsPage() {
                   </Link>
                   );
                 })}
+              </div>
+            </div>
+                ))}
               </div>
             </div>
           ))}
