@@ -439,40 +439,37 @@ export default function LandingPage() {
       <SectionDivider />
 
       {/* ═══════════ 하단 CTA (bg) ═══════════ */}
-      <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
-        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
-        <p className="text-sm text-dim mb-8">
-          무료 가입으로 키워드 분석을 시작하세요.<br />
-          더 스마트한 키워드 전략이 기다리고 있습니다.
+      <section className="bg-accent/[0.06] px-4 py-20 md:py-28 text-center">
+        <h2 className="font-title text-2xl md:text-4xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
+        <p className="text-sm text-dim mb-10">
+          키워드챌린지는 시작일 뿐, 인플루언서 성장을 돕는 곳 N인플.
         </p>
-        <Link href="/auth/signup"
-          className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm">
-          무료 회원가입 →
-        </Link>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto mt-12">
-          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+        <button
+          onClick={() => setDemoOpen(true)}
+          className="inline-block px-12 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm mb-4"
+        >
+          7일 데모체험 →
+        </button>
+
+        <div className="flex items-center justify-center gap-4 md:gap-6 max-w-md mx-auto mt-10">
+          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">오늘 방문</p>
-            <p className="text-lg font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
+            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
           </div>
-          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">누적 방문</p>
-            <p className="text-lg font-extrabold text-text font-rank">{siteStats.totalVisits.toLocaleString()}</p>
+            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.totalVisits.toLocaleString()}</p>
           </div>
-          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">신규 가입</p>
-            <p className="text-lg font-extrabold text-up font-rank">{siteStats.todaySignups.toLocaleString()}</p>
+            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.todaySignups.toLocaleString()}</p>
           </div>
-          <div className="bg-surface rounded-xl border border-border p-3 text-center">
+          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">누적 가입</p>
-            <p className="text-lg font-extrabold text-text font-rank">{siteStats.totalSignups.toLocaleString()}</p>
+            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.totalSignups.toLocaleString()}</p>
           </div>
         </div>
-
-        <p className="text-xs text-dim mt-6">
-          이미 계정이 있으신가요?{' '}
-          <Link href="/auth/login" className="text-accent font-semibold hover:underline">로그인</Link>
-        </p>
       </section>
     </div>
   );
