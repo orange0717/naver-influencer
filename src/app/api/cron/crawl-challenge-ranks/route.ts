@@ -8,7 +8,7 @@ const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/parti
 const PAGE_LIMIT = 50;
 const BATCH_SIZE = 15; // Vercel 60초 제한 내 안전한 배치 사이즈
 const TODAY = () => new Date().toISOString().slice(0, 10);
-const MAX_RUNTIME_MS = 55_000; // 안전 마진 5초
+const MAX_RUNTIME_MS = 45_000; // 안전 마진 15초
 
 /** keyword를 정규화 (keyword_clean 생성용) */
 function cleanKeyword(keyword: string): string {
@@ -45,7 +45,8 @@ async function fetchOwnerId(naverId: string): Promise<string | null> {
     const jsonStart = html.indexOf('{', idx);
     let depth = 0;
     let jsonEnd = -1;
-    for (let i = jsonStart; i < html.length; i++) {
+    const MAX_JSON_SIZE = 100_000;
+    for (let i = jsonStart; i < Math.min(jsonStart + MAX_JSON_SIZE, html.length); i++) {
       if (html[i] === '{') depth++;
       if (html[i] === '}') depth--;
       if (depth === 0) {
@@ -88,6 +89,11 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords
       }
 
       results.push(...items);
+
+      if (results.length >= 500) {
+        console.warn('[crawl-challenge-ranks] Reached max items limit (500)');
+        break;
+      }
 
       cursor = json?.paging?.nextCursor;
       if (!cursor || items.length < PAGE_LIMIT) break;
@@ -133,12 +139,16 @@ async function ensureKeywordsExist(
       // 에러 시 개별 삽입
       for (const row of rows) {
         try {
-          const { data: single } = await supabase
+          const { data: single, error: singleError } = await supabase
             .from('keyword_challenges')
             .upsert(row, { onConflict: 'keyword_clean', ignoreDuplicates: true })
             .select('id, naver_keyword_id')
             .single();
-          if (single?.naver_keyword_id) keywordMap.set(single.naver_keyword_id, single.id);
+          if (singleError || !single) {
+            console.error('[crawl-challenge-ranks] individual upsert failed:', singleError?.message);
+            continue;
+          }
+          if (single.naver_keyword_id) keywordMap.set(single.naver_keyword_id, single.id);
         } catch { /* skip */ }
       }
     } else {
@@ -151,18 +161,20 @@ async function ensureKeywordsExist(
   // keyword_clean으로 존재하지만 naver_keyword_id가 없던 키워드 재매칭
   for (const kw of missing) {
     if (!keywordMap.has(kw.id)) {
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('keyword_challenges')
         .select('id')
         .eq('keyword_clean', cleanKeyword(kw.name))
         .single();
-      if (existing) {
-        keywordMap.set(kw.id, existing.id);
-        await supabase
-          .from('keyword_challenges')
-          .update({ naver_keyword_id: kw.id })
-          .eq('id', existing.id);
+      if (existingError || !existing) {
+        if (existingError) console.error(`[crawl-challenge-ranks] keyword lookup failed for ${kw.name}:`, existingError.message);
+        continue;
       }
+      keywordMap.set(kw.id, existing.id);
+      await supabase
+        .from('keyword_challenges')
+        .update({ naver_keyword_id: kw.id })
+        .eq('id', existing.id);
     }
   }
 }

@@ -66,12 +66,14 @@ export default function InfluencersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>('first_seen_at');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [viewTab, setViewTab] = useState<ViewTab>('all');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -85,6 +87,7 @@ export default function InfluencersPage() {
       if (viewTab === 'ninfl') params.set('ninfl', 'true');
 
       const res = await fetch(`/api/influencers?${params}`);
+      if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
       const data = await res.json();
 
       setInfluencers(data.influencers || []);
@@ -94,6 +97,7 @@ export default function InfluencersPage() {
       setTotalPages(data.total_pages || 1);
     } catch (err) {
       console.error('인플루언서 로드 실패:', err);
+      setError(err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
@@ -258,6 +262,13 @@ export default function InfluencersPage() {
           </button>
         ))}
       </div>
+
+      {error && (
+        <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-center">
+          <p className="text-sm text-down font-semibold">{error}</p>
+          <button onClick={() => fetchData()} className="mt-2 text-xs text-accent hover:underline cursor-pointer">다시 시도</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

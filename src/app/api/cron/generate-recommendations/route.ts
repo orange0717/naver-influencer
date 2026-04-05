@@ -120,10 +120,7 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.score - a.score)
       .slice(0, TOP_N);
 
-    // 기존 오늘 추천 삭제
-    await supabase.from('daily_recommendations').delete().eq('recommendation_date', today);
-
-    // 새 추천 INSERT
+    // 추천 upsert (atomic: 동시 실행 시에도 데이터 유실 없음)
     const rows = scored.map((kw, i) => ({
       keyword_id: kw.id,
       recommendation_date: today,
@@ -132,7 +129,17 @@ export async function GET(request: NextRequest) {
       is_free: i < FREE_COUNT,
     }));
 
-    const { error } = await supabase.from('daily_recommendations').insert(rows);
+    const { error } = await supabase
+      .from('daily_recommendations')
+      .upsert(rows, { onConflict: 'recommendation_date,keyword_id' });
+
+    // upsert 성공 후, 오늘 날짜에서 더 이상 top N이 아닌 오래된 행 제거
+    const upsertedKeywordIds = scored.map(kw => kw.id);
+    await supabase
+      .from('daily_recommendations')
+      .delete()
+      .eq('recommendation_date', today)
+      .not('keyword_id', 'in', `(${upsertedKeywordIds.join(',')})`);
 
     if (error) {
       throw new Error(`DB insert error: ${error.message}`);

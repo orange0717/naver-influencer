@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // crawl-rankings 완료 여부 확인
-    const { data: crawlJob } = await supabase
+    const { data: crawlJob, error: crawlJobError } = await supabase
       .from('crawl_jobs')
       .select('status, completed_at')
       .eq('job_type', 'crawl-rankings')
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .single();
 
-    if (!crawlJob || crawlJob.status !== 'success') {
+    if (crawlJobError || !crawlJob || crawlJob.status !== 'success') {
+      if (crawlJobError) console.error('[send-rank-notifications] crawl job lookup failed:', crawlJobError.message);
       console.log('[send-rank-notifications] crawl-rankings 미완료, 건너뜀');
       return NextResponse.json({
         success: true,

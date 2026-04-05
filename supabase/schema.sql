@@ -141,7 +141,8 @@ CREATE TABLE IF NOT EXISTS daily_recommendations (
   rank_in_day         INT NOT NULL,
   reason              TEXT DEFAULT '',
   is_free             BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at          TIMESTAMPTZ DEFAULT NOW()
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (recommendation_date, keyword_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_dr_date ON daily_recommendations(recommendation_date DESC);

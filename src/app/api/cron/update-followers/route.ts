@@ -31,7 +31,8 @@ async function fetchProfileData(naverId: string) {
 
     const sub = jsonStr.substring(braceIdx);
     let depth = 0, end = -1;
-    for (let i = 0; i < sub.length; i++) {
+    const MAX_JSON_SIZE = 100_000;
+    for (let i = 0; i < Math.min(MAX_JSON_SIZE, sub.length); i++) {
       if (sub[i] === '{') depth++;
       if (sub[i] === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
     }

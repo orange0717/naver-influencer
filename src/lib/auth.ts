@@ -35,13 +35,16 @@ export async function getAuthUser(request: Request) {
   if (!authUser) return null;
 
   const supabase = createServiceClient();
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('users')
     .select('id, nickname, linked_influencer_id')
     .eq('auth_id', authUser.id)
     .single();
 
-  if (!profile) return null;
+  if (profileError || !profile) {
+    if (profileError) console.error('[auth] user profile lookup failed:', profileError.message);
+    return null;
+  }
 
   return {
     authId: authUser.id,

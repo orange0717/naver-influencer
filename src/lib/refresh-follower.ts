@@ -10,11 +10,16 @@ export async function refreshFollowerCount(
   lastCrawledAt: string | null,
 ): Promise<number | null> {
   // updated_at 기반 6시간 캐시 (last_crawled_at은 마지막 참여일이므로 사용하지 않음)
-  const { data: infRow } = await supabase
+  const { data: infRow, error: infRowError } = await supabase
     .from('influencers')
     .select('updated_at')
     .eq('id', influencerId)
     .single();
+
+  if (infRowError || !infRow) {
+    if (infRowError) console.error(`[refresh-follower] influencer lookup failed for ${influencerId}:`, infRowError.message);
+    return null;
+  }
 
   if (infRow?.updated_at) {
     const elapsed = Date.now() - new Date(infRow.updated_at).getTime();

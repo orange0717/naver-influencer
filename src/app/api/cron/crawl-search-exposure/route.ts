@@ -31,12 +31,16 @@ export async function GET(request: NextRequest) {
 
   // 특정 인플루언서만 크롤링
   if (targetNaverId) {
-    const { data: inf } = await supabase
+    const { data: inf, error: infError } = await supabase
       .from('influencers')
       .select('id')
       .eq('naver_id', targetNaverId)
       .single();
-    if (inf) userInfluencerIds.add(inf.id);
+    if (infError || !inf) {
+      console.error('[crawl-search-exposure] influencer lookup failed:', infError?.message);
+    } else {
+      userInfluencerIds.add(inf.id);
+    }
   } else {
     // 가입자(users.linked_influencer_id) + 데모체험자
     const { data: users } = await supabase
@@ -92,7 +96,7 @@ export async function GET(request: NextRequest) {
 
   for (const infId of userInfluencerIds) {
     // 각 인플루언서의 최신 스냅샷 날짜 조회
-    const { data: latestRow } = await supabase
+    const { data: latestRow, error: latestError } = await supabase
       .from('keyword_rankings')
       .select('snapshot_date')
       .eq('influencer_id', infId)
@@ -100,7 +104,10 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .single();
 
-    if (!latestRow) continue;
+    if (latestError || !latestRow) {
+      if (latestError) console.error(`[crawl-search-exposure] latest snapshot lookup failed for ${infId}:`, latestError.message);
+      continue;
+    }
     const snapshotDate = latestRow.snapshot_date;
     infSnapshotMap.set(infId, snapshotDate);
 
@@ -152,7 +159,7 @@ export async function GET(request: NextRequest) {
       // 1) latest_post_url에서 blog.naver.com 패턴 시도
       const snapDate = infSnapshotMap.get(infId);
       if (snapDate) {
-        const { data: postRow } = await supabase
+        const { data: postRow, error: postError } = await supabase
           .from('keyword_rankings')
           .select('latest_post_url')
           .eq('influencer_id', infId)
@@ -160,6 +167,9 @@ export async function GET(request: NextRequest) {
           .not('latest_post_url', 'is', null)
           .limit(1)
           .single();
+        if (postError) {
+          console.error(`[crawl-search-exposure] post URL lookup failed for ${infId}:`, postError.message);
+        }
         if (postRow?.latest_post_url) {
           const blogMatch = postRow.latest_post_url.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
           if (blogMatch) {
@@ -170,11 +180,14 @@ export async function GET(request: NextRequest) {
       }
 
       // 2) blog.naver.com URL이 없으면 인플루언서 페이지에서 블로그 ID 크롤링
-      const { data: inf } = await supabase
+      const { data: inf, error: infLookupError } = await supabase
         .from('influencers')
         .select('naver_id')
         .eq('id', infId)
         .single();
+      if (infLookupError) {
+        console.error(`[crawl-search-exposure] influencer naver_id lookup failed for ${infId}:`, infLookupError.message);
+      }
       if (inf?.naver_id) {
         const blogId = await extractBlogIdFromInfluencerPage(inf.naver_id);
         if (blogId) {

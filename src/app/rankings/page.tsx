@@ -32,10 +32,12 @@ export default function RankingsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [snapshotDate, setSnapshotDate] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -45,6 +47,7 @@ export default function RankingsPage() {
       if (category !== '전체') params.set('category', category);
 
       const res = await fetch(`/api/rankings/influencers?${params}`);
+      if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
       const data = await res.json();
 
       setRankings(data.rankings || []);
@@ -54,6 +57,7 @@ export default function RankingsPage() {
       setSnapshotDate(data.snapshot_date || '');
     } catch (err) {
       console.error('랭킹 로드 실패:', err);
+      setError(err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
@@ -128,6 +132,13 @@ export default function RankingsPage() {
             }`}>{cat}</button>
         ))}
       </div>
+
+      {error && (
+        <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-center">
+          <p className="text-sm text-down font-semibold">{error}</p>
+          <button onClick={() => fetchData()} className="mt-2 text-xs text-accent hover:underline cursor-pointer">다시 시도</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

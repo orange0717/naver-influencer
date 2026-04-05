@@ -105,11 +105,15 @@ export function verifyCronSecret(request: Request): boolean {
 /** crawl_jobs 생성 */
 export async function createCrawlJob(jobType: string) {
   const supabase = createServiceClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('crawl_jobs')
     .insert({ job_type: jobType, status: 'running', started_at: new Date().toISOString() })
     .select('id')
     .single();
+  if (error) {
+    console.error(`[crawler] createCrawlJob failed for ${jobType}:`, error.message);
+    return undefined;
+  }
   return data?.id;
 }
 

@@ -538,24 +538,30 @@ export async function createCommunityReactionNotification(
 
   // 가입자인 경우: influencers.naver_id -> users.linked_influencer_id
   if (authorType === 'influencer') {
-    const { data: inf } = await supabase
+    const { data: inf, error: infError } = await supabase
       .from('influencers')
       .select('id')
       .eq('naver_id', authorId)
       .single();
 
-    if (inf) {
-      const { data: user } = await supabase
+    if (infError || !inf) {
+      if (infError) console.error('[notifications] influencer lookup failed:', infError.message);
+    } else {
+      const { data: user, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('linked_influencer_id', inf.id)
         .single();
 
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('[notifications] user lookup failed:', userError.message);
+      }
+
       if (user) {
         recipientField = { user_id: user.id };
       } else {
         // 데모 세션 확인
-        const { data: demo } = await supabase
+        const { data: demo, error: demoError } = await supabase
           .from('demo_sessions')
           .select('id')
           .eq('naver_id', authorId)
@@ -564,6 +570,10 @@ export async function createCommunityReactionNotification(
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
+
+        if (demoError && demoError.code !== 'PGRST116') {
+          console.error('[notifications] demo session lookup failed:', demoError.message);
+        }
 
         if (demo) {
           recipientField = { demo_session_id: demo.id };

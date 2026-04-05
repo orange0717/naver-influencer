@@ -28,6 +28,7 @@ export default function KeywordsPage() {
   const [subFilter, setSubFilter] = useState('전체');
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 정렬 상태
   const [sortKey, setSortKey] = useState<'participant_count' | 'competition_level' | 'search_volume_monthly' | 'search_volume_pc' | 'search_volume_mobile' | null>(null);
@@ -136,6 +137,7 @@ export default function KeywordsPage() {
 
   const fetchData = useCallback(async (cursor?: string | null, searchQuery?: string) => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ limit: '50' });
 
@@ -155,6 +157,7 @@ export default function KeywordsPage() {
       if (searchQuery) params.set('search', searchQuery);
 
       const res = await fetch(`/api/keywords?${params}`);
+      if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
       const data = await res.json();
 
       setKeywords(data.keywords || []);
@@ -164,6 +167,7 @@ export default function KeywordsPage() {
       setNextCursor(data.nextCursor || null);
     } catch (err) {
       console.error('키워드 로드 실패:', err);
+      setError(err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
@@ -327,6 +331,13 @@ export default function KeywordsPage() {
                 }`}>{sub}</button>
             ))}
           </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-center">
+          <p className="text-sm text-down font-semibold">{error}</p>
+          <button onClick={() => fetchData()} className="mt-2 text-xs text-accent hover:underline cursor-pointer">다시 시도</button>
         </div>
       )}
 
