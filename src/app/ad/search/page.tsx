@@ -110,6 +110,7 @@ export default function AdSearchPage() {
       if (minRank > 0) params.set('minRank', String(minRank));
       if (minFans > 0) params.set('minFans', String(minFans));
       if (minTop3Ratio > 0) params.set('minTop3Ratio', String(minTop3Ratio));
+      if (aiFilters?.min_total_keywords) params.set('minTotalKeywords', String(aiFilters.min_total_keywords));
       if (hasAdProfile) params.set('hasAdProfile', 'true');
 
       const res = await fetch(`/api/ad/search?${params}`);

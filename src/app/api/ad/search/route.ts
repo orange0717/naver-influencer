@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   const minFans = parseInt(searchParams.get('minFans') || '0') || 0;
   const maxFans = parseInt(searchParams.get('maxFans') || '0') || 0;
   const minTop3Ratio = parseInt(searchParams.get('minTop3Ratio') || '0') || 0;
+  const minTotalKeywords = parseInt(searchParams.get('minTotalKeywords') || '0') || 0;
   const activityLevel = searchParams.get('activityLevel') || 'all';
   const hasAdProfile = searchParams.get('hasAdProfile') === 'true';
   const sortBy = searchParams.get('sort') || 'integrated_top3_count';
@@ -75,6 +76,11 @@ export async function GET(request: NextRequest) {
     // TOP3 비율 (0~100 → 0~1)
     if (minTop3Ratio > 0) {
       query = query.gte('top3_ratio', minTop3Ratio / 100).gt('total_keywords', 0);
+    }
+
+    // 최소 챌린지(키워드) 수
+    if (minTotalKeywords > 0) {
+      query = query.gte('total_keywords', minTotalKeywords);
     }
 
     // 활동 수준

@@ -287,6 +287,7 @@ export function buildRuleSummary(query: string, filters: InfluencerSearchFilters
   if (filters.keyword_text) parts.push(`"${filters.keyword_text}" 관련`);
   if (filters.min_subscriber_count) parts.push(`구독자 ${filters.min_subscriber_count.toLocaleString()}명 이상`);
   if (filters.min_fan_count) parts.push(`팬 ${filters.min_fan_count.toLocaleString()}명 이상`);
+  if (filters.min_total_keywords) parts.push(`키챌 ${filters.min_total_keywords}건 이상`);
   if (filters.ranking_top_n) parts.push(`상위 ${filters.ranking_top_n}명`);
   if (filters.recency_days) parts.push(`최근 ${filters.recency_days}일 내 활동`);
 
