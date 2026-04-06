@@ -296,3 +296,74 @@ export function buildRuleSummary(query: string, filters: InfluencerSearchFilters
 
   return `${condition} ${sortInfo} 총 ${totalResults}명의 인플루언서를 찾았습니다. 상위 ${Math.min(filters.limit || 10, totalResults)}명을 표시합니다.`.trim().replace(/\s+/g, ' ');
 }
+
+// ── 파워콘텐츠 95K 키워드 매칭 (서버사이드 전용) ──
+
+// 키워드 → 카테고리 역방향 맵 (lazy 초기화)
+let _keywordMap: Map<string, string> | null = null;
+
+function getKeywordMap(): Map<string, string> {
+  if (_keywordMap) return _keywordMap;
+  try {
+    // 서버사이드에서만 JSON 로드 (2.3MB)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const data = require('./power-content-keywords.json') as Record<string, string[]>;
+    _keywordMap = new Map();
+    for (const [cat, keywords] of Object.entries(data)) {
+      for (const kw of keywords) {
+        _keywordMap.set(kw.toLowerCase(), cat);
+      }
+    }
+    return _keywordMap;
+  } catch {
+    _keywordMap = new Map();
+    return _keywordMap;
+  }
+}
+
+/**
+ * 파워콘텐츠 95,168개 키워드에서 쿼리와 매칭되는 키워드 찾기
+ * 서버사이드 전용 (JSON 파일 로드)
+ *
+ * 방식: 쿼리에서 불용어를 제거한 후, 남은 토큰 조합(3어절→2어절→1어절)을
+ * 파워콘텐츠 키워드 맵에서 O(1) 룩업
+ */
+export function matchPowerContentKeyword(query: string): { keyword: string; category: string } | null {
+  const map = getKeywordMap();
+  if (map.size === 0) return null;
+
+  const q = query.toLowerCase().trim();
+
+  // 불용어 (검색 의도 표현, 파서에서 이미 처리하는 단어들)
+  const stopwords = new Set([
+    '인플루언서', '블로거', '유튜버', '크리에이터', '찾아줘', '찾아주세요',
+    '추천', '추천해줘', '추천해주세요', '알려줘', '알려주세요', '보여줘', '보여주세요',
+    '관련', '분야', '전문', '카테고리', '검색', '팬수', '구독자', '팔로워',
+    '이상', '이하', '많은', '높은', '순', '명', '만', '천', '상위', '탑', 'top',
+    '최근', '활발', '활동', '꾸준히', '신규', '새로운',
+  ]);
+
+  // 토큰화 (공백 분리)
+  const tokens = q.split(/\s+/).filter(t => t.length >= 2 && !stopwords.has(t));
+
+  // 긴 조합부터 매칭 시도 (3어절 → 2어절 → 1어절)
+  for (let len = Math.min(tokens.length, 3); len >= 1; len--) {
+    for (let i = 0; i <= tokens.length - len; i++) {
+      const phrase = tokens.slice(i, i + len).join('');
+      const cat = map.get(phrase);
+      if (cat) {
+        // 원본 키워드 (대소문자 보존을 위해 맵에서 다시 찾기)
+        return { keyword: phrase, category: cat };
+      }
+    }
+  }
+
+  // 공백 없이 전체 쿼리에서도 시도 (e.g., "프로폴리스인플루언서" → "프로폴리스" 추출)
+  const cleanQ = tokens.join('');
+  if (cleanQ.length >= 2) {
+    const cat = map.get(cleanQ);
+    if (cat) return { keyword: cleanQ, category: cat };
+  }
+
+  return null;
+}

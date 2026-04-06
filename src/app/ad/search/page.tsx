@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { formatCount } from '@/lib/format';
-import { parseQueryToFilters, buildRuleSummary } from '@/lib/ai-search';
+import { buildRuleSummary } from '@/lib/ai-search';
 import type { InfluencerSearchFilters } from '@/lib/ai-search';
 import CategoryFilter from '@/components/CategoryFilter';
 import MessageModal from '@/components/MessageModal';
@@ -151,62 +151,56 @@ export default function AdSearchPage() {
     setAiFilters(null);
   };
 
-  // 자연어 검색: Enter 키 입력 시 파서 실행
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  // 자연어 검색: Enter 키 입력 시 서버 파서 API 호출
+  const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
     const q = search.trim();
     if (!q) return;
 
-    const filters = parseQueryToFilters(q);
+    try {
+      // 서버에서 파싱 (규칙 기반 + 파워콘텐츠 95K 키워드 매칭)
+      const res = await fetch(`/api/ad/parse-query?q=${encodeURIComponent(q)}`);
+      const { filters, matched } = await res.json() as { filters: InfluencerSearchFilters; matched: boolean };
 
-    // 파서가 의미 있는 필터를 감지했는지 확인
-    const hasMeaningfulFilters = !!(
-      filters.category ||
-      filters.keyword_text ||
-      filters.min_subscriber_count ||
-      filters.min_fan_count ||
-      filters.min_total_keywords ||
-      filters.min_top3_count ||
-      filters.ranking_top_n ||
-      filters.recency_days
-    );
+      if (!matched) return; // 일반 텍스트 검색으로 폴백
 
-    if (!hasMeaningfulFilters) return; // 일반 텍스트 검색으로 폴백
+      // 파서 결과를 UI 필터에 적용
+      if (filters.category) setCategory(filters.category);
+      if (filters.min_fan_count || filters.min_subscriber_count) {
+        setMinFans(filters.min_fan_count || filters.min_subscriber_count || 0);
+      }
+      if (filters.ranking_top_n) setMinRank(filters.ranking_top_n);
+      if (filters.recency_days) {
+        setActivityLevel(filters.recency_days <= 30 ? 'active' : filters.recency_days <= 90 ? 'recent' : 'all');
+      }
 
-    // 파서 결과를 UI 필터에 적용
-    if (filters.category) setCategory(filters.category);
-    if (filters.min_fan_count || filters.min_subscriber_count) {
-      setMinFans(filters.min_fan_count || filters.min_subscriber_count || 0);
+      // 정렬 매핑 (파서 sort_by → 페이지 SortKey)
+      const sortMap: Record<string, SortKey> = {
+        integrated_top3_count: 'integrated_top3_count',
+        top3_ratio: 'top3_ratio',
+        subscriber_count: 'subscriber_count',
+        fan_count: 'subscriber_count',
+        total_keywords: 'total_keywords',
+        top1_count: 'integrated_top3_count',
+      };
+      if (filters.sort_by && sortMap[filters.sort_by]) {
+        setSortBy(sortMap[filters.sort_by]);
+      }
+      if (filters.sort_order) setOrder(filters.sort_order);
+
+      // keyword_text는 검색어로 유지
+      if (filters.keyword_text) {
+        setSearch(filters.keyword_text);
+      } else {
+        setSearch('');
+      }
+
+      setAiFilters(filters);
+      setAiSummary(buildRuleSummary(q, filters, 0));
+      setPage(1);
+    } catch {
+      // API 실패 시 일반 텍스트 검색으로 폴백
     }
-    if (filters.ranking_top_n) setMinRank(filters.ranking_top_n);
-    if (filters.recency_days) {
-      setActivityLevel(filters.recency_days <= 30 ? 'active' : filters.recency_days <= 90 ? 'recent' : 'all');
-    }
-
-    // 정렬 매핑 (파서 sort_by → 페이지 SortKey)
-    const sortMap: Record<string, SortKey> = {
-      integrated_top3_count: 'integrated_top3_count',
-      top3_ratio: 'top3_ratio',
-      subscriber_count: 'subscriber_count',
-      fan_count: 'subscriber_count',
-      total_keywords: 'total_keywords',
-      top1_count: 'integrated_top3_count',
-    };
-    if (filters.sort_by && sortMap[filters.sort_by]) {
-      setSortBy(sortMap[filters.sort_by]);
-    }
-    if (filters.sort_order) setOrder(filters.sort_order);
-
-    // keyword_text는 검색어로 유지
-    if (filters.keyword_text) {
-      setSearch(filters.keyword_text);
-    } else {
-      setSearch('');
-    }
-
-    setAiFilters(filters);
-    setAiSummary(buildRuleSummary(q, filters, 0));
-    setPage(1);
   };
 
   const handleSort = (key: SortKey) => {
