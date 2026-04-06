@@ -10,8 +10,12 @@ export async function GET(request: NextRequest) {
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const today = kst.toISOString().slice(0, 10);
 
-    // 오늘 방문자 (site_visits 테이블)
+    // 어제 날짜
+    const yesterdayDate = new Date(kst.getTime() - 86400000).toISOString().slice(0, 10);
+
+    // 오늘/어제 방문자 (site_visits 테이블)
     let todayVisits = 0;
+    let yesterdayVisits = 0;
     let totalVisits = 0;
 
     try {
@@ -21,6 +25,13 @@ export async function GET(request: NextRequest) {
         .eq('visit_date', today)
         .single();
       todayVisits = todayRow?.visit_count || 0;
+
+      const { data: yesterdayRow } = await supabase
+        .from('site_visits')
+        .select('visit_count')
+        .eq('visit_date', yesterdayDate)
+        .single();
+      yesterdayVisits = yesterdayRow?.visit_count || 0;
 
       // 누적 방문자 (전체 합계)
       const { data: allRows } = await supabase
@@ -34,6 +45,7 @@ export async function GET(request: NextRequest) {
     // 가입자 (users 테이블만 — 크롤링 인플루언서 제외)
     let totalSignups = 0;
     let todaySignups = 0;
+    let yesterdaySignups = 0;
 
     try {
       const { count } = await supabase
@@ -46,6 +58,13 @@ export async function GET(request: NextRequest) {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', `${today}T00:00:00+09:00`);
       todaySignups = todayCount || 0;
+
+      const { count: yesterdayCount } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', `${yesterdayDate}T00:00:00+09:00`)
+        .lt('created_at', `${today}T00:00:00+09:00`);
+      yesterdaySignups = yesterdayCount || 0;
     } catch {
       // users 테이블 문제 시 0
     }
@@ -68,8 +87,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       todayVisits,
+      yesterdayVisits,
       totalVisits,
       todaySignups,
+      yesterdaySignups,
       totalSignups,
       ...(daily.length > 0 ? { daily } : {}),
     });

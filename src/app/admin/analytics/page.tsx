@@ -5,8 +5,10 @@ import Link from 'next/link';
 
 interface Stats {
   todayVisits: number;
+  yesterdayVisits: number;
   totalVisits: number;
   todaySignups: number;
+  yesterdaySignups: number;
   totalSignups: number;
   daily?: { date: string; count: number }[];
 }
@@ -55,19 +57,32 @@ export default function AdminAnalyticsPage() {
 
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: '오늘 방문', value: stats?.todayVisits || 0, accent: true },
-          { label: '총 방문', value: stats?.totalVisits || 0 },
-          { label: '오늘 가입', value: stats?.todaySignups || 0, accent: true },
-          { label: '총 가입', value: stats?.totalSignups || 0 },
-        ].map(item => (
-          <div key={item.label} className="bg-surface rounded-xl border border-border p-4 text-center">
-            <p className="text-xs text-dim mb-1">{item.label}</p>
-            <p className={`text-2xl font-extrabold font-rank ${item.accent ? 'text-accent' : 'text-text'}`}>
-              {item.value.toLocaleString()}
-            </p>
-          </div>
-        ))}
+        {(() => {
+          const periodVisits = days === 1
+            ? stats?.todayVisits || 0
+            : days === 2
+            ? stats?.yesterdayVisits || 0
+            : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0);
+          const periodSignups = days === 1
+            ? stats?.todaySignups || 0
+            : days === 2
+            ? stats?.yesterdaySignups || 0
+            : 0;
+          const periodLabel = days === 1 ? '오늘' : days === 2 ? '어제' : `${days}일`;
+          return [
+            { label: `${periodLabel} 방문`, value: periodVisits, accent: true },
+            { label: '총 방문', value: stats?.totalVisits || 0 },
+            { label: `${periodLabel} 가입`, value: periodSignups, accent: true },
+            { label: '총 가입', value: stats?.totalSignups || 0 },
+          ].map(item => (
+            <div key={item.label} className="bg-surface rounded-xl border border-border p-4 text-center">
+              <p className="text-xs text-dim mb-1">{item.label}</p>
+              <p className={`text-2xl font-extrabold font-rank ${item.accent ? 'text-accent' : 'text-text'}`}>
+                {item.value.toLocaleString()}
+              </p>
+            </div>
+          ));
+        })()}
       </div>
 
       {/* 기간 선택 */}
