@@ -53,7 +53,7 @@
       "schedule": "0 21 * * *"
     },
     {
-      "path": "/api/cron/crawl-search-exposure?skipView=1&size=100",
+      "path": "/api/cron/crawl-search-exposure?size=100",
       "schedule": "30 23 * * *"
     }
   ]
