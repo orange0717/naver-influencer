@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { formatCount } from '@/lib/format';
+import { parseQueryToFilters, buildRuleSummary } from '@/lib/ai-search';
+import type { InfluencerSearchFilters } from '@/lib/ai-search';
 import CategoryFilter from '@/components/CategoryFilter';
 import MessageModal from '@/components/MessageModal';
 
@@ -88,15 +90,17 @@ export default function AdSearchPage() {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [msgTarget, setMsgTarget] = useState<{ naverId: string; name: string } | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiFilters, setAiFilters] = useState<InfluencerSearchFilters | null>(null);
 
-  const isFiltered = category !== '전체' || search || minRank > 0 || minFans > 0 || activityLevel !== 'all' || minTop3Ratio > 0 || hasAdProfile;
+  const isFiltered = category !== '전체' || search || minRank > 0 || minFans > 0 || activityLevel !== 'all' || minTop3Ratio > 0 || hasAdProfile || !!aiFilters;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(page),
-        limit: '20',
+        limit: aiFilters?.limit ? String(aiFilters.limit) : '20',
         sort: sortBy,
         order,
         activityLevel,
@@ -115,12 +119,17 @@ export default function AdSearchPage() {
       setCategories(data.categories || ['전체']);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
+
+      // AI 검색 요약 갱신
+      if (aiFilters && aiSummary) {
+        setAiSummary(buildRuleSummary('', aiFilters, data.total || 0));
+      }
     } catch {
       console.error('광고주 검색 실패');
     } finally {
       setLoading(false);
     }
-  }, [page, category, search, minRank, minFans, activityLevel, minTop3Ratio, hasAdProfile, sortBy, order]);
+  }, [page, category, search, minRank, minFans, activityLevel, minTop3Ratio, hasAdProfile, sortBy, order, aiFilters, aiSummary]);
 
   useEffect(() => {
     const timer = setTimeout(() => fetchData(), search ? 500 : 0);
@@ -137,6 +146,66 @@ export default function AdSearchPage() {
     setHasAdProfile(false);
     setSortBy('integrated_top3_count');
     setOrder('desc');
+    setPage(1);
+    setAiSummary(null);
+    setAiFilters(null);
+  };
+
+  // 자연어 검색: Enter 키 입력 시 파서 실행
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+    const q = search.trim();
+    if (!q) return;
+
+    const filters = parseQueryToFilters(q);
+
+    // 파서가 의미 있는 필터를 감지했는지 확인
+    const hasMeaningfulFilters = !!(
+      filters.category ||
+      filters.keyword_text ||
+      filters.min_subscriber_count ||
+      filters.min_fan_count ||
+      filters.min_total_keywords ||
+      filters.min_top3_count ||
+      filters.ranking_top_n ||
+      filters.recency_days
+    );
+
+    if (!hasMeaningfulFilters) return; // 일반 텍스트 검색으로 폴백
+
+    // 파서 결과를 UI 필터에 적용
+    if (filters.category) setCategory(filters.category);
+    if (filters.min_fan_count || filters.min_subscriber_count) {
+      setMinFans(filters.min_fan_count || filters.min_subscriber_count || 0);
+    }
+    if (filters.ranking_top_n) setMinRank(filters.ranking_top_n);
+    if (filters.recency_days) {
+      setActivityLevel(filters.recency_days <= 30 ? 'active' : filters.recency_days <= 90 ? 'recent' : 'all');
+    }
+
+    // 정렬 매핑 (파서 sort_by → 페이지 SortKey)
+    const sortMap: Record<string, SortKey> = {
+      integrated_top3_count: 'integrated_top3_count',
+      top3_ratio: 'top3_ratio',
+      subscriber_count: 'subscriber_count',
+      fan_count: 'subscriber_count',
+      total_keywords: 'total_keywords',
+      top1_count: 'integrated_top3_count',
+    };
+    if (filters.sort_by && sortMap[filters.sort_by]) {
+      setSortBy(sortMap[filters.sort_by]);
+    }
+    if (filters.sort_order) setOrder(filters.sort_order);
+
+    // keyword_text는 검색어로 유지
+    if (filters.keyword_text) {
+      setSearch(filters.keyword_text);
+    } else {
+      setSearch('');
+    }
+
+    setAiFilters(filters);
+    setAiSummary(buildRuleSummary(q, filters, 0));
     setPage(1);
   };
 
@@ -191,9 +260,10 @@ export default function AdSearchPage() {
       <div className="flex items-center gap-2">
         <input
           type="text"
-          placeholder="인플루언서 검색 (이름, 카테고리, 키워드)..."
+          placeholder="자연어로 검색해보세요 (예: 뷰티 인플루언서 팬수 1만명 이상)"
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          onChange={e => { setSearch(e.target.value); setPage(1); if (!e.target.value.trim()) { setAiSummary(null); setAiFilters(null); } }}
+          onKeyDown={handleSearchKeyDown}
           className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
         />
         <button
@@ -213,6 +283,20 @@ export default function AdSearchPage() {
           </button>
         )}
       </div>
+
+      {/* AI 검색 요약 */}
+      {aiSummary && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-accent/8 border border-accent/20 rounded-lg">
+          <span className="text-[10px] font-bold text-white bg-accent px-1.5 py-0.5 rounded">AI</span>
+          <span className="text-xs text-text flex-1">{aiSummary}</span>
+          <button
+            onClick={resetFilters}
+            className="text-[10px] text-dim font-semibold hover:text-down transition-colors cursor-pointer shrink-0"
+          >
+            초기화
+          </button>
+        </div>
+      )}
 
       {/* 카테고리 */}
       <CategoryFilter categories={categories} selected={category} onChange={cat => { setCategory(cat); setPage(1); }} size="sm" />
