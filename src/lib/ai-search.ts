@@ -212,8 +212,8 @@ export function parseQueryToFilters(query: string): InfluencerSearchFilters {
     else filters.min_subscriber_count = num;
   }
 
-  // "키워드 N개 이상"
-  const kwCountMatch = q.match(/키워드\s*(\d+)\s*개?\s*이상/);
+  // "키워드 N개 이상" / "키챌 N건 이상" / "챌린지 N개 이상"
+  const kwCountMatch = q.match(/(?:키워드|키챌|챌린지)\s*(\d+)\s*(?:개|건)?\s*이상/);
   if (kwCountMatch) {
     filters.min_total_keywords = parseInt(kwCountMatch[1]);
   }
