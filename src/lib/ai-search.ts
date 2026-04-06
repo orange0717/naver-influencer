@@ -95,8 +95,8 @@ export function parseQueryToFilters(query: string): InfluencerSearchFilters {
     }
   }
 
-  // "팬 N만명 이상" / "구독자 N천명 이상" / "팬 N이상"
-  const fanMatch = q.match(/(?:팬|구독자|팔로워)\s*(\d+)\s*(만|천|k)?\s*(?:명)?\s*이상/i);
+  // "팬수 1만명 이상" / "팬 1만명 이상" / "구독자 5천명 이상" / "팔로워 1k 이상"
+  const fanMatch = q.match(/(?:팬수?|구독자수?|팔로워)\s*(\d+)\s*(만|천|k)?\s*(?:명)?\s*이상/i);
   if (fanMatch) {
     let num = parseInt(fanMatch[1]);
     if (fanMatch[2] === '만') num *= 10000;
