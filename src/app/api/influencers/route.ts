@@ -197,6 +197,26 @@ async function getInfluencersFromDB(
     }
   }
 
+  // N인플 순위 계산: 검색/필터 시 실제 순위 표기를 위해
+  // keyword_score가 자신보다 높은 인플루언서 수를 카운트
+  const ninflRankMap = new Map<string, number>();
+  if (ninflRanking && influencers && influencers.length > 0) {
+    for (const inf of influencers) {
+      const score = inf.keyword_score || 0;
+      if (score <= 0) continue;
+      let rankQuery = supabase
+        .from('influencers')
+        .select('*', { count: 'exact', head: true })
+        .gt('keyword_score', score);
+      if (category && category !== '전체') {
+        const safeCat = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&.]/g, '');
+        if (safeCat) rankQuery = rankQuery.or(`my_keyword_category.eq.${safeCat},category.eq.${safeCat}`);
+      }
+      const { count: higherCount } = await rankQuery;
+      ninflRankMap.set(inf.id, (higherCount || 0) + 1);
+    }
+  }
+
   // 응답 형식 맞추기 (top1/2/3_count는 influencers 테이블에서 직접 읽기)
   const items = (influencers || []).map(inf => ({
     name: inf.display_name,
@@ -226,6 +246,7 @@ async function getInfluencersFromDB(
     officialNaverRank: inf.official_naver_rank || null,
     officialRankCategory: inf.official_rank_category || null,
     keywordScore: inf.keyword_score || 0,
+    ninflRank: ninflRankMap.get(inf.id) || null,
   }));
 
   // 활성 인플루언서 수 (구독자 > 0)

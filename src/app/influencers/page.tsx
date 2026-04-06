@@ -29,6 +29,7 @@ interface InfluencerItem {
   officialNaverRank?: number | null;
   officialRankCategory?: string | null;
   keywordScore?: number;
+  ninflRank?: number | null;
 }
 
 type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at' | 'official_naver_rank' | 'keyword_score';
@@ -330,6 +331,8 @@ export default function InfluencersPage() {
                     <td className="py-3 px-4 font-bold font-rank text-xs">
                       {viewTab === 'official' && inf.officialNaverRank
                         ? <span className="text-accent">{inf.officialNaverRank}</span>
+                        : viewTab === 'ninfl' && inf.ninflRank
+                        ? <span className="text-accent">{inf.ninflRank}</span>
                         : <span className="text-dim">{(page - 1) * 50 + i + 1}</span>}
                     </td>
                     <td className="py-3 px-4">
@@ -484,6 +487,9 @@ export default function InfluencersPage() {
                   <div className="text-right shrink-0">
                     {viewTab === 'official' && inf.officialNaverRank && (
                       <div className="text-xs font-bold text-accent font-rank mb-0.5">{inf.officialNaverRank}위</div>
+                    )}
+                    {viewTab === 'ninfl' && inf.ninflRank && (
+                      <div className="text-xs font-bold text-accent font-rank mb-0.5">{inf.ninflRank}위</div>
                     )}
                     <div className="text-xs font-bold text-accent font-rank">{formatCount(inf.subscriberCount)}</div>
                     <div className="text-[10px] text-dim">팬수</div>
