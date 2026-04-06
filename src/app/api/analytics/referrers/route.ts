@@ -19,10 +19,13 @@ export async function GET(req: NextRequest) {
 
     const supabase = createServiceClient();
 
+    // Supabase 기본 1000행 제한 → 명시적으로 충분한 수 지정
     const { data: logs } = await supabase
       .from('visit_logs')
       .select('referrer, referrer_domain, utm_source, utm_medium, utm_campaign, device_type, page_path')
-      .gte('visited_at', since);
+      .gte('visited_at', since)
+      .order('visited_at', { ascending: false })
+      .limit(10000);
 
     if (!logs || logs.length === 0) {
       return NextResponse.json({
