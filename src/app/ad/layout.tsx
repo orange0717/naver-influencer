@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 
 const AD_NAV = [
   { href: '/ad', label: '광고주 홈', exact: true },
-  { href: '/ad/search', label: 'AI 인플루언서 검색' },
+  { href: '/ad/search', label: 'AI 자연어 검색' },
   { href: '/ad/campaign', label: '캠페인 관리' },
 ];
 
