@@ -24,15 +24,32 @@ export default function VisitTracker() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // 페이지별 방문 기록 (visit_logs용)
-    const pageKey = `visited_${pathname}`;
-    const alreadyVisitedPage = sessionStorage.getItem(pageKey);
-    sessionStorage.setItem(pageKey, '1');
+    // KST 기준 오늘 날짜
+    const now = new Date();
+    const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    // 일별 방문 카운트는 세션당 1회만 (순 방문자)
-    const dailyKey = 'visited_today';
-    const isFirstVisit = !sessionStorage.getItem(dailyKey);
-    sessionStorage.setItem(dailyKey, '1');
+    // 날짜 변경 시 이전 기록 정리
+    const lastDate = localStorage.getItem('visit_date');
+    if (lastDate && lastDate !== kstDate) {
+      // 이전 날짜 페이지 기록 정리
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('visited_')) localStorage.removeItem(key);
+      }
+      localStorage.setItem('visit_date', kstDate);
+    } else if (!lastDate) {
+      localStorage.setItem('visit_date', kstDate);
+    }
+
+    // 페이지별 방문 기록 (visit_logs용) — localStorage로 하루 1회
+    const pageKey = `visited_${pathname}`;
+    const alreadyVisitedPage = localStorage.getItem(pageKey);
+    localStorage.setItem(pageKey, '1');
+
+    // 일별 방문 카운트는 하루 1회만 (순 방문자) — 브라우저당 1회
+    const dailyKey = `visited_daily_${kstDate}`;
+    const isFirstVisit = !localStorage.getItem(dailyKey);
+    localStorage.setItem(dailyKey, '1');
 
     const referrer = document.referrer || '';
     const referrerDomain = extractDomain(referrer);

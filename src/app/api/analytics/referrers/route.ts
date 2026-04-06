@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     const { data: logs } = await supabase
       .from('visit_logs')
-      .select('referrer_domain, utm_source, utm_medium, utm_campaign, device_type, page_path')
+      .select('referrer, referrer_domain, utm_source, utm_medium, utm_campaign, device_type, page_path')
       .gte('visited_at', since);
 
     if (!logs || logs.length === 0) {
@@ -44,6 +44,18 @@ export async function GET(req: NextRequest) {
       .map(([domain, count]) => ({ domain, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
+
+    // 1-b) referrer 전체 URL별 집계 (direct 제외)
+    const refUrlMap = new Map<string, number>();
+    for (const log of logs) {
+      if (log.referrer) {
+        refUrlMap.set(log.referrer, (refUrlMap.get(log.referrer) || 0) + 1);
+      }
+    }
+    const referrer_urls = [...refUrlMap.entries()]
+      .map(([url, count]) => ({ url, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 30);
 
     // 2) UTM source별 집계
     const utmMap = new Map<string, number>();
@@ -80,6 +92,7 @@ export async function GET(req: NextRequest) {
       total: logs.length,
       days,
       referrers,
+      referrer_urls,
       utm_sources,
       devices: deviceMap,
       pages,

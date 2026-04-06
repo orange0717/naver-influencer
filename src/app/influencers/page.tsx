@@ -203,7 +203,7 @@ export default function InfluencersPage() {
               : 'text-dim hover:text-accent'
           }`}
         >
-          네이버 공식 인플루언서 순위
+          네이버 공식 인플루언서 순위 <span className="text-[10px] text-dim font-normal">(2026년 4월 5일자 기준)</span>
         </button>
         <button
           onClick={() => handleTabChange('ninfl')}
