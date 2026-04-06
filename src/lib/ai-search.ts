@@ -158,18 +158,29 @@ export function parseQueryToFilters(query: string): InfluencerSearchFilters {
   const filters: InfluencerSearchFilters = {};
   const q = query.toLowerCase();
 
-  // ── 카테고리 감지 (긴 별칭 우선 매칭) ──
+  // ── 카테고리 감지 (긴 별칭 우선, 단어 경계 매칭) ──
   const sortedAliases = Object.entries(CATEGORY_ALIASES).sort((a, b) => b[0].length - a[0].length);
   for (const [alias, category] of sortedAliases) {
-    if (q.includes(alias.toLowerCase())) {
+    const lower = alias.toLowerCase();
+    const idx = q.indexOf(lower);
+    if (idx === -1) continue;
+    // 단어 경계 체크: 앞뒤가 공백/시작/끝인지 확인 (부분 매칭 방지)
+    const before = idx === 0 ? ' ' : q[idx - 1];
+    const after = idx + lower.length >= q.length ? ' ' : q[idx + lower.length];
+    if (before === ' ' && (after === ' ' || after === undefined)) {
       filters.category = category;
       break;
     }
   }
 
-  // ── 키워드 텍스트 감지 (토픽 키워드) ──
+  // ── 키워드 텍스트 감지 (토픽 키워드, 단어 경계 매칭) ──
   for (const topic of TOPIC_KEYWORDS) {
-    if (q.includes(topic.toLowerCase())) {
+    const lower = topic.toLowerCase();
+    const idx = q.indexOf(lower);
+    if (idx === -1) continue;
+    const before = idx === 0 ? ' ' : q[idx - 1];
+    const after = idx + lower.length >= q.length ? ' ' : q[idx + lower.length];
+    if (before === ' ' && (after === ' ' || after === undefined)) {
       filters.keyword_text = topic;
       break;
     }
