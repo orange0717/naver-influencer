@@ -160,18 +160,21 @@ export async function GET(request: NextRequest) {
         for (let i = 0; i < creators.length; i += 20) {
           const batch = creators.slice(i, i + 20);
 
+          // Naver API가 JSON에서 / → \u002F 이스케이프 시 이중 인코딩 방지
+          const fix = (s: string) => s.replace(/\\u002F/g, '/');
+
           const rows = batch.map(c => ({
             naver_id: c.urlId!,
             display_name: c.nickname || '',
             profile_url: `https://in.naver.com/${c.urlId}`,
-            image_url: c.imageUrl || '',
+            image_url: fix(c.imageUrl || ''),
             introduction: c.introduction || '',
             subscriber_count: c.subscriberCount || 0,
             total_follower_count: c.totalFollowerCount || 0,
-            my_keyword_category: c.myKeywordCategory || '',
+            my_keyword_category: fix(c.myKeywordCategory || ''),
             my_keyword: c.myKeyword || '',
-            category_my_type: c.categoryMyType || '',
-            category: c.myKeywordCategory || kw.category,
+            category_my_type: fix(c.categoryMyType || ''),
+            category: fix(c.myKeywordCategory || kw.category),
             // last_crawled_at은 갱신하지 않음 — crawl-challenge-ranks에서 실제 참여일로 설정
           }));
 
