@@ -343,29 +343,6 @@ export default function LandingPage() {
                 ),
               },
               {
-                url: 'ninfl.co.kr/rankings',
-                title: '인플루언서 랭킹',
-                desc: '분야별 인플루언서 순위와 점수를 비교하고 내 위치를 확인하세요.',
-                link: '/rankings',
-                linkText: '랭킹 보기',
-                mockup: (
-                  <div className="space-y-1.5">
-                    {[
-                      { rank: 1, name: '트래블제이', score: 94, change: '+2' },
-                      { rank: 2, name: '맛집헌터', score: 91, change: '=' },
-                      { rank: 3, name: '서울먹방', score: 88, change: '-1' },
-                    ].map(r => (
-                      <div key={r.rank} className="flex items-center gap-2 text-[10px]">
-                        <span className={`w-4 text-center font-extrabold ${r.rank <= 3 ? 'text-accent' : 'text-dim'}`}>{r.rank}</span>
-                        <span className="flex-1 font-semibold text-text">{r.name}</span>
-                        <span className="text-dim">{r.score}점</span>
-                        <span className={`text-[9px] ${r.change.startsWith('+') ? 'text-up' : r.change.startsWith('-') ? 'text-down' : 'text-dim'}`}>{r.change}</span>
-                      </div>
-                    ))}
-                  </div>
-                ),
-              },
-              {
                 url: 'ninfl.co.kr/alerts',
                 title: '스마트 알림',
                 desc: '순위 하락 위험과 TOP3 진입 기회를 자동으로 감지해 알려드립니다.',
