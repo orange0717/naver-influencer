@@ -57,9 +57,14 @@ async function getInfluencersFromDB(
   const { category, search, page, limit, newOnly, showInactive, sortBy, order, officialOnly, ninflRanking } = opts;
   const offset = (page - 1) * limit;
 
-  // 카테고리 목록: 키워드 페이지와 동일한 소스 사용 (네이버 API)
-  const apiCategories = await fetchCategories();
-  const categories = ['전체', ...apiCategories.map(c => c.name)];
+  // 카테고리 목록: 네이버 인플루언서 주제 (고정 목록)
+  const INFLUENCER_CATEGORIES = [
+    '여행', '푸드', '뷰티', '리빙', '육아', '패션',
+    '경제/비즈니스', '운동/레저', '동물/펫', 'IT테크',
+    '어학/교육', '공연/전시/예술', '도서', '생활건강',
+    '게임', '자동차', '프로스포츠', '영화', '방송/연예', '대중음악',
+  ];
+  const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
   // 메인 쿼리 구성
   let query = supabase
