@@ -89,12 +89,9 @@ async function getInfluencersFromDB(
     query = query.not('official_naver_rank', 'is', null);
   }
 
-  // N인플 순위: keyword_score > 0, 카테고리 미지정 시 도서/경제만
+  // N인플 순위: keyword_score > 0
   if (ninflRanking) {
     query = query.gt('keyword_score', 0);
-    if (!category || category === '전체') {
-      query = query.or('my_keyword_category.eq.도서,my_keyword_category.eq.경제/비즈니스,my_keyword_category.eq.육아,my_keyword_category.eq.뷰티,category.eq.도서,category.eq.경제/비즈니스,category.eq.육아,category.eq.뷰티');
-    }
   }
 
   // 신규 인플루언서만

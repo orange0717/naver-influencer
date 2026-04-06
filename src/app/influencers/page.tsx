@@ -239,7 +239,7 @@ export default function InfluencersPage() {
       />
 
       <CategoryFilter
-        categories={viewTab === 'ninfl' ? ['전체', '도서', '경제/비즈니스', '육아', '뷰티'] : categories}
+        categories={categories}
         selected={category}
         onChange={handleCategoryChange}
         size="sm"
