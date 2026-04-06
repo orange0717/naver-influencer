@@ -25,7 +25,6 @@ interface InfluencerItem {
   lastCrawledAt?: string;
   isInactive?: boolean;
   isStopped?: boolean;
-  lastBlogPostAt?: string | null;
   officialNaverRank?: number | null;
   officialRankCategory?: string | null;
   keywordScore?: number;
@@ -318,11 +317,6 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_crawled_at')}>
                     마지막 참여일{sortArrow('last_crawled_at')}
                   </th>
-                  {viewTab === 'official' && (
-                    <th className="text-left py-3 px-3 font-semibold text-dim text-xs">
-                      마지막 블로그 글
-                    </th>
-                  )}
                 </tr>
               </thead>
               <tbody>
@@ -429,21 +423,6 @@ export default function InfluencersPage() {
                     <td className="py-3 px-3 text-xs text-dim">
                       {formatDate(inf.lastCrawledAt)}
                     </td>
-                    {viewTab === 'official' && (
-                      <td className="py-3 px-3 text-xs">
-                        {inf.lastBlogPostAt ? (
-                          <span className={(() => {
-                            const diff = Date.now() - new Date(inf.lastBlogPostAt).getTime();
-                            const oneYear = 365 * 24 * 60 * 60 * 1000;
-                            return diff > oneYear ? 'text-red-500 font-semibold' : 'text-dim';
-                          })()}>
-                            {formatDate(inf.lastBlogPostAt)}
-                          </span>
-                        ) : (
-                          <span className="text-dim">—</span>
-                        )}
-                      </td>
-                    )}
                   </tr>
                 ))}
               </tbody>
@@ -509,14 +488,6 @@ export default function InfluencersPage() {
                   {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
                   {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
                   {inf.lastCrawledAt && <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>}
-                  {viewTab === 'official' && inf.lastBlogPostAt && (
-                    <span className={(() => {
-                      const diff = Date.now() - new Date(inf.lastBlogPostAt).getTime();
-                      return diff > 365 * 24 * 60 * 60 * 1000 ? 'text-red-500 font-semibold' : '';
-                    })()}>
-                      마지막 블로그 글 {formatDate(inf.lastBlogPostAt)}
-                    </span>
-                  )}
                 </div>
               </div>
             ))}

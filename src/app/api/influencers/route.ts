@@ -242,7 +242,6 @@ async function getInfluencersFromDB(
     isStopped: inf.last_crawled_at
       ? (Date.now() - new Date(inf.last_crawled_at).getTime()) > 365 * 24 * 60 * 60 * 1000
       : !!(inf.official_naver_rank && !inf.last_crawled_at),
-    lastBlogPostAt: inf.last_blog_post_at || null,
     officialNaverRank: inf.official_naver_rank || null,
     officialRankCategory: inf.official_rank_category || null,
     keywordScore: inf.keyword_score || 0,
