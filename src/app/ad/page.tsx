@@ -6,11 +6,11 @@ export default function AdvertiserPage() {
 
       {/* ── 히어로 ── */}
       <section className="text-center py-12 px-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 rounded-full mb-4">
-          <span className="text-blue-500 text-sm font-bold">ORANGE CONNECT</span>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 rounded-full mb-4">
+          <span className="text-accent text-sm font-bold">ORANGE CONNECT</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-black mb-4 leading-tight">
-          검증된 <span className="text-blue-500">인플루언서</span>와<br />
+          검증된 <span className="text-accent">인플루언서</span>와<br />
           <span className="text-accent">블로거</span>를 만나보세요
         </h1>
         <p className="text-dim text-base md:text-lg max-w-xl mx-auto leading-relaxed">
@@ -23,23 +23,23 @@ export default function AdvertiserPage() {
       <section className="max-w-4xl mx-auto px-4">
         <h2 className="text-xl font-bold text-center mb-8">오렌지커넥트에서 할 수 있는 것</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="bg-surface border border-border rounded-2xl p-6 text-center hover:border-blue-400/40 transition-colors">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500">
+          <div className="bg-surface border border-border rounded-2xl p-6 text-center hover:border-accent/40 transition-colors">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-accent/10 flex items-center justify-center mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
                 <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
               </svg>
             </div>
-            <h3 className="font-bold text-base mb-2">인플루언서 검색</h3>
+            <h3 className="font-bold text-base mb-2">AI 자연어 검색</h3>
             <p className="text-sm text-dim leading-relaxed">
-              카테고리·키워드별 TOP 순위 인플루언서를 한눈에 확인하세요.
-              실제 순위 데이터 기반으로 영향력을 검증할 수 있습니다.
+              &quot;뷰티 팬수 1만명 이상&quot; 같은 자연어로 인플루언서를 검색하세요.
+              95,000개 키워드 매칭으로 원하는 분야의 크리에이터를 찾아드립니다.
             </p>
-            <Link href="/ad/search" className="inline-block mt-4 text-sm text-blue-500 font-semibold hover:underline">
-              인플루언서 검색 →
+            <Link href="/ad/search" className="inline-block mt-4 text-sm text-accent font-semibold hover:underline">
+              AI 검색 시작 →
             </Link>
           </div>
 
-          <div className="bg-surface border border-border rounded-2xl p-6 text-center hover:border-blue-400/40 transition-colors">
+          <div className="bg-surface border border-border rounded-2xl p-6 text-center hover:border-accent/40 transition-colors">
             <div className="w-12 h-12 mx-auto rounded-xl bg-accent/10 flex items-center justify-center mb-4">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -56,8 +56,8 @@ export default function AdvertiserPage() {
             </Link>
           </div>
 
-          <div className="bg-surface border border-border rounded-2xl p-6 text-center relative overflow-hidden hover:border-blue-400/40 transition-colors">
-            <div className="absolute top-3 right-3 text-[10px] text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full font-bold">COMING SOON</div>
+          <div className="bg-surface border border-border rounded-2xl p-6 text-center relative overflow-hidden hover:border-accent/40 transition-colors">
+            <div className="absolute top-3 right-3 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">COMING SOON</div>
             <div className="w-12 h-12 mx-auto rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -86,8 +86,8 @@ export default function AdvertiserPage() {
             { num: '03', title: '합리적인 비용', desc: '소상공인도 부담 없는 합리적인 가격으로 인플루언서 마케팅을 시작할 수 있습니다.' },
             { num: '04', title: '성과 추적 가능', desc: '캠페인 진행 후 키워드 순위 변동과 노출 효과를 데이터로 확인할 수 있습니다.' },
           ].map(item => (
-            <div key={item.num} className="flex gap-4 bg-surface border border-border rounded-xl p-5 hover:border-blue-400/30 transition-colors">
-              <span className="text-2xl font-black text-blue-500/30 shrink-0">{item.num}</span>
+            <div key={item.num} className="flex gap-4 bg-surface border border-border rounded-xl p-5 hover:border-accent/30 transition-colors">
+              <span className="text-2xl font-black text-accent/30 shrink-0">{item.num}</span>
               <div>
                 <h3 className="font-bold text-sm mb-1">{item.title}</h3>
                 <p className="text-sm text-dim">{item.desc}</p>
@@ -106,7 +106,7 @@ export default function AdvertiserPage() {
             광고 관련 문의는 아래로 연락해주세요.
           </p>
           <a href="mailto:orange@orangelibrary.co.kr"
-            className="inline-block px-6 py-3 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-600 transition text-sm">
+            className="inline-block px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent/90 transition text-sm">
             orange@orangelibrary.co.kr
           </a>
           <p className="text-[11px] text-dim mt-3">영업일 기준 1~2일 내 답변드립니다</p>

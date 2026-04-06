@@ -14,7 +14,7 @@ function AdHeader() {
     exact ? pathname === href : pathname.startsWith(href);
 
   return (
-    <header className="bg-blue-600 shadow-md">
+    <header className="bg-accent shadow-md">
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/ad" className="flex items-center gap-2.5">
