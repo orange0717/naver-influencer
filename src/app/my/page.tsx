@@ -295,41 +295,21 @@ export default async function MyDashboard() {
   // ─── 1-2. 전체 순위 & 카테고리 순위 계산 ───
   const myCategory = influencer.my_keyword_category || influencer.category || '';
 
-  // 최신 스냅샷 날짜
-  const { data: latestDateRow } = await supabase
-    .from('keyword_rankings')
-    .select('snapshot_date')
-    .order('snapshot_date', { ascending: false })
-    .limit(1)
-    .single();
-  const snapshotDate = latestDateRow?.snapshot_date || new Date().toISOString().slice(0, 10);
-
-  // 전체 인플루언서 순위 데이터
+  // influencers 테이블의 사전 집계 데이터 사용 (각 인플루언서의 최신 데이터 기준)
   const { data: allInfData } = await supabase
     .from('influencers')
-    .select('id, category, my_keyword_category');
+    .select('id, category, my_keyword_category, top1_count, integrated_top3_count, total_keywords')
+    .gt('total_keywords', 0);
 
-  const { data: allRankData } = await supabase
-    .from('keyword_rankings')
-    .select('influencer_id, rank_position, is_integrated_top3')
-    .eq('snapshot_date', snapshotDate);
-
-  // 통계 집계
-  const globalStats = new Map<string, { r1: number; t3: number; total: number }>();
-  for (const r of (allRankData || [])) {
-    let s = globalStats.get(r.influencer_id);
-    if (!s) { s = { r1: 0, t3: 0, total: 0 }; globalStats.set(r.influencer_id, s); }
-    s.total++;
-    if (r.rank_position === 1) s.r1++;
-    if (r.rank_position <= 3) s.t3++;
-  }
-
-  // 전체 정렬
+  // 전체 정렬 (1위 수 → TOP3 수 → 참여 키워드 수)
   const globalSorted = (allInfData || [])
-    .map(inf => {
-      const s = globalStats.get(inf.id) || { r1: 0, t3: 0, total: 0 };
-      return { id: inf.id, cat: inf.my_keyword_category || inf.category || '', ...s };
-    })
+    .map(inf => ({
+      id: inf.id,
+      cat: inf.my_keyword_category || inf.category || '',
+      r1: inf.top1_count || 0,
+      t3: inf.integrated_top3_count || 0,
+      total: inf.total_keywords || 0,
+    }))
     .sort((a, b) => b.r1 - a.r1 || b.t3 - a.t3 || b.total - a.total);
 
   const overallRank = globalSorted.findIndex(x => x.id === influencerId) + 1;
