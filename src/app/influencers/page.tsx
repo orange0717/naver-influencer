@@ -195,6 +195,8 @@ export default function InfluencersPage() {
         >
           전체
         </button>
+        {/* 네이버 공식 인플루언서 순위 탭 - 임시 숨김 */}
+        {/*
         <button
           onClick={() => handleTabChange('official')}
           className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors ${
@@ -205,6 +207,7 @@ export default function InfluencersPage() {
         >
           네이버 공식 인플루언서 순위 <span className="text-[10px] text-dim font-normal">(2026년 4월 5일자 기준)</span>
         </button>
+        */}
         <button
           onClick={() => handleTabChange('ninfl')}
           className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors ${
