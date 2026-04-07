@@ -82,11 +82,13 @@ export async function POST(request: NextRequest) {
     const sortMap: Record<string, string> = { fan_count: 'subscriber_count' };
     const sortColumn = sortMap[filters.sort_by || ''] || filters.sort_by || 'integrated_top3_count';
     const ascending = sortColumn === 'best_rank' ? filters.sort_order !== 'desc' : filters.sort_order === 'asc';
-    query = query.order(sortColumn, { ascending, nullsFirst: false }).limit(filters.limit || 10);
+    const requestedLimit = filters.limit || 10;
+    // 회원 우선 노출을 위해 3배수로 가져온 후 재정렬
+    query = query.order(sortColumn, { ascending, nullsFirst: false }).limit(requestedLimit * 3);
 
-    const { data: influencers } = await query;
+    const { data: rawInfluencers } = await query;
 
-    if (!influencers || influencers.length === 0) {
+    if (!rawInfluencers || rawInfluencers.length === 0) {
       const encoder = new TextEncoder();
       const readable = new ReadableStream({
         start(controller) {
@@ -101,7 +103,26 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3) 인플루언서 데이터를 Claude 프롬프트용으로 정리
+    // 3) 회원 우선 정렬: 회원을 최상단에 배치 후 requestedLimit만큼 자르기
+    const rawNaverIds = rawInfluencers.map(inf => inf.naver_id);
+    const rawUuids = rawInfluencers.map(inf => inf.id).filter(Boolean);
+    const [{ data: memByNaver }, { data: memByUuid }] = await Promise.all([
+      supabase.from('users').select('naver_influencer_id').in('naver_influencer_id', rawNaverIds),
+      rawUuids.length > 0
+        ? supabase.from('users').select('linked_influencer_id').in('linked_influencer_id', rawUuids)
+        : Promise.resolve({ data: [] as { linked_influencer_id: string }[] }),
+    ]);
+    const memNaverSet = new Set((memByNaver || []).map(u => u.naver_influencer_id));
+    const memUuidSet = new Set((memByUuid || []).map(u => u.linked_influencer_id));
+    const isMemberFn = (inf: { naver_id: string; id: string }) =>
+      memNaverSet.has(inf.naver_id) || memUuidSet.has(inf.id);
+
+    // 회원 먼저, 비회원 뒤 (각 그룹 내 기존 정렬 유지)
+    const members = rawInfluencers.filter(inf => isMemberFn(inf));
+    const nonMembers = rawInfluencers.filter(inf => !isMemberFn(inf));
+    const influencers = [...members, ...nonMembers].slice(0, requestedLimit);
+
+    // 4) 인플루언서 데이터를 Claude 프롬프트용으로 정리
     const influencerContext = influencers.map((inf, i) => {
       const totalKw = inf.total_keywords || 0;
       const t3 = (inf.top1_count || 0) + (inf.top2_count || 0) + (inf.top3_count || 0);
@@ -140,19 +161,7 @@ export async function POST(request: NextRequest) {
       messages: [{ role: 'user', content: `질문: ${question}\n\n검색된 인플루언서 데이터:\n${influencerContext}\n\n위 데이터를 기반으로 광고주에게 추천해주세요.` }],
     });
 
-    // 5) 가입 회원 여부 조회 (naver_influencer_id + linked_influencer_id 양쪽 체크)
-    const naverIds = influencers.map(inf => inf.naver_id);
-    const infUuids = influencers.map(inf => inf.id).filter(Boolean);
-    const [{ data: memberByNaver }, { data: memberByUuid }] = await Promise.all([
-      supabase.from('users').select('naver_influencer_id').in('naver_influencer_id', naverIds),
-      infUuids.length > 0
-        ? supabase.from('users').select('linked_influencer_id').in('linked_influencer_id', infUuids)
-        : Promise.resolve({ data: [] as { linked_influencer_id: string }[] }),
-    ]);
-    const memberNaverIds = new Set((memberByNaver || []).map(u => u.naver_influencer_id));
-    const memberUuids = new Set((memberByUuid || []).map(u => u.linked_influencer_id));
-
-    // 6) SSE 스트리밍 응답
+    // 5) SSE 스트리밍 응답
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
@@ -185,7 +194,7 @@ export async function POST(request: NextRequest) {
               lastChallengedAt: inf.last_challenged_at || null,
               ninflScore: Number(inf.ninfl_score) || 0,
               activityLevel: daysSince <= 30 ? 'active' : daysSince <= 90 ? 'recent' : 'inactive',
-              isMember: memberNaverIds.has(inf.naver_id) || memberUuids.has(inf.id),
+              isMember: isMemberFn(inf),
             };
           });
 
