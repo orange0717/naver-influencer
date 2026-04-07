@@ -170,44 +170,59 @@ export default function AdSearchPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-56px-48px)]">
       {/* 헤더 */}
-      <div className="shrink-0 pb-4">
+      <div className="shrink-0 pb-3">
         <div className="flex items-center gap-2 mb-1">
           <Link href="/ad" className="text-xs text-dim hover:text-accent transition">광고주</Link>
           <span className="text-xs text-dim">/</span>
           <span className="text-xs text-accent font-semibold">AI 자연어 검색</span>
         </div>
         <h1 className="text-xl font-extrabold">AI 인플루언서 추천</h1>
-        <p className="text-sm text-dim mt-1">자연어로 질문하면 데이터 기반으로 인플루언서를 추천합니다</p>
+      </div>
+
+      {/* 입력 영역 (상단) */}
+      <div className="shrink-0 pb-4">
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="찾고 싶은 인플루언서를 자유롭게 질문하세요..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+            className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
+          />
+          <button
+            onClick={() => handleSubmit()}
+            disabled={!input.trim() || loading}
+            className="shrink-0 px-4 py-3 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent/90 transition disabled:opacity-40 cursor-pointer disabled:cursor-default"
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+              </svg>
+            )}
+          </button>
+        </div>
+        {messages.length === 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {EXAMPLE_QUERIES.map(q => (
+              <button
+                key={q}
+                onClick={() => { setInput(q); handleSubmit(q); }}
+                className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs text-dim hover:border-accent/40 hover:text-accent transition-colors cursor-pointer"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 채팅 영역 */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-4">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
-                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-              </svg>
-            </div>
-            <h2 className="font-bold text-lg mb-2">무엇이든 물어보세요</h2>
-            <p className="text-sm text-dim text-center mb-6 max-w-sm leading-relaxed">
-              찾고 싶은 인플루언서를 자연어로 설명해주세요.<br />
-              N인플 데이터를 분석해서 추천해드립니다.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 max-w-lg">
-              {EXAMPLE_QUERIES.map(q => (
-                <button
-                  key={q}
-                  onClick={() => { setInput(q); handleSubmit(q); }}
-                  className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs text-dim hover:border-accent/40 hover:text-accent transition-colors cursor-pointer"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {messages.map((msg, i) => (
           <div key={i}>
             {msg.role === 'user' ? (
@@ -321,34 +336,9 @@ export default function AdSearchPage() {
         <div ref={chatEndRef} />
       </div>
 
-      {/* 입력 영역 */}
-      <div className="shrink-0 pt-3 border-t border-border">
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="인플루언서에 대해 자유롭게 질문하세요..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={loading}
-            className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
-          />
-          <button
-            onClick={() => handleSubmit()}
-            disabled={!input.trim() || loading}
-            className="shrink-0 px-4 py-3 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent/90 transition disabled:opacity-40 cursor-pointer disabled:cursor-default"
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/>
-              </svg>
-            )}
-          </button>
-        </div>
-        <p className="text-[10px] text-dim mt-1.5 text-center">
+      {/* 하단 안내 */}
+      <div className="shrink-0 pt-2">
+        <p className="text-[10px] text-dim text-center">
           N인플 데이터 기반 AI 추천 -- 결과는 참고용이며, 실제 광고 효과는 다를 수 있습니다
         </p>
       </div>
