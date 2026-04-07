@@ -28,9 +28,10 @@ export const CATEGORIES = [
 const CATEGORY_ALIASES: Record<string, string> = {
   // 뷰티 (파워콘텐츠: 미용)
   '뷰티': '뷰티', '화장품': '뷰티', '메이크업': '뷰티', '스킨케어': '뷰티', '미용': '뷰티',
-  '미용케어': '뷰티',
+  '미용케어': '뷰티', '뷰티리뷰': '뷰티', '화장품리뷰': '뷰티',
   // 도서
-  '도서': '도서', '책': '도서', '독서': '도서',
+  '도서': '도서', '책': '도서', '독서': '도서', '도서리뷰': '도서', '북리뷰': '도서', '서평': '도서',
+  '책리뷰': '도서', '독후감': '도서', '책추천': '도서', '신간': '도서',
   // 여행 (파워콘텐츠: 여행)
   '여행': '여행', '관광': '여행', '해외여행': '여행', '국내여행': '여행', '호텔': '여행', '호캉스': '여행',
   '항공': '여행', '렌터카': '여행', '여행사': '여행', '리조트': '여행', '펜션': '여행',
@@ -158,29 +159,27 @@ export function parseQueryToFilters(query: string): InfluencerSearchFilters {
   const filters: InfluencerSearchFilters = {};
   const q = query.toLowerCase();
 
-  // ── 카테고리 감지 (긴 별칭 우선, 단어 경계 매칭) ──
+  // ── 카테고리 감지 (긴 별칭 우선, 앞쪽 경계만 체크) ──
+  // 한국어 조사(를, 을, 에, 의 등)가 뒤에 붙으므로 뒤쪽 경계는 체크하지 않음
   const sortedAliases = Object.entries(CATEGORY_ALIASES).sort((a, b) => b[0].length - a[0].length);
   for (const [alias, category] of sortedAliases) {
     const lower = alias.toLowerCase();
     const idx = q.indexOf(lower);
     if (idx === -1) continue;
-    // 단어 경계 체크: 앞뒤가 공백/시작/끝인지 확인 (부분 매칭 방지)
     const before = idx === 0 ? ' ' : q[idx - 1];
-    const after = idx + lower.length >= q.length ? ' ' : q[idx + lower.length];
-    if (before === ' ' && (after === ' ' || after === undefined)) {
+    if (before === ' ') {
       filters.category = category;
       break;
     }
   }
 
-  // ── 키워드 텍스트 감지 (토픽 키워드, 단어 경계 매칭) ──
+  // ── 키워드 텍스트 감지 (토픽 키워드, 앞쪽 경계만 체크) ──
   for (const topic of TOPIC_KEYWORDS) {
     const lower = topic.toLowerCase();
     const idx = q.indexOf(lower);
     if (idx === -1) continue;
     const before = idx === 0 ? ' ' : q[idx - 1];
-    const after = idx + lower.length >= q.length ? ' ' : q[idx + lower.length];
-    if (before === ' ' && (after === ' ' || after === undefined)) {
+    if (before === ' ') {
       filters.keyword_text = topic;
       break;
     }

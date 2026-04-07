@@ -187,7 +187,11 @@ export async function POST(request: NextRequest) {
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
         } catch (err) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', data: 'AI 응답 생성 중 오류가 발생했습니다.' })}\n\n`));
+          console.error('AI stream error:', err);
+          const errMsg = err instanceof Error && err.message?.includes('timeout')
+            ? 'AI 응답 시간이 초과되었습니다. 다시 시도해주세요.'
+            : 'AI 응답 생성 중 오류가 발생했습니다. 다시 시도해주세요.';
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', data: errMsg })}\n\n`));
         } finally {
           controller.close();
         }
