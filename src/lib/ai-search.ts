@@ -186,10 +186,9 @@ export function parseQueryToFilters(query: string): InfluencerSearchFilters {
   }
 
   // ── 숫자 파싱 ──
-  // "상위 N명" / "탑 N" / "TOP N" → TOP3 비율 기준 정렬
+  // "상위 N명" / "탑 N" / "TOP N" → TOP3 비율 기준으로 상위 N명 표시
   const topNMatch = q.match(/(?:상위|탑|top)\s*(\d+)\s*(?:명|위|개)?/i);
   if (topNMatch) {
-    filters.ranking_top_n = parseInt(topNMatch[1]);
     filters.limit = parseInt(topNMatch[1]);
     if (!filters.sort_by) {
       filters.sort_by = 'top3_ratio';
