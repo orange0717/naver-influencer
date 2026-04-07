@@ -163,7 +163,7 @@ export default function AdSearchPage() {
   };
 
   const activityBadge = (level: string, isMember?: boolean) => {
-    if (isMember) return <span className="text-[10px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded-full">회원</span>;
+    if (isMember) return <span className="text-[10px] font-bold text-up bg-up/12 px-1.5 py-0.5 rounded-full">활동중</span>;
     if (level === 'active') return <span className="text-[10px] font-bold text-up bg-up/12 px-1.5 py-0.5 rounded-full">활동중</span>;
     if (level === 'recent') return <span className="text-[10px] font-bold text-gold bg-gold/12 px-1.5 py-0.5 rounded-full">최근활동</span>;
     return null;
