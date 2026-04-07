@@ -162,9 +162,10 @@ export default function AdSearchPage() {
     }
   };
 
-  const activityBadge = (level: string) => {
+  const activityBadge = (level: string, isMember?: boolean) => {
     if (level === 'active') return <span className="text-[10px] font-bold text-up bg-up/12 px-1.5 py-0.5 rounded-full">활동중</span>;
     if (level === 'recent') return <span className="text-[10px] font-bold text-gold bg-gold/12 px-1.5 py-0.5 rounded-full">최근활동</span>;
+    if (isMember) return <span className="text-[10px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded-full">회원</span>;
     return <span className="text-[10px] font-bold text-dim bg-bg px-1.5 py-0.5 rounded-full">비활동</span>;
   };
 
@@ -281,7 +282,7 @@ export default function AdSearchPage() {
                                 {inf.isMember && (
                                   <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
                                 )}
-                                {activityBadge(inf.activityLevel)}
+                                {activityBadge(inf.activityLevel, inf.isMember)}
                               </div>
                               <p className="text-[11px] text-dim truncate">
                                 {inf.category}{inf.categoryType ? ` · ${inf.categoryType}` : ''}
