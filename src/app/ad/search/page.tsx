@@ -210,12 +210,9 @@ export default function AdSearchPage() {
             <button
               onClick={() => { setMessages([]); setInput(''); inputRef.current?.focus(); }}
               disabled={loading}
-              className="shrink-0 px-3 py-3 border border-border rounded-xl text-sm text-dim hover:text-accent hover:border-accent/40 transition disabled:opacity-40 cursor-pointer disabled:cursor-default"
-              title="초기화"
+              className="shrink-0 px-4 py-3 border border-border rounded-xl text-sm font-semibold text-dim hover:text-accent hover:border-accent/40 transition disabled:opacity-40 cursor-pointer disabled:cursor-default"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-              </svg>
+              초기화
             </button>
           )}
         </div>
