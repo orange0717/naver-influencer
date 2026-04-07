@@ -210,10 +210,12 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
         } catch (err) {
           console.error('AI stream error:', err);
-          const errMsg = err instanceof Error && err.message?.includes('timeout')
-            ? 'AI 응답 시간이 초과되었습니다. 다시 시도해주세요.'
-            : 'AI 응답 생성 중 오류가 발생했습니다. 다시 시도해주세요.';
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', data: errMsg })}\n\n`));
+          // AI 텍스트 실패 시 검색 조건 기반 요약으로 대체
+          const cat = filters.category || '';
+          const count = influencers.length;
+          const sortLabel = filters.sort_by === 'top3_ratio' ? 'TOP3 비율순' : 'TOP3 횟수순';
+          const fallback = `${cat ? cat + ' 분야 ' : ''}상위 ${count}명을 ${sortLabel}으로 추천해드립니다.`;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text', data: fallback })}\n\n`));
         } finally {
           controller.close();
         }
