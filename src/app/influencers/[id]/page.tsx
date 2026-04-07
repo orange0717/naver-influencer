@@ -36,6 +36,7 @@ interface InfluencerData {
   ad_process?: string | null;
   keywords: InfluencerKeyword[];
   recent_rankings: unknown[];
+  is_member?: boolean;
 }
 
 export default function InfluencerProfile({ params }: { params: Promise<{ id: string }> }) {
@@ -137,7 +138,12 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
             </div>
           )}
           <div className="flex-1">
-            <h1 className="text-xl font-bold">{influencer.display_name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold">{influencer.display_name}</h1>
+              {influencer.is_member && (
+                <span className="text-[10px] font-bold text-accent bg-accent/12 px-2 py-0.5 rounded" title="N인플 인증 회원">N인플 회원</span>
+              )}
+            </div>
             <p className="text-sm text-dim">{influencer.sub_category || influencer.category}</p>
             <div className="flex flex-wrap gap-3 mt-2 text-xs text-dim">
               {influencer.total_follower_count != null && influencer.total_follower_count > 0 && (

@@ -25,6 +25,7 @@ interface AdInfluencer {
   lastChallengedAt: string | null;
   ninflScore: number;
   activityLevel: 'active' | 'recent' | 'inactive';
+  isMember?: boolean;
 }
 
 interface ChatMessage {
@@ -205,6 +206,18 @@ export default function AdSearchPage() {
               </svg>
             )}
           </button>
+          {messages.length > 0 && (
+            <button
+              onClick={() => { setMessages([]); setInput(''); inputRef.current?.focus(); }}
+              disabled={loading}
+              className="shrink-0 px-3 py-3 border border-border rounded-xl text-sm text-dim hover:text-accent hover:border-accent/40 transition disabled:opacity-40 cursor-pointer disabled:cursor-default"
+              title="초기화"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+              </svg>
+            </button>
+          )}
         </div>
         {messages.length === 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
@@ -268,6 +281,9 @@ export default function AdSearchPage() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-bold text-sm text-text truncate">{inf.displayName}</span>
+                                {inf.isMember && (
+                                  <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
+                                )}
                                 {activityBadge(inf.activityLevel)}
                               </div>
                               <p className="text-[11px] text-dim truncate">

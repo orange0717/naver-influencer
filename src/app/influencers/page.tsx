@@ -29,6 +29,7 @@ interface InfluencerItem {
   officialRankCategory?: string | null;
   keywordScore?: number;
   ninflRank?: number | null;
+  isMember?: boolean;
 }
 
 type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at' | 'official_naver_rank' | 'keyword_score';
@@ -347,6 +348,9 @@ export default function InfluencersPage() {
                               className="font-bold hover:text-accent transition-colors truncate max-w-[180px]">
                               {inf.name}
                             </a>
+                            {inf.isMember && (
+                              <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
+                            )}
                             {isNew(inf.firstSeenAt) && (
                               <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                             )}
@@ -454,6 +458,9 @@ export default function InfluencersPage() {
                         className="font-bold text-sm hover:text-accent transition-colors truncate">
                         {inf.name}
                       </a>
+                      {inf.isMember && (
+                        <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
+                      )}
                       {isNew(inf.firstSeenAt) && (
                         <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                       )}

@@ -254,6 +254,14 @@ export async function GET(
   // 팔로워수 갱신 대기
   const freshFollowerCount = await followerRefresh;
 
+  // 가입 회원 여부 확인
+  const { data: memberCheck } = await supabase
+    .from('users')
+    .select('id')
+    .eq('linked_influencer_id', influencer.id)
+    .limit(1);
+  const isMember = (memberCheck?.length || 0) > 0;
+
   return NextResponse.json({
     influencer: {
       ...influencer,
@@ -261,6 +269,7 @@ export async function GET(
       keywords: keywordsWithRank,
       recent_rankings: rankings || [],
       rank_history: rankHistory,
+      is_member: isMember,
     },
   });
 }

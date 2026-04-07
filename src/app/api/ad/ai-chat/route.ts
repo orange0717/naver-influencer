@@ -140,7 +140,15 @@ export async function POST(request: NextRequest) {
       messages: [{ role: 'user', content: `질문: ${question}\n\n검색된 인플루언서 데이터:\n${influencerContext}\n\n위 데이터를 기반으로 광고주에게 추천해주세요.` }],
     });
 
-    // 5) SSE 스트리밍 응답
+    // 5) 가입 회원 여부 조회
+    const infIds = influencers.map(inf => inf.naver_id);
+    const { data: memberUsers } = await supabase
+      .from('users')
+      .select('naver_influencer_id')
+      .in('naver_influencer_id', infIds);
+    const memberNaverIds = new Set((memberUsers || []).map(u => u.naver_influencer_id));
+
+    // 6) SSE 스트리밍 응답
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
@@ -173,6 +181,7 @@ export async function POST(request: NextRequest) {
               lastChallengedAt: inf.last_challenged_at || null,
               ninflScore: Number(inf.ninfl_score) || 0,
               activityLevel: daysSince <= 30 ? 'active' : daysSince <= 90 ? 'recent' : 'inactive',
+              isMember: memberNaverIds.has(inf.naver_id),
             };
           });
 

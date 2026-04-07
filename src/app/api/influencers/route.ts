@@ -217,6 +217,17 @@ async function getInfluencersFromDB(
     }
   }
 
+  // 가입 회원 여부 조회
+  const infIds = (influencers || []).map(inf => inf.id);
+  const memberSet = new Set<string>();
+  if (infIds.length > 0) {
+    const { data: memberData } = await supabase
+      .from('users')
+      .select('linked_influencer_id')
+      .in('linked_influencer_id', infIds);
+    memberData?.forEach(u => { if (u.linked_influencer_id) memberSet.add(u.linked_influencer_id); });
+  }
+
   // 응답 형식 맞추기 (top1/2/3_count는 influencers 테이블에서 직접 읽기)
   const items = (influencers || []).map(inf => ({
     name: inf.display_name,
@@ -246,6 +257,7 @@ async function getInfluencersFromDB(
     officialRankCategory: inf.official_rank_category || null,
     keywordScore: inf.keyword_score || 0,
     ninflRank: ninflRankMap.get(inf.id) || null,
+    isMember: memberSet.has(inf.id),
   }));
 
   // 활성 인플루언서 수 (구독자 > 0)
