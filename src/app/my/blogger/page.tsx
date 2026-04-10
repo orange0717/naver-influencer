@@ -631,32 +631,36 @@ export default function BloggerDashboard() {
             <p className="text-sm text-dim">블로그 분석 기능을 이용하려면 블로그 주소가 필요합니다.</p>
           </div>
           <div>
-            <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition max-w-sm mx-auto">
-              <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">blog.naver.com/</span>
-              <input
-                type="text"
-                placeholder="블로그 아이디"
-                className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter') {
-                    const input = (e.target as HTMLInputElement).value.trim();
-                    if (!input) return;
-                    const blogId = input.replace(/^@/, '').toLowerCase();
-                    try {
-                      await fetch('/api/auth/signup', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ authId: '', blogId }),
-                      });
-                    } catch { /* ignore */ }
-                    // 쿠키에도 저장
-                    document.cookie = `blog_id=${blogId}; path=/; max-age=${365 * 24 * 60 * 60}`;
-                    window.location.reload();
-                  }
+            <div className="flex items-center gap-2 max-w-sm mx-auto">
+              <div className="flex items-center flex-1 bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+                <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">blog.naver.com/</span>
+                <input
+                  id="blog-id-input"
+                  type="text"
+                  placeholder="블로그 아이디"
+                  className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      document.getElementById('blog-id-submit')?.click();
+                    }
+                  }}
+                />
+              </div>
+              <button
+                id="blog-id-submit"
+                onClick={async () => {
+                  const input = (document.getElementById('blog-id-input') as HTMLInputElement)?.value.trim();
+                  if (!input) return;
+                  const blogId = input.replace(/^@/, '').toLowerCase();
+                  document.cookie = `blog_id=${blogId}; path=/; max-age=${365 * 24 * 60 * 60}`;
+                  window.location.reload();
                 }}
-              />
+                className="px-5 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer text-sm shrink-0"
+              >
+                등록
+              </button>
             </div>
-            <p className="text-[11px] text-dim mt-2">입력 후 Enter를 눌러주세요</p>
           </div>
           <Link href="/my" className="text-sm text-accent font-bold hover:underline">← 키챌 대시보드로 돌아가기</Link>
         </div>
