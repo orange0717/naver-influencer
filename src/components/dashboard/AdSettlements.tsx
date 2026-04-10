@@ -16,9 +16,14 @@ export default function AdSettlements() {
 
   useEffect(() => {
     fetch('/api/my/ad-settlements')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`${res.status}`);
+        return res.json();
+      })
       .then(data => setSettlements(data.settlements || []))
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('[AdSettlements] fetch error:', err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
