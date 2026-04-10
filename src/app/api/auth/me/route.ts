@@ -121,6 +121,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         type: 'influencer',
         id: naverId,
+        blogId: blogId || null,
         name: inf?.display_name || naverId,
         ...(trialDaysLeft !== undefined && { trialDaysLeft }),
         ...(isDemo && { isDemo: true }),
