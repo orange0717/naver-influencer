@@ -1,8 +1,9 @@
 -- migration-037: N인플 자체순위 공식 변경
 -- 기존: SUM(검색량 / 순위 × 가중치)
 -- 변경: SUM(검색량 × (참여자수 - 순위))
--- 이유: 참여자가 많은 키워드에서 높은 순위를 가질수록 높은 점수
+-- Supabase SQL Editor: 함수 생성과 백필을 별도로 실행
 
+-- 1단계: 함수 생성 (plpgsql + SECURITY DEFINER + SET search_path)
 DROP FUNCTION IF EXISTS aggregate_influencer_stats();
 
 CREATE FUNCTION aggregate_influencer_stats()
@@ -17,8 +18,12 @@ RETURNS TABLE(
   top3only_cnt INT,
   calc_ninfl_score NUMERIC
 )
-LANGUAGE sql
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
+BEGIN
+  RETURN QUERY
   WITH latest_rankings AS (
     SELECT DISTINCT ON (influencer_id, keyword_id)
       influencer_id,
@@ -66,13 +71,18 @@ AS $$
     COALESCE(ks.score, 0) AS calc_ninfl_score
   FROM influencer_stats s
   LEFT JOIN keyword_scores ks ON ks.inf_id = s.inf_id;
+END;
 $$;
 
--- 백필: keyword_score 재계산
-WITH scores AS (
-  SELECT * FROM aggregate_influencer_stats()
-)
-UPDATE influencers i
-SET keyword_score = s.calc_ninfl_score
-FROM scores s
-WHERE i.id = s.inf_id;
+-- 2단계: 백필 (별도 실행)
+DO $$
+DECLARE
+  s RECORD;
+BEGIN
+  SET search_path TO public;
+  FOR s IN SELECT * FROM aggregate_influencer_stats()
+  LOOP
+    UPDATE influencers SET keyword_score = s.calc_ninfl_score WHERE id = s.inf_id;
+  END LOOP;
+END;
+$$;
