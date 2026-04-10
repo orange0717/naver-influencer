@@ -48,15 +48,16 @@ export async function POST(req: NextRequest) {
     // 검증 + 라이선스 발급 (userId는 customData에서 추출)
     const result = await verifyAndGrantLicense(paymentId);
 
-    if (!result.verified) {
+    if (!result.verified && !result.alreadyProcessed) {
       console.error('[PortOne Webhook] 검증 실패:', result.error);
+      // 500 반환하여 포트원이 재시도하도록 함
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    // 웹훅은 항상 200 반환 (재시도 방지)
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[PortOne Webhook] error:', error);
-    // 웹훅은 항상 200 반환
-    return NextResponse.json({ ok: true });
+    // 예외 시 500 반환 (포트원 재시도 허용)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
   plan_name       TEXT NOT NULL DEFAULT 'PRO',
   duration_days   INT NOT NULL DEFAULT 365,
   status          TEXT NOT NULL DEFAULT 'PAID',  -- PAID, CANCELED, FAILED
-  created_at      TIMESTAMPTZ DEFAULT NOW()
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 인덱스
@@ -20,8 +21,19 @@ CREATE INDEX IF NOT EXISTS idx_pt_user ON payment_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_pt_order ON payment_transactions(order_id);
 CREATE INDEX IF NOT EXISTS idx_pt_status ON payment_transactions(status);
 
--- RLS
+-- RLS (서비스 역할만 접근, 클라이언트 차단)
 ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "read_own_payment" ON payment_transactions
-  FOR SELECT USING (true);
+CREATE POLICY "deny_all_select" ON payment_transactions
+  FOR SELECT USING (false);
+CREATE POLICY "deny_all_insert" ON payment_transactions
+  FOR INSERT WITH CHECK (false);
+CREATE POLICY "deny_all_update" ON payment_transactions
+  FOR UPDATE USING (false);
+CREATE POLICY "deny_all_delete" ON payment_transactions
+  FOR DELETE USING (false);
+
+-- updated_at 트리거
+CREATE TRIGGER trg_pt_updated_at
+  BEFORE UPDATE ON payment_transactions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import SubscribeClient from './SubscribeClient';
 
@@ -63,7 +64,9 @@ export default function SubscribePage() {
           </div>
 
           {/* PRO — 결제 버튼 포함 (클라이언트 컴포넌트) */}
-          <SubscribeClient features={DASHBOARD_FEATURES} />
+          <Suspense fallback={null}>
+            <SubscribeClient features={DASHBOARD_FEATURES} />
+          </Suspense>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
  * /api/portone/complete 및 /api/portone/webhook에서 공유
  */
 
+import crypto from 'crypto';
 import { createServiceClient } from './supabase-server';
 import { PAYMENT_PLANS } from './payment-config';
 
@@ -15,6 +16,13 @@ interface VerifyResult {
   alreadyProcessed?: boolean;
   extended?: boolean;
   error?: string;
+}
+
+/**
+ * 암호학적으로 안전한 paymentId 생성
+ */
+export function generatePaymentId(): string {
+  return `pay-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
 }
 
 /**
@@ -58,37 +66,38 @@ export async function verifyAndGrantLicense(
     customData = JSON.parse(payment.customData || '{}');
   } catch { /* ignore */ }
 
-  const buyerId = userId || customData.userId;
   const planKey = customData.planKey || 'PRO_ANNUAL';
 
+  // 4. 소유권 검증 — complete 호출자와 customData의 userId가 일치하는지 확인
+  if (userId && customData.userId && customData.userId !== userId) {
+    console.error(`[PortOne] 소유권 불일치: caller=${userId}, customData=${customData.userId}`);
+    return { verified: false, error: '결제 사용자 정보가 일치하지 않습니다.' };
+  }
+
+  const buyerId = userId || customData.userId;
   if (!buyerId) {
     return { verified: false, error: '사용자 정보를 확인할 수 없습니다.' };
   }
 
-  // 4. 플랜 확인 + 금액 검증
+  // 5. 플랜 확인 + 금액 검증
   const plan = PAYMENT_PLANS[planKey];
   if (!plan) {
     return { verified: false, error: '유효하지 않은 플랜입니다.' };
   }
 
+  // 0원 플랜 차단 (가격 미설정 상태에서 결제 방지)
+  if (plan.amount <= 0) {
+    return { verified: false, error: '아직 가격이 설정되지 않은 플랜입니다.' };
+  }
+
   const paidAmount = payment.amount?.total;
   if (paidAmount !== plan.amount) {
-    return { verified: false, error: `결제 금액이 일치하지 않습니다. (${paidAmount} != ${plan.amount})` };
+    console.error(`[PortOne] 금액 불일치: paid=${paidAmount}, expected=${plan.amount}, paymentId=${paymentId}`);
+    return { verified: false, error: '결제 금액이 일치하지 않습니다.' };
   }
 
-  // 5. 중복 처리 방지
+  // 6. 트랜잭션 기록 (UNIQUE 제약으로 중복 방지 — TOCTOU 레이스 컨디션 해결)
   const supabase = createServiceClient();
-  const { data: existing } = await supabase
-    .from('payment_transactions')
-    .select('id')
-    .eq('order_id', paymentId)
-    .limit(1);
-
-  if (existing && existing.length > 0) {
-    return { verified: true, alreadyProcessed: true };
-  }
-
-  // 6. 트랜잭션 기록
   const { error: txError } = await supabase
     .from('payment_transactions')
     .insert({
@@ -102,6 +111,10 @@ export async function verifyAndGrantLicense(
     });
 
   if (txError) {
+    // UNIQUE 위반 (23505) = 이미 처리된 결제
+    if (txError.code === '23505') {
+      return { verified: true, alreadyProcessed: true };
+    }
     console.error('[PortOne] 트랜잭션 기록 실패:', txError);
     return { verified: false, error: '트랜잭션 기록에 실패했습니다.' };
   }
@@ -121,8 +134,8 @@ export async function verifyAndGrantLicense(
   const baseDate = existingActive ? new Date(existingActive.expires_at) : now;
   const expiresAt = new Date(baseDate.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
 
-  // 8. 라이선스 생성
-  const licenseCode = `PORT-${paymentId.slice(-12).toUpperCase()}`;
+  // 8. 라이선스 생성 (암호학적 랜덤 코드)
+  const licenseCode = `PORT-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
 
   const { error: licenseError } = await supabase
     .from('licenses')
@@ -169,7 +182,6 @@ export function verifyWebhookSignature(
   if (Math.abs(now - ts) > 300) return false;
 
   // HMAC-SHA256 서명 검증
-  const crypto = require('crypto');
   const secretBytes = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
   const signedContent = `${headers.id}.${headers.timestamp}.${body}`;
   const expected = crypto

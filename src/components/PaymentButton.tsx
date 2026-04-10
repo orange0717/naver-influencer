@@ -61,9 +61,9 @@ export default function PaymentButton({
         return;
       }
 
-      const { paymentId, amount, orderName, userId } = prepareData;
+      const { paymentId, amount, orderName } = prepareData;
 
-      // 3. PortOne SDK 결제창 호출
+      // 3. PortOne SDK 결제창 호출 (userId는 서버에서 관리, 클라이언트에 노출하지 않음)
       const response = await window.PortOne!.requestPayment({
         storeId,
         channelKey,
@@ -72,8 +72,7 @@ export default function PaymentButton({
         totalAmount: amount,
         currency: 'CURRENCY_KRW',
         payMethod: 'CARD',
-        customer: { customerId: userId },
-        customData: JSON.stringify({ userId, planKey }),
+        customData: JSON.stringify({ planKey }),
         redirectUrl: `${window.location.origin}/subscribe?payment=portone&paymentId=${paymentId}`,
       });
 

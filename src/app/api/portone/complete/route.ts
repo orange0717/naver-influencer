@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, getCookieUser } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { paymentLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { verifyAndGrantLicense } from '@/lib/portone';
 
@@ -17,21 +17,19 @@ export async function POST(req: NextRequest) {
     const ip = getClientIp(req);
     if (await paymentLimiter.check(ip)) return rateLimitResponse();
 
-    // 인증 확인
+    // 인증 확인 (Supabase Auth만 허용)
     const authResult = await getAuthUser(req);
-    const cookieUser = await getCookieUser();
-    const userId = authResult?.userId || cookieUser?.id;
-
-    if (!userId) {
+    if (!authResult?.userId) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
+    const userId = authResult.userId;
 
     // paymentId 확인
     const body = await req.json();
     const paymentId = (body.paymentId || '').trim();
 
-    if (!paymentId) {
-      return NextResponse.json({ error: 'paymentId가 필요합니다.' }, { status: 400 });
+    if (!paymentId || !/^pay-\d{13,}-[a-f0-9]{12}$/i.test(paymentId)) {
+      return NextResponse.json({ error: '유효하지 않은 paymentId입니다.' }, { status: 400 });
     }
 
     // 검증 + 라이선스 발급

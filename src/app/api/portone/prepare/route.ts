@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, getCookieUser } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { paymentLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { PAYMENT_PLANS } from '@/lib/payment-config';
+import { generatePaymentId } from '@/lib/portone';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,14 +20,12 @@ export async function POST(req: NextRequest) {
     const ip = getClientIp(req);
     if (await paymentLimiter.check(ip)) return rateLimitResponse();
 
-    // 인증 확인
+    // 인증 확인 (Supabase Auth만 허용, 쿠키 인증 제외)
     const authResult = await getAuthUser(req);
-    const cookieUser = await getCookieUser();
-    const userId = authResult?.userId || cookieUser?.id;
-
-    if (!userId) {
+    if (!authResult?.userId) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
+    const userId = authResult.userId;
 
     // 플랜 검증
     const body = await req.json();
@@ -35,6 +34,11 @@ export async function POST(req: NextRequest) {
 
     if (!plan) {
       return NextResponse.json({ error: '유효하지 않은 플랜입니다.' }, { status: 400 });
+    }
+
+    // 0원 플랜 차단
+    if (plan.amount <= 0) {
+      return NextResponse.json({ error: '아직 가격이 설정되지 않은 플랜입니다.' }, { status: 400 });
     }
 
     // 환경변수 확인
@@ -46,8 +50,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // paymentId 생성
-    const paymentId = `pay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // paymentId 생성 (암호학적 랜덤)
+    const paymentId = generatePaymentId();
 
     // PortOne API 사전등록
     const preRegRes = await fetch(
@@ -75,12 +79,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // userId는 클라이언트에 노출하지 않고 customData에서 서버가 관리
     return NextResponse.json({
       paymentId,
       amount: plan.amount,
       orderName: plan.name,
       planKey,
-      userId,
     });
   } catch (error) {
     console.error('[PortOne] prepare error:', error);
