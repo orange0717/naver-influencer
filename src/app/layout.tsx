@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
+import Script from "next/script";
 import "./globals.css";
 import HeaderWrapper from "@/components/HeaderWrapper";
 import Footer from "@/components/Footer";
@@ -45,6 +46,7 @@ export default function RootLayout({
           <ChatBot />
           <InstallBanner />
         </Providers>
+        <Script src="https://cdn.portone.io/v2/browser-sdk.js" strategy="lazyOnload" />
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import SubscribeClient from './SubscribeClient';
 
 export const metadata: Metadata = {
   title: '이용권 - N인플',
@@ -61,35 +62,8 @@ export default function SubscribePage() {
             </ul>
           </div>
 
-          {/* PRO */}
-          <div className="bg-surface rounded-2xl border-2 border-accent p-6 space-y-5 relative">
-            <div className="absolute -top-3 left-6 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full">
-              추천
-            </div>
-            <div>
-              <p className="text-xs text-accent font-semibold">PRO</p>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-3xl font-black">미정</span>
-              </div>
-            </div>
-            <p className="text-sm text-dim leading-relaxed">
-              대시보드의 모든 기능을 기간 제한 없이 이용하세요.
-            </p>
-            <Link
-              href="/auth/signup"
-              className="block text-center py-3 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition"
-            >
-              구독하기
-            </Link>
-            <ul className="space-y-2.5 text-sm">
-              {DASHBOARD_FEATURES.map(f => (
-                <li key={f} className="flex items-center gap-2.5">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-up shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
-                  <span className="text-text">{f}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* PRO — 결제 버튼 포함 (클라이언트 컴포넌트) */}
+          <SubscribeClient features={DASHBOARD_FEATURES} />
       </div>
     </div>
   );
