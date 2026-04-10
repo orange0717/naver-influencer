@@ -406,8 +406,9 @@ export async function GET(request: NextRequest) {
         const top1 = rankedKeywords.filter(k => k.rank === 1).length;
         const top2 = rankedKeywords.filter(k => k.rank === 2).length;
         const top3 = rankedKeywords.filter(k => k.rank === 3).length;
-        // paging.total이 부정확할 수 있으므로 실제 가져온 키워드 수와 비교하여 큰 값 사용
-        const totalKw = Math.max(totalFromApi ?? 0, keywords.length);
+        // 실제 크롤한 키워드 수를 기준으로 사용 (paging.total은 부정확할 수 있음)
+        // totalFromApi가 실제보다 크면 top3_ratio가 왜곡됨
+        const totalKw = keywords.length;
 
         const updateData: Record<string, unknown> = {
           total_keywords: totalKw,
