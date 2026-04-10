@@ -51,6 +51,13 @@ interface RankingInfo {
   naver_id: string;
 }
 
+interface RelatedKeyword {
+  id: string;
+  keyword: string;
+  participant_count: number;
+  search_volume_monthly: number;
+}
+
 export default function KeywordsPage() {
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [grouped, setGrouped] = useState<CategoryGroup[]>([]);
@@ -92,6 +99,9 @@ export default function KeywordsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
   const [rankingsLoading, setRankingsLoading] = useState<string | null>(null);
+
+  // 관련키워드 캐시
+  const [relatedCache, setRelatedCache] = useState<Record<string, RelatedKeyword[]>>({});
 
   // 키워드 목록 로드 시 배치로 TOP3 가져오기 (점진적 로딩)
   useEffect(() => {
@@ -144,18 +154,31 @@ export default function KeywordsPage() {
     }
     setExpandedId(kwId);
 
-    if (rankingsCache[kwId]) return;
+    const needRankings = !rankingsCache[kwId];
+    const needRelated = !relatedCache[kwId];
 
-    setRankingsLoading(kwId);
+    if (!needRankings && !needRelated) return;
+
+    if (needRankings) setRankingsLoading(kwId);
     try {
-      const res = await fetch(`/api/keywords/${kwId}/rankings`);
-      if (res.ok) {
-        const data = await res.json();
-        setRankingsCache(prev => ({ ...prev, [kwId]: (data.rankings || []).slice(0, 3) }));
+      const fetches: Promise<void>[] = [];
+      if (needRankings) {
+        fetches.push(
+          fetch(`/api/keywords/${kwId}/rankings`)
+            .then(res => res.ok ? res.json() : { rankings: [] })
+            .then(data => setRankingsCache(prev => ({ ...prev, [kwId]: (data.rankings || []).slice(0, 3) })))
+            .catch(() => setRankingsCache(prev => ({ ...prev, [kwId]: [] })))
+        );
       }
-    } catch {
-      // 실패 시 빈 배열
-      setRankingsCache(prev => ({ ...prev, [kwId]: [] }));
+      if (needRelated) {
+        fetches.push(
+          fetch(`/api/keywords/${kwId}/related`)
+            .then(res => res.ok ? res.json() : { related: [] })
+            .then(data => setRelatedCache(prev => ({ ...prev, [kwId]: data.related || [] })))
+            .catch(() => setRelatedCache(prev => ({ ...prev, [kwId]: [] })))
+        );
+      }
+      await Promise.all(fetches);
     } finally {
       setRankingsLoading(null);
     }
@@ -594,33 +617,58 @@ export default function KeywordsPage() {
                         {isLoadingRank ? (
                           <div className="flex items-center gap-2 py-2 pl-8">
                             <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
-                            <span className="text-xs text-dim">순위 불러오는 중...</span>
-                          </div>
-                        ) : rankings && rankings.length > 0 ? (
-                          <div className="pl-8 space-y-1.5">
-                            <p className="text-xs font-bold text-dim mb-2">실시간 TOP 3</p>
-                            {rankings.map(r => (
-                              <div key={r.rank_position} className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                                  r.rank_position === 1 ? 'bg-gold' : r.rank_position === 2 ? 'bg-silver' : 'bg-bronze'
-                                }`}>{r.rank_position}</span>
-                                <Link
-                                  href={`/influencers/${encodeURIComponent(r.naver_id)}`}
-                                  className="text-sm font-semibold hover:text-accent transition-colors"
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  {r.influencer_name}
-                                </Link>
-                                {r.fan_count > 0 && (
-                                  <span className="text-xs text-dim font-rank">
-                                    팬 {r.fan_count >= 10000 ? `${(r.fan_count / 10000).toFixed(1)}만` : r.fan_count.toLocaleString()}
-                                  </span>
-                                )}
-                              </div>
-                            ))}
+                            <span className="text-xs text-dim">불러오는 중...</span>
                           </div>
                         ) : (
-                          <div className="pl-8 py-2 text-xs text-dim">순위 정보가 없습니다</div>
+                          <div className="pl-8 flex gap-8">
+                            {/* 실시간 TOP 3 */}
+                            <div className="space-y-1.5 min-w-[200px]">
+                              <p className="text-xs font-bold text-dim mb-2">실시간 TOP 3</p>
+                              {rankings && rankings.length > 0 ? rankings.map(r => (
+                                <div key={r.rank_position} className="flex items-center gap-3">
+                                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                    r.rank_position === 1 ? 'bg-gold' : r.rank_position === 2 ? 'bg-silver' : 'bg-bronze'
+                                  }`}>{r.rank_position}</span>
+                                  <Link
+                                    href={`/influencers/${encodeURIComponent(r.naver_id)}`}
+                                    className="text-sm font-semibold hover:text-accent transition-colors"
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    {r.influencer_name}
+                                  </Link>
+                                  {r.fan_count > 0 && (
+                                    <span className="text-xs text-dim font-rank">
+                                      팬 {r.fan_count >= 10000 ? `${(r.fan_count / 10000).toFixed(1)}만` : r.fan_count.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              )) : (
+                                <p className="text-xs text-dim">순위 정보가 없습니다</p>
+                              )}
+                            </div>
+                            {/* 관련 키워드 */}
+                            {relatedCache[kw.id] && relatedCache[kw.id].length > 0 && (
+                              <div className="flex-1">
+                                <p className="text-xs font-bold text-dim mb-2">관련 키워드</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {relatedCache[kw.id].map(rk => (
+                                    <Link
+                                      key={rk.id}
+                                      href={`/keywords/${rk.id}`}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs hover:border-accent/40 hover:text-accent transition-colors"
+                                      onClick={e => e.stopPropagation()}
+                                    >
+                                      <span className="font-semibold">{rk.keyword}</span>
+                                      <span className="text-dim font-rank">{rk.participant_count}</span>
+                                      {rk.search_volume_monthly > 0 && (
+                                        <span className="text-dim font-rank">/ {rk.search_volume_monthly >= 10000 ? `${(rk.search_volume_monthly / 10000).toFixed(1)}만` : rk.search_volume_monthly.toLocaleString()}</span>
+                                      )}
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
