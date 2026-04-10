@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const sortMap: Record<string, string> = { fan_count: 'subscriber_count' };
     const sortColumn = sortMap[filters.sort_by || ''] || filters.sort_by || 'integrated_top3_count';
     const ascending = sortColumn === 'best_rank' ? filters.sort_order !== 'desc' : filters.sort_order === 'asc';
-    const requestedLimit = filters.limit || 10;
+    const requestedLimit = Math.min(filters.limit || 10, 20);
     // 회원 우선 노출을 위해 3배수로 가져온 후 재정렬
     query = query.order(sortColumn, { ascending, nullsFirst: false }).limit(requestedLimit * 3);
 
@@ -216,6 +216,7 @@ export async function POST(request: NextRequest) {
           const sortLabel = filters.sort_by === 'top3_ratio' ? 'TOP3 비율순' : 'TOP3 횟수순';
           const fallback = `${cat ? cat + ' 분야 ' : ''}상위 ${count}명을 ${sortLabel}으로 추천해드립니다.`;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text', data: fallback })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
         } finally {
           controller.close();
         }

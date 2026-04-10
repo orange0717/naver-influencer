@@ -26,20 +26,8 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
 
   try {
-    // DB에 인플루언서가 있는지 확인
-    const { count: dbCount } = await supabase
-      .from('influencers')
-      .select('*', { count: 'exact', head: true });
-
-    const hasDbData = (dbCount || 0) > 100;
-
-    if (hasDbData) {
-      // DB 기반 조회
-      return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly, showInactive, sortBy, order, officialOnly, ninflRanking });
-    }
-
-    // DB에 데이터 없으면 실시간 API 폴백
-    return await getInfluencersFromAPI({ category, search, page, limit });
+    // DB 기반 조회
+    return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly, showInactive, sortBy, order, officialOnly, ninflRanking });
   } catch (err) {
     logger.error('influencers', 'data fetch error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
@@ -73,10 +61,10 @@ async function getInfluencersFromDB(
   ];
   const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
-  // 메인 쿼리 구성
+  // 메인 쿼리 구성 (필요한 컬럼만 조회)
   let query = supabase
     .from('influencers')
-    .select('*', { count: 'exact' });
+    .select('id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank', { count: 'exact' });
 
   // 카테고리 필터 (화이트리스트: 한글/영문/숫자/공백/특수구분자만 허용)
   if (category && category !== '전체') {
@@ -197,23 +185,14 @@ async function getInfluencersFromDB(
     }
   }
 
-  // N인플 순위 계산: 검색/필터 시 실제 순위 표기를 위해
-  // keyword_score가 자신보다 높은 인플루언서 수를 카운트
+  // N인플 순위 계산: offset 기반 (keyword_score 내림차순 정렬이므로 offset + index + 1 = 순위)
   const ninflRankMap = new Map<string, number>();
   if (ninflRanking && influencers && influencers.length > 0) {
-    for (const inf of influencers) {
-      const score = inf.keyword_score || 0;
-      if (score <= 0) continue;
-      let rankQuery = supabase
-        .from('influencers')
-        .select('*', { count: 'exact', head: true })
-        .gt('keyword_score', score);
-      if (category && category !== '전체') {
-        const safeCat = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&.]/g, '');
-        if (safeCat) rankQuery = rankQuery.or(`my_keyword_category.eq.${safeCat},category.eq.${safeCat}`);
+    for (let i = 0; i < influencers.length; i++) {
+      const inf = influencers[i];
+      if ((inf.keyword_score || 0) > 0) {
+        ninflRankMap.set(inf.id, offset + i + 1);
       }
-      const { count: higherCount } = await rankQuery;
-      ninflRankMap.set(inf.id, (higherCount || 0) + 1);
     }
   }
 
@@ -260,17 +239,23 @@ async function getInfluencersFromDB(
     isMember: memberSet.has(inf.id),
   }));
 
-  // 활성 인플루언서 수 (구독자 > 0)
-  const { count: activeCount } = await supabase
-    .from('influencers')
-    .select('*', { count: 'exact', head: true })
-    .gt('subscriber_count', 0);
+  // 활성 인플루언서 수 (전체 카테고리 + 검색 없을 때만 조회)
+  let activeTotal = 0;
+  if (!category || category === '전체') {
+    if (!search?.trim()) {
+      const { count: activeCount } = await supabase
+        .from('influencers')
+        .select('id', { count: 'exact', head: true })
+        .gt('subscriber_count', 0);
+      activeTotal = activeCount || 0;
+    }
+  }
 
   return NextResponse.json({
     influencers: items,
     categories,
     total,
-    activeTotal: activeCount || 0,
+    activeTotal,
     page,
     total_pages: totalPages,
     source: 'db',

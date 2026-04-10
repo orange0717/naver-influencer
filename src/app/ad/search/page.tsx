@@ -48,6 +48,7 @@ export default function AdSearchPage() {
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = () => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -68,10 +69,13 @@ export default function AdSearchPage() {
     const aiMsg: ChatMessage = { role: 'ai', text: '', influencers: [] };
 
     try {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
       const res = await fetch('/api/ad/ai-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q }),
+        signal: abortRef.current.signal,
       });
 
       if (!res.ok) {
@@ -138,7 +142,8 @@ export default function AdSearchPage() {
           } catch { /* skip invalid JSON */ }
         }
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       aiMsg.text = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
       setMessages(prev => {
         if (prev[prev.length - 1]?.role === 'ai' && !prev[prev.length - 1].text) {

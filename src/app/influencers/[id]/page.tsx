@@ -48,22 +48,25 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
   const [kwCategory, setKwCategory] = useState('전체');
 
   useEffect(() => {
+    const controller = new AbortController();
     async function loadInfluencer() {
       try {
-        const res = await fetch(`/api/influencers/${encodeURIComponent(id)}`);
+        const res = await fetch(`/api/influencers/${encodeURIComponent(id)}`, { signal: controller.signal });
         if (!res.ok) {
           setError(true);
           return;
         }
         const data = await res.json();
         setInfluencer(data.influencer);
-      } catch {
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         setError(true);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
     loadInfluencer();
+    return () => controller.abort();
   }, [id]);
 
   const keywords = influencer?.keywords || [];
