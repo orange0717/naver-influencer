@@ -18,6 +18,7 @@ import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import AdProfileForm from '@/components/dashboard/AdProfileForm';
+import AdSettlements from '@/components/dashboard/AdSettlements';
 import KeywordPlanner from '@/components/dashboard/KeywordPlanner';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
@@ -677,6 +678,11 @@ export default async function MyDashboard() {
           initialFeeText={influencer.ad_fee_text || ''}
           initialProcess={influencer.ad_process || ''}
         />
+      </GlassCard>
+
+      {/* ─── 원고료 정산내역 ─── */}
+      <GlassCard>
+        <AdSettlements />
       </GlassCard>
 
       {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
