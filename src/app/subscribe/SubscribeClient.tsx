@@ -14,9 +14,12 @@ export default function SubscribeClient({ features }: SubscribeClientProps) {
   const [callbackStatus, setCallbackStatus] = useState<'processing' | 'success' | 'error' | null>(null);
 
   const plan = PAYMENT_PLANS.PRO_ANNUAL;
-  const priceLabel = plan.amount >= 10000
-    ? `${Math.floor(plan.amount / 10000)}만${plan.amount % 10000 ? (plan.amount % 10000).toLocaleString() : ''}원`
-    : `${plan.amount.toLocaleString()}원`;
+  const priceReady = plan.amount > 0;
+  const priceLabel = priceReady
+    ? (plan.amount >= 10000
+      ? `${Math.floor(plan.amount / 10000)}만${plan.amount % 10000 ? (plan.amount % 10000).toLocaleString() : ''}원`
+      : `${plan.amount.toLocaleString()}원`)
+    : '미정';
 
   // 모바일 리다이렉트 콜백 처리
   useEffect(() => {
@@ -43,7 +46,7 @@ export default function SubscribeClient({ features }: SubscribeClientProps) {
         <p className="text-xs text-accent font-semibold">PRO</p>
         <div className="flex items-baseline gap-1 mt-1">
           <span className="text-3xl font-black">{priceLabel}</span>
-          <span className="text-sm text-dim">/ 연</span>
+          {priceReady && <span className="text-sm text-dim">/ 연</span>}
         </div>
       </div>
       <p className="text-sm text-dim leading-relaxed">
@@ -65,12 +68,17 @@ export default function SubscribeClient({ features }: SubscribeClientProps) {
         </p>
       )}
 
-      {/* 결제 버튼 */}
-      {!callbackStatus && (
+      {/* 결제 버튼 — 가격 확정 후 활성화 */}
+      {!callbackStatus && priceReady && (
         <PaymentButton
           planKey="PRO_ANNUAL"
           label={`${priceLabel} 결제하기`}
         />
+      )}
+      {!callbackStatus && !priceReady && (
+        <p className="text-center py-3 bg-accent/10 text-accent font-bold text-sm rounded-xl">
+          준비 중
+        </p>
       )}
 
       <ul className="space-y-2.5 text-sm">
