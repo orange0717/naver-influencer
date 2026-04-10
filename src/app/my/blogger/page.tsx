@@ -634,8 +634,8 @@ export default function BloggerDashboard() {
       {/* ─── 대시보드 (관리자 또는 구독자는 전체 접근) ─── */}
       <div className="space-y-6">
 
-      {/* ─── 2. 통계 카드 4개 ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ─── 2. 통계 카드 6개 ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <AnimatedStatCard
           label="평균 순위"
           value={avgRank > 0 ? Math.round(avgRank) : 0}
@@ -662,12 +662,41 @@ export default function BloggerDashboard() {
           delay={150}
         />
         <AnimatedStatCard
+          label="총 포스트"
+          value={blogPostsTotal}
+          suffix="개"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>}
+          color={blogPostsTotal > 0 ? 'accent' : 'dim'}
+          delay={200}
+        />
+        <AnimatedStatCard
+          label="주간 발행량"
+          value={(() => {
+            if (blogPosts.length === 0) return 0;
+            const now = new Date();
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            let recentCount = 0;
+            for (const p of blogPosts) {
+              const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
+              if (match) {
+                const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+                if (d >= thirtyDaysAgo) recentCount++;
+              }
+            }
+            return Math.round(recentCount / 4 * 10) / 10;
+          })()}
+          suffix="회/주"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>}
+          color={blogPosts.length > 0 ? 'up' : 'dim'}
+          delay={250}
+        />
+        <AnimatedStatCard
           label="등록 키워드"
           value={keywords.length}
           suffix="/20"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>}
           color={keywords.length > 0 ? 'accent' : 'dim'}
-          delay={200}
+          delay={300}
         />
       </div>
 
@@ -747,6 +776,99 @@ export default function BloggerDashboard() {
           </>
         )}
       </GlassCard>
+
+      {/* ─── 3-1. 블로그 포스팅 지수 (6가지 점수) ─── */}
+      {(hasData || postAnalysis) && (
+        <GlassCard>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-bold text-[15px]">블로그 포스팅 지수</h3>
+              <p className="text-[11px] text-dim mt-0.5">네이버 &quot;좋은 문서의 특성&quot; 기반 6가지 평가</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-3xl font-black font-rank ${gradeInfo.color}`}>{totalScore}</span>
+              <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${gradeInfo.bg} ${gradeInfo.color}`}>{gradeInfo.grade}등급</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-4">
+            {[
+              { label: '신뢰성', score: reliabilityScore, desc: '출처/인용/노출' },
+              { label: '경험', score: experienceScore, desc: '직접촬영/체험' },
+              { label: '독창성', score: originalityScore, desc: '고유표현/원본' },
+              { label: '심층성', score: depthScore, desc: '글자수/문단/구성' },
+              { label: '가독성', score: readabilityScore, desc: '소제목/리스트' },
+              { label: '꾸준함', score: consistencyScore, desc: '발행빈도' },
+            ].map(item => (
+              <div key={item.label} className="text-center">
+                <GradeGauge
+                  score={item.score}
+                  label={item.label}
+                  description={item.desc}
+                  color={item.score >= 70 ? '#22C55E' : item.score >= 40 ? '#F29C68' : '#94a3b8'}
+                  delay={100}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* 전체 순위 + 카테고리별 순위 */}
+          {blogRanking && (
+            <div className="border-t border-border pt-3 mt-1">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <span className="text-dim">전체 블로거 순위</span>
+                <span className="font-black text-accent font-rank text-lg">{blogRanking.rank}위</span>
+                <span className="text-xs text-dim">/ {blogRanking.total.toLocaleString()}명</span>
+                {blogRanking.categoryRanks && (
+                  <>
+                    <span className="text-border">|</span>
+                    <span className="text-xs text-dim">
+                      신뢰+독창 <strong className="text-text">{blogRanking.categoryRanks.reliabilityOriginality}위</strong>
+                    </span>
+                    <span className="text-xs text-dim">
+                      경험+심층 <strong className="text-text">{blogRanking.categoryRanks.experienceDepth}위</strong>
+                    </span>
+                    <span className="text-xs text-dim">
+                      가독+꾸준 <strong className="text-text">{blogRanking.categoryRanks.readabilityConsistency}위</strong>
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </GlassCard>
+      )}
+
+      {/* ─── 3-2. 포스팅 분석 상세 ─── */}
+      {postAnalysis && (
+        <GlassCard>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-[15px]">포스팅 분석 통계</h3>
+              <p className="text-[11px] text-dim mt-0.5">최근 10개 글 기준 평균값</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: '평균 글자수', value: Math.round(postAnalysis.averages.charCount).toLocaleString(), suffix: '자', good: postAnalysis.averages.charCount >= 1000 },
+              { label: '평균 단어수', value: Math.round(postAnalysis.averages.wordCount).toLocaleString(), suffix: '개', good: postAnalysis.averages.wordCount >= 200 },
+              { label: '평균 이미지', value: postAnalysis.averages.imageCount.toFixed(1), suffix: '장', good: postAnalysis.averages.imageCount >= 3 },
+              { label: '평균 문단수', value: postAnalysis.averages.paragraphCount.toFixed(1), suffix: '개', good: postAnalysis.averages.paragraphCount >= 5 },
+              { label: '평균 소제목', value: postAnalysis.averages.headingCount.toFixed(1), suffix: '개', good: postAnalysis.averages.headingCount >= 1 },
+              { label: '고유 단어 비율', value: (postAnalysis.averages.uniqueWordRatio * 100).toFixed(0), suffix: '%', good: postAnalysis.averages.uniqueWordRatio >= 0.5 },
+              { label: '1000자+ 글', value: (postAnalysis.metrics.longPosts * 100).toFixed(0), suffix: '%', good: postAnalysis.metrics.longPosts >= 0.5 },
+              { label: '원본사진 비율', value: (postAnalysis.metrics.originalImageRatio * 100).toFixed(0), suffix: '%', good: postAnalysis.metrics.originalImageRatio >= 0.5 },
+            ].map(item => (
+              <div key={item.label} className="bg-bg rounded-xl p-3 text-center">
+                <p className="text-[10px] text-dim mb-1">{item.label}</p>
+                <p className={`text-lg font-black font-rank ${item.good ? 'text-up' : 'text-dim'}`}>
+                  {item.value}<span className="text-xs font-normal text-dim ml-0.5">{item.suffix}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
       {/* ─── 4. 순위 추이 차트 ─── */}
       {rankHistory.length > 0 && (
