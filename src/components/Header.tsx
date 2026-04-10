@@ -18,7 +18,6 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'N인플',
     children: [
-      { href: '/guide', label: '회사소개' },
       { href: '/notice', label: '공지사항' },
       { href: '/subscribe', label: '이용권' },
     ],
