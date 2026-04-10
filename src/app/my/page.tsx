@@ -602,6 +602,11 @@ export default async function MyDashboard() {
         />
       </div>
 
+      {/* ─── 원고료 정산내역 ─── */}
+      <GlassCard>
+        <AdSettlements />
+      </GlassCard>
+
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
       <GlassCard>
         <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
@@ -678,11 +683,6 @@ export default async function MyDashboard() {
           initialFeeText={influencer.ad_fee_text || ''}
           initialProcess={influencer.ad_process || ''}
         />
-      </GlassCard>
-
-      {/* ─── 원고료 정산내역 ─── */}
-      <GlassCard>
-        <AdSettlements />
       </GlassCard>
 
       {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
