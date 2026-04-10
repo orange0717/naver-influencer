@@ -154,31 +154,15 @@ export default function KeywordsPage() {
     }
     setExpandedId(kwId);
 
-    const needRankings = !rankingsCache[kwId];
-    const needRelated = !relatedCache[kwId];
+    if (relatedCache[kwId]) return;
 
-    if (!needRankings && !needRelated) return;
-
-    if (needRankings) setRankingsLoading(kwId);
+    setRankingsLoading(kwId);
     try {
-      const fetches: Promise<void>[] = [];
-      if (needRankings) {
-        fetches.push(
-          fetch(`/api/keywords/${kwId}/rankings`)
-            .then(res => res.ok ? res.json() : { rankings: [] })
-            .then(data => setRankingsCache(prev => ({ ...prev, [kwId]: (data.rankings || []).slice(0, 3) })))
-            .catch(() => setRankingsCache(prev => ({ ...prev, [kwId]: [] })))
-        );
-      }
-      if (needRelated) {
-        fetches.push(
-          fetch(`/api/keywords/${kwId}/related`)
-            .then(res => res.ok ? res.json() : { related: [] })
-            .then(data => setRelatedCache(prev => ({ ...prev, [kwId]: data.related || [] })))
-            .catch(() => setRelatedCache(prev => ({ ...prev, [kwId]: [] })))
-        );
-      }
-      await Promise.all(fetches);
+      const res = await fetch(`/api/keywords/${kwId}/related`);
+      const data = res.ok ? await res.json() : { related: [] };
+      setRelatedCache(prev => ({ ...prev, [kwId]: data.related || [] }));
+    } catch {
+      setRelatedCache(prev => ({ ...prev, [kwId]: [] }));
     } finally {
       setRankingsLoading(null);
     }
@@ -619,56 +603,28 @@ export default function KeywordsPage() {
                             <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
                             <span className="text-xs text-dim">불러오는 중...</span>
                           </div>
-                        ) : (
-                          <div className="pl-8 flex gap-8">
-                            {/* 실시간 TOP 3 */}
-                            <div className="space-y-1.5 min-w-[200px]">
-                              <p className="text-xs font-bold text-dim mb-2">실시간 TOP 3</p>
-                              {rankings && rankings.length > 0 ? rankings.map(r => (
-                                <div key={r.rank_position} className="flex items-center gap-3">
-                                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                                    r.rank_position === 1 ? 'bg-gold' : r.rank_position === 2 ? 'bg-silver' : 'bg-bronze'
-                                  }`}>{r.rank_position}</span>
-                                  <Link
-                                    href={`/influencers/${encodeURIComponent(r.naver_id)}`}
-                                    className="text-sm font-semibold hover:text-accent transition-colors"
-                                    onClick={e => e.stopPropagation()}
-                                  >
-                                    {r.influencer_name}
-                                  </Link>
-                                  {r.fan_count > 0 && (
-                                    <span className="text-xs text-dim font-rank">
-                                      팬 {r.fan_count >= 10000 ? `${(r.fan_count / 10000).toFixed(1)}만` : r.fan_count.toLocaleString()}
-                                    </span>
+                        ) : relatedCache[kw.id] && relatedCache[kw.id].length > 0 ? (
+                          <div className="pl-8">
+                            <p className="text-xs font-bold text-dim mb-2">관련 키워드</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {relatedCache[kw.id].map(rk => (
+                                <Link
+                                  key={rk.id}
+                                  href={`/keywords/${rk.id}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs hover:border-accent/40 hover:text-accent transition-colors"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <span className="font-semibold">{rk.keyword}</span>
+                                  <span className="text-dim font-rank">{rk.participant_count}</span>
+                                  {rk.search_volume_monthly > 0 && (
+                                    <span className="text-dim font-rank">/ {rk.search_volume_monthly >= 10000 ? `${(rk.search_volume_monthly / 10000).toFixed(1)}만` : rk.search_volume_monthly.toLocaleString()}</span>
                                   )}
-                                </div>
-                              )) : (
-                                <p className="text-xs text-dim">순위 정보가 없습니다</p>
-                              )}
+                                </Link>
+                              ))}
                             </div>
-                            {/* 관련 키워드 */}
-                            {relatedCache[kw.id] && relatedCache[kw.id].length > 0 && (
-                              <div className="flex-1">
-                                <p className="text-xs font-bold text-dim mb-2">관련 키워드</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {relatedCache[kw.id].map(rk => (
-                                    <Link
-                                      key={rk.id}
-                                      href={`/keywords/${rk.id}`}
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs hover:border-accent/40 hover:text-accent transition-colors"
-                                      onClick={e => e.stopPropagation()}
-                                    >
-                                      <span className="font-semibold">{rk.keyword}</span>
-                                      <span className="text-dim font-rank">{rk.participant_count}</span>
-                                      {rk.search_volume_monthly > 0 && (
-                                        <span className="text-dim font-rank">/ {rk.search_volume_monthly >= 10000 ? `${(rk.search_volume_monthly / 10000).toFixed(1)}만` : rk.search_volume_monthly.toLocaleString()}</span>
-                                      )}
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </div>
+                        ) : (
+                          <div className="pl-8 py-2 text-xs text-dim">관련 키워드가 없습니다</div>
                         )}
                       </td>
                     </tr>
