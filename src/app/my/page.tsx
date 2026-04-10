@@ -19,6 +19,7 @@ import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import AdProfileForm from '@/components/dashboard/AdProfileForm';
 import AdSettlements from '@/components/dashboard/AdSettlements';
+import DashboardMessages from '@/components/dashboard/DashboardMessages';
 import KeywordPlanner from '@/components/dashboard/KeywordPlanner';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
@@ -605,6 +606,11 @@ export default async function MyDashboard() {
       {/* ─── 원고료 정산내역 ─── */}
       <GlassCard>
         <AdSettlements />
+      </GlassCard>
+
+      {/* ─── 쪽지 ─── */}
+      <GlassCard>
+        <DashboardMessages />
       </GlassCard>
 
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
