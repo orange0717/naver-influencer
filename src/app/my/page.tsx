@@ -295,22 +295,20 @@ export default async function MyDashboard() {
   // ─── 1-2. 전체 순위 & 카테고리 순위 계산 ───
   const myCategory = influencer.my_keyword_category || influencer.category || '';
 
-  // influencers 테이블의 사전 집계 데이터 사용 (각 인플루언서의 최신 데이터 기준)
+  // influencers 테이블의 keyword_score 기준 순위 (검색량 x (참여자수 - 순위))
   const { data: allInfData } = await supabase
     .from('influencers')
-    .select('id, category, my_keyword_category, top1_count, integrated_top3_count, total_keywords')
-    .gt('total_keywords', 0);
+    .select('id, category, my_keyword_category, keyword_score')
+    .gt('keyword_score', 0);
 
-  // 전체 정렬 (1위 수 → TOP3 수 → 참여 키워드 수)
+  // 전체 정렬 (keyword_score 내림차순)
   const globalSorted = (allInfData || [])
     .map(inf => ({
       id: inf.id,
       cat: inf.my_keyword_category || inf.category || '',
-      r1: inf.top1_count || 0,
-      t3: inf.integrated_top3_count || 0,
-      total: inf.total_keywords || 0,
+      score: inf.keyword_score || 0,
     }))
-    .sort((a, b) => b.r1 - a.r1 || b.t3 - a.t3 || b.total - a.total);
+    .sort((a, b) => b.score - a.score);
 
   const overallRank = globalSorted.findIndex(x => x.id === influencerId) + 1;
   const overallTotal = globalSorted.length;
