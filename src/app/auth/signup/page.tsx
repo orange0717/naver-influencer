@@ -12,6 +12,13 @@ function extractNaverId(input: string): string {
   return trimmed.replace(/^@/, '').toLowerCase();
 }
 
+function extractBlogId(input: string): string {
+  const trimmed = input.trim();
+  const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9._-]+)/);
+  if (urlMatch) return urlMatch[1].toLowerCase();
+  return trimmed.replace(/^@/, '').toLowerCase();
+}
+
 export default function SignupPage() {
 
   const [email, setEmail] = useState('');
@@ -19,6 +26,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [naverInput, setNaverInput] = useState('');
+  const [blogInput, setBlogInput] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
@@ -77,6 +85,7 @@ export default function SignupPage() {
     try {
       const supabase = createSupabaseBrowserClient();
       const naverId = extractNaverId(naverInput);
+      const blogId = blogInput.trim() ? extractBlogId(blogInput) : '';
 
       // 1. Supabase Auth 회원가입
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -114,6 +123,7 @@ export default function SignupPage() {
           email: email.trim(),
           nickname: nickname.trim(),
           naverId,
+          blogId: blogId || undefined,
         }),
       });
 
@@ -195,6 +205,19 @@ export default function SignupPage() {
                   className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none" />
               </div>
               <p className="text-[11px] text-dim mt-1">아이디 또는 전체 URL을 붙여넣기 할 수 있어요</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-dim block mb-1.5">블로그 주소 (선택)</label>
+              <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+                <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
+                  blog.naver.com/
+                </span>
+                <input type="text" value={blogInput} onChange={e => setBlogInput(e.target.value)}
+                  placeholder="블로그 아이디"
+                  className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none" />
+              </div>
+              <p className="text-[11px] text-dim mt-1">블로그 분석 기능을 이용하려면 입력해주세요 (나중에 설정 가능)</p>
             </div>
 
             {error && (

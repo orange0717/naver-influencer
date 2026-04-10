@@ -9,7 +9,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
   const supabase = createServiceClient();
   const { data: profile } = await supabase
     .from('users')
-    .select('id, nickname, email, linked_influencer_id, subscription_status')
+    .select('id, nickname, email, linked_influencer_id, subscription_status, blog_id')
     .eq('auth_id', authUserId)
     .single();
 
@@ -34,6 +34,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
   return {
     type,
     id: naverId || profile.id,
+    blogId: profile.blog_id || naverId || null,
     name: displayName,
     email: email || profile.email,
     authId: authUserId,

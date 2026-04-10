@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const v = validateBody(signupSchema, body);
   if (!v.success) return v.response;
 
-  const { authId, email, nickname, naverId } = v.data;
+  const { authId, email, nickname, naverId, blogId } = v.data;
 
   const supabase = createServiceClient();
 
@@ -42,24 +42,27 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     // 인플루언서 연결이 안 되어 있으면 연결
-    if (linkedInfluencerId) {
-      await supabase
-        .from('users')
-        .update({ linked_influencer_id: linkedInfluencerId })
-        .eq('id', existing.id);
+    const updateData: Record<string, unknown> = {};
+    if (linkedInfluencerId) updateData.linked_influencer_id = linkedInfluencerId;
+    if (blogId) updateData.blog_id = blogId;
+    if (Object.keys(updateData).length > 0) {
+      await supabase.from('users').update(updateData).eq('id', existing.id);
     }
     return NextResponse.json({ success: true, userId: existing.id, linked: !!linkedInfluencerId });
   }
 
   // service_role로 INSERT (RLS 우회)
+  const insertData: Record<string, unknown> = {
+    auth_id: authId,
+    email,
+    nickname,
+    linked_influencer_id: linkedInfluencerId,
+  };
+  if (blogId) insertData.blog_id = blogId;
+
   const { data, error } = await supabase
     .from('users')
-    .insert({
-      auth_id: authId,
-      email,
-      nickname,
-      linked_influencer_id: linkedInfluencerId,
-    })
+    .insert(insertData)
     .select('id')
     .single();
 

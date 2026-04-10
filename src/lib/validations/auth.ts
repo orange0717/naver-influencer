@@ -7,6 +7,7 @@ export const signupSchema = z.object({
   email: z.string().email('이메일 형식이 올바르지 않습니다.'),
   nickname: z.string().min(1, '닉네임은 필수입니다.').max(50).transform((v) => v.trim()),
   naverId: z.string().optional(),
+  blogId: z.string().optional(),
 });
 
 /** POST /api/auth/blogger-login */
