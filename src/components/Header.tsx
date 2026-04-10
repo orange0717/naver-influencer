@@ -6,30 +6,78 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
 import NotificationBell from './NotificationBell';
 
-/* ── 메인 네비게이션 (비로그인) ── */
-const NAV_ITEMS_PUBLIC = [
-  { href: '/notice', label: '공지사항' },
-  { href: '/my', label: '대시보드' },
-  { href: '/stats', label: '연도별 인플루언서 현황' },
-  { href: '/influencers', label: '인플루언서 리스트' },
-  { href: '/keywords', label: '키워드 리스트' },
+/* ── 메인 네비게이션 항목 (드롭다운 지원) ── */
+interface NavItem {
+  href?: string;
+  label: string;
+  children?: { href: string; label: string }[];
+  authOnly?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    label: 'N인플',
+    children: [
+      { href: '/guide', label: '회사소개' },
+      { href: '/notice', label: '공지사항' },
+      { href: '/subscribe', label: '이용권' },
+    ],
+  },
+  {
+    label: '대시보드',
+    authOnly: true,
+    children: [
+      { href: '/my', label: '키워드챌린지' },
+      { href: '/my/blogger', label: '블로그' },
+    ],
+  },
+  {
+    label: '인플루언서',
+    children: [
+      { href: '/stats', label: '연도별 선정 현황' },
+      { href: '/influencers', label: '리스트' },
+    ],
+  },
+  { href: '/keywords', label: '키워드' },
   { href: '/community', label: '커뮤니티' },
-  { href: '/subscribe', label: '이용권' },
-  { href: '/ad', label: '광고주' },
 ];
 
-/* ── 메인 네비게이션 (로그인) ── */
-const NAV_ITEMS_AUTH = [
-  { href: '/notice', label: '공지사항' },
-  { href: '/my', label: '대시보드' },
-  { href: '/stats', label: '연도별 인플루언서 현황' },
-  { href: '/influencers', label: '인플루언서 리스트' },
-  { href: '/keywords', label: '키워드 리스트' },
-  { href: '/community', label: '커뮤니티' },
-  { href: '/subscribe', label: '이용권' },
-  { href: '/ad', label: '광고주' },
-];
 
+function NavDropdown({ label, items, isActive }: { label: string; items: { href: string; label: string }[]; isActive: (href: string) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleEnter = () => { if (timerRef.current) clearTimeout(timerRef.current); setOpen(true); };
+  const handleLeave = () => { timerRef.current = setTimeout(() => setOpen(false), 150); };
+
+  const anyActive = items.some(item => isActive(item.href));
+
+  return (
+    <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      <button
+        className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+          anyActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+        }`}
+      >
+        {label}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 w-44 bg-surface rounded-xl border border-border shadow-lg py-1.5 z-50">
+          {items.map(item => (
+            <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
+              className={`block px-4 py-2.5 text-sm font-semibold transition-colors ${
+                isActive(item.href) ? 'text-accent bg-accent/5' : 'text-text hover:bg-bg'
+              }`}>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | 'unified' | null;
@@ -97,14 +145,18 @@ export default function Header({ serverUser }: HeaderProps) {
 
             {/* ── 데스크탑 네비게이션 ── */}
             <nav aria-label="메인 네비게이션" className="hidden lg:flex items-center gap-1">
-              {(user.id ? NAV_ITEMS_AUTH : NAV_ITEMS_PUBLIC).map(item => (
-                <Link key={item.href} href={item.href}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                    isActive(item.href) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}>
-                  {item.label}
-                </Link>
-              ))}
+              {NAV_ITEMS.filter(item => !item.authOnly || user.id).map(item =>
+                item.children ? (
+                  <NavDropdown key={item.label} label={item.label} items={item.children} isActive={isActive} />
+                ) : (
+                  <Link key={item.href} href={item.href!}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                      isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                    }`}>
+                    {item.label}
+                  </Link>
+                )
+              )}
             </nav>
           </div>
 
@@ -137,7 +189,15 @@ export default function Header({ serverUser }: HeaderProps) {
                       </div>
                       <Link href="/my" onClick={() => setProfileOpen(false)}
                         className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
-                        마이페이지
+                        키챌 대시보드
+                      </Link>
+                      <Link href="/my/blogger" onClick={() => setProfileOpen(false)}
+                        className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
+                        블로그 대시보드
+                      </Link>
+                      <Link href="/profile" onClick={() => setProfileOpen(false)}
+                        className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
+                        프로필 설정
                       </Link>
                       <button onClick={() => { setProfileOpen(false); handleLogout(); }}
                         className="w-full flex items-center px-4 py-2.5 text-sm text-down hover:bg-bg transition cursor-pointer">
@@ -169,14 +229,28 @@ export default function Header({ serverUser }: HeaderProps) {
       {mobileOpen && (
         <div id="mobile-menu" className="lg:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border overflow-y-auto">
           <nav aria-label="모바일 네비게이션" className="flex flex-col p-4 gap-0.5">
-            {(user.id ? NAV_ITEMS_AUTH : NAV_ITEMS_PUBLIC).map(item => (
-              <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                  isActive(item.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
-                }`}>
-                {item.label}
-              </Link>
-            ))}
+            {NAV_ITEMS.filter(item => !item.authOnly || user.id).map(item =>
+              item.children ? (
+                <div key={item.label}>
+                  <p className="px-5 py-2 text-xs font-bold text-dim uppercase">{item.label}</p>
+                  {item.children.map(child => (
+                    <Link key={child.href} href={child.href} onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-3 px-8 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                        isActive(child.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
+                      }`}>
+                      {child.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Link key={item.href} href={item.href!} onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                    isActive(item.href!) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
+                  }`}>
+                  {item.label}
+                </Link>
+              )
+            )}
 
             {/* 로그인/로그아웃 */}
             <div className="border-t border-border/50 my-3 mx-2" />
