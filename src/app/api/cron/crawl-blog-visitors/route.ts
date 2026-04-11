@@ -19,15 +19,21 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
 
   try {
-    // 활성 블로거 목록 (blog_keywords에서 고유 blog_id)
-    const { data: blogKeywords, error: kwError } = await supabase
+    // 활성 블로거 목록 (blog_keywords + blog_scores 통합)
+    const { data: blogKeywords } = await supabase
       .from('blog_keywords')
       .select('blog_id')
       .eq('is_active', true);
 
-    if (kwError) throw kwError;
+    const { data: blogScores } = await supabase
+      .from('blog_scores')
+      .select('blog_id');
 
-    const blogIds = [...new Set((blogKeywords || []).map(k => k.blog_id))];
+    const allBlogIds = [
+      ...(blogKeywords || []).map(k => k.blog_id),
+      ...(blogScores || []).map(s => s.blog_id),
+    ];
+    const blogIds = [...new Set(allBlogIds)];
     if (blogIds.length === 0) {
       return NextResponse.json({ message: 'No active bloggers found', count: 0 });
     }
