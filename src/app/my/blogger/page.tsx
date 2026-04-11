@@ -615,7 +615,7 @@ export default function BloggerDashboard() {
       </div>
 
       {/* ─── 3. 핵심 지표 카드 ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard
           label="일일 평균 발행"
           value={publishingStats.daily}
@@ -657,12 +657,20 @@ export default function BloggerDashboard() {
           delay={250}
         />
         <AnimatedStatCard
+          label="상위노출확률"
+          value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.exposed / blogScoreCalc.total) * 100) : 0}
+          suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.exposed}/${blogScoreCalc.total})` : '%'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
+          color={blogScoreCalc.hasData && blogScoreCalc.exposed / blogScoreCalc.total >= 0.5 ? 'up' : blogScoreCalc.hasData && blogScoreCalc.exposed / blogScoreCalc.total >= 0.2 ? 'accent' : 'dim'}
+          delay={300}
+        />
+        <AnimatedStatCard
           label="블로그 점수"
           value={totalScore}
-          suffix={blogScoreCalc.hasData ? `점 (${blogScoreCalc.exposed}/${blogScoreCalc.total} 노출)` : '점'}
+          suffix="점"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
           color={totalScore >= 500 ? 'up' : totalScore >= 100 ? 'accent' : 'dim'}
-          delay={300}
+          delay={350}
         />
       </div>
 
