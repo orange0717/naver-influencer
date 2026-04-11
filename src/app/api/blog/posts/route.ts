@@ -30,18 +30,14 @@ interface BlogPostResult {
 }
 
 /**
- * 방법 1: PostTitleListAsync API (한국 서버에서만 작동)
+ * 방법 1: Cloudflare Worker 프록시를 통한 PostTitleListAsync API
+ * Worker가 한국 엣지에서 네이버 API를 호출 — 해외 Vercel에서도 작동
  */
+const WORKER_PROXY = 'https://ninfl-proxy.orange-e65.workers.dev';
+
 async function fetchFromPostListApi(blogId: string, page: number, count: number) {
-  const url = `https://blog.naver.com/PostTitleListAsync.naver?blogId=${encodeURIComponent(blogId)}&currentPage=${page}&countPerPage=${count}`;
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': USER_AGENT,
-      'Accept': '*/*',
-      'Accept-Language': 'ko-KR,ko;q=0.9',
-      'Referer': `https://blog.naver.com/${blogId}`,
-    },
-  });
+  const url = `${WORKER_PROXY}/blog-posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${count}`;
+  const res = await fetch(url);
 
   if (!res.ok) return null;
 
