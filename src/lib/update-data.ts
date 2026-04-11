@@ -26,6 +26,13 @@ export interface UpdateItem {
  */
 export const UPDATES: UpdateItem[] = [
   {
+    version: '2026-04-11',
+    date: '2026.04.11',
+    title: 'N인플 개발 업데이트 (이름 변경예정)',
+    changes: [],
+    href: '/notice/281e7b3d-43fc-492f-8909-ac10432b801d',
+  },
+  {
     version: '2026-04-03',
     date: '2026.04.03',
     title: '4월 3일 업데이트일정',
