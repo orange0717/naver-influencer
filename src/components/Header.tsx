@@ -16,13 +16,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    label: 'N인플',
-    children: [
-      { href: '/notice', label: '공지사항' },
-      { href: '/subscribe', label: '이용권' },
-    ],
-  },
+  { href: '/notice', label: '공지사항' },
   {
     label: '대시보드',
     authOnly: true,
@@ -42,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: '/keywords', label: '키워드' },
   { href: '/community', label: '커뮤니티' },
+  { href: '/subscribe', label: '이용권' },
 ];
 
 

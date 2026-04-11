@@ -295,42 +295,29 @@ export default async function MyDashboard() {
   // ─── 1-2. 전체 순위 & 카테고리 순위 계산 ───
   const myCategory = influencer.my_keyword_category || influencer.category || '';
 
-  // influencers 테이블의 keyword_score 기준 순위 (검색량 x (참여자수 - 순위))
-  const { data: allInfData } = await supabase
-    .from('influencers')
-    .select('id, category, my_keyword_category, keyword_score')
-    .gt('keyword_score', 0);
-
-  // 전체 정렬 (keyword_score 내림차순)
-  const globalSorted = (allInfData || [])
-    .map(inf => ({
-      id: inf.id,
-      cat: inf.my_keyword_category || inf.category || '',
-      score: inf.keyword_score || 0,
-    }))
-    .sort((a, b) => b.score - a.score);
-
-  const overallRank = globalSorted.findIndex(x => x.id === influencerId) + 1;
-  const overallTotal = globalSorted.length;
-
-  // 카테고리 순위
-  const catFiltered = globalSorted.filter(x => x.cat === myCategory);
-  const categoryRank = catFiltered.findIndex(x => x.id === influencerId) + 1;
-  const categoryTotal = catFiltered.length;
-
-  // 등급 계산
-  function getGradeInfo(rank: number, total: number) {
-    const pct = rank / total;
-    if (rank <= 3) return { label: 'TOP 3', color: 'text-yellow-500', bg: 'bg-yellow-500/15' };
-    if (rank <= 10) return { label: 'TOP 10', color: 'text-red-500', bg: 'bg-red-500/10' };
-    if (pct <= 0.01) return { label: 'TOP 1%', color: 'text-amber-500', bg: 'bg-amber-500/10' };
-    if (pct <= 0.05) return { label: 'TOP 5%', color: 'text-green-500', bg: 'bg-green-500/10' };
-    if (pct <= 0.1) return { label: 'TOP 10%', color: 'text-blue-500', bg: 'bg-blue-500/10' };
-    if (pct <= 0.3) return { label: 'GOOD', color: 'text-indigo-500', bg: 'bg-indigo-500/10' };
-    return { label: 'ACTIVE', color: 'text-dim', bg: 'bg-border/30' };
+  // 카테고리 순위 계산 (인플루언서는 카테고리끼리 경쟁)
+  // 같은 카테고리 내에서 keyword_score 기준 순위
+  const myScore = influencer.keyword_score || 0;
+  let catInfData: { id: string; keyword_score: number }[] = [];
+  if (myCategory) {
+    let from = 0;
+    const PAGE_SIZE = 1000;
+    while (true) {
+      const { data: batch } = await supabase
+        .from('influencers')
+        .select('id, keyword_score, category, my_keyword_category')
+        .gt('keyword_score', 0)
+        .range(from, from + PAGE_SIZE - 1);
+      if (!batch || batch.length === 0) break;
+      const filtered = batch.filter(inf => (inf.my_keyword_category || inf.category || '') === myCategory);
+      catInfData.push(...filtered.map(inf => ({ id: inf.id, keyword_score: inf.keyword_score || 0 })));
+      if (batch.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    catInfData.sort((a, b) => b.keyword_score - a.keyword_score);
   }
-
-  const overallGrade = overallRank > 0 ? getGradeInfo(overallRank, overallTotal) : null;
+  const categoryRank = catInfData.findIndex(x => x.id === influencerId) + 1;
+  const categoryTotal = catInfData.length;
 
   // ─── 2. 내 키워드 전체 목록 ───
   const { data: myKeywords } = await supabase
@@ -508,38 +495,16 @@ export default async function MyDashboard() {
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
       <div className="space-y-6">
 
-      {/* ─── 1-2. 전체/카테고리 순위 + 등급 ─── */}
-      {overallRank > 0 && (
+      {/* ─── 카테고리 순위 ─── */}
+      {categoryRank > 0 && (
         <GlassCard padding="none">
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/30">
-            {/* 등급 배지 */}
-            <div className="flex flex-col items-center justify-center py-6 px-4">
-              {overallGrade && (
-                <>
-                  <span className={`text-lg font-black ${overallGrade.color} ${overallGrade.bg} px-4 py-1.5 rounded-full`}>
-                    {overallGrade.label}
-                  </span>
-                  <p className="text-[11px] text-dim mt-2">인플루언서 등급</p>
-                </>
-              )}
-            </div>
-
-            {/* 전체 순위 */}
-            <div className="flex flex-col items-center justify-center py-6 px-4">
-              <p className="text-[11px] text-dim font-semibold mb-1">전체 순위</p>
-              <p className="text-3xl font-black font-rank text-text">
-                {overallRank.toLocaleString()}<span className="text-lg font-bold">위</span>
-              </p>
-              <p className="text-xs text-dim mt-1">{overallTotal.toLocaleString()}명 중</p>
-            </div>
-
-            {/* 카테고리 순위 */}
-            <div className="flex flex-col items-center justify-center py-6 px-4">
+          <div className="flex items-center justify-center py-6 px-4">
+            <div className="text-center">
               <p className="text-[11px] text-dim font-semibold mb-1">
                 {myCategory || '카테고리'} 순위
               </p>
               <p className="text-3xl font-black font-rank text-accent">
-                {categoryRank > 0 ? categoryRank.toLocaleString() : '-'}<span className="text-lg font-bold">위</span>
+                {categoryRank.toLocaleString()}<span className="text-lg font-bold">위</span>
               </p>
               <p className="text-xs text-dim mt-1">{categoryTotal.toLocaleString()}명 중</p>
             </div>
@@ -560,11 +525,6 @@ export default async function MyDashboard() {
       )}
 
       {/* ─── 2. 통계 카드 4개 ─── */}
-      {dataDateLabel && (
-        <div className="flex justify-end">
-          <span className="text-[11px] text-dim bg-border/30 px-3 py-1 rounded-full">{dataDateLabel}</span>
-        </div>
-      )}
       <div className="grid grid-cols-4 gap-3">
         <AnimatedStatCard
           label="참여 키워드"
