@@ -232,17 +232,26 @@ export default function BloggerDashboard() {
     });
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
 
-  // 포스트 로드 시 자동 누락확인 (allBlogPosts 기반)
-  const autoCheckRef = useRef(false);
+  // 현재 페이지 포스트 자동 누락확인
   useEffect(() => {
-    if (profile && allBlogPosts.length > 0 && !autoCheckRef.current && !checkingAll) {
-      autoCheckRef.current = true;
-      setTimeout(() => {
-        checkAllMissing();
-      }, 1500);
-    }
+    if (!profile || checkingAll) return;
+    const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    if (all.length === 0) return;
+    const start = (blogPostsPage - 1) * 10;
+    const pagePosts = all.slice(start, start + 10);
+    // 아직 확인 안 된 포스트만 체크
+    const unchecked = pagePosts.filter(p => !missingResults[p.id]);
+    if (unchecked.length === 0) return;
+    const checkPage = async () => {
+      for (let i = 0; i < unchecked.length; i++) {
+        await checkMissing(unchecked[i]);
+        if (i < unchecked.length - 1) await new Promise(r => setTimeout(r, 2000));
+      }
+    };
+    const timer = setTimeout(checkPage, 1500);
+    return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, allBlogPosts]);
+  }, [profile, allBlogPosts, blogPostsPage]);
 
   // 분석 완료 시 점수 자동 저장
   const analysisSavedRef = useRef(false);
