@@ -139,8 +139,21 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
   // 3. 특수문자 제거 + 분리 (복합어는 분리하지 않고 원형 유지)
   const rawWords = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
 
-  // 4. 키워드 추출 + 복합어 분해
-  const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','정리','모음','총정리','단상','지음','中','및','더','각','수','것','중']);
+  // 3.5. 의로 끝나는 단어 + 짧은 다음 단어 합치기 (책 제목 보존: 장사의 신 → 장사의신)
+  const mergedWords: string[] = [];
+  for (let i = 0; i < rawWords.length; i++) {
+    const word = rawWords[i];
+    const next = rawWords[i + 1];
+    if (/[가-힣]의$/.test(word) && next && /^[가-힣]{1,3}$/.test(next)) {
+      mergedWords.push(word + next);
+      i++;
+    } else {
+      mergedWords.push(word);
+    }
+  }
+
+  // 4. 키워드 추출 + 접미어 분해
+  const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
   const result: string[] = [];
   const seen = new Set<string>();
 
@@ -152,26 +165,19 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
     }
   }
 
-  // 접미어 키워드 패턴
-  const kwSuffixes = ['글귀', '명대사', '명언', '도구들', '해석', '추천', '후기', '리뷰', '비교', '분석', '방법', '소개'];
+  // 접미어 키워드 패턴 (의미 있는 검색어가 되는 것만)
+  const kwSuffixes = ['글귀', '명대사', '명언'];
 
-  for (const raw of rawWords) {
+  for (const raw of mergedWords) {
     if (raw.length < 2 || /^\d+$/.test(raw) || stop.has(raw)) continue;
 
     if (/^[가-힣]{4,}$/.test(raw)) {
-      // A. 의 조사 분리 (타이탄의도구들 → 타이탄 + 도구들)
-      const uiMatch = raw.match(/^([가-힣]{2,})의([가-힣]{2,})$/);
-      if (uiMatch) {
-        add(uiMatch[1]);
-        add(uiMatch[2]);
-      } else {
-        add(raw);
-      }
+      // 원형 보존 (책 제목 등 분리하지 않음)
+      add(raw);
 
-      // B. 접미어 추출 (짧고좋은글귀 → 글귀, 좋은글귀)
+      // 접미어 추출 (짧고좋은글귀 → 좋은글귀, 글귀)
       for (const suf of kwSuffixes) {
         if (raw.endsWith(suf) && raw.length > suf.length + 1) {
-          // 중간 복합어 추출: 짧고좋은글귀 → 좋은글귀
           const prefix = raw.slice(0, -suf.length);
           for (const p of ['고', '과', '와']) {
             const pidx = prefix.lastIndexOf(p);
