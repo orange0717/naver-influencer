@@ -185,14 +185,6 @@ export default function Header({ serverUser }: HeaderProps) {
                         <p className="text-sm font-bold text-text">{user.name || user.id}</p>
                         {user.email && <p className="text-xs text-dim mt-0.5">{user.email}</p>}
                       </div>
-                      <Link href="/my" onClick={() => setProfileOpen(false)}
-                        className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
-                        키챌 대시보드
-                      </Link>
-                      <Link href="/my/blogger" onClick={() => setProfileOpen(false)}
-                        className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
-                        블로그 대시보드
-                      </Link>
                       <Link href="/profile" onClick={() => setProfileOpen(false)}
                         className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
                         마이페이지
