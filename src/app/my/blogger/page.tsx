@@ -145,7 +145,7 @@ export default function BloggerDashboard() {
 
       // 나머지 페이지 로드
       const totalPages = Math.ceil(totalCount / perPage);
-      for (page = 2; page <= totalPages && page <= 50; page++) { // 최대 50페이지 (1500개)
+      for (page = 2; page <= totalPages; page++) {
         const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${perPage}`);
         if (!res.ok) break;
         const data = await res.json();
