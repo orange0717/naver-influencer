@@ -305,8 +305,8 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
 export interface BlogProfileStats {
   totalVisitor: number;
   todayVisitor: number;
-  buddyCount: number;
   subscriberCount: number;
+  postCount: number;
   isOfficialBlog: boolean;
 }
 
@@ -314,8 +314,8 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
   const result: BlogProfileStats = {
     totalVisitor: 0,
     todayVisitor: 0,
-    buddyCount: 0,
     subscriberCount: 0,
+    postCount: 0,
     isOfficialBlog: false,
   };
 
@@ -329,22 +329,24 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
     if (!res.ok) return result;
     const html = await res.text();
 
-    // JSON 데이터 추출
-    const totalMatch = html.match(/"totalVisitor"\s*:\s*(\d+)/);
+    // 네이버 실제 필드명: totalVisitorCount, dayVisitorCount, subscriberCount, postCount
+    const totalMatch = html.match(/"totalVisitorCount"\s*:\s*(\d+)/);
     if (totalMatch) result.totalVisitor = parseInt(totalMatch[1]);
 
-    const todayMatch = html.match(/"todayVisitor"\s*:\s*(\d+)/);
+    const todayMatch = html.match(/"dayVisitorCount"\s*:\s*(\d+)/);
     if (todayMatch) result.todayVisitor = parseInt(todayMatch[1]);
 
-    const buddyMatch = html.match(/"buddyCount"\s*:\s*(\d+)/);
-    if (buddyMatch) result.buddyCount = parseInt(buddyMatch[1]);
-
+    // subscriberCount = 이웃(구독자)수
     const subMatch = html.match(/"subscriberCount"\s*:\s*(\d+)/);
     if (subMatch) result.subscriberCount = parseInt(subMatch[1]);
 
-    // 공식블로그 여부
-    if (html.includes('공식블로그') || html.includes('officialBlog') || html.includes('"isOfficial":true') || html.includes('"official":true')) {
-      result.isOfficialBlog = true;
+    const postMatch = html.match(/"postCount"\s*:\s*(\d+)/);
+    if (postMatch) result.postCount = parseInt(postMatch[1]);
+
+    // 공식블로그 여부: "officialBlog":true
+    const officialMatch = html.match(/"officialBlog"\s*:\s*(true|false)/);
+    if (officialMatch) {
+      result.isOfficialBlog = officialMatch[1] === 'true';
     }
   } catch (err) {
     console.error(`[blog-crawler] fetchBlogProfileStats error for ${blogId}:`, err instanceof Error ? err.message : err);

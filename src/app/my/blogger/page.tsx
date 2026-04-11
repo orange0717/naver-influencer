@@ -219,7 +219,7 @@ export default function BloggerDashboard() {
   const [suggestedCategory, setSuggestedCategory] = useState('기타');
   const [showCategorySelect, setShowCategorySelect] = useState(false);
   const [postAnalysis, setPostAnalysis] = useState<{ metrics: BlogAnalysisMetrics; averages: BlogAnalysisAverages } | null>(null);
-  const [blogStats, setBlogStats] = useState<{ totalVisitor: number; todayVisitor: number; buddyCount: number; subscriberCount: number; isOfficialBlog: boolean } | null>(null);
+  const [blogStats, setBlogStats] = useState<{ totalVisitor: number; todayVisitor: number; subscriberCount: number; postCount: number; isOfficialBlog: boolean } | null>(null);
   const [visitorData, setVisitorData] = useState<{ avgVisitors: number; trend: number }>({ avgVisitors: 0, trend: 0 });
 
   // 점수 계산용 ref
@@ -592,7 +592,7 @@ export default function BloggerDashboard() {
         />
         <AnimatedStatCard
           label="이웃수"
-          value={blogStats?.buddyCount || 0}
+          value={blogStats?.subscriberCount || 0}
           suffix="명"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
           color="accent"
@@ -608,11 +608,6 @@ export default function BloggerDashboard() {
         <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${blogStats?.isOfficialBlog ? 'bg-blue-500/10 text-blue-600' : 'bg-gray-200/50 text-gray-500'}`}>
           {blogStats?.isOfficialBlog ? '공식블로그' : '공식블로그 X'}
         </span>
-        {(blogStats?.subscriberCount || 0) > 0 && (
-          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-accent/10 text-accent">
-            구독자 {(blogStats?.subscriberCount || 0).toLocaleString()}명
-          </span>
-        )}
       </div>
 
       {/* ─── 4. 핵심 지표 카드 ─── */}
