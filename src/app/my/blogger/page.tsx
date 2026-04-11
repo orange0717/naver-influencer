@@ -161,6 +161,7 @@ export default function BloggerDashboard() {
   const [checkingMissing, setCheckingMissing] = useState<string>('');
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  const [postFilter, setPostFilter] = useState<'all' | 'missing'>('all');
   const [scoreData, setScoreData] = useState<BlogScoreData | null>(null);
   const [category, setCategory] = useState('기타');
   const [suggestedCategory, setSuggestedCategory] = useState('기타');
@@ -692,6 +693,25 @@ export default function BloggerDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {Object.keys(missingResults).length > 0 && (
+              <div className="flex rounded-lg border border-border overflow-hidden text-[11px] shrink-0">
+                <button onClick={() => { setPostFilter('all'); setBlogPostsPage(1); }}
+                  className={`px-3 py-1.5 font-semibold transition cursor-pointer ${postFilter === 'all' ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'}`}>
+                  전체
+                </button>
+                <button onClick={() => { setPostFilter('missing'); setBlogPostsPage(1); }}
+                  className={`px-3 py-1.5 font-semibold transition cursor-pointer ${postFilter === 'missing' ? 'bg-down text-white' : 'text-dim hover:bg-surface-hover'}`}>
+                  누락 {(() => {
+                    const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+                    const cnt = all.filter(p => {
+                      const mr = missingResults[p.id];
+                      return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
+                    }).length;
+                    return cnt > 0 ? cnt : '';
+                  })()}
+                </button>
+              </div>
+            )}
             {allBlogPosts.length > 0 && (
               <button onClick={checkAllMissing} disabled={checkingAll}
                 className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs shrink-0">
@@ -733,7 +753,13 @@ export default function BloggerDashboard() {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {(() => {
-                    const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+                    let all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+                    if (postFilter === 'missing') {
+                      all = all.filter(p => {
+                        const mr = missingResults[p.id];
+                        return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
+                      });
+                    }
                     const start = (blogPostsPage - 1) * 10;
                     return all.slice(start, start + 10);
                   })().map((post, i) => {
@@ -805,7 +831,13 @@ export default function BloggerDashboard() {
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
               {(() => {
-                const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+                let all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+                if (postFilter === 'missing') {
+                  all = all.filter(p => {
+                    const mr = missingResults[p.id];
+                    return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
+                  });
+                }
                 const start = (blogPostsPage - 1) * 10;
                 return all.slice(start, start + 10);
               })().map((post, i) => {
@@ -858,7 +890,14 @@ export default function BloggerDashboard() {
 
             {/* 페이지네이션 */}
             {(() => {
-              const total = allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal;
+              let list = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+              if (postFilter === 'missing') {
+                list = list.filter(p => {
+                  const mr = missingResults[p.id];
+                  return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
+                });
+              }
+              const total = postFilter === 'missing' ? list.length : (allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal);
               const totalPages = Math.ceil(total / 10);
               if (totalPages <= 1) return null;
               return (
