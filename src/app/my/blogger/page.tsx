@@ -92,6 +92,20 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
   } catch { return null; }
 }
 
+// 포스팅 제목에서 핵심 키워드 추출 (check-missing API와 동일 로직)
+function extractKeywords(title: string, blogId: string): string {
+  let cleaned = title;
+  const patterns = [blogId, blogId.replace(/[_-]/g, '')];
+  for (const p of patterns) {
+    if (p.length >= 2) cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
+  }
+  cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
+  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내'];
+  const words = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
+    .filter(w => w.length >= 2 && !stop.includes(w) && !/^\d+$/.test(w));
+  return words.slice(0, 4).join(' ') || title.slice(0, 20);
+}
+
 export default function BloggerDashboard() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   const [customProfile, setCustomProfile] = useState<{ displayName?: string; imageUrl?: string }>({});
@@ -667,6 +681,7 @@ export default function BloggerDashboard() {
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-left px-5 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
+                    <th className="text-left px-3 py-3 font-semibold w-36">검색 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">댓글</th>
@@ -686,9 +701,14 @@ export default function BloggerDashboard() {
                         <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
                         <td className="px-3 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
-                            className="font-semibold hover:text-accent transition truncate block max-w-[350px]" title={post.title}>
+                            className="font-semibold hover:text-accent transition truncate block max-w-[280px]" title={post.title}>
                             {post.title}
                           </a>
+                        </td>
+                        <td className="px-3 py-3.5">
+                          <span className="text-[11px] text-dim bg-bg px-2 py-1 rounded-md block truncate max-w-[140px]" title={extractKeywords(post.title, profile.blogId)}>
+                            {extractKeywords(post.title, profile.blogId)}
+                          </span>
                         </td>
                         <td className="text-center px-3 py-3.5">
                           {mr ? (
@@ -753,6 +773,9 @@ export default function BloggerDashboard() {
                       <div className="flex-1 min-w-0">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
+                        <span className="text-[10px] text-dim bg-bg px-1.5 py-0.5 rounded mt-1 inline-block">
+                          {extractKeywords(post.title, profile.blogId)}
+                        </span>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           {mr ? (
                             <>
