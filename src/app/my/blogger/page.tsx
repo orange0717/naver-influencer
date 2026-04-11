@@ -596,7 +596,7 @@ export default function BloggerDashboard() {
       {/* ─── 4. 블로그 방문자수 차트 ─── */}
       {profile && <BlogVisitorChart blogId={profile.blogId} />}
 
-      {/* ─── 5. 포스팅 목록 (전체) + 누락 확인 ─── */}
+      {/* ─── 5. 포스팅 목록 (10개씩 페이지네이션) + 누락 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div>
@@ -638,19 +638,23 @@ export default function BloggerDashboard() {
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-left px-5 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">댓글</th>
                     <th className="text-right px-3 py-3 font-semibold w-24">작성일</th>
                     <th className="text-center px-5 py-3 font-semibold w-16">확인</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {(allBlogPosts.length > 0 ? allBlogPosts : blogPosts).map((post, i) => {
+                  {(() => {
+                    const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+                    const start = (blogPostsPage - 1) * 10;
+                    return all.slice(start, start + 10);
+                  })().map((post, i) => {
                     const mr = missingResults[post.id];
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition group">
-                        <td className="px-5 py-3.5 text-dim text-xs">{i + 1}</td>
+                        <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
                         <td className="px-3 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold hover:text-accent transition truncate block max-w-[350px]" title={post.title}>
@@ -659,9 +663,9 @@ export default function BloggerDashboard() {
                         </td>
                         <td className="text-center px-3 py-3.5">
                           {mr ? (
-                            mr.blogTab.exposed ? (
+                            mr.viewTab.exposed ? (
                               <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {mr.blogTab.rank}위
+                                {mr.viewTab.rank}위
                               </span>
                             ) : (
                               <span className="text-xs font-bold text-down bg-down/10 px-2 py-0.5 rounded-full">누락</span>
@@ -672,9 +676,9 @@ export default function BloggerDashboard() {
                         </td>
                         <td className="text-center px-3 py-3.5">
                           {mr ? (
-                            mr.viewTab.exposed ? (
+                            mr.blogTab.exposed ? (
                               <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {mr.viewTab.rank}위
+                                {mr.blogTab.rank}위
                               </span>
                             ) : (
                               <span className="text-xs font-bold text-down bg-down/10 px-2 py-0.5 rounded-full">누락</span>
@@ -707,12 +711,16 @@ export default function BloggerDashboard() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {(allBlogPosts.length > 0 ? allBlogPosts : blogPosts).map((post, i) => {
+              {(() => {
+                const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+                const start = (blogPostsPage - 1) * 10;
+                return all.slice(start, start + 10);
+              })().map((post, i) => {
                 const mr = missingResults[post.id];
                 return (
                   <div key={post.id} className="px-4 py-3.5">
                     <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{i + 1}</span>
+                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * 10 + i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
@@ -720,14 +728,14 @@ export default function BloggerDashboard() {
                           {mr ? (
                             <>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                              }`}>
+                                통합 {mr.viewTab.exposed ? `${mr.viewTab.rank}위` : '누락'}
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                                 mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
                               }`}>
                                 블로그 {mr.blogTab.exposed ? `${mr.blogTab.rank}위` : '누락'}
-                              </span>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
-                              }`}>
-                                VIEW {mr.viewTab.exposed ? `${mr.viewTab.rank}위` : '누락'}
                               </span>
                             </>
                           ) : null}
@@ -747,6 +755,28 @@ export default function BloggerDashboard() {
                 );
               })}
             </div>
+
+            {/* 페이지네이션 */}
+            {(() => {
+              const total = allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal;
+              const totalPages = Math.ceil(total / 10);
+              if (totalPages <= 1) return null;
+              return (
+                <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
+                  <button onClick={() => setBlogPostsPage(p => Math.max(1, p - 1))}
+                    disabled={blogPostsPage <= 1}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                    ← 이전
+                  </button>
+                  <span className="text-xs text-dim px-2">{blogPostsPage} / {totalPages}</span>
+                  <button onClick={() => setBlogPostsPage(p => Math.min(totalPages, p + 1))}
+                    disabled={blogPostsPage >= totalPages}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                    다음 →
+                  </button>
+                </div>
+              );
+            })()}
           </>
         )}
       </GlassCard>
