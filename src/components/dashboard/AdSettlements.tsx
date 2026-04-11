@@ -74,9 +74,9 @@ export default function AdSettlements() {
           <thead>
             <tr className="border-b border-border text-xs text-dim">
               <th className="text-left py-2.5 px-3 font-semibold">일자</th>
-              <th className="text-left py-2.5 px-3 font-semibold">광고주</th>
-              <th className="text-right py-2.5 px-3 font-semibold">원고금액</th>
-              <th className="text-center py-2.5 px-3 font-semibold">포스팅 기한일자</th>
+              <th className="text-left py-2.5 px-3 font-semibold">거래처</th>
+              <th className="text-right py-2.5 px-3 font-semibold">원고료</th>
+              <th className="text-center py-2.5 px-3 font-semibold">포스팅 업로드 일자</th>
               <th className="text-center py-2.5 px-3 font-semibold">정산일자</th>
             </tr>
           </thead>
@@ -150,7 +150,7 @@ export default function AdSettlements() {
                     <span>일자: {formatDate(s.order_date || s.settled_date)}</span>
                     {s.posting_deadline && (
                       <span className={isPastDeadline ? 'text-down' : ''}>
-                        기한: {formatDate(s.posting_deadline)}
+                        업로드: {formatDate(s.posting_deadline)}
                       </span>
                     )}
                     {s.settled_date ? (
