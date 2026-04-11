@@ -50,6 +50,18 @@ interface AiResult {
   textLength: number;
 }
 
+interface PlagiarismResult {
+  totalChecked: number;
+  duplicateCount: number;
+  plagiarismRate: number;
+  originalRate: number;
+  sentences: {
+    sentence: string;
+    matches: { title: string; link: string; bloggerName: string; description: string }[];
+    isDuplicate: boolean;
+  }[];
+}
+
 // 규칙 기반 AI 판별
 function calculateRuleBasedScore(a: PostAnalysis): { score: number; factors: { label: string; value: string; signal: 'ai' | 'human' | 'neutral' }[] } {
   let score = 50;
@@ -138,7 +150,10 @@ export default function PostAnalysisPage() {
   const [analyses, setAnalyses] = useState<Map<string, PostAnalysis>>(new Map());
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [aiResults, setAiResults] = useState<Map<string, AiResult>>(new Map());
+  const [plagResults, setPlagResults] = useState<Map<string, PlagiarismResult>>(new Map());
   const [analyzingPost, setAnalyzingPost] = useState<string | null>(null);
+  const [checkingPlag, setCheckingPlag] = useState<string | null>(null);
+  const [plagProgress, setPlagProgress] = useState<{ current: number; total: number } | null>(null);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const abortRef = useRef<AbortController | null>(null);
@@ -260,6 +275,58 @@ export default function PostAnalysisPage() {
     }
   }, [profile, analyzingPost]);
 
+  // 표절검사 (SSE)
+  const runPlagiarismCheck = useCallback(async (logNo: string) => {
+    if (!profile || checkingPlag) return;
+    setCheckingPlag(logNo);
+    setExpandedPost(logNo);
+    setPlagProgress(null);
+
+    try {
+      const res = await fetch('/api/blog/plagiarism-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, logNo }),
+      });
+
+      if (!res.ok || !res.body) throw new Error('요청 실패');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'progress') {
+              setPlagProgress(event.data);
+            } else if (event.type === 'result') {
+              setPlagResults(prev => {
+                const next = new Map(prev);
+                next.set(logNo, event.data);
+                return next;
+              });
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    } catch (err) {
+      console.error('표절검사 오류:', err);
+    } finally {
+      setCheckingPlag(null);
+      setPlagProgress(null);
+    }
+  }, [profile, checkingPlag]);
+
   // 페이지네이션
   const perPage = 20;
   const totalPages = Math.ceil(posts.length / perPage);
@@ -366,9 +433,11 @@ export default function PostAnalysisPage() {
                     const analysis = analyses.get(post.id);
                     const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
                     const aiResult = aiResults.get(post.id);
+                    const plagResult = plagResults.get(post.id);
                     const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
                     const isExpanded = expandedPost === post.id;
                     const isAnalyzing = analyzingPost === post.id;
+                    const isCheckingPlag = checkingPlag === post.id;
 
                     return (
                       <tr key={post.id} className="group">
@@ -419,18 +488,34 @@ export default function PostAnalysisPage() {
                               </span>
                             </div>
                             <div className="flex-[12%] px-3 py-3.5 text-center">
-                              {isAnalyzing ? (
-                                <span className="animate-spin inline-block w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full" />
-                              ) : aiResult ? (
-                                <span className="text-[10px] text-accent font-bold">완료</span>
-                              ) : (
-                                <button
-                                  onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-accent/10 text-accent font-bold hover:bg-accent/20 transition cursor-pointer"
-                                >
-                                  AI 분석
-                                </button>
-                              )}
+                              <div className="flex flex-col items-center gap-1">
+                                {isAnalyzing ? (
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full" />
+                                ) : aiResult ? (
+                                  <span className="text-[10px] text-accent font-bold">AI 완료</span>
+                                ) : (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
+                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-accent/10 text-accent font-bold hover:bg-accent/20 transition cursor-pointer"
+                                  >
+                                    AI 분석
+                                  </button>
+                                )}
+                                {isCheckingPlag ? (
+                                  <span className="animate-spin inline-block w-3 h-3 border border-blue-500/30 border-t-blue-500 rounded-full" />
+                                ) : plagResult ? (
+                                  <span className={`text-[10px] font-bold ${plagResult.originalRate >= 80 ? 'text-up' : plagResult.originalRate >= 50 ? 'text-gold' : 'text-down'}`}>
+                                    원본 {plagResult.originalRate}%
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); runPlagiarismCheck(post.id); }}
+                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-500 font-bold hover:bg-blue-500/20 transition cursor-pointer"
+                                  >
+                                    표절검사
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -592,6 +677,85 @@ export default function PostAnalysisPage() {
                                   )}
                                 </div>
                               )}
+
+                              {/* 표절검사 버튼 */}
+                              {!plagResult && !isCheckingPlag && (
+                                <button
+                                  onClick={() => runPlagiarismCheck(post.id)}
+                                  className="text-sm px-4 py-2 rounded-xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition cursor-pointer"
+                                >
+                                  표절검사 실행
+                                </button>
+                              )}
+
+                              {/* 표절검사 진행 중 */}
+                              {isCheckingPlag && (
+                                <div className="flex items-center gap-2 text-sm text-dim py-2">
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full" />
+                                  표절검사 중...
+                                  {plagProgress && (
+                                    <span className="text-xs">({plagProgress.current}/{plagProgress.total})</span>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* 표절검사 결과 */}
+                              {plagResult && (
+                                <div className="space-y-4 pt-2 border-t border-border/30">
+                                  <h4 className="text-xs font-bold text-blue-500">표절검사 결과</h4>
+
+                                  {/* 원본율 */}
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-sm font-bold">원본율:</span>
+                                    <span className={`text-lg font-black font-rank ${
+                                      plagResult.originalRate >= 80 ? 'text-up' : plagResult.originalRate >= 50 ? 'text-gold' : 'text-down'
+                                    }`}>
+                                      {plagResult.originalRate}%
+                                    </span>
+                                    <div className="flex-1 h-2 bg-border/30 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full ${
+                                          plagResult.originalRate >= 80 ? 'bg-up' : plagResult.originalRate >= 50 ? 'bg-gold' : 'bg-down'
+                                        }`}
+                                        style={{ width: `${plagResult.originalRate}%` }}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="flex gap-3 text-xs text-dim">
+                                    <span>검사 문장: <strong className="text-text">{plagResult.totalChecked}개</strong></span>
+                                    <span>유사 발견: <strong className={plagResult.duplicateCount > 0 ? 'text-down' : 'text-up'}>{plagResult.duplicateCount}개</strong></span>
+                                  </div>
+
+                                  {/* 문장별 결과 */}
+                                  <div className="space-y-2">
+                                    {plagResult.sentences.map((s, i) => (
+                                      <div key={i} className={`text-sm rounded-xl p-3 border ${
+                                        s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-up/5 border-up/20'
+                                      }`}>
+                                        <div className="flex items-start gap-2">
+                                          <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                            s.isDuplicate ? 'bg-down/10 text-down' : 'bg-up/10 text-up'
+                                          }`}>
+                                            {s.isDuplicate ? '유사' : '원본'}
+                                          </span>
+                                          <p className="leading-relaxed text-xs line-clamp-2">{s.sentence}</p>
+                                        </div>
+                                        {s.matches.length > 0 && (
+                                          <div className="mt-2 pl-6 space-y-1">
+                                            {s.matches.map((m, j) => (
+                                              <a key={j} href={m.link} target="_blank" rel="noopener noreferrer"
+                                                className="block text-[11px] text-dim hover:text-accent transition">
+                                                <span className="font-semibold text-text">{m.bloggerName}</span>: {m.title}
+                                              </a>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </td>
@@ -608,9 +772,11 @@ export default function PostAnalysisPage() {
                 const analysis = analyses.get(post.id);
                 const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
                 const aiResult = aiResults.get(post.id);
+                const plagResult = plagResults.get(post.id);
                 const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
                 const isExpanded = expandedPost === post.id;
                 const isAnalyzing = analyzingPost === post.id;
+                const isCheckingPlag = checkingPlag === post.id;
 
                 return (
                   <div key={post.id} className="px-4 py-4">
@@ -641,13 +807,27 @@ export default function PostAnalysisPage() {
                         {isAnalyzing ? (
                           <span className="animate-spin inline-block w-3 h-3 border border-accent border-t-transparent rounded-full" />
                         ) : aiResult ? (
-                          <span className="text-accent font-bold">AI 분석 완료</span>
+                          <span className="text-accent font-bold">AI 완료</span>
                         ) : (
                           <button
                             onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
                             className="text-accent font-bold cursor-pointer"
                           >
                             AI 분석
+                          </button>
+                        )}
+                        {isCheckingPlag ? (
+                          <span className="animate-spin inline-block w-3 h-3 border border-blue-500 border-t-transparent rounded-full" />
+                        ) : plagResult ? (
+                          <span className={`font-bold ${plagResult.originalRate >= 80 ? 'text-up' : 'text-down'}`}>
+                            원본 {plagResult.originalRate}%
+                          </span>
+                        ) : (
+                          <button
+                            onClick={e => { e.stopPropagation(); runPlagiarismCheck(post.id); }}
+                            className="text-blue-500 font-bold cursor-pointer"
+                          >
+                            표절검사
                           </button>
                         )}
                       </div>
@@ -724,6 +904,54 @@ export default function PostAnalysisPage() {
                                 ))}
                               </div>
                             )}
+                          </div>
+                        )}
+
+                        {/* 모바일 표절검사 */}
+                        {!plagResult && !isCheckingPlag && (
+                          <button
+                            onClick={() => runPlagiarismCheck(post.id)}
+                            className="text-sm px-4 py-2 rounded-xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition cursor-pointer w-full"
+                          >
+                            표절검사 실행
+                          </button>
+                        )}
+                        {isCheckingPlag && (
+                          <div className="flex items-center gap-2 text-sm text-dim">
+                            <span className="animate-spin inline-block w-3 h-3 border border-blue-500 border-t-transparent rounded-full" />
+                            표절검사 중... {plagProgress && `(${plagProgress.current}/${plagProgress.total})`}
+                          </div>
+                        )}
+                        {plagResult && (
+                          <div className="space-y-3 pt-2 border-t border-border/30">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold">원본율:</span>
+                              <span className={`font-black font-rank ${plagResult.originalRate >= 80 ? 'text-up' : plagResult.originalRate >= 50 ? 'text-gold' : 'text-down'}`}>
+                                {plagResult.originalRate}%
+                              </span>
+                              <span className="text-[10px] text-dim">({plagResult.duplicateCount}/{plagResult.totalChecked} 유사)</span>
+                            </div>
+                            <div className="space-y-1.5">
+                              {plagResult.sentences.map((s, i) => (
+                                <div key={i} className={`text-xs rounded-lg p-2 border ${s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-up/5 border-up/20'}`}>
+                                  <div className="flex items-start gap-1.5">
+                                    <span className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded ${s.isDuplicate ? 'bg-down/10 text-down' : 'bg-up/10 text-up'}`}>
+                                      {s.isDuplicate ? '유사' : '원본'}
+                                    </span>
+                                    <span className="line-clamp-1">{s.sentence}</span>
+                                  </div>
+                                  {s.matches.length > 0 && (
+                                    <div className="mt-1 pl-5">
+                                      {s.matches.slice(0, 2).map((m, j) => (
+                                        <a key={j} href={m.link} target="_blank" rel="noopener noreferrer" className="block text-[10px] text-dim hover:text-accent truncate">
+                                          {m.bloggerName}: {m.title}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
