@@ -142,6 +142,58 @@ async function checkViewTab(query: string, blogId: string): Promise<{
 }
 
 /**
+ * 포스팅 제목에서 핵심 키워드 추출
+ * - 블로그 이름/닉네임 제거
+ * - 불용어 제거
+ * - 핵심 명사 2~4개만 추출
+ */
+function extractKeywords(title: string, blogId: string): string {
+  // 1. 블로그 ID 관련 단어 제거 (블로거 이름/닉네임)
+  let cleaned = title;
+  const blogIdPatterns = [
+    blogId,
+    blogId.replace(/[_-]/g, ''),
+    // 흔한 패턴: "오렌지단상", "오렌지도서관", "오렌지의" 등
+  ];
+  for (const p of blogIdPatterns) {
+    if (p.length >= 2) {
+      cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
+    }
+  }
+
+  // 2. 괄호 안 내용 제거 (부가 설명)
+  cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
+
+  // 3. 불용어 제거
+  const stopWords = [
+    '의', '에', '를', '을', '이', '가', '는', '은', '와', '과', '도', '로', '으로',
+    '에서', '에게', '한', '된', '하는', '있는', '없는', '대한', '위한', '통한',
+    '그리고', '또는', '하지만', '그러나', '때문에', '그래서',
+    'TOP', 'VS', 'BEST', '추천', '정리', '모음', '총정리', '후기',
+    '리뷰', '비교', '분석', '방법', '소개', '안내',
+  ];
+
+  // 4. 단어 분리 및 필터링
+  const words = cleaned
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')  // 특수문자 제거
+    .split(/\s+/)
+    .filter(w => w.length >= 2)
+    .filter(w => !stopWords.includes(w))
+    .filter(w => !/^\d+$/.test(w));  // 숫자만인 단어 제거
+
+  // 5. 핵심 키워드 2~4개 선택 (앞에서부터)
+  const keywords = words.slice(0, 4);
+
+  // 최소 1개 키워드 필요
+  if (keywords.length === 0) {
+    // 원본 제목에서 앞 20자만
+    return title.slice(0, 20);
+  }
+
+  return keywords.join(' ');
+}
+
+/**
  * POST /api/blog/check-missing
  * 포스팅의 블로그탭 + 통합검색 노출/누락 여부 확인
  */
@@ -164,8 +216,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(cached.data);
     }
 
-    // 검색어: 제목이 너무 길면 앞 40자만 사용
-    const query = postTitle.length > 40 ? postTitle.slice(0, 40) : postTitle;
+    // 핵심 키워드 추출: 제목에서 불필요한 부분 제거
+    const query = extractKeywords(postTitle, blogId);
 
     // 블로그탭 + 통합검색 동시 확인
     const [blogTab, viewTab] = await Promise.all([
@@ -176,6 +228,7 @@ export async function POST(request: NextRequest) {
     const result = {
       blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },
       viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
+      query, // 실제 검색에 사용된 키워드
     };
 
     // 캐시 저장
