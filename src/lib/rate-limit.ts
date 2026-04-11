@@ -126,3 +126,6 @@ export const notificationLimiter = createRateLimiter({ limit: 30, windowMs: 60 *
 
 /** 쪽지 발송: 10분에 5회 */
 export const messageLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 1000 });
+
+/** AI 포스팅 분석: 5분에 5회 */
+export const aiAnalyzeLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });

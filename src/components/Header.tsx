@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/my', label: '키워드챌린지' },
       { href: '/my/blogger', label: '블로그' },
       { href: '/my/settlements', label: '원고료 정산내역' },
+      { href: '/my/post-analysis', label: '포스팅 분석' },
     ],
   },
   {

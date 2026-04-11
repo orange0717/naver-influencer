@@ -1,0 +1,761 @@
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import GlassCard from '@/components/dashboard/GlassCard';
+import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
+
+interface BloggerProfile {
+  blogId: string;
+  displayName: string;
+  isInfluencer: boolean;
+}
+
+interface BlogPost {
+  id: string;
+  title: string;
+  url: string;
+  commentCount: number;
+  date: string;
+  isPublic: boolean;
+}
+
+interface PostAnalysis {
+  postId: string;
+  title: string;
+  charCount: number;
+  wordCount: number;
+  imageCount: number;
+  videoCount: number;
+  paragraphCount: number;
+  linkCount: number;
+  headingCount: number;
+  mapCount: number;
+  personalPronounCount: number;
+  uniqueWordRatio: number;
+  listItemCount: number;
+  quotationCount: number;
+  tableCount: number;
+  textPreview: string;
+  originalImageCount: number;
+  avgImageSizeKB: number;
+  success: boolean;
+}
+
+interface AiResult {
+  aiProbability: number;
+  aiReasoning: string;
+  keywords: { keyword: string; relevance: 'high' | 'medium' | 'low'; searchable: boolean }[];
+  keySentences: { sentence: string; type: 'topic' | 'evidence' | 'conclusion' | 'appeal'; importance: number }[];
+  writingStyle: { tone: string; readability: string; originality: number };
+  textLength: number;
+}
+
+// 규칙 기반 AI 판별
+function calculateRuleBasedScore(a: PostAnalysis): { score: number; factors: { label: string; value: string; signal: 'ai' | 'human' | 'neutral' }[] } {
+  let score = 50;
+  const factors: { label: string; value: string; signal: 'ai' | 'human' | 'neutral' }[] = [];
+
+  // 1인칭 대명사 밀도
+  const pronounRatio = a.wordCount > 0 ? a.personalPronounCount / a.wordCount : 0;
+  if (pronounRatio < 0.005) {
+    score += 15;
+    factors.push({ label: '1인칭 표현', value: `${a.personalPronounCount}회 (매우 적음)`, signal: 'ai' });
+  } else if (pronounRatio > 0.02) {
+    score -= 15;
+    factors.push({ label: '1인칭 표현', value: `${a.personalPronounCount}회 (풍부)`, signal: 'human' });
+  } else {
+    factors.push({ label: '1인칭 표현', value: `${a.personalPronounCount}회`, signal: 'neutral' });
+  }
+
+  // 고유 단어 비율
+  if (a.uniqueWordRatio > 0.85) {
+    score += 10;
+    factors.push({ label: '고유 단어 비율', value: `${Math.round(a.uniqueWordRatio * 100)}% (높음)`, signal: 'ai' });
+  } else if (a.uniqueWordRatio < 0.5) {
+    score -= 10;
+    factors.push({ label: '고유 단어 비율', value: `${Math.round(a.uniqueWordRatio * 100)}%`, signal: 'human' });
+  } else {
+    factors.push({ label: '고유 단어 비율', value: `${Math.round(a.uniqueWordRatio * 100)}%`, signal: 'neutral' });
+  }
+
+  // 텍스트 길이 vs 원본 사진
+  if (a.charCount > 2000 && a.originalImageCount === 0) {
+    score += 10;
+    factors.push({ label: '원본 사진', value: '긴 글인데 원본 사진 없음', signal: 'ai' });
+  } else if (a.originalImageCount >= 3) {
+    score -= 10;
+    factors.push({ label: '원본 사진', value: `${a.originalImageCount}장 (직접 촬영)`, signal: 'human' });
+  }
+
+  // 지도/동영상
+  if (a.mapCount > 0 || a.videoCount > 0) {
+    score -= 15;
+    factors.push({ label: '멀티미디어', value: `지도 ${a.mapCount}개, 동영상 ${a.videoCount}개`, signal: 'human' });
+  }
+
+  // 소제목 밀도 (AI는 균일한 소제목을 넣는 경향)
+  if (a.headingCount >= 5 && a.paragraphCount > 0 && a.headingCount / a.paragraphCount > 0.3) {
+    score += 5;
+    factors.push({ label: '소제목 구조', value: `${a.headingCount}개 (균일하게 배치)`, signal: 'ai' });
+  }
+
+  return { score: Math.max(0, Math.min(100, score)), factors };
+}
+
+function getAiBadge(score: number) {
+  if (score <= 30) return { bg: 'bg-up/10', text: 'text-up', border: 'border-up/30', label: '사람' };
+  if (score <= 60) return { bg: 'bg-gold/10', text: 'text-gold', border: 'border-gold/30', label: '불확실' };
+  return { bg: 'bg-down/10', text: 'text-down', border: 'border-down/30', label: 'AI 의심' };
+}
+
+const sentenceTypeLabel: Record<string, string> = {
+  topic: '주제', evidence: '근거', conclusion: '결론', appeal: '어필',
+};
+
+async function getProfileFromApi(): Promise<BloggerProfile | null> {
+  try {
+    const res = await fetch('/api/auth/me');
+    const data = await res.json();
+    if (data.type === 'unified' && (data.blogId || data.id)) {
+      return { blogId: data.blogId || data.id, displayName: data.name || data.blogId || data.id, isInfluencer: true };
+    }
+    if (data.type === 'blogger' && data.id) {
+      return { blogId: data.id, displayName: data.name || data.id, isInfluencer: false };
+    }
+    if (data.type === 'influencer' && data.id) {
+      return { blogId: data.blogId || data.id, displayName: data.name || data.id, isInfluencer: true };
+    }
+    return null;
+  } catch { return null; }
+}
+
+export default function PostAnalysisPage() {
+  const [profile, setProfile] = useState<BloggerProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [postsTotal, setPostsTotal] = useState(0);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [analyses, setAnalyses] = useState<Map<string, PostAnalysis>>(new Map());
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [aiResults, setAiResults] = useState<Map<string, AiResult>>(new Map());
+  const [analyzingPost, setAnalyzingPost] = useState<string | null>(null);
+  const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // 프로필 로드
+  useEffect(() => {
+    getProfileFromApi().then(p => {
+      if (!p) { window.location.href = '/auth/login'; return; }
+      setProfile(p);
+      setLoading(false);
+    });
+  }, []);
+
+  // 전체 포스트 로드
+  const fetchAllPosts = useCallback(async (blogId: string) => {
+    setPostsLoading(true);
+    try {
+      const allPosts: BlogPost[] = [];
+      let p = 1;
+      const perPage = 30;
+
+      const firstRes = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=${perPage}`);
+      if (!firstRes.ok) return;
+      const firstData = await firstRes.json();
+      allPosts.push(...(firstData.posts || []));
+      const total = firstData.totalCount || 0;
+      setPostsTotal(total);
+
+      const totalPages = Math.ceil(total / perPage);
+      for (p = 2; p <= totalPages; p++) {
+        const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${p}&count=${perPage}`);
+        if (!res.ok) break;
+        const data = await res.json();
+        if (!data.posts?.length) break;
+        allPosts.push(...data.posts);
+      }
+
+      setPosts(allPosts);
+    } catch { /* ignore */ }
+    finally { setPostsLoading(false); }
+  }, []);
+
+  // 기본 분석 로드 (최근 15개)
+  const fetchBasicAnalysis = useCallback(async (blogId: string) => {
+    setAnalysisLoading(true);
+    try {
+      const res = await fetch(`/api/blog/analyze?blogId=${encodeURIComponent(blogId)}&count=15`);
+      if (res.ok) {
+        const data = await res.json();
+        const map = new Map<string, PostAnalysis>();
+        for (const post of (data.posts || [])) {
+          if (post.success) map.set(post.postId, post);
+        }
+        setAnalyses(map);
+      }
+    } catch { /* ignore */ }
+    finally { setAnalysisLoading(false); }
+  }, []);
+
+  // 프로필 로드 후 데이터 fetch
+  useEffect(() => {
+    if (!profile) return;
+    fetchAllPosts(profile.blogId);
+    fetchBasicAnalysis(profile.blogId);
+  }, [profile, fetchAllPosts, fetchBasicAnalysis]);
+
+  // AI 심층 분석 (SSE)
+  const runAiAnalysis = useCallback(async (logNo: string) => {
+    if (!profile || analyzingPost) return;
+    setAnalyzingPost(logNo);
+    setExpandedPost(logNo);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const res = await fetch('/api/blog/ai-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, logNo }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok || !res.body) throw new Error('요청 실패');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'result') {
+              setAiResults(prev => {
+                const next = new Map(prev);
+                next.set(logNo, event.data);
+                return next;
+              });
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        console.error('AI 분석 오류:', err);
+      }
+    } finally {
+      setAnalyzingPost(null);
+      abortRef.current = null;
+    }
+  }, [profile, analyzingPost]);
+
+  // 페이지네이션
+  const perPage = 20;
+  const totalPages = Math.ceil(posts.length / perPage);
+  const visiblePosts = posts.slice((page - 1) * perPage, page * perPage);
+
+  // 통계 계산
+  const analysisArray = Array.from(analyses.values());
+  const avgAiScore = analysisArray.length > 0
+    ? Math.round(analysisArray.reduce((s, a) => s + calculateRuleBasedScore(a).score, 0) / analysisArray.length)
+    : 0;
+  const avgCharCount = analysisArray.length > 0
+    ? Math.round(analysisArray.reduce((s, a) => s + a.charCount, 0) / analysisArray.length)
+    : 0;
+  const originalRatio = analysisArray.length > 0
+    ? Math.round(analysisArray.filter(a => a.originalImageCount >= 1).length / analysisArray.length * 100)
+    : 0;
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="flex items-center justify-center py-20">
+          <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) return null;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+      {/* 헤더 */}
+      <div>
+        <h1 className="text-2xl font-title font-bold">포스팅 분석</h1>
+        <p className="text-sm text-dim mt-1">AI 작성 여부 판별, 키워드 추출, 핵심 문장 분석</p>
+      </div>
+
+      {/* 요약 통계 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <AnimatedStatCard
+          label="전체 포스팅"
+          value={postsLoading ? '...' : postsTotal.toLocaleString()}
+          suffix="개"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>}
+        />
+        <AnimatedStatCard
+          label="평균 AI 확률"
+          value={analysisLoading ? '...' : String(avgAiScore)}
+          suffix="%"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M20 12a8 8 0 0 0-8-8v8h8z"/></svg>}
+        />
+        <AnimatedStatCard
+          label="평균 글자수"
+          value={analysisLoading ? '...' : avgCharCount.toLocaleString()}
+          suffix="자"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>}
+        />
+        <AnimatedStatCard
+          label="원본 사진 비율"
+          value={analysisLoading ? '...' : String(originalRatio)}
+          suffix="%"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>}
+        />
+      </div>
+
+      {/* 포스트 목록 */}
+      <GlassCard>
+        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-[15px]">포스팅 목록</h3>
+            <p className="text-[11px] text-dim mt-0.5">
+              {postsLoading ? '로딩 중...' : `전체 ${posts.length}개 포스팅`}
+              {analysisLoading && ' / 기본 분석 로딩 중...'}
+            </p>
+          </div>
+        </div>
+
+        {postsLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+            <span className="ml-3 text-sm text-dim">전체 포스팅 로딩 중...</span>
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-16 text-dim text-sm">
+            <p>포스팅을 찾을 수 없습니다.</p>
+          </div>
+        ) : (
+          <>
+            {/* 데스크톱 테이블 */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-xs text-dim">
+                    <th className="text-left px-5 py-3 font-semibold w-[40%]">제목</th>
+                    <th className="text-center px-3 py-3 font-semibold">AI 확률</th>
+                    <th className="text-center px-3 py-3 font-semibold">글자수</th>
+                    <th className="text-center px-3 py-3 font-semibold">이미지</th>
+                    <th className="text-center px-3 py-3 font-semibold">날짜</th>
+                    <th className="text-center px-3 py-3 font-semibold">분석</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {visiblePosts.map(post => {
+                    const analysis = analyses.get(post.id);
+                    const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
+                    const aiResult = aiResults.get(post.id);
+                    const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
+                    const isExpanded = expandedPost === post.id;
+                    const isAnalyzing = analyzingPost === post.id;
+
+                    return (
+                      <tr key={post.id} className="group">
+                        <td colSpan={6} className="p-0">
+                          {/* 메인 행 */}
+                          <div
+                            className="flex items-center hover:bg-surface-hover/50 transition-colors cursor-pointer"
+                            onClick={() => setExpandedPost(isExpanded ? null : post.id)}
+                          >
+                            <div className="flex-[40%] px-5 py-3.5">
+                              <a
+                                href={post.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-semibold text-sm hover:text-accent transition-colors line-clamp-1 block"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {post.title}
+                              </a>
+                            </div>
+                            <div className="flex-[12%] px-3 py-3.5 text-center">
+                              {badge ? (
+                                <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg border ${badge.bg} ${badge.text} ${badge.border}`}>
+                                  {ruleScore!.score}%
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-dim">-</span>
+                              )}
+                            </div>
+                            <div className="flex-[12%] px-3 py-3.5 text-center">
+                              {analysis ? (
+                                <span className="text-sm font-rank">{analysis.charCount.toLocaleString()}</span>
+                              ) : <span className="text-[10px] text-dim">-</span>}
+                            </div>
+                            <div className="flex-[12%] px-3 py-3.5 text-center">
+                              {analysis ? (
+                                <span className="text-sm">
+                                  {analysis.imageCount}
+                                  {analysis.originalImageCount > 0 && (
+                                    <span className="text-[10px] text-up ml-0.5">({analysis.originalImageCount}원본)</span>
+                                  )}
+                                </span>
+                              ) : <span className="text-[10px] text-dim">-</span>}
+                            </div>
+                            <div className="flex-[12%] px-3 py-3.5 text-center">
+                              <span className="text-[11px] text-dim">
+                                {post.date ? new Date(post.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) : '-'}
+                              </span>
+                            </div>
+                            <div className="flex-[12%] px-3 py-3.5 text-center">
+                              {isAnalyzing ? (
+                                <span className="animate-spin inline-block w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full" />
+                              ) : aiResult ? (
+                                <span className="text-[10px] text-accent font-bold">완료</span>
+                              ) : (
+                                <button
+                                  onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-accent/10 text-accent font-bold hover:bg-accent/20 transition cursor-pointer"
+                                >
+                                  AI 분석
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 확장 상세 */}
+                          {isExpanded && (
+                            <div className="px-5 pb-5 space-y-4 bg-bg/20 border-t border-border/30">
+                              {/* 규칙 기반 분석 */}
+                              {ruleScore && (
+                                <div className="space-y-3 pt-4">
+                                  <h4 className="text-xs font-bold text-dim">규칙 기반 사전 분석</h4>
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-lg font-black font-rank">
+                                      <span className={badge!.text}>{ruleScore.score}%</span>
+                                    </div>
+                                    <div className="flex-1 h-2 bg-border/30 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all ${
+                                          ruleScore.score <= 30 ? 'bg-up' : ruleScore.score <= 60 ? 'bg-gold' : 'bg-down'
+                                        }`}
+                                        style={{ width: `${ruleScore.score}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {ruleScore.factors.map((f, i) => (
+                                      <span key={i} className={`text-[11px] px-2.5 py-1 rounded-lg border ${
+                                        f.signal === 'ai' ? 'bg-down/5 text-down border-down/20'
+                                        : f.signal === 'human' ? 'bg-up/5 text-up border-up/20'
+                                        : 'bg-border/20 text-dim border-border/30'
+                                      }`}>
+                                        {f.signal === 'ai' ? 'AI' : f.signal === 'human' ? '사람' : '-'} {f.label}: {f.value}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* 본문 미리보기 */}
+                              {analysis?.textPreview && (
+                                <div>
+                                  <h4 className="text-xs font-bold text-dim mb-1">본문 미리보기</h4>
+                                  <p className="text-xs text-dim leading-relaxed bg-bg rounded-xl p-3 line-clamp-3">
+                                    {analysis.textPreview}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* AI 심층 분석 버튼 */}
+                              {!aiResult && !isAnalyzing && (
+                                <button
+                                  onClick={() => runAiAnalysis(post.id)}
+                                  className="text-sm px-4 py-2 rounded-xl bg-accent text-white font-bold hover:bg-accent-hover transition cursor-pointer"
+                                >
+                                  AI 심층 분석 실행
+                                </button>
+                              )}
+
+                              {/* AI 분석 진행 중 */}
+                              {isAnalyzing && (
+                                <div className="flex items-center gap-2 text-sm text-dim py-2">
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full" />
+                                  AI 분석 중...
+                                </div>
+                              )}
+
+                              {/* AI 분석 결과 */}
+                              {aiResult && (
+                                <div className="space-y-4 pt-2 border-t border-border/30">
+                                  <h4 className="text-xs font-bold text-accent">AI 심층 분석 결과 (Claude)</h4>
+
+                                  {/* AI 확률 */}
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-sm font-bold">AI 확률:</span>
+                                    <span className={`text-lg font-black font-rank ${
+                                      aiResult.aiProbability <= 30 ? 'text-up' : aiResult.aiProbability <= 60 ? 'text-gold' : 'text-down'
+                                    }`}>
+                                      {aiResult.aiProbability}%
+                                    </span>
+                                    <div className="flex-1 h-2 bg-border/30 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full ${
+                                          aiResult.aiProbability <= 30 ? 'bg-up' : aiResult.aiProbability <= 60 ? 'bg-gold' : 'bg-down'
+                                        }`}
+                                        style={{ width: `${aiResult.aiProbability}%` }}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* 판단 근거 */}
+                                  <div className="bg-bg rounded-xl p-3">
+                                    <p className="text-xs text-dim font-semibold mb-1">판단 근거</p>
+                                    <p className="text-sm leading-relaxed">{aiResult.aiReasoning}</p>
+                                  </div>
+
+                                  {/* 키워드 */}
+                                  {aiResult.keywords.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-dim font-semibold mb-2">핵심 키워드</p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {aiResult.keywords.map((kw, i) => (
+                                          <span key={i} className={`text-xs px-2.5 py-1 rounded-lg border ${
+                                            kw.relevance === 'high' ? 'bg-accent/10 text-accent border-accent/20 font-bold'
+                                            : kw.relevance === 'medium' ? 'bg-border/30 text-text border-border/40'
+                                            : 'bg-border/20 text-dim border-border/30'
+                                          }`}>
+                                            {kw.keyword}
+                                            {kw.searchable && (
+                                              <a
+                                                href={`https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(kw.keyword)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="ml-1 opacity-50 hover:opacity-100"
+                                                onClick={e => e.stopPropagation()}
+                                              >
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                                              </a>
+                                            )}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* 핵심 문장 */}
+                                  {aiResult.keySentences.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-dim font-semibold mb-2">핵심 문장</p>
+                                      <div className="space-y-2">
+                                        {aiResult.keySentences.map((s, i) => (
+                                          <div key={i} className="flex items-start gap-2 text-sm">
+                                            <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                              s.type === 'topic' ? 'bg-accent/10 text-accent'
+                                              : s.type === 'evidence' ? 'bg-blue-500/10 text-blue-500'
+                                              : s.type === 'conclusion' ? 'bg-up/10 text-up'
+                                              : 'bg-gold/10 text-gold'
+                                            }`}>
+                                              {sentenceTypeLabel[s.type] || s.type}
+                                            </span>
+                                            <span className="leading-relaxed">{s.sentence}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* 글쓰기 스타일 */}
+                                  {aiResult.writingStyle && (
+                                    <div className="flex flex-wrap gap-2 text-xs">
+                                      <span className="px-2.5 py-1 rounded-lg bg-border/20 text-dim">
+                                        스타일: <strong className="text-text">{aiResult.writingStyle.tone}</strong>
+                                      </span>
+                                      <span className="px-2.5 py-1 rounded-lg bg-border/20 text-dim">
+                                        가독성: <strong className="text-text">{aiResult.writingStyle.readability === 'easy' ? '쉬움' : aiResult.writingStyle.readability === 'medium' ? '보통' : '어려움'}</strong>
+                                      </span>
+                                      <span className="px-2.5 py-1 rounded-lg bg-border/20 text-dim">
+                                        독창성: <strong className="text-text">{aiResult.writingStyle.originality}/10</strong>
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 모바일 카드 */}
+            <div className="md:hidden divide-y divide-border/20">
+              {visiblePosts.map(post => {
+                const analysis = analyses.get(post.id);
+                const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
+                const aiResult = aiResults.get(post.id);
+                const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
+                const isExpanded = expandedPost === post.id;
+                const isAnalyzing = analyzingPost === post.id;
+
+                return (
+                  <div key={post.id} className="px-4 py-4">
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => setExpandedPost(isExpanded ? null : post.id)}
+                    >
+                      <div className="flex items-start gap-2 mb-2">
+                        <a
+                          href={post.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-sm hover:text-accent transition-colors line-clamp-2 flex-1"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {post.title}
+                        </a>
+                        {badge && (
+                          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-lg border ${badge.bg} ${badge.text} ${badge.border}`}>
+                            {ruleScore!.score}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-dim">
+                        {analysis && <span>{analysis.charCount.toLocaleString()}자</span>}
+                        {analysis && <span>이미지 {analysis.imageCount}장</span>}
+                        {post.date && <span>{new Date(post.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}</span>}
+                        {isAnalyzing ? (
+                          <span className="animate-spin inline-block w-3 h-3 border border-accent border-t-transparent rounded-full" />
+                        ) : aiResult ? (
+                          <span className="text-accent font-bold">AI 분석 완료</span>
+                        ) : (
+                          <button
+                            onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
+                            className="text-accent font-bold cursor-pointer"
+                          >
+                            AI 분석
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 모바일 확장 */}
+                    {isExpanded && (
+                      <div className="mt-3 space-y-3">
+                        {ruleScore && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-black font-rank ${badge!.text}`}>{ruleScore.score}%</span>
+                              <div className="flex-1 h-1.5 bg-border/30 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${ruleScore.score <= 30 ? 'bg-up' : ruleScore.score <= 60 ? 'bg-gold' : 'bg-down'}`}
+                                  style={{ width: `${ruleScore.score}%` }}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {ruleScore.factors.map((f, i) => (
+                                <span key={i} className={`text-[10px] px-2 py-0.5 rounded border ${
+                                  f.signal === 'ai' ? 'bg-down/5 text-down border-down/20'
+                                  : f.signal === 'human' ? 'bg-up/5 text-up border-up/20'
+                                  : 'bg-border/20 text-dim border-border/30'
+                                }`}>
+                                  {f.label}: {f.value}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {!aiResult && !isAnalyzing && (
+                          <button
+                            onClick={() => runAiAnalysis(post.id)}
+                            className="text-sm px-4 py-2 rounded-xl bg-accent text-white font-bold hover:bg-accent-hover transition cursor-pointer w-full"
+                          >
+                            AI 심층 분석 실행
+                          </button>
+                        )}
+
+                        {aiResult && (
+                          <div className="space-y-3 pt-2 border-t border-border/30">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold">AI 확률:</span>
+                              <span className={`font-black font-rank ${
+                                aiResult.aiProbability <= 30 ? 'text-up' : aiResult.aiProbability <= 60 ? 'text-gold' : 'text-down'
+                              }`}>
+                                {aiResult.aiProbability}%
+                              </span>
+                            </div>
+                            <p className="text-xs leading-relaxed bg-bg rounded-xl p-2.5">{aiResult.aiReasoning}</p>
+                            {aiResult.keywords.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {aiResult.keywords.map((kw, i) => (
+                                  <span key={i} className={`text-[10px] px-2 py-0.5 rounded-lg ${
+                                    kw.relevance === 'high' ? 'bg-accent/10 text-accent font-bold' : 'bg-border/30 text-dim'
+                                  }`}>
+                                    {kw.keyword}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {aiResult.keySentences.length > 0 && (
+                              <div className="space-y-1.5">
+                                {aiResult.keySentences.map((s, i) => (
+                                  <div key={i} className="flex items-start gap-1.5 text-xs">
+                                    <span className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded ${
+                                      s.type === 'topic' ? 'bg-accent/10 text-accent' : s.type === 'evidence' ? 'bg-blue-500/10 text-blue-500' : s.type === 'conclusion' ? 'bg-up/10 text-up' : 'bg-gold/10 text-gold'
+                                    }`}>{sentenceTypeLabel[s.type]}</span>
+                                    <span className="leading-relaxed">{s.sentence}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 px-5 py-4 border-t border-border/30">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-border/20 text-dim hover:bg-border/30 transition disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                >
+                  이전
+                </button>
+                <span className="text-xs text-dim font-rank">{page} / {totalPages}</span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-border/20 text-dim hover:bg-border/30 transition disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                >
+                  다음
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </GlassCard>
+    </div>
+  );
+}
