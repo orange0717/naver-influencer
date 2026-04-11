@@ -431,20 +431,27 @@ export default function BloggerDashboard() {
   const gradeInfo = getGrade(totalScore);
   latestScoresRef.current = { total: totalScore, scores: allScores, grade: gradeInfo.grade };
 
-  // 주간 평균 발행량
-  const weeklyAvg = (() => {
-    if (blogPosts.length === 0) return 0;
+  // 발행량 통계
+  const publishingStats = (() => {
+    if (blogPosts.length === 0) return { daily: 0, weeklyTotal: 0, weeklyAvg: 0, monthlyTotal: 0 };
     const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    let recentCount = 0;
+    let weekCount = 0, monthCount = 0;
     for (const p of blogPosts) {
       const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
       if (match) {
         const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-        if (d >= thirtyDaysAgo) recentCount++;
+        if (d >= oneWeekAgo) weekCount++;
+        if (d >= thirtyDaysAgo) monthCount++;
       }
     }
-    return Math.round(recentCount / 4 * 10) / 10;
+    return {
+      daily: Math.round(monthCount / 30 * 10) / 10,
+      weeklyTotal: weekCount,
+      weeklyAvg: Math.round(monthCount / 4 * 10) / 10,
+      monthlyTotal: monthCount,
+    };
   })();
 
   if (!profile) return null;
@@ -528,23 +535,31 @@ export default function BloggerDashboard() {
         </div>
       )}
 
-      {/* ─── 2. 핵심 지표 카드 (4개) ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ─── 2. 핵심 지표 카드 ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <AnimatedStatCard
-          label="주간 평균 발행"
-          value={weeklyAvg}
-          suffix="회/주"
+          label="일일 평균 발행"
+          value={publishingStats.daily}
+          suffix="회/일"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>}
-          color={weeklyAvg >= 2 ? 'up' : weeklyAvg >= 1 ? 'accent' : 'dim'}
+          color={publishingStats.daily >= 1 ? 'up' : publishingStats.daily >= 0.5 ? 'accent' : 'dim'}
           delay={50}
         />
         <AnimatedStatCard
-          label="블로그 지수"
-          value={totalScore}
-          suffix={`(${gradeInfo.grade})`}
+          label="이번주 발행"
+          value={publishingStats.weeklyTotal}
+          suffix={`회 (평균 ${publishingStats.weeklyAvg})`}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
-          color={totalScore >= 60 ? 'up' : totalScore >= 40 ? 'accent' : 'dim'}
+          color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'}
           delay={100}
+        />
+        <AnimatedStatCard
+          label="한달 발행"
+          value={publishingStats.monthlyTotal}
+          suffix="회"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>}
+          color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'}
+          delay={150}
         />
         <AnimatedStatCard
           label="전체 순위"
@@ -552,7 +567,7 @@ export default function BloggerDashboard() {
           suffix={scoreData ? `/${scoreData.totalBloggers}` : ''}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
           color={scoreData && scoreData.rank <= 10 ? 'gold' : 'accent'}
-          delay={150}
+          delay={200}
         />
         <AnimatedStatCard
           label={`${category} 순위`}
@@ -560,7 +575,15 @@ export default function BloggerDashboard() {
           suffix={scoreData ? `/${scoreData.categoryTotal}` : ''}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
           color={scoreData && scoreData.categoryRank <= 5 ? 'gold' : 'accent'}
-          delay={200}
+          delay={250}
+        />
+        <AnimatedStatCard
+          label="블로그 지수"
+          value={totalScore}
+          suffix={`(${gradeInfo.grade})`}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>}
+          color={totalScore >= 60 ? 'up' : totalScore >= 40 ? 'accent' : 'dim'}
+          delay={300}
         />
       </div>
 
