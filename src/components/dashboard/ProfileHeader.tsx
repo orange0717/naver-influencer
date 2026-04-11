@@ -20,6 +20,7 @@ interface ProfileHeaderProps {
   totalKeywords?: number;
   myKeyword?: string;
   naverId?: string;
+  isOfficialBlog?: boolean;
 }
 
 export default function ProfileHeader({
@@ -39,6 +40,7 @@ export default function ProfileHeader({
   totalKeywords,
   myKeyword,
   naverId,
+  isOfficialBlog,
 }: ProfileHeaderProps) {
   const isInfluencer = type === 'influencer';
   const accentColor = isInfluencer ? 'accent' : '[#2DB400]';
@@ -156,6 +158,11 @@ export default function ProfileHeader({
             }`}>
               {isInfluencer ? '인플루언서' : '블로거'}
             </span>
+            {isOfficialBlog && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-blue-600 bg-blue-500/10">
+                공식블로그
+              </span>
+            )}
             {subscribed && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-accent bg-accent/10 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />

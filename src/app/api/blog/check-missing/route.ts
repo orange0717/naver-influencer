@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import { createHmac } from 'crypto';
 import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { createServiceClient } from '@/lib/supabase-server';
 
@@ -13,6 +14,10 @@ const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
 const cache = new Map<string, { data: unknown; expires: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE = 200;
+
+// 검색량 캐시 (24시간)
+const volumeCache = new Map<string, { volume: number; expires: number }>();
+const VOLUME_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 // displayName 캐시 (30분)
 const nameCache = new Map<string, { name: string; expires: number }>();
@@ -242,6 +247,75 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
 }
 
 /**
+ * 키워드 검색량 조회 (네이버 Search Ads API)
+ * 24시간 캐시로 불필요한 호출 최소화
+ */
+async function getSearchVolume(keyword: string): Promise<number> {
+  const cacheKey = keyword.trim().toLowerCase();
+  const cached = volumeCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached.volume;
+
+  const apiKey = process.env.NAVER_API_KEY?.trim();
+  const secretKey = process.env.NAVER_SECRET_KEY?.trim();
+  const customerId = process.env.NAVER_CUSTOMER_ID?.trim();
+
+  if (!apiKey || !secretKey || !customerId) return 0;
+
+  try {
+    const timestamp = String(Date.now());
+    const message = `${timestamp}.GET./keywordstool`;
+    const signature = createHmac('sha256', secretKey).update(message).digest('base64');
+
+    const url = `https://api.searchad.naver.com/keywordstool?hintKeywords=${encodeURIComponent(keyword)}&showDetail=1`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Timestamp': timestamp,
+        'X-API-KEY': apiKey,
+        'X-Customer': customerId,
+        'X-Signature': signature,
+      },
+    });
+
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const keywords = data.keywordList || [];
+
+    // 정확히 일치하는 키워드의 검색량 찾기
+    const exact = keywords.find((kw: Record<string, unknown>) =>
+      String(kw.relKeyword).trim().toLowerCase() === cacheKey
+    );
+
+    let volume = 0;
+    if (exact) {
+      const pc = typeof exact.monthlyPcQcCnt === 'number' ? exact.monthlyPcQcCnt : 0;
+      const mobile = typeof exact.monthlyMobileQcCnt === 'number' ? exact.monthlyMobileQcCnt : 0;
+      volume = pc + mobile;
+    } else if (keywords.length > 0) {
+      // 정확히 일치하지 않으면 첫 번째 결과 사용
+      const first = keywords[0];
+      const pc = typeof first.monthlyPcQcCnt === 'number' ? first.monthlyPcQcCnt : 0;
+      const mobile = typeof first.monthlyMobileQcCnt === 'number' ? first.monthlyMobileQcCnt : 0;
+      volume = pc + mobile;
+    }
+
+    // 캐시 저장 (24시간)
+    volumeCache.set(cacheKey, { volume, expires: Date.now() + VOLUME_CACHE_TTL });
+    // 캐시 크기 제한
+    if (volumeCache.size > 500) {
+      const now = Date.now();
+      for (const [k, v] of volumeCache) {
+        if (v.expires < now) volumeCache.delete(k);
+      }
+    }
+
+    return volume;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * POST /api/blog/check-missing
  * 포스팅의 블로그탭 + 통합검색 노출/누락 여부 확인
  */
@@ -297,10 +371,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 검색량 조회 (순위 공식용)
+    const searchVolume = await getSearchVolume(query);
+
     const result = {
       blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },
       viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
-      query, // 실제 검색에 사용된 키워드
+      query,
+      searchVolume,
     };
 
     // 캐시 저장

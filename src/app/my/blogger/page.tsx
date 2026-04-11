@@ -27,6 +27,7 @@ interface BlogPost {
 interface MissingResult {
   blogTab: { exposed: boolean; rank: number | null };
   viewTab: { exposed: boolean; rank: number | null };
+  searchVolume?: number;
 }
 
 interface BlogScoreData {
@@ -438,25 +439,37 @@ export default function BloggerDashboard() {
   };
 
   // ══════════════════════════════════════════════════════════
-  // 상위노출 확률 = 실제 노출된 포스팅 비율 (순위확인 결과 기반)
+  // 블로그 점수 = SUM(검색량 × 상위노출값) / 전체 포스팅 수
+  // 상위노출값 = max(0, 31 - bestRank), 미노출 = 0
   // ══════════════════════════════════════════════════════════
-  const exposureStats = (() => {
+  const blogScoreCalc = (() => {
     const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     const checked = posts.filter(p => missingResults[p.id]);
-    if (checked.length === 0) return { rate: 0, exposed: 0, total: 0, hasData: false };
-    const exposed = checked.filter(p => {
+    if (checked.length === 0) return { score: 0, exposed: 0, total: 0, hasData: false };
+
+    let totalWeightedScore = 0;
+    let exposedCount = 0;
+    for (const p of checked) {
       const mr = missingResults[p.id];
-      return mr.viewTab.exposed || mr.blogTab.exposed;
-    }).length;
+      const blogRank = mr.blogTab.exposed && mr.blogTab.rank ? mr.blogTab.rank : 999;
+      const viewRank = mr.viewTab.exposed && mr.viewTab.rank ? mr.viewTab.rank : 999;
+      const bestRank = Math.min(blogRank, viewRank);
+      const rankValue = bestRank <= 30 ? 31 - bestRank : 0;
+      if (rankValue > 0) exposedCount++;
+      const volume = mr.searchVolume || 0;
+      totalWeightedScore += volume * rankValue;
+    }
+
+    const totalPosts = allBlogPosts.length || blogPostsTotal || checked.length;
     return {
-      rate: Math.round((exposed / checked.length) * 100),
-      exposed,
+      score: totalPosts > 0 ? Math.round(totalWeightedScore / totalPosts) : 0,
+      exposed: exposedCount,
       total: checked.length,
       hasData: true,
     };
   })();
 
-  const totalScore = exposureStats.hasData ? exposureStats.rate : (scoreData?.total_score || 0);
+  const totalScore = blogScoreCalc.hasData ? blogScoreCalc.score : (scoreData?.total_score || 0);
   latestScoresRef.current = { total: totalScore, scores: [0, 0, 0, 0, 0, 0], grade: '' };
 
   // 발행량 통계 (allBlogPosts 기반 — 최대 30개)
@@ -532,6 +545,7 @@ export default function BloggerDashboard() {
         subscribed={true}
         editable={true}
         onProfileChange={handleProfileChange}
+        isOfficialBlog={blogStats?.isOfficialBlog}
       />
 
       {/* ─── 카테고리 선택 ─── */}
@@ -600,17 +614,7 @@ export default function BloggerDashboard() {
         />
       </div>
 
-      {/* ─── 3. 블로그 상태 뱃지 ─── */}
-      <div className="flex flex-wrap gap-2">
-        <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${profile?.isInfluencer ? 'bg-green-500/10 text-green-600' : 'bg-gray-200/50 text-gray-500'}`}>
-          {profile?.isInfluencer ? 'N인플루언서' : '인플루언서 X'}
-        </span>
-        <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${blogStats?.isOfficialBlog ? 'bg-blue-500/10 text-blue-600' : 'bg-gray-200/50 text-gray-500'}`}>
-          {blogStats?.isOfficialBlog ? '공식블로그' : '공식블로그 X'}
-        </span>
-      </div>
-
-      {/* ─── 4. 핵심 지표 카드 ─── */}
+      {/* ─── 3. 핵심 지표 카드 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <AnimatedStatCard
           label="일일 평균 발행"
@@ -653,11 +657,11 @@ export default function BloggerDashboard() {
           delay={250}
         />
         <AnimatedStatCard
-          label="상위노출 확률"
+          label="블로그 점수"
           value={totalScore}
-          suffix={exposureStats.hasData ? `% (${exposureStats.exposed}/${exposureStats.total})` : '%'}
+          suffix={blogScoreCalc.hasData ? `점 (${blogScoreCalc.exposed}/${blogScoreCalc.total} 노출)` : '점'}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
-          color={totalScore >= 60 ? 'up' : totalScore >= 40 ? 'accent' : 'dim'}
+          color={totalScore >= 500 ? 'up' : totalScore >= 100 ? 'accent' : 'dim'}
           delay={300}
         />
       </div>
