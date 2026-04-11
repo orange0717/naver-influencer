@@ -5,7 +5,6 @@ import Link from 'next/link';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
-import GradeGauge from '@/components/dashboard/GradeGauge';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 
 interface BloggerProfile {
@@ -376,7 +375,7 @@ export default function BloggerDashboard() {
   };
 
   // ══════════════════════════════════════════════════════════
-  // 블로그 지수 = C-Rank (출처 신뢰도) + D.I.A. (문서 품질)
+  // 상위노출 확률 = C-Rank (출처 신뢰도) + D.I.A. (문서 품질)
   // ══════════════════════════════════════════════════════════
   const pa = postAnalysis;
   const hasAnalysis = !!pa;
@@ -506,7 +505,7 @@ export default function BloggerDashboard() {
   const diaPlusScores = [diaPlusStructureScore, diaPlusImageScore, diaPlusAuthenticScore];
   const diaPlusScore = hasAnalysis ? Math.round(diaPlusScores.reduce((a, b) => a + b, 0) / diaPlusScores.length) : 0;
 
-  // ── 블로그 지수 종합 = C-Rank(30%) + D.I.A.(35%) + D.I.A.+(35%) ──
+  // ── 상위노출 확률 종합 = C-Rank(30%) + D.I.A.(35%) + D.I.A.+(35%) ──
   const totalScore = hasAnalysis || blogPosts.length > 0
     ? Math.round(cRankScore * 0.3 + diaScore * 0.35 + diaPlusScore * 0.35)
     : 0;
@@ -670,10 +669,10 @@ export default function BloggerDashboard() {
           delay={250}
         />
         <AnimatedStatCard
-          label="블로그 지수"
+          label="상위노출 확률"
           value={totalScore}
-          suffix={`(${gradeInfo.grade})`}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>}
+          suffix={`% (${gradeInfo.grade})`}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
           color={totalScore >= 60 ? 'up' : totalScore >= 40 ? 'accent' : 'dim'}
           delay={300}
         />
