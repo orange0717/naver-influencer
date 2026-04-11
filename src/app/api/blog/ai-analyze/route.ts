@@ -14,7 +14,7 @@ const CACHE_TTL = 10 * 60 * 1000;
 const cache = new Map<string, { data: string; expires: number }>();
 
 /**
- * 네이버 블로그 글에서 본문 텍스트를 추출 (최대 3000자)
+ * 네이버 블로그 글에서 본문 텍스트를 추출 (최대 5000자)
  */
 async function extractPostText(blogId: string, logNo: string): Promise<{ title: string; text: string; charCount: number }> {
   const url = `https://blog.naver.com/PostView.naver?blogId=${encodeURIComponent(blogId)}&logNo=${logNo}&directAccess=false`;

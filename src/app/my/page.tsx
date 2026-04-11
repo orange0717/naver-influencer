@@ -295,28 +295,29 @@ export default async function MyDashboard() {
   const myCategory = influencer.my_keyword_category || influencer.category || '';
 
   // 카테고리 순위 계산 (인플루언서는 카테고리끼리 경쟁)
-  // 같은 카테고리 내에서 keyword_score 기준 순위
-  const myScore = influencer.keyword_score || 0;
-  let catInfData: { id: string; keyword_score: number }[] = [];
+  // DB 레벨에서 카테고리 필터링 → 단일 쿼리로 순위/총원 계산
+  let categoryRank = 0;
+  let categoryTotal = 0;
   if (myCategory) {
-    let from = 0;
-    const PAGE_SIZE = 1000;
-    while (true) {
-      const { data: batch } = await supabase
-        .from('influencers')
-        .select('id, keyword_score, category, my_keyword_category')
-        .gt('keyword_score', 0)
-        .range(from, from + PAGE_SIZE - 1);
-      if (!batch || batch.length === 0) break;
-      const filtered = batch.filter(inf => (inf.my_keyword_category || inf.category || '') === myCategory);
-      catInfData.push(...filtered.map(inf => ({ id: inf.id, keyword_score: inf.keyword_score || 0 })));
-      if (batch.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
-    }
-    catInfData.sort((a, b) => b.keyword_score - a.keyword_score);
+    const myKeywordScore = influencer.keyword_score || 0;
+
+    // 같은 카테고리에서 나보다 점수 높은 사람 수 = 내 순위 - 1
+    const { count: higherCount } = await supabase
+      .from('influencers')
+      .select('id', { count: 'exact', head: true })
+      .gt('keyword_score', myKeywordScore)
+      .or(`my_keyword_category.eq.${myCategory},and(my_keyword_category.is.null,category.eq.${myCategory})`);
+
+    // 같은 카테고리 전체 인원수
+    const { count: totalCount } = await supabase
+      .from('influencers')
+      .select('id', { count: 'exact', head: true })
+      .gt('keyword_score', 0)
+      .or(`my_keyword_category.eq.${myCategory},and(my_keyword_category.is.null,category.eq.${myCategory})`);
+
+    categoryRank = (higherCount || 0) + 1;
+    categoryTotal = totalCount || 0;
   }
-  const categoryRank = catInfData.findIndex(x => x.id === influencerId) + 1;
-  const categoryTotal = catInfData.length;
 
   // ─── 2. 내 키워드 전체 목록 ───
   const { data: myKeywords } = await supabase
