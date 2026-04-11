@@ -228,21 +228,29 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
 
     const text = await res.text();
 
-    // NVisitorgp4Ajax는 JSON 또는 JS 콜백 형태로 반환
-    // "visitorcnt" 필드에서 일별 방문자수 추출
-    const countMatches = text.match(/"cnt"\s*:\s*(\d+)/g);
-    const dateMatches = text.match(/"date"\s*:\s*"(\d{8})"/g);
+    // 1. XML 형식: <visitorcnt id="20260407" cnt="706" />
+    const xmlMatches = text.matchAll(/visitorcnt\s+id="(\d{8})"\s+cnt="(\d+)"/g);
+    for (const m of xmlMatches) {
+      const dateRaw = m[1];
+      const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+      results.push({ date, visitors: parseInt(m[2]) });
+    }
 
-    if (countMatches && dateMatches) {
-      for (let i = 0; i < Math.min(countMatches.length, dateMatches.length); i++) {
-        const cnt = parseInt(countMatches[i].replace(/[^0-9]/g, ''));
-        const dateRaw = dateMatches[i].replace(/[^0-9]/g, '');
-        const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
-        results.push({ date, visitors: cnt });
+    // 2. JSON 형식: "cnt": 123, "date": "20260407"
+    if (results.length === 0) {
+      const countMatches = text.match(/"cnt"\s*:\s*(\d+)/g);
+      const dateMatches = text.match(/"date"\s*:\s*"(\d{8})"/g);
+      if (countMatches && dateMatches) {
+        for (let i = 0; i < Math.min(countMatches.length, dateMatches.length); i++) {
+          const cnt = parseInt(countMatches[i].replace(/[^0-9]/g, ''));
+          const dateRaw = dateMatches[i].replace(/[^0-9]/g, '');
+          const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+          results.push({ date, visitors: cnt });
+        }
       }
     }
 
-    // JSON 파싱 시도 (정규식 실패 시)
+    // 3. JSON 객체 파싱 시도
     if (results.length === 0) {
       try {
         const json = JSON.parse(text.replace(/^[^{[]*/, '').replace(/[^}\]]*$/, ''));
