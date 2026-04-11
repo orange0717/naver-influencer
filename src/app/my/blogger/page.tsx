@@ -127,14 +127,34 @@ export default function BloggerDashboard() {
     finally { setBlogPostsLoading(false); }
   }, []);
 
-  // 통계용 전체 포스트 로드 (최대 100개 — 발행량 통계 정확도)
+  // 전체 포스트 로드 (모든 페이지 순회)
   const fetchAllBlogPosts = useCallback(async (blogId: string) => {
     try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=100`);
-      if (res.ok) {
+      const allPosts: BlogPost[] = [];
+      let page = 1;
+      const perPage = 30;
+      let totalCount = 0;
+
+      // 첫 페이지 로드
+      const firstRes = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=${perPage}`);
+      if (!firstRes.ok) return;
+      const firstData = await firstRes.json();
+      allPosts.push(...(firstData.posts || []));
+      totalCount = firstData.totalCount || 0;
+      setBlogPostsTotal(totalCount);
+
+      // 나머지 페이지 로드
+      const totalPages = Math.ceil(totalCount / perPage);
+      for (page = 2; page <= totalPages && page <= 20; page++) { // 최대 20페이지 (600개)
+        const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${perPage}`);
+        if (!res.ok) break;
         const data = await res.json();
-        setAllBlogPosts(data.posts || []);
+        const posts = data.posts || [];
+        if (posts.length === 0) break;
+        allPosts.push(...posts);
       }
+
+      setAllBlogPosts(allPosts);
     } catch { /* ignore */ }
   }, []);
 
