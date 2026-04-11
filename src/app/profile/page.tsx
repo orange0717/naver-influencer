@@ -262,7 +262,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold">내 프로필</h1>
+      <h1 className="text-xl font-bold">마이페이지</h1>
 
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-accent/50 text-text px-5 py-3 rounded-xl shadow-lg text-sm font-semibold animate-pulse">
