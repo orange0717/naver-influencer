@@ -25,32 +25,52 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const CONFIG = {
   WORKER_URL: 'https://ninfl-proxy.orange-e65.workers.dev',
-  DELAY_MS: 800,
-  DELAY_ON_ERROR: 3000,
+  CONCURRENCY: 5,       // 동시 처리 수 (5배속)
+  DELAY_MS: 200,         // 배치 간 딜레이 (ms)
+  DELAY_ON_ERROR: 1000,
   MAX_RETRIES: 2,
-  SAVE_INTERVAL: 50,
+  SAVE_INTERVAL: 100,
   PROGRESS_FILE: resolve(__dirname, '.bulk-score-progress.json'),
 };
 
 // ─── 카테고리 매핑 (인플루언서 카테고리 → 블로그 카테고리) ───
 
+// 네이버 공식 블로그 주제에 맞춘 카테고리 매핑
 const CATEGORY_MAP = {
-  '맛집탐방': '맛집', '맛집': '맛집', '푸드': '맛집', '카페': '맛집', '요리': '맛집',
-  '여행': '여행', '해외여행': '여행', '국내여행': '여행', '캠핑': '여행',
-  '뷰티': '뷰티', '화장품': '뷰티', '스킨케어': '뷰티', '메이크업': '뷰티',
-  '패션': '패션', '코디': '패션', '스타일': '패션',
-  'IT': 'IT/테크', 'IT/테크': 'IT/테크', '테크': 'IT/테크', '디지털': 'IT/테크',
-  '육아': '육아', '임신출산': '육아', '아이': '육아',
-  '인테리어': '인테리어', '홈데코': '인테리어', '리빙': '인테리어',
-  '건강': '건강', '운동': '건강', '다이어트': '건강', '헬스': '건강', '피트니스': '건강',
+  // 맛집
+  '맛집탐방': '맛집', '맛집': '맛집', '푸드': '맛집', '카페': '맛집',
+  // 여행
+  '여행': '국내여행', '해외여행': '세계여행', '국내여행': '국내여행', '캠핑': '국내여행',
+  // 뷰티/패션
+  '뷰티': '패션·미용', '화장품': '패션·미용', '패션': '패션·미용', '코디': '패션·미용',
+  // IT
+  'IT': 'IT·컴퓨터', 'IT/테크': 'IT·컴퓨터', '테크': 'IT·컴퓨터', '디지털': 'IT·컴퓨터',
+  // 육아
+  '육아': '육아·결혼', '임신출산': '육아·결혼', '결혼': '육아·결혼',
+  // 인테리어
+  '인테리어': '인테리어·DIY', '홈데코': '인테리어·DIY', '리빙': '인테리어·DIY',
+  // 건강
+  '건강': '건강·의학', '운동': '건강·의학', '다이어트': '건강·의학', '헬스': '스포츠',
+  // 반려동물
   '반려동물': '반려동물', '강아지': '반려동물', '고양이': '반려동물', '펫': '반려동물',
+  // 자동차
   '자동차': '자동차', '바이크': '자동차',
-  '부동산': '부동산', '아파트': '부동산',
-  '경제': '경제/재테크', '재테크': '경제/재테크', '주식': '경제/재테크', '투자': '경제/재테크',
-  '교육': '교육', '학습': '교육', '영어': '교육',
-  '문화': '문화/예술', '예술': '문화/예술', '영화': '문화/예술', '음악': '문화/예술', '책': '문화/예술', '독서': '문화/예술',
+  // 경제
+  '경제': '비즈니스·경제', '재테크': '비즈니스·경제', '주식': '비즈니스·경제', '투자': '비즈니스·경제', '부동산': '비즈니스·경제',
+  // 교육
+  '교육': '교육·학문', '학습': '교육·학문', '영어': '어학·외국어',
+  // 문화/예술
+  '문화': '문학·책', '예술': '미술·디자인', '영화': '영화', '음악': '음악', '책': '문학·책', '독서': '문학·책',
+  // 스포츠
   '스포츠': '스포츠', '골프': '스포츠', '축구': '스포츠',
-  '일상': '일상/라이프', '라이프': '일상/라이프', '생활': '일상/라이프',
+  // 일상
+  '일상': '일상·생각', '라이프': '일상·생각', '생활': '일상·생각',
+  // 요리
+  '요리': '요리·레시피', '레시피': '요리·레시피',
+  // 게임
+  '게임': '게임',
+  // 사진
+  '사진': '사진',
 };
 
 // ─── 환경변수 ───
@@ -263,31 +283,18 @@ async function main() {
   let { success, failed, skipped } = progress.stats;
   const startTime = Date.now();
 
-  for (let i = 0; i < targets.length; i++) {
-    const inf = targets[i];
-    const blogId = inf.naver_id; // naver_id를 blog_id로 사용
-
+  // 병렬 배치 처리 (CONCURRENCY 개씩 동시 실행)
+  async function processOne(inf) {
+    const blogId = inf.naver_id;
     try {
       const blogData = await fetchBlogPosts(blogId);
-
       if (!blogData || blogData.totalCount === 0) {
         skipped++;
-        if ((i + 1) % 100 === 0) {
-          const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
-          console.log(`  [${i + 1}/${targets.length}] ${elapsed}분 | 성공:${success} 실패:${failed} 스킵:${skipped}`);
-        }
-        await sleep(CONFIG.DELAY_MS / 2); // 빈 블로그는 빠르게 넘김
-        continue;
+        return;
       }
 
       const subscriberCount = inf.subscriber_count || inf.fan_count || 0;
-      const score = calcScore(
-        blogData.totalCount,
-        blogData.recentCount,
-        blogData.avgComments,
-        subscriberCount,
-      );
-
+      const score = calcScore(blogData.totalCount, blogData.recentCount, blogData.avgComments, subscriberCount);
       const category = mapCategory(inf.category);
 
       if (!dryRun) {
@@ -305,34 +312,35 @@ async function main() {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'blog_id' });
 
-        if (upsertError) {
-          console.error(`  [오류] ${blogId}: ${upsertError.message}`);
-          failed++;
-        } else {
-          success++;
-        }
+        if (upsertError) { failed++; } else { success++; }
       } else {
-        console.log(`  [DRY] ${blogId}: ${score.total}점(${score.grade}) | 글 ${blogData.totalCount}개 | 월 ${blogData.recentCount}개 | 카테고리: ${category}`);
+        console.log(`  [DRY] ${blogId}: ${score.total}점(${score.grade}) | 글 ${blogData.totalCount}개 | 카테고리: ${category}`);
         success++;
       }
-    } catch (err) {
-      console.error(`  [오류] ${blogId}: ${err.message}`);
+    } catch {
       failed++;
-      await sleep(CONFIG.DELAY_ON_ERROR);
     }
+  }
+
+  for (let i = 0; i < targets.length; i += CONFIG.CONCURRENCY) {
+    const batch = targets.slice(i, i + CONFIG.CONCURRENCY);
+    await Promise.all(batch.map(inf => processOne(inf)));
+
+    const processed = Math.min(i + CONFIG.CONCURRENCY, targets.length);
 
     // 진행 상황 저장
-    if ((i + 1) % CONFIG.SAVE_INTERVAL === 0) {
+    if (processed % CONFIG.SAVE_INTERVAL === 0 || processed === targets.length) {
+      const lastInf = batch[batch.length - 1];
       progress = {
-        processed: i + 1,
-        lastNaverId: blogId,
+        processed,
+        lastNaverId: lastInf.naver_id,
         stats: { success, failed, skipped },
       };
       writeFileSync(CONFIG.PROGRESS_FILE, JSON.stringify(progress, null, 2));
       const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
-      const rate = ((i + 1) / (Date.now() - startTime) * 1000 * 60).toFixed(0);
-      const eta = (((targets.length - i - 1) / rate)).toFixed(1);
-      console.log(`  [${i + 1}/${targets.length}] ${elapsed}분 경과 | ${rate}건/분 | ETA ${eta}분 | 성공:${success} 실패:${failed} 스킵:${skipped}`);
+      const rate = (processed / (Date.now() - startTime) * 1000 * 60).toFixed(0);
+      const eta = ((targets.length - processed) / Math.max(1, rate)).toFixed(1);
+      console.log(`  [${processed}/${targets.length}] ${elapsed}분 경과 | ${rate}건/분 | ETA ${eta}분 | 성공:${success} 실패:${failed} 스킵:${skipped}`);
     }
 
     await sleep(CONFIG.DELAY_MS);
