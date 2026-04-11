@@ -573,6 +573,18 @@ export default function PostAnalysisPage() {
                                     표절검사
                                   </button>
                                 )}
+                                {isAnalyzingText ? (
+                                  <span className="animate-spin inline-block w-3 h-3 border border-purple-500/30 border-t-purple-500 rounded-full" />
+                                ) : textResult ? (
+                                  <span className="text-[10px] text-purple-500 font-bold">형태소 완료</span>
+                                ) : (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
+                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-500 font-bold hover:bg-purple-500/20 transition cursor-pointer"
+                                  >
+                                    형태소분석
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1021,6 +1033,18 @@ export default function PostAnalysisPage() {
                             className="text-blue-500 font-bold cursor-pointer"
                           >
                             표절검사
+                          </button>
+                        )}
+                        {isAnalyzingText ? (
+                          <span className="animate-spin inline-block w-3 h-3 border border-purple-500 border-t-transparent rounded-full" />
+                        ) : textResult ? (
+                          <span className="text-purple-500 font-bold">형태소</span>
+                        ) : (
+                          <button
+                            onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
+                            className="text-purple-500 font-bold cursor-pointer"
+                          >
+                            형태소분석
                           </button>
                         )}
                       </div>
