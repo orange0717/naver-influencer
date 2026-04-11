@@ -96,6 +96,7 @@ export default function BloggerDashboard() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   const [customProfile, setCustomProfile] = useState<{ displayName?: string; imageUrl?: string }>({});
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [allBlogPosts, setAllBlogPosts] = useState<BlogPost[]>([]); // 통계용 전체 포스트
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [blogPostsPage, setBlogPostsPage] = useState(1);
   const [blogPostsLoading, setBlogPostsLoading] = useState(false);
@@ -124,6 +125,17 @@ export default function BloggerDashboard() {
       }
     } catch { /* ignore */ }
     finally { setBlogPostsLoading(false); }
+  }, []);
+
+  // 통계용 전체 포스트 로드 (최대 100개 — 발행량 통계 정확도)
+  const fetchAllBlogPosts = useCallback(async (blogId: string) => {
+    try {
+      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=100`);
+      if (res.ok) {
+        const data = await res.json();
+        setAllBlogPosts(data.posts || []);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   const fetchScoreData = useCallback(async (blogId: string) => {
@@ -193,11 +205,12 @@ export default function BloggerDashboard() {
       }
       setProfile(p);
       fetchBlogPosts(p.blogId, 1);
+      fetchAllBlogPosts(p.blogId);
       fetchScoreData(p.blogId);
       fetchCategory(p.blogId);
       fetchPostAnalysis(p.blogId);
     });
-  }, [fetchBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
+  }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
 
   // 분석 완료 시 점수 자동 저장
   const analysisSavedRef = useRef(false);
@@ -304,30 +317,8 @@ export default function BloggerDashboard() {
     pa.metrics.postsWithMedia * 15
   )) : 0;
 
-  // C-3. 소통/반응 — 댓글, 방문자 등
-  const engagementScore = (() => {
-    if (blogPosts.length === 0) return 0;
-    const totalComments = blogPosts.reduce((s, p) => s + (p.commentCount || 0), 0);
-    const avgComments = totalComments / blogPosts.length;
-    // 평균 댓글수 (max 50)
-    const commentScore = Math.min(50, Math.round(avgComments >= 10 ? 50 : avgComments >= 5 ? 35 : avgComments >= 2 ? 20 : avgComments >= 1 ? 10 : 0));
-    // 꾸준한 포스팅 빈도 (max 50) — 활발한 활동
-    const now = new Date();
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    let recentCount = 0;
-    for (const p of blogPosts) {
-      const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
-      if (match) {
-        const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-        if (d >= twoWeeksAgo) recentCount++;
-      }
-    }
-    const activityScore = Math.min(50, recentCount >= 7 ? 50 : recentCount >= 4 ? 35 : recentCount >= 2 ? 20 : recentCount >= 1 ? 10 : 0);
-    return Math.min(100, commentScore + activityScore);
-  })();
-
-  // C-Rank 종합 (3개 평균)
-  const cRankScore = Math.round((topicFocusScore + contentQualityScore + engagementScore) / 3);
+  // C-Rank 종합 (주제 집중도 + 콘텐츠 품질, Chain/스크랩은 데이터 미제공으로 제외)
+  const cRankScore = Math.round((topicFocusScore + contentQualityScore) / 2);
 
   // ── D.I.A.: 개별 문서 품질 (좋은 문서의 특성 5가지) ──
 
@@ -431,14 +422,15 @@ export default function BloggerDashboard() {
   const gradeInfo = getGrade(totalScore);
   latestScoresRef.current = { total: totalScore, scores: allScores, grade: gradeInfo.grade };
 
-  // 발행량 통계
+  // 발행량 통계 (allBlogPosts 기반 — 최대 30개)
   const publishingStats = (() => {
-    if (blogPosts.length === 0) return { daily: 0, weeklyTotal: 0, weeklyAvg: 0, monthlyTotal: 0 };
+    const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    if (posts.length === 0) return { daily: 0, weeklyTotal: 0, weeklyAvg: 0, monthlyTotal: 0 };
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     let weekCount = 0, monthCount = 0;
-    for (const p of blogPosts) {
+    for (const p of posts) {
       const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
       if (match) {
         const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
@@ -623,11 +615,10 @@ export default function BloggerDashboard() {
           {/* C-Rank 상세 */}
           <div className="border-t border-border pt-3 mb-3">
             <p className="text-[11px] font-bold text-dim mb-2">C-Rank 상세 (블로그 신뢰도)</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {[
                 { label: '주제 집중도', score: topicFocusScore, desc: 'Context' },
                 { label: '콘텐츠 품질', score: contentQualityScore, desc: 'Content' },
-                { label: '소통/반응', score: engagementScore, desc: 'Chain' },
               ].map(item => (
                 <div key={item.label} className="text-center">
                   <GradeGauge score={item.score} label={item.label} description={item.desc}
@@ -635,6 +626,7 @@ export default function BloggerDashboard() {
                 </div>
               ))}
             </div>
+            <p className="text-[10px] text-dim mt-2">* Chain(스크랩/공유) — 네이버 미제공 데이터, 추후 개발 예정</p>
           </div>
 
           {/* D.I.A. 상세 */}
