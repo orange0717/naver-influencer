@@ -78,4 +78,9 @@ export const profileUpdateSchema = z.object({
   ad_fee_amount: z.number().int().min(0).max(99999999).nullable().optional(),
   ad_fee_text: z.string().max(200).optional(),
   ad_process: z.string().max(1000).optional(),
+  ad_schedule: z.string().max(500).optional(),
+  sns_instagram: z.string().max(200).optional(),
+  sns_youtube: z.string().max(200).optional(),
+  sns_x: z.string().max(200).optional(),
+  sns_tiktok: z.string().max(200).optional(),
 });

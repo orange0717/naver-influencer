@@ -74,6 +74,28 @@ function NotificationSettingsSection() {
   );
 }
 
+/** SNS 입력 필드 */
+function SnsInput({ label, icon, value, onChange, placeholder }: {
+  label: string; icon: string; value: string; onChange: (v: string) => void; placeholder: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-8 text-center text-base shrink-0">{icon}</span>
+      <div className="flex-1">
+        <label className="text-xs text-dim font-semibold block mb-1">{label}</label>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          maxLength={200}
+          className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -90,7 +112,15 @@ export default function ProfilePage() {
   const [adFeeAmount, setAdFeeAmount] = useState<number | null>(null);
   const [adFeeText, setAdFeeText] = useState('');
   const [adProcess, setAdProcess] = useState('');
+  const [adSchedule, setAdSchedule] = useState('');
   const [adSaving, setAdSaving] = useState(false);
+
+  // SNS 링크
+  const [snsInstagram, setSnsInstagram] = useState('');
+  const [snsYoutube, setSnsYoutube] = useState('');
+  const [snsX, setSnsX] = useState('');
+  const [snsTiktok, setSnsTiktok] = useState('');
+  const [snsSaving, setSnsSaving] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -125,6 +155,11 @@ export default function ProfilePage() {
         setAdFeeAmount(data.ad_profile.ad_fee_amount ?? null);
         setAdFeeText(data.ad_profile.ad_fee_text || '');
         setAdProcess(data.ad_profile.ad_process || '');
+        setAdSchedule(data.ad_profile.ad_schedule || '');
+        setSnsInstagram(data.ad_profile.sns_instagram || '');
+        setSnsYoutube(data.ad_profile.sns_youtube || '');
+        setSnsX(data.ad_profile.sns_x || '');
+        setSnsTiktok(data.ad_profile.sns_tiktok || '');
       }
     }
 
@@ -193,6 +228,7 @@ export default function ProfilePage() {
         ad_fee_amount: adFeeAmount,
         ad_fee_text: adFeeText.trim(),
         ad_process: adProcess.trim(),
+        ad_schedule: adSchedule.trim(),
       }),
     });
 
@@ -203,6 +239,36 @@ export default function ProfilePage() {
       showToast(data.error || '저장에 실패했습니다.');
     }
     setAdSaving(false);
+  };
+
+  const saveSnsLinks = async () => {
+    if (!user) return;
+    setSnsSaving(true);
+
+    const supabase = createSupabaseBrowserClient();
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        sns_instagram: snsInstagram.trim(),
+        sns_youtube: snsYoutube.trim(),
+        sns_x: snsX.trim(),
+        sns_tiktok: snsTiktok.trim(),
+      }),
+    });
+
+    if (res.ok) {
+      showToast('SNS 링크가 저장되었습니다.');
+    } else {
+      const data = await res.json();
+      showToast(data.error || '저장에 실패했습니다.');
+    }
+    setSnsSaving(false);
   };
 
   const handleLogout = async () => {
@@ -227,7 +293,6 @@ export default function ProfilePage() {
 
       if (res.ok) {
         await supabase.auth.signOut();
-        // 쿠키도 삭제
         await fetch('/api/auth/logout', { method: 'POST' });
         router.push('/');
         router.refresh();
@@ -270,6 +335,7 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* 기본 정보 */}
       <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-accent/20 rounded-full flex items-center justify-center text-xl font-bold text-accent">
@@ -308,7 +374,6 @@ export default function ProfilePage() {
             <p className="text-xs text-dim">가입일: {new Date(user.created_at).toLocaleDateString('ko-KR')}</p>
           </div>
         </div>
-
       </div>
 
       {/* 인플루언서 연결 */}
@@ -351,20 +416,66 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* 알림 설정 */}
-      <NotificationSettingsSection />
+      {/* SNS 링크 */}
+      {linkedInfluencer && (
+        <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+          <div>
+            <h3 className="font-bold text-sm">SNS 링크</h3>
+            <p className="text-xs text-dim mt-1">다른 SNS 계정을 등록하면 인플루언서 상세 페이지에 표시됩니다.</p>
+          </div>
+
+          <div className="space-y-3">
+            <SnsInput
+              label="Instagram"
+              icon="IG"
+              value={snsInstagram}
+              onChange={setSnsInstagram}
+              placeholder="아이디 또는 URL (예: myaccount)"
+            />
+            <SnsInput
+              label="YouTube"
+              icon="YT"
+              value={snsYoutube}
+              onChange={setSnsYoutube}
+              placeholder="채널 아이디 또는 URL"
+            />
+            <SnsInput
+              label="X (Twitter)"
+              icon="X"
+              value={snsX}
+              onChange={setSnsX}
+              placeholder="아이디 또는 URL (예: @myaccount)"
+            />
+            <SnsInput
+              label="TikTok"
+              icon="TT"
+              value={snsTiktok}
+              onChange={setSnsTiktok}
+              placeholder="아이디 또는 URL (예: @myaccount)"
+            />
+          </div>
+
+          <button
+            onClick={saveSnsLinks}
+            disabled={snsSaving}
+            className="px-4 py-2 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+          >
+            {snsSaving ? '저장 중...' : 'SNS 링크 저장'}
+          </button>
+        </div>
+      )}
 
       {/* 광고 프로필 */}
       {linkedInfluencer && (
         <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
           <div>
             <h3 className="font-bold text-sm">광고 프로필</h3>
-            <p className="text-xs text-dim mt-1">원고료와 진행방법을 등록하면 인플루언서 상세 페이지에 표시됩니다.</p>
+            <p className="text-xs text-dim mt-1">광고단가와 진행방법을 등록하면 인플루언서 상세 페이지에 표시됩니다.</p>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-dim font-semibold block mb-1">원고료 금액</label>
+              <label className="text-xs text-dim font-semibold block mb-1">광고단가 (원고료)</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dim">&#8361;</span>
                 <input
@@ -380,13 +491,25 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="text-xs text-dim font-semibold block mb-1">원고료 설명 <span className="text-dim font-normal">(선택)</span></label>
+              <label className="text-xs text-dim font-semibold block mb-1">단가 설명 <span className="text-dim font-normal">(선택)</span></label>
               <input
                 type="text"
                 value={adFeeText}
                 onChange={e => setAdFeeText(e.target.value)}
                 placeholder="예: 협의 가능, 키워드에 따라 상이"
                 maxLength={200}
+                className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-dim font-semibold block mb-1">광고 가능 일정 <span className="text-dim font-normal">(선택)</span></label>
+              <input
+                type="text"
+                value={adSchedule}
+                onChange={e => setAdSchedule(e.target.value)}
+                placeholder="예: 주 2건 가능, 현재 1건 진행 중, 5월부터 가능"
+                maxLength={500}
                 className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
               />
             </div>
@@ -414,6 +537,9 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* 알림 설정 */}
+      <NotificationSettingsSection />
 
       {/* 사용 내역 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
@@ -471,6 +597,7 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* 로그아웃 */}
       <div>
         <button onClick={handleLogout}
           className="w-full py-3 bg-surface border border-border text-dim rounded-xl font-semibold text-sm hover:border-accent/40 transition cursor-pointer">

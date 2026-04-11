@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface Settlement {
   id: string;
@@ -11,6 +11,141 @@ interface Settlement {
   commission: number;
   net_amount: number;
   posting_deadline: string | null;
+}
+
+interface CalendarEvent {
+  date: string; // YYYY-MM-DD
+  type: 'posting' | 'settlement';
+  label: string;
+  fee: number;
+}
+
+/** 캘린더 컴포넌트 */
+function ScheduleCalendar({ events }: { events: CalendarEvent[] }) {
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  // 해당 월의 이벤트 맵
+  const eventMap = useMemo(() => {
+    const map: Record<string, CalendarEvent[]> = {};
+    for (const ev of events) {
+      if (!ev.date) continue;
+      const d = new Date(ev.date);
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const key = String(d.getDate());
+        if (!map[key]) map[key] = [];
+        map[key].push(ev);
+      }
+    }
+    return map;
+  }, [events, year, month]);
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+  const weeks: (number | null)[][] = [];
+  let week: (number | null)[] = Array(firstDay).fill(null);
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    week.push(day);
+    if (week.length === 7) {
+      weeks.push(week);
+      week = [];
+    }
+  }
+  if (week.length > 0) {
+    while (week.length < 7) week.push(null);
+    weeks.push(week);
+  }
+
+  const monthLabel = `${year}년 ${month + 1}월`;
+
+  return (
+    <div className="space-y-3">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-sm">원고 일정</h3>
+        <div className="flex items-center gap-2">
+          <button onClick={prevMonth} className="w-7 h-7 rounded-lg border border-border hover:bg-bg flex items-center justify-center text-dim hover:text-text transition cursor-pointer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <span className="text-sm font-semibold min-w-[100px] text-center">{monthLabel}</span>
+          <button onClick={nextMonth} className="w-7 h-7 rounded-lg border border-border hover:bg-bg flex items-center justify-center text-dim hover:text-text transition cursor-pointer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* 범례 */}
+      <div className="flex items-center gap-4 text-[11px] text-dim">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-accent inline-block" /> 포스팅 업로드
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-up inline-block" /> 정산
+        </span>
+      </div>
+
+      {/* 달력 */}
+      <div className="border border-border rounded-xl overflow-hidden">
+        {/* 요일 헤더 */}
+        <div className="grid grid-cols-7 bg-bg/50">
+          {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+            <div key={d} className={`text-center py-2 text-[11px] font-semibold ${d === '일' ? 'text-down' : d === '토' ? 'text-accent' : 'text-dim'}`}>
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* 날짜 */}
+        {weeks.map((w, wi) => (
+          <div key={wi} className="grid grid-cols-7 border-t border-border/50">
+            {w.map((day, di) => {
+              if (day === null) {
+                return <div key={di} className="min-h-[60px] md:min-h-[72px] p-1 bg-bg/30" />;
+              }
+
+              const dayEvents = eventMap[String(day)] || [];
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const isToday = dateStr === todayStr;
+              const isSunday = di === 0;
+              const isSaturday = di === 6;
+
+              return (
+                <div key={di} className={`min-h-[60px] md:min-h-[72px] p-1 border-l border-border/30 first:border-l-0 ${isToday ? 'bg-accent/5' : 'hover:bg-bg/50'} transition-colors`}>
+                  <span className={`text-[11px] font-semibold block mb-0.5 ${isToday ? 'text-accent' : isSunday ? 'text-down' : isSaturday ? 'text-accent/70' : 'text-text'}`}>
+                    {day}
+                  </span>
+                  <div className="space-y-0.5">
+                    {dayEvents.map((ev, ei) => (
+                      <div
+                        key={ei}
+                        className={`text-[9px] md:text-[10px] font-semibold rounded px-1 py-0.5 truncate ${
+                          ev.type === 'posting'
+                            ? 'bg-accent/15 text-accent'
+                            : 'bg-up/15 text-up'
+                        }`}
+                        title={`${ev.label} - ${ev.fee.toLocaleString()}원`}
+                      >
+                        {ev.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function AdSettlements() {
@@ -33,6 +168,30 @@ export default function AdSettlements() {
   const totalFee = settlements.reduce((sum, s) => sum + s.fee, 0);
   const pendingCount = settlements.filter(s => !s.settled_date).length;
   const completedCount = settlements.filter(s => !!s.settled_date).length;
+
+  // 캘린더 이벤트 생성
+  const calendarEvents = useMemo(() => {
+    const events: CalendarEvent[] = [];
+    for (const s of settlements) {
+      if (s.posting_deadline) {
+        events.push({
+          date: s.posting_deadline,
+          type: 'posting',
+          label: s.client_name || '포스팅',
+          fee: s.fee,
+        });
+      }
+      if (s.settled_date) {
+        events.push({
+          date: s.settled_date,
+          type: 'settlement',
+          label: s.client_name || '정산',
+          fee: s.fee,
+        });
+      }
+    }
+    return events;
+  }, [settlements]);
 
   if (loading) {
     return (
@@ -68,8 +227,12 @@ export default function AdSettlements() {
         </div>
       </div>
 
+      {/* 원고 일정 캘린더 */}
+      <ScheduleCalendar events={calendarEvents} />
+
       {/* 데스크톱 테이블 */}
       <div className="hidden md:block overflow-x-auto">
+        <h3 className="font-bold text-sm mb-3">정산 내역</h3>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-dim">
@@ -124,6 +287,7 @@ export default function AdSettlements() {
 
       {/* 모바일 카드 */}
       <div className="md:hidden">
+        <h3 className="font-bold text-sm mb-3">정산 내역</h3>
         {settlements.length === 0 ? (
           <div className="text-center py-8 text-sm text-dim">
             <p>아직 정산내역이 없습니다</p>

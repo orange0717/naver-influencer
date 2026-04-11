@@ -16,7 +16,6 @@ import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
-import AdProfileForm from '@/components/dashboard/AdProfileForm';
 import KeywordPlanner from '@/components/dashboard/KeywordPlanner';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
@@ -616,15 +615,6 @@ export default async function MyDashboard() {
           .slice(0, 20)}
         totalNotParticipated={notParticipatedKeywords.length}
       />
-
-      {/* ─── 광고 프로필 (직접 입력 가능) ─── */}
-      <GlassCard>
-        <AdProfileForm
-          initialFeeAmount={influencer.ad_fee_amount ?? null}
-          initialFeeText={influencer.ad_fee_text || ''}
-          initialProcess={influencer.ad_process || ''}
-        />
-      </GlassCard>
 
       {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
       <WidgetSection naverId={naverId} displayName={influencer.display_name || naverId} />
