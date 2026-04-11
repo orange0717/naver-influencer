@@ -54,7 +54,7 @@ async function extractPostText(blogId: string, logNo: string): Promise<{ title: 
 
   return {
     title,
-    text: fullText.substring(0, 3000),
+    text: fullText.substring(0, 5000),
     charCount: fullText.replace(/\s/g, '').length,
   };
 }
@@ -112,14 +112,16 @@ export async function POST(request: NextRequest) {
 
         const anthropic = new Anthropic({ apiKey });
         const message = await anthropic.messages.create({
-          model: 'claude-3-5-haiku-20241022',
-          max_tokens: 1200,
-          system: `당신은 네이버 블로그 글 분석 전문가입니다.
-주어진 블로그 글을 분석하여 아래 형식의 JSON을 반환하세요.
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          system: `당신은 AI 생성 텍스트 탐지 전문가입니다. 네이버 블로그 글을 분석하여 AI 작성 여부를 판별합니다.
 
+중요: 블로그 글은 정보 전달 목적이므로 1인칭이 적고, 소제목/사진/지도가 있는 것은 정상입니다. 이런 요소만으로 AI 여부를 판단하지 마세요.
+
+아래 형식의 JSON을 반환하세요:
 {
-  "aiProbability": (0~100 정수, AI 작성 가능성 퍼센트),
-  "aiReasoning": "(판단 근거 3~5줄 설명)",
+  "aiProbability": (0~100 정수),
+  "aiReasoning": "(판단 근거 3~5줄)",
   "keywords": [
     { "keyword": "키워드", "relevance": "high|medium|low", "searchable": true|false }
   ],
@@ -133,19 +135,37 @@ export async function POST(request: NextRequest) {
   }
 }
 
-AI 판단 기준:
-- 반복적이고 균일한 문장 구조 = AI 가능성 높음
-- 구체적 경험/감정 표현, 1인칭 서술 = 사람 가능성 높음
-- 접속어/전환어 과다 사용 = AI 가능성 높음
-- 맞춤법 실수, 구어체, 신조어 = 사람 가능성 높음
-- 원본 사진/지도/동영상 포함 = 사람 가능성 높음 (단, 텍스트만으로 판단)
+AI 작성 텍스트의 특징 (높은 확률):
+- 문장 길이가 전체적으로 균일하고 변화가 없음
+- "~입니다", "~합니다" 등 동일한 문말 어미 반복
+- "따라서", "이처럼", "결론적으로", "특히", "또한" 등 접속어/전환어 과다 사용
+- 구체적 장소명/날짜/가격 등 체험 디테일 없이 일반적 설명만 나열
+- 모든 문단이 비슷한 구조로 반복 (도입-설명-마무리 패턴)
+- 감정 표현이 표면적이고 추상적 ("정말 좋았습니다", "추천드립니다")
+- 틀린 맞춤법이 전혀 없고 지나치게 깔끔한 문체
+- 주관적 판단이나 개인적 의견 없이 백과사전식 서술
+
+사람 작성 텍스트의 특징 (낮은 확률):
+- 문장 길이 변화가 자연스러움 (짧은 문장, 긴 문장 섞임)
+- 구어체, 비격식 표현 (ㅎㅎ, ㅋㅋ, ~요, !!, ??)
+- 구체적 체험 디테일 (실제 방문 날짜, 가격, 위치, 개인 에피소드)
+- 맞춤법 실수, 오타, 띄어쓰기 오류
+- 글 흐름이 완벽하지 않고 자연스러운 탈선이 있음
+- 사진 설명 시 "이건 제가 직접~", "여기서~" 등 현장감 있는 표현
+- 독자에게 직접 말하는 듯한 어조 ("여러분", "꼭 가보세요")
+- 신조어, 줄임말, 유행어 사용
+
+판단 시 주의:
+- 블로그 글은 원래 소제목, 사진 설명, 정보 정리가 많으므로 구조적 글쓰기 자체는 AI 증거가 아님
+- 1인칭이 적다고 AI가 아님 (정보 전달형 블로그는 원래 1인칭이 적음)
+- AI 확률 30% 이하: 거의 확실히 사람이 쓴 글
+- AI 확률 30~60%: 판단 어려움 (AI 보조 사용 가능성)
+- AI 확률 60% 이상: AI가 쓴 것으로 강하게 의심
 
 규칙:
 - 한국어로 답변
 - JSON만 반환 (코드블록, 마크다운 없이 순수 JSON)
-- 이모지 사용 금지
-- keywords 최대 8개
-- keySentences 최대 5개`,
+- keywords 최대 8개, keySentences 최대 5개`,
           messages: [{
             role: 'user',
             content: `제목: ${title}\n\n본문 (${charCount}자):\n${text}`,
