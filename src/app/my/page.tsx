@@ -18,7 +18,6 @@ import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import AdProfileForm from '@/components/dashboard/AdProfileForm';
 import KeywordPlanner from '@/components/dashboard/KeywordPlanner';
-import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
@@ -598,18 +597,6 @@ export default async function MyDashboard() {
           id: kw.keyword_id,
           keyword: kw.keyword,
         }))}
-      />
-
-      {/* ─── 2-4. 경쟁자 분석 ─── */}
-      <CompetitorDashboard
-        naverId={naverId}
-        myStats={{
-          avgRank: avgRank > 0 ? Math.round(avgRank * 10) / 10 : 0,
-          totalKeywords: influencer.total_keywords || totalRankedKeywords,
-          top3Count,
-        }}
-        mySubscribers={influencer.subscriber_count || 0}
-        myDisplayName={influencer.display_name || naverId}
       />
 
       {/* ─── 3. 순위 추이 차트 ─── */}

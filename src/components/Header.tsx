@@ -16,17 +16,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/notice', label: '공지사항' },
   {
     label: '대시보드',
     authOnly: true,
     children: [
       { href: '/my', label: '키워드챌린지' },
       { href: '/my/blogger', label: '블로그' },
+      { href: '/my/post-analysis', label: '포스팅 분석' },
       { href: '/my/settlements', label: '원고료 정산내역' },
     ],
   },
-  { href: '/my/post-analysis', label: '포스팅 분석', authOnly: true },
+  { href: '/competitor', label: '경쟁자 분석', authOnly: true },
   {
     label: '인플루언서',
     children: [
