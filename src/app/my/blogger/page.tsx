@@ -212,18 +212,17 @@ export default function BloggerDashboard() {
     });
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
 
-  // 포스트 로드 시 자동 누락확인
+  // 포스트 로드 시 자동 누락확인 (allBlogPosts 기반)
   const autoCheckRef = useRef(false);
   useEffect(() => {
-    if (profile && blogPosts.length > 0 && !autoCheckRef.current && !checkingAll) {
+    if (profile && allBlogPosts.length > 0 && !autoCheckRef.current && !checkingAll) {
       autoCheckRef.current = true;
-      // 1초 후 자동 실행 (다른 API 호출과 겹치지 않게)
       setTimeout(() => {
         checkAllMissing();
       }, 1500);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, blogPosts]);
+  }, [profile, allBlogPosts]);
 
   // 분석 완료 시 점수 자동 저장
   const analysisSavedRef = useRef(false);
@@ -262,13 +261,14 @@ export default function BloggerDashboard() {
   };
 
   const checkAllMissing = async () => {
-    if (!profile || blogPosts.length === 0) return;
+    const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    if (!profile || posts.length === 0) return;
     setCheckingAll(true);
-    setCheckProgress({ current: 0, total: blogPosts.length });
-    for (let i = 0; i < blogPosts.length; i++) {
-      setCheckProgress({ current: i + 1, total: blogPosts.length });
-      await checkMissing(blogPosts[i]);
-      if (i < blogPosts.length - 1) await new Promise(r => setTimeout(r, 2000));
+    setCheckProgress({ current: 0, total: posts.length });
+    for (let i = 0; i < posts.length; i++) {
+      setCheckProgress({ current: i + 1, total: posts.length });
+      await checkMissing(posts[i]);
+      if (i < posts.length - 1) await new Promise(r => setTimeout(r, 2000));
     }
     setCheckingAll(false);
     setCheckProgress({ current: 0, total: 0 });
@@ -596,17 +596,17 @@ export default function BloggerDashboard() {
       {/* ─── 4. 블로그 방문자수 차트 ─── */}
       {profile && <BlogVisitorChart blogId={profile.blogId} />}
 
-      {/* ─── 5. 포스팅 목록 + 누락 확인 ─── */}
+      {/* ─── 5. 포스팅 목록 (전체) + 누락 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div>
             <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>
             <p className="text-[11px] text-dim mt-0.5">
-              {blogPostsTotal > 0 ? `총 ${blogPostsTotal.toLocaleString()}개의 글` : '포스트 목록을 불러오는 중...'}
+              {(allBlogPosts.length || blogPostsTotal) > 0 ? `총 ${(allBlogPosts.length || blogPostsTotal).toLocaleString()}개의 글` : '포스트 목록을 불러오는 중...'}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {blogPosts.length > 0 && (
+            {allBlogPosts.length > 0 && (
               <button onClick={checkAllMissing} disabled={checkingAll}
                 className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs shrink-0">
                 {checkingAll ? (
@@ -622,12 +622,12 @@ export default function BloggerDashboard() {
           </div>
         </div>
 
-        {blogPostsLoading && blogPosts.length === 0 ? (
+        {allBlogPosts.length === 0 && blogPostsLoading ? (
           <div className="flex items-center justify-center py-10 text-dim text-sm">
             <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
             포스트를 불러오는 중...
           </div>
-        ) : blogPosts.length === 0 ? (
+        ) : (allBlogPosts.length || blogPosts.length) === 0 ? (
           <div className="text-center py-10 text-dim text-sm">포스트가 없습니다.</div>
         ) : (
           <>
@@ -646,11 +646,11 @@ export default function BloggerDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {blogPosts.map((post, i) => {
+                  {(allBlogPosts.length > 0 ? allBlogPosts : blogPosts).map((post, i) => {
                     const mr = missingResults[post.id];
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition group">
-                        <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
+                        <td className="px-5 py-3.5 text-dim text-xs">{i + 1}</td>
                         <td className="px-3 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold hover:text-accent transition truncate block max-w-[350px]" title={post.title}>
@@ -707,12 +707,12 @@ export default function BloggerDashboard() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {blogPosts.map((post, i) => {
+              {(allBlogPosts.length > 0 ? allBlogPosts : blogPosts).map((post, i) => {
                 const mr = missingResults[post.id];
                 return (
                   <div key={post.id} className="px-4 py-3.5">
                     <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * 10 + i + 1}</span>
+                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
@@ -747,23 +747,6 @@ export default function BloggerDashboard() {
                 );
               })}
             </div>
-
-            {/* 페이지네이션 */}
-            {blogPostsTotal > 10 && (
-              <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
-                <button onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage - 1)}
-                  disabled={blogPostsPage <= 1 || blogPostsLoading}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
-                  ← 이전
-                </button>
-                <span className="text-xs text-dim px-2">{blogPostsPage} / {Math.ceil(blogPostsTotal / 10)}</span>
-                <button onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage + 1)}
-                  disabled={blogPostsPage >= Math.ceil(blogPostsTotal / 10) || blogPostsLoading}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
-                  다음 →
-                </button>
-              </div>
-            )}
           </>
         )}
       </GlassCard>
