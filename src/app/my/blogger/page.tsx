@@ -92,18 +92,40 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
   } catch { return null; }
 }
 
-// 포스팅 제목에서 핵심 키워드 추출 (check-missing API와 동일 로직)
-function extractKeywords(title: string, blogId: string): string {
+// 포스팅 제목에서 핵심 키워드 추출
+function extractKeywords(title: string, blogId: string, displayName?: string): string {
   let cleaned = title;
-  const patterns = [blogId, blogId.replace(/[_-]/g, '')];
-  for (const p of patterns) {
+  // 1. blogId + displayName + 닉네임 변형 제거
+  const removePatterns = [blogId, blogId.replace(/[_-]/g, '')];
+  if (displayName && displayName.length >= 2) {
+    removePatterns.push(displayName);
+    // 닉네임 변형: "오렌지도서관" → "오렌지", "도서관" 등
+    if (displayName.length >= 4) {
+      removePatterns.push(displayName.slice(0, Math.ceil(displayName.length / 2)));
+    }
+  }
+  // 흔한 블로그 접미사 제거
+  const suffixes = ['단상', '도서관', '지음', '블로그', '일기', '기록', '이야기', '스토리'];
+  for (const p of removePatterns) {
     if (p.length >= 2) cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
   }
+  for (const s of suffixes) {
+    // "오렌지단상" → "오렌지" + "단상" 둘 다 제거 대상이면 제거
+    if (displayName && cleaned.toLowerCase().includes(displayName.slice(0, 3).toLowerCase() + s)) {
+      cleaned = cleaned.replace(new RegExp(displayName.slice(0, 3) + s, 'gi'), ' ');
+    }
+  }
+  // 2. 괄호 제거
   cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
-  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내'];
+  // 3. 복합어 분리: 한글 단어 내 의미 단위 분리
+  // "어린왕자명대사" → "어린왕자 명대사", "경제적자유" → "경제적 자유"
+  cleaned = cleaned.replace(/([가-힣]{2,})([명인간관계좋은짧고장사정직종합책베스트셀러순위경제적윤동주서시작품해석][가-힣]*)/g, '$1 $2');
+  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|단상|글귀|해석|순위|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
+  // 4. 불용어
+  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및'];
   const words = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
     .filter(w => w.length >= 2 && !stop.includes(w) && !/^\d+$/.test(w));
-  return words.slice(0, 4).join(' ') || title.slice(0, 20);
+  return words.slice(0, 3).join(' ') || title.slice(0, 20);
 }
 
 export default function BloggerDashboard() {
@@ -706,8 +728,8 @@ export default function BloggerDashboard() {
                           </a>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="text-[11px] text-dim bg-bg px-2 py-1 rounded-md block truncate max-w-[140px]" title={extractKeywords(post.title, profile.blogId)}>
-                            {extractKeywords(post.title, profile.blogId)}
+                          <span className="text-[11px] text-dim bg-bg px-2 py-1 rounded-md block truncate max-w-[140px]" title={extractKeywords(post.title, profile.blogId, profile.displayName)}>
+                            {extractKeywords(post.title, profile.blogId, profile.displayName)}
                           </span>
                         </td>
                         <td className="text-center px-3 py-3.5">
@@ -774,7 +796,7 @@ export default function BloggerDashboard() {
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
                         <span className="text-[10px] text-dim bg-bg px-1.5 py-0.5 rounded mt-1 inline-block">
-                          {extractKeywords(post.title, profile.blogId)}
+                          {extractKeywords(post.title, profile.blogId, profile.displayName)}
                         </span>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           {mr ? (
