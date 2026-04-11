@@ -299,3 +299,56 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
 
   return results.sort((a, b) => a.date.localeCompare(b.date));
 }
+
+// ─── 블로그 프로필 정보 크롤링 (전체방문자, 이웃수, 공식블로그) ───
+
+export interface BlogProfileStats {
+  totalVisitor: number;
+  todayVisitor: number;
+  buddyCount: number;
+  subscriberCount: number;
+  isOfficialBlog: boolean;
+}
+
+export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfileStats> {
+  const result: BlogProfileStats = {
+    totalVisitor: 0,
+    todayVisitor: 0,
+    buddyCount: 0,
+    subscriberCount: 0,
+    isOfficialBlog: false,
+  };
+
+  try {
+    const res = await fetch(`https://m.blog.naver.com/${blogId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+      },
+    });
+    if (!res.ok) return result;
+    const html = await res.text();
+
+    // JSON 데이터 추출
+    const totalMatch = html.match(/"totalVisitor"\s*:\s*(\d+)/);
+    if (totalMatch) result.totalVisitor = parseInt(totalMatch[1]);
+
+    const todayMatch = html.match(/"todayVisitor"\s*:\s*(\d+)/);
+    if (todayMatch) result.todayVisitor = parseInt(todayMatch[1]);
+
+    const buddyMatch = html.match(/"buddyCount"\s*:\s*(\d+)/);
+    if (buddyMatch) result.buddyCount = parseInt(buddyMatch[1]);
+
+    const subMatch = html.match(/"subscriberCount"\s*:\s*(\d+)/);
+    if (subMatch) result.subscriberCount = parseInt(subMatch[1]);
+
+    // 공식블로그 여부
+    if (html.includes('공식블로그') || html.includes('officialBlog') || html.includes('"isOfficial":true') || html.includes('"official":true')) {
+      result.isOfficialBlog = true;
+    }
+  } catch (err) {
+    console.error(`[blog-crawler] fetchBlogProfileStats error for ${blogId}:`, err instanceof Error ? err.message : err);
+  }
+
+  return result;
+}

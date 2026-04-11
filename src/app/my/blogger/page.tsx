@@ -219,6 +219,8 @@ export default function BloggerDashboard() {
   const [suggestedCategory, setSuggestedCategory] = useState('기타');
   const [showCategorySelect, setShowCategorySelect] = useState(false);
   const [postAnalysis, setPostAnalysis] = useState<{ metrics: BlogAnalysisMetrics; averages: BlogAnalysisAverages } | null>(null);
+  const [blogStats, setBlogStats] = useState<{ totalVisitor: number; todayVisitor: number; buddyCount: number; subscriberCount: number; isOfficialBlog: boolean } | null>(null);
+  const [visitorData, setVisitorData] = useState<{ avgVisitors: number; trend: number }>({ avgVisitors: 0, trend: 0 });
 
   // 점수 계산용 ref
   const latestScoresRef = useRef({ total: 0, scores: [0, 0, 0, 0, 0, 0], grade: 'D' });
@@ -302,6 +304,23 @@ export default function BloggerDashboard() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchBlogStats = useCallback(async (blogId: string) => {
+    try {
+      const [statsRes, visitorsRes] = await Promise.all([
+        fetch(`/api/blog/stats?blogId=${encodeURIComponent(blogId)}`),
+        fetch(`/api/blog/visitors?blogId=${encodeURIComponent(blogId)}&days=30`),
+      ]);
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        setBlogStats(data);
+      }
+      if (visitorsRes.ok) {
+        const data = await visitorsRes.json();
+        setVisitorData({ avgVisitors: data.avgVisitors || 0, trend: data.trend || 0 });
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   const saveScoreToServer = useCallback(async () => {
     if (!profile) return;
     const { total } = latestScoresRef.current;
@@ -336,8 +355,9 @@ export default function BloggerDashboard() {
       fetchScoreData(p.blogId);
       fetchCategory(p.blogId);
       fetchPostAnalysis(p.blogId);
+      fetchBlogStats(p.blogId);
     });
-  }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
+  }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis, fetchBlogStats]);
 
   // 현재 페이지 포스트 자동 순위확인
   useEffect(() => {
@@ -544,7 +564,58 @@ export default function BloggerDashboard() {
         </div>
       )}
 
-      {/* ─── 2. 핵심 지표 카드 ─── */}
+      {/* ─── 2. 블로그 기본 정보 ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <AnimatedStatCard
+          label="TODAY 방문자"
+          value={blogStats?.todayVisitor || 0}
+          suffix="명"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          color="accent"
+          delay={0}
+        />
+        <AnimatedStatCard
+          label="평균 방문자"
+          value={visitorData.avgVisitors}
+          suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
+          color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'}
+          delay={50}
+        />
+        <AnimatedStatCard
+          label="전체 방문자"
+          value={blogStats?.totalVisitor || 0}
+          suffix="명"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>}
+          color="accent"
+          delay={100}
+        />
+        <AnimatedStatCard
+          label="이웃수"
+          value={blogStats?.buddyCount || 0}
+          suffix="명"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          color="accent"
+          delay={150}
+        />
+      </div>
+
+      {/* ─── 3. 블로그 상태 뱃지 ─── */}
+      <div className="flex flex-wrap gap-2">
+        <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${profile?.isInfluencer ? 'bg-green-500/10 text-green-600' : 'bg-gray-200/50 text-gray-500'}`}>
+          {profile?.isInfluencer ? 'N인플루언서' : '인플루언서 X'}
+        </span>
+        <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${blogStats?.isOfficialBlog ? 'bg-blue-500/10 text-blue-600' : 'bg-gray-200/50 text-gray-500'}`}>
+          {blogStats?.isOfficialBlog ? '공식블로그' : '공식블로그 X'}
+        </span>
+        {(blogStats?.subscriberCount || 0) > 0 && (
+          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-accent/10 text-accent">
+            구독자 {(blogStats?.subscriberCount || 0).toLocaleString()}명
+          </span>
+        )}
+      </div>
+
+      {/* ─── 4. 핵심 지표 카드 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <AnimatedStatCard
           label="일일 평균 발행"
@@ -597,10 +668,10 @@ export default function BloggerDashboard() {
       </div>
 
 
-      {/* ─── 4. 블로그 방문자수 차트 ─── */}
+      {/* ─── 5. 블로그 방문자수 차트 ─── */}
       {profile && <BlogVisitorChart blogId={profile.blogId} />}
 
-      {/* ─── 5. 포스팅 목록 (10개씩 페이지네이션) + 순위 확인 ─── */}
+      {/* ─── 6. 포스팅 목록 (10개씩 페이지네이션) + 순위 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div>
