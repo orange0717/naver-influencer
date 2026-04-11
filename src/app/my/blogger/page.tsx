@@ -262,18 +262,77 @@ export default function BloggerDashboard() {
     } catch { /* ignore */ }
   };
 
-  // ── 좋은 문서 기준 6가지 점수 (placeholder — 사용자 기준 전달 시 교체) ──
+  // ══════════════════════════════════════════════════════════
+  // 블로그 지수 = C-Rank (출처 신뢰도) + D.I.A. (문서 품질)
+  // ══════════════════════════════════════════════════════════
   const pa = postAnalysis;
   const hasAnalysis = !!pa;
 
-  const reliabilityScore = pa ? Math.min(100, Math.round(
-    (pa.averages.linkCount >= 3 ? 30 : pa.averages.linkCount >= 2 ? 22 : pa.averages.linkCount >= 1 ? 15 : 3) +
-    (pa.metrics.postsWithQuotations >= 0.5 ? 20 : pa.metrics.postsWithQuotations >= 0.2 ? 12 : pa.averages.quotationCount >= 1 ? 8 : 0) +
-    (pa.metrics.originalImageRatio >= 0.5 ? 30 : pa.metrics.originalImageRatio >= 0.3 ? 20 : 10) +
-    (pa.metrics.postsWithImages >= 0.8 ? 20 : pa.metrics.postsWithImages >= 0.5 ? 12 : 5)
+  // ── C-Rank: 블로그(출처) 신뢰도 ──
+  // Context(주제 집중도) + Content(콘텐츠 품질) + Chain(소통/반응)
+
+  // C-1. 주제 집중도 — 특정 주제에 얼마나 집중하는지
+  const topicFocusScore = (() => {
+    // 카테고리가 '기타'가 아니면 주제 설정됨 = 집중도 기본점
+    const hasTopic = category !== '기타' ? 20 : 0;
+    // 포스팅 분석에서 주제 일관성 추정
+    if (!pa) return hasTopic;
+    // 1인칭 서술이 높으면 특정 주제에 대한 경험 집중
+    const experienceFocus = Math.min(25, pa.metrics.avgPersonalPronounRatio * 800);
+    // 원본 이미지 비율 높으면 직접 체험 주제 집중
+    const originalFocus = pa.metrics.originalImageRatio * 25;
+    // 긴 글 비율 — 깊이 있는 주제 다룸
+    const depthFocus = pa.metrics.longPosts * 15;
+    // 꾸준한 포스팅 — 주제에 대한 지속적 관심
+    const postCount = blogPosts.length >= 10 ? 15 : blogPosts.length >= 5 ? 10 : blogPosts.length >= 2 ? 5 : 0;
+    return Math.min(100, Math.round(hasTopic + experienceFocus + originalFocus + depthFocus + postCount));
+  })();
+
+  // C-2. 콘텐츠 품질 — 전체 블로그의 콘텐츠 품질 패턴
+  const contentQualityScore = pa ? Math.min(100, Math.round(
+    // 이미지 포함 글 비율 (max 20)
+    pa.metrics.postsWithImages * 20 +
+    // 1000자+ 글 비율 (max 20)
+    pa.metrics.longPosts * 20 +
+    // 소제목 있는 글 비율 (max 15)
+    pa.metrics.postsWithHeadings * 15 +
+    // 원본사진 있는 글 비율 (max 15)
+    pa.metrics.postsWithOriginalImages * 15 +
+    // 고유 단어 비율 평균 (max 15)
+    (pa.metrics.avgUniqueWordRatio >= 0.6 ? 15 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 10 : 5) +
+    // 미디어 포함 글 비율 (max 15)
+    pa.metrics.postsWithMedia * 15
   )) : 0;
 
-  const experienceScore = pa ? Math.min(100, Math.round(
+  // C-3. 소통/반응 — 댓글, 방문자 등
+  const engagementScore = (() => {
+    if (blogPosts.length === 0) return 0;
+    const totalComments = blogPosts.reduce((s, p) => s + (p.commentCount || 0), 0);
+    const avgComments = totalComments / blogPosts.length;
+    // 평균 댓글수 (max 50)
+    const commentScore = Math.min(50, Math.round(avgComments >= 10 ? 50 : avgComments >= 5 ? 35 : avgComments >= 2 ? 20 : avgComments >= 1 ? 10 : 0));
+    // 꾸준한 포스팅 빈도 (max 50) — 활발한 활동
+    const now = new Date();
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    let recentCount = 0;
+    for (const p of blogPosts) {
+      const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
+      if (match) {
+        const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+        if (d >= twoWeeksAgo) recentCount++;
+      }
+    }
+    const activityScore = Math.min(50, recentCount >= 7 ? 50 : recentCount >= 4 ? 35 : recentCount >= 2 ? 20 : recentCount >= 1 ? 10 : 0);
+    return Math.min(100, commentScore + activityScore);
+  })();
+
+  // C-Rank 종합 (3개 평균)
+  const cRankScore = Math.round((topicFocusScore + contentQualityScore + engagementScore) / 3);
+
+  // ── D.I.A.: 개별 문서 품질 (좋은 문서의 특성 5가지) ──
+
+  // D-1. 경험 정보 — 직접 경험한 솔직한 후기
+  const diaExperienceScore = pa ? Math.min(100, Math.round(
     pa.metrics.originalImageRatio * 25 +
     Math.min(25, pa.metrics.avgPersonalPronounRatio * 800) +
     pa.metrics.postsWithOriginalImages * 15 +
@@ -282,15 +341,8 @@ export default function BloggerDashboard() {
     pa.metrics.postsWithImages * 10
   )) : 0;
 
-  const originalityScore = pa ? Math.min(100, Math.round(
-    (pa.metrics.avgUniqueWordRatio >= 0.7 ? 25 : pa.metrics.avgUniqueWordRatio >= 0.6 ? 20 : pa.metrics.avgUniqueWordRatio >= 0.5 ? 15 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 10 : 5) +
-    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 : pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
-    pa.metrics.longPosts * 20 +
-    pa.metrics.originalImageRatio * 15 +
-    (pa.metrics.postsWithHeadings >= 0.5 ? 15 : pa.metrics.postsWithHeadings >= 0.2 ? 10 : 0)
-  )) : 0;
-
-  const depthScore = pa ? Math.min(100, Math.round(
+  // D-2. 정보 충실성 — 충분한 길이와 상세한 정보
+  const diaInfoScore = pa ? Math.min(100, Math.round(
     (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 : pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
     (pa.averages.paragraphCount >= 15 ? 20 : pa.averages.paragraphCount >= 10 ? 15 : pa.averages.paragraphCount >= 5 ? 10 : 3) +
     (pa.averages.imageCount >= 8 ? 15 : pa.averages.imageCount >= 5 ? 12 : pa.averages.imageCount >= 3 ? 8 : 0) +
@@ -299,7 +351,25 @@ export default function BloggerDashboard() {
     (pa.averages.headingCount >= 3 ? 10 : pa.averages.headingCount >= 1 ? 5 : 0)
   )) : 0;
 
-  const readabilityScore = pa ? Math.min(100, Math.round(
+  // D-3. 독창성 — 복사/짜깁기 없는 독자적 정보
+  const diaOriginalityScore = pa ? Math.min(100, Math.round(
+    (pa.metrics.avgUniqueWordRatio >= 0.7 ? 30 : pa.metrics.avgUniqueWordRatio >= 0.6 ? 24 : pa.metrics.avgUniqueWordRatio >= 0.5 ? 18 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 12 : 5) +
+    pa.metrics.originalImageRatio * 25 +
+    Math.min(20, pa.metrics.avgPersonalPronounRatio * 650) +
+    (pa.metrics.avgCharCount >= 2000 ? 15 : pa.metrics.avgCharCount >= 1500 ? 12 : pa.metrics.avgCharCount >= 1000 ? 8 : 3) +
+    (pa.metrics.avgImageSizeKB >= 300 ? 10 : pa.metrics.avgImageSizeKB >= 100 ? 5 : 0)
+  )) : 0;
+
+  // D-4. 신뢰성 — 출처/인용 기반 정보
+  const diaReliabilityScore = pa ? Math.min(100, Math.round(
+    (pa.averages.linkCount >= 3 ? 30 : pa.averages.linkCount >= 2 ? 22 : pa.averages.linkCount >= 1 ? 15 : 3) +
+    (pa.metrics.postsWithQuotations >= 0.5 ? 20 : pa.metrics.postsWithQuotations >= 0.2 ? 12 : pa.averages.quotationCount >= 1 ? 8 : 0) +
+    (pa.metrics.originalImageRatio >= 0.5 ? 30 : pa.metrics.originalImageRatio >= 0.3 ? 20 : pa.metrics.originalImageRatio >= 0.1 ? 10 : 3) +
+    (pa.metrics.postsWithImages >= 0.8 ? 20 : pa.metrics.postsWithImages >= 0.5 ? 12 : 5)
+  )) : 0;
+
+  // D-5. 가독성 — 쉽게 읽고 이해할 수 있는 구성
+  const diaReadabilityScore = pa ? Math.min(100, Math.round(
     pa.metrics.postsWithHeadings * 25 +
     (pa.averages.headingCount >= 5 ? 20 : pa.averages.headingCount >= 3 ? 15 : pa.averages.headingCount >= 1 ? 8 : 0) +
     (pa.metrics.postsWithLists >= 0.3 ? 15 : pa.metrics.postsWithLists >= 0.1 ? 8 : 0) +
@@ -308,33 +378,48 @@ export default function BloggerDashboard() {
     (pa.metrics.avgCharCount >= 500 ? 10 : pa.metrics.avgCharCount >= 300 ? 5 : 0)
   )) : 0;
 
-  const consistencyScore = (() => {
-    if (blogPosts.length === 0) return 0;
-    const now = new Date();
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    let recentCount = 0, monthCount = 0;
-    const postDates: Date[] = [];
-    for (const p of blogPosts) {
-      const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
-      if (!match) continue;
-      const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-      postDates.push(d);
-      if (d >= twoWeeksAgo) recentCount++;
-      if (d >= oneMonthAgo) monthCount++;
-    }
-    const recentPostScore = Math.min(40, recentCount * 10);
-    const regularityScore = Math.min(30, monthCount >= 8 ? 30 : monthCount >= 4 ? 20 : monthCount >= 2 ? 10 : 0);
-    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-    const veryRecent = postDates.some(d => d >= threeDaysAgo);
-    const streakBonus = veryRecent ? 30 : (recentCount > 0 ? 15 : 0);
-    return Math.min(100, Math.round(recentPostScore + regularityScore + streakBonus));
-  })();
+  // D.I.A. 종합 (5개 평균)
+  const diaScores = [diaExperienceScore, diaInfoScore, diaOriginalityScore, diaReliabilityScore, diaReadabilityScore];
+  const diaScore = hasAnalysis ? Math.round(diaScores.reduce((a, b) => a + b, 0) / diaScores.length) : 0;
 
-  const allScores = [reliabilityScore, experienceScore, originalityScore, depthScore, readabilityScore, consistencyScore];
+  // ── D.I.A.+: 문서 패턴 심화 분석 ──
+
+  // D+-1. 문서 구조 패턴 — 소제목/리스트/문단 구성
+  const diaPlusStructureScore = pa ? Math.min(100, Math.round(
+    pa.metrics.postsWithHeadings * 30 +
+    (pa.averages.headingCount >= 5 ? 20 : pa.averages.headingCount >= 3 ? 15 : pa.averages.headingCount >= 1 ? 8 : 0) +
+    (pa.metrics.postsWithLists >= 0.5 ? 20 : pa.metrics.postsWithLists >= 0.2 ? 12 : 0) +
+    (pa.averages.paragraphCount >= 10 ? 15 : pa.averages.paragraphCount >= 5 ? 10 : 3) +
+    (pa.metrics.longPosts >= 0.8 ? 15 : pa.metrics.longPosts >= 0.5 ? 10 : pa.metrics.longPosts >= 0.2 ? 5 : 0)
+  )) : 0;
+
+  // D+-2. 이미지 패턴 — 원본사진/이미지 품질/다양성
+  const diaPlusImageScore = pa ? Math.min(100, Math.round(
+    pa.metrics.originalImageRatio * 30 +
+    (pa.metrics.avgImageSizeKB >= 500 ? 25 : pa.metrics.avgImageSizeKB >= 200 ? 18 : pa.metrics.avgImageSizeKB >= 100 ? 10 : 3) +
+    pa.metrics.postsWithOriginalImages * 20 +
+    (pa.averages.imageCount >= 5 ? 15 : pa.averages.imageCount >= 3 ? 10 : pa.averages.imageCount >= 1 ? 5 : 0) +
+    pa.metrics.postsWithMedia * 10
+  )) : 0;
+
+  // D+-3. 진성 정보 — 체험/경험 기반 진짜 정보 (비체험 광고성 필터)
+  const diaPlusAuthenticScore = pa ? Math.min(100, Math.round(
+    Math.min(30, pa.metrics.avgPersonalPronounRatio * 1000) +
+    pa.metrics.originalImageRatio * 25 +
+    (pa.metrics.avgUniqueWordRatio >= 0.6 ? 20 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 12 : 5) +
+    (pa.metrics.avgCharCount >= 1500 ? 15 : pa.metrics.avgCharCount >= 800 ? 10 : 3) +
+    (pa.averages.quotationCount >= 1 ? 10 : 0)
+  )) : 0;
+
+  // D.I.A.+ 종합 (3개 평균)
+  const diaPlusScores = [diaPlusStructureScore, diaPlusImageScore, diaPlusAuthenticScore];
+  const diaPlusScore = hasAnalysis ? Math.round(diaPlusScores.reduce((a, b) => a + b, 0) / diaPlusScores.length) : 0;
+
+  // ── 블로그 지수 종합 = C-Rank(30%) + D.I.A.(35%) + D.I.A.+(35%) ──
   const totalScore = hasAnalysis || blogPosts.length > 0
-    ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)
+    ? Math.round(cRankScore * 0.3 + diaScore * 0.35 + diaPlusScore * 0.35)
     : 0;
+  const allScores = [cRankScore, diaScore, diaPlusScore];
 
   function getGrade(score: number) {
     if (score >= 90) return { grade: 'S', color: 'text-accent', bg: 'bg-accent/10' };
@@ -479,38 +564,90 @@ export default function BloggerDashboard() {
         />
       </div>
 
-      {/* ─── 3. 블로그 지수 상세 (좋은 문서 기준 — TBD) ─── */}
+      {/* ─── 3. 블로그 지수 상세 (C-Rank + D.I.A. + D.I.A.+) ─── */}
       {(hasAnalysis || blogPosts.length > 0) && (
         <GlassCard>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-bold text-[15px]">블로그 지수</h3>
-              <p className="text-[11px] text-dim mt-0.5">좋은 문서 기준 6가지 평가 (기준 업데이트 예정)</p>
+              <p className="text-[11px] text-dim mt-0.5">C-Rank + D.I.A. + D.I.A.+ 종합 평가</p>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-3xl font-black font-rank ${gradeInfo.color}`}>{totalScore}</span>
               <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${gradeInfo.bg} ${gradeInfo.color}`}>{gradeInfo.grade}등급</span>
             </div>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-            {[
-              { label: '신뢰성', score: reliabilityScore, desc: '출처/인용' },
-              { label: '경험', score: experienceScore, desc: '직접촬영/체험' },
-              { label: '독창성', score: originalityScore, desc: '고유표현/원본' },
-              { label: '심층성', score: depthScore, desc: '글자수/구성' },
-              { label: '가독성', score: readabilityScore, desc: '소제목/리스트' },
-              { label: '꾸준함', score: consistencyScore, desc: '발행빈도' },
-            ].map(item => (
-              <div key={item.label} className="text-center">
-                <GradeGauge
-                  score={item.score}
-                  label={item.label}
-                  description={item.desc}
-                  color={item.score >= 70 ? '#22C55E' : item.score >= 40 ? '#F29C68' : '#94a3b8'}
-                  delay={100}
-                />
-              </div>
-            ))}
+
+          {/* 3개 축 요약 */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center p-3 bg-bg rounded-xl">
+              <p className="text-[10px] text-dim mb-1">C-Rank</p>
+              <p className="text-lg font-black font-rank text-accent">{cRankScore}</p>
+              <p className="text-[10px] text-dim mt-0.5">블로그 신뢰도</p>
+            </div>
+            <div className="text-center p-3 bg-bg rounded-xl">
+              <p className="text-[10px] text-dim mb-1">D.I.A.</p>
+              <p className="text-lg font-black font-rank text-up">{diaScore}</p>
+              <p className="text-[10px] text-dim mt-0.5">문서 품질</p>
+            </div>
+            <div className="text-center p-3 bg-bg rounded-xl">
+              <p className="text-[10px] text-dim mb-1">D.I.A.+</p>
+              <p className="text-lg font-black font-rank text-[#2DB400]">{diaPlusScore}</p>
+              <p className="text-[10px] text-dim mt-0.5">문서 패턴</p>
+            </div>
+          </div>
+
+          {/* C-Rank 상세 */}
+          <div className="border-t border-border pt-3 mb-3">
+            <p className="text-[11px] font-bold text-dim mb-2">C-Rank 상세 (블로그 신뢰도)</p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: '주제 집중도', score: topicFocusScore, desc: 'Context' },
+                { label: '콘텐츠 품질', score: contentQualityScore, desc: 'Content' },
+                { label: '소통/반응', score: engagementScore, desc: 'Chain' },
+              ].map(item => (
+                <div key={item.label} className="text-center">
+                  <GradeGauge score={item.score} label={item.label} description={item.desc}
+                    color={item.score >= 70 ? '#F29C68' : item.score >= 40 ? '#F29C68' : '#94a3b8'} delay={100} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* D.I.A. 상세 */}
+          <div className="border-t border-border pt-3 mb-3">
+            <p className="text-[11px] font-bold text-dim mb-2">D.I.A. 상세 (문서 품질 — 좋은 문서의 특성)</p>
+            <div className="grid grid-cols-5 gap-2">
+              {[
+                { label: '경험', score: diaExperienceScore, desc: '체험/후기' },
+                { label: '충실성', score: diaInfoScore, desc: '정보량' },
+                { label: '독창성', score: diaOriginalityScore, desc: '원본' },
+                { label: '신뢰성', score: diaReliabilityScore, desc: '출처' },
+                { label: '가독성', score: diaReadabilityScore, desc: '구성' },
+              ].map(item => (
+                <div key={item.label} className="text-center">
+                  <GradeGauge score={item.score} label={item.label} description={item.desc}
+                    color={item.score >= 70 ? '#22C55E' : item.score >= 40 ? '#22C55E' : '#94a3b8'} delay={100} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* D.I.A.+ 상세 */}
+          <div className="border-t border-border pt-3">
+            <p className="text-[11px] font-bold text-dim mb-2">D.I.A.+ 상세 (문서 패턴 심화)</p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: '문서 구조', score: diaPlusStructureScore, desc: '소제목/리스트' },
+                { label: '이미지 패턴', score: diaPlusImageScore, desc: '원본/품질' },
+                { label: '진성 정보', score: diaPlusAuthenticScore, desc: '체험/독창' },
+              ].map(item => (
+                <div key={item.label} className="text-center">
+                  <GradeGauge score={item.score} label={item.label} description={item.desc}
+                    color={item.score >= 70 ? '#3B82F6' : item.score >= 40 ? '#3B82F6' : '#94a3b8'} delay={100} />
+                </div>
+              ))}
+            </div>
           </div>
         </GlassCard>
       )}
