@@ -114,7 +114,7 @@ function stripParticles(word: string): string {
   return word;
 }
 
-// 포스팅 제목에서 핵심 키워드 추출
+// 포스팅 제목에서 핵심 키워드 추출 (복합어 분해 + 접미어 추출)
 function extractKeywords(title: string, blogId: string, displayName?: string): string[] {
   let cleaned = title;
   // 1. blogId + displayName + 닉네임 변형 제거
@@ -125,27 +125,74 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
       removePatterns.push(displayName.slice(0, Math.ceil(displayName.length / 2)));
     }
   }
-  const suffixes = ['단상', '도서관', '지음', '블로그', '일기', '기록', '이야기', '스토리'];
+  const nameSuffixes = ['단상', '도서관', '지음', '블로그', '일기', '기록', '이야기', '스토리'];
   for (const p of removePatterns) {
     if (p.length >= 2) cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
   }
-  for (const s of suffixes) {
+  for (const s of nameSuffixes) {
     if (displayName && cleaned.toLowerCase().includes(displayName.slice(0, 3).toLowerCase() + s)) {
       cleaned = cleaned.replace(new RegExp(displayName.slice(0, 3) + s, 'gi'), ' ');
     }
   }
   // 2. 괄호 제거
   cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
-  // 3. 복합어 분리 (의미 단위가 붙어있는 경우만)
-  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|글귀|해석|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
-  // 4. 특수문자 제거 + 분리
+  // 3. 특수문자 제거 + 분리 (복합어는 분리하지 않고 원형 유지)
   const rawWords = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
-  // 5. 조사 제거 + 불용어 필터
-  const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','대한','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
-  const words = rawWords
-    .map(w => /^[가-힣]+$/.test(w) ? stripParticles(w) : w)
-    .filter(w => w.length >= 1 && !stop.has(w) && !/^\d+$/.test(w) && !/^[a-zA-Z]$/.test(w));
-  return words.slice(0, 5);
+
+  // 4. 키워드 추출 + 복합어 분해
+  const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','정리','모음','총정리','단상','지음','中','및','더','각','수','것','중']);
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  function add(kw: string) {
+    const k = kw.trim();
+    if (k.length >= 2 && !seen.has(k) && !stop.has(k)) {
+      result.push(k);
+      seen.add(k);
+    }
+  }
+
+  // 접미어 키워드 패턴
+  const kwSuffixes = ['글귀', '명대사', '명언', '도구들', '해석', '추천', '후기', '리뷰', '비교', '분석', '방법', '소개'];
+
+  for (const raw of rawWords) {
+    if (raw.length < 2 || /^\d+$/.test(raw) || stop.has(raw)) continue;
+
+    if (/^[가-힣]{4,}$/.test(raw)) {
+      // A. 의 조사 분리 (타이탄의도구들 → 타이탄 + 도구들)
+      const uiMatch = raw.match(/^([가-힣]{2,})의([가-힣]{2,})$/);
+      if (uiMatch) {
+        add(uiMatch[1]);
+        add(uiMatch[2]);
+      } else {
+        add(raw);
+      }
+
+      // B. 접미어 추출 (짧고좋은글귀 → 글귀, 좋은글귀)
+      for (const suf of kwSuffixes) {
+        if (raw.endsWith(suf) && raw.length > suf.length + 1) {
+          // 중간 복합어 추출: 짧고좋은글귀 → 좋은글귀
+          const prefix = raw.slice(0, -suf.length);
+          for (const p of ['고', '과', '와']) {
+            const pidx = prefix.lastIndexOf(p);
+            if (pidx >= 1) {
+              const mid = prefix.slice(pidx + 1) + suf;
+              if (mid.length >= 3) add(mid);
+            }
+          }
+          add(suf);
+        }
+      }
+    } else {
+      // 짧은 단어: 조사 제거 후 추가
+      const stripped = /^[가-힣]+$/.test(raw) ? stripParticles(raw) : raw;
+      if (stripped.length >= 2 && !stop.has(stripped) && !/^[a-zA-Z]$/.test(stripped)) {
+        add(stripped);
+      }
+    }
+  }
+
+  return result.slice(0, 6);
 }
 
 export default function BloggerDashboard() {
