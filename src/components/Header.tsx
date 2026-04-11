@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/my', label: '키워드챌린지' },
       { href: '/my/blogger', label: '블로그' },
       { href: '/my/settlements', label: '원고료 정산내역' },
+      { href: '/profile', label: '마이페이지' },
     ],
   },
   { href: '/my/post-analysis', label: '포스팅 분석', authOnly: true },
@@ -195,7 +196,7 @@ export default function Header({ serverUser }: HeaderProps) {
                       </Link>
                       <Link href="/profile" onClick={() => setProfileOpen(false)}
                         className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
-                        프로필 설정
+                        마이페이지
                       </Link>
                       <button onClick={() => { setProfileOpen(false); handleLogout(); }}
                         className="w-full flex items-center px-4 py-2.5 text-sm text-down hover:bg-bg transition cursor-pointer">

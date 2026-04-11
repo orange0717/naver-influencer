@@ -13,7 +13,6 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
-import DeleteAccountButton from '@/components/dashboard/DeleteAccountButton';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
@@ -649,11 +648,6 @@ export default async function MyDashboard() {
         totalKeywords={totalKeywords}
         participatedCount={participatedCount}
       />
-
-      {/* 활동 현황은 상단으로 이동됨 */}
-
-      {/* ─── 회원탈퇴 ─── */}
-      <DeleteAccountButton />
 
       </div>
     </div>
