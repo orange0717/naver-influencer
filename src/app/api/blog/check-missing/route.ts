@@ -33,7 +33,8 @@ function cleanCache() {
 
 /**
  * 네이버 블로그탭에서 포스팅 노출 여부 확인
- * 포스팅 제목으로 검색하여 해당 blogId/postId가 존재하는지 체크
+ * data-cr-on="r=순위" 속성에서 네이버 공식 순위를 추출 (정확도 높음)
+ * 폴백: <a> href에서 blog.naver.com 링크 수동 카운트
  */
 async function checkBlogTab(query: string, blogId: string, postId: string): Promise<{
   exposed: boolean;
@@ -41,9 +42,6 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 }> {
   const blogIdLower = blogId.toLowerCase();
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
-
-  let globalRank = 0;
-  const seenPosts = new Set<string>();
 
   for (let page = 1; page <= 3; page++) {
     const start = (page - 1) * 10 + 1;
@@ -62,37 +60,49 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
       if (!res.ok) continue;
 
       const html = await res.text();
-      const $ = cheerio.load(html);
-      const blogLinks: { blogId: string; postId: string }[] = [];
 
-      $('a').each((_, el) => {
-        const href = $(el).attr('href') || '';
-        const match = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-        if (!match) return;
-        const key = `${match[1]}/${match[2]}`;
-        if (seenPosts.has(key)) return;
-        seenPosts.add(key);
-        blogLinks.push({ blogId: match[1], postId: match[2] });
-      });
+      // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
+      // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
+      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*data-cr-on="r=(\d+)/g;
+      const seen = new Set<string>();
+      let match;
 
-      // regex 폴백
-      if (blogLinks.length === 0) {
-        const regex = /blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/g;
-        let m;
-        while ((m = regex.exec(html)) !== null) {
-          const key = `${m[1]}/${m[2]}`;
-          if (seenPosts.has(key)) continue;
-          seenPosts.add(key);
-          blogLinks.push({ blogId: m[1], postId: m[2] });
+      while ((match = rankRegex.exec(html)) !== null) {
+        const [, linkBlogId, linkPostId, rankStr] = match;
+        const key = `${linkBlogId}/${linkPostId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (linkBlogId.toLowerCase() === blogIdLower) {
+          if (!postId || linkPostId === postId) {
+            return { exposed: true, rank: parseInt(rankStr) };
+          }
         }
       }
 
-      for (const link of blogLinks) {
-        globalRank++;
-        // postId가 있으면 정확 매칭, 없으면 blogId만 매칭
-        if (link.blogId.toLowerCase() === blogIdLower) {
-          if (!postId || link.postId === postId) {
-            return { exposed: true, rank: globalRank };
+      // 2순위 폴백: <a> href에서 수동 카운트 (data-cr-on 없는 경우)
+      if (seen.size === 0) {
+        const $ = cheerio.load(html);
+        const blogLinks: { blogId: string; postId: string }[] = [];
+        const seenFb = new Set<string>();
+        let globalRank = (page - 1) * 10;
+
+        $('a').each((_, el) => {
+          const href = $(el).attr('href') || '';
+          const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+          if (!m) return;
+          const key = `${m[1]}/${m[2]}`;
+          if (seenFb.has(key)) return;
+          seenFb.add(key);
+          blogLinks.push({ blogId: m[1], postId: m[2] });
+        });
+
+        for (const link of blogLinks) {
+          globalRank++;
+          if (link.blogId.toLowerCase() === blogIdLower) {
+            if (!postId || link.postId === postId) {
+              return { exposed: true, rank: globalRank };
+            }
           }
         }
       }
@@ -105,10 +115,11 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 }
 
 /**
- * 네이버 통합검색(VIEW) 탭에서 포스팅 노출 여부 확인
- * 네이버 검색 API(webkr.json) 사용
+ * 네이버 통합검색(VIEW) — 블로그 검색 API(blog.json) 사용
+ * webkr.json보다 블로그 포스팅 검색에 정확
+ * postId까지 매칭하여 특정 포스팅의 순위 확인
  */
-async function checkViewTab(query: string, blogId: string): Promise<{
+async function checkViewTab(query: string, blogId: string, postId?: string): Promise<{
   exposed: boolean;
   rank: number | null;
 }> {
@@ -117,7 +128,7 @@ async function checkViewTab(query: string, blogId: string): Promise<{
   }
 
   try {
-    const url = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100&sort=sim`;
+    const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=100&sort=sim`;
     const res = await fetch(url, {
       headers: {
         'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
@@ -133,12 +144,15 @@ async function checkViewTab(query: string, blogId: string): Promise<{
     let blogRank = 0;
     for (const item of items) {
       const link = item.link || '';
-      const blogMatch = link.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+      const blogMatch = link.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)(?:\/(\d+))?/);
       if (!blogMatch) continue;
 
       blogRank++;
       if (blogMatch[1].toLowerCase() === blogIdLower) {
-        return { exposed: true, rank: blogRank };
+        // postId가 있으면 정확 매칭, 없으면 blogId만 매칭
+        if (!postId || !blogMatch[2] || blogMatch[2] === postId) {
+          return { exposed: true, rank: blogRank };
+        }
       }
     }
   } catch { /* ignore */ }
@@ -241,10 +255,31 @@ export async function POST(request: NextRequest) {
     const query = extractKeywords(postTitle, blogId, displayName);
 
     // 블로그탭 + 통합검색 동시 확인
-    const [blogTab, viewTab] = await Promise.all([
+    let [blogTab, viewTab] = await Promise.all([
       checkBlogTab(query, blogId, postId || ''),
-      checkViewTab(query, blogId),
+      checkViewTab(query, blogId, postId || ''),
     ]);
+
+    // 폴백: 키워드로 못 찾으면 원본 제목(displayName 제거)으로 재검색
+    if (!blogTab.exposed && !viewTab.exposed) {
+      let fallbackQuery = postTitle;
+      // displayName만 제거한 원본에 가까운 제목
+      if (displayName && displayName.length >= 2) {
+        fallbackQuery = fallbackQuery.replace(new RegExp(displayName, 'gi'), ' ');
+      }
+      fallbackQuery = fallbackQuery.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+      // 30자 이내로 제한
+      if (fallbackQuery.length > 30) fallbackQuery = fallbackQuery.slice(0, 30);
+
+      if (fallbackQuery !== query && fallbackQuery.length >= 4) {
+        const [fbBlog, fbView] = await Promise.all([
+          checkBlogTab(fallbackQuery, blogId, postId || ''),
+          checkViewTab(fallbackQuery, blogId, postId || ''),
+        ]);
+        if (fbBlog.exposed) blogTab = fbBlog;
+        if (fbView.exposed) viewTab = fbView;
+      }
+    }
 
     const result = {
       blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },

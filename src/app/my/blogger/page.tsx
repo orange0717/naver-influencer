@@ -263,7 +263,7 @@ export default function BloggerDashboard() {
     });
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
 
-  // 현재 페이지 포스트 자동 누락확인
+  // 현재 페이지 포스트 자동 순위확인
   useEffect(() => {
     if (!profile || checkingAll) return;
     const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
@@ -656,7 +656,7 @@ export default function BloggerDashboard() {
       {/* ─── 4. 블로그 방문자수 차트 ─── */}
       {profile && <BlogVisitorChart blogId={profile.blogId} />}
 
-      {/* ─── 5. 포스팅 목록 (10개씩 페이지네이션) + 누락 확인 ─── */}
+      {/* ─── 5. 포스팅 목록 (10개씩 페이지네이션) + 순위 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div>
@@ -674,7 +674,7 @@ export default function BloggerDashboard() {
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {checkProgress.current}/{checkProgress.total}
                   </span>
-                ) : '전체 누락확인'}
+                ) : '전체 순위확인'}
               </button>
             )}
             <a href={`https://blog.naver.com/${profile.blogId}`} target="_blank" rel="noopener noreferrer"
@@ -734,7 +734,7 @@ export default function BloggerDashboard() {
                                 {mr.viewTab.rank}위
                               </span>
                             ) : (
-                              <span className="text-xs font-bold text-down bg-down/10 px-2 py-0.5 rounded-full">누락</span>
+                              <span className="text-xs text-dim">-</span>
                             )
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
@@ -747,7 +747,7 @@ export default function BloggerDashboard() {
                                 {mr.blogTab.rank}위
                               </span>
                             ) : (
-                              <span className="text-xs font-bold text-down bg-down/10 px-2 py-0.5 rounded-full">누락</span>
+                              <span className="text-xs text-dim">-</span>
                             )
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
@@ -797,14 +797,14 @@ export default function BloggerDashboard() {
                           {mr ? (
                             <>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
                               }`}>
-                                통합 {mr.viewTab.exposed ? `${mr.viewTab.rank}위` : '누락'}
+                                통합 {mr.viewTab.exposed ? `${mr.viewTab.rank}위` : '-'}
                               </span>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                                mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
                               }`}>
-                                블로그 {mr.blogTab.exposed ? `${mr.blogTab.rank}위` : '누락'}
+                                블로그 {mr.blogTab.exposed ? `${mr.blogTab.rank}위` : '-'}
                               </span>
                             </>
                           ) : null}
@@ -815,7 +815,7 @@ export default function BloggerDashboard() {
                             className="text-[10px] text-accent cursor-pointer disabled:opacity-50">
                             {checkingMissing === post.id ? (
                               <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                            ) : mr ? '재확인' : '누락확인'}
+                            ) : mr ? '재확인' : '순위확인'}
                           </button>
                         </div>
                       </div>
