@@ -99,32 +99,27 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
   const removePatterns = [blogId, blogId.replace(/[_-]/g, '')];
   if (displayName && displayName.length >= 2) {
     removePatterns.push(displayName);
-    // 닉네임 변형: "오렌지도서관" → "오렌지", "도서관" 등
     if (displayName.length >= 4) {
       removePatterns.push(displayName.slice(0, Math.ceil(displayName.length / 2)));
     }
   }
-  // 흔한 블로그 접미사 제거
   const suffixes = ['단상', '도서관', '지음', '블로그', '일기', '기록', '이야기', '스토리'];
   for (const p of removePatterns) {
     if (p.length >= 2) cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
   }
   for (const s of suffixes) {
-    // "오렌지단상" → "오렌지" + "단상" 둘 다 제거 대상이면 제거
     if (displayName && cleaned.toLowerCase().includes(displayName.slice(0, 3).toLowerCase() + s)) {
       cleaned = cleaned.replace(new RegExp(displayName.slice(0, 3) + s, 'gi'), ' ');
     }
   }
   // 2. 괄호 제거
   cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
-  // 3. 복합어 분리: 한글 단어 내 의미 단위 분리
-  // "어린왕자명대사" → "어린왕자 명대사", "경제적자유" → "경제적 자유"
-  cleaned = cleaned.replace(/([가-힣]{2,})([명인간관계좋은짧고장사정직종합책베스트셀러순위경제적윤동주서시작품해석][가-힣]*)/g, '$1 $2');
-  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|단상|글귀|해석|순위|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
-  // 4. 불용어
-  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및'];
+  // 3. 복합어 분리 (의미 단위가 붙어있는 경우만)
+  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|글귀|해석|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
+  // 4. 불용어 (조사/접속사만 — "신", "꿈" 등 한글 1글자 명사는 유지)
+  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중'];
   const words = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
-    .filter(w => w.length >= 2 && !stop.includes(w) && !/^\d+$/.test(w));
+    .filter(w => w.length >= 1 && !stop.includes(w) && !/^\d+$/.test(w) && !/^[a-zA-Z]$/.test(w));
   return words.slice(0, 3).join(' ') || title.slice(0, 20);
 }
 
@@ -315,7 +310,7 @@ export default function BloggerDashboard() {
       const res = await fetch('/api/blog/check-missing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, displayName: profile.displayName }),
+        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id }),
       });
       if (res.ok) {
         const data = await res.json();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,10 @@ const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
 const cache = new Map<string, { data: unknown; expires: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE = 200;
+
+// displayName 캐시 (30분)
+const nameCache = new Map<string, { name: string; expires: number }>();
+const NAME_CACHE_TTL = 30 * 60 * 1000;
 
 function cleanCache() {
   if (cache.size > MAX_CACHE) {
@@ -142,11 +147,39 @@ async function checkViewTab(query: string, blogId: string): Promise<{
 }
 
 /**
+ * 서버에서 blogId로 displayName(blog_name) 직접 조회
+ */
+async function getDisplayName(blogId: string): Promise<string> {
+  const cached = nameCache.get(blogId);
+  if (cached && cached.expires > Date.now()) return cached.name;
+
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('blog_scores')
+      .select('blog_name')
+      .eq('blog_id', blogId)
+      .single();
+    const name = data?.blog_name || '';
+    nameCache.set(blogId, { name, expires: Date.now() + NAME_CACHE_TTL });
+    // 캐시 크기 제한
+    if (nameCache.size > 500) {
+      const now = Date.now();
+      for (const [k, v] of nameCache) { if (v.expires < now) nameCache.delete(k); }
+    }
+    return name;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * 포스팅 제목에서 핵심 키워드 추출
  * - 블로그 이름/닉네임/displayName 제거
  * - 복합어 분리
  * - 불용어 제거
  * - 핵심 명사 2~3개 추출
+ * - 한글 1글자도 허용 (장사의 "신" 등)
  */
 function extractKeywords(title: string, blogId: string, displayName?: string): string {
   let cleaned = title;
@@ -169,12 +202,12 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
   }
   // 2. 괄호 제거
   cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
-  // 3. 복합어 분리
-  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|단상|글귀|해석|순위|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
-  // 4. 불용어
-  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및'];
+  // 3. 복합어 분리 (의미 단위가 붙어있는 경우만)
+  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|글귀|해석|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
+  // 4. 불용어 (조사/접속사만 — "신", "꿈" 등 한글 1글자 명사는 유지)
+  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중'];
   const words = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
-    .filter(w => w.length >= 2 && !stop.includes(w) && !/^\d+$/.test(w));
+    .filter(w => w.length >= 1 && !stop.includes(w) && !/^\d+$/.test(w) && !/^[a-zA-Z]$/.test(w));
   return words.slice(0, 3).join(' ') || title.slice(0, 20);
 }
 
@@ -188,7 +221,7 @@ export async function POST(request: NextRequest) {
     if (await blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
     const body = await request.json();
-    const { blogId, postTitle, postId, displayName } = body;
+    const { blogId, postTitle, postId } = body;
 
     if (!blogId || !postTitle) {
       return NextResponse.json({ error: 'blogId, postTitle 필수' }, { status: 400 });
@@ -200,6 +233,9 @@ export async function POST(request: NextRequest) {
     if (cached && cached.expires > Date.now()) {
       return NextResponse.json(cached.data);
     }
+
+    // 서버에서 displayName 직접 조회 (클라이언트 의존 제거)
+    const displayName = await getDisplayName(blogId);
 
     // 핵심 키워드 추출: 제목에서 불필요한 부분 제거
     const query = extractKeywords(postTitle, blogId, displayName);
