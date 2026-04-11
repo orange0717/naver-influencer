@@ -661,7 +661,15 @@ export default function BloggerDashboard() {
           value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.exposed / blogScoreCalc.total) * 100) : 0}
           suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.exposed}/${blogScoreCalc.total})` : '%'}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
-          color={blogScoreCalc.hasData && blogScoreCalc.exposed / blogScoreCalc.total >= 0.5 ? 'up' : blogScoreCalc.hasData && blogScoreCalc.exposed / blogScoreCalc.total >= 0.2 ? 'accent' : 'dim'}
+          color={(() => {
+            if (!blogScoreCalc.hasData) return 'dim';
+            const rate = blogScoreCalc.exposed / blogScoreCalc.total;
+            if (rate >= 0.8) return 'up';
+            if (rate >= 0.6) return 'gold';
+            if (rate >= 0.4) return 'accent';
+            if (rate >= 0.2) return 'down';
+            return 'dim';
+          })()}
           delay={300}
         />
         <AnimatedStatCard
