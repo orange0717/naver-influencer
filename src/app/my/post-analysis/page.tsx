@@ -62,6 +62,33 @@ interface PlagiarismResult {
   }[];
 }
 
+interface TextAnalysisResult {
+  morphemes: {
+    totalWords: number;
+    uniqueWords: number;
+    topWords: { word: string; count: number }[];
+    distribution: { nouns: number; verbs: number; adjectives: number; adverbs: number; conjunctions: number };
+  };
+  sentences: {
+    count: number;
+    avgLength: number;
+    minLength: number;
+    maxLength: number;
+    lengthDistribution: { label: string; count: number; percent: number }[];
+    readabilityScore: number;
+    readabilityLabel: string;
+    sentences: { text: string; length: number; type: 'longest' | 'shortest' }[];
+  };
+  characters: {
+    total: number;
+    korean: { count: number; percent: number };
+    english: { count: number; percent: number };
+    number: { count: number; percent: number };
+    special: { count: number; percent: number };
+    readingTimeMin: number;
+  };
+}
+
 // 규칙 기반 AI 판별
 function calculateRuleBasedScore(a: PostAnalysis): { score: number; factors: { label: string; value: string; signal: 'ai' | 'human' | 'neutral' }[] } {
   let score = 50;
@@ -154,6 +181,8 @@ export default function PostAnalysisPage() {
   const [analyzingPost, setAnalyzingPost] = useState<string | null>(null);
   const [checkingPlag, setCheckingPlag] = useState<string | null>(null);
   const [plagProgress, setPlagProgress] = useState<{ current: number; total: number } | null>(null);
+  const [textResults, setTextResults] = useState<Map<string, TextAnalysisResult>>(new Map());
+  const [analyzingText, setAnalyzingText] = useState<string | null>(null);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const abortRef = useRef<AbortController | null>(null);
@@ -327,6 +356,33 @@ export default function PostAnalysisPage() {
     }
   }, [profile, checkingPlag]);
 
+  // 형태소/문장 분석
+  const runTextAnalysis = useCallback(async (logNo: string) => {
+    if (!profile || analyzingText) return;
+    setAnalyzingText(logNo);
+    setExpandedPost(logNo);
+
+    try {
+      const res = await fetch('/api/blog/text-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, logNo }),
+      });
+
+      if (!res.ok) throw new Error('요청 실패');
+      const data = await res.json();
+      setTextResults(prev => {
+        const next = new Map(prev);
+        next.set(logNo, data);
+        return next;
+      });
+    } catch (err) {
+      console.error('텍스트 분석 오류:', err);
+    } finally {
+      setAnalyzingText(null);
+    }
+  }, [profile, analyzingText]);
+
   // 페이지네이션
   const perPage = 20;
   const totalPages = Math.ceil(posts.length / perPage);
@@ -368,25 +424,25 @@ export default function PostAnalysisPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <AnimatedStatCard
           label="전체 포스팅"
-          value={postsLoading ? '...' : postsTotal.toLocaleString()}
+          value={postsLoading ? 0 : postsTotal}
           suffix="개"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>}
         />
         <AnimatedStatCard
           label="평균 AI 확률"
-          value={analysisLoading ? '...' : String(avgAiScore)}
+          value={analysisLoading ? 0 : avgAiScore}
           suffix="%"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M20 12a8 8 0 0 0-8-8v8h8z"/></svg>}
         />
         <AnimatedStatCard
           label="평균 글자수"
-          value={analysisLoading ? '...' : avgCharCount.toLocaleString()}
+          value={analysisLoading ? 0 : avgCharCount}
           suffix="자"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>}
         />
         <AnimatedStatCard
           label="원본 사진 비율"
-          value={analysisLoading ? '...' : String(originalRatio)}
+          value={analysisLoading ? 0 : originalRatio}
           suffix="%"
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>}
         />
@@ -434,10 +490,12 @@ export default function PostAnalysisPage() {
                     const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
                     const aiResult = aiResults.get(post.id);
                     const plagResult = plagResults.get(post.id);
+                    const textResult = textResults.get(post.id);
                     const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
                     const isExpanded = expandedPost === post.id;
                     const isAnalyzing = analyzingPost === post.id;
                     const isCheckingPlag = checkingPlag === post.id;
+                    const isAnalyzingText = analyzingText === post.id;
 
                     return (
                       <tr key={post.id} className="group">
@@ -756,6 +814,139 @@ export default function PostAnalysisPage() {
                                   </div>
                                 </div>
                               )}
+
+                              {/* 형태소/문장 분석 버튼 */}
+                              {!textResult && !isAnalyzingText && (
+                                <button
+                                  onClick={() => runTextAnalysis(post.id)}
+                                  className="text-sm px-4 py-2 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 transition cursor-pointer"
+                                >
+                                  형태소/문장 분석
+                                </button>
+                              )}
+
+                              {isAnalyzingText && (
+                                <div className="flex items-center gap-2 text-sm text-dim py-2">
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-purple-500/30 border-t-purple-500 rounded-full" />
+                                  형태소/문장 분석 중...
+                                </div>
+                              )}
+
+                              {/* 형태소/문장 분석 결과 */}
+                              {textResult && (
+                                <div className="space-y-4 pt-2 border-t border-border/30">
+                                  <h4 className="text-xs font-bold text-purple-500">형태소/문장 분석 결과</h4>
+
+                                  {/* 문자 구성 */}
+                                  <div className="grid grid-cols-5 gap-2">
+                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                      <p className="text-[10px] text-dim">전체</p>
+                                      <p className="text-sm font-bold">{textResult.characters.total.toLocaleString()}</p>
+                                    </div>
+                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                      <p className="text-[10px] text-dim">한글</p>
+                                      <p className="text-sm font-bold">{textResult.characters.korean.percent}%</p>
+                                    </div>
+                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                      <p className="text-[10px] text-dim">영어</p>
+                                      <p className="text-sm font-bold">{textResult.characters.english.percent}%</p>
+                                    </div>
+                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                      <p className="text-[10px] text-dim">숫자</p>
+                                      <p className="text-sm font-bold">{textResult.characters.number.percent}%</p>
+                                    </div>
+                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                      <p className="text-[10px] text-dim">읽기 시간</p>
+                                      <p className="text-sm font-bold">{textResult.characters.readingTimeMin}분</p>
+                                    </div>
+                                  </div>
+
+                                  {/* 문장 분석 */}
+                                  <div>
+                                    <p className="text-xs text-dim font-semibold mb-2">문장 분석</p>
+                                    <div className="flex items-center gap-4 mb-2 text-xs">
+                                      <span>문장 수: <strong className="text-text">{textResult.sentences.count}개</strong></span>
+                                      <span>평균 길이: <strong className="text-text">{textResult.sentences.avgLength}자</strong></span>
+                                      <span>가독성: <strong className={textResult.sentences.readabilityScore >= 70 ? 'text-up' : textResult.sentences.readabilityScore >= 40 ? 'text-gold' : 'text-down'}>{textResult.sentences.readabilityLabel} ({textResult.sentences.readabilityScore}점)</strong></span>
+                                    </div>
+                                    {/* 길이 분포 바 */}
+                                    <div className="flex gap-1 h-6 rounded-lg overflow-hidden">
+                                      {textResult.sentences.lengthDistribution.map((d, i) => (
+                                        d.count > 0 && (
+                                          <div
+                                            key={i}
+                                            className={`flex items-center justify-center text-[9px] font-bold text-white ${
+                                              i === 0 ? 'bg-up' : i === 1 ? 'bg-up/70' : i === 2 ? 'bg-gold' : i === 3 ? 'bg-down/70' : 'bg-down'
+                                            }`}
+                                            style={{ flex: d.count }}
+                                            title={`${d.label}: ${d.count}개 (${d.percent}%)`}
+                                          >
+                                            {d.percent >= 10 && `${d.label}`}
+                                          </div>
+                                        )
+                                      ))}
+                                    </div>
+                                    <div className="flex gap-2 mt-1 text-[10px] text-dim">
+                                      {textResult.sentences.lengthDistribution.map((d, i) => (
+                                        <span key={i}>{d.label}: {d.count}개</span>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* 형태소 분포 */}
+                                  <div>
+                                    <p className="text-xs text-dim font-semibold mb-2">형태소 분포 (총 {textResult.morphemes.totalWords.toLocaleString()}단어, 고유 {textResult.morphemes.uniqueWords.toLocaleString()}개)</p>
+                                    <div className="flex gap-2 flex-wrap">
+                                      {[
+                                        { label: '명사', count: textResult.morphemes.distribution.nouns, color: 'bg-accent/10 text-accent border-accent/20' },
+                                        { label: '동사', count: textResult.morphemes.distribution.verbs, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+                                        { label: '형용사', count: textResult.morphemes.distribution.adjectives, color: 'bg-up/10 text-up border-up/20' },
+                                        { label: '부사', count: textResult.morphemes.distribution.adverbs, color: 'bg-gold/10 text-gold border-gold/20' },
+                                        { label: '접속사', count: textResult.morphemes.distribution.conjunctions, color: 'bg-down/10 text-down border-down/20' },
+                                      ].map(item => (
+                                        <span key={item.label} className={`text-xs px-2.5 py-1 rounded-lg border ${item.color}`}>
+                                          {item.label}: <strong>{item.count}</strong>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* 단어 빈도 */}
+                                  <div>
+                                    <p className="text-xs text-dim font-semibold mb-2">자주 사용한 단어 (상위 20)</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {textResult.morphemes.topWords.slice(0, 20).map((w, i) => (
+                                        <span key={i} className={`text-xs px-2 py-0.5 rounded-lg border ${
+                                          i < 3 ? 'bg-accent/10 text-accent border-accent/20 font-bold'
+                                          : i < 10 ? 'bg-border/30 text-text border-border/40'
+                                          : 'bg-border/20 text-dim border-border/30'
+                                        }`}>
+                                          {w.word} <span className="text-[10px] opacity-60">x{w.count}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* 주요 문장 */}
+                                  {textResult.sentences.sentences.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-dim font-semibold mb-2">주요 문장</p>
+                                      <div className="space-y-1.5">
+                                        {textResult.sentences.sentences.map((s, i) => (
+                                          <div key={i} className="flex items-start gap-2 text-xs">
+                                            <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                              s.type === 'longest' ? 'bg-down/10 text-down' : 'bg-up/10 text-up'
+                                            }`}>
+                                              {s.type === 'longest' ? '긴 문장' : '짧은 문장'} {s.length}자
+                                            </span>
+                                            <span className="leading-relaxed text-dim">{s.text}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </td>
@@ -773,10 +964,12 @@ export default function PostAnalysisPage() {
                 const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
                 const aiResult = aiResults.get(post.id);
                 const plagResult = plagResults.get(post.id);
+                const textResult = textResults.get(post.id);
                 const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
                 const isExpanded = expandedPost === post.id;
                 const isAnalyzing = analyzingPost === post.id;
                 const isCheckingPlag = checkingPlag === post.id;
+                const isAnalyzingText = analyzingText === post.id;
 
                 return (
                   <div key={post.id} className="px-4 py-4">
@@ -950,6 +1143,48 @@ export default function PostAnalysisPage() {
                                     </div>
                                   )}
                                 </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 모바일 형태소/문장 분석 */}
+                        {!textResult && !isAnalyzingText && (
+                          <button
+                            onClick={() => runTextAnalysis(post.id)}
+                            className="text-sm px-4 py-2 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 transition cursor-pointer w-full"
+                          >
+                            형태소/문장 분석
+                          </button>
+                        )}
+                        {isAnalyzingText && (
+                          <div className="flex items-center gap-2 text-sm text-dim">
+                            <span className="animate-spin inline-block w-3 h-3 border border-purple-500 border-t-transparent rounded-full" />
+                            형태소/문장 분석 중...
+                          </div>
+                        )}
+                        {textResult && (
+                          <div className="space-y-3 pt-2 border-t border-border/30">
+                            <h4 className="text-xs font-bold text-purple-500">형태소/문장 분석</h4>
+                            <div className="grid grid-cols-3 gap-1.5 text-center">
+                              <div className="bg-bg rounded-lg p-1.5">
+                                <p className="text-[9px] text-dim">문장수</p>
+                                <p className="text-xs font-bold">{textResult.sentences.count}</p>
+                              </div>
+                              <div className="bg-bg rounded-lg p-1.5">
+                                <p className="text-[9px] text-dim">평균길이</p>
+                                <p className="text-xs font-bold">{textResult.sentences.avgLength}자</p>
+                              </div>
+                              <div className="bg-bg rounded-lg p-1.5">
+                                <p className="text-[9px] text-dim">가독성</p>
+                                <p className={`text-xs font-bold ${textResult.sentences.readabilityScore >= 70 ? 'text-up' : textResult.sentences.readabilityScore >= 40 ? 'text-gold' : 'text-down'}`}>{textResult.sentences.readabilityScore}점</p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {textResult.morphemes.topWords.slice(0, 12).map((w, i) => (
+                                <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${i < 3 ? 'bg-accent/10 text-accent font-bold' : 'bg-border/30 text-dim'}`}>
+                                  {w.word} x{w.count}
+                                </span>
                               ))}
                             </div>
                           </div>

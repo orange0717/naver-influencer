@@ -130,7 +130,7 @@ async function extractPostText(blogId: string, logNo: string): Promise<string> {
   const $ = cheerio.load(html);
 
   const contentSelectors = ['.se-main-container', '#postViewArea', '.post-view', '#viewTypeSelector'];
-  let $content: cheerio.Cheerio<cheerio.AnyNode> | null = null;
+  let $content: cheerio.Cheerio<any> | null = null;
   for (const sel of contentSelectors) {
     const found = $(sel);
     if (found.length > 0 && found.text().trim().length > 10) {

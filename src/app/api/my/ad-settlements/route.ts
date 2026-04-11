@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('ad_settlements')
-    .select('id, settled_date, client_name, fee, commission, net_amount')
+    .select('id, order_date, settled_date, client_name, fee, commission, net_amount, posting_deadline')
     .eq('naver_id', naverId)
     .order('settled_date', { ascending: false })
     .limit(100);
