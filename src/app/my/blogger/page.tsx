@@ -212,6 +212,19 @@ export default function BloggerDashboard() {
     });
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
 
+  // 포스트 로드 시 자동 누락확인
+  const autoCheckRef = useRef(false);
+  useEffect(() => {
+    if (profile && blogPosts.length > 0 && !autoCheckRef.current && !checkingAll) {
+      autoCheckRef.current = true;
+      // 1초 후 자동 실행 (다른 API 호출과 겹치지 않게)
+      setTimeout(() => {
+        checkAllMissing();
+      }, 1500);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, blogPosts]);
+
   // 분석 완료 시 점수 자동 저장
   const analysisSavedRef = useRef(false);
   useEffect(() => {
