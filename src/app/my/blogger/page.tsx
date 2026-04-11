@@ -304,17 +304,14 @@ export default function BloggerDashboard() {
 
   const saveScoreToServer = useCallback(async () => {
     if (!profile) return;
-    const { total, scores, grade } = latestScoresRef.current;
+    const { total } = latestScoresRef.current;
     if (total === 0) return;
     try {
       await fetch('/api/blog/score', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           blog_id: profile.blogId, blog_name: profile.displayName,
-          total_score: total, grade,
-          crank_score: Math.round((scores[0] + scores[2]) / 2),
-          dia_score: Math.round((scores[1] + scores[3]) / 2),
-          diaplus_score: Math.round((scores[4] + scores[5]) / 2),
+          total_score: total, grade: '',
         }),
       });
       fetchScoreData(profile.blogId);
@@ -363,15 +360,6 @@ export default function BloggerDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, allBlogPosts, blogPostsPage]);
 
-  // 분석 완료 시 점수 자동 저장
-  const analysisSavedRef = useRef(false);
-  useEffect(() => {
-    if (profile && postAnalysis && !analysisSavedRef.current) {
-      analysisSavedRef.current = true;
-      setTimeout(() => saveScoreToServer(), 800);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postAnalysis]);
 
   const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
     setCustomProfile(prev => {
@@ -411,6 +399,8 @@ export default function BloggerDashboard() {
     }
     setCheckingAll(false);
     setCheckProgress({ current: 0, total: 0 });
+    // 상위노출 확률을 서버에 저장
+    saveScoreToServer();
   };
 
   const saveCategory = async (cat: string) => {
@@ -428,151 +418,26 @@ export default function BloggerDashboard() {
   };
 
   // ══════════════════════════════════════════════════════════
-  // 상위노출 확률 = C-Rank (출처 신뢰도) + D.I.A. (문서 품질)
+  // 상위노출 확률 = 실제 노출된 포스팅 비율 (순위확인 결과 기반)
   // ══════════════════════════════════════════════════════════
-  const pa = postAnalysis;
-  const hasAnalysis = !!pa;
-
-  // ── C-Rank: 블로그(출처) 신뢰도 ──
-  // Context(주제 집중도) + Content(콘텐츠 품질) + Chain(소통/반응)
-
-  // C-1. 주제 집중도 — 특정 주제에 얼마나 집중하는지
-  const topicFocusScore = (() => {
-    // 카테고리가 '기타'가 아니면 주제 설정됨 = 집중도 기본점
-    const hasTopic = category !== '기타' ? 20 : 0;
-    // 포스팅 분석에서 주제 일관성 추정
-    if (!pa) return hasTopic;
-    // 1인칭 서술이 높으면 특정 주제에 대한 경험 집중
-    const experienceFocus = Math.min(25, pa.metrics.avgPersonalPronounRatio * 800);
-    // 원본 이미지 비율 높으면 직접 체험 주제 집중
-    const originalFocus = pa.metrics.originalImageRatio * 25;
-    // 긴 글 비율 — 깊이 있는 주제 다룸
-    const depthFocus = pa.metrics.longPosts * 15;
-    // 꾸준한 포스팅 — 주제에 대한 지속적 관심
-    const postCount = blogPosts.length >= 10 ? 15 : blogPosts.length >= 5 ? 10 : blogPosts.length >= 2 ? 5 : 0;
-    return Math.min(100, Math.round(hasTopic + experienceFocus + originalFocus + depthFocus + postCount));
+  const exposureStats = (() => {
+    const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    const checked = posts.filter(p => missingResults[p.id]);
+    if (checked.length === 0) return { rate: 0, exposed: 0, total: 0, hasData: false };
+    const exposed = checked.filter(p => {
+      const mr = missingResults[p.id];
+      return mr.viewTab.exposed || mr.blogTab.exposed;
+    }).length;
+    return {
+      rate: Math.round((exposed / checked.length) * 100),
+      exposed,
+      total: checked.length,
+      hasData: true,
+    };
   })();
 
-  // C-2. 콘텐츠 품질 — 전체 블로그의 콘텐츠 품질 패턴
-  const contentQualityScore = pa ? Math.min(100, Math.round(
-    // 이미지 포함 글 비율 (max 20)
-    pa.metrics.postsWithImages * 20 +
-    // 1000자+ 글 비율 (max 20)
-    pa.metrics.longPosts * 20 +
-    // 소제목 있는 글 비율 (max 15)
-    pa.metrics.postsWithHeadings * 15 +
-    // 원본사진 있는 글 비율 (max 15)
-    pa.metrics.postsWithOriginalImages * 15 +
-    // 고유 단어 비율 평균 (max 15)
-    (pa.metrics.avgUniqueWordRatio >= 0.6 ? 15 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 10 : 5) +
-    // 미디어 포함 글 비율 (max 15)
-    pa.metrics.postsWithMedia * 15
-  )) : 0;
-
-  // C-Rank 종합 (주제 집중도 + 콘텐츠 품질, Chain/스크랩은 데이터 미제공으로 제외)
-  const cRankScore = Math.round((topicFocusScore + contentQualityScore) / 2);
-
-  // ── D.I.A.: 개별 문서 품질 (좋은 문서의 특성 5가지) ──
-
-  // D-1. 경험 정보 — 직접 경험한 솔직한 후기
-  const diaExperienceScore = pa ? Math.min(100, Math.round(
-    pa.metrics.originalImageRatio * 25 +
-    Math.min(25, pa.metrics.avgPersonalPronounRatio * 800) +
-    pa.metrics.postsWithOriginalImages * 15 +
-    pa.metrics.postsWithMedia * 15 +
-    (pa.metrics.avgImageSizeKB >= 500 ? 10 : pa.metrics.avgImageSizeKB >= 200 ? 7 : pa.metrics.avgImageSizeKB >= 100 ? 5 : 0) +
-    pa.metrics.postsWithImages * 10
-  )) : 0;
-
-  // D-2. 정보 충실성 — 충분한 길이와 상세한 정보
-  const diaInfoScore = pa ? Math.min(100, Math.round(
-    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 : pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
-    (pa.averages.paragraphCount >= 15 ? 20 : pa.averages.paragraphCount >= 10 ? 15 : pa.averages.paragraphCount >= 5 ? 10 : 3) +
-    (pa.averages.imageCount >= 8 ? 15 : pa.averages.imageCount >= 5 ? 12 : pa.averages.imageCount >= 3 ? 8 : 0) +
-    (pa.metrics.postsWithLists >= 0.5 ? 15 : pa.metrics.postsWithLists >= 0.2 ? 10 : pa.averages.listItemCount >= 1 ? 5 : 0) +
-    Math.min(15, Math.round(pa.metrics.longPosts * 15)) +
-    (pa.averages.headingCount >= 3 ? 10 : pa.averages.headingCount >= 1 ? 5 : 0)
-  )) : 0;
-
-  // D-3. 독창성 — 복사/짜깁기 없는 독자적 정보
-  const diaOriginalityScore = pa ? Math.min(100, Math.round(
-    (pa.metrics.avgUniqueWordRatio >= 0.7 ? 30 : pa.metrics.avgUniqueWordRatio >= 0.6 ? 24 : pa.metrics.avgUniqueWordRatio >= 0.5 ? 18 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 12 : 5) +
-    pa.metrics.originalImageRatio * 25 +
-    Math.min(20, pa.metrics.avgPersonalPronounRatio * 650) +
-    (pa.metrics.avgCharCount >= 2000 ? 15 : pa.metrics.avgCharCount >= 1500 ? 12 : pa.metrics.avgCharCount >= 1000 ? 8 : 3) +
-    (pa.metrics.avgImageSizeKB >= 300 ? 10 : pa.metrics.avgImageSizeKB >= 100 ? 5 : 0)
-  )) : 0;
-
-  // D-4. 신뢰성 — 출처/인용 기반 정보
-  const diaReliabilityScore = pa ? Math.min(100, Math.round(
-    (pa.averages.linkCount >= 3 ? 30 : pa.averages.linkCount >= 2 ? 22 : pa.averages.linkCount >= 1 ? 15 : 3) +
-    (pa.metrics.postsWithQuotations >= 0.5 ? 20 : pa.metrics.postsWithQuotations >= 0.2 ? 12 : pa.averages.quotationCount >= 1 ? 8 : 0) +
-    (pa.metrics.originalImageRatio >= 0.5 ? 30 : pa.metrics.originalImageRatio >= 0.3 ? 20 : pa.metrics.originalImageRatio >= 0.1 ? 10 : 3) +
-    (pa.metrics.postsWithImages >= 0.8 ? 20 : pa.metrics.postsWithImages >= 0.5 ? 12 : 5)
-  )) : 0;
-
-  // D-5. 가독성 — 쉽게 읽고 이해할 수 있는 구성
-  const diaReadabilityScore = pa ? Math.min(100, Math.round(
-    pa.metrics.postsWithHeadings * 25 +
-    (pa.averages.headingCount >= 5 ? 20 : pa.averages.headingCount >= 3 ? 15 : pa.averages.headingCount >= 1 ? 8 : 0) +
-    (pa.metrics.postsWithLists >= 0.3 ? 15 : pa.metrics.postsWithLists >= 0.1 ? 8 : 0) +
-    (pa.averages.imageCount >= 3 && pa.averages.imageCount <= 20 ? 20 : pa.averages.imageCount >= 1 ? 10 : 0) +
-    (pa.averages.paragraphCount >= 5 ? 10 : pa.averages.paragraphCount >= 3 ? 5 : 0) +
-    (pa.metrics.avgCharCount >= 500 ? 10 : pa.metrics.avgCharCount >= 300 ? 5 : 0)
-  )) : 0;
-
-  // D.I.A. 종합 (5개 평균)
-  const diaScores = [diaExperienceScore, diaInfoScore, diaOriginalityScore, diaReliabilityScore, diaReadabilityScore];
-  const diaScore = hasAnalysis ? Math.round(diaScores.reduce((a, b) => a + b, 0) / diaScores.length) : 0;
-
-  // ── D.I.A.+: 문서 패턴 심화 분석 ──
-
-  // D+-1. 문서 구조 패턴 — 소제목/리스트/문단 구성
-  const diaPlusStructureScore = pa ? Math.min(100, Math.round(
-    pa.metrics.postsWithHeadings * 30 +
-    (pa.averages.headingCount >= 5 ? 20 : pa.averages.headingCount >= 3 ? 15 : pa.averages.headingCount >= 1 ? 8 : 0) +
-    (pa.metrics.postsWithLists >= 0.5 ? 20 : pa.metrics.postsWithLists >= 0.2 ? 12 : 0) +
-    (pa.averages.paragraphCount >= 10 ? 15 : pa.averages.paragraphCount >= 5 ? 10 : 3) +
-    (pa.metrics.longPosts >= 0.8 ? 15 : pa.metrics.longPosts >= 0.5 ? 10 : pa.metrics.longPosts >= 0.2 ? 5 : 0)
-  )) : 0;
-
-  // D+-2. 이미지 패턴 — 원본사진/이미지 품질/다양성
-  const diaPlusImageScore = pa ? Math.min(100, Math.round(
-    pa.metrics.originalImageRatio * 30 +
-    (pa.metrics.avgImageSizeKB >= 500 ? 25 : pa.metrics.avgImageSizeKB >= 200 ? 18 : pa.metrics.avgImageSizeKB >= 100 ? 10 : 3) +
-    pa.metrics.postsWithOriginalImages * 20 +
-    (pa.averages.imageCount >= 5 ? 15 : pa.averages.imageCount >= 3 ? 10 : pa.averages.imageCount >= 1 ? 5 : 0) +
-    pa.metrics.postsWithMedia * 10
-  )) : 0;
-
-  // D+-3. 진성 정보 — 체험/경험 기반 진짜 정보 (비체험 광고성 필터)
-  const diaPlusAuthenticScore = pa ? Math.min(100, Math.round(
-    Math.min(30, pa.metrics.avgPersonalPronounRatio * 1000) +
-    pa.metrics.originalImageRatio * 25 +
-    (pa.metrics.avgUniqueWordRatio >= 0.6 ? 20 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 12 : 5) +
-    (pa.metrics.avgCharCount >= 1500 ? 15 : pa.metrics.avgCharCount >= 800 ? 10 : 3) +
-    (pa.averages.quotationCount >= 1 ? 10 : 0)
-  )) : 0;
-
-  // D.I.A.+ 종합 (3개 평균)
-  const diaPlusScores = [diaPlusStructureScore, diaPlusImageScore, diaPlusAuthenticScore];
-  const diaPlusScore = hasAnalysis ? Math.round(diaPlusScores.reduce((a, b) => a + b, 0) / diaPlusScores.length) : 0;
-
-  // ── 상위노출 확률 종합 = C-Rank(30%) + D.I.A.(35%) + D.I.A.+(35%) ──
-  const totalScore = hasAnalysis || blogPosts.length > 0
-    ? Math.round(cRankScore * 0.3 + diaScore * 0.35 + diaPlusScore * 0.35)
-    : 0;
-  const allScores = [cRankScore, diaScore, diaPlusScore];
-
-  function getGrade(score: number) {
-    if (score >= 90) return { grade: 'S', color: 'text-accent', bg: 'bg-accent/10' };
-    if (score >= 75) return { grade: 'A', color: 'text-up', bg: 'bg-up/10' };
-    if (score >= 60) return { grade: 'B', color: 'text-[#2DB400]', bg: 'bg-[#2DB400]/10' };
-    if (score >= 40) return { grade: 'C', color: 'text-amber-600', bg: 'bg-amber-50' };
-    return { grade: 'D', color: 'text-dim', bg: 'bg-bg' };
-  }
-  const gradeInfo = getGrade(totalScore);
-  latestScoresRef.current = { total: totalScore, scores: allScores, grade: gradeInfo.grade };
+  const totalScore = exposureStats.hasData ? exposureStats.rate : (scoreData?.total_score || 0);
+  latestScoresRef.current = { total: totalScore, scores: [0, 0, 0, 0, 0, 0], grade: '' };
 
   // 발행량 통계 (allBlogPosts 기반 — 최대 30개)
   const publishingStats = (() => {
@@ -724,7 +589,7 @@ export default function BloggerDashboard() {
         <AnimatedStatCard
           label="상위노출 확률"
           value={totalScore}
-          suffix="%"
+          suffix={exposureStats.hasData ? `% (${exposureStats.exposed}/${exposureStats.total})` : '%'}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
           color={totalScore >= 60 ? 'up' : totalScore >= 40 ? 'accent' : 'dim'}
           delay={300}
