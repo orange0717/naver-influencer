@@ -4,23 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
-import GradeGauge from '@/components/dashboard/GradeGauge';
-import RankTrendSection from '@/components/dashboard/RankTrendSection';
-import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
-import { generateBloggerEvents } from '@/lib/activity-events';
+import GradeGauge from '@/components/dashboard/GradeGauge';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
-
-interface KeywordRank {
-  keyword: string;
-  rank: number | null;
-  prevRank: number | null;
-  totalResults: number;
-  blogUrl: string;
-  postTitle: string;
-  searchUrl: string;
-  checkedAt: string;
-}
 
 interface BloggerProfile {
   blogId: string;
@@ -30,27 +16,28 @@ interface BloggerProfile {
   needsBlogId?: boolean;
 }
 
-interface ExtractedKeyword {
-  keyword: string;
-  frequency: number;
-  postCount: number;
-  score: number;
-}
-
-interface KeywordHistory {
-  keyword_id: string;
-  keyword: string;
-  history: { date: string; rank: number | null }[];
-}
-
 interface BlogPost {
   id: string;
   title: string;
   url: string;
   commentCount: number;
-  viewCount: number;
   date: string;
   isPublic: boolean;
+}
+
+interface MissingResult {
+  blogTab: { exposed: boolean; rank: number | null };
+  viewTab: { exposed: boolean; rank: number | null };
+}
+
+interface BlogScoreData {
+  total_score: number;
+  grade: string;
+  rank: number;
+  totalBloggers: number;
+  categoryRank: number;
+  categoryTotal: number;
+  category: string;
 }
 
 interface BlogAnalysisMetrics {
@@ -82,6 +69,12 @@ interface BlogAnalysisAverages {
   quotationCount: number;
 }
 
+const CATEGORIES = [
+  '맛집', '여행', '뷰티', '패션', 'IT/테크', '육아',
+  '인테리어', '건강', '반려동물', '자동차', '부동산',
+  '경제/재테크', '교육', '문화/예술', '스포츠', '일상/라이프', '기타',
+];
+
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
   try {
     const res = await fetch('/api/auth/me');
@@ -96,107 +89,28 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
       return { blogId: data.blogId || data.id, displayName: data.name || data.id, isInfluencer: true, needsBlogId: !data.blogId };
     }
     return null;
-  } catch {
-    return null;
-  }
-}
-
-function timeAgo(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  const diffDay = Math.floor(diffHour / 24);
-  return `${diffDay}일 전`;
-}
-
-function RankBadge({ rank, checked = true }: { rank: number | null; checked?: boolean }) {
-  if (!checked) return <span className="text-xs text-dim bg-border/30 px-2 py-0.5 rounded-full">확인 전</span>;
-  if (rank === null) return <span className="text-xs text-down/80 bg-down/10 px-2 py-0.5 rounded-full">미노출</span>;
-  if (rank <= 5) return <span className="text-xs font-bold text-white bg-accent px-2 py-0.5 rounded-full">TOP 5</span>;
-  if (rank <= 10) return <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">TOP 10</span>;
-  if (rank <= 20) return <span className="text-xs font-bold text-[#2DB400] bg-[#2DB400]/10 px-2 py-0.5 rounded-full">TOP 20</span>;
-  if (rank <= 30) return <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">TOP 30</span>;
-  return <span className="text-xs text-dim bg-border/30 px-2 py-0.5 rounded-full">{rank}위</span>;
-}
-
-function RankChange({ current, prev }: { current: number | null; prev: number | null }) {
-  if (current === null || prev === null) return null;
-  const diff = prev - current;
-  if (diff === 0) return <span className="text-xs text-dim">—</span>;
-  if (diff > 0) return <span className="text-xs text-up font-bold">▲{diff}</span>;
-  return <span className="text-xs text-down font-bold">▼{Math.abs(diff)}</span>;
+  } catch { return null; }
 }
 
 export default function BloggerDashboard() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
-  const [keyword, setKeyword] = useState('');
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [results, setResults] = useState<KeywordRank[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState('');
-  const isSubscribed = true; // 모든 기능 무료 개방
-  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
-  const [extractedKeywords, setExtractedKeywords] = useState<ExtractedKeyword[]>([]);
-  const [extracting, setExtracting] = useState(false);
-  const [rankHistory, setRankHistory] = useState<KeywordHistory[]>([]);
   const [customProfile, setCustomProfile] = useState<{ displayName?: string; imageUrl?: string }>({});
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [blogPostsPage, setBlogPostsPage] = useState(1);
   const [blogPostsLoading, setBlogPostsLoading] = useState(false);
+  const [missingResults, setMissingResults] = useState<Record<string, MissingResult>>({});
+  const [checkingMissing, setCheckingMissing] = useState<string>('');
+  const [checkingAll, setCheckingAll] = useState(false);
+  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  const [scoreData, setScoreData] = useState<BlogScoreData | null>(null);
+  const [category, setCategory] = useState('기타');
+  const [suggestedCategory, setSuggestedCategory] = useState('기타');
+  const [showCategorySelect, setShowCategorySelect] = useState(false);
   const [postAnalysis, setPostAnalysis] = useState<{ metrics: BlogAnalysisMetrics; averages: BlogAnalysisAverages } | null>(null);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [blogRanking, setBlogRanking] = useState<{ rank: number; total: number; categoryRanks?: { reliabilityOriginality: number; experienceDepth: number; readabilityConsistency: number } } | null>(null);
 
-  // 최신 점수 ref (saveScoreToServer에서 사용)
+  // 점수 계산용 ref
   const latestScoresRef = useRef({ total: 0, scores: [0, 0, 0, 0, 0, 0], grade: 'D' });
-  // 미확인 키워드 자동 순위 확인
-  const autoCheckRef = useRef(false);
-  const autoCheckUnchecked = useCallback(async (kws: string[], savedRes: KeywordRank[], blogProfile: BloggerProfile) => {
-    if (autoCheckRef.current) return;
-    const checkedKeywords = new Set(savedRes.map(r => r.keyword));
-    // 1시간 이상 지난 결과도 재확인
-    const staleThreshold = Date.now() - 60 * 60 * 1000;
-    const staleKeywords = savedRes
-      .filter(r => kws.includes(r.keyword) && new Date(r.checkedAt).getTime() < staleThreshold)
-      .map(r => r.keyword);
-    const unchecked = kws.filter(kw => !checkedKeywords.has(kw));
-    const toCheck = [...new Set([...unchecked, ...staleKeywords])];
-    if (toCheck.length === 0) return;
-    autoCheckRef.current = true;
-    setLoading(true);
-    setCheckProgress({ current: 0, total: toCheck.length });
-    for (let i = 0; i < toCheck.length; i++) {
-      setCheckProgress({ current: i + 1, total: toCheck.length });
-      try {
-        const res = await fetch(`/api/blog/rank?keyword=${encodeURIComponent(toCheck[i])}&blogId=${encodeURIComponent(blogProfile.blogId)}`);
-        const data = await res.json();
-        if (res.ok) {
-          setResults(prev => {
-            const existing = prev.find(r => r.keyword === toCheck[i]);
-            const filtered = prev.filter(r => r.keyword !== toCheck[i]);
-            const updated = [...filtered, {
-              keyword: toCheck[i], rank: data.rank, prevRank: existing?.rank ?? null,
-              totalResults: data.totalResults || 0, blogUrl: data.blogUrl || '',
-              postTitle: data.postTitle || '', searchUrl: data.searchUrl || '',
-              checkedAt: new Date().toISOString(),
-            }];
-            if (blogProfile) localStorage.setItem(`blogger_results_${blogProfile.blogId}`, JSON.stringify(updated));
-            return updated;
-          });
-        }
-      } catch { /* ignore */ }
-      if (i < toCheck.length - 1) await new Promise(r => setTimeout(r, 2000));
-    }
-    setLoading(false);
-    setCheckProgress({ current: 0, total: 0 });
-    autoCheckRef.current = false;
-  }, []);
 
   const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
     setBlogPostsLoading(true);
@@ -212,8 +126,29 @@ export default function BloggerDashboard() {
     finally { setBlogPostsLoading(false); }
   }, []);
 
+  const fetchScoreData = useCallback(async (blogId: string) => {
+    try {
+      const res = await fetch(`/api/blog/score?blogId=${encodeURIComponent(blogId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setScoreData(data);
+        setCategory(data.category || '기타');
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchCategory = useCallback(async (blogId: string) => {
+    try {
+      const res = await fetch(`/api/blog/category?blogId=${encodeURIComponent(blogId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.current) setCategory(data.current);
+        if (data.suggested) setSuggestedCategory(data.suggested);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   const fetchPostAnalysis = useCallback(async (blogId: string) => {
-    setAnalysisLoading(true);
     try {
       const res = await fetch(`/api/blog/analyze?blogId=${encodeURIComponent(blogId)}&count=10`);
       if (res.ok) {
@@ -223,32 +158,30 @@ export default function BloggerDashboard() {
         }
       }
     } catch { /* ignore */ }
-    finally { setAnalysisLoading(false); }
   }, []);
 
-  const fetchBlogRanking = useCallback(async (blogId: string) => {
+  const saveScoreToServer = useCallback(async () => {
+    if (!profile) return;
+    const { total, scores, grade } = latestScoresRef.current;
+    if (total === 0) return;
     try {
-      const res = await fetch(`/api/blog/score?blogId=${encodeURIComponent(blogId)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.rank && data.totalBloggers) {
-          setBlogRanking({
-            rank: data.rank,
-            total: data.totalBloggers,
-            categoryRanks: data.categoryRanks,
-          });
-        }
-      }
+      await fetch('/api/blog/score', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blog_id: profile.blogId, blog_name: profile.displayName,
+          total_score: total, grade,
+          crank_score: Math.round((scores[0] + scores[2]) / 2),
+          dia_score: Math.round((scores[1] + scores[3]) / 2),
+          diaplus_score: Math.round((scores[4] + scores[5]) / 2),
+        }),
+      });
+      fetchScoreData(profile.blogId);
     } catch { /* ignore */ }
-  }, []);
+  }, [profile, fetchScoreData]);
 
   useEffect(() => {
     getProfileFromApi().then(p => {
-      if (!p) {
-        window.location.href = '/auth/login';
-        return;
-      }
-      // localStorage에서 커스텀 프로필 불러오기 (사진, 닉네임)
+      if (!p) { window.location.href = '/auth/login'; return; }
       const customData = localStorage.getItem(`blogger_custom_profile_${p.blogId}`);
       if (customData) {
         try {
@@ -259,319 +192,128 @@ export default function BloggerDashboard() {
         } catch { /* ignore */ }
       }
       setProfile(p);
-
-      // 저장된 키워드 불러오기
-      let savedKws: string[] = [];
-      let savedRes: KeywordRank[] = [];
-      const saved = localStorage.getItem(`blogger_keywords_${p.blogId}`);
-      if (saved) {
-        try { savedKws = JSON.parse(saved); setKeywords(savedKws); } catch { /* ignore */ }
-      }
-      const savedResults = localStorage.getItem(`blogger_results_${p.blogId}`);
-      if (savedResults) {
-        try { savedRes = JSON.parse(savedResults); setResults(savedRes); } catch { /* ignore */ }
-      }
-
-      // 블로그 키워드 자동 추출
-      fetchExtractedKeywords(p.blogId);
-      // DB에서 순위 히스토리 가져오기
-      fetchRankHistory(p.blogId);
-      // 블로그 포스트 목록 가져오기
       fetchBlogPosts(p.blogId, 1);
-      // 블로그 글 본문 분석 (최근 10개)
+      fetchScoreData(p.blogId);
+      fetchCategory(p.blogId);
       fetchPostAnalysis(p.blogId);
-      // 전체 블로거 중 랭킹 가져오기
-      fetchBlogRanking(p.blogId);
-
-      // 미확인 키워드 자동 순위 확인 (1초 후 시작)
-      if (savedKws.length > 0) {
-        setTimeout(() => autoCheckUnchecked(savedKws, savedRes, p), 1000);
-      }
     });
-  }, [autoCheckUnchecked, fetchBlogPosts, fetchPostAnalysis, fetchBlogRanking]);
-
-  const fetchRankHistory = async (blogId: string) => {
-    try {
-      const res = await fetch(`/api/blog/rankings/history?blogId=${encodeURIComponent(blogId)}&days=15`);
-      if (res.ok) {
-        const data = await res.json();
-        setRankHistory(data.keywords || []);
-      }
-    } catch { /* DB 테이블이 아직 없으면 무시 */ }
-  };
-
-  const fetchExtractedKeywords = async (blogId: string) => {
-    setExtracting(true);
-    try {
-      const res = await fetch(`/api/blog/extract-keywords?blogId=${encodeURIComponent(blogId)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setExtractedKeywords(data.keywords || []);
-      }
-    } catch { /* ignore */ }
-    finally { setExtracting(false); }
-  };
-
-  const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
-    setCustomProfile(prev => {
-      const updated = { ...prev, ...data };
-      if (profile) {
-        localStorage.setItem(`blogger_custom_profile_${profile.blogId}`, JSON.stringify(updated));
-      }
-      return updated;
-    });
-    // profile 상태도 업데이트
-    setProfile(prev => prev ? { ...prev, ...data } : prev);
-  }, [profile]);
-
-  const saveKeywords = useCallback((kws: string[]) => {
-    if (!profile) return;
-    localStorage.setItem(`blogger_keywords_${profile.blogId}`, JSON.stringify(kws));
-  }, [profile]);
-
-  const saveResults = useCallback((res: KeywordRank[]) => {
-    if (!profile) return;
-    localStorage.setItem(`blogger_results_${profile.blogId}`, JSON.stringify(res));
-  }, [profile]);
-
-  const saveKeywordToDB = async (kw: string, isAuto: boolean = false) => {
-    if (!profile) return;
-    try {
-      await fetch('/api/blog/keywords', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blog_id: profile.blogId, keyword: kw, is_auto: isAuto }),
-      });
-    } catch { /* DB가 아직 없으면 무시 */ }
-  };
-
-  const addKeyword = async (kw?: string) => {
-    const target = kw || keyword.trim();
-    if (!target || keywords.includes(target)) return;
-    if (keywords.length >= 20) { alert('키워드는 최대 20개까지 등록할 수 있습니다.'); return; }
-    const updated = [...keywords, target];
-    setKeywords(updated);
-    saveKeywords(updated);
-    saveKeywordToDB(target, !!kw); // kw가 있으면 추천에서 추가 (자동)
-    if (!kw) setKeyword('');
-    // 키워드 추가 후 자동 순위 확인
-    setTimeout(() => checkRank(target), 300);
-  };
-
-  const removeKeyword = (kw: string) => {
-    const updated = keywords.filter(k => k !== kw);
-    setKeywords(updated);
-    saveKeywords(updated);
-    setResults(prev => {
-      const filtered = prev.filter(r => r.keyword !== kw);
-      saveResults(filtered);
-      return filtered;
-    });
-  };
-
-  const checkRank = async (kw: string) => {
-    if (!profile) return;
-    setChecking(kw);
-    try {
-      const res = await fetch(`/api/blog/rank?keyword=${encodeURIComponent(kw)}&blogId=${encodeURIComponent(profile.blogId)}`);
-      const data = await res.json();
-      if (res.ok) {
-        setResults(prev => {
-          const existing = prev.find(r => r.keyword === kw);
-          const filtered = prev.filter(r => r.keyword !== kw);
-          const updated = [...filtered, {
-            keyword: kw, rank: data.rank, prevRank: existing?.rank ?? null,
-            totalResults: data.totalResults || 0, blogUrl: data.blogUrl || '',
-            postTitle: data.postTitle || '', searchUrl: data.searchUrl || '',
-            checkedAt: new Date().toISOString(),
-          }];
-          saveResults(updated);
-          return updated;
-        });
-      }
-    } catch { /* ignore */ }
-    finally { setChecking(''); }
-  };
-
-  const checkAllRanks = async () => {
-    if (!profile || keywords.length === 0) return;
-    setLoading(true);
-    setCheckProgress({ current: 0, total: keywords.length });
-    for (let i = 0; i < keywords.length; i++) {
-      setCheckProgress({ current: i + 1, total: keywords.length });
-      await checkRank(keywords[i]);
-      if (i < keywords.length - 1) await new Promise(r => setTimeout(r, 2000));
-    }
-    setLoading(false);
-    setCheckProgress({ current: 0, total: 0 });
-    // 렌더링 후 최신 점수 ref 업데이트를 기다린 후 저장
-    setTimeout(() => saveScoreToServer(), 500);
-  };
-
-  const saveScoreToServer = useCallback(async () => {
-    if (!profile) return;
-    const { total, scores, grade } = latestScoresRef.current;
-    if (total === 0) return;
-
-    const checked = results.filter(r => keywords.includes(r.keyword));
-    const ranked = checked.filter(r => r.rank !== null).length;
-    const t5 = checked.filter(r => r.rank !== null && r.rank! <= 5).length;
-    const t10 = checked.filter(r => r.rank !== null && r.rank! <= 10).length;
-    const avg = ranked > 0 ? checked.filter(r => r.rank !== null).reduce((s, r) => s + (r.rank || 0), 0) / ranked : 0;
-
-    try {
-      await fetch('/api/blog/score', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          blog_id: profile.blogId, blog_name: profile.displayName,
-          total_score: total, grade,
-          crank_score: Math.round((scores[0] + scores[2]) / 2), // 신뢰성 + 독창성
-          dia_score: Math.round((scores[1] + scores[3]) / 2),   // 경험 + 심층성
-          diaplus_score: Math.round((scores[4] + scores[5]) / 2), // 가독성 + 꾸준함
-          keyword_count: keywords.length, ranked_count: ranked,
-          avg_rank: Math.round(avg * 100) / 100, top5_count: t5, top10_count: t10,
-        }),
-      });
-      // 저장 후 랭킹 다시 가져오기
-      fetchBlogRanking(profile.blogId);
-    } catch { /* ignore */ }
-  }, [profile, results, keywords, fetchBlogRanking]);
+  }, [fetchBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis]);
 
   // 분석 완료 시 점수 자동 저장
   const analysisSavedRef = useRef(false);
   useEffect(() => {
-    if (profile && postAnalysis && !analysisLoading && !analysisSavedRef.current) {
+    if (profile && postAnalysis && !analysisSavedRef.current) {
       analysisSavedRef.current = true;
       setTimeout(() => saveScoreToServer(), 800);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postAnalysis, analysisLoading]);
+  }, [postAnalysis]);
 
-  const resultMap = new Map(results.map(r => [r.keyword, r]));
-  const checkedResults = results.filter(r => keywords.includes(r.keyword));
-  const rankedCount = checkedResults.filter(r => r.rank !== null).length;
-  const top5Count = checkedResults.filter(r => r.rank !== null && r.rank! <= 5).length;
-  const top10Count = checkedResults.filter(r => r.rank !== null && r.rank! <= 10).length;
-  const avgRank = rankedCount > 0 ? checkedResults.filter(r => r.rank !== null).reduce((s, r) => s + (r.rank || 0), 0) / rankedCount : 0;
-  const improvedCount = checkedResults.filter(r => r.rank !== null && r.prevRank !== null && r.rank! < r.prevRank!).length;
-  const declinedCount = checkedResults.filter(r => r.rank !== null && r.prevRank !== null && r.rank! > r.prevRank!).length;
+  const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
+    setCustomProfile(prev => {
+      const updated = { ...prev, ...data };
+      if (profile) localStorage.setItem(`blogger_custom_profile_${profile.blogId}`, JSON.stringify(updated));
+      return updated;
+    });
+    setProfile(prev => prev ? { ...prev, ...data } : prev);
+  }, [profile]);
 
-  const top20Count = checkedResults.filter(r => r.rank !== null && r.rank! <= 20).length;
-  const hasData = checkedResults.length > 0 && rankedCount > 0;
-  const rankQuality = avgRank > 0 ? Math.max(0, 50 - (avgRank - 1) * 1.6) : 0;
-  const top5Ratio = rankedCount > 0 ? (top5Count / rankedCount) : 0;
-  const stabilityRatio = (improvedCount + declinedCount) > 0 ? improvedCount / (improvedCount + declinedCount) : 0.5;
+  const checkMissing = async (post: BlogPost) => {
+    if (!profile) return;
+    setCheckingMissing(post.id);
+    try {
+      const res = await fetch('/api/blog/check-missing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMissingResults(prev => ({ ...prev, [post.id]: data }));
+      }
+    } catch { /* ignore */ }
+    finally { setCheckingMissing(''); }
+  };
 
-  // ── 네이버 "좋은 문서의 특성" 기반 6가지 점수 ──
-  // 본문 분석 + 검색 순위 + 포스팅 데이터 종합
+  const checkAllMissing = async () => {
+    if (!profile || blogPosts.length === 0) return;
+    setCheckingAll(true);
+    setCheckProgress({ current: 0, total: blogPosts.length });
+    for (let i = 0; i < blogPosts.length; i++) {
+      setCheckProgress({ current: i + 1, total: blogPosts.length });
+      await checkMissing(blogPosts[i]);
+      if (i < blogPosts.length - 1) await new Promise(r => setTimeout(r, 2000));
+    }
+    setCheckingAll(false);
+    setCheckProgress({ current: 0, total: 0 });
+  };
 
+  const saveCategory = async (cat: string) => {
+    if (!profile) return;
+    setCategory(cat);
+    setShowCategorySelect(false);
+    try {
+      await fetch('/api/blog/category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, category: cat }),
+      });
+      fetchScoreData(profile.blogId);
+    } catch { /* ignore */ }
+  };
+
+  // ── 좋은 문서 기준 6가지 점수 (placeholder — 사용자 기준 전달 시 교체) ──
   const pa = postAnalysis;
+  const hasAnalysis = !!pa;
 
-  // 1. 신뢰성 — 출처 · 인용문 · 검색 상위 노출
   const reliabilityScore = pa ? Math.min(100, Math.round(
-    // 외부 링크(출처) (max 30)
-    (pa.averages.linkCount >= 3 ? 30 : pa.averages.linkCount >= 2 ? 22 :
-     pa.averages.linkCount >= 1 ? 15 : 3) +
-    // 인용문/블록인용 사용 (max 20): 출처 표시 의지
-    (pa.metrics.postsWithQuotations >= 0.5 ? 20 : pa.metrics.postsWithQuotations >= 0.2 ? 12 :
-     pa.averages.quotationCount >= 1 ? 8 : 0) +
-    // 검색 순위 품질 (max 30): 네이버가 신뢰
-    (hasData ? Math.min(30, Math.round(rankQuality * 0.6)) : 0) +
-    // TOP10 비율 (max 20)
-    (hasData ? Math.min(20, Math.round((top10Count / Math.max(rankedCount, 1)) * 20)) : 0)
-  )) : (hasData ? Math.min(100, Math.round(
-    rankQuality * 0.6 + (top10Count / Math.max(rankedCount, 1)) * 40 +
-    (rankedCount >= 3 ? 20 : rankedCount >= 1 ? 10 : 0)
-  )) : 0);
+    (pa.averages.linkCount >= 3 ? 30 : pa.averages.linkCount >= 2 ? 22 : pa.averages.linkCount >= 1 ? 15 : 3) +
+    (pa.metrics.postsWithQuotations >= 0.5 ? 20 : pa.metrics.postsWithQuotations >= 0.2 ? 12 : pa.averages.quotationCount >= 1 ? 8 : 0) +
+    (pa.metrics.originalImageRatio >= 0.5 ? 30 : pa.metrics.originalImageRatio >= 0.3 ? 20 : 10) +
+    (pa.metrics.postsWithImages >= 0.8 ? 20 : pa.metrics.postsWithImages >= 0.5 ? 12 : 5)
+  )) : 0;
 
-  // 2. 경험 — 직접 촬영 · 1인칭 서술 · 미디어
   const experienceScore = pa ? Math.min(100, Math.round(
-    // 원본 사진 비율 (max 25): 100KB+ = 직접 촬영
     pa.metrics.originalImageRatio * 25 +
-    // 1인칭 대명사/경험 표현 비율 (max 25): 직접 체험 서술
     Math.min(25, pa.metrics.avgPersonalPronounRatio * 800) +
-    // 원본 사진 있는 글 비율 (max 15)
     pa.metrics.postsWithOriginalImages * 15 +
-    // 미디어(영상/지도) 포함 (max 15)
     pa.metrics.postsWithMedia * 15 +
-    // 이미지 크기 보너스 (max 10)
-    (pa.metrics.avgImageSizeKB >= 500 ? 10 : pa.metrics.avgImageSizeKB >= 200 ? 7 :
-     pa.metrics.avgImageSizeKB >= 100 ? 5 : 0) +
-    // 이미지가 많은 글 비율 (max 10)
+    (pa.metrics.avgImageSizeKB >= 500 ? 10 : pa.metrics.avgImageSizeKB >= 200 ? 7 : pa.metrics.avgImageSizeKB >= 100 ? 5 : 0) +
     pa.metrics.postsWithImages * 10
-  )) : (hasData ? 30 : 0);
+  )) : 0;
 
-  // 3. 독창성 — 고유 단어 · 긴 글 · 원본 콘텐츠
   const originalityScore = pa ? Math.min(100, Math.round(
-    // 고유 단어 비율 (max 25): 높을수록 독자적 표현
-    (pa.metrics.avgUniqueWordRatio >= 0.7 ? 25 : pa.metrics.avgUniqueWordRatio >= 0.6 ? 20 :
-     pa.metrics.avgUniqueWordRatio >= 0.5 ? 15 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 10 : 5) +
-    // 평균 글자 수 (max 25): 긴 글 = 직접 작성
-    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 :
-     pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
-    // 1000자+ 글 비율 (max 20)
+    (pa.metrics.avgUniqueWordRatio >= 0.7 ? 25 : pa.metrics.avgUniqueWordRatio >= 0.6 ? 20 : pa.metrics.avgUniqueWordRatio >= 0.5 ? 15 : pa.metrics.avgUniqueWordRatio >= 0.4 ? 10 : 5) +
+    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 : pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
     pa.metrics.longPosts * 20 +
-    // 원본 사진 비율 (max 15): 직접 촬영 = 독자적
     pa.metrics.originalImageRatio * 15 +
-    // 검색 노출 (max 15): 네이버가 독창성 인정
-    (hasData && rankedCount >= 3 ? 15 : hasData && rankedCount >= 1 ? 10 : 0)
-  )) : (hasData ? Math.min(100, Math.round(
-    rankQuality * 0.8 + (top10Count / Math.max(rankedCount, 1)) * 35 +
-    (rankedCount >= 5 ? 25 : rankedCount >= 3 ? 15 : rankedCount >= 1 ? 10 : 0)
-  )) : 0);
+    (pa.metrics.postsWithHeadings >= 0.5 ? 15 : pa.metrics.postsWithHeadings >= 0.2 ? 10 : 0)
+  )) : 0;
 
-  // 4. 심층성 — 글자 수 · 문단 · 이미지 · 리스트 · 테이블
   const depthScore = pa ? Math.min(100, Math.round(
-    // 평균 글자 수 (max 25)
-    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 :
-     pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
-    // 문단 수 (max 20)
-    (pa.averages.paragraphCount >= 15 ? 20 : pa.averages.paragraphCount >= 10 ? 15 :
-     pa.averages.paragraphCount >= 5 ? 10 : 3) +
-    // 이미지 수 (max 15)
-    (pa.averages.imageCount >= 8 ? 15 : pa.averages.imageCount >= 5 ? 12 :
-     pa.averages.imageCount >= 3 ? 8 : 0) +
-    // 리스트 사용 (max 15): 정리된 정보
-    (pa.metrics.postsWithLists >= 0.5 ? 15 : pa.metrics.postsWithLists >= 0.2 ? 10 :
-     pa.averages.listItemCount >= 1 ? 5 : 0) +
-    // 1000자+ 비율 (max 15)
+    (pa.metrics.avgCharCount >= 2000 ? 25 : pa.metrics.avgCharCount >= 1500 ? 20 : pa.metrics.avgCharCount >= 1000 ? 15 : pa.metrics.avgCharCount >= 500 ? 8 : 3) +
+    (pa.averages.paragraphCount >= 15 ? 20 : pa.averages.paragraphCount >= 10 ? 15 : pa.averages.paragraphCount >= 5 ? 10 : 3) +
+    (pa.averages.imageCount >= 8 ? 15 : pa.averages.imageCount >= 5 ? 12 : pa.averages.imageCount >= 3 ? 8 : 0) +
+    (pa.metrics.postsWithLists >= 0.5 ? 15 : pa.metrics.postsWithLists >= 0.2 ? 10 : pa.averages.listItemCount >= 1 ? 5 : 0) +
     Math.min(15, Math.round(pa.metrics.longPosts * 15)) +
-    // 소제목 사용 (max 10): 체계적 분석
     (pa.averages.headingCount >= 3 ? 10 : pa.averages.headingCount >= 1 ? 5 : 0)
-  )) : (hasData ? Math.min(100, Math.round(
-    top5Ratio * 50 + (top5Count >= 3 ? 30 : top5Count >= 1 ? 15 : 0) +
-    (avgRank > 0 && avgRank <= 3 ? 20 : avgRank <= 5 ? 15 : avgRank <= 10 ? 10 : 0)
-  )) : 0);
+  )) : 0;
 
-  // 5. 가독성 — 소제목 · 리스트 · 이미지 밸런스 · 문단
   const readabilityScore = pa ? Math.min(100, Math.round(
-    // 소제목 있는 글 비율 (max 25)
     pa.metrics.postsWithHeadings * 25 +
-    // 소제목 수 (max 20)
-    (pa.averages.headingCount >= 5 ? 20 : pa.averages.headingCount >= 3 ? 15 :
-     pa.averages.headingCount >= 1 ? 8 : 0) +
-    // 리스트 사용 (max 15): 정보 정리
+    (pa.averages.headingCount >= 5 ? 20 : pa.averages.headingCount >= 3 ? 15 : pa.averages.headingCount >= 1 ? 8 : 0) +
     (pa.metrics.postsWithLists >= 0.3 ? 15 : pa.metrics.postsWithLists >= 0.1 ? 8 : 0) +
-    // 이미지-텍스트 밸런스 (max 20)
-    (pa.averages.imageCount >= 3 && pa.averages.imageCount <= 20 ? 20 :
-     pa.averages.imageCount >= 1 ? 10 : 0) +
-    // 문단 구조 (max 10)
+    (pa.averages.imageCount >= 3 && pa.averages.imageCount <= 20 ? 20 : pa.averages.imageCount >= 1 ? 10 : 0) +
     (pa.averages.paragraphCount >= 5 ? 10 : pa.averages.paragraphCount >= 3 ? 5 : 0) +
-    // 적절한 글 길이 (max 10): 너무 짧지 않은 글
     (pa.metrics.avgCharCount >= 500 ? 10 : pa.metrics.avgCharCount >= 300 ? 5 : 0)
-  )) : (hasData ? Math.min(100, Math.round(
-    stabilityRatio * 50 + (declinedCount === 0 ? 30 : declinedCount <= 1 ? 15 : 0) +
-    (rankedCount >= 3 ? 20 : rankedCount >= 1 ? 10 : 0)
-  )) : 0);
+  )) : 0;
 
-  // 6. 꾸준함 — 포스팅 빈도 (정기적 활동)
-  const calcConsistency = () => {
+  const consistencyScore = (() => {
     if (blogPosts.length === 0) return 0;
     const now = new Date();
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    let recentCount = 0;
-    let monthCount = 0;
+    let recentCount = 0, monthCount = 0;
     const postDates: Date[] = [];
     for (const p of blogPosts) {
       const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
@@ -581,44 +323,48 @@ export default function BloggerDashboard() {
       if (d >= twoWeeksAgo) recentCount++;
       if (d >= oneMonthAgo) monthCount++;
     }
-    // 최근 2주 포스팅 (max 40): 주 1회=10, 주 2회=20, 주 3회+=30, 매일=40
     const recentPostScore = Math.min(40, recentCount * 10);
-    // 최근 1달 포스팅 규칙성 (max 30)
     const regularityScore = Math.min(30, monthCount >= 8 ? 30 : monthCount >= 4 ? 20 : monthCount >= 2 ? 10 : 0);
-    // 최근 포스팅이 3일 이내면 보너스 (max 30)
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     const veryRecent = postDates.some(d => d >= threeDaysAgo);
     const streakBonus = veryRecent ? 30 : (recentCount > 0 ? 15 : 0);
     return Math.min(100, Math.round(recentPostScore + regularityScore + streakBonus));
-  };
-  const consistencyScore = calcConsistency();
+  })();
 
-  // 총점 = 6개 평균
   const allScores = [reliabilityScore, experienceScore, originalityScore, depthScore, readabilityScore, consistencyScore];
-  const totalScore = hasData || blogPosts.length > 0
+  const totalScore = hasAnalysis || blogPosts.length > 0
     ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)
     : 0;
 
   function getGrade(score: number) {
-    if (score >= 90) return { grade: 'S', label: '최상위', color: 'text-accent', bg: 'bg-accent/10' };
-    if (score >= 75) return { grade: 'A', label: '상위', color: 'text-up', bg: 'bg-up/10' };
-    if (score >= 60) return { grade: 'B', label: '중상위', color: 'text-[#2DB400]', bg: 'bg-[#2DB400]/10' };
-    if (score >= 40) return { grade: 'C', label: '중위', color: 'text-amber-600', bg: 'bg-amber-50' };
-    return { grade: 'D', label: '성장 중', color: 'text-dim', bg: 'bg-bg' };
+    if (score >= 90) return { grade: 'S', color: 'text-accent', bg: 'bg-accent/10' };
+    if (score >= 75) return { grade: 'A', color: 'text-up', bg: 'bg-up/10' };
+    if (score >= 60) return { grade: 'B', color: 'text-[#2DB400]', bg: 'bg-[#2DB400]/10' };
+    if (score >= 40) return { grade: 'C', color: 'text-amber-600', bg: 'bg-amber-50' };
+    return { grade: 'D', color: 'text-dim', bg: 'bg-bg' };
   }
   const gradeInfo = getGrade(totalScore);
-
-  // 최신 점수 ref 업데이트 (saveScoreToServer에서 참조)
   latestScoresRef.current = { total: totalScore, scores: allScores, grade: gradeInfo.grade };
 
-  // 변동 피드
-  const activityEvents = generateBloggerEvents(
-    checkedResults.map(r => ({ keyword: r.keyword, rank: r.rank, prevRank: r.prevRank }))
-  );
+  // 주간 평균 발행량
+  const weeklyAvg = (() => {
+    if (blogPosts.length === 0) return 0;
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    let recentCount = 0;
+    for (const p of blogPosts) {
+      const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
+      if (match) {
+        const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+        if (d >= thirtyDaysAgo) recentCount++;
+      }
+    }
+    return Math.round(recentCount / 4 * 10) / 10;
+  })();
 
   if (!profile) return null;
 
-  // 블로그 ID 미등록 시 입력 안내
+  // 블로그 ID 미등록 시
   if (profile.needsBlogId) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -630,37 +376,22 @@ export default function BloggerDashboard() {
             <h2 className="text-xl font-bold mb-2">블로그 주소를 등록해주세요</h2>
             <p className="text-sm text-dim">블로그 분석 기능을 이용하려면 블로그 주소가 필요합니다.</p>
           </div>
-          <div>
-            <div className="flex items-center gap-2 max-w-sm mx-auto">
-              <div className="flex items-center flex-1 bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
-                <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">blog.naver.com/</span>
-                <input
-                  id="blog-id-input"
-                  type="text"
-                  placeholder="블로그 아이디"
-                  className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      document.getElementById('blog-id-submit')?.click();
-                    }
-                  }}
-                />
-              </div>
-              <button
-                id="blog-id-submit"
-                onClick={async () => {
-                  const input = (document.getElementById('blog-id-input') as HTMLInputElement)?.value.trim();
-                  if (!input) return;
-                  const blogId = input.replace(/^@/, '').toLowerCase();
-                  document.cookie = `blog_id=${blogId}; path=/; max-age=${365 * 24 * 60 * 60}`;
-                  window.location.reload();
-                }}
-                className="px-5 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer text-sm shrink-0"
-              >
-                등록
-              </button>
+          <div className="flex items-center gap-2 max-w-sm mx-auto">
+            <div className="flex items-center flex-1 bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+              <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">blog.naver.com/</span>
+              <input id="blog-id-input" type="text" placeholder="블로그 아이디"
+                className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('blog-id-submit')?.click(); } }} />
             </div>
+            <button id="blog-id-submit" onClick={() => {
+              const input = (document.getElementById('blog-id-input') as HTMLInputElement)?.value.trim();
+              if (!input) return;
+              const blogId = input.replace(/^@/, '').toLowerCase();
+              document.cookie = `blog_id=${blogId}; path=/; max-age=${365 * 24 * 60 * 60}`;
+              window.location.reload();
+            }} className="px-5 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer text-sm shrink-0">
+              등록
+            </button>
           </div>
           <Link href="/my" className="text-sm text-accent font-bold hover:underline">← 키챌 대시보드로 돌아가기</Link>
         </div>
@@ -677,177 +408,96 @@ export default function BloggerDashboard() {
         imageUrl={customProfile.imageUrl || profile.imageUrl}
         blogId={profile.blogId}
         type={profile.isInfluencer ? 'influencer' : 'blogger'}
-        subscribed={isSubscribed}
+        subscribed={true}
         editable={true}
         onProfileChange={handleProfileChange}
       />
 
-      {/* ─── 대시보드 (관리자 또는 구독자는 전체 접근) ─── */}
-      <div className="space-y-6">
+      {/* ─── 카테고리 선택 ─── */}
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-dim">카테고리:</span>
+        <button
+          onClick={() => setShowCategorySelect(!showCategorySelect)}
+          className="px-3 py-1 bg-accent/10 text-accent font-semibold rounded-lg hover:bg-accent/20 transition cursor-pointer text-sm"
+        >
+          {category}
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="inline ml-1"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        {category === '기타' && suggestedCategory !== '기타' && (
+          <button onClick={() => saveCategory(suggestedCategory)}
+            className="text-xs text-accent hover:underline cursor-pointer">
+            추천: {suggestedCategory}
+          </button>
+        )}
+      </div>
+      {showCategorySelect && (
+        <div className="flex flex-wrap gap-1.5">
+          {CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => saveCategory(cat)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                cat === category ? 'bg-accent text-white' : 'bg-bg border border-border hover:border-accent/40 text-text'
+              }`}>
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* ─── 2. 통계 카드 6개 ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* ─── 2. 핵심 지표 카드 (4개) ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard
-          label="평균 순위"
-          value={avgRank > 0 ? Math.round(avgRank) : 0}
-          suffix="위"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
-          color="accent"
+          label="주간 평균 발행"
+          value={weeklyAvg}
+          suffix="회/주"
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>}
+          color={weeklyAvg >= 2 ? 'up' : weeklyAvg >= 1 ? 'accent' : 'dim'}
           delay={50}
         />
         <AnimatedStatCard
-          label="TOP 5 / TOP 10"
-          value={top5Count}
-          suffix={` / ${top10Count}`}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
-          color={top5Count > 0 ? 'gold' : 'dim'}
+          label="블로그 지수"
+          value={totalScore}
+          suffix={`(${gradeInfo.grade})`}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
+          color={totalScore >= 60 ? 'up' : totalScore >= 40 ? 'accent' : 'dim'}
           delay={100}
         />
         <AnimatedStatCard
-          label="순위 상승"
-          value={improvedCount}
-          suffix="개"
-          trend={declinedCount > 0 ? { direction: 'down', value: declinedCount } : undefined}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>}
-          color={improvedCount > 0 ? 'up' : 'dim'}
+          label="전체 순위"
+          value={scoreData?.rank || 0}
+          suffix={scoreData ? `/${scoreData.totalBloggers}` : ''}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
+          color={scoreData && scoreData.rank <= 10 ? 'gold' : 'accent'}
           delay={150}
         />
         <AnimatedStatCard
-          label="총 포스트"
-          value={blogPostsTotal}
-          suffix="개"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>}
-          color={blogPostsTotal > 0 ? 'accent' : 'dim'}
+          label={`${category} 순위`}
+          value={scoreData?.categoryRank || 0}
+          suffix={scoreData ? `/${scoreData.categoryTotal}` : ''}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
+          color={scoreData && scoreData.categoryRank <= 5 ? 'gold' : 'accent'}
           delay={200}
-        />
-        <AnimatedStatCard
-          label="주간 발행량"
-          value={(() => {
-            if (blogPosts.length === 0) return 0;
-            const now = new Date();
-            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            let recentCount = 0;
-            for (const p of blogPosts) {
-              const match = p.date.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
-              if (match) {
-                const d = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-                if (d >= thirtyDaysAgo) recentCount++;
-              }
-            }
-            return Math.round(recentCount / 4 * 10) / 10;
-          })()}
-          suffix="회/주"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>}
-          color={blogPosts.length > 0 ? 'up' : 'dim'}
-          delay={250}
-        />
-        <AnimatedStatCard
-          label="등록 키워드"
-          value={keywords.length}
-          suffix="/20"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>}
-          color={keywords.length > 0 ? 'accent' : 'dim'}
-          delay={300}
         />
       </div>
 
-      {/* ─── 2-1. 블로그 방문자수 ─── */}
-      {profile && <BlogVisitorChart blogId={profile.blogId} />}
-
-      {/* ─── 3. 블로그탭 노출 등급 ─── */}
-      <GlassCard>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-bold text-[15px]">블로그탭 노출 등급</h3>
-            <p className="text-[11px] text-dim mt-0.5">등록 키워드의 네이버 블로그탭 노출 현황 기반</p>
-          </div>
-          <div className="text-right">
-            {keywords.length > 0 ? (() => {
-              const expRate = keywords.length > 0 ? rankedCount / keywords.length : 0;
-              const qualityS = keywords.length > 0 ? Math.min(30, (top10Count / keywords.length) * 30) : 0;
-              const rankS = avgRank > 0 ? Math.min(30, Math.max(0, 30 - (avgRank - 1))) : 0;
-              const expScore = Math.round(expRate * 40 + qualityS + rankS);
-              const expGrade = expScore >= 80 ? 'S' : expScore >= 60 ? 'A' : expScore >= 40 ? 'B' : expScore >= 20 ? 'C' : 'D';
-              const gradeColors: Record<string, { bg: string; color: string }> = {
-                S: { bg: 'bg-accent/15', color: 'text-accent' },
-                A: { bg: 'bg-up/15', color: 'text-up' },
-                B: { bg: 'bg-green-500/15', color: 'text-green-600' },
-                C: { bg: 'bg-yellow-500/15', color: 'text-yellow-600' },
-                D: { bg: 'bg-dim/15', color: 'text-dim' },
-              };
-              const gc = gradeColors[expGrade] || gradeColors.D;
-              return (
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-black">{expScore}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gc.bg} ${gc.color}`}>
-                    {expGrade}등급
-                  </span>
-                </div>
-              );
-            })() : null}
-          </div>
-        </div>
-
-        {keywords.length === 0 ? (
-          <div className="text-center py-6 text-dim text-sm">
-            <p>키워드를 등록하고 순위를 확인하면</p>
-            <p>블로그탭 노출 등급이 계산됩니다.</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-3">
-              <GradeGauge
-                score={Math.round((rankedCount / Math.max(keywords.length, 1)) * 100)}
-                label="노출률"
-                description={`${rankedCount}/${keywords.length} 키워드`}
-                color="#F29C68"
-                delay={100}
-              />
-              <GradeGauge
-                score={Math.round((top10Count / Math.max(keywords.length, 1)) * 100)}
-                label="노출 품질"
-                description={`TOP10 ${top10Count}개`}
-                color="#22C55E"
-                delay={150}
-              />
-              <GradeGauge
-                score={avgRank > 0 ? Math.max(0, Math.round(100 - (avgRank - 1) * 3.3)) : 0}
-                label="평균 순위"
-                description={avgRank > 0 ? `${Math.round(avgRank)}위` : '-'}
-                color="#3B82F6"
-                delay={200}
-              />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-dim">
-              <span className="bg-bg px-2 py-1 rounded-md">{rankedCount}/{keywords.length} 키워드 노출</span>
-              {avgRank > 0 && <span className="bg-bg px-2 py-1 rounded-md">평균 {Math.round(avgRank)}위</span>}
-              {top5Count > 0 && <span className="bg-up/10 text-up px-2 py-1 rounded-md">TOP5 {top5Count}개</span>}
-              <span className="bg-bg px-2 py-1 rounded-md">TOP10 {top10Count}개</span>
-            </div>
-          </>
-        )}
-      </GlassCard>
-
-      {/* ─── 3-1. 블로그 포스팅 지수 (6가지 점수) ─── */}
-      {(hasData || postAnalysis) && (
+      {/* ─── 3. 블로그 지수 상세 (좋은 문서 기준 — TBD) ─── */}
+      {(hasAnalysis || blogPosts.length > 0) && (
         <GlassCard>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-[15px]">블로그 포스팅 지수</h3>
-              <p className="text-[11px] text-dim mt-0.5">네이버 &quot;좋은 문서의 특성&quot; 기반 6가지 평가</p>
+              <h3 className="font-bold text-[15px]">블로그 지수</h3>
+              <p className="text-[11px] text-dim mt-0.5">좋은 문서 기준 6가지 평가 (기준 업데이트 예정)</p>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-3xl font-black font-rank ${gradeInfo.color}`}>{totalScore}</span>
               <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${gradeInfo.bg} ${gradeInfo.color}`}>{gradeInfo.grade}등급</span>
             </div>
           </div>
-
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-4">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             {[
-              { label: '신뢰성', score: reliabilityScore, desc: '출처/인용/노출' },
+              { label: '신뢰성', score: reliabilityScore, desc: '출처/인용' },
               { label: '경험', score: experienceScore, desc: '직접촬영/체험' },
               { label: '독창성', score: originalityScore, desc: '고유표현/원본' },
-              { label: '심층성', score: depthScore, desc: '글자수/문단/구성' },
+              { label: '심층성', score: depthScore, desc: '글자수/구성' },
               { label: '가독성', score: readabilityScore, desc: '소제목/리스트' },
               { label: '꾸준함', score: consistencyScore, desc: '발행빈도' },
             ].map(item => (
@@ -862,310 +512,13 @@ export default function BloggerDashboard() {
               </div>
             ))}
           </div>
-
-          {/* 전체 순위 + 카테고리별 순위 */}
-          {blogRanking && (
-            <div className="border-t border-border pt-3 mt-1">
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <span className="text-dim">전체 블로거 순위</span>
-                <span className="font-black text-accent font-rank text-lg">{blogRanking.rank}위</span>
-                <span className="text-xs text-dim">/ {blogRanking.total.toLocaleString()}명</span>
-                {blogRanking.categoryRanks && (
-                  <>
-                    <span className="text-border">|</span>
-                    <span className="text-xs text-dim">
-                      신뢰+독창 <strong className="text-text">{blogRanking.categoryRanks.reliabilityOriginality}위</strong>
-                    </span>
-                    <span className="text-xs text-dim">
-                      경험+심층 <strong className="text-text">{blogRanking.categoryRanks.experienceDepth}위</strong>
-                    </span>
-                    <span className="text-xs text-dim">
-                      가독+꾸준 <strong className="text-text">{blogRanking.categoryRanks.readabilityConsistency}위</strong>
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
         </GlassCard>
       )}
 
-      {/* ─── 3-2. 포스팅 분석 상세 ─── */}
-      {postAnalysis && (
-        <GlassCard>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="font-bold text-[15px]">포스팅 분석 통계</h3>
-              <p className="text-[11px] text-dim mt-0.5">최근 10개 글 기준 평균값</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: '평균 글자수', value: Math.round(postAnalysis.averages.charCount).toLocaleString(), suffix: '자', good: postAnalysis.averages.charCount >= 1000 },
-              { label: '평균 단어수', value: Math.round(postAnalysis.averages.wordCount).toLocaleString(), suffix: '개', good: postAnalysis.averages.wordCount >= 200 },
-              { label: '평균 이미지', value: postAnalysis.averages.imageCount.toFixed(1), suffix: '장', good: postAnalysis.averages.imageCount >= 3 },
-              { label: '평균 문단수', value: postAnalysis.averages.paragraphCount.toFixed(1), suffix: '개', good: postAnalysis.averages.paragraphCount >= 5 },
-              { label: '평균 소제목', value: postAnalysis.averages.headingCount.toFixed(1), suffix: '개', good: postAnalysis.averages.headingCount >= 1 },
-              { label: '고유 단어 비율', value: (postAnalysis.averages.uniqueWordRatio * 100).toFixed(0), suffix: '%', good: postAnalysis.averages.uniqueWordRatio >= 0.5 },
-              { label: '1000자+ 글', value: (postAnalysis.metrics.longPosts * 100).toFixed(0), suffix: '%', good: postAnalysis.metrics.longPosts >= 0.5 },
-              { label: '원본사진 비율', value: (postAnalysis.metrics.originalImageRatio * 100).toFixed(0), suffix: '%', good: postAnalysis.metrics.originalImageRatio >= 0.5 },
-            ].map(item => (
-              <div key={item.label} className="bg-bg rounded-xl p-3 text-center">
-                <p className="text-[10px] text-dim mb-1">{item.label}</p>
-                <p className={`text-lg font-black font-rank ${item.good ? 'text-up' : 'text-dim'}`}>
-                  {item.value}<span className="text-xs font-normal text-dim ml-0.5">{item.suffix}</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      )}
+      {/* ─── 4. 블로그 방문자수 차트 ─── */}
+      {profile && <BlogVisitorChart blogId={profile.blogId} />}
 
-      {/* ─── 4. 순위 추이 차트 ─── */}
-      {rankHistory.length > 0 && (
-        <RankTrendSection mode="blogger" bloggerData={rankHistory} />
-      )}
-
-      {/* ─── 5. 순위 변동 피드 ─── */}
-      {activityEvents.length > 0 && (
-        <ActivityFeed events={activityEvents} />
-      )}
-
-      {/* ─── 5. 블로그 키워드 자동 추천 + 수동 등록 ─── */}
-      <GlassCard>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-bold text-[15px]">키워드 등록</h3>
-            <p className="text-[11px] text-dim mt-0.5">블로그 분석으로 추천된 키워드를 추가하거나 직접 입력하세요</p>
-          </div>
-          {keywords.length > 0 && (
-            <button
-              onClick={checkAllRanks}
-              disabled={loading}
-              className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs shrink-0"
-            >
-              {loading ? (
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {checkProgress.current}/{checkProgress.total}
-                </span>
-              ) : '전체 확인'}
-            </button>
-          )}
-        </div>
-
-        {/* 자동 추출 키워드 추천 */}
-        {extractedKeywords.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[11px] text-dim mb-2 flex items-center gap-1">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-              블로그 분석 추천 키워드 — 클릭하여 추가
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {extractedKeywords.slice(0, 12).map(ek => {
-                const isAdded = keywords.includes(ek.keyword);
-                return (
-                  <button
-                    key={ek.keyword}
-                    onClick={() => !isAdded && addKeyword(ek.keyword)}
-                    disabled={isAdded}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
-                      isAdded
-                        ? 'bg-accent/10 text-accent border border-accent/30'
-                        : 'bg-bg border border-border hover:border-accent/40 hover:bg-accent/5 text-text'
-                    }`}
-                  >
-                    {isAdded && <span className="mr-1">✓</span>}
-                    {ek.keyword}
-                    <span className="text-dim ml-1">({ek.postCount})</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {extracting && (
-          <div className="mb-4 flex items-center gap-2 text-xs text-dim">
-            <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-            블로그를 분석하고 있습니다...
-          </div>
-        )}
-
-        {/* 수동 입력 */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={keyword}
-            onChange={e => setKeyword(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addKeyword(); } }}
-            placeholder="키워드 직접 입력 (예: 맛집추천, 여행코스)"
-            className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
-          />
-          <button
-            onClick={() => addKeyword()}
-            disabled={!keyword.trim()}
-            className="px-5 py-2.5 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm shrink-0"
-          >
-            추가
-          </button>
-        </div>
-
-        {/* 등록된 키워드 태그 */}
-        {keywords.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {keywords.map(kw => {
-              const result = resultMap.get(kw);
-              return (
-                <span key={kw} className={`inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-sm ${
-                  result?.rank !== null && result?.rank !== undefined
-                    ? result.rank <= 10 ? 'bg-up/5 border-up/20' : 'bg-bg border-border'
-                    : 'bg-bg border-border'
-                }`}>
-                  {kw}
-                  {result?.rank !== null && result?.rank !== undefined && (
-                    <span className={`text-[10px] font-bold ${
-                      result.rank <= 5 ? 'text-accent' : result.rank <= 10 ? 'text-up' : 'text-dim'
-                    }`}>{result.rank}위</span>
-                  )}
-                  <button onClick={() => removeKeyword(kw)} className="text-dim hover:text-down transition cursor-pointer ml-0.5">
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4l6 6M10 4l-6 6"/></svg>
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-        )}
-      </GlassCard>
-
-      {/* ─── 6. 순위 결과 ─── */}
-      {keywords.length > 0 && (
-        <GlassCard padding="none">
-          <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-[15px]">블로그탭 키워드 순위</h3>
-              <p className="text-[11px] text-dim mt-0.5">네이버 검색 → 블로그 탭 기준 (TOP 30까지 확인)</p>
-            </div>
-            {checkedResults.length > 0 && (
-              <span className="text-[11px] text-dim">{timeAgo(checkedResults[checkedResults.length - 1]?.checkedAt)}</span>
-            )}
-          </div>
-
-          {/* 데스크톱 테이블 */}
-          <div className="hidden md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50 text-[11px] text-dim">
-                  <th className="text-left px-5 py-3 font-semibold w-10">#</th>
-                  <th className="text-left px-3 py-3 font-semibold">키워드</th>
-                  <th className="text-center px-3 py-3 font-semibold">순위</th>
-                  <th className="text-center px-3 py-3 font-semibold">변동</th>
-                  <th className="text-left px-3 py-3 font-semibold">노출 글</th>
-                  <th className="text-center px-3 py-3 font-semibold">확인</th>
-                  <th className="text-right px-5 py-3 font-semibold">액션</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/20">
-                {keywords.map((kw, i) => {
-                  const result = resultMap.get(kw);
-                  return (
-                    <tr key={kw} className="hover:bg-surface-hover transition group">
-                      <td className="px-5 py-3.5 text-dim text-xs">{i + 1}</td>
-                      <td className="px-3 py-3.5">
-                        <a href={result?.searchUrl || `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(kw)}`}
-                          target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-accent transition">{kw}</a>
-                      </td>
-                      <td className="text-center px-3 py-3.5">
-                        {result ? (
-                          result.rank !== null ? (
-                            <span className={`font-black font-rank text-base ${
-                              result.rank <= 3 ? 'text-accent' : result.rank <= 5 ? 'text-orange-500' : result.rank <= 10 ? 'text-up' : result.rank <= 20 ? 'text-[#2DB400]' : 'text-dim'
-                            }`}>{result.rank}위</span>
-                          ) : <span className="text-dim text-xs">30위 밖</span>
-                        ) : <span className="text-dim">—</span>}
-                      </td>
-                      <td className="text-center px-3 py-3.5">
-                        <RankChange current={result?.rank ?? null} prev={result?.prevRank ?? null} />
-                      </td>
-                      <td className="px-3 py-3.5">
-                        {result?.postTitle && result.rank !== null ? (
-                          <a href={result.blogUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-dim hover:text-accent transition truncate block max-w-[200px]" title={result.postTitle}>{result.postTitle}</a>
-                        ) : <span className="text-xs text-dim">—</span>}
-                      </td>
-                      <td className="text-center px-3 py-3.5">
-                        {result && <span className="text-[10px] text-dim">{timeAgo(result.checkedAt)}</span>}
-                      </td>
-                      <td className="text-right px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-2">
-                          <RankBadge rank={result?.rank ?? null} checked={!!result} />
-                          <button onClick={() => checkRank(kw)} disabled={checking === kw || loading}
-                            className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50 opacity-0 group-hover:opacity-100 transition">
-                            {checking === kw ? <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" /> : '확인'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 모바일 카드 */}
-          <div className="md:hidden divide-y divide-border/20">
-            {keywords.map((kw, i) => {
-              const result = resultMap.get(kw);
-              return (
-                <div key={kw} className="px-4 py-3.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-[10px] text-dim w-5 shrink-0">{i + 1}</span>
-                      <a href={result?.searchUrl || `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(kw)}`}
-                        target="_blank" rel="noopener noreferrer" className="font-semibold text-sm truncate">{kw}</a>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {result?.rank !== null && result?.rank !== undefined ? (
-                        <span className={`text-lg font-black font-rank ${result.rank <= 3 ? 'text-accent' : result.rank <= 10 ? 'text-up' : 'text-dim'}`}>{result.rank}위</span>
-                      ) : result ? <span className="text-xs text-dim">30위 밖</span> : null}
-                      <RankChange current={result?.rank ?? null} prev={result?.prevRank ?? null} />
-                      <button onClick={() => checkRank(kw)} disabled={checking === kw || loading}
-                        className="text-xs text-accent cursor-pointer disabled:opacity-50 pl-1">
-                        {checking === kw ? <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" /> : '확인'}
-                      </button>
-                    </div>
-                  </div>
-                  {result?.postTitle && result.rank !== null && (
-                    <div className="mt-1 ml-7">
-                      <a href={result.blogUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-dim hover:text-accent transition truncate block">{result.postTitle}</a>
-                    </div>
-                  )}
-                  <div className="mt-1 ml-7 flex items-center gap-2">
-                    <RankBadge rank={result?.rank ?? null} checked={!!result} />
-                    {result && <span className="text-[10px] text-dim">{timeAgo(result.checkedAt)}</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </GlassCard>
-      )}
-
-      {/* ─── 7. 빈 상태 ─── */}
-      {keywords.length === 0 && !extracting && (
-        <GlassCard className="text-center py-10">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-accent/10 flex items-center justify-center">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          </div>
-          <h3 className="font-bold text-base mb-2">키워드를 등록해보세요</h3>
-          <p className="text-sm text-dim leading-relaxed max-w-md mx-auto">
-            내 블로그가 네이버 블로그탭에서 몇 위에 노출되는지<br />키워드별로 추적할 수 있습니다.
-          </p>
-        </GlassCard>
-      )}
-
-
-      {/* ─── 8. 내 블로그 포스팅 ─── */}
+      {/* ─── 5. 포스팅 목록 + 누락 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div>
@@ -1174,14 +527,21 @@ export default function BloggerDashboard() {
               {blogPostsTotal > 0 ? `총 ${blogPostsTotal.toLocaleString()}개의 글` : '포스트 목록을 불러오는 중...'}
             </p>
           </div>
-          <a
-            href={`https://blog.naver.com/${profile.blogId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-accent hover:underline font-semibold"
-          >
-            블로그 방문 →
-          </a>
+          <div className="flex items-center gap-2">
+            {blogPosts.length > 0 && (
+              <button onClick={checkAllMissing} disabled={checkingAll}
+                className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs shrink-0">
+                {checkingAll ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {checkProgress.current}/{checkProgress.total}
+                  </span>
+                ) : '전체 누락확인'}
+              </button>
+            )}
+            <a href={`https://blog.naver.com/${profile.blogId}`} target="_blank" rel="noopener noreferrer"
+              className="text-[11px] text-accent hover:underline font-semibold">블로그 방문 →</a>
+          </div>
         </div>
 
         {blogPostsLoading && blogPosts.length === 0 ? (
@@ -1190,78 +550,76 @@ export default function BloggerDashboard() {
             포스트를 불러오는 중...
           </div>
         ) : blogPosts.length === 0 ? (
-          <div className="text-center py-10 text-dim text-sm">
-            포스트가 없습니다.
-          </div>
+          <div className="text-center py-10 text-dim text-sm">포스트가 없습니다.</div>
         ) : (
           <>
-            {/* 데스크톱 */}
+            {/* 데스크톱 테이블 */}
             <div className="hidden md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-left px-5 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-center px-3 py-3 font-semibold w-24">노출</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">댓글</th>
-                    <th className="text-right px-5 py-3 font-semibold w-28">작성일</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">댓글</th>
+                    <th className="text-right px-3 py-3 font-semibold w-24">작성일</th>
+                    <th className="text-center px-5 py-3 font-semibold w-16">확인</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {blogPosts.map((post, i) => {
-                    // 이 글이 노출되고 있는 키워드 찾기
-                    const exposedIn = results.filter(r =>
-                      r.rank !== null && r.blogUrl && (
-                        r.blogUrl.includes(post.id) ||
-                        (r.postTitle && post.title && (
-                          r.postTitle === post.title ||
-                          r.postTitle.replace(/\s/g, '').includes(post.title.replace(/\s/g, '').substring(0, 15)) ||
-                          post.title.replace(/\s/g, '').includes(r.postTitle.replace(/\s/g, '').substring(0, 15))
-                        ))
-                      )
-                    );
+                    const mr = missingResults[post.id];
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition group">
-                        <td className="px-5 py-3 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
-                        <td className="px-3 py-3">
-                          <a
-                            href={post.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-semibold hover:text-accent transition truncate block max-w-[350px]"
-                            title={post.title}
-                          >
+                        <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
+                        <td className="px-3 py-3.5">
+                          <a href={post.url} target="_blank" rel="noopener noreferrer"
+                            className="font-semibold hover:text-accent transition truncate block max-w-[350px]" title={post.title}>
                             {post.title}
                           </a>
                         </td>
-                        <td className="text-center px-3 py-3">
-                          {exposedIn.length > 0 ? (
-                            <div className="flex flex-wrap gap-1 justify-center">
-                              {exposedIn.slice(0, 2).map(r => (
-                                <span key={r.keyword} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                  r.rank! <= 5 ? 'bg-accent/10 text-accent' :
-                                  r.rank! <= 10 ? 'bg-up/10 text-up' :
-                                  'bg-[#2DB400]/10 text-[#2DB400]'
-                                }`} title={`"${r.keyword}" ${r.rank}위`}>
-                                  {r.keyword.length > 6 ? r.keyword.substring(0, 6) + '..' : r.keyword} {r.rank}위
-                                </span>
-                              ))}
-                              {exposedIn.length > 2 && (
-                                <span className="text-[10px] text-dim">+{exposedIn.length - 2}</span>
-                              )}
-                            </div>
+                        <td className="text-center px-3 py-3.5">
+                          {mr ? (
+                            mr.blogTab.exposed ? (
+                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                {mr.blogTab.rank}위
+                              </span>
+                            ) : (
+                              <span className="text-xs font-bold text-down bg-down/10 px-2 py-0.5 rounded-full">누락</span>
+                            )
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
                           )}
                         </td>
-                        <td className="text-center px-3 py-3">
-                          {post.commentCount > 0 ? (
-                            <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
+                        <td className="text-center px-3 py-3.5">
+                          {mr ? (
+                            mr.viewTab.exposed ? (
+                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                {mr.viewTab.rank}위
+                              </span>
+                            ) : (
+                              <span className="text-xs font-bold text-down bg-down/10 px-2 py-0.5 rounded-full">누락</span>
+                            )
                           ) : (
-                            <span className="text-xs text-dim">—</span>
+                            <span className="text-[10px] text-dim/50">—</span>
                           )}
                         </td>
-                        <td className="text-right px-5 py-3 text-xs text-dim">{post.date}</td>
+                        <td className="text-center px-3 py-3.5">
+                          {post.commentCount > 0 ? (
+                            <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
+                          ) : <span className="text-xs text-dim">—</span>}
+                        </td>
+                        <td className="text-right px-3 py-3.5 text-xs text-dim">{post.date}</td>
+                        <td className="text-center px-5 py-3.5">
+                          <button onClick={() => checkMissing(post)}
+                            disabled={checkingMissing === post.id || checkingAll}
+                            className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50">
+                            {checkingMissing === post.id ? (
+                              <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                            ) : mr ? '재확인' : '확인'}
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -1269,46 +627,41 @@ export default function BloggerDashboard() {
               </table>
             </div>
 
-            {/* 모바일 */}
+            {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
               {blogPosts.map((post, i) => {
-                const exposedIn = results.filter(r =>
-                  r.rank !== null && r.blogUrl && (
-                    r.blogUrl.includes(post.id) ||
-                    (r.postTitle && post.title && (
-                      r.postTitle === post.title ||
-                      r.postTitle.replace(/\s/g, '').includes(post.title.replace(/\s/g, '').substring(0, 15)) ||
-                      post.title.replace(/\s/g, '').includes(r.postTitle.replace(/\s/g, '').substring(0, 15))
-                    ))
-                  )
-                );
+                const mr = missingResults[post.id];
                 return (
-                  <div key={post.id} className="px-4 py-3">
+                  <div key={post.id} className="px-4 py-3.5">
                     <div className="flex items-start gap-2">
                       <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * 10 + i + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <a
-                          href={post.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-semibold text-sm hover:text-accent transition line-clamp-2"
-                        >
-                          {post.title}
-                        </a>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {exposedIn.length > 0 && exposedIn.slice(0, 2).map(r => (
-                            <span key={r.keyword} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                              r.rank! <= 5 ? 'bg-accent/10 text-accent' :
-                              r.rank! <= 10 ? 'bg-up/10 text-up' :
-                              'bg-[#2DB400]/10 text-[#2DB400]'
-                            }`}>
-                              {r.keyword} {r.rank}위
-                            </span>
-                          ))}
+                        <a href={post.url} target="_blank" rel="noopener noreferrer"
+                          className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {mr ? (
+                            <>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                              }`}>
+                                블로그 {mr.blogTab.exposed ? `${mr.blogTab.rank}위` : '누락'}
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                              }`}>
+                                VIEW {mr.viewTab.exposed ? `${mr.viewTab.rank}위` : '누락'}
+                              </span>
+                            </>
+                          ) : null}
                           <span className="text-[11px] text-dim">{post.date}</span>
-                          {post.commentCount > 0 && (
-                            <span className="text-[11px] text-accent">댓글 {post.commentCount}</span>
-                          )}
+                          {post.commentCount > 0 && <span className="text-[11px] text-accent">댓글 {post.commentCount}</span>}
+                          <button onClick={() => checkMissing(post)}
+                            disabled={checkingMissing === post.id || checkingAll}
+                            className="text-[10px] text-accent cursor-pointer disabled:opacity-50">
+                            {checkingMissing === post.id ? (
+                              <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                            ) : mr ? '재확인' : '누락확인'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1320,21 +673,15 @@ export default function BloggerDashboard() {
             {/* 페이지네이션 */}
             {blogPostsTotal > 10 && (
               <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
-                <button
-                  onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage - 1)}
+                <button onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage - 1)}
                   disabled={blogPostsPage <= 1 || blogPostsLoading}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                >
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
                   ← 이전
                 </button>
-                <span className="text-xs text-dim px-2">
-                  {blogPostsPage} / {Math.ceil(blogPostsTotal / 10)}
-                </span>
-                <button
-                  onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage + 1)}
+                <span className="text-xs text-dim px-2">{blogPostsPage} / {Math.ceil(blogPostsTotal / 10)}</span>
+                <button onClick={() => profile && fetchBlogPosts(profile.blogId, blogPostsPage + 1)}
                   disabled={blogPostsPage >= Math.ceil(blogPostsTotal / 10) || blogPostsLoading}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                >
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
                   다음 →
                 </button>
               </div>
@@ -1343,73 +690,6 @@ export default function BloggerDashboard() {
         )}
       </GlassCard>
 
-      {/* ─── 9. 블로그 위젯 ─── */}
-      {hasData && (
-        <GlassCard>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="font-bold text-[15px]">블로그 등급 위젯</h3>
-              <p className="text-[11px] text-dim mt-0.5">내 블로그에 등급 뱃지를 달아보세요</p>
-            </div>
-          </div>
-          <div className="flex justify-center mb-4 p-4 bg-bg rounded-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/api/widget/${profile.blogId}`} alt="블로그 등급 위젯" width={280} height={155} className="rounded-lg" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-dim mb-1.5">HTML 코드</p>
-            <div className="relative">
-              <code className="block bg-bg border border-border rounded-lg p-3 text-[11px] text-dim font-mono break-all leading-relaxed select-all">
-                {`<a href="https://naver-influencer.vercel.app/my/blogger" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/${profile.blogId}" alt="N인플 블로그 등급" width="280" /></a>`}
-              </code>
-              <button onClick={() => { navigator.clipboard.writeText(`<a href="https://naver-influencer.vercel.app/my/blogger" target="_blank" rel="noopener"><img src="https://naver-influencer.vercel.app/api/widget/${profile.blogId}" alt="N인플 블로그 등급" width="280" /></a>`); alert('복사되었습니다!'); }}
-                className="absolute top-2 right-2 px-2.5 py-1 bg-accent text-white text-[10px] font-bold rounded-md hover:bg-accent-hover transition cursor-pointer">복사</button>
-            </div>
-          </div>
-        </GlassCard>
-      )}
-
-      {/* ─── 10. 무료 기능 + 인플루언서 전환 ─── */}
-      <div className="grid sm:grid-cols-2 gap-3">
-        <Link href="/search-volume" className="group">
-          <GlassCard hover className="flex items-center gap-3 h-full">
-            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            </div>
-            <div>
-              <p className="font-bold text-sm">검색량 조회</p>
-              <p className="text-[11px] text-dim mt-0.5">키워드 월간 검색량 무료 확인</p>
-            </div>
-          </GlassCard>
-        </Link>
-        <Link href="/community" className="group">
-          <GlassCard hover className="flex items-center gap-3 h-full">
-            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            </div>
-            <div>
-              <p className="font-bold text-sm">커뮤니티</p>
-              <p className="text-[11px] text-dim mt-0.5">블로거들의 소통 공간</p>
-            </div>
-          </GlassCard>
-        </Link>
-      </div>
-
-      {profile.isInfluencer ? (
-        <GlassCard className="text-center">
-          <p className="text-sm font-semibold mb-1">인플루언서 대시보드로 돌아가기</p>
-          <p className="text-xs text-dim mb-3">키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
-          <Link href="/my" className="text-sm text-accent font-bold hover:underline">인플루언서 대시보드 →</Link>
-        </GlassCard>
-      ) : (
-        <GlassCard className="text-center">
-          <p className="text-sm font-semibold mb-1">네이버 인플루언서이신가요?</p>
-          <p className="text-xs text-dim mb-3">키워드챌린지 순위, 경쟁 분석 등을 확인하세요.</p>
-          <Link href="/auth/login" className="text-sm text-accent font-bold hover:underline">인플루언서로 로그인 →</Link>
-        </GlassCard>
-      )}
-
-      </div>
     </div>
   );
 }

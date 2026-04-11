@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '점수 데이터가 없습니다.' }, { status: 404 });
     }
 
-    // 전체 블로거 중 랭킹(등수) 계산 (노출 점수 기반)
+    // 전체 블로거 중 랭킹(등수) 계산 (total_score 기반)
     const { count: totalBloggers } = await supabase
       .from('blog_scores')
       .select('*', { count: 'exact', head: true });
@@ -97,12 +97,28 @@ export async function GET(req: NextRequest) {
     const { count: higherCount } = await supabase
       .from('blog_scores')
       .select('*', { count: 'exact', head: true })
-      .gt('exposure_score', data.exposure_score || 0);
+      .gt('total_score', data.total_score || 0);
+
+    // 카테고리별 순위 계산
+    const category = data.category || '기타';
+    const { count: categoryTotal } = await supabase
+      .from('blog_scores')
+      .select('*', { count: 'exact', head: true })
+      .eq('category', category);
+
+    const { count: categoryHigher } = await supabase
+      .from('blog_scores')
+      .select('*', { count: 'exact', head: true })
+      .eq('category', category)
+      .gt('total_score', data.total_score || 0);
 
     return NextResponse.json({
       ...data,
       rank: (higherCount || 0) + 1,
       totalBloggers: totalBloggers || 1,
+      categoryRank: (categoryHigher || 0) + 1,
+      categoryTotal: categoryTotal || 1,
+      category,
     });
   } catch (err) {
     console.error('[blog/score] GET error:', err);
