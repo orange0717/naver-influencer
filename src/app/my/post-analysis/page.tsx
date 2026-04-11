@@ -89,58 +89,6 @@ interface TextAnalysisResult {
   };
 }
 
-// 규칙 기반 AI 판별
-function calculateRuleBasedScore(a: PostAnalysis): { score: number; factors: { label: string; value: string; signal: 'ai' | 'human' | 'neutral' }[] } {
-  let score = 50;
-  const factors: { label: string; value: string; signal: 'ai' | 'human' | 'neutral' }[] = [];
-
-  // 1인칭 대명사 밀도
-  const pronounRatio = a.wordCount > 0 ? a.personalPronounCount / a.wordCount : 0;
-  if (pronounRatio < 0.005) {
-    score += 15;
-    factors.push({ label: '1인칭 표현', value: `${a.personalPronounCount}회 (매우 적음)`, signal: 'ai' });
-  } else if (pronounRatio > 0.02) {
-    score -= 15;
-    factors.push({ label: '1인칭 표현', value: `${a.personalPronounCount}회 (풍부)`, signal: 'human' });
-  } else {
-    factors.push({ label: '1인칭 표현', value: `${a.personalPronounCount}회`, signal: 'neutral' });
-  }
-
-  // 고유 단어 비율
-  if (a.uniqueWordRatio > 0.85) {
-    score += 10;
-    factors.push({ label: '고유 단어 비율', value: `${Math.round(a.uniqueWordRatio * 100)}% (높음)`, signal: 'ai' });
-  } else if (a.uniqueWordRatio < 0.5) {
-    score -= 10;
-    factors.push({ label: '고유 단어 비율', value: `${Math.round(a.uniqueWordRatio * 100)}%`, signal: 'human' });
-  } else {
-    factors.push({ label: '고유 단어 비율', value: `${Math.round(a.uniqueWordRatio * 100)}%`, signal: 'neutral' });
-  }
-
-  // 텍스트 길이 vs 원본 사진
-  if (a.charCount > 2000 && a.originalImageCount === 0) {
-    score += 10;
-    factors.push({ label: '원본 사진', value: '긴 글인데 원본 사진 없음', signal: 'ai' });
-  } else if (a.originalImageCount >= 3) {
-    score -= 10;
-    factors.push({ label: '원본 사진', value: `${a.originalImageCount}장 (직접 촬영)`, signal: 'human' });
-  }
-
-  // 지도/동영상
-  if (a.mapCount > 0 || a.videoCount > 0) {
-    score -= 15;
-    factors.push({ label: '멀티미디어', value: `지도 ${a.mapCount}개, 동영상 ${a.videoCount}개`, signal: 'human' });
-  }
-
-  // 소제목 밀도 (AI는 균일한 소제목을 넣는 경향)
-  if (a.headingCount >= 5 && a.paragraphCount > 0 && a.headingCount / a.paragraphCount > 0.3) {
-    score += 5;
-    factors.push({ label: '소제목 구조', value: `${a.headingCount}개 (균일하게 배치)`, signal: 'ai' });
-  }
-
-  return { score: Math.max(0, Math.min(100, score)), factors };
-}
-
 function getAiBadge(score: number) {
   if (score <= 30) return { bg: 'bg-up/10', text: 'text-up', border: 'border-up/30', label: '사람' };
   if (score <= 60) return { bg: 'bg-gold/10', text: 'text-gold', border: 'border-gold/30', label: '불확실' };
@@ -390,8 +338,9 @@ export default function PostAnalysisPage() {
 
   // 통계 계산
   const analysisArray = Array.from(analyses.values());
-  const avgAiScore = analysisArray.length > 0
-    ? Math.round(analysisArray.reduce((s, a) => s + calculateRuleBasedScore(a).score, 0) / analysisArray.length)
+  const aiResultArray = Array.from(aiResults.values());
+  const avgAiScore = aiResultArray.length > 0
+    ? Math.round(aiResultArray.reduce((s, a) => s + a.aiProbability, 0) / aiResultArray.length)
     : 0;
   const avgCharCount = analysisArray.length > 0
     ? Math.round(analysisArray.reduce((s, a) => s + a.charCount, 0) / analysisArray.length)
@@ -487,11 +436,10 @@ export default function PostAnalysisPage() {
                 <tbody className="divide-y divide-border/20">
                   {visiblePosts.map(post => {
                     const analysis = analyses.get(post.id);
-                    const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
                     const aiResult = aiResults.get(post.id);
                     const plagResult = plagResults.get(post.id);
                     const textResult = textResults.get(post.id);
-                    const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
+                    const aiBadge = aiResult ? getAiBadge(aiResult.aiProbability) : null;
                     const isExpanded = expandedPost === post.id;
                     const isAnalyzing = analyzingPost === post.id;
                     const isCheckingPlag = checkingPlag === post.id;
@@ -517,9 +465,9 @@ export default function PostAnalysisPage() {
                               </a>
                             </div>
                             <div className="flex-[12%] px-3 py-3.5 text-center">
-                              {badge ? (
-                                <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg border ${badge.bg} ${badge.text} ${badge.border}`}>
-                                  {ruleScore!.score}%
+                              {aiBadge ? (
+                                <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg border ${aiBadge.bg} ${aiBadge.text} ${aiBadge.border}`}>
+                                  {aiResult!.aiProbability}%
                                 </span>
                               ) : (
                                 <span className="text-[10px] text-dim">-</span>
@@ -592,37 +540,6 @@ export default function PostAnalysisPage() {
                           {/* 확장 상세 */}
                           {isExpanded && (
                             <div className="px-5 pb-5 space-y-4 bg-bg/20 border-t border-border/30">
-                              {/* 규칙 기반 분석 */}
-                              {ruleScore && (
-                                <div className="space-y-3 pt-4">
-                                  <h4 className="text-xs font-bold text-dim">규칙 기반 사전 분석</h4>
-                                  <div className="flex items-center gap-3">
-                                    <div className="text-lg font-black font-rank">
-                                      <span className={badge!.text}>{ruleScore.score}%</span>
-                                    </div>
-                                    <div className="flex-1 h-2 bg-border/30 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all ${
-                                          ruleScore.score <= 30 ? 'bg-up' : ruleScore.score <= 60 ? 'bg-gold' : 'bg-down'
-                                        }`}
-                                        style={{ width: `${ruleScore.score}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {ruleScore.factors.map((f, i) => (
-                                      <span key={i} className={`text-[11px] px-2.5 py-1 rounded-lg border ${
-                                        f.signal === 'ai' ? 'bg-down/5 text-down border-down/20'
-                                        : f.signal === 'human' ? 'bg-up/5 text-up border-up/20'
-                                        : 'bg-border/20 text-dim border-border/30'
-                                      }`}>
-                                        {f.signal === 'ai' ? 'AI' : f.signal === 'human' ? '사람' : '-'} {f.label}: {f.value}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
                               {/* 본문 미리보기 */}
                               {analysis?.textPreview && (
                                 <div>
@@ -973,11 +890,10 @@ export default function PostAnalysisPage() {
             <div className="md:hidden divide-y divide-border/20">
               {visiblePosts.map(post => {
                 const analysis = analyses.get(post.id);
-                const ruleScore = analysis ? calculateRuleBasedScore(analysis) : null;
                 const aiResult = aiResults.get(post.id);
                 const plagResult = plagResults.get(post.id);
                 const textResult = textResults.get(post.id);
-                const badge = ruleScore ? getAiBadge(ruleScore.score) : null;
+                const aiBadge = aiResult ? getAiBadge(aiResult.aiProbability) : null;
                 const isExpanded = expandedPost === post.id;
                 const isAnalyzing = analyzingPost === post.id;
                 const isCheckingPlag = checkingPlag === post.id;
@@ -999,9 +915,9 @@ export default function PostAnalysisPage() {
                         >
                           {post.title}
                         </a>
-                        {badge && (
-                          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-lg border ${badge.bg} ${badge.text} ${badge.border}`}>
-                            {ruleScore!.score}%
+                        {aiBadge && (
+                          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-lg border ${aiBadge.bg} ${aiBadge.text} ${aiBadge.border}`}>
+                            {aiResult!.aiProbability}%
                           </span>
                         )}
                       </div>
@@ -1053,31 +969,6 @@ export default function PostAnalysisPage() {
                     {/* 모바일 확장 */}
                     {isExpanded && (
                       <div className="mt-3 space-y-3">
-                        {ruleScore && (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className={`text-sm font-black font-rank ${badge!.text}`}>{ruleScore.score}%</span>
-                              <div className="flex-1 h-1.5 bg-border/30 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full ${ruleScore.score <= 30 ? 'bg-up' : ruleScore.score <= 60 ? 'bg-gold' : 'bg-down'}`}
-                                  style={{ width: `${ruleScore.score}%` }}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {ruleScore.factors.map((f, i) => (
-                                <span key={i} className={`text-[10px] px-2 py-0.5 rounded border ${
-                                  f.signal === 'ai' ? 'bg-down/5 text-down border-down/20'
-                                  : f.signal === 'human' ? 'bg-up/5 text-up border-up/20'
-                                  : 'bg-border/20 text-dim border-border/30'
-                                }`}>
-                                  {f.label}: {f.value}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
                         {!aiResult && !isAnalyzing && (
                           <button
                             onClick={() => runAiAnalysis(post.id)}
