@@ -315,7 +315,7 @@ export default function BloggerDashboard() {
       const res = await fetch('/api/blog/check-missing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id }),
+        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, displayName: profile.displayName }),
       });
       if (res.ok) {
         const data = await res.json();

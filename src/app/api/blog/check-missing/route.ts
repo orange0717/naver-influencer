@@ -143,54 +143,39 @@ async function checkViewTab(query: string, blogId: string): Promise<{
 
 /**
  * 포스팅 제목에서 핵심 키워드 추출
- * - 블로그 이름/닉네임 제거
+ * - 블로그 이름/닉네임/displayName 제거
+ * - 복합어 분리
  * - 불용어 제거
- * - 핵심 명사 2~4개만 추출
+ * - 핵심 명사 2~3개 추출
  */
-function extractKeywords(title: string, blogId: string): string {
-  // 1. 블로그 ID 관련 단어 제거 (블로거 이름/닉네임)
+function extractKeywords(title: string, blogId: string, displayName?: string): string {
   let cleaned = title;
-  const blogIdPatterns = [
-    blogId,
-    blogId.replace(/[_-]/g, ''),
-    // 흔한 패턴: "오렌지단상", "오렌지도서관", "오렌지의" 등
-  ];
-  for (const p of blogIdPatterns) {
-    if (p.length >= 2) {
-      cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
+  // 1. blogId + displayName + 닉네임 변형 제거
+  const removePatterns = [blogId, blogId.replace(/[_-]/g, '')];
+  if (displayName && displayName.length >= 2) {
+    removePatterns.push(displayName);
+    if (displayName.length >= 4) {
+      removePatterns.push(displayName.slice(0, Math.ceil(displayName.length / 2)));
     }
   }
-
-  // 2. 괄호 안 내용 제거 (부가 설명)
-  cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
-
-  // 3. 불용어 제거
-  const stopWords = [
-    '의', '에', '를', '을', '이', '가', '는', '은', '와', '과', '도', '로', '으로',
-    '에서', '에게', '한', '된', '하는', '있는', '없는', '대한', '위한', '통한',
-    '그리고', '또는', '하지만', '그러나', '때문에', '그래서',
-    'TOP', 'VS', 'BEST', '추천', '정리', '모음', '총정리', '후기',
-    '리뷰', '비교', '분석', '방법', '소개', '안내',
-  ];
-
-  // 4. 단어 분리 및 필터링
-  const words = cleaned
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')  // 특수문자 제거
-    .split(/\s+/)
-    .filter(w => w.length >= 2)
-    .filter(w => !stopWords.includes(w))
-    .filter(w => !/^\d+$/.test(w));  // 숫자만인 단어 제거
-
-  // 5. 핵심 키워드 2~4개 선택 (앞에서부터)
-  const keywords = words.slice(0, 4);
-
-  // 최소 1개 키워드 필요
-  if (keywords.length === 0) {
-    // 원본 제목에서 앞 20자만
-    return title.slice(0, 20);
+  const suffixes = ['단상', '도서관', '지음', '블로그', '일기', '기록', '이야기', '스토리'];
+  for (const p of removePatterns) {
+    if (p.length >= 2) cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
   }
-
-  return keywords.join(' ');
+  for (const s of suffixes) {
+    if (displayName && cleaned.toLowerCase().includes(displayName.slice(0, 3).toLowerCase() + s)) {
+      cleaned = cleaned.replace(new RegExp(displayName.slice(0, 3) + s, 'gi'), ' ');
+    }
+  }
+  // 2. 괄호 제거
+  cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
+  // 3. 복합어 분리
+  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|단상|글귀|해석|순위|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
+  // 4. 불용어
+  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및'];
+  const words = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
+    .filter(w => w.length >= 2 && !stop.includes(w) && !/^\d+$/.test(w));
+  return words.slice(0, 3).join(' ') || title.slice(0, 20);
 }
 
 /**
@@ -203,7 +188,7 @@ export async function POST(request: NextRequest) {
     if (await blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
     const body = await request.json();
-    const { blogId, postTitle, postId } = body;
+    const { blogId, postTitle, postId, displayName } = body;
 
     if (!blogId || !postTitle) {
       return NextResponse.json({ error: 'blogId, postTitle 필수' }, { status: 400 });
@@ -217,7 +202,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 핵심 키워드 추출: 제목에서 불필요한 부분 제거
-    const query = extractKeywords(postTitle, blogId);
+    const query = extractKeywords(postTitle, blogId, displayName);
 
     // 블로그탭 + 통합검색 동시 확인
     const [blogTab, viewTab] = await Promise.all([
