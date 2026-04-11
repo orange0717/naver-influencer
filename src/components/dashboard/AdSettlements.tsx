@@ -71,7 +71,7 @@ function ScheduleCalendar({ events }: { events: CalendarEvent[] }) {
     <div className="space-y-3">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-sm">원고 일정</h3>
+        <h3 className="font-bold text-sm">원고료 정산 캘린더</h3>
         <div className="flex items-center gap-2">
           <button onClick={prevMonth} className="w-7 h-7 rounded-lg border border-border hover:bg-bg flex items-center justify-center text-dim hover:text-text transition cursor-pointer">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 19l-7-7 7-7" /></svg>
