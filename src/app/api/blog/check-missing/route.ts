@@ -187,13 +187,26 @@ async function getDisplayName(blogId: string): Promise<string> {
   }
 }
 
+// 한국어 조사 제거: "블로그의" → "블로그", "미래는" → "미래"
+function stripParticles(word: string): string {
+  const particles2 = ['에서','에게','으로','처럼','만큼','부터','까지','마저','조차','이란','이라','에는','에도','으로서'];
+  for (const p of particles2) {
+    if (word.length > p.length + 1 && word.endsWith(p)) return word.slice(0, -p.length);
+  }
+  const particles1 = ['의','에','를','을','이','가','는','은','와','과','도','로','만','란','라','며','면','야'];
+  for (const p of particles1) {
+    if (word.length > 2 && word.endsWith(p)) return word.slice(0, -p.length);
+  }
+  return word;
+}
+
 /**
  * 포스팅 제목에서 핵심 키워드 추출
  * - 블로그 이름/닉네임/displayName 제거
+ * - 한국어 조사 분리 (블로그의→블로그, 미래는→미래)
  * - 복합어 분리
  * - 불용어 제거
  * - 핵심 명사 2~3개 추출
- * - 한글 1글자도 허용 (장사의 "신" 등)
  */
 function extractKeywords(title: string, blogId: string, displayName?: string): string {
   let cleaned = title;
@@ -218,10 +231,13 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
   cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
   // 3. 복합어 분리 (의미 단위가 붙어있는 경우만)
   cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|글귀|해석|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
-  // 4. 불용어 (조사/접속사만 — "신", "꿈" 등 한글 1글자 명사는 유지)
-  const stop = ['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중'];
-  const words = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
-    .filter(w => w.length >= 1 && !stop.includes(w) && !/^\d+$/.test(w) && !/^[a-zA-Z]$/.test(w));
+  // 4. 특수문자 제거 + 분리
+  const rawWords = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+  // 5. 조사 제거 + 불용어 필터
+  const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
+  const words = rawWords
+    .map(w => /^[가-힣]+$/.test(w) ? stripParticles(w) : w)
+    .filter(w => w.length >= 1 && !stop.has(w) && !/^\d+$/.test(w) && !/^[a-zA-Z]$/.test(w));
   return words.slice(0, 3).join(' ') || title.slice(0, 20);
 }
 
