@@ -66,7 +66,101 @@ async function fetchFromPostListApi(blogId: string, page: number, count: number)
 }
 
 /**
- * 방법 2: RSS 피드 (해외 서버에서도 작동)
+ * 방법 2: PostList.naver HTML 크롤링 (해외 서버에서도 작동, 페이지네이션 지원)
+ */
+async function fetchFromPostListPage(blogId: string, page: number, count: number) {
+  const url = `https://blog.naver.com/PostList.naver?blogId=${encodeURIComponent(blogId)}&from=postList&categoryNo=0&currentPage=${page}&countPerPage=${count}`;
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'ko-KR,ko;q=0.9',
+      'Referer': `https://blog.naver.com/${blogId}`,
+    },
+  });
+
+  if (!res.ok) return null;
+
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  // totalCount 추출 (블로그 전체 글 수)
+  let totalCount = 0;
+  const countText = $('.blog2_totalcount, .category_title .count, #listTopForm .count').text();
+  const countMatch = countText.match(/(\d[\d,]*)/);
+  if (countMatch) {
+    totalCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
+  }
+
+  // 포스트 목록 추출
+  const posts: BlogPostResult[] = [];
+  // SE3 블로그 목록 형식
+  $('table.blog2_list tr, .lst_total .item, .post-item, .blog2_post_list tr').each((_, el) => {
+    const $el = $(el);
+    const titleLink = $el.find('a[href*="logNo="], a[href*="/PostView"], .title a, td.title a').first();
+    if (!titleLink.length) return;
+
+    const href = titleLink.attr('href') || '';
+    const title = titleLink.text().trim();
+    if (!title) return;
+
+    // postId 추출
+    const logNoMatch = href.match(/logNo=(\d+)/) || href.match(/\/(\d{10,})/);
+    const postId = logNoMatch ? logNoMatch[1] : '';
+    if (!postId) return;
+
+    // 날짜 추출
+    const dateText = $el.find('.date, td.date, .post_date, .se_publishDate').first().text().trim();
+
+    // 댓글수 추출
+    const commentText = $el.find('.comment, .cmt, td.comment').first().text().trim();
+    const commentCount = parseInt(commentText.replace(/[^\d]/g, '') || '0', 10);
+
+    posts.push({
+      id: postId,
+      title: title.replace(/\s+/g, ' '),
+      url: `https://blog.naver.com/${blogId}/${postId}`,
+      commentCount,
+      viewCount: 0,
+      date: dateText || '',
+      isPublic: true,
+    });
+  });
+
+  // 폴백: PostTitleListAsync JSON이 HTML에 포함된 경우
+  if (posts.length === 0) {
+    const jsonMatch = html.match(/var\s+blogId\s*=\s*["']([^"']+)["']/);
+    // PostList 페이지의 script에서 데이터 추출 시도
+    const listMatch = html.match(/"postList"\s*:\s*\[([^\]]*)\]/);
+    if (listMatch) {
+      try {
+        const listData = JSON.parse(`[${listMatch[1]}]`);
+        for (const post of listData) {
+          posts.push({
+            id: post.logNo || '',
+            title: decodeURIComponent((post.title || '').replace(/\+/g, ' ')),
+            url: `https://blog.naver.com/${blogId}/${post.logNo}`,
+            commentCount: parseInt(post.commentCount || '0', 10),
+            viewCount: parseInt(post.readCount || '0', 10),
+            date: post.addDate?.trim() || '',
+            isPublic: post.openType === '2',
+          });
+        }
+        if (!totalCount && listData.length > 0) {
+          const tcMatch = html.match(/"totalCount"\s*:\s*"?(\d+)"?/);
+          if (tcMatch) totalCount = parseInt(tcMatch[1], 10);
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  if (posts.length === 0) return null;
+
+  return { posts, totalCount: totalCount || posts.length, blogId };
+}
+
+/**
+ * 방법 3: RSS 피드 (최후 폴백)
  * RSS는 최신 글 약 20~30개만 제공하고 페이지네이션 없음
  */
 async function fetchFromRss(blogId: string) {
@@ -167,7 +261,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(result);
     }
 
-    // 2) RSS 피드 폴백
+    // 2) PostList.naver HTML 크롤링 (해외 서버 대응, 페이지네이션 지원)
+    let pageResult = null;
+    try {
+      pageResult = await fetchFromPostListPage(blogId, page, count);
+    } catch { /* PostList 실패 */ }
+
+    if (pageResult && pageResult.posts.length > 0) {
+      const result = {
+        ...pageResult,
+        page,
+        countPerPage: count,
+        source: 'page',
+      };
+      cache.set(cacheKey, { data: result, expires: Date.now() + 5 * 60 * 1000 });
+      return NextResponse.json(result);
+    }
+
+    // 3) RSS 피드 폴백 (최후 수단)
     let rssResult = null;
     try {
       rssResult = await fetchFromRss(blogId);
