@@ -445,10 +445,12 @@ export default function BloggerDashboard() {
   const blogScoreCalc = (() => {
     const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     const checked = posts.filter(p => missingResults[p.id]);
-    if (checked.length === 0) return { score: 0, exposed: 0, total: 0, hasData: false };
+    if (checked.length === 0) return { score: 0, exposed: 0, blogExposed: 0, viewExposed: 0, total: 0, hasData: false };
 
     let totalWeightedScore = 0;
     let exposedCount = 0;
+    let blogExposedCount = 0;
+    let viewExposedCount = 0;
     for (const p of checked) {
       const mr = missingResults[p.id];
       const blogRank = mr.blogTab.exposed && mr.blogTab.rank ? mr.blogTab.rank : 999;
@@ -456,6 +458,8 @@ export default function BloggerDashboard() {
       const bestRank = Math.min(blogRank, viewRank);
       const rankValue = bestRank <= 30 ? 31 - bestRank : 0;
       if (rankValue > 0) exposedCount++;
+      if (mr.blogTab.exposed) blogExposedCount++;
+      if (mr.viewTab.exposed) viewExposedCount++;
       const volume = mr.searchVolume || 0;
       totalWeightedScore += volume * rankValue;
     }
@@ -464,6 +468,8 @@ export default function BloggerDashboard() {
     return {
       score: totalPosts > 0 ? Math.round(totalWeightedScore / totalPosts) : 0,
       exposed: exposedCount,
+      blogExposed: blogExposedCount,
+      viewExposed: viewExposedCount,
       total: checked.length,
       hasData: true,
     };
@@ -582,12 +588,13 @@ export default function BloggerDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard label="TODAY 방문자" value={blogStats?.todayVisitor || 0} suffix="명" color="accent" delay={0} />
         <AnimatedStatCard label="평균 방문자" value={visitorData.avgVisitors} suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
-        <AnimatedStatCard label="이웃수" value={blogStats?.subscriberCount || 0} suffix="명" color="accent" delay={100} />
-        <AnimatedStatCard label="상위노출확률" value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.exposed / blogScoreCalc.total) * 100) : 0} suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.exposed}/${blogScoreCalc.total})` : '%'} color={(() => { if (!blogScoreCalc.hasData) return 'dim' as const; const rate = blogScoreCalc.exposed / blogScoreCalc.total; if (rate >= 0.8) return 'up' as const; if (rate >= 0.5) return 'accent' as const; return 'down' as const; })()} delay={150} />
+        <AnimatedStatCard label="통합검색 노출" value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.viewExposed / blogScoreCalc.total) * 100) : 0} suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.viewExposed}/${blogScoreCalc.total})` : '%'} color={(() => { if (!blogScoreCalc.hasData) return 'dim' as const; const rate = blogScoreCalc.viewExposed / blogScoreCalc.total; if (rate >= 0.8) return 'up' as const; if (rate >= 0.5) return 'accent' as const; return 'down' as const; })()} delay={100} />
+        <AnimatedStatCard label="블로그탭 노출" value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.blogExposed / blogScoreCalc.total) * 100) : 0} suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.blogExposed}/${blogScoreCalc.total})` : '%'} color={(() => { if (!blogScoreCalc.hasData) return 'dim' as const; const rate = blogScoreCalc.blogExposed / blogScoreCalc.total; if (rate >= 0.8) return 'up' as const; if (rate >= 0.5) return 'accent' as const; return 'down' as const; })()} delay={150} />
       </div>
 
-      {/* ─── 3. 발행량 + 순위 ─── */}
+      {/* ─── 3. 발행량 + 이웃 + 순위 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <AnimatedStatCard label="이웃수" value={blogStats?.subscriberCount || 0} suffix="명" color="accent" delay={0} />
         <div className="bg-surface rounded-2xl border border-border p-4">
           <p className="text-[10px] text-dim font-semibold">이번주 발행</p>
           <p className="text-[10px] text-dim/60 mb-1">{(() => { const now = new Date(); const weekAgo = new Date(now.getTime() - 7*24*60*60*1000); return `${(weekAgo.getMonth()+1)}/${weekAgo.getDate()} ~ ${(now.getMonth()+1)}/${now.getDate()}`; })()}</p>
