@@ -597,8 +597,22 @@ export default function BloggerDashboard() {
           <p className="text-[10px] text-dim/60 mb-1">{(() => { const now = new Date(); const monthAgo = new Date(now.getTime() - 30*24*60*60*1000); return `${(monthAgo.getMonth()+1)}/${monthAgo.getDate()} ~ ${(now.getMonth()+1)}/${now.getDate()}`; })()}</p>
           <p className="text-2xl font-extrabold font-rank">{publishingStats.monthlyTotal}<span className="text-sm text-dim font-normal ml-1">회</span></p>
         </div>
-        <AnimatedStatCard label="전체 순위" value={scoreData?.rank || 0} suffix={scoreData ? `/${scoreData.totalBloggers.toLocaleString()}` : ''} color={scoreData && scoreData.rank <= 10 ? 'gold' : 'accent'} delay={150} />
-        <AnimatedStatCard label={`${category} 순위`} value={scoreData?.categoryRank || 0} suffix={scoreData ? `/${scoreData.categoryTotal}` : ''} color={scoreData && scoreData.categoryRank <= 5 ? 'gold' : 'accent'} delay={200} />
+        <div className="bg-surface rounded-2xl border border-border p-4">
+          <p className="text-[10px] text-dim font-semibold">전체 순위</p>
+          <p className="text-sm text-dim/50 mt-2">개발중</p>
+        </div>
+        <div className="bg-surface rounded-2xl border border-border p-4">
+          <p className="text-[10px] text-dim font-semibold">{category} 순위</p>
+          <p className="text-sm text-dim/50 mt-2">개발중</p>
+        </div>
+      </div>
+
+      {/* ─── 상위노출확률 ─── */}
+      <div className="grid grid-cols-1 gap-3">
+        <div className="bg-surface rounded-2xl border border-border p-4">
+          <p className="text-[10px] text-dim font-semibold">상위노출확률</p>
+          <p className="text-sm text-dim/50 mt-2">개발중</p>
+        </div>
       </div>
 
 
