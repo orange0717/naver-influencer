@@ -493,33 +493,50 @@ export default async function MyDashboard() {
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
       <div className="space-y-6">
 
-      {/* ─── 카테고리 순위 ─── */}
+      {/* ─── 카테고리 순위 + 전체 평균순위 ─── */}
       {categoryRank > 0 && (
-        <GlassCard padding="none">
-          <div className="flex items-center justify-center py-6 px-4">
-            <div className="text-center">
-              <p className="text-[11px] text-dim font-semibold mb-1">
-                {myCategory || '카테고리'} 순위
-              </p>
-              <p className="text-3xl font-black font-rank text-accent">
-                {categoryRank.toLocaleString()}<span className="text-lg font-bold">위</span>
-              </p>
-              <p className="text-xs text-dim mt-1">{categoryTotal.toLocaleString()}명 중</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <GlassCard padding="none">
+            <div className="flex items-center justify-center py-6 px-4">
+              <div className="text-center">
+                <p className="text-[11px] text-dim font-semibold mb-1">
+                  {myCategory || '카테고리'} 순위
+                </p>
+                <p className="text-3xl font-black font-rank text-accent">
+                  {categoryRank.toLocaleString()}<span className="text-lg font-bold">위</span>
+                </p>
+                <p className="text-xs text-dim mt-1">{categoryTotal.toLocaleString()}명 중</p>
+              </div>
             </div>
-          </div>
+          </GlassCard>
+          <GlassCard padding="none">
+            <div className="flex items-center justify-center py-6 px-4">
+              <div className="text-center">
+                <p className="text-[11px] text-dim font-semibold mb-1">
+                  전체 키챌 평균순위
+                </p>
+                <p className="text-3xl font-black font-rank text-accent">
+                  {avgRank > 0 ? avgRank.toFixed(1) : '—'}<span className="text-lg font-bold">{avgRank > 0 ? '위' : ''}</span>
+                </p>
+                <p className="text-xs text-dim mt-1">{participatedCount}개 키워드 평균</p>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
-          {/* 상세 통계 바 */}
-          <div className="border-t border-border/30 px-5 py-3 bg-bg/30">
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
-              <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
-              <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
-              <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
-              <span className="text-dim">통합검색 <strong className="text-text font-rank">{integratedCount}</strong>개</span>
-              <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
-              <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || 0)}</strong></span>
-            </div>
+      {/* 상세 통계 바 */}
+      {categoryRank > 0 && (
+        <div className="bg-surface border border-border rounded-2xl px-5 py-3">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
+            <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
+            <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
+            <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
+            <span className="text-dim">통합검색 <strong className="text-text font-rank">{integratedCount}</strong>개</span>
+            <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
+            <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || 0)}</strong></span>
           </div>
-        </GlassCard>
+        </div>
       )}
 
       {/* ─── 2. 통계 카드 4개 ─── */}
