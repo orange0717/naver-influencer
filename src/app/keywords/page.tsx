@@ -333,6 +333,8 @@ export default function KeywordsPage() {
     return list;
   }, [keywords, subFilter, sortKey, sortOrder, search]);
 
+  const [keywordType, setKeywordType] = useState<'influencer' | 'blogger'>('influencer');
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -341,6 +343,31 @@ export default function KeywordsPage() {
           {loading ? '로딩 중...' : `총 ${total.toLocaleString()}개`}
         </span>
       </div>
+
+      {/* 인플루언서 / 일반블로거 탭 */}
+      <div className="flex border-b border-border">
+        <button onClick={() => setKeywordType('influencer')}
+          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+            keywordType === 'influencer' ? 'border-accent text-accent' : 'border-transparent text-dim hover:text-text'
+          }`}>
+          인플루언서
+        </button>
+        <button onClick={() => setKeywordType('blogger')}
+          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+            keywordType === 'blogger' ? 'border-accent text-accent' : 'border-transparent text-dim hover:text-text'
+          }`}>
+          일반 블로거
+        </button>
+      </div>
+
+      {keywordType === 'blogger' ? (
+        <div className="text-center py-16 bg-surface border border-border rounded-2xl">
+          <p className="text-lg font-bold text-text mb-2">일반 블로거 키워드</p>
+          <p className="text-sm text-dim mb-1">블로그 검색 키워드 분석 기능이 곧 출시됩니다</p>
+          <p className="text-xs text-dim/60">월 5,500원으로 블로그 분석 + 포스팅 분석 + 키워드 분석 이용 가능</p>
+        </div>
+      ) : (
+      <>
 
       <div className="flex items-center gap-2">
         <input type="text" placeholder="키워드 검색..." value={search} onChange={e => handleSearchChange(e.target.value)}
@@ -684,6 +711,9 @@ export default function KeywordsPage() {
             </div>
           )}
         </>
+      )}
+
+      </>
       )}
     </div>
   );
