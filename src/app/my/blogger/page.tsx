@@ -608,12 +608,15 @@ export default function BloggerDashboard() {
       </div>
 
       {/* ─── 상위노출확률 ─── */}
-      <div className="grid grid-cols-1 gap-3">
+      {blogScoreCalc.hasData && (
         <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold">상위노출확률</p>
-          <p className="text-sm text-dim/50 mt-2">개발중</p>
+          <p className="text-[10px] text-dim font-semibold mb-1">상위노출확률</p>
+          <div className="flex items-end gap-2">
+            <p className="text-2xl font-extrabold font-rank">{Math.round((blogScoreCalc.exposed / blogScoreCalc.total) * 100)}<span className="text-sm text-dim font-normal ml-0.5">%</span></p>
+            <p className="text-xs text-dim mb-1">{blogScoreCalc.exposed}/{blogScoreCalc.total}개 포스팅 상위 노출</p>
+          </div>
         </div>
-      </div>
+      )}
 
 
       {/* ─── 5. 블로그 방문자수 차트 ─── */}

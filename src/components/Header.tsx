@@ -41,7 +41,13 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/stats', label: '연도별 선정 현황' },
     ],
   },
-  { href: '/keywords', label: '키워드' },
+  {
+    label: '키워드',
+    children: [
+      { href: '/keywords', label: '인플루언서' },
+      { href: '/keywords/blogger', label: '블로그' },
+    ],
+  },
   { href: '/community', label: '커뮤니티' },
   { href: '/subscribe', label: '이용권' },
 ];
