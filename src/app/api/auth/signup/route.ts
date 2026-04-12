@@ -16,22 +16,16 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // 인플루언서 ID 조회 (필수)
-  if (!naverId) {
-    return NextResponse.json({ error: '인플루언서홈 주소를 입력해주세요.' }, { status: 400 });
+  // 인플루언서 ID 조회 (선택)
+  let linkedInfluencerId: string | null = null;
+  if (naverId) {
+    const { data: inf } = await supabase
+      .from('influencers')
+      .select('id')
+      .eq('naver_id', naverId)
+      .single();
+    if (inf) linkedInfluencerId = inf.id;
   }
-
-  const { data: inf } = await supabase
-    .from('influencers')
-    .select('id')
-    .eq('naver_id', naverId)
-    .single();
-
-  if (!inf) {
-    return NextResponse.json({ error: '등록되지 않은 인플루언서입니다.', linked: false }, { status: 400 });
-  }
-
-  const linkedInfluencerId = inf.id;
 
   // 이미 존재하는지 확인
   const { data: existing } = await supabase
@@ -56,8 +50,8 @@ export async function POST(request: NextRequest) {
     auth_id: authId,
     email,
     nickname,
-    linked_influencer_id: linkedInfluencerId,
   };
+  if (linkedInfluencerId) insertData.linked_influencer_id = linkedInfluencerId;
   if (blogId) insertData.blog_id = blogId;
 
   const { data, error } = await supabase

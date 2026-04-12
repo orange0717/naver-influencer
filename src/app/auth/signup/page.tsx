@@ -5,28 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
-function extractNaverId(input: string): string {
-  const trimmed = input.trim();
-  const urlMatch = trimmed.match(/(?:https?:\/\/)?in\.naver\.com\/([a-zA-Z0-9._-]+)/);
-  if (urlMatch) return urlMatch[1].toLowerCase();
-  return trimmed.replace(/^@/, '').toLowerCase();
-}
-
-function extractBlogId(input: string): string {
-  const trimmed = input.trim();
-  const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9._-]+)/);
-  if (urlMatch) return urlMatch[1].toLowerCase();
-  return trimmed.replace(/^@/, '').toLowerCase();
-}
-
 export default function SignupPage() {
 
   const [email, setEmail] = useState('');
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [naverInput, setNaverInput] = useState('');
-  const [blogInput, setBlogInput] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
@@ -70,10 +54,6 @@ export default function SignupPage() {
       setError('비밀번호가 일치하지 않습니다.');
       return;
     }
-    if (!naverInput.trim()) {
-      setError('인플루언서홈 주소를 입력해주세요.');
-      return;
-    }
     if (!allAgreed) {
       setError('이용약관과 개인정보처리방침에 동의해주세요.');
       return;
@@ -84,8 +64,6 @@ export default function SignupPage() {
 
     try {
       const supabase = createSupabaseBrowserClient();
-      const naverId = extractNaverId(naverInput);
-      const blogId = blogInput.trim() ? extractBlogId(blogInput) : '';
 
       // 1. Supabase Auth 회원가입
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -112,9 +90,9 @@ export default function SignupPage() {
         return;
       }
 
-      setLoadingStep('인플루언서 연결 중...');
+      setLoadingStep('프로필 생성 중...');
 
-      // 2. users 테이블에 레코드 생성 + 인플루언서 연결
+      // 2. users 테이블에 레코드 생성
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,8 +100,6 @@ export default function SignupPage() {
           authId: authData.user.id,
           email: email.trim(),
           nickname: nickname.trim(),
-          naverId,
-          blogId: blogId || undefined,
         }),
       });
 
@@ -134,18 +110,11 @@ export default function SignupPage() {
         return;
       }
 
-      const result = await res.json();
-      if (!result.linked) {
-        await supabase.auth.signOut();
-        setError('등록되지 않은 인플루언서입니다. 인플루언서홈 주소를 확인해주세요.');
-        return;
-      }
-
       // 레거시 쿠키 동기화 (헤더 닉네임 표시용)
       await fetch('/api/auth/sync-cookies', { method: 'POST' }).catch(() => {});
 
-      // 성공 → 대시보드 이동
-      router.push('/my');
+      // 성공 → 블로그 대시보드로 이동
+      router.push('/my/blogger');
       router.refresh();
     } catch {
       setError('회원가입 중 오류가 발생했습니다.');
@@ -165,7 +134,7 @@ export default function SignupPage() {
               N
             </div>
             <h1 className="text-2xl font-extrabold">N인플 회원가입</h1>
-            <p className="text-sm text-dim mt-1">인플루언서 전용 대시보드</p>
+            <p className="text-sm text-dim mt-1">블로거 & 인플루언서 대시보드</p>
           </div>
 
           <div className="space-y-4 animate-fade-in-up">
@@ -191,33 +160,6 @@ export default function SignupPage() {
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호 확인</label>
               <input type="password" value={passwordConfirm} onChange={e => setPasswordConfirm(e.target.value)} placeholder="비밀번호를 다시 입력해주세요"
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-dim block mb-1.5">인플루언서홈 주소 (필수)</label>
-              <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
-                <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
-                  in.naver.com/
-                </span>
-                <input type="text" value={naverInput} onChange={e => setNaverInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSignup()}
-                  placeholder="아이디를 입력하세요"
-                  className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none" />
-              </div>
-              <p className="text-[11px] text-dim mt-1">아이디 또는 전체 URL을 붙여넣기 할 수 있어요</p>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-dim block mb-1.5">블로그 주소 (선택)</label>
-              <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
-                <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
-                  blog.naver.com/
-                </span>
-                <input type="text" value={blogInput} onChange={e => setBlogInput(e.target.value)}
-                  placeholder="블로그 아이디"
-                  className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none" />
-              </div>
-              <p className="text-[11px] text-dim mt-1">블로그 분석 기능을 이용하려면 입력해주세요 (나중에 설정 가능)</p>
             </div>
 
             {error && (

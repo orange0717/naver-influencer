@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const { data: user } = await supabase
     .from('users')
-    .select('id, email, nickname, linked_influencer_id, created_at')
+    .select('id, email, nickname, linked_influencer_id, blog_id, created_at')
     .eq('id', auth.userId)
     .single();
 
@@ -61,6 +61,7 @@ export async function PATCH(request: NextRequest) {
   const userUpdates: Record<string, unknown> = {};
 
   if (v.data.nickname !== undefined) userUpdates.nickname = v.data.nickname;
+  if (v.data.blog_id !== undefined) userUpdates.blog_id = v.data.blog_id || null;
   if (v.data.unlink_influencer) userUpdates.linked_influencer_id = null;
 
   // users 테이블 업데이트

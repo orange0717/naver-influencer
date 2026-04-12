@@ -14,6 +14,7 @@ interface UserProfile {
   total_charged: number;
   total_used: number;
   linked_influencer_id: string | null;
+  blog_id: string | null;
   created_at: string;
 }
 
@@ -115,6 +116,10 @@ export default function ProfilePage() {
   const [adSchedule, setAdSchedule] = useState('');
   const [adSaving, setAdSaving] = useState(false);
 
+  // 블로그 주소
+  const [blogIdInput, setBlogIdInput] = useState('');
+  const [blogIdSaving, setBlogIdSaving] = useState(false);
+
   // SNS 링크
   const [snsInstagram, setSnsInstagram] = useState('');
   const [snsYoutube, setSnsYoutube] = useState('');
@@ -151,6 +156,7 @@ export default function ProfilePage() {
       setLinkedInfluencer(data.linked_influencer);
       setTransactions(data.transactions || []);
       setNicknameInput(data.user.nickname);
+      setBlogIdInput(data.user.blog_id || '');
       if (data.ad_profile) {
         setAdFeeAmount(data.ad_profile.ad_fee_amount ?? null);
         setAdFeeText(data.ad_profile.ad_fee_text || '');
@@ -187,6 +193,38 @@ export default function ProfilePage() {
       setEditingNickname(false);
       showToast('닉네임이 변경되었습니다.');
     }
+  };
+
+  const saveBlogId = async () => {
+    if (!user) return;
+    setBlogIdSaving(true);
+
+    const supabase = createSupabaseBrowserClient();
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    // URL에서 blog ID 추출
+    let blogId = blogIdInput.trim();
+    const urlMatch = blogId.match(/(?:https?:\/\/)?(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9._-]+)/);
+    if (urlMatch) blogId = urlMatch[1].toLowerCase();
+    blogId = blogId.replace(/^@/, '').toLowerCase();
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ blog_id: blogId }),
+    });
+
+    if (res.ok) {
+      setUser(prev => prev ? { ...prev, blog_id: blogId } : null);
+      setBlogIdInput(blogId);
+      showToast('블로그 주소가 저장되었습니다.');
+    } else {
+      showToast('블로그 주소 저장에 실패했습니다.');
+    }
+    setBlogIdSaving(false);
   };
 
   const unlinkInfluencer = async () => {
@@ -416,13 +454,33 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* 블로그 주소 */}
+      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+        <h3 className="font-bold text-sm">블로그 주소</h3>
+        <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+          <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
+            blog.naver.com/
+          </span>
+          <input type="text" value={blogIdInput} onChange={e => setBlogIdInput(e.target.value)}
+            placeholder="블로그 아이디"
+            className="flex-1 px-3 py-2.5 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none" />
+        </div>
+        <p className="text-[11px] text-dim">블로그 대시보드에서 포스팅 순위를 확인하려면 입력해주세요.</p>
+        <button
+          onClick={saveBlogId}
+          disabled={blogIdSaving}
+          className="px-4 py-2 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+        >
+          {blogIdSaving ? '저장 중...' : '블로그 주소 저장'}
+        </button>
+      </div>
+
       {/* SNS 링크 */}
-      {linkedInfluencer && (
-        <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="font-bold text-sm">SNS 링크</h3>
-            <p className="text-xs text-dim mt-1">다른 SNS 계정을 등록하면 인플루언서 상세 페이지에 표시됩니다.</p>
-          </div>
+      <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+        <div>
+          <h3 className="font-bold text-sm">SNS 링크</h3>
+          <p className="text-xs text-dim mt-1">SNS 계정을 등록하면 프로필에 표시됩니다.</p>
+        </div>
 
           <div className="space-y-3">
             <SnsInput
@@ -462,16 +520,14 @@ export default function ProfilePage() {
           >
             {snsSaving ? '저장 중...' : 'SNS 링크 저장'}
           </button>
-        </div>
-      )}
+      </div>
 
       {/* 광고 프로필 */}
-      {linkedInfluencer && (
-        <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="font-bold text-sm">광고 프로필</h3>
-            <p className="text-xs text-dim mt-1">광고단가와 진행방법을 등록하면 인플루언서 상세 페이지에 표시됩니다.</p>
-          </div>
+      <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+        <div>
+          <h3 className="font-bold text-sm">광고 프로필</h3>
+          <p className="text-xs text-dim mt-1">광고단가와 진행방법을 등록하면 프로필에 표시됩니다.</p>
+        </div>
 
           <div className="space-y-3">
             <div>
@@ -535,8 +591,7 @@ export default function ProfilePage() {
               {adSaving ? '저장 중...' : '광고 프로필 저장'}
             </button>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* 알림 설정 */}
       <NotificationSettingsSection />
