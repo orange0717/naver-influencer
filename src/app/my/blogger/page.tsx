@@ -578,11 +578,12 @@ export default function BloggerDashboard() {
         </div>
       )}
 
-      {/* ─── 2. 방문자 + 이웃 ─── */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* ─── 2. 방문자 + 상위노출확률 ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard label="TODAY 방문자" value={blogStats?.todayVisitor || 0} suffix="명" color="accent" delay={0} />
         <AnimatedStatCard label="평균 방문자" value={visitorData.avgVisitors} suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
         <AnimatedStatCard label="이웃수" value={blogStats?.subscriberCount || 0} suffix="명" color="accent" delay={100} />
+        <AnimatedStatCard label="상위노출확률" value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.exposed / blogScoreCalc.total) * 100) : 0} suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.exposed}/${blogScoreCalc.total})` : '%'} color={(() => { if (!blogScoreCalc.hasData) return 'dim' as const; const rate = blogScoreCalc.exposed / blogScoreCalc.total; if (rate >= 0.8) return 'up' as const; if (rate >= 0.5) return 'accent' as const; return 'down' as const; })()} delay={150} />
       </div>
 
       {/* ─── 3. 발행량 + 순위 ─── */}
@@ -606,17 +607,6 @@ export default function BloggerDashboard() {
           <p className="text-sm text-dim/50 mt-2">개발중</p>
         </div>
       </div>
-
-      {/* ─── 상위노출확률 ─── */}
-      {blogScoreCalc.hasData && (
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold mb-1">상위노출확률</p>
-          <div className="flex items-end gap-2">
-            <p className="text-2xl font-extrabold font-rank">{Math.round((blogScoreCalc.exposed / blogScoreCalc.total) * 100)}<span className="text-sm text-dim font-normal ml-0.5">%</span></p>
-            <p className="text-xs text-dim mb-1">{blogScoreCalc.exposed}/{blogScoreCalc.total}개 포스팅 상위 노출</p>
-          </div>
-        </div>
-      )}
 
 
       {/* ─── 5. 블로그 방문자수 차트 ─── */}
