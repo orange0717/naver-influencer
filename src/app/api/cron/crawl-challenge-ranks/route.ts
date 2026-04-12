@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-const BATCH_SIZE = 15; // Vercel 60초 제한 내 안전한 배치 사이즈
+const BATCH_SIZE = 50; // 3시간마다 실행, 하루 ~400명 크롤링
 const TODAY = () => new Date().toISOString().slice(0, 10);
-const MAX_RUNTIME_MS = 45_000; // 안전 마진 15초
+const MAX_RUNTIME_MS = 270_000; // 300초 중 안전 마진 30초
 
 /** keyword를 정규화 (keyword_clean 생성용) */
 function cleanKeyword(keyword: string): string {

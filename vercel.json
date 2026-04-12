@@ -26,7 +26,7 @@
     },
     {
       "path": "/api/cron/crawl-challenge-ranks",
-      "schedule": "0 2 * * *"
+      "schedule": "0 0,3,6,9,12,15,18,21 * * *"
     },
     {
       "path": "/api/cron/crawl-blog-ranks",
