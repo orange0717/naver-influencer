@@ -8,6 +8,7 @@ interface AnimatedStatCardProps {
   suffix?: string;
   prefix?: string;
   placeholder?: string; // value=0일 때 표시할 텍스트 (기본: '—')
+  description?: string; // label 아래 작은 설명 텍스트
   trend?: { direction: 'up' | 'down' | 'stable'; value: number };
   icon?: ReactNode;
   color?: 'accent' | 'up' | 'down' | 'gold' | 'dim';
@@ -48,6 +49,7 @@ export default function AnimatedStatCard({
   suffix = '',
   prefix = '',
   placeholder,
+  description,
   trend,
   icon,
   color = 'accent',
@@ -105,7 +107,8 @@ export default function AnimatedStatCard({
           <Sparkline data={sparklineData} color={c.spark} />
         )}
       </div>
-      <p className="text-[11px] text-dim mb-1">{label}</p>
+      <p className="text-[11px] text-dim mb-0.5">{label}</p>
+      {description && <p className="text-[10px] text-dim/60 mb-0.5">{description}</p>}
       <div className="flex items-baseline gap-1.5">
         <span className={`text-2xl font-black font-rank ${c.text}`}>
           {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
