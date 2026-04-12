@@ -107,7 +107,7 @@ export default function AdSignupPage() {
         return;
       }
 
-      router.push('/ad/dashboard');
+      router.push('/orangeconnect/dashboard');
       router.refresh();
     } catch {
       setError('회원가입 중 오류가 발생했습니다.');
@@ -220,7 +220,7 @@ export default function AdSignupPage() {
 
             <p className="text-[10px] text-dim text-center">
               이미 계정이 있으신가요?{' '}
-              <Link href="/ad/login" className="text-accent underline hover:text-accent-hover">로그인</Link>
+              <Link href="/orangeconnect/login" className="text-accent underline hover:text-accent-hover">로그인</Link>
             </p>
           </div>
         </div>

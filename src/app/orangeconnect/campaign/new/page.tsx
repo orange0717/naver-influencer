@@ -33,7 +33,7 @@ export default function CampaignNewPage() {
     return (
       <div className="text-center py-12">
         <p className="text-dim mb-4">로그인이 필요합니다</p>
-        <Link href="/ad/login" className="text-accent hover:underline text-sm">로그인</Link>
+        <Link href="/orangeconnect/login" className="text-accent hover:underline text-sm">로그인</Link>
       </div>
     );
   }
@@ -74,7 +74,7 @@ export default function CampaignNewPage() {
       }
 
       const data = await res.json();
-      router.push(`/ad/campaign/${data.campaignId}`);
+      router.push(`/orangeconnect/campaign/${data.campaignId}`);
     } catch {
       setError('오류가 발생했습니다.');
     } finally {
@@ -95,7 +95,7 @@ export default function CampaignNewPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Link href="/ad/campaign" className="text-xs text-dim hover:text-accent transition">캠페인</Link>
+          <Link href="/orangeconnect/campaign" className="text-xs text-dim hover:text-accent transition">캠페인</Link>
           <span className="text-xs text-dim">/</span>
           <span className="text-xs text-accent font-semibold">새 캠페인</span>
         </div>

@@ -34,7 +34,7 @@ export default function AdvertiserPage() {
               &quot;뷰티 팬수 1만명 이상&quot; 같은 자연어로 인플루언서를 검색하세요.
               95,000개 키워드 매칭으로 원하는 분야의 크리에이터를 찾아드립니다.
             </p>
-            <Link href="/ad/search" className="inline-block mt-4 text-sm text-accent font-semibold hover:underline">
+            <Link href="/orangeconnect/search" className="inline-block mt-4 text-sm text-accent font-semibold hover:underline">
               AI 검색 시작 →
             </Link>
           </div>

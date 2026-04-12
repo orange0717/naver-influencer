@@ -77,7 +77,7 @@ export default function AdDashboardPage() {
     return (
       <div className="text-center py-12">
         <p className="text-dim mb-4">로그인이 필요합니다</p>
-        <Link href="/ad/login" className="text-accent hover:underline text-sm">로그인</Link>
+        <Link href="/orangeconnect/login" className="text-accent hover:underline text-sm">로그인</Link>
       </div>
     );
   }
@@ -118,11 +118,11 @@ export default function AdDashboardPage() {
 
       {/* 빠른 실행 */}
       <div className="flex gap-3">
-        <Link href="/ad/campaign/new"
+        <Link href="/orangeconnect/campaign/new"
           className="px-5 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl text-sm transition">
           캠페인 등록
         </Link>
-        <Link href="/ad/search"
+        <Link href="/orangeconnect/search"
           className="px-5 py-3 border border-border text-text font-bold rounded-xl text-sm hover:bg-bg transition">
           AI 인플루언서 검색
         </Link>
@@ -133,14 +133,14 @@ export default function AdDashboardPage() {
         <div className="bg-surface border border-border rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-base">캠페인 현황</h2>
-            <Link href="/ad/campaign" className="text-xs text-accent hover:underline">전체 보기</Link>
+            <Link href="/orangeconnect/campaign" className="text-xs text-accent hover:underline">전체 보기</Link>
           </div>
           {recentCampaigns.length === 0 ? (
             <p className="text-sm text-dim text-center py-4">등록된 캠페인이 없습니다</p>
           ) : (
             <div className="space-y-2">
               {recentCampaigns.map(c => (
-                <Link key={c.id} href={`/ad/campaign/${c.id}`}
+                <Link key={c.id} href={`/orangeconnect/campaign/${c.id}`}
                   className="flex items-center justify-between p-3 rounded-xl hover:bg-bg transition-colors block">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
@@ -169,7 +169,7 @@ export default function AdDashboardPage() {
           ) : (
             <div className="space-y-2">
               {recentApplications.map(a => (
-                <Link key={a.id} href={`/ad/campaign/${a.campaign_id}`}
+                <Link key={a.id} href={`/orangeconnect/campaign/${a.campaign_id}`}
                   className="flex items-center justify-between p-3 rounded-xl hover:bg-bg transition-colors block">
                   <div className="min-w-0">
                     <p className="text-sm font-bold truncate">@{a.naver_id}</p>

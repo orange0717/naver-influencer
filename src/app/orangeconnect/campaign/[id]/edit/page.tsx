@@ -99,7 +99,7 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
         return;
       }
 
-      router.push(`/ad/campaign/${id}`);
+      router.push(`/orangeconnect/campaign/${id}`);
     } catch {
       setError('오류가 발생했습니다.');
     } finally {
@@ -124,9 +124,9 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Link href="/ad/campaign" className="text-xs text-dim hover:text-accent transition">캠페인</Link>
+          <Link href="/orangeconnect/campaign" className="text-xs text-dim hover:text-accent transition">캠페인</Link>
           <span className="text-xs text-dim">/</span>
-          <Link href={`/ad/campaign/${id}`} className="text-xs text-dim hover:text-accent transition">상세</Link>
+          <Link href={`/orangeconnect/campaign/${id}`} className="text-xs text-dim hover:text-accent transition">상세</Link>
           <span className="text-xs text-dim">/</span>
           <span className="text-xs text-accent font-semibold">수정</span>
         </div>
@@ -212,7 +212,7 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
         )}
 
         <div className="flex gap-3 pt-2">
-          <Link href={`/ad/campaign/${id}`}
+          <Link href={`/orangeconnect/campaign/${id}`}
             className="flex-1 py-3 border border-border text-dim font-bold rounded-xl hover:bg-bg transition text-center text-sm">
             취소
           </Link>

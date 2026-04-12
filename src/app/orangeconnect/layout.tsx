@@ -12,10 +12,10 @@ interface NavItem {
 }
 
 const AD_NAV: NavItem[] = [
-  { href: '/ad', label: '광고주 홈', exact: true },
-  { href: '/ad/search', label: 'AI 검색' },
-  { href: '/ad/campaign', label: '캠페인' },
-  { href: '/ad/dashboard', label: '대시보드', authOnly: true },
+  { href: '/orangeconnect', label: '광고주 홈', exact: true },
+  { href: '/orangeconnect/search', label: 'AI 검색' },
+  { href: '/orangeconnect/campaign', label: '캠페인' },
+  { href: '/orangeconnect/dashboard', label: '대시보드', authOnly: true },
 ];
 
 function AdHeader() {
@@ -33,7 +33,7 @@ function AdHeader() {
       <header className="sticky top-0 z-50 bg-accent shadow-md">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/ad" className="flex items-center gap-2.5">
+            <Link href="/orangeconnect" className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">AD</div>
               <span className="font-bold text-base text-white hidden sm:block">N인플 광고주</span>
             </Link>
@@ -65,11 +65,11 @@ function AdHeader() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/ad/login"
+                <Link href="/orangeconnect/login"
                   className="px-3 py-1.5 text-white/70 text-sm font-semibold hover:text-white transition-colors">
                   로그인
                 </Link>
-                <Link href="/ad/signup"
+                <Link href="/orangeconnect/signup"
                   className="px-3 py-1.5 bg-white text-accent text-sm font-semibold rounded-lg hover:bg-white/90 transition-colors">
                   회원가입
                 </Link>
@@ -110,11 +110,11 @@ function AdHeader() {
               </button>
             ) : (
               <>
-                <Link href="/ad/login" onClick={() => setMobileOpen(false)}
+                <Link href="/orangeconnect/login" onClick={() => setMobileOpen(false)}
                   className="px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors">
                   로그인
                 </Link>
-                <Link href="/ad/signup" onClick={() => setMobileOpen(false)}
+                <Link href="/orangeconnect/signup" onClick={() => setMobileOpen(false)}
                   className="px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors">
                   회원가입
                 </Link>

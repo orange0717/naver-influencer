@@ -179,7 +179,7 @@ export default function AdSearchPage() {
       {/* 헤더 */}
       <div className="shrink-0 pb-3">
         <div className="flex items-center gap-2 mb-1">
-          <Link href="/ad" className="text-xs text-dim hover:text-accent transition">광고주</Link>
+          <Link href="/orangeconnect" className="text-xs text-dim hover:text-accent transition">광고주</Link>
           <span className="text-xs text-dim">/</span>
           <span className="text-xs text-accent font-semibold">AI 자연어 검색</span>
         </div>

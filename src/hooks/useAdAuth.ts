@@ -55,7 +55,7 @@ export function useAdAuth() {
     }
     queryClient.setQueryData(['ad-auth', 'me'], defaultAdvertiser);
     queryClient.invalidateQueries({ queryKey: ['ad-auth'] });
-    window.location.href = '/ad';
+    window.location.href = '/orangeconnect';
   };
 
   return { advertiser, isLoading, logout };

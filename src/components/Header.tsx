@@ -38,6 +38,14 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/keywords', label: '키워드' },
   { href: '/community', label: '커뮤니티' },
   { href: '/subscribe', label: '이용권' },
+  {
+    label: '오렌지커넥트',
+    children: [
+      { href: '/orangeconnect', label: '광고주 홈' },
+      { href: '/orangeconnect/search', label: 'AI 검색' },
+      { href: '/campaigns', label: '캠페인 모집' },
+    ],
+  },
 ];
 
 

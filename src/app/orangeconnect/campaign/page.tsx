@@ -95,10 +95,10 @@ export default function CampaignListPage() {
             인플루언서/블로거에게 자동으로 노출하세요.
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Link href="/ad/login" className="px-6 py-3 border border-accent text-accent font-bold rounded-xl hover:bg-accent/5 transition text-sm">
+            <Link href="/orangeconnect/login" className="px-6 py-3 border border-accent text-accent font-bold rounded-xl hover:bg-accent/5 transition text-sm">
               로그인
             </Link>
-            <Link href="/ad/signup" className="px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm">
+            <Link href="/orangeconnect/signup" className="px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-sm">
               광고주 회원가입
             </Link>
           </div>
@@ -114,7 +114,7 @@ export default function CampaignListPage() {
           <h1 className="text-xl font-extrabold">캠페인 관리</h1>
           <p className="text-sm text-dim mt-1">캠페인을 등록하고 신청을 관리하세요</p>
         </div>
-        <Link href="/ad/campaign/new"
+        <Link href="/orangeconnect/campaign/new"
           className="px-4 py-2.5 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg text-sm transition">
           캠페인 등록
         </Link>
@@ -146,7 +146,7 @@ export default function CampaignListPage() {
       ) : campaigns.length === 0 ? (
         <div className="text-center py-12 bg-surface border border-border rounded-2xl">
           <p className="text-dim mb-4">등록된 캠페인이 없습니다</p>
-          <Link href="/ad/campaign/new"
+          <Link href="/orangeconnect/campaign/new"
             className="inline-block px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg text-sm transition">
             첫 캠페인 등록하기
           </Link>
@@ -154,7 +154,7 @@ export default function CampaignListPage() {
       ) : (
         <div className="grid gap-4">
           {campaigns.map(c => (
-            <Link key={c.id} href={`/ad/campaign/${c.id}`}
+            <Link key={c.id} href={`/orangeconnect/campaign/${c.id}`}
               className="bg-surface border border-border rounded-2xl p-5 hover:border-accent/40 transition-colors block">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">

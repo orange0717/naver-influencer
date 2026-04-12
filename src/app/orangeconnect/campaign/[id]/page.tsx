@@ -126,7 +126,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     try {
       const headers = await getHeaders();
       const res = await fetch(`/api/ad/campaigns/${id}`, { method: 'DELETE', headers });
-      if (res.ok) router.push('/ad/campaign');
+      if (res.ok) router.push('/orangeconnect/campaign');
     } catch { /* 실패 */ }
   };
 
@@ -164,7 +164,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     return (
       <div className="text-center py-12">
         <p className="text-dim mb-4">캠페인을 찾을 수 없습니다</p>
-        <Link href="/ad/campaign" className="text-accent hover:underline text-sm">목록으로</Link>
+        <Link href="/orangeconnect/campaign" className="text-accent hover:underline text-sm">목록으로</Link>
       </div>
     );
   }
@@ -173,7 +173,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     <div className="max-w-3xl mx-auto space-y-6">
       {/* 브레드크럼 */}
       <div className="flex items-center gap-2">
-        <Link href="/ad/campaign" className="text-xs text-dim hover:text-accent transition">캠페인</Link>
+        <Link href="/orangeconnect/campaign" className="text-xs text-dim hover:text-accent transition">캠페인</Link>
         <span className="text-xs text-dim">/</span>
         <span className="text-xs text-accent font-semibold truncate">{campaign.title}</span>
       </div>
@@ -237,7 +237,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 className="px-4 py-2 bg-up text-white text-sm font-bold rounded-lg hover:bg-up/90 transition cursor-pointer">
                 모집 시작
               </button>
-              <Link href={`/ad/campaign/${id}/edit`}
+              <Link href={`/orangeconnect/campaign/${id}/edit`}
                 className="px-4 py-2 border border-border text-sm font-bold rounded-lg hover:bg-bg transition">
                 수정
               </Link>
@@ -253,7 +253,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 className="px-4 py-2 bg-gold text-white text-sm font-bold rounded-lg hover:bg-gold/90 transition cursor-pointer">
                 모집 마감
               </button>
-              <Link href={`/ad/campaign/${id}/edit`}
+              <Link href={`/orangeconnect/campaign/${id}/edit`}
                 className="px-4 py-2 border border-border text-sm font-bold rounded-lg hover:bg-bg transition">
                 수정
               </Link>
