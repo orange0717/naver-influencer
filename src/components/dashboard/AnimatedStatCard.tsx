@@ -7,6 +7,7 @@ interface AnimatedStatCardProps {
   value: number;
   suffix?: string;
   prefix?: string;
+  placeholder?: string; // value=0일 때 표시할 텍스트 (기본: '—')
   trend?: { direction: 'up' | 'down' | 'stable'; value: number };
   icon?: ReactNode;
   color?: 'accent' | 'up' | 'down' | 'gold' | 'dim';
@@ -46,6 +47,7 @@ export default function AnimatedStatCard({
   value,
   suffix = '',
   prefix = '',
+  placeholder,
   trend,
   icon,
   color = 'accent',
@@ -106,7 +108,7 @@ export default function AnimatedStatCard({
       <p className="text-[11px] text-dim mb-1">{label}</p>
       <div className="flex items-baseline gap-1.5">
         <span className={`text-2xl font-black font-rank ${c.text}`}>
-          {prefix}{value === 0 ? '—' : displayValue}{value !== 0 ? suffix : ''}
+          {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
         </span>
         {trend && trend.value !== 0 && (
           <span className={`text-xs font-bold ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
