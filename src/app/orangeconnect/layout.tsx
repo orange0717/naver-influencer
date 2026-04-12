@@ -131,9 +131,13 @@ function AdLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMainPage = pathname === '/orangeconnect';
 
-  // 메인 게이트웨이 페이지는 AdHeader 없이 렌더링
+  // 메인 게이트웨이 페이지는 완전 독립 (N인플 헤더/푸터 가림)
   if (isMainPage) {
-    return <>{children}</>;
+    return (
+      <div className="fixed inset-0 z-[100] bg-bg overflow-auto -mx-4 -mt-6">
+        {children}
+      </div>
+    );
   }
 
   return (

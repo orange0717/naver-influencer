@@ -2,64 +2,82 @@ import Link from 'next/link';
 
 export default function OrangeConnectPage() {
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center py-16 px-4">
+    <div className="min-h-screen flex flex-col">
 
-      {/* 타이틀 */}
-      <div className="text-center mb-12">
-        <p className="text-accent text-sm font-bold tracking-wider mb-3">ORANGE CONNECT</p>
-        <h1 className="text-3xl md:text-4xl font-black leading-tight">
-          인플루언서와 브랜드를 연결합니다
-        </h1>
-      </div>
+      {/* 미니 헤더 */}
+      <header className="px-6 md:px-10 py-5 flex items-center justify-between">
+        <Link href="/orangeconnect" className="text-lg font-black tracking-tight text-text">
+          ORANGE CONNECT
+        </Link>
+      </header>
 
-      {/* 2개 카드 가로 배치 */}
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* 메인 콘텐츠 */}
+      <div className="flex-1 flex flex-col md:flex-row">
 
-        {/* 인플루언서 카드 */}
-        <Link href="/" className="block group">
-          <div className="bg-surface border border-border rounded-2xl p-8 h-full hover:border-accent/40 hover:shadow-lg transition-all">
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
+        {/* 좌측: 히어로 */}
+        <div className="flex-1 flex flex-col justify-center px-6 md:px-10 lg:px-16 py-12 md:py-0">
+          <p className="text-base md:text-lg text-text/80 leading-relaxed mb-2">
+            인플루언서, 브랜드 협업의 시작
+          </p>
+          <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6">
+            오렌지가 만든 인플루언서 비즈니스 플랫폼
+          </p>
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-none">
+            ORANGE<br />CONNECT
+          </h1>
+        </div>
+
+        {/* 우측: 2개 카드 */}
+        <div className="w-full md:w-[420px] lg:w-[480px] flex flex-col shrink-0">
+
+          {/* 인플루언서 카드 (다크) */}
+          <Link href="/" className="block flex-1 group">
+            <div className="h-full bg-[#2D2D2D] text-white p-8 md:p-10 flex flex-col justify-between min-h-[240px] md:min-h-0">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-black mb-4">인플루언서</h2>
+                <p className="text-white/70 text-sm md:text-base leading-relaxed">
+                  나와 잘 맞는 브랜드와 함께<br />
+                  제휴 수익을 만들고 싶다면?
+                </p>
+              </div>
+              <div className="flex items-center gap-3 mt-8">
+                <span className="text-sm font-semibold">자세히 보기</span>
+                <div className="flex-1 h-px bg-white/30" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="group-hover:translate-x-1 transition-transform">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </div>
-              <span className="text-accent text-sm font-semibold group-hover:underline">
-                자세히 보기 →
-              </span>
             </div>
-            <h2 className="text-2xl font-black mb-3">인플루언서</h2>
-            <p className="text-dim text-sm leading-relaxed">
-              키워드챌린지 순위를 확인하고,<br />
-              나의 영향력을 데이터로 증명하세요.
-            </p>
-          </div>
-        </Link>
+          </Link>
 
-        {/* 브랜드사 카드 */}
-        <Link href="/orangeconnect/search" className="block group">
-          <div className="bg-surface border border-border rounded-2xl p-8 h-full hover:border-accent/40 hover:shadow-lg transition-all">
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          {/* 브랜드사 카드 (액센트) */}
+          <Link href="/orangeconnect/search" className="block flex-1 group">
+            <div className="h-full bg-accent text-white p-8 md:p-10 flex flex-col justify-between min-h-[240px] md:min-h-0">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-black mb-4">브랜드사</h2>
+                <p className="text-white/80 text-sm md:text-base leading-relaxed">
+                  인플루언서 제휴,<br />
+                  성공적으로 진행하고 싶다면?
+                </p>
+              </div>
+              <div className="flex items-center gap-3 mt-8">
+                <span className="text-sm font-semibold">자세히 보기</span>
+                <div className="flex-1 h-px bg-white/40" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="group-hover:translate-x-1 transition-transform">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </div>
-              <span className="text-accent text-sm font-semibold group-hover:underline">
-                자세히 보기 →
-              </span>
             </div>
-            <h2 className="text-2xl font-black mb-3">브랜드사</h2>
-            <p className="text-dim text-sm leading-relaxed">
-              검증된 인플루언서/블로거를 찾고,<br />
-              캠페인을 등록해 자동으로 매칭하세요.
-            </p>
-          </div>
-        </Link>
+          </Link>
 
+        </div>
       </div>
+
+      {/* 하단 카피라이트 */}
+      <footer className="px-6 md:px-10 py-4">
+        <p className="text-[11px] text-dim">Orange Connect by 오렌지도서관</p>
+      </footer>
+
     </div>
   );
 }
