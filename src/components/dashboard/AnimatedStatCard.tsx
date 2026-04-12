@@ -8,7 +8,7 @@ interface AnimatedStatCardProps {
   suffix?: string;
   prefix?: string;
   trend?: { direction: 'up' | 'down' | 'stable'; value: number };
-  icon: ReactNode;
+  icon?: ReactNode;
   color?: 'accent' | 'up' | 'down' | 'gold' | 'dim';
   sparklineData?: number[];
   delay?: number;
