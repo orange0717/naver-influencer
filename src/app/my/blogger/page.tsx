@@ -448,13 +448,17 @@ export default function BloggerDashboard() {
   // ══════════════════════════════════════════════════════════
   const blogScoreCalc = (() => {
     const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-    const checked = posts.filter(p => missingResults[p.id]);
-    if (checked.length === 0) return { score: 0, exposed: 0, blogExposed: 0, viewExposed: 0, total: 0, hasData: false };
+    // 검색비허용(isPublic===false) 제외
+    const publicPosts = posts.filter(p => p.isPublic !== false);
+    const checked = publicPosts.filter(p => missingResults[p.id]);
+    if (checked.length === 0) return { score: 0, exposed: 0, blogExposed: 0, viewExposed: 0, blogAvgRank: 0, viewAvgRank: 0, total: 0, publicTotal: publicPosts.length, hasData: false };
 
     let totalWeightedScore = 0;
     let exposedCount = 0;
     let blogExposedCount = 0;
     let viewExposedCount = 0;
+    let blogRankSum = 0;
+    let viewRankSum = 0;
     for (const p of checked) {
       const mr = missingResults[p.id];
       const blogRank = mr.blogTab.exposed && mr.blogTab.rank ? mr.blogTab.rank : 999;
@@ -462,8 +466,14 @@ export default function BloggerDashboard() {
       const bestRank = Math.min(blogRank, viewRank);
       const rankValue = bestRank <= 30 ? 31 - bestRank : 0;
       if (rankValue > 0) exposedCount++;
-      if (mr.blogTab.exposed) blogExposedCount++;
-      if (mr.viewTab.exposed) viewExposedCount++;
+      if (mr.blogTab.exposed && mr.blogTab.rank) {
+        blogExposedCount++;
+        blogRankSum += mr.blogTab.rank;
+      }
+      if (mr.viewTab.exposed && mr.viewTab.rank) {
+        viewExposedCount++;
+        viewRankSum += mr.viewTab.rank;
+      }
       const volume = mr.searchVolume || 0;
       totalWeightedScore += volume * rankValue;
     }
@@ -474,7 +484,10 @@ export default function BloggerDashboard() {
       exposed: exposedCount,
       blogExposed: blogExposedCount,
       viewExposed: viewExposedCount,
+      blogAvgRank: blogExposedCount > 0 ? +(blogRankSum / blogExposedCount).toFixed(1) : 0,
+      viewAvgRank: viewExposedCount > 0 ? +(viewRankSum / viewExposedCount).toFixed(1) : 0,
       total: checked.length,
+      publicTotal: publicPosts.length,
       hasData: true,
     };
   })();
@@ -588,12 +601,20 @@ export default function BloggerDashboard() {
         </div>
       )}
 
-      {/* ─── 2. 방문자 + 상위노출확률 ─── */}
+      {/* ─── 2. 방문자 + 노출 평균순위 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard label="TODAY 방문자" value={blogStats?.todayVisitor || 0} suffix="명" color="accent" delay={0} />
-        <AnimatedStatCard label="평균 방문자" value={visitorData.avgVisitors} suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
-        <AnimatedStatCard label="통합검색 노출" value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.viewExposed / blogScoreCalc.total) * 100) : 0} suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.viewExposed}/${blogScoreCalc.total})` : '%'} color={(() => { if (!blogScoreCalc.hasData) return 'dim' as const; const rate = blogScoreCalc.viewExposed / blogScoreCalc.total; if (rate >= 0.8) return 'up' as const; if (rate >= 0.5) return 'accent' as const; return 'down' as const; })()} delay={100} />
-        <AnimatedStatCard label="블로그탭 노출" value={blogScoreCalc.hasData ? Math.round((blogScoreCalc.blogExposed / blogScoreCalc.total) * 100) : 0} suffix={blogScoreCalc.hasData ? `% (${blogScoreCalc.blogExposed}/${blogScoreCalc.total})` : '%'} color={(() => { if (!blogScoreCalc.hasData) return 'dim' as const; const rate = blogScoreCalc.blogExposed / blogScoreCalc.total; if (rate >= 0.8) return 'up' as const; if (rate >= 0.5) return 'accent' as const; return 'down' as const; })()} delay={150} />
+        <AnimatedStatCard label="일일 평균 방문자" value={visitorData.avgVisitors} suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
+        <div className="bg-surface rounded-2xl border border-border p-4">
+          <p className="text-[10px] text-dim font-semibold">통합검색 평균순위</p>
+          <p className="text-[10px] text-dim/60 mb-1">{blogScoreCalc.hasData ? `${blogScoreCalc.viewExposed}/${blogScoreCalc.total}개 노출 (비허용 제외)` : '검사중...'}</p>
+          <p className="text-2xl font-extrabold font-rank">{blogScoreCalc.viewAvgRank || '—'}<span className="text-sm text-dim font-normal ml-0.5">{blogScoreCalc.viewAvgRank ? '위' : ''}</span></p>
+        </div>
+        <div className="bg-surface rounded-2xl border border-border p-4">
+          <p className="text-[10px] text-dim font-semibold">블로그탭 평균순위</p>
+          <p className="text-[10px] text-dim/60 mb-1">{blogScoreCalc.hasData ? `${blogScoreCalc.blogExposed}/${blogScoreCalc.total}개 노출 (비허용 제외)` : '검사중...'}</p>
+          <p className="text-2xl font-extrabold font-rank">{blogScoreCalc.blogAvgRank || '—'}<span className="text-sm text-dim font-normal ml-0.5">{blogScoreCalc.blogAvgRank ? '위' : ''}</span></p>
+        </div>
       </div>
 
       {/* ─── 3. 발행량 + 이웃 + 순위 ─── */}
