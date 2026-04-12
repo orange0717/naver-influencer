@@ -361,26 +361,29 @@ export default function BloggerDashboard() {
     });
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis, fetchBlogStats]);
 
-  // 현재 페이지 포스트 자동 순위확인
+  // 전체 포스트 자동 순위확인 (로드 완료 시)
   useEffect(() => {
     if (!profile || checkingAll) return;
-    const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-    if (all.length === 0) return;
-    const start = (blogPostsPage - 1) * 10;
-    const pagePosts = all.slice(start, start + 10);
-    // 아직 확인 안 된 포스트만 체크
-    const unchecked = pagePosts.filter(p => !missingResults[p.id]);
+    const posts = blogPosts.length > 0 ? blogPosts : [];
+    if (posts.length === 0) return;
+    const unchecked = posts.filter(p => !missingResults[p.id]);
     if (unchecked.length === 0) return;
-    const checkPage = async () => {
+    const autoCheck = async () => {
+      setCheckingAll(true);
+      setCheckProgress({ current: 0, total: unchecked.length });
       for (let i = 0; i < unchecked.length; i++) {
+        setCheckProgress({ current: i + 1, total: unchecked.length });
         await checkMissing(unchecked[i]);
-        if (i < unchecked.length - 1) await new Promise(r => setTimeout(r, 2000));
+        if (i < unchecked.length - 1) await new Promise(r => setTimeout(r, 1500));
       }
+      setCheckingAll(false);
+      setCheckProgress({ current: 0, total: 0 });
+      saveScoreToServer();
     };
-    const timer = setTimeout(checkPage, 1500);
+    const timer = setTimeout(autoCheck, 2000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, allBlogPosts, blogPostsPage]);
+  }, [profile, blogPosts.length]);
 
 
   const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
