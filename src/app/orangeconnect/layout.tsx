@@ -131,7 +131,7 @@ function AdLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMainPage = pathname === '/orangeconnect';
 
-  // 메인 게이트웨이 페이지는 완전 독립 (N인플 헤더/푸터 가림)
+  // 오렌지커넥트 전체가 N인플과 완전 분리
   if (isMainPage) {
     return (
       <div className="fixed inset-0 z-[100] bg-bg overflow-auto -mx-4 -mt-6">
@@ -141,11 +141,13 @@ function AdLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen -mx-4 -mt-6 -mb-10">
-      <AdHeader />
-      <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
-        {children}
-      </main>
+    <div className="fixed inset-0 z-[100] bg-bg overflow-auto -mx-4 -mt-6">
+      <div className="flex flex-col min-h-screen">
+        <AdHeader />
+        <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
