@@ -30,7 +30,7 @@ function AdHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-accent shadow-md">
+      <header className="sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/orangeconnect" className="flex items-center gap-2.5">
