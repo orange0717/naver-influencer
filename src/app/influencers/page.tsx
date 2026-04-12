@@ -57,6 +57,11 @@ function isNew(d: string | null | undefined): boolean {
   return diff < 30 * 24 * 60 * 60 * 1000; // 30일 이내
 }
 
+function isInactive(d: string | null | undefined): boolean {
+  if (!d) return false;
+  const diff = Date.now() - new Date(d).getTime();
+  return diff > 365 * 24 * 60 * 60 * 1000; // 1년 이상 미활동
+}
 
 export default function InfluencersPage() {
   const [influencers, setInfluencers] = useState<InfluencerItem[]>([]);
@@ -429,7 +434,11 @@ export default function InfluencersPage() {
                       {inf.naverCreatedAt ? formatDate(inf.naverCreatedAt) : '—'}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
-                      {formatDate(inf.lastCrawledAt)}
+                      {isInactive(inf.lastCrawledAt) ? (
+                        <span className="text-down/70">활동하지 않음</span>
+                      ) : (
+                        formatDate(inf.lastCrawledAt)
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -498,7 +507,11 @@ export default function InfluencersPage() {
                   {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
                   {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
                   {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
-                  {inf.lastCrawledAt && <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>}
+                  {inf.lastCrawledAt && (
+                    isInactive(inf.lastCrawledAt)
+                      ? <span className="text-down/70">활동하지 않음</span>
+                      : <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>
+                  )}
                 </div>
               </div>
             ))}
