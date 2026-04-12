@@ -7,6 +7,7 @@ import Link from 'next/link';
 export default function TrialPage() {
   const router = useRouter();
   const [naverId, setNaverId] = useState('');
+  const [blogId, setBlogId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -17,11 +18,23 @@ export default function TrialPage() {
     return trimmed.replace(/^@/, '').toLowerCase();
   };
 
+  const extractBlogId = (input: string): string => {
+    const trimmed = input.trim();
+    const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9._-]+)/);
+    if (urlMatch) return urlMatch[1].toLowerCase();
+    return trimmed.replace(/^@/, '').toLowerCase();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const id = extractNaverId(naverId);
     if (!id) {
-      setError('인플루언서 ID를 입력해주세요.');
+      setError('인플루언서홈 주소를 입력해주세요.');
+      return;
+    }
+    const blog = extractBlogId(blogId);
+    if (!blog) {
+      setError('블로그 주소를 입력해주세요.');
       return;
     }
 
@@ -32,7 +45,7 @@ export default function TrialPage() {
       const res = await fetch('/api/auth/trial', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ naverId: id }),
+        body: JSON.stringify({ naverId: id, blogId: blog }),
       });
 
       const data = await res.json();
@@ -57,25 +70,44 @@ export default function TrialPage() {
         </div>
         <h1 className="font-title text-2xl font-extrabold">3일 무료 체험</h1>
         <p className="text-sm text-dim">
-          회원가입 없이 인플루언서 ID만 입력하면<br />
+          인플루언서홈과 블로그 주소를 입력하면<br />
           대시보드를 바로 이용할 수 있습니다.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-surface rounded-2xl border border-border p-6 space-y-5">
         <div>
-          <label className="block text-sm font-semibold mb-2">인플루언서 ID</label>
-          <input
-            type="text"
-            value={naverId}
-            onChange={e => { setNaverId(e.target.value); setError(''); }}
-            placeholder="네이버 인플루언서 ID 또는 링크"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
-            autoFocus
-          />
-          <p className="text-[11px] text-dim mt-1.5">
-            예: orangelibrary 또는 https://in.naver.com/orangelibrary
-          </p>
+          <label className="text-xs font-semibold text-dim block mb-1.5">인플루언서홈 주소</label>
+          <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+            <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
+              in.naver.com/
+            </span>
+            <input
+              type="text"
+              value={naverId}
+              onChange={e => { setNaverId(e.target.value); setError(''); }}
+              placeholder="아이디"
+              className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
+              autoFocus
+            />
+          </div>
+          <p className="text-[11px] text-dim mt-1">아이디 또는 전체 URL을 붙여넣기 할 수 있어요</p>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-dim block mb-1.5">블로그 주소</label>
+          <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+            <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
+              blog.naver.com/
+            </span>
+            <input
+              type="text"
+              value={blogId}
+              onChange={e => { setBlogId(e.target.value); setError(''); }}
+              placeholder="블로그 아이디"
+              className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
+            />
+          </div>
         </div>
 
         {error && (
@@ -84,7 +116,7 @@ export default function TrialPage() {
 
         <button
           type="submit"
-          disabled={loading || !naverId.trim()}
+          disabled={loading || !naverId.trim() || !blogId.trim()}
           className="w-full py-3.5 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? '확인 중...' : '무료 체험 시작하기'}

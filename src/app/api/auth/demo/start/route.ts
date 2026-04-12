@@ -12,6 +12,7 @@ const DEMO_MAX_AGE = 60 * 60 * 24 * DEMO_DAYS;
 
 const startSchema = z.object({
   naverId: naverIdSchema,
+  blogId: z.string().max(50).optional(),
 });
 
 /**
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const v = validateBody(startSchema, body);
     if (!v.success) return v.response;
 
-    const { naverId } = v.data;
+    const { naverId, blogId } = v.data;
     const supabase = createServiceClient();
 
     // 인플루언서 존재 확인
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
     cookieStore.set('user_type', 'influencer', cookieOptions);
     cookieStore.set('trial_started', String(Date.now()), cookieOptions);
     cookieStore.set('demo_mode', 'true', cookieOptions);
+    if (blogId) cookieStore.set('blog_id', blogId, cookieOptions);
 
     return NextResponse.json({
       success: true,

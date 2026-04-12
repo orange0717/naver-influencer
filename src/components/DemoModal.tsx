@@ -15,14 +15,23 @@ function extractNaverId(input: string): string {
   return trimmed.replace(/^@/, '').toLowerCase();
 }
 
+function extractBlogId(input: string): string {
+  const trimmed = input.trim();
+  const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9._-]+)/);
+  if (urlMatch) return urlMatch[1].toLowerCase();
+  return trimmed.replace(/^@/, '').toLowerCase();
+}
+
 export default function DemoModal({ open, onClose }: DemoModalProps) {
   const router = useRouter();
   const [naverInput, setNaverInput] = useState('');
+  const [blogInput, setBlogInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   function reset() {
     setNaverInput('');
+    setBlogInput('');
     setError('');
     setLoading(false);
   }
@@ -36,7 +45,11 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
     e.preventDefault();
     if (loading) return;
     if (!naverInput.trim()) {
-      setError('인플루언서 ID를 입력해주세요.');
+      setError('인플루언서홈 주소를 입력해주세요.');
+      return;
+    }
+    if (!blogInput.trim()) {
+      setError('블로그 주소를 입력해주세요.');
       return;
     }
     const naverId = extractNaverId(naverInput);
@@ -44,13 +57,14 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
       setError('올바른 인플루언서 ID 또는 URL을 입력해주세요.');
       return;
     }
+    const blogId = extractBlogId(blogInput);
     setError('');
     setLoading(true);
     try {
       const res = await fetch('/api/auth/demo/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ naverId }),
+        body: JSON.stringify({ naverId, blogId }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -89,20 +103,43 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
             7일 데모체험을 시작하시겠습니까?
           </h2>
           <p className="text-sm text-dim text-center mb-8 leading-relaxed">
-            인플루언서 ID를 입력하면<br />
+            인플루언서홈과 블로그 주소를 입력하면<br />
             7일간 모든 기능을 무료로 이용할 수 있습니다.
           </p>
 
-          <div className="mb-6">
-            <input
-              type="text"
-              value={naverInput}
-              onChange={e => { setNaverInput(e.target.value); setError(''); }}
-              placeholder="인플루언서홈 주소 또는 ID (예: in.naver.com/myid)"
-              className="w-full px-4 py-3 rounded-xl border border-border bg-surface text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-              autoFocus
-              required
-            />
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="text-xs font-semibold text-dim block mb-1.5">인플루언서홈 주소</label>
+              <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+                <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
+                  in.naver.com/
+                </span>
+                <input
+                  type="text"
+                  value={naverInput}
+                  onChange={e => { setNaverInput(e.target.value); setError(''); }}
+                  placeholder="아이디"
+                  className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-dim block mb-1.5">블로그 주소</label>
+              <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+                <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
+                  blog.naver.com/
+                </span>
+                <input
+                  type="text"
+                  value={blogInput}
+                  onChange={e => { setBlogInput(e.target.value); setError(''); }}
+                  placeholder="블로그 아이디"
+                  className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
+                />
+              </div>
+            </div>
           </div>
 
           {error && <p className="text-xs text-down text-center mb-4">{error}</p>}
