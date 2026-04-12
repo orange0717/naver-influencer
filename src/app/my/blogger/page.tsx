@@ -603,41 +603,19 @@ export default function BloggerDashboard() {
 
       {/* ─── 2. 방문자 + 노출 평균순위 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <AnimatedStatCard label="TODAY 방문자" value={blogStats?.todayVisitor || 0} suffix="명" color="accent" delay={0} />
-        <AnimatedStatCard label="일일 평균 방문자" value={visitorData.avgVisitors} suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold">통합검색 평균순위</p>
-          <p className="text-[10px] text-dim/60 mb-1">{blogScoreCalc.hasData ? `${blogScoreCalc.viewExposed}/${blogScoreCalc.total}개 노출 (비허용 제외)` : '검사중...'}</p>
-          <p className="text-2xl font-extrabold font-rank">{blogScoreCalc.viewAvgRank || '—'}<span className="text-sm text-dim font-normal ml-0.5">{blogScoreCalc.viewAvgRank ? '위' : ''}</span></p>
-        </div>
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold">블로그탭 평균순위</p>
-          <p className="text-[10px] text-dim/60 mb-1">{blogScoreCalc.hasData ? `${blogScoreCalc.blogExposed}/${blogScoreCalc.total}개 노출 (비허용 제외)` : '검사중...'}</p>
-          <p className="text-2xl font-extrabold font-rank">{blogScoreCalc.blogAvgRank || '—'}<span className="text-sm text-dim font-normal ml-0.5">{blogScoreCalc.blogAvgRank ? '위' : ''}</span></p>
-        </div>
+        <AnimatedStatCard label="TODAY 방문자" value={blogStats?.todayVisitor || 0} suffix="명" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} color="accent" delay={0} />
+        <AnimatedStatCard label="일일 평균 방문자" value={visitorData.avgVisitors} suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
+        <AnimatedStatCard label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix={blogScoreCalc.viewAvgRank ? `위 (${blogScoreCalc.viewExposed}/${blogScoreCalc.total})` : checkingAll ? '검사중...' : '—'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={100} />
+        <AnimatedStatCard label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix={blogScoreCalc.blogAvgRank ? `위 (${blogScoreCalc.blogExposed}/${blogScoreCalc.total})` : checkingAll ? '검사중...' : '—'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={150} />
       </div>
 
       {/* ─── 3. 발행량 + 이웃 + 순위 ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <AnimatedStatCard label="이웃수" value={blogStats?.subscriberCount || 0} suffix="명" color="accent" delay={0} />
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold">이번주 발행</p>
-          <p className="text-[10px] text-dim/60 mb-1">{(() => { const now = new Date(); const weekAgo = new Date(now.getTime() - 7*24*60*60*1000); return `${(weekAgo.getMonth()+1)}/${weekAgo.getDate()} ~ ${(now.getMonth()+1)}/${now.getDate()}`; })()}</p>
-          <p className="text-2xl font-extrabold font-rank">{publishingStats.weeklyTotal}<span className="text-sm text-dim font-normal ml-1">회</span></p>
-        </div>
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold">한달 발행</p>
-          <p className="text-[10px] text-dim/60 mb-1">{(() => { const now = new Date(); const monthAgo = new Date(now.getTime() - 30*24*60*60*1000); return `${(monthAgo.getMonth()+1)}/${monthAgo.getDate()} ~ ${(now.getMonth()+1)}/${now.getDate()}`; })()}</p>
-          <p className="text-2xl font-extrabold font-rank">{publishingStats.monthlyTotal}<span className="text-sm text-dim font-normal ml-1">회</span></p>
-        </div>
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold">전체 순위</p>
-          <p className="text-sm text-dim/50 mt-2">개발중</p>
-        </div>
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <p className="text-[10px] text-dim font-semibold">{category} 순위</p>
-          <p className="text-sm text-dim/50 mt-2">개발중</p>
-        </div>
+        <AnimatedStatCard label="이웃수" value={blogStats?.subscriberCount || 0} suffix="명" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} color="accent" delay={0} />
+        <AnimatedStatCard label="이번주 발행" value={publishingStats.weeklyTotal} suffix="회" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>} color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'} delay={50} />
+        <AnimatedStatCard label="한달 발행" value={publishingStats.monthlyTotal} suffix="회" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'} delay={100} />
+        <AnimatedStatCard label="전체 순위" value={scoreData?.rank || 0} suffix={scoreData ? `/${scoreData.totalBloggers.toLocaleString()}` : ' 개발중'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} color={scoreData && scoreData.rank <= 10 ? 'gold' : 'dim'} delay={150} />
+        <AnimatedStatCard label={`${category} 순위`} value={scoreData?.categoryRank || 0} suffix={scoreData ? `/${scoreData.categoryTotal}` : ' 개발중'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>} color={scoreData && scoreData.categoryRank <= 5 ? 'gold' : 'dim'} delay={200} />
       </div>
 
 
