@@ -37,8 +37,8 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: '인플루언서',
     children: [
-      { href: '/stats', label: '연도별 선정 현황' },
       { href: '/influencers', label: '리스트' },
+      { href: '/stats', label: '연도별 선정 현황' },
     ],
   },
   { href: '/keywords', label: '키워드' },
