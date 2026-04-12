@@ -129,3 +129,6 @@ export const messageLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 
 
 /** AI 포스팅 분석: 5분에 5회 */
 export const aiAnalyzeLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
+/** 광고주 캠페인 CRUD: 1분에 20회 */
+export const campaignLimiter = createRateLimiter({ limit: 20, windowMs: 60 * 1000 });

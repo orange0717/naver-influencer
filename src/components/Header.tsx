@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/my/blogger', label: '블로그' },
       { href: '/my/post-analysis', label: '포스팅 분석' },
       { href: '/my/settlements', label: '원고료 정산내역' },
+      { href: '/my/campaigns', label: '캠페인 현황' },
     ],
   },
   { href: '/competitor', label: '경쟁자 분석', authOnly: true },
