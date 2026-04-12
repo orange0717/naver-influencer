@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
     label: '대시보드',
     authOnly: true,
     children: [
-      { href: '/my/blogger', label: '블로그' },
+      { href: '/my/blogger', label: '블로그 분석' },
       { href: '/my/campaigns', label: '캠페인 현황' },
       { href: '/my/post-analysis', label: '포스팅 분석' },
       { href: '/my', label: '키워드챌린지' },
