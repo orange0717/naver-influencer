@@ -18,7 +18,7 @@ export default function BloggerKeywordsPage() {
           네이버 검색 API 기반 키워드 검색량/경쟁도 분석 기능을<br />
           준비하고 있습니다.
         </p>
-        <p className="text-xs text-dim/60 mt-4">월 5,500원 블로거 요금제에 포함</p>
+        <p className="text-xs text-dim/60 mt-4">무료 기능</p>
       </div>
     </div>
   );
