@@ -618,7 +618,7 @@ export default function BloggerDashboard() {
       </div>
 
       {/* ─── 3. 발행량 + 이웃 + 순위 ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <AnimatedStatCard label="이웃수" value={blogStats?.subscriberCount || 0} suffix="명" color="accent" delay={0} />
         <div className="bg-surface rounded-2xl border border-border p-4">
           <p className="text-[10px] text-dim font-semibold">이번주 발행</p>
