@@ -210,6 +210,7 @@ export default function BloggerDashboard() {
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [blogPostsPage, setBlogPostsPage] = useState(1);
   const [blogPostsLoading, setBlogPostsLoading] = useState(false);
+  const [postsPerPage, setPostsPerPage] = useState(30);
   const [missingResults, setMissingResults] = useState<Record<string, MissingResult>>({});
   const [checkingMissing, setCheckingMissing] = useState<string>('');
   const [checkingAll, setCheckingAll] = useState(false);
@@ -229,7 +230,7 @@ export default function BloggerDashboard() {
   const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
     setBlogPostsLoading(true);
     try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=10`);
+      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${postsPerPage}`);
       if (res.ok) {
         const data = await res.json();
         setBlogPosts(data.posts || []);
@@ -238,7 +239,7 @@ export default function BloggerDashboard() {
       }
     } catch { /* ignore */ }
     finally { setBlogPostsLoading(false); }
-  }, []);
+  }, [postsPerPage]);
 
   // 전체 포스트 로드 (모든 페이지 순회)
   const fetchAllBlogPosts = useCallback(async (blogId: string) => {
@@ -619,14 +620,19 @@ export default function BloggerDashboard() {
       {/* ─── 5. 블로그 방문자수 차트 ─── */}
       {profile && <BlogVisitorChart blogId={profile.blogId} />}
 
-      {/* ─── 6. 포스팅 목록 (10개씩 페이지네이션) + 순위 확인 ─── */}
+      {/* ─── 6. 포스팅 목록 + 순위 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
             <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>
-            <p className="text-[11px] text-dim mt-0.5">
-              {(allBlogPosts.length || blogPostsTotal) > 0 ? `총 ${(allBlogPosts.length || blogPostsTotal).toLocaleString()}개의 글` : '포스트 목록을 불러오는 중...'}
-            </p>
+            <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
+              {[30, 60, 90].map(n => (
+                <button key={n} onClick={() => { setPostsPerPage(n); setBlogPostsPage(1); if (profile) fetchBlogPosts(profile.blogId, 1); }}
+                  className={`px-2.5 py-1 font-semibold transition cursor-pointer ${postsPerPage === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
+                  {n}개
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {Object.keys(missingResults).length > 0 && (
