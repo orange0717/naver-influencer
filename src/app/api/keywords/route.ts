@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const categories = await fetchCategories();
-    const categoryNames = ['전체', ...categories.map(c => c.name)];
+    const categoryNames = ['전체', ...categories.map(c => c.name).sort((a, b) => a.length - b.length || a.localeCompare(b))];
 
     // 특정 카테고리 선택
     if (category && category !== '전체') {
