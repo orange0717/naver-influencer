@@ -127,7 +127,15 @@ function AdHeader() {
   );
 }
 
-export default function AdLayout({ children }: { children: React.ReactNode }) {
+function AdLayoutInner({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isMainPage = pathname === '/orangeconnect';
+
+  // 메인 게이트웨이 페이지는 AdHeader 없이 렌더링
+  if (isMainPage) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex flex-col min-h-screen -mx-4 -mt-6 -mb-10">
       <AdHeader />
@@ -136,4 +144,8 @@ export default function AdLayout({ children }: { children: React.ReactNode }) {
       </main>
     </div>
   );
+}
+
+export default function AdLayout({ children }: { children: React.ReactNode }) {
+  return <AdLayoutInner>{children}</AdLayoutInner>;
 }
