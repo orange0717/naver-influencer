@@ -243,7 +243,7 @@ export default function KeywordRankingPage() {
     })();
   }, [fetchBlogPosts]);
 
-  // 포스트 로드 시 키워드 초기화
+  // 포스트 로드 시 키워드 초기화 (저장된 키워드 있으면 사용, 없으면 빈 입력 1개)
   useEffect(() => {
     if (!profile || blogPosts.length === 0) return;
     const initial: Record<string, string[]> = {};
@@ -251,8 +251,7 @@ export default function KeywordRankingPage() {
       if (postKeywords[post.id] && postKeywords[post.id].length > 0) {
         initial[post.id] = [...postKeywords[post.id]];
       } else {
-        const kws = extractKeywords(post.title, profile.blogId, profile.displayName);
-        initial[post.id] = kws.slice(0, 3);
+        initial[post.id] = [''];
       }
     }
     setEditingKeywords(prev => ({ ...prev, ...initial }));
