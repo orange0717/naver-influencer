@@ -33,10 +33,9 @@ export default function Footer() {
 
         {/* 자매 서비스 */}
         <div className="border-t border-white/10 pt-4 pb-4 flex items-center gap-4">
-          <span className="text-[11px] text-footer-dim/50">자매 서비스</span>
           <a href="https://orangerefine.kr" target="_blank" rel="noopener noreferrer"
             className="text-xs text-footer-dim hover:text-white transition-colors">
-            OrangeRefine - 글쓰기 플랫폼
+            글쓰기 실력을 키우고 싶다면? OrangeRefine
           </a>
         </div>
 
