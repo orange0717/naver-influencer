@@ -95,6 +95,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     .single();
 
   if (!influencerData) {
+    // 블로그 데모: 인플루언서가 아닌 블로거로 접속한 경우
+    const blogId = cookieStore.get('blog_id')?.value || params.demo;
+    if (blogId) {
+      redirect(`/my/blogger?blogId=${blogId}`);
+    }
     redirect('/auth/login');
   }
 
