@@ -44,20 +44,12 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
-    if (!naverInput.trim()) {
-      setError('인플루언서홈 주소를 입력해주세요.');
+    if (!naverInput.trim() && !blogInput.trim()) {
+      setError('인플루언서홈 또는 블로그 주소를 입력해주세요.');
       return;
     }
-    if (!blogInput.trim()) {
-      setError('블로그 주소를 입력해주세요.');
-      return;
-    }
-    const naverId = extractNaverId(naverInput);
-    if (!naverId) {
-      setError('올바른 인플루언서 ID 또는 URL을 입력해주세요.');
-      return;
-    }
-    const blogId = extractBlogId(blogInput);
+    const naverId = naverInput.trim() ? extractNaverId(naverInput) : '';
+    const blogId = blogInput.trim() ? extractBlogId(blogInput) : '';
     setError('');
     setLoading(true);
     try {
@@ -103,7 +95,7 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
             7일 데모체험을 시작하시겠습니까?
           </h2>
           <p className="text-sm text-dim text-center mb-8 leading-relaxed">
-            인플루언서홈과 블로그 주소를 입력하면<br />
+            인플루언서홈 또는 블로그 주소를 입력하면<br />
             7일간 모든 기능을 무료로 이용할 수 있습니다.
           </p>
 

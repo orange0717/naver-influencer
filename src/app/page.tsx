@@ -104,7 +104,7 @@ export default function LandingPage() {
         </button>
 
         <p className="text-xs text-dim mt-5">
-          인플루언서 ID 입력 후 7일간 모든 기능을 무료로 이용할 수 있습니다.
+          인플루언서홈 또는 블로그 주소 입력 후 7일간 모든 기능을 무료로 이용할 수 있습니다.
         </p>
 
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />

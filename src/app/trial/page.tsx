@@ -27,14 +27,10 @@ export default function TrialPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = extractNaverId(naverId);
-    if (!id) {
-      setError('인플루언서홈 주소를 입력해주세요.');
-      return;
-    }
-    const blog = extractBlogId(blogId);
-    if (!blog) {
-      setError('블로그 주소를 입력해주세요.');
+    const id = naverId.trim() ? extractNaverId(naverId) : '';
+    const blog = blogId.trim() ? extractBlogId(blogId) : '';
+    if (!id && !blog) {
+      setError('인플루언서홈 또는 블로그 주소를 입력해주세요.');
       return;
     }
 
@@ -70,7 +66,7 @@ export default function TrialPage() {
         </div>
         <h1 className="font-title text-2xl font-extrabold">3일 무료 체험</h1>
         <p className="text-sm text-dim">
-          인플루언서홈과 블로그 주소를 입력하면<br />
+          인플루언서홈 또는 블로그 주소를 입력하면<br />
           대시보드를 바로 이용할 수 있습니다.
         </p>
       </div>
