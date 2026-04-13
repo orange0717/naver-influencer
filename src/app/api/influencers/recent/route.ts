@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * 최근 선정된 인플루언서 조회 (메인페이지용)
- * naver_created_at 또는 first_seen_at 기준 최근 90일
+ * naver_created_at 또는 first_seen_at 기준 최근 7일
  * GET /api/influencers/recent
  */
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
     const supabase = createServiceClient();
 
     const since = new Date();
-    since.setDate(since.getDate() - 90);
+    since.setDate(since.getDate() - 7);
     const sinceStr = since.toISOString();
 
     // 1) naver_created_at이 있는 최근 인플루언서

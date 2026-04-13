@@ -522,7 +522,7 @@ export default function PostAnalysisPage() {
                               {/* AI 심층 분석 버튼 */}
                               {!aiResult && !isAnalyzing && (
                                 <button
-                                  onClick={() => runAiAnalysis(post.id)}
+                                  onClick={e => { e.stopPropagation(); e.preventDefault(); runAiAnalysis(post.id); }}
                                   className="text-sm px-4 py-2 rounded-xl bg-accent text-white font-bold hover:bg-accent-hover transition cursor-pointer"
                                 >
                                   AI 심층 분석 실행
@@ -637,7 +637,7 @@ export default function PostAnalysisPage() {
                               {/* 표절검사 버튼 */}
                               {!plagResult && !isCheckingPlag && (
                                 <button
-                                  onClick={() => runPlagiarismCheck(post.id)}
+                                  onClick={e => { e.stopPropagation(); e.preventDefault(); runPlagiarismCheck(post.id); }}
                                   className="text-sm px-4 py-2 rounded-xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition cursor-pointer"
                                 >
                                   표절검사 실행
@@ -716,7 +716,7 @@ export default function PostAnalysisPage() {
                               {/* 형태소/문장 분석 버튼 */}
                               {!textResult && !isAnalyzingText && (
                                 <button
-                                  onClick={() => runTextAnalysis(post.id)}
+                                  onClick={e => { e.stopPropagation(); e.preventDefault(); runTextAnalysis(post.id); }}
                                   className="text-sm px-4 py-2 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 transition cursor-pointer"
                                 >
                                   형태소/문장 분석

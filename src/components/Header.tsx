@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/my/keyword-ranking', label: '키워드순위' },
       { href: '/my/campaigns', label: '캠페인 현황' },
       { href: '/my/post-analysis', label: '포스팅 분석' },
-      { href: '/my', label: '키워드챌린지' },
+      { href: '/my', label: 'MY 키워드챌린지' },
       { href: '/my/settlements', label: '원고료 정산내역' },
     ],
   },
@@ -46,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
     label: '키워드',
     children: [
       { href: '/keywords/blogger', label: '키워드 검색' },
-      { href: '/keywords', label: '키워드 챌린지' },
+      { href: '/keywords', label: '키워드 리스트' },
       { href: '/keywords/blog-ranking', label: '키워드 검색순위' },
     ],
   },
