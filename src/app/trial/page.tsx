@@ -112,7 +112,7 @@ export default function TrialPage() {
 
         <button
           type="submit"
-          disabled={loading || !naverId.trim() || !blogId.trim()}
+          disabled={loading || (!naverId.trim() && !blogId.trim())}
           className="w-full py-3.5 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? '확인 중...' : '무료 체험 시작하기'}
