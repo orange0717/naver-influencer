@@ -49,17 +49,18 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + DEMO_DAYS * 24 * 60 * 60 * 1000);
 
-  // upsert로 중복 시에도 에러 없이 처리
-  await supabase.from('demo_sessions').upsert({
+  // 기존 세션 삭제 후 새로 생성 (중복 방지)
+  await supabase.from('demo_sessions').delete().eq('naver_id', effectiveNaverId);
+  await supabase.from('demo_sessions').insert({
     naver_id: effectiveNaverId,
     display_name: displayName,
-    email: `demo-${effectiveNaverId}@demo.local`,
+    email: `demo-${effectiveNaverId}-${Date.now()}@demo.local`,
     verification_code: '000000',
     code_expires_at: now.toISOString(),
     verified_at: now.toISOString(),
     started_at: now.toISOString(),
     expires_at: expiresAt.toISOString(),
-  }, { onConflict: 'email' }).throwOnError();
+  });
 
   return { effectiveNaverId, displayName, naverId, blogId };
 }
