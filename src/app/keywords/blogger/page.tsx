@@ -26,7 +26,7 @@ export default function BloggerKeywordsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
-  const [sortKey, setSortKey] = useState<'monthlyTotal' | 'monthlyPc' | 'monthlyMobile' | 'competition' | null>(null);
+  const [sortKey, setSortKey] = useState<'monthlyTotal' | 'monthlyPc' | 'monthlyMobile' | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -169,20 +169,12 @@ export default function BloggerKeywordsPage() {
   const toNum = (v: number | string): number => typeof v === 'number' ? v : 0;
 
   const sorted = sortKey ? [...results].sort((a, b) => {
-    const compOrder: Record<string, number> = { '\ub0ae\uc74c': 1, '\uc911\uac04': 2, '\ub192\uc74c': 3 };
     let diff = 0;
     if (sortKey === 'monthlyTotal') diff = toNum(a.monthlyTotal) - toNum(b.monthlyTotal);
     else if (sortKey === 'monthlyPc') diff = toNum(a.monthlyPc) - toNum(b.monthlyPc);
     else if (sortKey === 'monthlyMobile') diff = toNum(a.monthlyMobile) - toNum(b.monthlyMobile);
-    else if (sortKey === 'competition') diff = (compOrder[a.competition] || 0) - (compOrder[b.competition] || 0);
     return sortOrder === 'asc' ? diff : -diff;
   }) : results;
-
-  const compBadge = (level: string) => {
-    if (level === '\ub0ae\uc74c') return <span className="text-xs font-bold text-up bg-up/12 px-2 py-0.5 rounded-full">낮음</span>;
-    if (level === '\uc911\uac04') return <span className="text-xs font-bold text-gold bg-gold/12 px-2 py-0.5 rounded-full">중간</span>;
-    return <span className="text-xs font-bold text-down bg-down/12 px-2 py-0.5 rounded-full">높음</span>;
-  };
 
   const formatNum = (v: number | string) => {
     if (typeof v === 'string') return v;
@@ -201,8 +193,8 @@ export default function BloggerKeywordsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-extrabold">블로그 키워드 분석</h1>
-        <p className="text-sm text-dim mt-1">네이버 검색 키워드의 검색량과 경쟁도를 분석합니다</p>
+        <h1 className="text-xl font-extrabold">키워드 검색</h1>
+        <p className="text-sm text-dim mt-1">네이버 검색 키워드의 검색량을 분석합니다</p>
       </div>
 
       {/* 검색창 */}
@@ -259,7 +251,6 @@ export default function BloggerKeywordsPage() {
                     <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">월간 검색량</th>
                     <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">PC</th>
                     <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">모바일</th>
-                    <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs">경쟁도</th>
                     <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-16">저장일</th>
                     <th className="w-10"></th>
                   </tr>
@@ -271,7 +262,6 @@ export default function BloggerKeywordsPage() {
                       <td className="py-2.5 px-3 text-right font-rank text-sm font-bold">{sk.monthly_total.toLocaleString()}</td>
                       <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_pc.toLocaleString()}</td>
                       <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_mobile.toLocaleString()}</td>
-                      <td className="py-2.5 px-3 text-center">{compBadge(sk.competition)}</td>
                       <td className="py-2.5 px-3 text-center text-xs text-dim">
                         {new Date(sk.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                       </td>
@@ -298,7 +288,6 @@ export default function BloggerKeywordsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-bold truncate">{sk.keyword}</span>
-                        {compBadge(sk.competition)}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-dim">
                         <span>월 {sk.monthly_total.toLocaleString()}</span>
@@ -366,9 +355,6 @@ export default function BloggerKeywordsPage() {
                   <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyMobile')}>
                     모바일{sortArrow('monthlyMobile')}
                   </th>
-                  <th className="text-center py-3 px-4 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('competition')}>
-                    경쟁도{sortArrow('competition')}
-                  </th>
                   <th className="w-10"></th>
                 </tr>
               </thead>
@@ -382,7 +368,6 @@ export default function BloggerKeywordsPage() {
                     <td className="py-3.5 px-4 text-right font-bold font-rank text-sm">{formatNum(kw.monthlyTotal)}</td>
                     <td className="py-3.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyPc)}</td>
                     <td className="py-3.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyMobile)}</td>
-                    <td className="py-3.5 px-4 text-center">{compBadge(kw.competition)}</td>
                     <td className="py-3.5 px-2">
                       <button
                         onClick={() => toggleSave(kw)}
@@ -409,7 +394,6 @@ export default function BloggerKeywordsPage() {
                     <span className={`font-bold text-[15px] truncate ${i === 0 ? 'text-accent' : ''}`}>{kw.keyword}</span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {compBadge(kw.competition)}
                     <button
                       onClick={() => toggleSave(kw)}
                       disabled={savingKeyword === kw.keyword}
@@ -449,8 +433,8 @@ export default function BloggerKeywordsPage() {
           </div>
           <p className="text-lg font-bold text-text mb-2">키워드를 검색해보세요</p>
           <p className="text-sm text-dim leading-relaxed">
-            키워드를 입력하면 월간 검색량, PC/모바일 비율,<br />
-            경쟁도와 연관 키워드를 분석합니다.
+            키워드를 입력하면 월간 검색량,<br />
+            PC/모바일 검색 비율을 분석합니다.
           </p>
           <p className="text-xs text-dim/60 mt-4">무료 기능</p>
         </div>
