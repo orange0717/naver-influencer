@@ -63,7 +63,14 @@ function loadRankingResults(blogId: string): Record<string, RankingResult> {
 
 function saveRankingResults(blogId: string, data: Record<string, RankingResult>): void {
   try {
-    localStorage.setItem(`${RANKING_STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
+    // 최대 500개 키워드만 보관 (오래된 것 제거)
+    const entries = Object.entries(data);
+    if (entries.length > 500) {
+      const trimmed = Object.fromEntries(entries.slice(-500));
+      localStorage.setItem(`${RANKING_STORAGE_PREFIX}${blogId}`, JSON.stringify(trimmed));
+    } else {
+      localStorage.setItem(`${RANKING_STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
+    }
   } catch { /* ignore */ }
 }
 
@@ -88,17 +95,27 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
   } catch { return null; }
 }
 
-// 한국어 조사 제거
+// 한국어 조사 제거 (결과가 2글자 미만이면 원본 반환)
 function stripParticles(word: string): string {
   const particles2 = ['에서','에게','으로','처럼','만큼','부터','까지','마저','조차','이란','이라','에는','에도','으로서'];
   for (const p of particles2) {
-    if (word.length > p.length + 1 && word.endsWith(p)) return word.slice(0, -p.length);
+    if (word.length > p.length + 1 && word.endsWith(p)) {
+      const stripped = word.slice(0, -p.length);
+      if (stripped.length >= 2) return stripped;
+    }
   }
   const particles1 = ['의','에','를','을','이','가','는','은','와','과','도','로','만','란','라','며','면','야'];
   for (const p of particles1) {
-    if (word.length > 2 && word.endsWith(p)) return word.slice(0, -p.length);
+    if (word.length > 2 && word.endsWith(p)) {
+      const stripped = word.slice(0, -p.length);
+      if (stripped.length >= 2) return stripped;
+    }
   }
   return word;
+}
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // 포스팅 제목에서 핵심 키워드 추출
@@ -113,11 +130,11 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
   }
   const nameSuffixes = ['단상', '도서관', '지음', '블로그', '일기', '기록', '이야기', '스토리'];
   for (const p of removePatterns) {
-    if (p.length >= 2) cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
+    if (p.length >= 2) cleaned = cleaned.replace(new RegExp(escapeRegExp(p), 'gi'), ' ');
   }
   for (const s of nameSuffixes) {
     if (displayName && cleaned.toLowerCase().includes(displayName.slice(0, 3).toLowerCase() + s)) {
-      cleaned = cleaned.replace(new RegExp(displayName.slice(0, 3) + s, 'gi'), ' ');
+      cleaned = cleaned.replace(new RegExp(escapeRegExp(displayName.slice(0, 3)) + s, 'gi'), ' ');
     }
   }
   cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');

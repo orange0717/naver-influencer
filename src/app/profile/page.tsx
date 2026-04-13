@@ -210,6 +210,12 @@ export default function ProfilePage() {
     if (urlMatch) blogId = urlMatch[1].toLowerCase();
     blogId = blogId.replace(/^@/, '').toLowerCase();
 
+    if (!blogId) {
+      showToast('블로그 아이디를 입력해주세요.');
+      setBlogIdSaving(false);
+      return;
+    }
+
     const res = await fetch('/api/profile', {
       method: 'PATCH',
       headers: {
