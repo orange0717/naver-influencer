@@ -110,6 +110,11 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // 프로모션 코드
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoResult, setPromoResult] = useState<{ success: boolean; label?: string; expires_at?: string; error?: string } | null>(null);
+
   // 광고 프로필
   const [adFeeAmount, setAdFeeAmount] = useState<number | null>(null);
   const [adFeeText, setAdFeeText] = useState('');
@@ -315,6 +320,39 @@ export default function ProfilePage() {
       showToast(data.error || '저장에 실패했습니다.');
     }
     setSnsSaving(false);
+  };
+
+  const applyPromoCode = async () => {
+    if (!promoCode.trim() || promoLoading) return;
+    setPromoLoading(true);
+    setPromoResult(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+      const res = await fetch('/api/promo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setPromoResult({ success: true, label: data.label, expires_at: data.expires_at });
+        setPromoCode('');
+        showToast(`${data.label} 적용 완료!`);
+      } else {
+        setPromoResult({ success: false, error: data.error });
+      }
+    } catch {
+      setPromoResult({ success: false, error: '코드 적용 중 오류가 발생했습니다.' });
+    } finally {
+      setPromoLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -596,6 +634,37 @@ export default function ProfilePage() {
               {adSaving ? '저장 중...' : '광고 프로필 저장'}
             </button>
           </div>
+      </div>
+
+      {/* 프로모션 코드 */}
+      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+        <h3 className="font-bold text-sm">프로모션 코드</h3>
+        <p className="text-[11px] text-dim">프로모션 코드를 입력하면 유료 기능을 무료로 이용할 수 있습니다.</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={promoCode}
+            onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoResult(null); }}
+            onKeyDown={e => e.key === 'Enter' && applyPromoCode()}
+            placeholder="코드 입력"
+            maxLength={20}
+            className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent transition-colors uppercase"
+          />
+          <button
+            onClick={applyPromoCode}
+            disabled={promoLoading || !promoCode.trim()}
+            className="px-4 py-2.5 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            {promoLoading ? '확인중...' : '적용'}
+          </button>
+        </div>
+        {promoResult && (
+          <p className={`text-xs ${promoResult.success ? 'text-up' : 'text-down'}`}>
+            {promoResult.success
+              ? `${promoResult.label} (만료: ${new Date(promoResult.expires_at!).toLocaleDateString('ko-KR')})`
+              : promoResult.error}
+          </p>
+        )}
       </div>
 
       {/* 알림 설정 */}
