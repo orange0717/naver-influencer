@@ -425,12 +425,11 @@ export default function PostAnalysisPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 text-xs text-dim">
-                    <th className="text-left px-5 py-3 font-semibold w-[40%]">제목</th>
-                    <th className="text-center px-3 py-3 font-semibold">AI 확률</th>
-                    <th className="text-center px-3 py-3 font-semibold">글자수</th>
-                    <th className="text-center px-3 py-3 font-semibold">이미지</th>
-                    <th className="text-center px-3 py-3 font-semibold">날짜</th>
-                    <th className="text-center px-3 py-3 font-semibold">분석</th>
+                    <th className="text-left px-5 py-3 font-semibold">제목</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">글자수</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">이미지</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">날짜</th>
+                    <th className="text-right px-5 py-3 font-semibold w-56">분석</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -445,101 +444,71 @@ export default function PostAnalysisPage() {
                     const isCheckingPlag = checkingPlag === post.id;
                     const isAnalyzingText = analyzingText === post.id;
 
-                    return (
-                      <tr key={post.id} className="group">
-                        <td colSpan={6} className="p-0">
-                          {/* 메인 행 */}
-                          <div
-                            className="flex items-center hover:bg-surface-hover/50 transition-colors cursor-pointer"
-                            onClick={() => setExpandedPost(isExpanded ? null : post.id)}
-                          >
-                            <div className="flex-[40%] px-5 py-3.5">
-                              <a
-                                href={post.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-semibold text-sm hover:text-accent transition-colors line-clamp-1 block"
-                                onClick={e => e.stopPropagation()}
-                              >
-                                {post.title}
-                              </a>
-                            </div>
-                            <div className="flex-[12%] px-3 py-3.5 text-center">
-                              {aiBadge ? (
-                                <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg border ${aiBadge.bg} ${aiBadge.text} ${aiBadge.border}`}>
-                                  {aiResult!.aiProbability}%
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-dim">-</span>
-                              )}
-                            </div>
-                            <div className="flex-[12%] px-3 py-3.5 text-center">
-                              {analysis ? (
-                                <span className="text-sm font-rank">{analysis.charCount.toLocaleString()}</span>
-                              ) : <span className="text-[10px] text-dim">-</span>}
-                            </div>
-                            <div className="flex-[12%] px-3 py-3.5 text-center">
-                              {analysis ? (
-                                <span className="text-sm">
-                                  {analysis.imageCount}
-                                  {analysis.originalImageCount > 0 && (
-                                    <span className="text-[10px] text-up ml-0.5">({analysis.originalImageCount}원본)</span>
-                                  )}
-                                </span>
-                              ) : <span className="text-[10px] text-dim">-</span>}
-                            </div>
-                            <div className="flex-[12%] px-3 py-3.5 text-center">
-                              <span className="text-[11px] text-dim">
-                                {post.date ? new Date(post.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) : '-'}
-                              </span>
-                            </div>
-                            <div className="flex-[12%] px-3 py-3.5 text-center">
-                              <div className="flex flex-col items-center gap-1">
-                                {isAnalyzing ? (
-                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full" />
-                                ) : aiResult ? (
-                                  <span className="text-[10px] text-accent font-bold">AI 완료</span>
-                                ) : (
-                                  <button
-                                    onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
-                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-accent/10 text-accent font-bold hover:bg-accent/20 transition cursor-pointer"
-                                  >
-                                    AI 분석
-                                  </button>
-                                )}
-                                {isCheckingPlag ? (
-                                  <span className="animate-spin inline-block w-3 h-3 border border-blue-500/30 border-t-blue-500 rounded-full" />
-                                ) : plagResult ? (
-                                  <span className={`text-[10px] font-bold ${plagResult.originalRate >= 80 ? 'text-up' : plagResult.originalRate >= 50 ? 'text-gold' : 'text-down'}`}>
-                                    원본 {plagResult.originalRate}%
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={e => { e.stopPropagation(); runPlagiarismCheck(post.id); }}
-                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-500 font-bold hover:bg-blue-500/20 transition cursor-pointer"
-                                  >
-                                    표절검사
-                                  </button>
-                                )}
-                                {isAnalyzingText ? (
-                                  <span className="animate-spin inline-block w-3 h-3 border border-purple-500/30 border-t-purple-500 rounded-full" />
-                                ) : textResult ? (
-                                  <span className="text-[10px] text-purple-500 font-bold">형태소 완료</span>
-                                ) : (
-                                  <button
-                                    onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
-                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-500 font-bold hover:bg-purple-500/20 transition cursor-pointer"
-                                  >
-                                    형태소분석
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+                    return (<>
+                      <tr key={post.id} className="group hover:bg-surface-hover/50 transition-colors cursor-pointer" onClick={() => setExpandedPost(isExpanded ? null : post.id)}>
+                        <td className="px-5 py-3.5">
+                          <a href={post.url} target="_blank" rel="noopener noreferrer"
+                            className="font-semibold text-sm hover:text-accent transition-colors line-clamp-1 block"
+                            onClick={e => e.stopPropagation()}>
+                            {post.title}
+                          </a>
+                          {aiBadge && (
+                            <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ${aiBadge.bg} ${aiBadge.text}`}>
+                              AI {aiResult!.aiProbability}%
+                            </span>
+                          )}
+                          {plagResult && (
+                            <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ml-1 ${plagResult.originalRate >= 80 ? 'bg-up/10 text-up' : plagResult.originalRate >= 50 ? 'bg-gold/10 text-gold' : 'bg-down/10 text-down'}`}>
+                              원본 {plagResult.originalRate}%
+                            </span>
+                          )}
+                        </td>
+                        <td className="text-center px-3 py-3.5">
+                          {analysis ? (
+                            <span className="text-xs">{analysis.charCount.toLocaleString()}</span>
+                          ) : <span className="text-[10px] text-dim">-</span>}
+                        </td>
+                        <td className="text-center px-3 py-3.5">
+                          {analysis ? (
+                            <span className="text-xs">{analysis.imageCount}</span>
+                          ) : <span className="text-[10px] text-dim">-</span>}
+                        </td>
+                        <td className="text-center px-3 py-3.5">
+                          <span className="text-[11px] text-dim">{post.date}</span>
+                        </td>
+                        <td className="text-right px-5 py-3.5">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {isAnalyzing ? (
+                              <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                            ) : !aiResult ? (
+                              <button onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-accent/10 text-accent font-bold hover:bg-accent/20 transition cursor-pointer">
+                                AI 분석
+                              </button>
+                            ) : null}
+                            {isCheckingPlag ? (
+                              <span className="w-3.5 h-3.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin inline-block" />
+                            ) : !plagResult ? (
+                              <button onClick={e => { e.stopPropagation(); runPlagiarismCheck(post.id); }}
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-500 font-bold hover:bg-blue-500/20 transition cursor-pointer">
+                                표절검사
+                              </button>
+                            ) : null}
+                            {isAnalyzingText ? (
+                              <span className="w-3.5 h-3.5 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin inline-block" />
+                            ) : !textResult ? (
+                              <button onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-500 font-bold hover:bg-purple-500/20 transition cursor-pointer">
+                                형태소분석
+                              </button>
+                            ) : null}
                           </div>
-
-                          {/* 확장 상세 */}
-                          {isExpanded && (
-                            <div className="px-5 pb-5 space-y-4 bg-bg/20 border-t border-border/30" onClick={e => e.stopPropagation()}>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={5} className="p-0">
+                            <div className="px-5 pb-5 pt-3 space-y-4 bg-bg/20 border-t border-border/30" onClick={e => e.stopPropagation()}>
                               {/* 본문 미리보기 */}
                               {analysis?.textPreview && (
                                 <div>
@@ -877,9 +846,10 @@ export default function PostAnalysisPage() {
                                 </div>
                               )}
                             </div>
-                          )}
-                        </td>
-                      </tr>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                     );
                   })}
                 </tbody>
