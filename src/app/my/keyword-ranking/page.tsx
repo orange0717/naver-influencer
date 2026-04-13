@@ -29,24 +29,46 @@ interface RankingResult {
 const STORAGE_PREFIX = 'ninfl_custom_keywords_';
 const RANKING_STORAGE_PREFIX = 'ninfl_ranking_results_';
 
-function loadCustomKeywords(blogId: string): Record<string, string> {
+// 키워드 저장: postId → 키워드 배열
+function loadCustomKeywords(blogId: string): Record<string, string[]> {
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${blogId}`);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // 이전 형식(string) 호환
+      const result: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        result[k] = Array.isArray(v) ? v as string[] : [v as string];
+      }
+      return result;
+    }
   } catch { /* ignore */ }
   return {};
 }
 
-function saveCustomKeywords(blogId: string, data: Record<string, string>): void {
+function saveCustomKeywords(blogId: string, data: Record<string, string[]>): void {
   try {
     localStorage.setItem(`${STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
   } catch { /* ignore */ }
+}
+
+// 순위 결과: "postId::keyword" → RankingResult
+function loadRankingResults(blogId: string): Record<string, RankingResult> {
+  try {
+    const raw = localStorage.getItem(`${RANKING_STORAGE_PREFIX}${blogId}`);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return {};
 }
 
 function saveRankingResults(blogId: string, data: Record<string, RankingResult>): void {
   try {
     localStorage.setItem(`${RANKING_STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
   } catch { /* ignore */ }
+}
+
+function rankKey(postId: string, keyword: string): string {
+  return `${postId}::${keyword}`;
 }
 
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
@@ -164,10 +186,13 @@ export default function KeywordRankingPage() {
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
 
-  const [customKeywords, setCustomKeywords] = useState<Record<string, string>>({});
-  const [editingKeywords, setEditingKeywords] = useState<Record<string, string>>({});
+  // postId → 키워드 배열
+  const [postKeywords, setPostKeywords] = useState<Record<string, string[]>>({});
+  // postId → 키워드 배열 (편집 중)
+  const [editingKeywords, setEditingKeywords] = useState<Record<string, string[]>>({});
+  // "postId::keyword" → RankingResult
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
-  const [checkingPostId, setCheckingPostId] = useState('');
+  const [checkingKey, setCheckingKey] = useState('');
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const abortRef = useRef(false);
@@ -193,59 +218,71 @@ export default function KeywordRankingPage() {
       if (p?.blogId) {
         await fetchBlogPosts(p.blogId, 1);
         const saved = loadCustomKeywords(p.blogId);
-        setCustomKeywords(saved);
+        setPostKeywords(saved);
+        const savedResults = loadRankingResults(p.blogId);
+        setRankingResults(savedResults);
       }
       setLoading(false);
     })();
   }, [fetchBlogPosts]);
 
-  // 포스트가 로드되면 editingKeywords 초기화
+  // 포스트 로드 시 키워드 초기화
   useEffect(() => {
     if (!profile || blogPosts.length === 0) return;
-    const saved = customKeywords;
-    const initial: Record<string, string> = {};
+    const initial: Record<string, string[]> = {};
     for (const post of blogPosts) {
-      if (saved[post.id]) {
-        initial[post.id] = saved[post.id];
+      if (postKeywords[post.id] && postKeywords[post.id].length > 0) {
+        initial[post.id] = [...postKeywords[post.id]];
       } else {
         const kws = extractKeywords(post.title, profile.blogId, profile.displayName);
-        initial[post.id] = kws.slice(0, 2).join(' ');
+        initial[post.id] = kws.slice(0, 3);
       }
     }
     setEditingKeywords(prev => ({ ...prev, ...initial }));
-  }, [profile, blogPosts, customKeywords]);
+  }, [profile, blogPosts, postKeywords]);
 
-  const handleKeywordChange = (postId: string, value: string) => {
-    setEditingKeywords(prev => ({ ...prev, [postId]: value }));
+  const handleKeywordChange = (postId: string, kwIndex: number, value: string) => {
+    setEditingKeywords(prev => {
+      const kws = [...(prev[postId] || [])];
+      kws[kwIndex] = value;
+      return { ...prev, [postId]: kws };
+    });
   };
 
   const handleKeywordSave = (postId: string) => {
     if (!profile) return;
-    const value = editingKeywords[postId]?.trim();
-    const autoKws = extractKeywords(
-      blogPosts.find(p => p.id === postId)?.title || '',
-      profile.blogId,
-      profile.displayName
-    ).slice(0, 2).join(' ');
-
-    if (value && value !== autoKws) {
-      const updated = { ...customKeywords, [postId]: value };
-      setCustomKeywords(updated);
-      saveCustomKeywords(profile.blogId, updated);
-    } else {
-      // 자동 추출과 같으면 커스텀 삭제
-      const updated = { ...customKeywords };
-      delete updated[postId];
-      setCustomKeywords(updated);
+    const kws = (editingKeywords[postId] || []).map(k => k.trim()).filter(Boolean);
+    if (kws.length > 0) {
+      const updated = { ...postKeywords, [postId]: kws };
+      setPostKeywords(updated);
       saveCustomKeywords(profile.blogId, updated);
     }
   };
 
-  const checkRanking = async (post: BlogPost) => {
+  const addKeyword = (postId: string) => {
+    setEditingKeywords(prev => {
+      const kws = [...(prev[postId] || []), ''];
+      return { ...prev, [postId]: kws };
+    });
+  };
+
+  const removeKeyword = (postId: string, kwIndex: number) => {
     if (!profile) return;
-    setCheckingPostId(post.id);
+    setEditingKeywords(prev => {
+      const kws = [...(prev[postId] || [])];
+      kws.splice(kwIndex, 1);
+      if (kws.length === 0) return prev;
+      return { ...prev, [postId]: kws };
+    });
+    // 저장도 즉시
+    setTimeout(() => handleKeywordSave(postId), 0);
+  };
+
+  const checkSingleKeyword = async (post: BlogPost, keyword: string) => {
+    if (!profile || !keyword.trim()) return;
+    const key = rankKey(post.id, keyword.trim());
+    setCheckingKey(key);
     try {
-      const keyword = editingKeywords[post.id]?.trim() || undefined;
       const res = await fetch('/api/blog/check-missing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -253,32 +290,42 @@ export default function KeywordRankingPage() {
           blogId: profile.blogId,
           postTitle: post.title,
           postId: post.id,
-          keyword,
+          keyword: keyword.trim(),
         }),
       });
       if (res.ok) {
         const data = await res.json();
         setRankingResults(prev => {
-          const updated = { ...prev, [post.id]: data };
+          const updated = { ...prev, [key]: data };
           if (profile) saveRankingResults(profile.blogId, updated);
           return updated;
         });
       }
     } catch { /* ignore */ }
-    finally { setCheckingPostId(''); }
+    finally { setCheckingKey(''); }
   };
 
   const checkAllRankings = async () => {
     if (!profile || blogPosts.length === 0) return;
     abortRef.current = false;
     setCheckingAll(true);
-    setCheckProgress({ current: 0, total: blogPosts.length });
 
-    for (let i = 0; i < blogPosts.length; i++) {
+    // 모든 포스트의 모든 키워드 쌍 수집
+    const pairs: { post: BlogPost; keyword: string }[] = [];
+    for (const post of blogPosts) {
+      const kws = (editingKeywords[post.id] || []).filter(k => k.trim());
+      for (const kw of kws) {
+        pairs.push({ post, keyword: kw.trim() });
+      }
+    }
+
+    setCheckProgress({ current: 0, total: pairs.length });
+
+    for (let i = 0; i < pairs.length; i++) {
       if (abortRef.current) break;
-      setCheckProgress({ current: i + 1, total: blogPosts.length });
-      await checkRanking(blogPosts[i]);
-      if (i < blogPosts.length - 1) {
+      setCheckProgress({ current: i + 1, total: pairs.length });
+      await checkSingleKeyword(pairs[i].post, pairs[i].keyword);
+      if (i < pairs.length - 1) {
         await new Promise(r => setTimeout(r, 1500));
       }
     }
@@ -383,7 +430,7 @@ export default function KeywordRankingPage() {
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
                     <th className="text-left px-4 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-left px-3 py-3 font-semibold w-48">검색 키워드</th>
+                    <th className="text-left px-3 py-3 font-semibold w-44">검색 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">검색량</th>
@@ -392,79 +439,100 @@ export default function KeywordRankingPage() {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {blogPosts.map((post, i) => {
-                    const result = rankingResults[post.id];
-                    const isCustom = !!customKeywords[post.id];
-                    return (
-                      <tr key={post.id} className="hover:bg-surface-hover transition">
-                        <td className="px-4 py-3 text-dim text-xs">
-                          {(currentPage - 1) * postsPerPage + i + 1}
-                        </td>
-                        <td className="px-3 py-3">
-                          <a href={post.url} target="_blank" rel="noopener noreferrer"
-                            className="font-semibold hover:text-accent transition truncate block max-w-[320px]" title={post.title}>
-                            {post.title}
-                          </a>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className="text-[10px] text-dim">{post.date}</span>
-                            {post.commentCount > 0 && (
-                              <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <input
-                            type="text"
-                            value={editingKeywords[post.id] || ''}
-                            onChange={e => handleKeywordChange(post.id, e.target.value)}
-                            onBlur={() => handleKeywordSave(post.id)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                                e.preventDefault();
-                                handleKeywordSave(post.id);
-                                checkRanking(post);
-                              }
-                            }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-bg border border-border rounded-lg focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition"
-                            placeholder="검색 키워드 입력"
-                          />
-                          {isCustom && (
-                            <span className="text-[9px] text-accent mt-0.5 block">수정됨</span>
+                    const keywords = editingKeywords[post.id] || [];
+                    const rowCount = Math.max(keywords.length, 1);
+                    return keywords.map((kw, kwIdx) => {
+                      const key = rankKey(post.id, kw.trim());
+                      const result = rankingResults[key];
+                      const isFirst = kwIdx === 0;
+                      const isLast = kwIdx === rowCount - 1;
+                      return (
+                        <tr key={`${post.id}-${kwIdx}`} className={`hover:bg-surface-hover transition ${!isLast ? '!border-b-0' : ''}`}>
+                          {isFirst && (
+                            <>
+                              <td className="px-4 py-3 text-dim text-xs align-top" rowSpan={rowCount}>
+                                {(currentPage - 1) * postsPerPage + i + 1}
+                              </td>
+                              <td className="px-3 py-3 align-top" rowSpan={rowCount}>
+                                <a href={post.url} target="_blank" rel="noopener noreferrer"
+                                  className="font-semibold hover:text-accent transition truncate block max-w-[320px]" title={post.title}>
+                                  {post.title}
+                                </a>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <span className="text-[10px] text-dim">{post.date}</span>
+                                  {post.commentCount > 0 && (
+                                    <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
+                                  )}
+                                </div>
+                                {keywords.length < 5 && (
+                                  <button onClick={() => addKeyword(post.id)}
+                                    className="text-[10px] text-accent mt-1.5 cursor-pointer hover:underline">
+                                    + 키워드 추가
+                                  </button>
+                                )}
+                              </td>
+                            </>
                           )}
-                        </td>
-                        <td className="text-center px-3 py-3">
-                          {result ? (
-                            result.viewTab.exposed ? (
-                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {result.viewTab.rank}위
-                              </span>
-                            ) : <span className="text-xs text-dim">-</span>
-                          ) : <span className="text-[10px] text-dim/50">--</span>}
-                        </td>
-                        <td className="text-center px-3 py-3">
-                          {result ? (
-                            result.blogTab.exposed ? (
-                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {result.blogTab.rank}위
-                              </span>
-                            ) : <span className="text-xs text-dim">-</span>
-                          ) : <span className="text-[10px] text-dim/50">--</span>}
-                        </td>
-                        <td className="text-center px-3 py-3 text-xs text-dim">
-                          {result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}
-                        </td>
-                        <td className="text-center px-4 py-3">
-                          <button
-                            onClick={() => checkRanking(post)}
-                            disabled={checkingPostId === post.id || checkingAll}
-                            className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
-                          >
-                            {checkingPostId === post.id ? (
-                              <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                            ) : result ? '재확인' : '확인'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
+                          <td className="px-3 py-1.5">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={kw}
+                                onChange={e => handleKeywordChange(post.id, kwIdx, e.target.value)}
+                                onBlur={() => handleKeywordSave(post.id)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                                    e.preventDefault();
+                                    handleKeywordSave(post.id);
+                                    checkSingleKeyword(post, kw);
+                                  }
+                                }}
+                                className="flex-1 px-2 py-1.5 text-xs bg-bg border border-border rounded-lg focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition"
+                                placeholder="키워드"
+                              />
+                              {keywords.length > 1 && (
+                                <button onClick={() => removeKeyword(post.id, kwIdx)}
+                                  className="text-dim hover:text-down text-xs cursor-pointer shrink-0 px-1">
+                                  x
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-center px-3 py-1.5">
+                            {result ? (
+                              result.viewTab.exposed ? (
+                                <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                  {result.viewTab.rank}위
+                                </span>
+                              ) : <span className="text-xs text-dim">-</span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
+                          </td>
+                          <td className="text-center px-3 py-1.5">
+                            {result ? (
+                              result.blogTab.exposed ? (
+                                <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                  {result.blogTab.rank}위
+                                </span>
+                              ) : <span className="text-xs text-dim">-</span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
+                          </td>
+                          <td className="text-center px-3 py-1.5 text-xs text-dim">
+                            {result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}
+                          </td>
+                          <td className="text-center px-4 py-1.5">
+                            <button
+                              onClick={() => checkSingleKeyword(post, kw)}
+                              disabled={checkingKey === key || checkingAll || !kw.trim()}
+                              className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                            >
+                              {checkingKey === key ? (
+                                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                              ) : result ? '재확인' : '확인'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    });
                   })}
                 </tbody>
               </table>
@@ -473,8 +541,7 @@ export default function KeywordRankingPage() {
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
               {blogPosts.map((post, i) => {
-                const result = rankingResults[post.id];
-                const isCustom = !!customKeywords[post.id];
+                const keywords = editingKeywords[post.id] || [];
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
                     <div className="flex items-start gap-2">
@@ -489,50 +556,73 @@ export default function KeywordRankingPage() {
                         <span className="text-[10px] text-dim ml-1">{post.date}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={editingKeywords[post.id] || ''}
-                        onChange={e => handleKeywordChange(post.id, e.target.value)}
-                        onBlur={() => handleKeywordSave(post.id)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                            e.preventDefault();
-                            handleKeywordSave(post.id);
-                            checkRanking(post);
-                          }
-                        }}
-                        className="flex-1 px-3 py-2 text-sm bg-bg border border-border rounded-lg focus:border-accent outline-none"
-                        placeholder="검색 키워드"
-                      />
-                      <button
-                        onClick={() => checkRanking(post)}
-                        disabled={checkingPostId === post.id || checkingAll}
-                        className="px-3 py-2 text-xs text-accent border border-accent/30 rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
-                      >
-                        {checkingPostId === post.id ? (
-                          <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                        ) : result ? '재확인' : '확인'}
-                      </button>
+
+                    {/* 키워드별 행 */}
+                    <div className="space-y-1.5 pl-7">
+                      {keywords.map((kw, kwIdx) => {
+                        const key = rankKey(post.id, kw.trim());
+                        const result = rankingResults[key];
+                        return (
+                          <div key={kwIdx} className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={kw}
+                                onChange={e => handleKeywordChange(post.id, kwIdx, e.target.value)}
+                                onBlur={() => handleKeywordSave(post.id)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                                    e.preventDefault();
+                                    handleKeywordSave(post.id);
+                                    checkSingleKeyword(post, kw);
+                                  }
+                                }}
+                                className="flex-1 px-2.5 py-1.5 text-sm bg-bg border border-border rounded-lg focus:border-accent outline-none"
+                                placeholder="키워드"
+                              />
+                              <button
+                                onClick={() => checkSingleKeyword(post, kw)}
+                                disabled={checkingKey === key || checkingAll || !kw.trim()}
+                                className="px-2.5 py-1.5 text-[11px] text-accent border border-accent/30 rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
+                              >
+                                {checkingKey === key ? (
+                                  <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                                ) : result ? '재확인' : '확인'}
+                              </button>
+                              {keywords.length > 1 && (
+                                <button onClick={() => removeKeyword(post.id, kwIdx)}
+                                  className="text-dim hover:text-down text-xs cursor-pointer px-1">
+                                  x
+                                </button>
+                              )}
+                            </div>
+                            {result && (
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  result.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                                }`}>
+                                  통합 {result.viewTab.exposed ? `${result.viewTab.rank}위` : '-'}
+                                </span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  result.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                                }`}>
+                                  블로그 {result.blogTab.exposed ? `${result.blogTab.rank}위` : '-'}
+                                </span>
+                                {result.searchVolume ? (
+                                  <span className="text-[10px] text-dim">{result.searchVolume.toLocaleString()}</span>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {keywords.length < 5 && (
+                        <button onClick={() => addKeyword(post.id)}
+                          className="text-[10px] text-accent cursor-pointer hover:underline">
+                          + 키워드 추가
+                        </button>
+                      )}
                     </div>
-                    {isCustom && <span className="text-[9px] text-accent block pl-7">수정됨</span>}
-                    {result && (
-                      <div className="flex items-center gap-2 pl-7">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                          result.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                        }`}>
-                          통합 {result.viewTab.exposed ? `${result.viewTab.rank}위` : '-'}
-                        </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                          result.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                        }`}>
-                          블로그 {result.blogTab.exposed ? `${result.blogTab.rank}위` : '-'}
-                        </span>
-                        {result.searchVolume ? (
-                          <span className="text-[10px] text-dim">검색량 {result.searchVolume.toLocaleString()}</span>
-                        ) : null}
-                      </div>
-                    )}
                   </div>
                 );
               })}
