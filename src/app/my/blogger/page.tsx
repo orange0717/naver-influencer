@@ -921,6 +921,18 @@ export default function BloggerDashboard() {
         )}
       </GlassCard>
 
+      {/* ─── 평균순위 계산 방식 ─── */}
+      <div className="bg-surface/50 rounded-xl border border-border/50 p-5 space-y-2">
+        <h4 className="text-xs font-bold text-dim">평균순위 계산 방식</h4>
+        <ul className="text-[11px] text-dim space-y-1 leading-relaxed">
+          <li>1. 키워드순위 페이지에서 각 포스팅의 검색 키워드를 확인합니다.</li>
+          <li>2. 키워드별로 네이버 통합검색/블로그탭에서 노출 여부와 순위를 체크합니다.</li>
+          <li>3. 통합검색 평균순위 = 노출된 키워드들의 순위 합계 / 노출 키워드 수</li>
+          <li>4. 블로그탭 평균순위 = 노출된 키워드들의 순위 합계 / 노출 키워드 수</li>
+          <li>5. 미노출(누락) 키워드는 평균순위 계산에 포함되지 않으며, 누락 수로 별도 표시됩니다.</li>
+        </ul>
+      </div>
+
     </div>
   );
 }
