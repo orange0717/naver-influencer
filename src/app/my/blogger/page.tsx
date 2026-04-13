@@ -352,12 +352,31 @@ export default function BloggerDashboard() {
         } catch { /* ignore */ }
       }
       setProfile(p);
-      // 키워드순위 페이지의 결과 불러오기
+      // 키워드순위 페이지의 결과 불러오기 (postId::keyword → postId별 최고 순위)
       try {
         const savedRankings = localStorage.getItem(`ninfl_ranking_results_${p.blogId}`);
         if (savedRankings) {
-          const parsed = JSON.parse(savedRankings);
-          setMissingResults(prev => ({ ...parsed, ...prev }));
+          const parsed = JSON.parse(savedRankings) as Record<string, MissingResult>;
+          const byPost: Record<string, MissingResult> = {};
+          for (const [key, result] of Object.entries(parsed)) {
+            const postId = key.includes('::') ? key.split('::')[0] : key;
+            const existing = byPost[postId];
+            if (!existing) {
+              byPost[postId] = { ...result };
+            } else {
+              // 각 탭별로 더 좋은 순위 채택
+              if (result.viewTab.exposed && (!existing.viewTab.exposed || (result.viewTab.rank && existing.viewTab.rank && result.viewTab.rank < existing.viewTab.rank))) {
+                existing.viewTab = result.viewTab;
+              }
+              if (result.blogTab.exposed && (!existing.blogTab.exposed || (result.blogTab.rank && existing.blogTab.rank && result.blogTab.rank < existing.blogTab.rank))) {
+                existing.blogTab = result.blogTab;
+              }
+              if (result.searchVolume && (!existing.searchVolume || result.searchVolume > existing.searchVolume)) {
+                existing.searchVolume = result.searchVolume;
+              }
+            }
+          }
+          setMissingResults(prev => ({ ...byPost, ...prev }));
         }
       } catch { /* ignore */ }
       fetchBlogPosts(p.blogId, 1);
