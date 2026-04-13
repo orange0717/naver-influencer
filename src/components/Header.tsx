@@ -44,8 +44,8 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: '키워드',
     children: [
-      { href: '/keywords', label: '인플루언서' },
-      { href: '/keywords/blogger', label: '블로그' },
+      { href: '/keywords/blogger', label: '키워드검색' },
+      { href: '/keywords', label: '키워드챌린지' },
     ],
   },
   { href: '/community', label: '커뮤니티' },
