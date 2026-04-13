@@ -539,7 +539,7 @@ export default function PostAnalysisPage() {
 
                           {/* 확장 상세 */}
                           {isExpanded && (
-                            <div className="px-5 pb-5 space-y-4 bg-bg/20 border-t border-border/30">
+                            <div className="px-5 pb-5 space-y-4 bg-bg/20 border-t border-border/30" onClick={e => e.stopPropagation()}>
                               {/* 본문 미리보기 */}
                               {analysis?.textPreview && (
                                 <div>
@@ -968,7 +968,7 @@ export default function PostAnalysisPage() {
 
                     {/* 모바일 확장 */}
                     {isExpanded && (
-                      <div className="mt-3 space-y-3">
+                      <div className="mt-3 space-y-3" onClick={e => e.stopPropagation()}>
                         {!aiResult && !isAnalyzing && (
                           <button
                             onClick={() => runAiAnalysis(post.id)}
