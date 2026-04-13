@@ -894,7 +894,7 @@ export default function BloggerDashboard() {
               const total = postFilter === 'missing' ? list.length : (allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal);
               const totalPages = Math.ceil(total / postsPerPage);
               return (
-                <div className="px-5 py-3 border-t border-border/50 flex items-center justify-between">
+                <div className="px-5 py-3 border-t border-border/50 flex flex-col items-center gap-2">
                   {totalPages > 1 ? (
                     <div className="flex items-center gap-2">
                       <button onClick={() => setBlogPostsPage(p => Math.max(1, p - 1))}
@@ -909,7 +909,7 @@ export default function BloggerDashboard() {
                         다음
                       </button>
                     </div>
-                  ) : <div />}
+                  ) : null}
                   <Link href="/my/keyword-ranking" className="text-xs text-accent font-semibold hover:underline">
                     키워드순위 →
                   </Link>
