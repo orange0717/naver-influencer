@@ -52,23 +52,11 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
     const blogId = blogInput.trim() ? extractBlogId(blogInput) : '';
     setError('');
     setLoading(true);
-    try {
-      const res = await fetch('/api/auth/demo/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ naverId, blogId }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        window.location.href = '/my';
-      } else {
-        setError(data.error || '데모 시작에 실패했습니다.');
-      }
-    } catch {
-      setError('데모 시작에 실패했습니다.');
-    } finally {
-      setLoading(false);
-    }
+    // GET 리다이렉트 방식: 쿠키 설정 + /my 이동을 한 번에 처리
+    const params = new URLSearchParams();
+    if (naverId) params.set('naverId', naverId);
+    if (blogId) params.set('blogId', blogId);
+    window.location.href = `/api/auth/demo/start?${params.toString()}`;
   }
 
   if (!open) return null;
