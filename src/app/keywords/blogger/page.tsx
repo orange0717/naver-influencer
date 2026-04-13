@@ -43,7 +43,7 @@ export default function BloggerKeywordsPage() {
       try {
         const res = await fetch('/api/auth/me');
         const data = await res.json();
-        if (data.user) {
+        if (data.type && data.id) {
           setIsLoggedIn(true);
           loadSavedKeywords();
         } else {
