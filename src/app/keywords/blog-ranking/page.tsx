@@ -50,7 +50,7 @@ export default function BlogRankingPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* 헤더 */}
       <div>
-        <h1 className="font-title text-2xl font-extrabold">블로그 검색순위</h1>
+        <h1 className="font-title text-2xl font-extrabold">검색순위</h1>
         <p className="text-sm text-dim mt-1">키워드를 검색하면 네이버 블로그탭 순위를 확인할 수 있습니다</p>
       </div>
 
