@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       if (result.error === 'rate-limit') return rateLimitResponse();
       // 에러 시 메인으로 리다이렉트
       const errorUrl = new URL('/', request.url);
-      errorUrl.searchParams.set('demo_error', result.error);
+      errorUrl.searchParams.set('demo_error', result.error || '오류');
       return NextResponse.redirect(errorUrl);
     }
 
