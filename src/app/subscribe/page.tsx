@@ -70,7 +70,7 @@ export default function SubscribePage() {
               <span className="text-3xl font-black">5,500</span>
               <span className="text-sm text-dim">원/월</span>
             </div>
-            <p className="text-[11px] text-accent font-semibold">연간 55,000원 (2개월 할인)</p>
+            <p className="text-[11px] text-accent font-semibold">연간 60,500원 (1개월 할인)</p>
           </div>
           <p className="text-sm text-dim leading-relaxed">
             인플루언서를 준비하는 블로거를 위한 플랜
@@ -103,7 +103,7 @@ export default function SubscribePage() {
               <span className="text-3xl font-black">9,900</span>
               <span className="text-sm text-dim">원/월</span>
             </div>
-            <p className="text-[11px] text-accent font-semibold">연간 99,000원 (2개월 할인)</p>
+            <p className="text-[11px] text-accent font-semibold">연간 108,900원 (1개월 할인)</p>
           </div>
           <p className="text-sm text-dim leading-relaxed">
             네이버 인플루언서를 위한 프리미엄 플랜
