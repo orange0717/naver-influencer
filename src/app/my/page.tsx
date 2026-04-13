@@ -17,6 +17,7 @@ import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import KeywordPlanner from '@/components/dashboard/KeywordPlanner';
+import SavedKeywords from '@/components/dashboard/SavedKeywords';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
@@ -614,6 +615,9 @@ export default async function MyDashboard() {
           keyword: kw.keyword,
         }))}
       />
+
+      {/* ─── 2-4. 저장된 키워드 ─── */}
+      <SavedKeywords />
 
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />
