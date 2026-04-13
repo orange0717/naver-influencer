@@ -67,7 +67,7 @@ export default function SubscribePage() {
           <div>
             <p className="text-xs text-accent font-semibold">BLOGGER</p>
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-3xl font-black">4,900</span>
+              <span className="text-3xl font-black">5,500</span>
               <span className="text-sm text-dim">원/월</span>
             </div>
           </div>
@@ -99,7 +99,7 @@ export default function SubscribePage() {
           <div>
             <p className="text-xs text-accent font-semibold">INFLUENCER</p>
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-3xl font-black">7,900</span>
+              <span className="text-3xl font-black">9,900</span>
               <span className="text-sm text-dim">원/월</span>
             </div>
           </div>
