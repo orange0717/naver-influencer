@@ -1,4 +1,92 @@
+'use client';
+import { useState, useRef, useCallback } from 'react';
+
+interface KeywordResult {
+  keyword: string;
+  monthlyPc: number | string;
+  monthlyMobile: number | string;
+  monthlyTotal: number | string;
+  competition: string;
+}
+
 export default function BloggerKeywordsPage() {
+  const [query, setQuery] = useState('');
+  const [totalCount, setTotalCount] = useState(0);
+  const [results, setResults] = useState<KeywordResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
+  const [sortKey, setSortKey] = useState<'monthlyTotal' | 'monthlyPc' | 'monthlyMobile' | 'competition' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const search = useCallback(async () => {
+    const q = query.trim();
+    if (!q) return;
+    setLoading(true);
+    setError(null);
+    setSearched(true);
+    setSortKey(null);
+    try {
+      const res = await fetch(`/api/search-volume?keyword=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '검색에 실패했습니다.');
+      const all = data.keywords || [];
+      setTotalCount(all.length);
+      setResults(all.slice(0, 100));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '검색에 실패했습니다.');
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [query]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      search();
+    }
+  };
+
+  const handleSort = (key: typeof sortKey & string) => {
+    if (sortKey === key) {
+      if (sortOrder === 'desc') setSortOrder('asc');
+      else { setSortKey(null); }
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
+    }
+  };
+
+  const sortArrow = (key: string) => {
+    if (sortKey !== key) return ' \u2195';
+    return sortOrder === 'desc' ? ' \u2193' : ' \u2191';
+  };
+
+  const toNum = (v: number | string): number => typeof v === 'number' ? v : 0;
+
+  const sorted = sortKey ? [...results].sort((a, b) => {
+    const compOrder: Record<string, number> = { '\ub0ae\uc74c': 1, '\uc911\uac04': 2, '\ub192\uc74c': 3 };
+    let diff = 0;
+    if (sortKey === 'monthlyTotal') diff = toNum(a.monthlyTotal) - toNum(b.monthlyTotal);
+    else if (sortKey === 'monthlyPc') diff = toNum(a.monthlyPc) - toNum(b.monthlyPc);
+    else if (sortKey === 'monthlyMobile') diff = toNum(a.monthlyMobile) - toNum(b.monthlyMobile);
+    else if (sortKey === 'competition') diff = (compOrder[a.competition] || 0) - (compOrder[b.competition] || 0);
+    return sortOrder === 'asc' ? diff : -diff;
+  }) : results;
+
+  const compBadge = (level: string) => {
+    if (level === '\ub0ae\uc74c') return <span className="text-xs font-bold text-up bg-up/12 px-2 py-0.5 rounded-full">낮음</span>;
+    if (level === '\uc911\uac04') return <span className="text-xs font-bold text-gold bg-gold/12 px-2 py-0.5 rounded-full">중간</span>;
+    return <span className="text-xs font-bold text-down bg-down/12 px-2 py-0.5 rounded-full">높음</span>;
+  };
+
+  const formatNum = (v: number | string) => {
+    if (typeof v === 'string') return v;
+    return v.toLocaleString();
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -6,20 +94,145 @@ export default function BloggerKeywordsPage() {
         <p className="text-sm text-dim mt-1">네이버 검색 키워드의 검색량과 경쟁도를 분석합니다</p>
       </div>
 
-      <div className="text-center py-20 bg-surface border border-border rounded-2xl">
-        <div className="w-14 h-14 mx-auto rounded-xl bg-accent/10 flex items-center justify-center mb-4">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+      {/* 검색창 */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dim pointer-events-none">
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" />
           </svg>
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="분석할 키워드를 입력하세요 (예: 맛집, 다이어트, 여행)"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full pl-11 pr-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+          />
         </div>
-        <p className="text-lg font-bold text-text mb-2">곧 출시됩니다</p>
-        <p className="text-sm text-dim leading-relaxed">
-          네이버 검색 API 기반 키워드 검색량/경쟁도 분석 기능을<br />
-          준비하고 있습니다.
-        </p>
-        <p className="text-xs text-dim/60 mt-4">무료 기능</p>
+        <button
+          onClick={search}
+          disabled={loading || !query.trim()}
+          className="shrink-0 px-6 py-3 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default"
+        >
+          {loading ? '분석 중...' : '검색'}
+        </button>
       </div>
+
+      {/* 에러 */}
+      {error && (
+        <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-center">
+          <p className="text-sm text-down font-semibold">{error}</p>
+        </div>
+      )}
+
+      {/* 로딩 */}
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
+            <p className="text-sm text-dim">네이버 검색광고 API에서 데이터를 가져오는 중...</p>
+          </div>
+        </div>
+      )}
+
+      {/* 결과 */}
+      {!loading && searched && results.length > 0 && (
+        <>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold">
+              검색 결과 <span className="text-accent font-rank">{totalCount.toLocaleString()}</span>개{totalCount > 100 && <span className="text-dim"> (상위 100개 표시)</span>}
+            </span>
+            <span className="text-xs text-dim">네이버 검색광고 API 기준</span>
+          </div>
+
+          {/* Desktop 테이블 */}
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-bg/50">
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-sm w-8">#</th>
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-sm">키워드</th>
+                  <th className="text-right py-3 px-4 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyTotal')}>
+                    월간 검색량{sortArrow('monthlyTotal')}
+                  </th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyPc')}>
+                    PC{sortArrow('monthlyPc')}
+                  </th>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyMobile')}>
+                    모바일{sortArrow('monthlyMobile')}
+                  </th>
+                  <th className="text-center py-3 px-4 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('competition')}>
+                    경쟁도{sortArrow('competition')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((kw, i) => (
+                  <tr key={kw.keyword} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-dim font-rank text-sm">{i + 1}</td>
+                    <td className="py-3.5 px-4">
+                      <span className={`text-[15px] font-bold ${i === 0 ? 'text-accent' : ''}`}>{kw.keyword}</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-bold font-rank text-sm">{formatNum(kw.monthlyTotal)}</td>
+                    <td className="py-3.5 px-3 text-right font-rank text-xs text-dim">{formatNum(kw.monthlyPc)}</td>
+                    <td className="py-3.5 px-3 text-right font-rank text-xs text-dim">{formatNum(kw.monthlyMobile)}</td>
+                    <td className="py-3.5 px-4 text-center">{compBadge(kw.competition)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile 카드 */}
+          <div className="md:hidden space-y-3">
+            {sorted.map((kw, i) => (
+              <div key={kw.keyword} className="bg-surface rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-sm font-bold text-dim font-rank shrink-0">#{i + 1}</span>
+                    <span className={`font-bold text-[15px] truncate ${i === 0 ? 'text-accent' : ''}`}>{kw.keyword}</span>
+                  </div>
+                  {compBadge(kw.competition)}
+                </div>
+                <div className="flex items-center gap-3 text-sm text-dim">
+                  <span>월 {formatNum(kw.monthlyTotal)}회</span>
+                  <span>PC {formatNum(kw.monthlyPc)}</span>
+                  <span>모바일 {formatNum(kw.monthlyMobile)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* 결과 없음 */}
+      {!loading && searched && results.length === 0 && !error && (
+        <div className="text-center py-16 bg-surface border border-border rounded-2xl">
+          <p className="text-sm text-dim">검색 결과가 없습니다.</p>
+          <p className="text-xs text-dim/60 mt-1">다른 키워드로 시도해보세요.</p>
+        </div>
+      )}
+
+      {/* 초기 상태 */}
+      {!loading && !searched && (
+        <div className="text-center py-16 bg-surface border border-border rounded-2xl">
+          <div className="w-14 h-14 mx-auto rounded-xl bg-accent/10 flex items-center justify-center mb-4">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </div>
+          <p className="text-lg font-bold text-text mb-2">키워드를 검색해보세요</p>
+          <p className="text-sm text-dim leading-relaxed">
+            키워드를 입력하면 월간 검색량, PC/모바일 비율,<br />
+            경쟁도와 연관 키워드를 분석합니다.
+          </p>
+          <p className="text-xs text-dim/60 mt-4">무료 기능</p>
+        </div>
+      )}
     </div>
   );
 }
