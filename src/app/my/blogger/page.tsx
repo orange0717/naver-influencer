@@ -719,7 +719,7 @@ export default function BloggerDashboard() {
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {checkProgress.current}/{checkProgress.total}
                   </span>
-                ) : '전체 순위확인'}
+                ) : '전체 누락율 확인'}
               </button>
             )}
             <a href={`https://blog.naver.com/${profile.blogId}`} target="_blank" rel="noopener noreferrer"
