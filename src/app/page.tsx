@@ -7,7 +7,7 @@ import DemoModal from '@/components/DemoModal';
 
 /* ── 실시간 DB 통계 ── */
 function useStats() {
-  const [stats, setStats] = useState({ influencer_count: 9000, category_count: 20, keyword_count: 115000, total_users: 0 });
+  const [stats, setStats] = useState({ influencer_count: 9000, active_count: 0, inactive_count: 0, new_count: 0, category_count: 20, keyword_count: 115000, total_users: 0 });
   useEffect(() => {
     fetch('/api/stats').then(r => r.json()).then(setStats).catch(err => {
       console.warn('[landing] stats 로드 실패', err instanceof Error ? err.message : err);
@@ -177,18 +177,19 @@ export default function LandingPage() {
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
         <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되는 네이버 인플루언서 데이터</p>
 
-        <div className="flex justify-center gap-16 md:gap-24">
+        <div className="flex justify-center gap-12 md:gap-20">
           <div>
-            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.influencer_count.toLocaleString()}+</p>
-            <p className="text-xs text-dim mt-2">인플루언서</p>
+            <p className="text-3xl md:text-4xl font-extrabold text-accent">{stats.new_count.toLocaleString()}</p>
+            <p className="text-xs text-dim mt-2">신규 인플루언서</p>
+            <p className="text-[10px] text-dim/60">최근 일주일</p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.keyword_count.toLocaleString()}+</p>
-            <p className="text-xs text-dim mt-2">키워드</p>
+            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.active_count.toLocaleString()}</p>
+            <p className="text-xs text-dim mt-2">활동 인플루언서</p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.category_count}</p>
-            <p className="text-xs text-dim mt-2">카테고리</p>
+            <p className="text-3xl md:text-4xl font-extrabold text-dim/60">{stats.inactive_count.toLocaleString()}</p>
+            <p className="text-xs text-dim mt-2">미활동 인플루언서</p>
           </div>
         </div>
       </section>
