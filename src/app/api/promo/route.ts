@@ -90,6 +90,33 @@ export async function POST(request: NextRequest) {
         days: promo.days,
       });
 
+    // 쪽지로 적용 결과 알림 (인플루언서 연결된 경우)
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('linked_influencer_id')
+        .eq('id', user.userId)
+        .single();
+
+      if (userData?.linked_influencer_id) {
+        const { data: inf } = await supabase
+          .from('influencers')
+          .select('naver_id')
+          .eq('id', userData.linked_influencer_id)
+          .single();
+
+        if (inf?.naver_id) {
+          await supabase.from('messages').insert({
+            sender_id: user.userId,
+            sender_name: 'N인플 시스템',
+            receiver_naver_id: inf.naver_id,
+            receiver_name: inf.naver_id,
+            content: `[프로모션 코드 적용] ${promo.label}\n\n코드: ${code}\n플랜: ${promo.plan === 'blogger' ? '블로거' : '인플루언서'}\n기간: ${promo.days}일\n만료일: ${finalExpiry.toLocaleDateString('ko-KR')}\n\n유료 기능을 자유롭게 이용하세요!`,
+          });
+        }
+      }
+    } catch { /* 쪽지 발송 실패해도 코드 적용은 성공 */ }
+
     return NextResponse.json({
       success: true,
       plan: promo.plan,
