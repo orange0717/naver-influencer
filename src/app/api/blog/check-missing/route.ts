@@ -341,11 +341,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 자동 추출
+    const displayName = await getDisplayName(blogId);
     let query: string;
     if (keyword && keyword.trim()) {
       query = keyword.trim();
     } else {
-      const displayName = await getDisplayName(blogId);
       query = extractKeywords(postTitle, blogId, displayName);
     }
 
