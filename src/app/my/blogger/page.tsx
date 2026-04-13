@@ -470,51 +470,80 @@ export default function BloggerDashboard() {
   };
 
   // ══════════════════════════════════════════════════════════
-  // 블로그 점수 = SUM(검색량 × 상위노출값) / 전체 포스팅 수
-  // 상위노출값 = max(0, 31 - bestRank), 미노출 = 0
+  // 평균순위 = 모든 키워드의 순위 합산 / 노출된 키워드 수
+  // 키워드순위 페이지의 개별 키워드 결과를 직접 사용
   // ══════════════════════════════════════════════════════════
   const blogScoreCalc = (() => {
     const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-    // 검색비허용(isPublic===false) 제외
     const publicPosts = posts.filter(p => p.isPublic !== false);
-    const checked = publicPosts.filter(p => missingResults[p.id]);
-    if (checked.length === 0) return { score: 0, exposed: 0, blogExposed: 0, viewExposed: 0, blogAvgRank: 0, viewAvgRank: 0, total: 0, publicTotal: publicPosts.length, hasData: false };
 
-    let totalWeightedScore = 0;
-    let exposedCount = 0;
+    // 키워드 레벨 결과 가져오기 (postId::keyword 형식)
+    let kwResults: Record<string, MissingResult> = {};
+    try {
+      const blogId = profile?.blogId;
+      if (blogId) {
+        const raw = localStorage.getItem(`ninfl_ranking_results_${blogId}`);
+        if (raw) kwResults = JSON.parse(raw);
+      }
+    } catch { /* ignore */ }
+
+    // 키워드 레벨 데이터가 있으면 모든 키워드 합산
+    const kwEntries = Object.entries(kwResults);
+    const hasKwData = kwEntries.length > 0;
+
+    // 포스트 레벨 데이터도 확인
+    const checked = publicPosts.filter(p => missingResults[p.id]);
+    if (!hasKwData && checked.length === 0) {
+      return { score: 0, exposed: 0, blogExposed: 0, viewExposed: 0, blogAvgRank: 0, viewAvgRank: 0, total: 0, publicTotal: publicPosts.length, totalKeywords: 0, hasData: false };
+    }
+
     let blogExposedCount = 0;
     let viewExposedCount = 0;
     let blogRankSum = 0;
     let viewRankSum = 0;
-    for (const p of checked) {
-      const mr = missingResults[p.id];
-      const blogRank = mr.blogTab.exposed && mr.blogTab.rank ? mr.blogTab.rank : 999;
-      const viewRank = mr.viewTab.exposed && mr.viewTab.rank ? mr.viewTab.rank : 999;
-      const bestRank = Math.min(blogRank, viewRank);
-      const rankValue = bestRank <= 30 ? 31 - bestRank : 0;
-      if (rankValue > 0) exposedCount++;
-      if (mr.blogTab.exposed && mr.blogTab.rank) {
-        blogExposedCount++;
-        blogRankSum += mr.blogTab.rank;
+    let totalKeywords = 0;
+
+    if (hasKwData) {
+      // 키워드 레벨: 모든 키워드의 순위를 개별 합산
+      for (const [, result] of kwEntries) {
+        totalKeywords++;
+        if (result.blogTab.exposed && result.blogTab.rank) {
+          blogExposedCount++;
+          blogRankSum += result.blogTab.rank;
+        }
+        if (result.viewTab.exposed && result.viewTab.rank) {
+          viewExposedCount++;
+          viewRankSum += result.viewTab.rank;
+        }
       }
-      if (mr.viewTab.exposed && mr.viewTab.rank) {
-        viewExposedCount++;
-        viewRankSum += mr.viewTab.rank;
+    } else {
+      // 폴백: 포스트 레벨 데이터 사용
+      for (const p of checked) {
+        const mr = missingResults[p.id];
+        totalKeywords++;
+        if (mr.blogTab.exposed && mr.blogTab.rank) {
+          blogExposedCount++;
+          blogRankSum += mr.blogTab.rank;
+        }
+        if (mr.viewTab.exposed && mr.viewTab.rank) {
+          viewExposedCount++;
+          viewRankSum += mr.viewTab.rank;
+        }
       }
-      const volume = mr.searchVolume || 0;
-      totalWeightedScore += volume * rankValue;
     }
 
-    const totalPosts = allBlogPosts.length || blogPostsTotal || checked.length;
+    const exposedCount = Math.max(blogExposedCount, viewExposedCount);
+
     return {
-      score: totalPosts > 0 ? Math.round(totalWeightedScore / totalPosts) : 0,
+      score: 0,
       exposed: exposedCount,
       blogExposed: blogExposedCount,
       viewExposed: viewExposedCount,
       blogAvgRank: blogExposedCount > 0 ? +(blogRankSum / blogExposedCount).toFixed(1) : 0,
       viewAvgRank: viewExposedCount > 0 ? +(viewRankSum / viewExposedCount).toFixed(1) : 0,
-      total: checked.length,
+      total: hasKwData ? kwEntries.length : checked.length,
       publicTotal: publicPosts.length,
+      totalKeywords,
       hasData: true,
     };
   })();
@@ -632,8 +661,8 @@ export default function BloggerDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard label="TODAY 방문자" value={blogStats?.todayVisitor || 0} suffix="명" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} color="accent" delay={0} />
         <AnimatedStatCard label="일일 평균 방문자" value={visitorData.avgVisitors} suffix={visitorData.trend !== 0 ? `명 ${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%` : '명'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
-        <AnimatedStatCard label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `전체 ${blogPostsTotal}개 중 ${blogScoreCalc.viewExposed}개 노출` : ''} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={100} />
-        <AnimatedStatCard label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `전체 ${blogPostsTotal}개 중 ${blogScoreCalc.blogExposed}개 노출` : ''} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={150} />
+        <AnimatedStatCard label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `${blogScoreCalc.totalKeywords}개 키워드 중 ${blogScoreCalc.viewExposed}개 노출` : ''} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={100} />
+        <AnimatedStatCard label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `${blogScoreCalc.totalKeywords}개 키워드 중 ${blogScoreCalc.blogExposed}개 노출` : ''} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={150} />
       </div>
 
       {/* ─── 3. 발행량 + 이웃 + 순위 ─── */}
