@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useNotificationSettings } from '@/hooks/useNotifications';
+import SavedKeywords from '@/components/dashboard/SavedKeywords';
 
 interface UserProfile {
   id: string;
@@ -596,6 +597,9 @@ export default function ProfilePage() {
       {/* 알림 설정 */}
       <NotificationSettingsSection />
 
+      {/* 저장된 키워드 */}
+      <SavedKeywords />
+
       {/* 사용 내역 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         <div className="p-4 border-b border-border">
@@ -661,10 +665,10 @@ export default function ProfilePage() {
       </div>
 
       {/* 회원 탈퇴 */}
-      <div className="pt-4 border-t border-border/30">
+      <div>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="text-xs text-dim hover:text-down transition cursor-pointer underline underline-offset-2"
+          className="w-full py-3 bg-surface border border-down/30 text-down rounded-xl font-semibold text-sm hover:bg-down/10 transition cursor-pointer"
         >
           회원 탈퇴
         </button>
