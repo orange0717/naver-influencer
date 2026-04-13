@@ -49,7 +49,8 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + DEMO_DAYS * 24 * 60 * 60 * 1000);
 
-  await supabase.from('demo_sessions').insert({
+  // upsert로 중복 시에도 에러 없이 처리
+  await supabase.from('demo_sessions').upsert({
     naver_id: effectiveNaverId,
     display_name: displayName,
     email: `demo-${effectiveNaverId}@demo.local`,
@@ -58,7 +59,7 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
     verified_at: now.toISOString(),
     started_at: now.toISOString(),
     expires_at: expiresAt.toISOString(),
-  });
+  }, { onConflict: 'email' }).throwOnError();
 
   return { effectiveNaverId, displayName, naverId, blogId };
 }
@@ -101,8 +102,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl);
     }
 
-    // 성공: 쿠키 설정 + /my로 리다이렉트
+    // 성공: 쿠키 설정 + /my로 리다이렉트 (URL 파라미터도 함께 전달)
     const redirectUrl = new URL('/my', request.url);
+    redirectUrl.searchParams.set('demo', result.effectiveNaverId);
     const res = NextResponse.redirect(redirectUrl);
     setDemoCookies(res, result.effectiveNaverId, result.naverId, result.blogId);
     return res;

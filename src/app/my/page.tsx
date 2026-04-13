@@ -24,9 +24,10 @@ import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MyDashboard() {
+export default async function MyDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const supabase = createServiceClient();
   let naverId: string | undefined;
+  const params = await searchParams;
 
   const cookieStore = await cookies();
 
@@ -34,6 +35,11 @@ export default async function MyDashboard() {
   const isDemo = cookieStore.get('demo_mode')?.value === 'true';
   if (isDemo) {
     naverId = cookieStore.get('naver_id')?.value;
+  }
+
+  // URL 파라미터 폴백 (쿠키가 안 설정된 경우)
+  if (!naverId && params.demo) {
+    naverId = params.demo;
   }
 
   // ─── 2. Supabase Auth 세션 체크 ───
