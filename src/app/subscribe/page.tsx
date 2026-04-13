@@ -46,16 +46,17 @@ export default function SubscribePage() {
           </Link>
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 리스트</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 리스트</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색 (검색량)</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>검색순위 조회</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 블로그 대시보드</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드순위 확인</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>연도별 선정 현황</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>MY 블로그</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (월 1회)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드순위</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">포스팅 분석</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">경쟁자 분석</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드챌린지 대시보드</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">순위 변동 알림</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">경쟁자 분석 (무제한)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 검색순위</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">커뮤니티</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">캠페인 현황</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지</span></li>
           </ul>
         </div>
 
@@ -83,15 +84,14 @@ export default function SubscribePage() {
           </Link>
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>무료 플랜 전체 포함</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>MY 블로그 대시보드</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드순위 확인</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>통합검색/블로그탭 평균순위</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>누락율 분석</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>블로그 방문자수 추이</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 분석 (AI/표절/형태소)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">경쟁자 분석</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드챌린지 대시보드</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">순위 변동 알림</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 분석</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">캠페인 현황</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">원고료 정산내역</span></li>
           </ul>
         </div>
 
@@ -116,13 +116,9 @@ export default function SubscribePage() {
           </Link>
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>블로거 플랜 전체 포함</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드챌린지 대시보드</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>순위 변동 알림 (이메일/푸시)</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 상승/하락 변동 피드</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>TOP3 달성률 위젯</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>오늘의 추천 키워드</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>SNS/광고 프로필 등록</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>캠페인 현황</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>원고료 정산내역</span></li>
           </ul>
         </div>
       </div>
