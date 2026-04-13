@@ -28,29 +28,38 @@ export default async function MyDashboard() {
   const supabase = createServiceClient();
   let naverId: string | undefined;
 
-  // ─── 1. Supabase Auth 세션 체크 (우선) ───
-  const supabaseAuth = await createRouteHandlerClient();
-  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+  const cookieStore = await cookies();
 
-  if (authUser) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('linked_influencer_id')
-      .eq('auth_id', authUser.id)
-      .single();
+  // ─── 1. 데모 쿠키 체크 (우선: 데모 중이면 Supabase 인증 무시) ───
+  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
+  if (isDemo) {
+    naverId = cookieStore.get('naver_id')?.value;
+  }
 
-    if (profile?.linked_influencer_id) {
-      const { data: linkedInf } = await supabase
-        .from('influencers')
-        .select('naver_id')
-        .eq('id', profile.linked_influencer_id)
+  // ─── 2. Supabase Auth 세션 체크 ───
+  if (!naverId) {
+    const supabaseAuth = await createRouteHandlerClient();
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+
+    if (authUser) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('linked_influencer_id')
+        .eq('auth_id', authUser.id)
         .single();
-      naverId = linkedInf?.naver_id || undefined;
+
+      if (profile?.linked_influencer_id) {
+        const { data: linkedInf } = await supabase
+          .from('influencers')
+          .select('naver_id')
+          .eq('id', profile.linked_influencer_id)
+          .single();
+        naverId = linkedInf?.naver_id || undefined;
+      }
     }
   }
 
-  // ─── 2. 기존 쿠키 기반 체크 (하위 호환) ───
-  const cookieStore = await cookies();
+  // ─── 3. 기존 쿠키 기반 체크 (하위 호환) ───
   if (!naverId) {
     naverId = cookieStore.get('naver_id')?.value;
   }
