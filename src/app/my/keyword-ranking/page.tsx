@@ -27,6 +27,7 @@ interface RankingResult {
 }
 
 const STORAGE_PREFIX = 'ninfl_custom_keywords_';
+const RANKING_STORAGE_PREFIX = 'ninfl_ranking_results_';
 
 function loadCustomKeywords(blogId: string): Record<string, string> {
   try {
@@ -39,6 +40,12 @@ function loadCustomKeywords(blogId: string): Record<string, string> {
 function saveCustomKeywords(blogId: string, data: Record<string, string>): void {
   try {
     localStorage.setItem(`${STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
+  } catch { /* ignore */ }
+}
+
+function saveRankingResults(blogId: string, data: Record<string, RankingResult>): void {
+  try {
+    localStorage.setItem(`${RANKING_STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
   } catch { /* ignore */ }
 }
 
@@ -251,7 +258,11 @@ export default function KeywordRankingPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setRankingResults(prev => ({ ...prev, [post.id]: data }));
+        setRankingResults(prev => {
+          const updated = { ...prev, [post.id]: data };
+          if (profile) saveRankingResults(profile.blogId, updated);
+          return updated;
+        });
       }
     } catch { /* ignore */ }
     finally { setCheckingPostId(''); }

@@ -352,6 +352,14 @@ export default function BloggerDashboard() {
         } catch { /* ignore */ }
       }
       setProfile(p);
+      // 키워드순위 페이지의 결과 불러오기
+      try {
+        const savedRankings = localStorage.getItem(`ninfl_ranking_results_${p.blogId}`);
+        if (savedRankings) {
+          const parsed = JSON.parse(savedRankings);
+          setMissingResults(prev => ({ ...parsed, ...prev }));
+        }
+      } catch { /* ignore */ }
       fetchBlogPosts(p.blogId, 1);
       fetchAllBlogPosts(p.blogId);
       fetchScoreData(p.blogId);
