@@ -210,7 +210,7 @@ export default function BloggerDashboard() {
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [blogPostsPage, setBlogPostsPage] = useState(1);
   const [blogPostsLoading, setBlogPostsLoading] = useState(false);
-  const [postsPerPage, setPostsPerPage] = useState(30);
+  const [postsPerPage, setPostsPerPage] = useState(10);
   const [missingResults, setMissingResults] = useState<Record<string, MissingResult>>({});
   const [checkingMissing, setCheckingMissing] = useState<string>('');
   const [checkingAll, setCheckingAll] = useState(false);
@@ -683,6 +683,14 @@ export default function BloggerDashboard() {
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>
+            <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
+              {[10, 30, 60, 90, 180].map(n => (
+                <button key={n} onClick={() => { setPostsPerPage(n); setBlogPostsPage(1); if (profile) fetchBlogPosts(profile.blogId, 1); }}
+                  className={`px-2.5 py-1 font-semibold transition cursor-pointer ${postsPerPage === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
+                  {n}개
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {Object.keys(missingResults).length > 0 && (
@@ -752,12 +760,13 @@ export default function BloggerDashboard() {
                         return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
                       });
                     }
-                    return all.slice(0, 10);
+                    const start = (blogPostsPage - 1) * postsPerPage;
+                    return all.slice(start, start + postsPerPage);
                   })().map((post, i) => {
                     const mr = missingResults[post.id];
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition group">
-                        <td className="px-5 py-3.5 text-dim text-xs">{i + 1}</td>
+                        <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * postsPerPage + i + 1}</td>
                         <td className="px-3 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold hover:text-accent transition truncate block max-w-[400px]" title={post.title}>
@@ -831,7 +840,7 @@ export default function BloggerDashboard() {
                 return (
                   <div key={post.id} className="px-4 py-3.5">
                     <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{i + 1}</span>
+                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * postsPerPage + i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
@@ -874,12 +883,40 @@ export default function BloggerDashboard() {
               })}
             </div>
 
-            {/* 키워드순위 링크 */}
-            <div className="px-5 py-3 border-t border-border/50 text-center">
-              <Link href="/my/keyword-ranking" className="text-sm text-accent font-semibold hover:underline">
-                키워드순위에서 전체 포스팅 확인 →
-              </Link>
-            </div>
+            {/* 페이지네이션 + 키워드순위 링크 */}
+            {(() => {
+              let list = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+              if (postFilter === 'missing') {
+                list = list.filter(p => {
+                  const mr = missingResults[p.id];
+                  return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
+                });
+              }
+              const total = postFilter === 'missing' ? list.length : (allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal);
+              const totalPages = Math.ceil(total / postsPerPage);
+              return (
+                <div className="px-5 py-3 border-t border-border/50 flex items-center justify-between">
+                  {totalPages > 1 ? (
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setBlogPostsPage(p => Math.max(1, p - 1))}
+                        disabled={blogPostsPage <= 1}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30">
+                        이전
+                      </button>
+                      <span className="text-xs text-dim">{blogPostsPage} / {totalPages}</span>
+                      <button onClick={() => setBlogPostsPage(p => Math.min(totalPages, p + 1))}
+                        disabled={blogPostsPage >= totalPages}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30">
+                        다음
+                      </button>
+                    </div>
+                  ) : <div />}
+                  <Link href="/my/keyword-ranking" className="text-xs text-accent font-semibold hover:underline">
+                    키워드순위 →
+                  </Link>
+                </div>
+              );
+            })()}
           </>
         )}
       </GlassCard>
