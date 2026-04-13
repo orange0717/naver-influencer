@@ -60,7 +60,7 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
       });
       const data = await res.json();
       if (res.ok) {
-        router.push('/my');
+        window.location.href = '/my';
       } else {
         setError(data.error || '데모 시작에 실패했습니다.');
       }
