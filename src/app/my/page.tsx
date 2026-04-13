@@ -70,7 +70,6 @@ export default async function MyDashboard() {
 
   // 체험/데모 만료 체크
   const trialStarted = cookieStore.get('trial_started')?.value;
-  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
   const isTrial = !!trialStarted;
   const durationMs = (isDemo ? 7 : 3) * 24 * 60 * 60 * 1000;
   let trialExpired = false;
