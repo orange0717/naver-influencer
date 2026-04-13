@@ -726,11 +726,9 @@ export default function BloggerDashboard() {
                         <td className="text-center px-3 py-3.5">
                           {mr ? (
                             mr.viewTab.exposed ? (
-                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {mr.viewTab.rank}위
-                              </span>
+                              <span className="text-[11px] font-bold text-up">노출</span>
                             ) : (
-                              <span className="text-xs text-dim">-</span>
+                              <span className="text-[11px] font-bold text-down">누락</span>
                             )
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
@@ -739,11 +737,9 @@ export default function BloggerDashboard() {
                         <td className="text-center px-3 py-3.5">
                           {mr ? (
                             mr.blogTab.exposed ? (
-                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {mr.blogTab.rank}위
-                              </span>
+                              <span className="text-[11px] font-bold text-up">노출</span>
                             ) : (
-                              <span className="text-xs text-dim">-</span>
+                              <span className="text-[11px] font-bold text-down">누락</span>
                             )
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
@@ -802,14 +798,14 @@ export default function BloggerDashboard() {
                           {mr ? (
                             <>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
                               }`}>
-                                통합 {mr.viewTab.exposed ? `${mr.viewTab.rank}위` : '-'}
+                                통합 {mr.viewTab.exposed ? '노출' : '누락'}
                               </span>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                                mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
                               }`}>
-                                블로그 {mr.blogTab.exposed ? `${mr.blogTab.rank}위` : '-'}
+                                블로그 {mr.blogTab.exposed ? '노출' : '누락'}
                               </span>
                             </>
                           ) : null}
