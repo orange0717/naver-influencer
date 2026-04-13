@@ -325,24 +325,29 @@ export async function POST(request: NextRequest) {
     if (await blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
     const body = await request.json();
-    const { blogId, postTitle, postId } = body;
+    const { blogId, postTitle, postId, keyword } = body;
 
-    if (!blogId || !postTitle) {
-      return NextResponse.json({ error: 'blogId, postTitle 필수' }, { status: 400 });
+    if (!blogId || (!postTitle && !keyword)) {
+      return NextResponse.json({ error: 'blogId, postTitle 또는 keyword 필수' }, { status: 400 });
     }
 
     // 캐시 확인
-    const cacheKey = `missing-${blogId}-${postId || postTitle.slice(0, 30)}`;
+    const cacheKey = keyword
+      ? `missing-${blogId}-${postId || ''}-kw-${keyword.trim()}`
+      : `missing-${blogId}-${postId || postTitle.slice(0, 30)}`;
     const cached = cache.get(cacheKey);
     if (cached && cached.expires > Date.now()) {
       return NextResponse.json(cached.data);
     }
 
-    // 서버에서 displayName 직접 조회 (클라이언트 의존 제거)
-    const displayName = await getDisplayName(blogId);
-
-    // 핵심 키워드 추출: 제목에서 불필요한 부분 제거
-    const query = extractKeywords(postTitle, blogId, displayName);
+    // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 자동 추출
+    let query: string;
+    if (keyword && keyword.trim()) {
+      query = keyword.trim();
+    } else {
+      const displayName = await getDisplayName(blogId);
+      query = extractKeywords(postTitle, blogId, displayName);
+    }
 
     // 블로그탭 + 통합검색 동시 확인
     let [blogTab, viewTab] = await Promise.all([
@@ -350,8 +355,8 @@ export async function POST(request: NextRequest) {
       checkViewTab(query, blogId, postId || ''),
     ]);
 
-    // 폴백: 키워드로 못 찾으면 원본 제목(displayName 제거)으로 재검색
-    if (!blogTab.exposed && !viewTab.exposed) {
+    // 폴백: 사용자 키워드가 아닌 경우에만 원본 제목으로 재검색
+    if (!keyword && !blogTab.exposed && !viewTab.exposed) {
       let fallbackQuery = postTitle;
       // displayName만 제거한 원본에 가까운 제목
       if (displayName && displayName.length >= 2) {

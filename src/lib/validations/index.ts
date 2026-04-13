@@ -84,4 +84,5 @@ export const profileUpdateSchema = z.object({
   sns_youtube: z.string().max(200).optional(),
   sns_x: z.string().max(200).optional(),
   sns_tiktok: z.string().max(200).optional(),
+  sns_threads: z.string().max(200).optional(),
 });

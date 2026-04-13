@@ -704,13 +704,13 @@ export default function BloggerDashboard() {
                         return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
                       });
                     }
-                    const start = (blogPostsPage - 1) * 10;
-                    return all.slice(start, start + 10);
+                    const start = (blogPostsPage - 1) * postsPerPage;
+                    return all.slice(start, start + postsPerPage);
                   })().map((post, i) => {
                     const mr = missingResults[post.id];
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition group">
-                        <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * 10 + i + 1}</td>
+                        <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * postsPerPage + i + 1}</td>
                         <td className="px-3 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold hover:text-accent transition truncate block max-w-[400px]" title={post.title}>
@@ -782,14 +782,14 @@ export default function BloggerDashboard() {
                     return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
                   });
                 }
-                const start = (blogPostsPage - 1) * 10;
-                return all.slice(start, start + 10);
+                const start = (blogPostsPage - 1) * postsPerPage;
+                return all.slice(start, start + postsPerPage);
               })().map((post, i) => {
                 const mr = missingResults[post.id];
                 return (
                   <div key={post.id} className="px-4 py-3.5">
                     <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * 10 + i + 1}</span>
+                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * postsPerPage + i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
@@ -842,7 +842,7 @@ export default function BloggerDashboard() {
                 });
               }
               const total = postFilter === 'missing' ? list.length : (allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal);
-              const totalPages = Math.ceil(total / 10);
+              const totalPages = Math.ceil(total / postsPerPage);
               if (totalPages <= 1) return null;
               return (
                 <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">

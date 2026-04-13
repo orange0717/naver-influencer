@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   if (user.linked_influencer_id) {
     const { data: inf } = await supabase
       .from('influencers')
-      .select('display_name, naver_id, ad_fee_amount, ad_fee_text, ad_process, ad_schedule, sns_instagram, sns_youtube, sns_x, sns_tiktok')
+      .select('display_name, naver_id, ad_fee_amount, ad_fee_text, ad_process, ad_schedule, sns_instagram, sns_youtube, sns_x, sns_tiktok, sns_threads')
       .eq('id', user.linked_influencer_id)
       .single();
     linked_influencer = inf ? { display_name: inf.display_name, naver_id: inf.naver_id } : null;
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       ad_fee_amount: inf.ad_fee_amount, ad_fee_text: inf.ad_fee_text,
       ad_process: inf.ad_process, ad_schedule: inf.ad_schedule,
       sns_instagram: inf.sns_instagram, sns_youtube: inf.sns_youtube,
-      sns_x: inf.sns_x, sns_tiktok: inf.sns_tiktok,
+      sns_x: inf.sns_x, sns_tiktok: inf.sns_tiktok, sns_threads: inf.sns_threads,
     } : null;
   }
 
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest) {
   // 광고 프로필 업데이트 (influencers 테이블)
   const hasAdFields = v.data.ad_fee_amount !== undefined || v.data.ad_fee_text !== undefined || v.data.ad_process !== undefined
     || v.data.ad_schedule !== undefined || v.data.sns_instagram !== undefined || v.data.sns_youtube !== undefined
-    || v.data.sns_x !== undefined || v.data.sns_tiktok !== undefined;
+    || v.data.sns_x !== undefined || v.data.sns_tiktok !== undefined || v.data.sns_threads !== undefined;
   if (hasAdFields) {
     // 연결된 인플루언서 확인
     const { data: userRow } = await supabase
@@ -102,6 +102,7 @@ export async function PATCH(request: NextRequest) {
     if (v.data.sns_youtube !== undefined) adUpdates.sns_youtube = v.data.sns_youtube || null;
     if (v.data.sns_x !== undefined) adUpdates.sns_x = v.data.sns_x || null;
     if (v.data.sns_tiktok !== undefined) adUpdates.sns_tiktok = v.data.sns_tiktok || null;
+    if (v.data.sns_threads !== undefined) adUpdates.sns_threads = v.data.sns_threads || null;
 
     const { error: adError } = await supabase
       .from('influencers')

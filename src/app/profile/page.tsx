@@ -126,6 +126,7 @@ export default function ProfilePage() {
   const [snsYoutube, setSnsYoutube] = useState('');
   const [snsX, setSnsX] = useState('');
   const [snsTiktok, setSnsTiktok] = useState('');
+  const [snsThreads, setSnsThreads] = useState('');
   const [snsSaving, setSnsSaving] = useState(false);
 
   const showToast = (msg: string) => {
@@ -416,40 +417,37 @@ export default function ProfilePage() {
       </div>
 
       {/* 인플루언서 연결 */}
-      <div className="bg-surface rounded-xl border border-border p-5">
-        <h3 className="font-bold text-sm mb-3">연결된 인플루언서</h3>
+      <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+        <h3 className="font-bold text-sm">연결된 인플루언서</h3>
         {linkedInfluencer ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center font-bold text-accent">
-                {linkedInfluencer.display_name[0]}
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center font-bold text-accent">
+                  {linkedInfluencer.display_name[0]}
+                </div>
+                <div>
+                  <span className="font-medium">{linkedInfluencer.display_name}</span>
+                  <p className="text-xs text-dim">in.naver.com/{linkedInfluencer.naver_id}</p>
+                </div>
               </div>
-              <div>
-                <span className="font-medium">{linkedInfluencer.display_name}</span>
-                <p className="text-xs text-dim">@{linkedInfluencer.naver_id}</p>
-              </div>
+              <Link href="/my" className="text-sm text-accent font-semibold shrink-0">대시보드 →</Link>
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/my" className="text-sm text-accent font-semibold">대시보드 →</Link>
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <Link href="/my/link" className="text-xs text-accent hover:underline">
+                다른 인플루언서로 변경 →
+              </Link>
               <button onClick={unlinkInfluencer}
                 className="text-xs text-down border border-down/30 rounded px-2 py-1 hover:bg-down/10 transition cursor-pointer">
                 연결 해제
               </button>
             </div>
-          </div>
+          </>
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-dim">연결된 인플루언서가 없습니다.</p>
             <Link href="/my/link" className="block text-center py-3 bg-accent/12 rounded-lg text-accent font-semibold text-sm">
               인플루언서 계정 연결하기
-            </Link>
-          </div>
-        )}
-        {linkedInfluencer && (
-          <div className="mt-3 pt-3 border-t border-border">
-            <Link href="/my/link"
-              className="text-xs text-accent hover:underline">
-              다른 인플루언서로 변경하기 →
             </Link>
           </div>
         )}
