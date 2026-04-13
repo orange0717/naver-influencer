@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createServiceClient } from '@/lib/supabase-server';
 import { validateBody, naverIdSchema } from '@/lib/validations';
 import { z } from 'zod';
@@ -84,8 +83,13 @@ export async function POST(request: NextRequest) {
       expires_at: expiresAt.toISOString(),
     });
 
-    // 쿠키 설정 (7일)
-    const cookieStore = await cookies();
+    // 쿠키를 NextResponse에 직접 설정 (7일)
+    const res = NextResponse.json({
+      success: true,
+      displayName,
+      demoDays: DEMO_DAYS,
+    });
+
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -94,17 +98,13 @@ export async function POST(request: NextRequest) {
       path: '/',
     };
 
-    cookieStore.set('naver_id', effectiveNaverId, cookieOptions);
-    cookieStore.set('user_type', naverId ? 'influencer' : 'blogger', cookieOptions);
-    cookieStore.set('trial_started', String(Date.now()), cookieOptions);
-    cookieStore.set('demo_mode', 'true', cookieOptions);
-    if (blogId) cookieStore.set('blog_id', blogId, cookieOptions);
+    res.cookies.set('naver_id', effectiveNaverId, cookieOptions);
+    res.cookies.set('user_type', naverId ? 'influencer' : 'blogger', cookieOptions);
+    res.cookies.set('trial_started', String(Date.now()), cookieOptions);
+    res.cookies.set('demo_mode', 'true', cookieOptions);
+    if (blogId) res.cookies.set('blog_id', blogId, cookieOptions);
 
-    return NextResponse.json({
-      success: true,
-      displayName,
-      demoDays: DEMO_DAYS,
-    });
+    return res;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[demo-start] 실패:', msg);
