@@ -43,14 +43,16 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   // ─── 2. Supabase Auth 세션 체크 ───
+  let isLoggedIn = false;
   if (!naverId) {
     const supabaseAuth = await createRouteHandlerClient();
     const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
 
     if (authUser) {
+      isLoggedIn = true;
       const { data: profile } = await supabase
         .from('users')
-        .select('linked_influencer_id')
+        .select('linked_influencer_id, blog_id')
         .eq('auth_id', authUser.id)
         .single();
 
@@ -62,6 +64,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           .single();
         naverId = linkedInf?.naver_id || undefined;
       }
+
+      // 인플루언서 미연결이지만 블로그가 있으면 blog_id를 naverId로 사용
+      if (!naverId && profile?.blog_id) {
+        naverId = profile.blog_id;
+      }
     }
   }
 
@@ -71,6 +78,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   if (!naverId) {
+    if (isLoggedIn) {
+      redirect('/profile');
+    }
     redirect('/auth/login');
   }
 
