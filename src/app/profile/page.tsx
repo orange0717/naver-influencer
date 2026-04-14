@@ -236,6 +236,10 @@ export default function ProfilePage() {
       setUser(prev => prev ? { ...prev, blog_id: blogId } : null);
       setBlogIdInput(blogId);
       showToast('블로그 주소가 저장되었습니다.');
+      // 블로그 주소 최초 입력 시 대시보드로 이동
+      if (!user.blog_id) {
+        setTimeout(() => router.push(`/my/blogger?blogId=${blogId}`), 500);
+      }
     } else {
       showToast('블로그 주소 저장에 실패했습니다.');
     }
