@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     // 플랜 검증
     const body = await req.json();
-    const planKey = (body.planKey || 'PRO_ANNUAL').trim();
+    const planKey = (body.planKey || '').trim();
     const plan = PAYMENT_PLANS[planKey];
 
     if (!plan) {

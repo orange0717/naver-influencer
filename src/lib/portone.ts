@@ -66,7 +66,7 @@ export async function verifyAndGrantLicense(
     customData = JSON.parse(payment.customData || '{}');
   } catch { /* ignore */ }
 
-  const planKey = customData.planKey || 'PRO_ANNUAL';
+  const planKey = customData.planKey || '';
 
   // 4. 소유권 검증 — complete 호출자와 customData의 userId가 일치하는지 확인
   if (userId && customData.userId && customData.userId !== userId) {
@@ -156,6 +156,19 @@ export async function verifyAndGrantLicense(
   if (licenseError) {
     console.error('[PortOne] 라이선스 생성 실패:', licenseError);
     return { verified: true, licenseGranted: false, error: '라이선스 생성에 실패했습니다.' };
+  }
+
+  // 9. users 테이블 구독 상태 업데이트
+  const { error: userUpdateError } = await supabase
+    .from('users')
+    .update({
+      subscription_plan: plan.planName,
+      subscription_expires_at: expiresAt.toISOString(),
+    })
+    .eq('id', buyerId);
+
+  if (userUpdateError) {
+    console.error('[PortOne] 구독 상태 업데이트 실패:', userUpdateError);
   }
 
   return {
