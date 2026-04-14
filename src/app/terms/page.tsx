@@ -61,14 +61,27 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-base font-bold text-text">제6조 (유료 서비스)</h2>
           <ol className="list-decimal list-inside space-y-1 pl-2">
-            <li>PRO 이용권 구매 시 대시보드 기능을 이용할 수 있습니다.</li>
+            <li>블로거 이용권(월간/연간) 또는 인플루언서 이용권(월간/연간) 구매 시 해당 플랜의 기능을 이용할 수 있습니다.</li>
             <li>이용권 가격 및 기간은 이용권 페이지에 표시된 바에 따릅니다.</li>
-            <li>3일 무료 체험은 1회에 한하여 제공됩니다.</li>
+            <li>7일 무료 체험은 1회에 한하여 제공됩니다.</li>
           </ol>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-text">제7조 (회원의 의무)</h2>
+          <h2 className="text-base font-bold text-text">제7조 (환불 정책)</h2>
+          <ol className="list-decimal list-inside space-y-1 pl-2">
+            <li>구매일로부터 7일 이내에 유료 서비스를 이용하지 않은 경우 전액 환불이 가능합니다.</li>
+            <li>유료 서비스를 이용한 경우(대시보드 접속, 데이터 조회 등), 이용 일수를 차감한 잔여 금액을 환불합니다.</li>
+            <li>월간 이용권: 일할 계산(결제금액 / 30일 x 잔여일수)으로 환불합니다.</li>
+            <li>연간 이용권: 월할 계산(결제금액 / 12개월 x 잔여 월수)으로 환불합니다.</li>
+            <li>환불 신청은 마이페이지 또는 이메일(orange@orangelibrary.co.kr)로 가능합니다.</li>
+            <li>환불은 신청일로부터 영업일 기준 3~5일 이내에 원래 결제 수단으로 처리됩니다.</li>
+            <li>무료 체험 기간 중에는 별도의 환불 절차 없이 이용이 종료됩니다.</li>
+          </ol>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-bold text-text">제8조 (회원의 의무)</h2>
           <ol className="list-decimal list-inside space-y-1 pl-2">
             <li>회원은 서비스 이용 시 관계 법령, 본 약관의 규정을 준수하여야 합니다.</li>
             <li>회원은 서비스의 데이터를 무단으로 크롤링, 스크래핑, 복제, 재배포할 수 없습니다.</li>
@@ -77,7 +90,7 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-text">제8조 (서비스 이용 제한)</h2>
+          <h2 className="text-base font-bold text-text">제9조 (서비스 이용 제한)</h2>
           <p>
             서비스는 회원이 본 약관을 위반하거나 서비스의 정상적인 운영을 방해하는 경우,
             사전 통지 없이 서비스 이용을 제한하거나 회원 자격을 정지할 수 있습니다.
@@ -85,7 +98,7 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-text">제9조 (면책)</h2>
+          <h2 className="text-base font-bold text-text">제10조 (면책)</h2>
           <ol className="list-decimal list-inside space-y-1 pl-2">
             <li>서비스는 네이버에서 제공하는 공개 데이터를 기반으로 분석 결과를 제공하며, 데이터의 정확성을 100% 보장하지 않습니다.</li>
             <li>서비스 이용으로 발생하는 모든 의사결정의 책임은 회원에게 있습니다.</li>
@@ -94,7 +107,7 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-text">제10조 (분쟁 해결)</h2>
+          <h2 className="text-base font-bold text-text">제11조 (분쟁 해결)</h2>
           <p>
             서비스 이용과 관련하여 분쟁이 발생한 경우, 양 당사자는 원만한 해결을 위해 협의하며,
             협의가 이루어지지 않는 경우 관련 법령에 따라 처리합니다.

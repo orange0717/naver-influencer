@@ -240,6 +240,20 @@ export default function SubscribeClient() {
         <p className="text-xs text-dim">신용카드 / 체크카드 / 간편결제 지원</p>
         <p className="text-xs text-dim">결제는 PortOne 안전결제로 처리됩니다</p>
       </div>
+
+      {/* 환불 정책 */}
+      <div className="bg-surface rounded-2xl border border-border p-6 space-y-3">
+        <h2 className="text-sm font-bold">환불 정책</h2>
+        <ul className="space-y-1.5 text-xs text-dim leading-relaxed">
+          <li>- 구매일로부터 7일 이내 미이용 시 전액 환불</li>
+          <li>- 이용한 경우: 월간 이용권 일할 계산, 연간 이용권 월할 계산으로 잔여 금액 환불</li>
+          <li>- 환불 신청: 마이페이지 또는 orange@orangelibrary.co.kr</li>
+          <li>- 처리 기간: 영업일 기준 3~5일 이내</li>
+        </ul>
+        <Link href="/terms" className="text-[11px] text-accent hover:underline inline-block">
+          전체 이용약관 보기
+        </Link>
+      </div>
     </div>
   );
 }
