@@ -85,7 +85,18 @@ const CATEGORIES = [
 
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
   try {
-    const res = await fetch('/api/auth/me');
+    // Supabase 세션 토큰을 Bearer로 전달
+    let headers: Record<string, string> = {};
+    try {
+      const { createSupabaseBrowserClient } = await import('@/lib/supabase-browser');
+      const supabase = createSupabaseBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers = { Authorization: `Bearer ${session.access_token}` };
+      }
+    } catch { /* ignore */ }
+
+    const res = await fetch('/api/auth/me', { headers });
     const data = await res.json();
     if (data.type === 'unified' && (data.blogId || data.id)) {
       return { blogId: data.blogId || data.id, displayName: data.name || data.blogId || data.id, isInfluencer: true };
@@ -96,6 +107,14 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
     if (data.type === 'influencer' && data.id) {
       return { blogId: data.blogId || data.id, displayName: data.name || data.id, isInfluencer: true, needsBlogId: !data.blogId };
     }
+
+    // API 인증 실패 시 URL의 blogId 파라미터 폴백
+    const urlParams = new URLSearchParams(window.location.search);
+    const blogIdParam = urlParams.get('blogId');
+    if (blogIdParam) {
+      return { blogId: blogIdParam, displayName: blogIdParam, isInfluencer: false };
+    }
+
     return null;
   } catch { return null; }
 }
