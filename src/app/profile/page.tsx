@@ -16,6 +16,8 @@ interface UserProfile {
   total_used: number;
   linked_influencer_id: string | null;
   blog_id: string | null;
+  subscription_plan: string | null;
+  subscription_expires_at: string | null;
   created_at: string;
 }
 
@@ -457,6 +459,39 @@ export default function ProfilePage() {
             <p className="text-sm text-dim">{user.email}</p>
             <p className="text-xs text-dim">가입일: {new Date(user.created_at).toLocaleDateString('ko-KR')}</p>
           </div>
+        </div>
+      </div>
+
+      {/* 구독 등급 */}
+      <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-sm mb-1">이용권</h3>
+            {user.subscription_plan ? (
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                  user.subscription_plan === 'INFLUENCER'
+                    ? 'bg-accent text-white'
+                    : 'bg-accent/15 text-accent'
+                }`}>
+                  {user.subscription_plan === 'INFLUENCER' ? '인플루언서' : '블로거'}
+                </span>
+                {user.subscription_expires_at && (
+                  <span className="text-xs text-dim">
+                    ~{new Date(user.subscription_expires_at).toLocaleDateString('ko-KR')} 까지
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-dim">무료 플랜</p>
+            )}
+          </div>
+          <Link
+            href="/subscribe"
+            className="text-xs text-accent font-semibold hover:underline"
+          >
+            {user.subscription_plan ? '플랜 변경' : '업그레이드'}
+          </Link>
         </div>
       </div>
 
