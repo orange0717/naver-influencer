@@ -105,10 +105,17 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     .single();
 
   if (!influencerData) {
-    // 블로그 데모: 인플루언서가 아닌 블로거로 접속한 경우
+    // 블로거로 접속한 경우 (blog_id만 있는 사용자 포함)
     const blogId = cookieStore.get('blog_id')?.value || params.demo;
     if (blogId) {
       redirect(`/my/blogger?blogId=${blogId}`);
+    }
+    // Supabase Auth 로그인 상태이고 blog_id로 naverId가 설정된 경우
+    if (isLoggedIn && naverId) {
+      redirect(`/my/blogger?blogId=${naverId}`);
+    }
+    if (isLoggedIn) {
+      redirect('/profile');
     }
     redirect('/auth/login');
   }
