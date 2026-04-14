@@ -13,12 +13,12 @@ export default function LoginPage() {
 
   const router = useRouter();
 
-  // 이미 로그인된 사용자는 대시보드로 리다이렉트
+  // 이미 로그인된 사용자는 마이페이지로 리다이렉트
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        router.replace('/my');
+        router.replace('/profile');
       }
     });
   }, [router]);
