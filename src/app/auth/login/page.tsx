@@ -14,12 +14,24 @@ export default function LoginPage() {
 
   const router = useRouter();
 
-  // 이미 로그인된 사용자는 마이페이지로 리다이렉트
+  // 이미 로그인된 사용자는 적절한 페이지로 리다이렉트
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        router.replace('/profile');
+    supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('linked_influencer_id, blog_id')
+          .eq('auth_id', authUser.id)
+          .single();
+
+        if (profile?.linked_influencer_id) {
+          router.replace('/my');
+        } else if (profile?.blog_id) {
+          router.replace(`/my/blogger?blogId=${profile.blog_id}`);
+        } else {
+          router.replace('/profile');
+        }
       } else {
         setAuthChecked(true);
       }
@@ -87,7 +99,20 @@ export default function LoginPage() {
       // 레거시 쿠키 동기화 (헤더 닉네임 표시용)
       await fetch('/api/auth/sync-cookies', { method: 'POST' }).catch(() => {});
 
-      router.push('/my');
+      // 사용자 프로필에 따라 적절한 페이지로 이동
+      const { data: fullProfile } = await supabase
+        .from('users')
+        .select('linked_influencer_id, blog_id')
+        .eq('id', userRecord.id)
+        .single();
+
+      if (fullProfile?.linked_influencer_id) {
+        router.push('/my');
+      } else if (fullProfile?.blog_id) {
+        router.push(`/my/blogger?blogId=${fullProfile.blog_id}`);
+      } else {
+        router.push('/profile');
+      }
       router.refresh();
     } catch {
       setError('로그인 중 오류가 발생했습니다.');
