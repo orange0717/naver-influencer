@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { isAdmin } from '@/lib/admin';
 import { validateBody, validateSearchParams, paginationSchema } from '@/lib/validations';
 import { createNoticeSchema } from '@/lib/validations/notice';
 import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { createNoticeNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
-
-const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 
 /**
  * GET /api/notices — 공지 목록
@@ -64,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    if (!ADMIN_IDS.includes(authUser.userId)) {
+    if (!isAdmin(authUser.userId)) {
       return NextResponse.json({ error: '관리자만 공지를 작성할 수 있습니다.' }, { status: 403 });
     }
 

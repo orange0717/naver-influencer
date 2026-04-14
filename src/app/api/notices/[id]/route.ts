@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
-
-const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 
 /**
  * GET /api/notices/[id] — 공지 상세 + 댓글
@@ -75,7 +74,7 @@ export async function PATCH(
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    if (!ADMIN_IDS.includes(authUser.userId)) {
+    if (!isAdmin(authUser.userId)) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
@@ -143,7 +142,7 @@ export async function DELETE(
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    if (!ADMIN_IDS.includes(authUser.userId)) {
+    if (!isAdmin(authUser.userId)) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 

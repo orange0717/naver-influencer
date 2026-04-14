@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 
 interface Stats {
   todayVisits: number;
@@ -52,7 +51,6 @@ export default function AdminAnalyticsPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">유입 분석</h1>
-        <Link href="/" className="text-sm text-dim hover:text-accent transition">← 홈으로</Link>
       </div>
 
       {/* 요약 카드 */}

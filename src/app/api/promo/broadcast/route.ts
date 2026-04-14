@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
-
-// 관리자 이메일 (하드코딩)
-const ADMIN_EMAILS = ['orange@orangelibrary.co.kr'];
 
 /**
  * GET /api/promo/broadcast — 회원 목록 조회 (관리자용)
@@ -14,11 +12,11 @@ export async function GET(request: NextRequest) {
   const auth = await getAuthUser(request);
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-  const supabase = createServiceClient();
-  const { data: adminUser } = await supabase.from('users').select('email').eq('id', auth.userId).single();
-  if (!adminUser || !ADMIN_EMAILS.includes(adminUser.email)) {
+  if (!isAdmin(auth.userId)) {
     return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
   }
+
+  const supabase = createServiceClient();
 
   // 전체 회원 + 인플루언서 정보
   const { data: users } = await supabase
@@ -53,12 +51,11 @@ export async function POST(request: NextRequest) {
     const auth = await getAuthUser(request);
     if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-    const supabase = createServiceClient();
-    const { data: adminUser } = await supabase.from('users').select('email').eq('id', auth.userId).single();
-    if (!adminUser || !ADMIN_EMAILS.includes(adminUser.email)) {
+    if (!isAdmin(auth.userId)) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
+    const supabase = createServiceClient();
     const body = await request.json();
     const userIds: string[] = body.userIds || [];
     const code = (body.code || '').trim().toUpperCase();
