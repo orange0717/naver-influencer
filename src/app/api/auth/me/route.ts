@@ -31,9 +31,12 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     }
   }
 
+  // 블로거 타입이면서 blog_id가 있으면 'unified'로 반환 (대시보드 접근용)
+  const effectiveType = (!profile.linked_influencer_id && profile.blog_id) ? 'unified' : type;
+
   return {
-    type,
-    id: naverId || profile.id,
+    type: effectiveType,
+    id: naverId || profile.blog_id || profile.id,
     blogId: profile.blog_id || naverId || null,
     name: displayName,
     email: email || profile.email,
