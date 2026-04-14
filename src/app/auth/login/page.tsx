@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [authChecked, setAuthChecked] = useState(false);
 
   const router = useRouter();
 
@@ -19,9 +20,19 @@ export default function LoginPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         router.replace('/profile');
+      } else {
+        setAuthChecked(true);
       }
     });
   }, [router]);
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
