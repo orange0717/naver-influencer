@@ -113,11 +113,27 @@ export default function PaymentButton({
     setTestStep('card-info');
   }
 
-  function handleTestPay() {
+  async function handleTestPay() {
     setTestStep('processing');
-    setTimeout(() => {
-      setTestStep('complete');
-    }, 1500);
+    try {
+      const res = await fetch('/api/portone/test-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planKey }),
+      });
+      const data = await res.json();
+      if (res.ok && data.verified) {
+        setTestStep('complete');
+      } else {
+        setTestStep('card-info');
+        setMessage({ type: 'error', text: data.error || '구독 반영에 실패했습니다.' });
+        setTestModal(false);
+      }
+    } catch {
+      setTestStep('card-info');
+      setMessage({ type: 'error', text: '네트워크 오류가 발생했습니다.' });
+      setTestModal(false);
+    }
   }
 
   function closeTestModal() {
@@ -125,7 +141,7 @@ export default function PaymentButton({
     setTestStep('card-select');
     setSelectedCard('');
     if (testStep === 'complete') {
-      setMessage({ type: 'success', text: '결제가 완료되었습니다. (테스트 모드)' });
+      setMessage({ type: 'success', text: '결제가 완료되었습니다. 구독이 활성화되었습니다.' });
     }
   }
 
