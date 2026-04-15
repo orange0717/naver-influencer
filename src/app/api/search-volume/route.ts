@@ -3,16 +3,25 @@ import { createHmac } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-/** CORS 헤더 (크롬 확장앱에서 호출 가능하도록) */
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+/** CORS 헤더 (크롬 확장앱 + 자체 도메인만 허용) */
+const ALLOWED_ORIGINS = [
+  'https://naver-influencer.vercel.app',
+  'chrome-extension://',
+];
+
+function getCorsHeaders(request?: NextRequest) {
+  const origin = request?.headers.get('origin') || '';
+  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  return {
+    'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
 
 /** OPTIONS preflight */
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders });
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: getCorsHeaders(request) });
 }
 
 /** Node.js crypto 모듈로 HMAC-SHA256 서명 생성 */
@@ -27,7 +36,7 @@ export async function GET(request: NextRequest) {
   const keyword = request.nextUrl.searchParams.get('keyword');
 
   if (!keyword) {
-    return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400, headers: corsHeaders });
+    return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400, headers: getCorsHeaders(request) });
   }
 
   const apiKey = process.env.NAVER_API_KEY?.trim();
@@ -37,7 +46,7 @@ export async function GET(request: NextRequest) {
   if (!apiKey || !secretKey || !customerId) {
     return NextResponse.json(
       { error: 'API 키가 설정되지 않았습니다. 관리자에게 문의하세요.' },
-      { status: 503, headers: corsHeaders }
+      { status: 503, headers: getCorsHeaders(request) }
     );
   }
 
@@ -61,7 +70,7 @@ export async function GET(request: NextRequest) {
       const errData = await res.json().catch(() => ({}));
       return NextResponse.json(
         { error: errData.detail || `API 오류 (${res.status})` },
-        { status: res.status, headers: corsHeaders }
+        { status: res.status, headers: getCorsHeaders(request) }
       );
     }
 
@@ -85,11 +94,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ keywords }, { headers: corsHeaders });
+    return NextResponse.json({ keywords }, { headers: getCorsHeaders(request) });
   } catch (err) {
+    console.error('[search-volume] error:', err instanceof Error ? err.message : String(err));
     return NextResponse.json(
       { error: '검색량 조회에 실패했습니다.' },
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: getCorsHeaders(request) }
     );
   }
 }

@@ -429,11 +429,12 @@
       html += '<div class="ninfl-d-ratio"><div class="ninfl-d-ratio-bar"><div class="ninfl-d-ratio-pc" style="width:' + pcPct + '%"></div><div class="ninfl-d-ratio-mobile" style="width:' + mobilePct + '%"></div></div></div>';
       html += '<div class="ninfl-d-ratio-labels"><span>PC ' + pcPct + '%</span><span>모바일 ' + mobilePct + '%</span></div>';
 
-      // 경쟁도 점수 바
-      var compBarColor = comp.score >= 60 ? '#DC2626' : comp.score >= 30 ? '#D97706' : '#059669';
+      // 경쟁도 점수 바 (값 범위 제한)
+      var safeScore = Math.max(0, Math.min(100, parseInt(comp.score, 10) || 0));
+      var compBarColor = safeScore >= 60 ? '#DC2626' : safeScore >= 30 ? '#D97706' : '#059669';
       html += '<div class="ninfl-d-comp">';
-      html += '<div class="ninfl-d-comp-header"><span>경쟁도</span><span>' + comp.level + ' (' + comp.score + '/100)</span></div>';
-      html += '<div class="ninfl-d-comp-bar"><div class="ninfl-d-comp-fill" style="width:' + comp.score + '%;background:' + compBarColor + ';"></div></div>';
+      html += '<div class="ninfl-d-comp-header"><span>경쟁도</span><span>' + escHtml(comp.level) + ' (' + safeScore + '/100)</span></div>';
+      html += '<div class="ninfl-d-comp-bar"><div class="ninfl-d-comp-fill" style="width:' + safeScore + '%;background:' + compBarColor + ';"></div></div>';
       html += '<div class="ninfl-d-comp-info"><span>낮음</span><span>중간</span><span>높음</span></div>';
       html += '</div>';
 

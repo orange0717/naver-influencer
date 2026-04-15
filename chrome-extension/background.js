@@ -3,6 +3,9 @@ var API_BASE = 'https://naver-influencer.vercel.app';
 var CACHE_TTL = 5 * 60 * 1000; // 5분
 
 chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+  // 자신의 확장에서 온 메시지만 처리
+  if (sender.id !== chrome.runtime.id) return false;
+
   if (msg.type === 'fetch-keyword-analysis') {
     var keyword = msg.keyword;
     var cacheKey = 'ninfl_cache_' + keyword.toLowerCase().trim();

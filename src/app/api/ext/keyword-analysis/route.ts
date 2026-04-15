@@ -6,14 +6,23 @@ export const dynamic = 'force-dynamic';
 const SEARCHAD_API_URL = 'https://api.searchad.naver.com/keywordstool';
 const DATALAB_API_URL = 'https://openapi.naver.com/v1/datalab/search';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+const ALLOWED_ORIGINS = [
+  'https://naver-influencer.vercel.app',
+  'chrome-extension://',
+];
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders });
+function getCorsHeaders(request?: NextRequest) {
+  const origin = request?.headers.get('origin') || '';
+  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  return {
+    'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: getCorsHeaders(request) });
 }
 
 // ── 캐시 (5분 TTL, 최대 500개) ──
@@ -155,14 +164,14 @@ async function fetchCompetitionScore(keyword: string, searchVolume: number) {
 export async function GET(request: NextRequest) {
   const keyword = request.nextUrl.searchParams.get('keyword');
   if (!keyword) {
-    return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400, headers: corsHeaders });
+    return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400, headers: getCorsHeaders(request) });
   }
 
   // 캐시 확인
   const cacheKey = keyword.toLowerCase().trim();
   const cached = getCached(cacheKey);
   if (cached) {
-    return NextResponse.json(cached, { headers: corsHeaders });
+    return NextResponse.json(cached, { headers: getCorsHeaders(request) });
   }
 
   try {
@@ -173,7 +182,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (!keywordList || keywordList.length === 0) {
-      return NextResponse.json({ error: '검색량 데이터를 불러올 수 없습니다.' }, { status: 502, headers: corsHeaders });
+      return NextResponse.json({ error: '검색량 데이터를 불러올 수 없습니다.' }, { status: 502, headers: getCorsHeaders(request) });
     }
 
     const main = keywordList[0];
@@ -217,8 +226,9 @@ export async function GET(request: NextRequest) {
     };
 
     setCache(cacheKey, result);
-    return NextResponse.json(result, { headers: corsHeaders });
-  } catch {
-    return NextResponse.json({ error: '분석에 실패했습니다.' }, { status: 500, headers: corsHeaders });
+    return NextResponse.json(result, { headers: getCorsHeaders(request) });
+  } catch (err) {
+    console.error('[keyword-analysis] error:', err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: '분석에 실패했습니다.' }, { status: 500, headers: getCorsHeaders(request) });
   }
 }
