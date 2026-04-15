@@ -95,11 +95,20 @@ export async function GET(request: NextRequest) {
     };
 
     if (userType === 'unified' && naverId) {
+      // DB 검증: 쿠키 조작 방지
+      const supabase = createServiceClient();
+      const { data: user } = await supabase
+        .from('users')
+        .select('id, nickname, blog_id')
+        .or(`blog_id.eq.${naverId},blog_id.eq.${blogId || ''}`)
+        .limit(1)
+        .single();
+      if (!user) return NextResponse.json({ type: null, id: null, name: null });
       return NextResponse.json({
         type: 'unified',
         id: naverId,
-        blogId: blogId || null,
-        name: safeDecode(blogName),
+        blogId: user.blog_id || blogId || null,
+        name: user.nickname || safeDecode(blogName),
       });
     }
 
@@ -132,10 +141,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (userType === 'blogger' && blogId) {
+      // DB 검증: 쿠키 조작 방지
+      const supabase = createServiceClient();
+      const { data: user } = await supabase
+        .from('users')
+        .select('id, nickname')
+        .eq('blog_id', blogId)
+        .limit(1)
+        .single();
+      if (!user) return NextResponse.json({ type: null, id: null, name: null });
       return NextResponse.json({
         type: 'blogger',
         id: blogId,
-        name: safeDecode(blogName) || blogId,
+        name: user.nickname || safeDecode(blogName) || blogId,
       });
     }
 

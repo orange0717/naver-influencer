@@ -68,7 +68,7 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 
       // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
       // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*data-cr-on="r=(\d+)/g;
+      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
       const seen = new Set<string>();
       let match;
 

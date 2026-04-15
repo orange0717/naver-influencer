@@ -360,44 +360,65 @@ export default function BloggerDashboard() {
 
   useEffect(() => {
     getProfileFromApi().then(p => {
-      if (!p) { window.location.href = '/auth/login'; return; }
+      if (!p) {
+        // 프로필 조회 실패 시 에러 표시 (무한 리다이렉트 방지)
+        const hasSession = document.cookie.includes('sb-') || localStorage.getItem('sb-') !== null;
+        if (!hasSession) {
+          window.location.href = '/auth/login';
+        }
+        return;
+      }
       const customData = localStorage.getItem(`blogger_custom_profile_${p.blogId}`);
       if (customData) {
         try {
           const parsed = JSON.parse(customData);
-          setCustomProfile(parsed);
-          if (parsed.displayName) p = { ...p, displayName: parsed.displayName };
-          if (parsed.imageUrl) p = { ...p, imageUrl: parsed.imageUrl };
-        } catch { /* ignore */ }
+          if (parsed && typeof parsed === 'object') {
+            setCustomProfile(parsed);
+            if (parsed.displayName) p = { ...p, displayName: parsed.displayName };
+            if (parsed.imageUrl) p = { ...p, imageUrl: parsed.imageUrl };
+          } else {
+            localStorage.removeItem(`blogger_custom_profile_${p.blogId}`);
+          }
+        } catch {
+          localStorage.removeItem(`blogger_custom_profile_${p.blogId}`);
+        }
       }
       setProfile(p);
       // 키워드순위 페이지의 결과 불러오기 (postId::keyword → postId별 최고 순위)
       try {
         const savedRankings = localStorage.getItem(`ninfl_ranking_results_${p.blogId}`);
         if (savedRankings) {
-          const parsed = JSON.parse(savedRankings) as Record<string, MissingResult>;
-          const byPost: Record<string, MissingResult> = {};
-          for (const [key, result] of Object.entries(parsed)) {
-            const postId = key.includes('::') ? key.split('::')[0] : key;
-            const existing = byPost[postId];
-            if (!existing) {
-              byPost[postId] = { ...result };
-            } else {
-              // 각 탭별로 더 좋은 순위 채택
-              if (result.viewTab.exposed && (!existing.viewTab.exposed || (result.viewTab.rank && existing.viewTab.rank && result.viewTab.rank < existing.viewTab.rank))) {
-                existing.viewTab = result.viewTab;
-              }
-              if (result.blogTab.exposed && (!existing.blogTab.exposed || (result.blogTab.rank && existing.blogTab.rank && result.blogTab.rank < existing.blogTab.rank))) {
-                existing.blogTab = result.blogTab;
-              }
-              if (result.searchVolume && (!existing.searchVolume || result.searchVolume > existing.searchVolume)) {
-                existing.searchVolume = result.searchVolume;
+          const parsed = JSON.parse(savedRankings);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const byPost: Record<string, MissingResult> = {};
+            for (const [key, result] of Object.entries(parsed)) {
+              const r = result as MissingResult;
+              if (!r || !r.viewTab || !r.blogTab) continue;
+              const postId = key.includes('::') ? key.split('::')[0] : key;
+              const existing = byPost[postId];
+              if (!existing) {
+                byPost[postId] = { ...r };
+              } else {
+                if (r.viewTab.exposed && (!existing.viewTab.exposed || (r.viewTab.rank && existing.viewTab.rank && r.viewTab.rank < existing.viewTab.rank))) {
+                  existing.viewTab = r.viewTab;
+                }
+                if (r.blogTab.exposed && (!existing.blogTab.exposed || (r.blogTab.rank && existing.blogTab.rank && r.blogTab.rank < existing.blogTab.rank))) {
+                  existing.blogTab = r.blogTab;
+                }
+                if (r.searchVolume && (!existing.searchVolume || r.searchVolume > existing.searchVolume)) {
+                  existing.searchVolume = r.searchVolume;
+                }
               }
             }
+            setMissingResults(prev => ({ ...byPost, ...prev }));
+          } else {
+            localStorage.removeItem(`ninfl_ranking_results_${p.blogId}`);
           }
-          setMissingResults(prev => ({ ...byPost, ...prev }));
         }
-      } catch { /* ignore */ }
+      } catch {
+        // 손상된 캐시 자동 삭제
+        if (p.blogId) localStorage.removeItem(`ninfl_ranking_results_${p.blogId}`);
+      }
       fetchBlogPosts(p.blogId, 1);
       fetchAllBlogPosts(p.blogId);
       fetchScoreData(p.blogId);
@@ -407,20 +428,21 @@ export default function BloggerDashboard() {
     });
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis, fetchBlogStats]);
 
-  // 전체 포스트 자동 순위확인 (로드 완료 시)
+  // 전체 포스트 자동 순위확인 (로드 완료 시, 최대 20개씩)
   useEffect(() => {
     if (!profile || checkingAll) return;
     const posts = blogPosts.length > 0 ? blogPosts : [];
     if (posts.length === 0) return;
     const unchecked = posts.filter(p => !missingResults[p.id]);
     if (unchecked.length === 0) return;
+    const batch = unchecked.slice(0, 20);
     const autoCheck = async () => {
       setCheckingAll(true);
-      setCheckProgress({ current: 0, total: unchecked.length });
-      for (let i = 0; i < unchecked.length; i++) {
-        setCheckProgress({ current: i + 1, total: unchecked.length });
-        await checkMissing(unchecked[i]);
-        if (i < unchecked.length - 1) await new Promise(r => setTimeout(r, 1500));
+      setCheckProgress({ current: 0, total: batch.length });
+      for (let i = 0; i < batch.length; i++) {
+        setCheckProgress({ current: i + 1, total: batch.length });
+        await checkMissing(batch[i]);
+        if (i < batch.length - 1) await new Promise(r => setTimeout(r, 1000));
       }
       setCheckingAll(false);
       setCheckProgress({ current: 0, total: 0 });
