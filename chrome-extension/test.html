@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>N인플 크롬 확장앱 - 데모</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif; background: #f5f5f5; }
+    .demo { max-width: 700px; margin: 20px auto; }
+    .demo-label { font-size: 12px; font-weight: 700; color: #888; margin-bottom: 8px; letter-spacing: 1px; }
+    .demo-section { margin-bottom: 30px; }
+    .naver-sim { background: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+    .naver-header { padding: 14px 20px; border-bottom: 1px solid #eee; }
+    .naver-sb { display: flex; gap: 8px; }
+    .naver-sb input { flex: 1; padding: 10px 14px; border: 2px solid #03c75a; border-radius: 6px; font-size: 14px; outline: none; }
+    .naver-sb button { padding: 10px 20px; background: #03c75a; color: #fff; border: none; border-radius: 6px; font-weight: 700; }
+    .naver-body { padding: 20px; }
+    .naver-r { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+    .naver-r:last-child { border-bottom: none; }
+    .naver-r-t { font-size: 15px; color: #1a0dab; font-weight: 600; margin-bottom: 3px; }
+    .naver-r-d { font-size: 13px; color: #555; line-height: 1.5; }
+    .editor-area textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; }
+  </style>
+  <!-- 슬림바 + 상세패널 + 글자수 위젯 CSS -->
+  <style>
+    #ninfl-keyword-bar {
+      all: initial;
+      display: flex;
+      align-items: center;
+      padding: 8px 14px;
+      margin: 8px 0;
+      background: #F29C6B;
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+      font-size: 13px;
+      color: #fff;
+      cursor: pointer;
+      z-index: 2147483646;
+      position: relative;
+      gap: 0;
+      transition: box-shadow 0.2s;
+    }
+    #ninfl-keyword-bar:hover { box-shadow: 0 2px 8px rgba(242,156,107,0.4); }
+    #ninfl-keyword-bar * { font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif; box-sizing: border-box; }
+    .ninfl-bar-logo {
+      width: 20px; height: 20px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; color: #fff; font-size: 11px;
+      margin-right: 8px; flex-shrink: 0;
+    }
+    .ninfl-bar-kw { font-weight: 800; font-size: 13px; color: #fff; margin-right: 10px; }
+    .ninfl-bar-sep { width: 1px; height: 14px; background: rgba(255,255,255,0.3); margin: 0 10px; flex-shrink: 0; }
+    .ninfl-bar-item { font-size: 12px; color: rgba(255,255,255,0.9); font-weight: 600; margin-right: 6px; white-space: nowrap; }
+    .ninfl-bar-item strong { color: #fff; font-weight: 800; }
+    .ninfl-comp-low { color: #D1FAE5; }
+    .ninfl-comp-medium { color: #FEF3C7; }
+    .ninfl-comp-high { color: #FECACA; }
+    .ninfl-bar-toggle { margin-left: auto; font-size: 11px; color: rgba(255,255,255,0.7); font-weight: 600; white-space: nowrap; }
+    .ninfl-bar-arrow { display: inline-block; transition: transform 0.2s; margin-left: 4px; }
+    .ninfl-bar-arrow.open { transform: rotate(180deg); }
+
+    #ninfl-keyword-detail {
+      all: initial;
+      display: none;
+      margin: 0 0 8px 0;
+      padding: 16px 18px;
+      background: #fff;
+      border: 1px solid #F29C6B;
+      border-radius: 0 0 10px 10px;
+      margin-top: -6px;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+      color: #333;
+      z-index: 2147483645;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(242,156,107,0.1);
+    }
+    #ninfl-keyword-detail * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif; }
+    #ninfl-keyword-detail.open { display: block; }
+
+    .ninfl-d-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .ninfl-d-stat { text-align: center; padding: 10px 4px; background: #FFF8F3; border-radius: 8px; }
+    .ninfl-d-stat-value { font-size: 18px; font-weight: 900; color: #F29C6B; }
+    .ninfl-d-stat-value.pc { color: #3B82F6; }
+    .ninfl-d-stat-value.mobile { color: #8B5CF6; }
+    .ninfl-d-stat-label { font-size: 10px; color: #9B8A82; margin-top: 3px; font-weight: 600; }
+    .ninfl-d-ratio { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .ninfl-d-ratio-bar { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; display: flex; }
+    .ninfl-d-ratio-pc { height: 100%; background: #3B82F6; }
+    .ninfl-d-ratio-mobile { height: 100%; background: #8B5CF6; }
+    .ninfl-d-ratio-labels { display: flex; justify-content: space-between; font-size: 10px; color: #9B8A82; margin-bottom: 12px; }
+    .ninfl-d-related-title { font-size: 12px; font-weight: 700; color: #6B5B54; margin-bottom: 8px; padding-top: 10px; border-top: 1px solid #F0E6E0; }
+    .ninfl-d-related-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ninfl-d-related-item {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 10px;
+      background: #FFF8F3; border: 1px solid #F0E6E0; border-radius: 20px;
+      font-size: 12px; color: #4B3B36;
+      cursor: pointer; transition: all 0.15s;
+      text-decoration: none;
+    }
+    .ninfl-d-related-item:hover { background: #F29C6B; color: #fff; border-color: #F29C6B; }
+    .ninfl-d-related-vol { font-size: 10px; color: #9B8A82; font-weight: 600; }
+    .ninfl-d-related-item:hover .ninfl-d-related-vol { color: rgba(255,255,255,0.8); }
+    .ninfl-d-footer { text-align: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid #F0E6E0; }
+    .ninfl-d-footer a { font-size: 11px; color: #F29C6B; text-decoration: none; font-weight: 600; }
+
+    #ninfl-char-widget {
+      all: initial;
+      display: block;
+      padding: 5px 14px;
+      background: #F29C6B;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+      margin: 0 0 4px 0;
+    }
+    #ninfl-char-widget span { font-size: 12px; font-weight: 600; color: #fff; }
+    .ninfl-w-sep { margin: 0 6px; opacity: 0.5; }
+  </style>
+</head>
+<body>
+  <div class="demo">
+
+    <!-- 1. 슬림바 (접힌 상태) -->
+    <div class="demo-section">
+      <div class="demo-label">NAVER SEARCH PAGE - SLIM BAR</div>
+      <div class="naver-sim">
+        <div class="naver-header">
+          <div class="naver-sb">
+            <input type="text" value="맛집추천" readonly>
+            <button>검색</button>
+          </div>
+        </div>
+        <div class="naver-body">
+
+          <!-- 슬림바 -->
+          <div id="ninfl-keyword-bar" onclick="toggleDetail()">
+            <div class="ninfl-bar-logo">N</div>
+            <span class="ninfl-bar-kw">맛집추천</span>
+            <div class="ninfl-bar-sep"></div>
+            <span class="ninfl-bar-item"><strong>5.1만</strong></span>
+            <div class="ninfl-bar-sep"></div>
+            <span class="ninfl-bar-item">PC 25% / 모바일 75%</span>
+            <div class="ninfl-bar-sep"></div>
+            <span class="ninfl-bar-item">경쟁도 <span class="ninfl-comp-high">높음</span></span>
+            <div class="ninfl-bar-sep"></div>
+            <span class="ninfl-bar-item">연관 9개</span>
+            <span class="ninfl-bar-toggle" id="demo-toggle">펼치기 <span class="ninfl-bar-arrow" id="demo-arrow">&#9660;</span></span>
+          </div>
+
+          <!-- 상세 패널 -->
+          <div id="ninfl-keyword-detail">
+            <div class="ninfl-d-stats">
+              <div class="ninfl-d-stat"><div class="ninfl-d-stat-value">5.1만</div><div class="ninfl-d-stat-label">월간 검색량</div></div>
+              <div class="ninfl-d-stat"><div class="ninfl-d-stat-value pc">1.2만</div><div class="ninfl-d-stat-label">PC</div></div>
+              <div class="ninfl-d-stat"><div class="ninfl-d-stat-value mobile">3.8만</div><div class="ninfl-d-stat-label">모바일</div></div>
+            </div>
+            <div class="ninfl-d-ratio"><div class="ninfl-d-ratio-bar"><div class="ninfl-d-ratio-pc" style="width:25%"></div><div class="ninfl-d-ratio-mobile" style="width:75%"></div></div></div>
+            <div class="ninfl-d-ratio-labels"><span>PC 25%</span><span>모바일 75%</span></div>
+            <div class="ninfl-d-related-title">연관검색어</div>
+            <div class="ninfl-d-related-list">
+              <a class="ninfl-d-related-item" href="#">서울맛집 <span class="ninfl-d-related-vol">3.6만</span></a>
+              <a class="ninfl-d-related-item" href="#">강남맛집 <span class="ninfl-d-related-vol">2.2만</span></a>
+              <a class="ninfl-d-related-item" href="#">홍대맛집 <span class="ninfl-d-related-vol">1.7만</span></a>
+              <a class="ninfl-d-related-item" href="#">이태원맛집 <span class="ninfl-d-related-vol">1.2만</span></a>
+              <a class="ninfl-d-related-item" href="#">데이트맛집 <span class="ninfl-d-related-vol">1.5만</span></a>
+              <a class="ninfl-d-related-item" href="#">혼밥맛집 <span class="ninfl-d-related-vol">9.7K</span></a>
+              <a class="ninfl-d-related-item" href="#">점심맛집 <span class="ninfl-d-related-vol">7K</span></a>
+              <a class="ninfl-d-related-item" href="#">저녁맛집 <span class="ninfl-d-related-vol">5.3K</span></a>
+              <a class="ninfl-d-related-item" href="#">맛집추천 블로그 <span class="ninfl-d-related-vol">8.1K</span></a>
+            </div>
+            <div class="ninfl-d-footer"><a href="https://naver-influencer.vercel.app" target="_blank">N인플 대시보드에서 더 보기 &rarr;</a></div>
+          </div>
+
+          <div class="naver-r">
+            <div class="naver-r-t">서울 맛집추천 TOP 10 - 블로그</div>
+            <div class="naver-r-d">서울에서 꼭 가봐야 할 맛집을 추천합니다. 강남, 홍대, 이태원 지역별로 정리...</div>
+          </div>
+          <div class="naver-r">
+            <div class="naver-r-t">2026년 맛집추천 리스트 총정리</div>
+            <div class="naver-r-d">올해 새로 오픈한 맛집부터 스테디셀러까지 한눈에 모아봤습니다...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 글자수세기 위젯 -->
+    <div class="demo-section">
+      <div class="demo-label">CHARACTER COUNT WIDGET</div>
+      <div class="editor-area">
+        <div id="ninfl-char-widget">
+          <span>타자수 127타</span><span class="ninfl-w-sep">/</span><span>글자수 58자</span><span class="ninfl-w-sep">/</span><span>공백제외 50자</span>
+        </div>
+        <textarea placeholder="여기에 텍스트를 입력하면 위 위젯이 실시간으로 업데이트됩니다...">오늘 저녁에 맛집을 찾아서 가볼까 합니다. 서울 강남역 근처에 좋은 곳이 있을까요?</textarea>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function toggleDetail() {
+      var d = document.getElementById('ninfl-keyword-detail');
+      var arrow = document.getElementById('demo-arrow');
+      var toggle = document.getElementById('demo-toggle');
+      var isOpen = d.classList.contains('open');
+      if (isOpen) {
+        d.classList.remove('open');
+        arrow.classList.remove('open');
+        toggle.innerHTML = '펼치기 <span class="ninfl-bar-arrow" id="demo-arrow">&#9660;</span>';
+      } else {
+        d.classList.add('open');
+        arrow.classList.add('open');
+        toggle.innerHTML = '접기 <span class="ninfl-bar-arrow open" id="demo-arrow">&#9660;</span>';
+      }
+    }
+  </script>
+</body>
+</html>

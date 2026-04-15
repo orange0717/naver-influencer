@@ -1,0 +1,488 @@
+// N인플 키워드 분석 - Content Script v2.0.0
+(function () {
+  'use strict';
+
+  var BAR_ID = 'ninfl-keyword-bar';
+  var DETAIL_ID = 'ninfl-keyword-detail';
+  var WIDGET_ID = 'ninfl-char-widget';
+  var _settings = { keyword: true, related: true, charWidget: true };
+  var _injectedBar = false;
+  var _expanded = false;
+  var _activeEditor = null;
+  var _inputTimer = null;
+  var _lastText = '';
+
+  // ── 설정 로드 ──
+  try {
+    chrome.storage.local.get(['ninflKeyword', 'ninflRelated', 'ninflCharWidget'], function (r) {
+      if (r.ninflKeyword === false) _settings.keyword = false;
+      if (r.ninflRelated === false) _settings.related = false;
+      if (r.ninflCharWidget === false) _settings.charWidget = false;
+      init();
+    });
+    chrome.storage.onChanged.addListener(function (changes) {
+      if (changes.ninflKeyword) _settings.keyword = changes.ninflKeyword.newValue !== false;
+      if (changes.ninflRelated) _settings.related = changes.ninflRelated.newValue !== false;
+      if (changes.ninflCharWidget) _settings.charWidget = changes.ninflCharWidget.newValue !== false;
+      var w = document.getElementById(WIDGET_ID);
+      if (w) w.style.display = _settings.charWidget ? '' : 'none';
+    });
+  } catch (e) {
+    init();
+  }
+
+  function init() {
+    injectStyles();
+    if (isNaverSearch() && _settings.keyword) insertKeywordBar();
+    if (_settings.charWidget) setupCharWidget();
+  }
+
+  // ── 네이버 검색 페이지 판별 ──
+  function isNaverSearch() {
+    return /^https?:\/\/(m\.)?search\.naver\.com/.test(location.href);
+  }
+
+  function getSearchQuery() {
+    var params = new URLSearchParams(location.search);
+    return params.get('query') || params.get('q') || '';
+  }
+
+  // ── 메시지 전송 ──
+  function msgAsync(msg) {
+    return new Promise(function (resolve) {
+      try {
+        chrome.runtime.sendMessage(msg, function (resp) {
+          resolve(resp || { ok: false });
+        });
+      } catch (e) {
+        resolve({ ok: false, error: e.message });
+      }
+    });
+  }
+
+  // ── 숫자 포맷 ──
+  function formatVolume(v) {
+    if (v === undefined || v === null) return '-';
+    var n = typeof v === 'string' ? parseInt(v.replace(/[<,\s]/g, ''), 10) : v;
+    if (isNaN(n) || n <= 0) return '< 10';
+    if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return n.toLocaleString();
+  }
+
+  function parseVolume(v) {
+    if (v === undefined || v === null) return 0;
+    if (typeof v === 'number') return v;
+    var s = String(v).replace(/[<,\s]/g, '');
+    var n = parseInt(s, 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  // ── 경쟁도 ──
+  function getCompLevel(item) {
+    var ci = (item.compIdx || item.competition || '').toLowerCase();
+    if (ci === 'high' || ci === '높음') return { label: '높음', cls: 'ninfl-comp-high' };
+    if (ci === 'medium' || ci === '중간') return { label: '중간', cls: 'ninfl-comp-medium' };
+    return { label: '낮음', cls: 'ninfl-comp-low' };
+  }
+
+  function escHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ── CSS 주입 ──
+  function injectStyles() {
+    if (document.getElementById('ninfl-styles')) return;
+    var style = document.createElement('style');
+    style.id = 'ninfl-styles';
+    style.textContent = '\
+/* 슬림바 */\
+#' + BAR_ID + ' {\
+  all: initial;\
+  display: flex;\
+  align-items: center;\
+  padding: 8px 14px;\
+  margin: 8px 0;\
+  background: #F29C6B;\
+  border-radius: 8px;\
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;\
+  font-size: 13px;\
+  color: #fff;\
+  cursor: pointer;\
+  z-index: 2147483646;\
+  position: relative;\
+  gap: 0;\
+  transition: box-shadow 0.2s;\
+}\
+#' + BAR_ID + ':hover { box-shadow: 0 2px 8px rgba(242,156,107,0.4); }\
+#' + BAR_ID + ' * {\
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;\
+  box-sizing: border-box;\
+}\
+.ninfl-bar-logo {\
+  width: 20px; height: 20px;\
+  background: rgba(255,255,255,0.25);\
+  border-radius: 4px;\
+  display: flex; align-items: center; justify-content: center;\
+  font-weight: 900; color: #fff; font-size: 11px;\
+  margin-right: 8px; flex-shrink: 0;\
+}\
+.ninfl-bar-kw {\
+  font-weight: 800; font-size: 13px; color: #fff;\
+  margin-right: 10px;\
+}\
+.ninfl-bar-sep {\
+  width: 1px; height: 14px; background: rgba(255,255,255,0.3);\
+  margin: 0 10px; flex-shrink: 0;\
+}\
+.ninfl-bar-item {\
+  font-size: 12px; color: rgba(255,255,255,0.9); font-weight: 600;\
+  margin-right: 6px; white-space: nowrap;\
+}\
+.ninfl-bar-item strong {\
+  color: #fff; font-weight: 800;\
+}\
+.ninfl-comp-low { color: #D1FAE5; }\
+.ninfl-comp-medium { color: #FEF3C7; }\
+.ninfl-comp-high { color: #FECACA; }\
+.ninfl-bar-toggle {\
+  margin-left: auto;\
+  font-size: 11px; color: rgba(255,255,255,0.7);\
+  font-weight: 600; white-space: nowrap;\
+}\
+.ninfl-bar-arrow {\
+  display: inline-block; transition: transform 0.2s;\
+  margin-left: 4px;\
+}\
+.ninfl-bar-arrow.open { transform: rotate(180deg); }\
+\
+/* 상세 패널 */\
+#' + DETAIL_ID + ' {\
+  all: initial;\
+  display: none;\
+  margin: 0 0 8px 0;\
+  padding: 16px 18px;\
+  background: #fff;\
+  border: 1px solid #F29C6B;\
+  border-radius: 0 0 10px 10px;\
+  margin-top: -6px;\
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;\
+  color: #333;\
+  z-index: 2147483645;\
+  position: relative;\
+  box-shadow: 0 4px 12px rgba(242,156,107,0.1);\
+}\
+#' + DETAIL_ID + ' * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif; }\
+#' + DETAIL_ID + '.open { display: block; }\
+\
+.ninfl-d-stats {\
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;\
+}\
+.ninfl-d-stat {\
+  text-align: center; padding: 10px 4px;\
+  background: #FFF8F3; border-radius: 8px;\
+}\
+.ninfl-d-stat-value {\
+  font-size: 18px; font-weight: 900; color: #F29C6B;\
+}\
+.ninfl-d-stat-value.pc { color: #3B82F6; }\
+.ninfl-d-stat-value.mobile { color: #8B5CF6; }\
+.ninfl-d-stat-label {\
+  font-size: 10px; color: #9B8A82; margin-top: 3px; font-weight: 600;\
+}\
+\
+.ninfl-d-ratio {\
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;\
+}\
+.ninfl-d-ratio-bar {\
+  flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; display: flex;\
+}\
+.ninfl-d-ratio-pc { height: 100%; background: #3B82F6; }\
+.ninfl-d-ratio-mobile { height: 100%; background: #8B5CF6; }\
+.ninfl-d-ratio-labels {\
+  display: flex; justify-content: space-between;\
+  font-size: 10px; color: #9B8A82; margin-bottom: 12px;\
+}\
+\
+.ninfl-d-related-title {\
+  font-size: 12px; font-weight: 700; color: #6B5B54;\
+  margin-bottom: 8px; padding-top: 10px;\
+  border-top: 1px solid #F0E6E0;\
+}\
+.ninfl-d-related-list { display: flex; flex-wrap: wrap; gap: 6px; }\
+.ninfl-d-related-item {\
+  display: inline-flex; align-items: center; gap: 4px;\
+  padding: 5px 10px;\
+  background: #FFF8F3; border: 1px solid #F0E6E0; border-radius: 20px;\
+  font-size: 12px; color: #4B3B36;\
+  cursor: pointer; transition: all 0.15s;\
+  text-decoration: none;\
+}\
+.ninfl-d-related-item:hover { background: #F29C6B; color: #fff; border-color: #F29C6B; }\
+.ninfl-d-related-vol { font-size: 10px; color: #9B8A82; font-weight: 600; }\
+.ninfl-d-related-item:hover .ninfl-d-related-vol { color: rgba(255,255,255,0.8); }\
+\
+.ninfl-d-footer {\
+  text-align: center; margin-top: 12px; padding-top: 10px;\
+  border-top: 1px solid #F0E6E0;\
+}\
+.ninfl-d-footer a {\
+  font-size: 11px; color: #F29C6B; text-decoration: none; font-weight: 600;\
+}\
+.ninfl-d-footer a:hover { text-decoration: underline; }\
+\
+/* 글자수 위젯 */\
+#' + WIDGET_ID + ' {\
+  all: initial;\
+  display: none;\
+  padding: 5px 14px;\
+  background: #F29C6B;\
+  color: #fff;\
+  border-radius: 4px;\
+  font-size: 12px;\
+  font-weight: 600;\
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;\
+  z-index: 2147483646;\
+  position: relative;\
+  margin: 0 0 2px 0;\
+}\
+#' + WIDGET_ID + ' span {\
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;\
+  font-size: 12px; font-weight: 600; color: #fff;\
+}\
+.ninfl-w-sep { margin: 0 6px; opacity: 0.5; }\
+';
+    document.head.appendChild(style);
+  }
+
+  // ══════════════════════════════════════════
+  // 1. 키워드 분석 슬림바 (네이버 검색 페이지)
+  // ══════════════════════════════════════════
+
+  function insertKeywordBar() {
+    if (_injectedBar) return;
+    var query = getSearchQuery();
+    if (!query) return;
+    _injectedBar = true;
+
+    // 슬림바
+    var bar = document.createElement('div');
+    bar.id = BAR_ID;
+    bar.innerHTML = '\
+<div class="ninfl-bar-logo">N</div>\
+<span class="ninfl-bar-kw" id="ninfl-bar-kw">' + escHtml(query) + '</span>\
+<div class="ninfl-bar-sep"></div>\
+<span class="ninfl-bar-item" id="ninfl-bar-vol">검색량 --</span>\
+<div class="ninfl-bar-sep"></div>\
+<span class="ninfl-bar-item" id="ninfl-bar-ratio">PC --% / 모바일 --%</span>\
+<div class="ninfl-bar-sep"></div>\
+<span class="ninfl-bar-item" id="ninfl-bar-comp">경쟁도 --</span>\
+<div class="ninfl-bar-sep"></div>\
+<span class="ninfl-bar-item" id="ninfl-bar-related">연관 --개</span>\
+<span class="ninfl-bar-toggle" id="ninfl-bar-toggle">펼치기 <span class="ninfl-bar-arrow" id="ninfl-bar-arrow">&#9660;</span></span>';
+
+    // 상세 패널
+    var detail = document.createElement('div');
+    detail.id = DETAIL_ID;
+    detail.innerHTML = '<div style="text-align:center;padding:12px;color:#9B8A82;font-size:12px;">로딩 중...</div>';
+
+    // 삽입 위치
+    var anchor = document.getElementById('main_pack') || document.querySelector('.content_wrap') || document.querySelector('#content');
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(detail, anchor);
+      anchor.parentNode.insertBefore(bar, detail);
+    } else {
+      document.body.insertBefore(detail, document.body.firstChild);
+      document.body.insertBefore(bar, detail);
+    }
+
+    // 클릭으로 펼치기/접기
+    bar.addEventListener('click', function () {
+      _expanded = !_expanded;
+      var d = document.getElementById(DETAIL_ID);
+      var arrow = document.getElementById('ninfl-bar-arrow');
+      var toggle = document.getElementById('ninfl-bar-toggle');
+      if (d) {
+        if (_expanded) {
+          d.classList.add('open');
+        } else {
+          d.classList.remove('open');
+        }
+      }
+      if (arrow) {
+        if (_expanded) {
+          arrow.classList.add('open');
+        } else {
+          arrow.classList.remove('open');
+        }
+      }
+      if (toggle) toggle.firstChild.textContent = _expanded ? '접기 ' : '펼치기 ';
+    });
+
+    // API 호출
+    fetchKeywordData(query);
+  }
+
+  function fetchKeywordData(query) {
+    msgAsync({ type: 'fetch-search-volume', keyword: query }).then(function (resp) {
+      if (!resp || !resp.ok || !resp.data || !resp.data.keywords || resp.data.keywords.length === 0) {
+        var elVol = document.getElementById('ninfl-bar-vol');
+        if (elVol) elVol.textContent = '데이터 없음';
+        return;
+      }
+
+      var keywords = resp.data.keywords;
+      var main = keywords[0];
+      var pc = parseVolume(main.monthlyPcQcCnt);
+      var mobile = parseVolume(main.monthlyMobileQcCnt);
+      var total = pc + mobile;
+      var pcPct = total > 0 ? Math.round((pc / total) * 100) : 50;
+      var mobilePct = 100 - pcPct;
+      var comp = getCompLevel(main);
+      var relCount = keywords.length > 1 ? keywords.length - 1 : 0;
+
+      // 슬림바 업데이트
+      var elVol = document.getElementById('ninfl-bar-vol');
+      var elRatio = document.getElementById('ninfl-bar-ratio');
+      var elComp = document.getElementById('ninfl-bar-comp');
+      var elRelated = document.getElementById('ninfl-bar-related');
+
+      if (elVol) elVol.innerHTML = '<strong>' + formatVolume(total) + '</strong>';
+      if (elRatio) elRatio.textContent = 'PC ' + pcPct + '% / 모바일 ' + mobilePct + '%';
+      if (elComp) { elComp.innerHTML = '경쟁도 <span class="' + comp.cls + '">' + comp.label + '</span>'; }
+      if (elRelated) elRelated.textContent = '연관 ' + relCount + '개';
+
+      // 상세 패널 업데이트
+      var detail = document.getElementById(DETAIL_ID);
+      if (!detail) return;
+
+      var html = '';
+      // 검색량 카드
+      html += '<div class="ninfl-d-stats">';
+      html += '<div class="ninfl-d-stat"><div class="ninfl-d-stat-value">' + formatVolume(total) + '</div><div class="ninfl-d-stat-label">월간 검색량</div></div>';
+      html += '<div class="ninfl-d-stat"><div class="ninfl-d-stat-value pc">' + formatVolume(pc) + '</div><div class="ninfl-d-stat-label">PC</div></div>';
+      html += '<div class="ninfl-d-stat"><div class="ninfl-d-stat-value mobile">' + formatVolume(mobile) + '</div><div class="ninfl-d-stat-label">모바일</div></div>';
+      html += '</div>';
+
+      // 비율 바
+      html += '<div class="ninfl-d-ratio"><div class="ninfl-d-ratio-bar"><div class="ninfl-d-ratio-pc" style="width:' + pcPct + '%"></div><div class="ninfl-d-ratio-mobile" style="width:' + mobilePct + '%"></div></div></div>';
+      html += '<div class="ninfl-d-ratio-labels"><span>PC ' + pcPct + '%</span><span>모바일 ' + mobilePct + '%</span></div>';
+
+      // 연관검색어
+      if (_settings.related && keywords.length > 1) {
+        html += '<div class="ninfl-d-related-title">연관검색어</div>';
+        html += '<div class="ninfl-d-related-list">';
+        for (var i = 1; i < keywords.length && i <= 10; i++) {
+          var kw = keywords[i];
+          var kwTotal = parseVolume(kw.monthlyPcQcCnt) + parseVolume(kw.monthlyMobileQcCnt);
+          var url = 'https://search.naver.com/search.naver?query=' + encodeURIComponent(kw.relKeyword);
+          html += '<a class="ninfl-d-related-item" href="' + url + '" target="_self">';
+          html += escHtml(kw.relKeyword);
+          html += ' <span class="ninfl-d-related-vol">' + formatVolume(kwTotal) + '</span>';
+          html += '</a>';
+        }
+        html += '</div>';
+      }
+
+      html += '<div class="ninfl-d-footer"><a href="https://naver-influencer.vercel.app" target="_blank">N인플 대시보드에서 더 보기 &rarr;</a></div>';
+
+      detail.innerHTML = html;
+    });
+  }
+
+  // ══════════════════════════════════════════
+  // 2. 글자수세기 위젯
+  // ══════════════════════════════════════════
+
+  function setupCharWidget() {
+    document.addEventListener('focusin', function (e) {
+      var el = e.target;
+      if (el.closest && (el.closest('#' + WIDGET_ID) || el.closest('#' + BAR_ID))) return;
+      var isEditor = false;
+      if (el.tagName === 'TEXTAREA') isEditor = true;
+      if (el.tagName === 'INPUT' && el.type === 'text' && el.offsetWidth > 200) isEditor = true;
+      if (el.isContentEditable) isEditor = true;
+      if (isEditor && el !== _activeEditor) {
+        detachWidget();
+        _activeEditor = el;
+        attachWidget(el);
+      }
+    }, true);
+
+    document.addEventListener('input', function (e) {
+      if (_activeEditor && (e.target === _activeEditor || _activeEditor.contains(e.target))) {
+        onEditorInput();
+      }
+    }, true);
+  }
+
+  function attachWidget(el) {
+    var widget = document.createElement('div');
+    widget.id = WIDGET_ID;
+    widget.innerHTML = '<span id="ninfl-w-stroke">타자수 0타</span><span class="ninfl-w-sep">/</span><span id="ninfl-w-char">글자수 0자</span><span class="ninfl-w-sep">/</span><span id="ninfl-w-nospace">공백제외 0자</span>';
+    if (!_settings.charWidget) widget.style.display = 'none';
+    if (el.parentNode) el.parentNode.insertBefore(widget, el);
+    var text = getEditorText(el);
+    if (text.length > 0) {
+      updateCharWidget(text);
+      widget.style.display = _settings.charWidget ? 'block' : 'none';
+    }
+  }
+
+  function detachWidget() {
+    var old = document.getElementById(WIDGET_ID);
+    if (old) old.remove();
+    _activeEditor = null;
+    _lastText = '';
+  }
+
+  function onEditorInput() {
+    clearTimeout(_inputTimer);
+    _inputTimer = setTimeout(function () {
+      if (!_activeEditor) return;
+      var text = getEditorText(_activeEditor);
+      if (text === _lastText) return;
+      _lastText = text;
+      updateCharWidget(text);
+    }, 300);
+  }
+
+  function getEditorText(el) {
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') return el.value || '';
+    return el.innerText || el.textContent || '';
+  }
+
+  function updateCharWidget(text) {
+    var widget = document.getElementById(WIDGET_ID);
+    if (!widget) return;
+    var chars = text.length;
+    var noSpace = text.replace(/\s/g, '').length;
+    var strokes = countStrokes(text);
+    var elStroke = document.getElementById('ninfl-w-stroke');
+    var elChar = document.getElementById('ninfl-w-char');
+    var elNoSpace = document.getElementById('ninfl-w-nospace');
+    if (elStroke) elStroke.textContent = '타자수 ' + strokes.toLocaleString() + '타';
+    if (elChar) elChar.textContent = '글자수 ' + chars.toLocaleString() + '자';
+    if (elNoSpace) elNoSpace.textContent = '공백제외 ' + noSpace.toLocaleString() + '자';
+    widget.style.display = chars > 0 && _settings.charWidget ? 'block' : 'none';
+  }
+
+  function countStrokes(text) {
+    var count = 0;
+    for (var i = 0; i < text.length; i++) {
+      var code = text.charCodeAt(i);
+      if (code >= 0xAC00 && code <= 0xD7AF) {
+        var jong = (code - 0xAC00) % 28;
+        count += jong > 0 ? 3 : 2;
+      } else if (code >= 0x3131 && code <= 0x318E) {
+        count += 1;
+      } else if (code > 32) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+})();

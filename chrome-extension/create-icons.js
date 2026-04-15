@@ -150,7 +150,7 @@ function isInLetterN(x, y, w, h) {
 
 // 아이콘 생성
 const sizes = [16, 48, 128];
-const orangeColor = [191, 137, 132]; // #BF8984
+const orangeColor = [242, 156, 107]; // #F29C6B
 
 sizes.forEach(size => {
   const png = createPNG(size, size, orangeColor);

@@ -1,26 +1,23 @@
 {
   "manifest_version": 3,
   "name": "N인플 키워드 분석",
-  "version": "1.1.0",
-  "description": "네이버 키워드 검색량, 경쟁도, PC/모바일 비율을 한눈에 확인하세요",
+  "version": "2.0.0",
+  "description": "네이버 검색 페이지에서 키워드 검색량, 연관검색어, 글자수세기를 한눈에",
   "permissions": [
-    "activeTab",
-    "contextMenus",
-    "sidePanel",
     "storage"
   ],
-  "host_permissions": [
-    "https://naver-influencer.vercel.app/*",
-    "https://search.naver.com/*",
-    "https://m.search.naver.com/*",
-    "https://blog.naver.com/*",
-    "https://m.blog.naver.com/*"
+  "content_scripts": [
+    {
+      "matches": [
+        "https://search.naver.com/*",
+        "https://m.search.naver.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
   ],
   "background": {
-    "service_worker": "src/background.js"
-  },
-  "side_panel": {
-    "default_path": "sidepanel.html"
+    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -30,19 +27,6 @@
       "128": "icons/icon128.png"
     }
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://search.naver.com/*",
-        "https://m.search.naver.com/*",
-        "https://blog.naver.com/*",
-        "https://m.blog.naver.com/*"
-      ],
-      "js": ["src/content.js"],
-      "css": ["src/content.css"],
-      "run_at": "document_idle"
-    }
-  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

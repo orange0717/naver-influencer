@@ -2,280 +2,46 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=400">
+  <meta name="viewport" content="width=320">
   <title>N인플 키워드 분석</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      width: 420px;
-      min-height: 300px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
-      background: #FDF5F2;
-      color: #6B4F4A;
-    }
-
-    /* 헤더 */
-    .header {
-      background: linear-gradient(135deg, #BF8984, #F2D9D0);
-      padding: 16px 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .header-logo {
-      width: 32px; height: 32px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 900; color: #fff; font-size: 18px;
-    }
-    .header-text h1 { font-size: 15px; font-weight: 800; color: #fff; }
-    .header-text p { font-size: 10px; color: rgba(255,255,255,0.8); margin-top: 2px; }
-
-    /* 검색 영역 */
-    .search-area {
-      padding: 16px 20px;
-      background: #fff;
-      border-bottom: 1px solid #E8C4B8;
-    }
-    .search-box {
-      display: flex; gap: 8px;
-    }
-    .search-input {
-      flex: 1;
-      padding: 10px 14px;
-      border: 2px solid #E8C4B8;
-      border-radius: 10px;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .search-input:focus { border-color: #BF8984; }
-    .search-input::placeholder { color: #C4B0A8; }
-    .search-btn {
-      padding: 10px 18px;
-      background: #BF8984;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .search-btn:hover { background: #A0706A; }
-    .search-btn:disabled { background: #C4B0A8; cursor: not-allowed; }
-
-    .search-hint {
-      margin-top: 8px;
-      font-size: 10px;
-      color: #9B8A82;
-    }
-    .search-hint code {
-      background: #FFF0EB;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 10px;
-    }
-
-    /* 결과 영역 */
-    .results {
-      padding: 0 20px 16px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    /* 로딩 */
-    .loading {
-      text-align: center;
-      padding: 30px;
-    }
-    .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid #E8C4B8;
-      border-top-color: #BF8984;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 10px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-text { font-size: 12px; color: #9B8A82; }
-
-    /* 에러 */
-    .error {
-      text-align: center;
-      padding: 20px;
-      color: #DC2626;
-      font-size: 12px;
-    }
-
-    /* 빈 상태 */
-    .empty {
-      text-align: center;
-      padding: 40px 20px;
-      color: #9B8A82;
-    }
-    .empty-icon { font-size: 36px; margin-bottom: 10px; }
-    .empty h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: #6B5B54; }
-    .empty p { font-size: 11px; line-height: 1.5; }
-
-    /* 키워드 결과 카드 */
-    .keyword-card {
-      background: #fff;
-      border: 1px solid #E8C4B8;
-      border-radius: 12px;
-      padding: 14px 16px;
-      margin-top: 12px;
-      transition: box-shadow 0.2s;
-    }
-    .keyword-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-
-    .kw-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .kw-name {
-      font-size: 14px;
-      font-weight: 800;
-      color: #1F2937;
-    }
-    .kw-badge {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 20px;
-    }
-    .kw-badge.low { background: #ECFDF5; color: #059669; }
-    .kw-badge.medium { background: #FFF7ED; color: #D97706; }
-    .kw-badge.high { background: #FEF2F2; color: #DC2626; }
-
-    .kw-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-    }
-    .kw-stat {
-      text-align: center;
-      padding: 8px 4px;
-      background: #FFF8F5;
-      border-radius: 8px;
-    }
-    .kw-stat-value {
-      font-size: 16px;
-      font-weight: 900;
-      color: #BF8984;
-    }
-    .kw-stat-value.pc { color: #3B82F6; }
-    .kw-stat-value.mobile { color: #8B5CF6; }
-    .kw-stat-label {
-      font-size: 9px;
-      color: #9B8A82;
-      margin-top: 2px;
-      font-weight: 600;
-    }
-
-    /* PC/모바일 비율 바 */
-    .kw-ratio {
-      margin-top: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .ratio-bar {
-      flex: 1;
-      height: 6px;
-      background: #E8C4B8;
-      border-radius: 3px;
-      overflow: hidden;
-      display: flex;
-    }
-    .ratio-pc {
-      height: 100%;
-      background: #3B82F6;
-      transition: width 0.5s ease;
-    }
-    .ratio-mobile {
-      height: 100%;
-      background: #8B5CF6;
-      transition: width 0.5s ease;
-    }
-    .ratio-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 9px;
-      color: #9B8A82;
-      margin-top: 3px;
-    }
-
-    /* 결과 요약 */
-    .results-summary {
-      padding: 12px 20px;
-      font-size: 11px;
-      color: #9B8A82;
-      border-bottom: 1px solid #E8C4B8;
-      background: #fff;
-    }
-    .results-summary strong { color: #BF8984; }
-
-    /* 푸터 */
-    .footer {
-      padding: 12px 20px;
-      text-align: center;
-      border-top: 1px solid #E8C4B8;
-      background: #fff;
-    }
-    .footer a {
-      font-size: 11px;
-      color: #BF8984;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .footer a:hover { text-decoration: underline; }
-  </style>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-
-  <!-- 헤더 -->
-  <div class="header">
-    <div class="header-logo">N</div>
-    <div class="header-text">
-      <h1>N인플 키워드 분석</h1>
-      <p>검색량 / 경쟁도 / PC-모바일 비율</p>
+  <div class="popup-header">
+    <div class="popup-logo">N</div>
+    <div>
+      <div class="popup-title">N인플 키워드 분석</div>
+      <div class="popup-ver">v2.0.0</div>
     </div>
   </div>
 
-  <!-- 검색 -->
-  <div class="search-area">
-    <div class="search-box">
-      <input type="text" id="searchInput" class="search-input"
-        placeholder="키워드 입력 (쉼표로 여러 개 검색)"
-        autofocus />
-      <button id="searchBtn" class="search-btn">검색</button>
-    </div>
-    <p class="search-hint">
-      여러 키워드: <code>맛집추천, 여행코스, 카페</code> (최대 5개)
-    </p>
+  <div class="popup-body">
+    <label class="popup-row">
+      <span>키워드 검색량</span>
+      <input type="checkbox" id="opt-keyword" checked>
+      <span class="toggle-slider"></span>
+    </label>
+    <label class="popup-row">
+      <span>연관검색어</span>
+      <input type="checkbox" id="opt-related" checked>
+      <span class="toggle-slider"></span>
+    </label>
+    <label class="popup-row">
+      <span>글자수 표시</span>
+      <input type="checkbox" id="opt-charwidget" checked>
+      <span class="toggle-slider"></span>
+    </label>
   </div>
 
-  <!-- 결과 -->
-  <div id="resultArea">
-    <div class="empty">
-      <div class="empty-icon">🔍</div>
-      <h3>키워드를 검색해보세요</h3>
-      <p>네이버 월간 검색량, PC/모바일 비율,<br>경쟁도를 한눈에 확인할 수 있어요</p>
-    </div>
+  <div class="popup-desc">
+    네이버 검색 페이지에서 키워드 분석 카드가 자동으로 표시됩니다.<br>
+    텍스트 입력 시 글자수가 실시간으로 표시됩니다.
   </div>
 
-  <!-- 푸터 -->
-  <div class="footer">
-    <a href="https://naver-influencer.vercel.app" target="_blank">
-      N인플 대시보드에서 더 자세한 분석 보기 →
-    </a>
+  <div class="popup-footer">
+    <a href="https://naver-influencer.vercel.app" target="_blank">N인플 대시보드 바로가기</a>
   </div>
 
-  <script src="src/popup.js"></script>
+  <script src="popup.js"></script>
 </body>
 </html>
