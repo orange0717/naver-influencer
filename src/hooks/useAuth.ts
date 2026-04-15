@@ -10,6 +10,11 @@ type UserInfo = {
   name: string | null;
   email?: string | null;
   isAdmin?: boolean;
+  restricted?: boolean;
+  subscriptionPlan?: string | null;
+  subscriptionActive?: boolean;
+  trialDaysLeft?: number;
+  isDemo?: boolean;
 };
 
 const defaultUser: UserInfo = { type: null, id: null, name: null, email: null };

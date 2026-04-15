@@ -13,6 +13,7 @@ interface NavItem {
   label: string;
   children?: { href: string; label: string }[];
   authOnly?: boolean;
+  paidOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -24,7 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     label: '대시보드',
-    authOnly: true,
+    paidOnly: true,
     children: [
       { href: '/my/blogger', label: 'MY 블로그' },
       { href: '/my/keyword-ranking', label: '키워드순위' },
@@ -34,7 +35,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/my/settlements', label: '원고료 정산내역' },
     ],
   },
-  { href: '/competitor', label: '경쟁자 분석', authOnly: true },
+  { href: '/competitor', label: '경쟁자 분석', paidOnly: true },
   {
     label: '인플루언서',
     children: [
@@ -97,6 +98,10 @@ type UserInfo = {
   blogId?: string | null;
   name: string | null;
   isAdmin?: boolean;
+  restricted?: boolean;
+  subscriptionActive?: boolean;
+  trialDaysLeft?: number;
+  isDemo?: boolean;
 };
 
 interface HeaderProps {
@@ -134,6 +139,7 @@ export default function Header({ serverUser }: HeaderProps) {
   };
 
   const isActive = (href: string) => pathname.startsWith(href);
+  const hasPaidAccess = !user.restricted && !!(user.id);
 
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
@@ -158,7 +164,7 @@ export default function Header({ serverUser }: HeaderProps) {
 
             {/* ── 데스크탑 네비게이션 ── */}
             <nav aria-label="메인 네비게이션" className="hidden lg:flex items-center gap-1">
-              {NAV_ITEMS.filter(item => !item.authOnly || user.id).map(item =>
+              {NAV_ITEMS.filter(item => (!item.authOnly || user.id) && (!item.paidOnly || hasPaidAccess)).map(item =>
                 item.children ? (
                   <NavDropdown key={item.label} label={item.label} items={item.children} isActive={isActive} />
                 ) : (
@@ -241,7 +247,7 @@ export default function Header({ serverUser }: HeaderProps) {
       {mobileOpen && (
         <div id="mobile-menu" className="lg:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border overflow-y-auto">
           <nav aria-label="모바일 네비게이션" className="flex flex-col p-4 gap-0.5">
-            {NAV_ITEMS.filter(item => !item.authOnly || user.id).map(item =>
+            {NAV_ITEMS.filter(item => (!item.authOnly || user.id) && (!item.paidOnly || hasPaidAccess)).map(item =>
               item.children ? (
                 <div key={item.label}>
                   <p className="px-5 py-2 text-xs font-bold text-dim uppercase">{item.label}</p>

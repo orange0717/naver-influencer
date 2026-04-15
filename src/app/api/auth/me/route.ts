@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient, createServiceClient, createAnonClient } from '@/lib/supabase-server';
-import { isAdmin } from '@/lib/admin';
+import { isAdmin, isRestricted } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +10,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
   const supabase = createServiceClient();
   const { data: profile } = await supabase
     .from('users')
-    .select('id, nickname, email, linked_influencer_id, subscription_status, blog_id')
+    .select('id, nickname, email, linked_influencer_id, subscription_plan, subscription_expires_at, blog_id')
     .eq('auth_id', authUserId)
     .single();
 
@@ -35,6 +35,12 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
   // 블로거 타입이면서 blog_id가 있으면 'unified'로 반환 (대시보드 접근용)
   const effectiveType = (!profile.linked_influencer_id && profile.blog_id) ? 'unified' : type;
 
+  const subscriptionActive = !!(
+    profile.subscription_plan &&
+    profile.subscription_expires_at &&
+    new Date(profile.subscription_expires_at) > new Date()
+  );
+
   return {
     type: effectiveType,
     id: naverId || profile.blog_id || profile.id,
@@ -43,6 +49,9 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     email: email || profile.email,
     authId: authUserId,
     isAdmin: isAdmin(profile.id),
+    restricted: isRestricted(email || profile.email),
+    subscriptionPlan: profile.subscription_plan || null,
+    subscriptionActive,
   };
 }
 

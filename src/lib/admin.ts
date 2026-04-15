@@ -2,12 +2,21 @@ import { getAuthUser } from './auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+const RESTRICTED_EMAILS = (process.env.RESTRICTED_USER_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
 /**
  * 주어진 userId가 관리자인지 확인
  */
 export function isAdmin(userId: string): boolean {
   return ADMIN_IDS.includes(userId);
+}
+
+/**
+ * 주어진 이메일이 제한된 사용자인지 확인
+ */
+export function isRestricted(email: string | null | undefined): boolean {
+  if (!email || RESTRICTED_EMAILS.length === 0) return false;
+  return RESTRICTED_EMAILS.includes(email.toLowerCase());
 }
 
 /**

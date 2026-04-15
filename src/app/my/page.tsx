@@ -50,6 +50,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
     if (authUser) {
       isLoggedIn = true;
+
+      // 제한 사용자 체크
+      const { isRestricted } = await import('@/lib/admin');
+      if (isRestricted(authUser.email)) {
+        redirect('/subscribe');
+      }
+
       const { data: profile } = await supabase
         .from('users')
         .select('linked_influencer_id, blog_id')
