@@ -96,6 +96,7 @@ type UserInfo = {
   id: string | null;
   blogId?: string | null;
   name: string | null;
+  isAdmin?: boolean;
 };
 
 interface HeaderProps {
@@ -204,6 +205,12 @@ export default function Header({ serverUser }: HeaderProps) {
                         className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
                         마이페이지
                       </Link>
+                      {user.isAdmin && (
+                        <Link href="/admin" onClick={() => setProfileOpen(false)}
+                          className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
+                          관리자
+                        </Link>
+                      )}
                       <button onClick={() => { setProfileOpen(false); handleLogout(); }}
                         className="w-full flex items-center px-4 py-2.5 text-sm text-down hover:bg-bg transition cursor-pointer">
                         로그아웃

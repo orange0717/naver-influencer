@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient, createServiceClient, createAnonClient } from '@/lib/supabase-server';
+import { isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     name: displayName,
     email: email || profile.email,
     authId: authUserId,
+    isAdmin: isAdmin(profile.id),
   };
 }
 

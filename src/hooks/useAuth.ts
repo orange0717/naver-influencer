@@ -9,6 +9,7 @@ type UserInfo = {
   blogId?: string | null;
   name: string | null;
   email?: string | null;
+  isAdmin?: boolean;
 };
 
 const defaultUser: UserInfo = { type: null, id: null, name: null, email: null };
