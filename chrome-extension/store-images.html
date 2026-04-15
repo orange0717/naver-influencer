@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>N인플 웹스토어 이미지 생성</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif; background: #f0f0f0; padding: 20px; }
+    h2 { font-size: 14px; color: #666; margin: 20px 0 8px; }
+    .canvas-wrap { display: inline-block; border: 1px solid #ccc; background: #fff; margin-bottom: 10px; }
+    canvas { display: block; }
+    .download-btn {
+      display: inline-block; padding: 8px 16px; margin: 4px 0 20px;
+      background: #F29C6B; color: #fff; border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none;
+    }
+    .download-btn:hover { background: #E08A55; }
+    .info { font-size: 11px; color: #999; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<h1 style="font-size:18px;color:#333;">N인플 키워드 분석 - 웹스토어 이미지</h1>
+
+<!-- 1. 프로모션 타일 440x280 -->
+<h2>1. 프로모션 타일 (440 x 280)</h2>
+<div class="info">Small promotional tile</div>
+<div class="canvas-wrap"><canvas id="tile" width="440" height="280"></canvas></div><br>
+<button class="download-btn" onclick="download('tile','ninfl-promo-440x280.png')">다운로드</button>
+
+<!-- 2. 스크린샷 1 - 슬림바 (1280x800) -->
+<h2>2. 스크린샷 1 - 슬림바 (1280 x 800)</h2>
+<div class="info">검색 결과 상단 슬림바</div>
+<div class="canvas-wrap"><canvas id="ss1" width="1280" height="800"></canvas></div><br>
+<button class="download-btn" onclick="download('ss1','ninfl-screenshot-slimbar.png')">다운로드</button>
+
+<!-- 3. 스크린샷 2 - 펼친 상태 (1280x800) -->
+<h2>3. 스크린샷 2 - 상세 패널 (1280 x 800)</h2>
+<div class="info">슬림바 클릭 후 상세 패널</div>
+<div class="canvas-wrap"><canvas id="ss2" width="1280" height="800"></canvas></div><br>
+<button class="download-btn" onclick="download('ss2','ninfl-screenshot-detail.png')">다운로드</button>
+
+<!-- 4. 스크린샷 3 - 글자수 위젯 (1280x800) -->
+<h2>4. 스크린샷 3 - 글자수 위젯 (1280 x 800)</h2>
+<div class="info">글자수세기 위젯</div>
+<div class="canvas-wrap"><canvas id="ss3" width="1280" height="800"></canvas></div><br>
+<button class="download-btn" onclick="download('ss3','ninfl-screenshot-charcount.png')">다운로드</button>
+
+<!-- 5. 스크린샷 4 - 팝업 설정 (1280x800) -->
+<h2>5. 스크린샷 4 - 팝업 설정 (1280 x 800)</h2>
+<div class="info">설정 팝업</div>
+<div class="canvas-wrap"><canvas id="ss4" width="1280" height="800"></canvas></div><br>
+<button class="download-btn" onclick="download('ss4','ninfl-screenshot-popup.png')">다운로드</button>
+
+<script>
+const ORANGE = '#F29C6B';
+const ORANGE_DARK = '#E08A55';
+const ORANGE_LIGHT = '#F7BE97';
+const BG = '#FFF8F3';
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+}
+
+// ─── 1. 프로모션 타일 440x280 ───
+(function() {
+  var c = document.getElementById('tile');
+  var ctx = c.getContext('2d');
+
+  // 배경 그라디언트
+  var g = ctx.createLinearGradient(0, 0, 440, 280);
+  g.addColorStop(0, ORANGE);
+  g.addColorStop(1, ORANGE_LIGHT);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 440, 280);
+
+  // 반투명 원 데코
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath(); ctx.arc(380, 60, 120, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(60, 240, 80, 0, Math.PI*2); ctx.fill();
+
+  // 로고
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  roundRect(ctx, 30, 30, 48, 48, 10); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 28px -apple-system, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', 54, 56);
+
+  // 타이틀
+  ctx.textAlign = 'left';
+  ctx.font = '900 26px -apple-system, sans-serif';
+  ctx.fillText('N인플 키워드 분석', 92, 48);
+  ctx.font = '600 13px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillText('v2.0.0', 92, 68);
+
+  // 슬림바 미리보기
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  roundRect(ctx, 30, 110, 380, 38, 8); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 13px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('맛집추천    5.1만   |   PC 25%   |   경쟁도 높음   |   연관 9개', 48, 133);
+
+  // 기능 설명
+  ctx.font = '700 15px -apple-system, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('키워드 검색량', 50, 185);
+  ctx.fillText('연관검색어', 195, 185);
+  ctx.fillText('글자수세기', 330, 185);
+
+  ctx.font = '500 11px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText('PC/모바일 비율', 50, 204);
+  ctx.fillText('경쟁도 분석', 50, 219);
+  ctx.fillText('최대 10개 표시', 195, 204);
+  ctx.fillText('클릭 시 검색', 195, 219);
+  ctx.fillText('타자수/글자수', 330, 204);
+  ctx.fillText('공백제외', 330, 219);
+
+  // 하단
+  ctx.font = '600 11px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.textAlign = 'center';
+  ctx.fillText('네이버 검색 페이지에서 자동으로 키워드를 분석합니다', 220, 260);
+})();
+
+// ─── 공통: 네이버 검색 배경 그리기 ───
+function drawNaverBg(ctx, w, h) {
+  // 배경
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+
+  // 네이버 헤더
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, 60);
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, 60, w, 1);
+
+  // 네이버 로고
+  ctx.fillStyle = '#03c75a';
+  ctx.font = '900 22px -apple-system, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('NAVER', 80, 30);
+
+  // 검색바
+  ctx.strokeStyle = '#03c75a';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 200, 12, 500, 36, 6); ctx.stroke();
+  ctx.fillStyle = '#333';
+  ctx.font = '400 14px -apple-system, sans-serif';
+  ctx.fillText('맛집추천', 214, 32);
+
+  // 검색 버튼
+  ctx.fillStyle = '#03c75a';
+  roundRect(ctx, 660, 12, 50, 36, 6); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 13px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('검색', 685, 32);
+  ctx.textAlign = 'left';
+
+  // 탭
+  ctx.fillStyle = '#999';
+  ctx.font = '500 13px -apple-system, sans-serif';
+  var tabs = ['통합검색', 'VIEW', '블로그', '카페', '이미지', '뉴스'];
+  var tx = 80;
+  tabs.forEach(function(t, i) {
+    if (i === 0) { ctx.fillStyle = '#03c75a'; ctx.font = '700 13px -apple-system, sans-serif'; }
+    else { ctx.fillStyle = '#999'; ctx.font = '500 13px -apple-system, sans-serif'; }
+    ctx.fillText(t, tx, 80);
+    tx += ctx.measureText(t).width + 24;
+  });
+  ctx.fillStyle = '#03c75a';
+  ctx.fillRect(80, 90, 56, 2);
+  ctx.fillStyle = '#eee';
+  ctx.fillRect(0, 92, w, 1);
+}
+
+function drawSearchResult(ctx, x, y, title, desc) {
+  ctx.fillStyle = '#1a0dab';
+  ctx.font = '600 15px -apple-system, sans-serif';
+  ctx.fillText(title, x, y);
+  ctx.fillStyle = '#555';
+  ctx.font = '400 13px -apple-system, sans-serif';
+  ctx.fillText(desc, x, y + 22);
+}
+
+// ─── 2. 스크린샷 1 - 슬림바 ───
+(function() {
+  var c = document.getElementById('ss1');
+  var ctx = c.getContext('2d');
+  drawNaverBg(ctx, 1280, 800);
+
+  // 슬림바
+  var barY = 110;
+  ctx.fillStyle = ORANGE;
+  roundRect(ctx, 80, barY, 830, 38, 8); ctx.fill();
+
+  // 슬림바 내용
+  // 로고
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  roundRect(ctx, 90, barY+7, 24, 24, 4); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 13px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', 102, barY+20);
+  ctx.textAlign = 'left';
+
+  // 키워드
+  ctx.font = '800 13px -apple-system, sans-serif';
+  ctx.fillText('맛집추천', 122, barY+23);
+
+  // 구분선
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(182, barY+10, 1, 18);
+
+  // 검색량
+  ctx.fillStyle = '#fff';
+  ctx.font = '800 13px -apple-system, sans-serif';
+  ctx.fillText('5.1만', 196, barY+23);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(244, barY+10, 1, 18);
+
+  // PC/모바일
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '600 12px -apple-system, sans-serif';
+  ctx.fillText('PC 25% / 모바일 75%', 258, barY+23);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(418, barY+10, 1, 18);
+
+  // 경쟁도
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.fillText('경쟁도', 432, barY+23);
+  ctx.fillStyle = '#FECACA';
+  ctx.font = '600 12px -apple-system, sans-serif';
+  ctx.fillText('높음', 474, barY+23);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(506, barY+10, 1, 18);
+
+  // 연관
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '600 12px -apple-system, sans-serif';
+  ctx.fillText('연관 9개', 520, barY+23);
+
+  // 펼치기
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '600 11px -apple-system, sans-serif';
+  ctx.fillText('펼치기 ▼', 860, barY+23);
+
+  // 검색 결과
+  drawSearchResult(ctx, 80, 185, '서울 맛집추천 TOP 10 - 블로그', '서울에서 꼭 가봐야 할 맛집을 추천합니다. 강남, 홍대, 이태원 지역별로 정리...');
+  drawSearchResult(ctx, 80, 250, '2026년 맛집추천 리스트 총정리', '올해 새로 오픈한 맛집부터 스테디셀러까지 한눈에 모아봤습니다...');
+  drawSearchResult(ctx, 80, 315, '맛집추천 앱 비교 - 어떤 앱이 좋을까?', '배달의민족, 카카오맵, 네이버 지도 등 맛집 추천 앱을 비교해봤습니다...');
+  drawSearchResult(ctx, 80, 380, '강남역 맛집추천 베스트 5', '강남역 근처에서 점심, 저녁으로 좋은 맛집 5곳을 소개합니다...');
+
+  // 안내 화살표
+  ctx.strokeStyle = ORANGE;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 3]);
+  ctx.beginPath();
+  ctx.moveTo(760, 70);
+  ctx.lineTo(760, barY+5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 안내 텍스트
+  ctx.fillStyle = ORANGE;
+  ctx.font = '700 12px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('검색하면 자동 표시!', 760, 65);
+  ctx.textAlign = 'left';
+})();
+
+// ─── 3. 스크린샷 2 - 상세 패널 ───
+(function() {
+  var c = document.getElementById('ss2');
+  var ctx = c.getContext('2d');
+  drawNaverBg(ctx, 1280, 800);
+
+  // 슬림바
+  var barY = 110;
+  ctx.fillStyle = ORANGE;
+  roundRect(ctx, 80, barY, 830, 38, [8,8,0,0]); ctx.fill();
+
+  // 슬림바 내용
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  roundRect(ctx, 90, barY+7, 24, 24, 4); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 13px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', 102, barY+20);
+  ctx.textAlign = 'left';
+  ctx.font = '800 13px -apple-system, sans-serif';
+  ctx.fillText('맛집추천', 122, barY+23);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(182, barY+10, 1, 18);
+  ctx.fillStyle = '#fff'; ctx.font = '800 13px -apple-system, sans-serif';
+  ctx.fillText('5.1만', 196, barY+23);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(244, barY+10, 1, 18);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '600 12px -apple-system, sans-serif';
+  ctx.fillText('PC 25% / 모바일 75%', 258, barY+23);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(418, barY+10, 1, 18);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText('경쟁도', 432, barY+23);
+  ctx.fillStyle = '#FECACA'; ctx.fillText('높음', 474, barY+23);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(506, barY+10, 1, 18);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText('연관 9개', 520, barY+23);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '600 11px -apple-system, sans-serif';
+  ctx.fillText('접기 ▲', 868, barY+23);
+
+  // 상세 패널
+  var panelY = barY + 38;
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = ORANGE;
+  ctx.lineWidth = 1;
+  roundRect(ctx, 80, panelY, 830, 320, [0,0,10,10]);
+  ctx.fill(); ctx.stroke();
+
+  // 검색량 3칸
+  var statY = panelY + 20;
+  var statW = 256;
+  var labels = [['5.1만', '월간 검색량', ORANGE], ['1.2만', 'PC', '#3B82F6'], ['3.8만', '모바일', '#8B5CF6']];
+  labels.forEach(function(item, i) {
+    var sx = 100 + i * (statW + 12);
+    ctx.fillStyle = BG;
+    roundRect(ctx, sx, statY, statW, 60, 8); ctx.fill();
+    ctx.fillStyle = item[2];
+    ctx.font = '900 22px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(item[0], sx + statW/2, statY + 28);
+    ctx.fillStyle = '#9B8A82';
+    ctx.font = '600 10px -apple-system, sans-serif';
+    ctx.fillText(item[1], sx + statW/2, statY + 48);
+  });
+  ctx.textAlign = 'left';
+
+  // 비율 바
+  var ratioY = statY + 75;
+  ctx.fillStyle = '#eee';
+  roundRect(ctx, 100, ratioY, 790, 6, 3); ctx.fill();
+  ctx.fillStyle = '#3B82F6';
+  roundRect(ctx, 100, ratioY, 790*0.25, 6, [3,0,0,3]); ctx.fill();
+  ctx.fillStyle = '#8B5CF6';
+  roundRect(ctx, 100+790*0.25, ratioY, 790*0.75, 6, [0,3,3,0]); ctx.fill();
+
+  ctx.fillStyle = '#9B8A82'; ctx.font = '500 10px -apple-system, sans-serif';
+  ctx.fillText('PC 25%', 100, ratioY + 18);
+  ctx.textAlign = 'right';
+  ctx.fillText('모바일 75%', 890, ratioY + 18);
+  ctx.textAlign = 'left';
+
+  // 연관검색어
+  var relY = ratioY + 36;
+  ctx.fillStyle = '#F0E6E0';
+  ctx.fillRect(100, relY, 790, 1);
+  ctx.fillStyle = '#6B5B54';
+  ctx.font = '700 12px -apple-system, sans-serif';
+  ctx.fillText('연관검색어', 100, relY + 22);
+
+  var relWords = ['서울맛집 3.6만','강남맛집 2.2만','홍대맛집 1.7만','이태원맛집 1.2만','데이트맛집 1.5만','혼밥맛집 9.7K','점심맛집 7K','저녁맛집 5.3K','맛집추천 블로그 8.1K'];
+  var rx = 100, ry = relY + 40;
+  relWords.forEach(function(w) {
+    var tw = ctx.measureText(w).width + 20;
+    if (rx + tw > 880) { rx = 100; ry += 32; }
+    ctx.fillStyle = BG;
+    ctx.strokeStyle = '#F0E6E0';
+    ctx.lineWidth = 1;
+    roundRect(ctx, rx, ry, tw, 26, 13); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#4B3B36';
+    ctx.font = '500 11px -apple-system, sans-serif';
+    ctx.fillText(w, rx + 10, ry + 17);
+    rx += tw + 8;
+  });
+
+  // 하단 링크
+  ctx.fillStyle = '#F0E6E0'; ctx.fillRect(100, panelY + 290, 790, 1);
+  ctx.fillStyle = ORANGE;
+  ctx.font = '600 11px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N인플 대시보드에서 더 보기 →', 495, panelY + 308);
+  ctx.textAlign = 'left';
+})();
+
+// ─── 4. 스크린샷 3 - 글자수 위젯 ───
+(function() {
+  var c = document.getElementById('ss3');
+  var ctx = c.getContext('2d');
+
+  // 배경
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, 0, 1280, 800);
+
+  // 중앙 에디터 카드
+  var cx = 200, cy = 160, cw = 880, ch = 480;
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,0.08)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 4;
+  roundRect(ctx, cx, cy, cw, ch, 12); ctx.fill();
+  ctx.shadowColor = 'transparent';
+
+  // 에디터 헤더
+  ctx.fillStyle = '#f8f8f8';
+  roundRect(ctx, cx, cy, cw, 44, [12,12,0,0]); ctx.fill();
+  ctx.fillStyle = '#ddd';
+  ctx.fillRect(cx, cy+44, cw, 1);
+
+  // 에디터 타이틀
+  ctx.fillStyle = '#999';
+  ctx.font = '600 13px -apple-system, sans-serif';
+  ctx.fillText('블로그 글쓰기', cx+16, cy+27);
+
+  // 글자수 위젯 (오렌지 바)
+  var widgetY = cy + 60;
+  ctx.fillStyle = ORANGE;
+  roundRect(ctx, cx+16, widgetY, cw-32, 30, 4); ctx.fill();
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '600 12px -apple-system, sans-serif';
+  ctx.fillText('타자수 342타', cx+30, widgetY+19);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('/', cx+118, widgetY+19);
+  ctx.fillStyle = '#fff';
+  ctx.fillText('글자수 158자', cx+134, widgetY+19);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('/', cx+224, widgetY+19);
+  ctx.fillStyle = '#fff';
+  ctx.fillText('공백제외 136자', cx+240, widgetY+19);
+
+  // 에디터 텍스트
+  var textY = widgetY + 48;
+  ctx.fillStyle = '#333';
+  ctx.font = '400 15px -apple-system, sans-serif';
+  var lines = [
+    '오늘은 서울 강남역 근처 맛집을 소개해드리려고 합니다.',
+    '',
+    '첫 번째로 추천하는 곳은 역삼동에 위치한 이탈리안 레스토랑',
+    '"라 쿠치나"입니다. 신선한 재료로 만든 파스타와 피자가',
+    '일품이에요.',
+    '',
+    '두 번째는 논현동의 한식당 "고운"입니다. 정갈한 한정식을',
+    '합리적인 가격에 즐길 수 있어서 점심 모임 장소로 인기가',
+    '많습니다.'
+  ];
+  lines.forEach(function(line, i) {
+    ctx.fillText(line, cx+24, textY + i*26);
+  });
+
+  // 안내
+  ctx.fillStyle = ORANGE;
+  ctx.font = '700 14px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('텍스트를 입력하면 자동으로 글자수가 표시됩니다', 640, cy + ch + 40);
+  ctx.textAlign = 'left';
+})();
+
+// ─── 5. 스크린샷 4 - 팝업 설정 ───
+(function() {
+  var c = document.getElementById('ss4');
+  var ctx = c.getContext('2d');
+
+  // 배경 (브라우저 느낌)
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(0, 0, 1280, 800);
+
+  // 브라우저 탭바
+  ctx.fillStyle = '#dee2e6';
+  ctx.fillRect(0, 0, 1280, 36);
+  ctx.fillStyle = '#fff';
+  roundRect(ctx, 8, 6, 180, 26, [6,6,0,0]); ctx.fill();
+  ctx.fillStyle = '#555';
+  ctx.font = '500 11px -apple-system, sans-serif';
+  ctx.fillText('search.naver.com', 24, 23);
+
+  // 팝업 카드
+  var px = 440, py = 80, pw = 300, ph = 340;
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 8;
+  roundRect(ctx, px, py, pw, ph, 12); ctx.fill();
+  ctx.shadowColor = 'transparent';
+
+  // 팝업 헤더
+  var g = ctx.createLinearGradient(px, py, px+pw, py);
+  g.addColorStop(0, ORANGE);
+  g.addColorStop(1, ORANGE_LIGHT);
+  ctx.fillStyle = g;
+  roundRect(ctx, px, py, pw, 56, [12,12,0,0]); ctx.fill();
+
+  // 로고
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  roundRect(ctx, px+16, py+12, 32, 32, 8); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 18px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', px+32, py+30);
+  ctx.textAlign = 'left';
+
+  // 타이틀
+  ctx.font = '800 15px -apple-system, sans-serif';
+  ctx.fillText('N인플 키워드 분석', px+58, py+28);
+  ctx.font = '500 10px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillText('v2.0.0', px+58, py+42);
+
+  // 토글 항목
+  var items = ['키워드 검색량', '연관검색어', '글자수 표시'];
+  items.forEach(function(label, i) {
+    var iy = py + 72 + i * 52;
+    ctx.fillStyle = '#4B3B36';
+    ctx.font = '600 13px -apple-system, sans-serif';
+    ctx.fillText(label, px+18, iy + 16);
+
+    // 토글 ON
+    ctx.fillStyle = ORANGE;
+    roundRect(ctx, px+pw-56, iy+2, 38, 20, 10); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(px+pw-56+28, iy+12, 7, 0, Math.PI*2); ctx.fill();
+
+    // 구분선
+    if (i < 2) {
+      ctx.fillStyle = '#F0E6E0';
+      ctx.fillRect(px+18, iy+38, pw-36, 1);
+    }
+  });
+
+  // 설명
+  ctx.fillStyle = '#F0E6E0'; ctx.fillRect(px, py+228, pw, 1);
+  ctx.fillStyle = '#9B8A82';
+  ctx.font = '400 11px -apple-system, sans-serif';
+  ctx.fillText('네이버 검색 페이지에서 키워드 분석', px+18, py+250);
+  ctx.fillText('카드가 자동으로 표시됩니다.', px+18, py+266);
+  ctx.fillText('텍스트 입력 시 글자수가 실시간으로', px+18, py+286);
+  ctx.fillText('표시됩니다.', px+18, py+302);
+
+  // 하단 링크
+  ctx.fillStyle = '#F0E6E0'; ctx.fillRect(px, py+310, pw, 1);
+  ctx.fillStyle = ORANGE;
+  ctx.font = '700 12px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N인플 대시보드 바로가기', px+pw/2, py+330);
+  ctx.textAlign = 'left';
+
+  // 안내
+  ctx.fillStyle = ORANGE;
+  ctx.font = '700 14px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('팝업에서 기능을 ON/OFF 할 수 있습니다', 640, py + ph + 40);
+  ctx.textAlign = 'left';
+})();
+
+function download(canvasId, filename) {
+  var c = document.getElementById(canvasId);
+  var link = document.createElement('a');
+  link.download = filename;
+  link.href = c.toDataURL('image/png');
+  link.click();
+}
+</script>
+</body>
+</html>
