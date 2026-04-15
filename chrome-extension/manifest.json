@@ -1,14 +1,27 @@
 {
   "manifest_version": 3,
   "name": "N인플 키워드 분석",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "네이버 키워드 검색량, 경쟁도, PC/모바일 비율을 한눈에 확인하세요",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "contextMenus",
+    "sidePanel",
+    "storage"
   ],
   "host_permissions": [
-    "https://naver-influencer.vercel.app/*"
+    "https://naver-influencer.vercel.app/*",
+    "https://search.naver.com/*",
+    "https://m.search.naver.com/*",
+    "https://blog.naver.com/*",
+    "https://m.blog.naver.com/*"
   ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -21,7 +34,9 @@
     {
       "matches": [
         "https://search.naver.com/*",
-        "https://m.search.naver.com/*"
+        "https://m.search.naver.com/*",
+        "https://blog.naver.com/*",
+        "https://m.blog.naver.com/*"
       ],
       "js": ["src/content.js"],
       "css": ["src/content.css"],
