@@ -140,6 +140,7 @@ export default function Header({ serverUser }: HeaderProps) {
 
   const isActive = (href: string) => pathname.startsWith(href);
   const hasPaidAccess = !user.restricted && !!(user.id);
+  const isRestricted = !!(user.restricted && user.id);
 
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
@@ -164,7 +165,10 @@ export default function Header({ serverUser }: HeaderProps) {
 
             {/* ── 데스크탑 네비게이션 ── */}
             <nav aria-label="메인 네비게이션" className="hidden lg:flex items-center gap-1">
-              {NAV_ITEMS.filter(item => (!item.authOnly || user.id) && (!item.paidOnly || hasPaidAccess)).map(item =>
+              {NAV_ITEMS.filter(item => {
+                if (isRestricted) return item.href === '/subscribe';
+                return (!item.authOnly || user.id) && (!item.paidOnly || hasPaidAccess);
+              }).map(item =>
                 item.children ? (
                   <NavDropdown key={item.label} label={item.label} items={item.children} isActive={isActive} />
                 ) : (
@@ -247,7 +251,10 @@ export default function Header({ serverUser }: HeaderProps) {
       {mobileOpen && (
         <div id="mobile-menu" className="lg:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border overflow-y-auto">
           <nav aria-label="모바일 네비게이션" className="flex flex-col p-4 gap-0.5">
-            {NAV_ITEMS.filter(item => (!item.authOnly || user.id) && (!item.paidOnly || hasPaidAccess)).map(item =>
+            {NAV_ITEMS.filter(item => {
+              if (isRestricted) return item.href === '/subscribe';
+              return (!item.authOnly || user.id) && (!item.paidOnly || hasPaidAccess);
+            }).map(item =>
               item.children ? (
                 <div key={item.label}>
                   <p className="px-5 py-2 text-xs font-bold text-dim uppercase">{item.label}</p>
