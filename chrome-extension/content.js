@@ -1,4 +1,4 @@
-// N인플 키워드 분석 - Content Script v2.0.0
+// N인플 키워드 분석 - Content Script v2.1.0
 (function () {
   'use strict';
 
@@ -233,6 +233,45 @@
 }\
 .ninfl-d-footer a:hover { text-decoration: underline; }\
 \
+/* 트렌드 */\
+.ninfl-trend-up { color: #059669; }\
+.ninfl-trend-down { color: #DC2626; }\
+.ninfl-trend-stable { color: rgba(255,255,255,0.6); }\
+.ninfl-d-trend {\
+  display: flex; align-items: center; gap: 8px;\
+  padding: 8px 12px; margin-bottom: 12px;\
+  background: #FFF8F3; border-radius: 8px;\
+  font-size: 12px; color: #6B5B54; font-weight: 600;\
+}\
+.ninfl-d-trend-up { color: #059669; }\
+.ninfl-d-trend-down { color: #DC2626; }\
+.ninfl-d-trend-stable { color: #9B8A82; }\
+\
+/* 경쟁도 점수 바 */\
+.ninfl-d-comp { margin-bottom: 12px; }\
+.ninfl-d-comp-header {\
+  display: flex; justify-content: space-between; align-items: center;\
+  font-size: 12px; font-weight: 600; color: #6B5B54; margin-bottom: 6px;\
+}\
+.ninfl-d-comp-bar {\
+  height: 8px; background: #eee; border-radius: 4px; overflow: hidden;\
+}\
+.ninfl-d-comp-fill {\
+  height: 100%; border-radius: 4px; transition: width 0.5s;\
+}\
+.ninfl-d-comp-info {\
+  display: flex; justify-content: space-between;\
+  font-size: 10px; color: #9B8A82; margin-top: 4px;\
+}\
+\
+/* 연관검색어 경쟁도 뱃지 */\
+.ninfl-d-related-comp {\
+  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; margin-left: 2px;\
+}\
+.ninfl-d-related-comp.low { background: #ECFDF5; color: #059669; }\
+.ninfl-d-related-comp.medium { background: #FFF7ED; color: #D97706; }\
+.ninfl-d-related-comp.high { background: #FEF2F2; color: #DC2626; }\
+\
 /* 글자수 위젯 */\
 #' + WIDGET_ID + ' {\
   all: initial;\
@@ -326,22 +365,33 @@
   }
 
   function fetchKeywordData(query) {
-    msgAsync({ type: 'fetch-search-volume', keyword: query }).then(function (resp) {
-      if (!resp || !resp.ok || !resp.data || !resp.data.keywords || resp.data.keywords.length === 0) {
+    msgAsync({ type: 'fetch-keyword-analysis', keyword: query }).then(function (resp) {
+      if (!resp || !resp.ok || !resp.data || resp.data.error) {
         var elVol = document.getElementById('ninfl-bar-vol');
         if (elVol) elVol.textContent = '데이터 없음';
         return;
       }
 
-      var keywords = resp.data.keywords;
-      var main = keywords[0];
-      var pc = parseVolume(main.monthlyPcQcCnt);
-      var mobile = parseVolume(main.monthlyMobileQcCnt);
-      var total = pc + mobile;
+      var d = resp.data;
+      var total = d.volume.total;
+      var pc = d.volume.pc;
+      var mobile = d.volume.mobile;
       var pcPct = total > 0 ? Math.round((pc / total) * 100) : 50;
       var mobilePct = 100 - pcPct;
-      var comp = getCompLevel(main);
-      var relCount = keywords.length > 1 ? keywords.length - 1 : 0;
+      var comp = d.competition;
+      var trend = d.trend;
+      var related = d.related || [];
+
+      // 트렌드 표시
+      var trendArrow = '';
+      var trendCls = 'ninfl-trend-stable';
+      if (trend.direction === 'up') { trendArrow = ' ▲' + Math.abs(trend.change) + '%'; trendCls = 'ninfl-trend-up'; }
+      else if (trend.direction === 'down') { trendArrow = ' ▼' + Math.abs(trend.change) + '%'; trendCls = 'ninfl-trend-down'; }
+
+      // 경쟁도 CSS 클래스
+      var compCls = 'ninfl-comp-low';
+      if (comp.level === '높음') compCls = 'ninfl-comp-high';
+      else if (comp.level === '중간') compCls = 'ninfl-comp-medium';
 
       // 슬림바 업데이트
       var elVol = document.getElementById('ninfl-bar-vol');
@@ -349,38 +399,56 @@
       var elComp = document.getElementById('ninfl-bar-comp');
       var elRelated = document.getElementById('ninfl-bar-related');
 
-      if (elVol) elVol.innerHTML = '<strong>' + formatVolume(total) + '</strong>';
+      if (elVol) elVol.innerHTML = '<strong>' + formatVolume(total) + '</strong><span class="' + trendCls + '" style="font-size:10px;margin-left:3px;">' + trendArrow + '</span>';
       if (elRatio) elRatio.textContent = 'PC ' + pcPct + '% / 모바일 ' + mobilePct + '%';
-      if (elComp) { elComp.innerHTML = '경쟁도 <span class="' + comp.cls + '">' + comp.label + '</span>'; }
-      if (elRelated) elRelated.textContent = '연관 ' + relCount + '개';
+      if (elComp) elComp.innerHTML = '경쟁도 <span class="' + compCls + '">' + comp.level + '</span><span style="font-size:10px;opacity:0.7;">(' + comp.score + ')</span>';
+      if (elRelated) elRelated.textContent = '연관 ' + related.length + '개';
 
       // 상세 패널 업데이트
       var detail = document.getElementById(DETAIL_ID);
       if (!detail) return;
 
       var html = '';
-      // 검색량 카드
+
+      // 검색량 카드 3칸
       html += '<div class="ninfl-d-stats">';
       html += '<div class="ninfl-d-stat"><div class="ninfl-d-stat-value">' + formatVolume(total) + '</div><div class="ninfl-d-stat-label">월간 검색량</div></div>';
       html += '<div class="ninfl-d-stat"><div class="ninfl-d-stat-value pc">' + formatVolume(pc) + '</div><div class="ninfl-d-stat-label">PC</div></div>';
       html += '<div class="ninfl-d-stat"><div class="ninfl-d-stat-value mobile">' + formatVolume(mobile) + '</div><div class="ninfl-d-stat-label">모바일</div></div>';
       html += '</div>';
 
+      // 트렌드 카드
+      var trendIcon = trend.direction === 'up' ? '▲' : trend.direction === 'down' ? '▼' : '-';
+      var trendColor = trend.direction === 'up' ? 'ninfl-d-trend-up' : trend.direction === 'down' ? 'ninfl-d-trend-down' : 'ninfl-d-trend-stable';
+      var trendText = trend.direction === 'up' ? '상승' : trend.direction === 'down' ? '하락' : '안정';
+      html += '<div class="ninfl-d-trend">최근 30일 <span class="' + trendColor + '">' + trendIcon + ' ' + Math.abs(trend.change) + '% ' + trendText + '</span>';
+      if (comp.participants > 0) html += ' &middot; 참여자 ' + comp.participants + '명';
+      html += '</div>';
+
       // 비율 바
       html += '<div class="ninfl-d-ratio"><div class="ninfl-d-ratio-bar"><div class="ninfl-d-ratio-pc" style="width:' + pcPct + '%"></div><div class="ninfl-d-ratio-mobile" style="width:' + mobilePct + '%"></div></div></div>';
       html += '<div class="ninfl-d-ratio-labels"><span>PC ' + pcPct + '%</span><span>모바일 ' + mobilePct + '%</span></div>';
 
+      // 경쟁도 점수 바
+      var compBarColor = comp.score >= 60 ? '#DC2626' : comp.score >= 30 ? '#D97706' : '#059669';
+      html += '<div class="ninfl-d-comp">';
+      html += '<div class="ninfl-d-comp-header"><span>경쟁도</span><span>' + comp.level + ' (' + comp.score + '/100)</span></div>';
+      html += '<div class="ninfl-d-comp-bar"><div class="ninfl-d-comp-fill" style="width:' + comp.score + '%;background:' + compBarColor + ';"></div></div>';
+      html += '<div class="ninfl-d-comp-info"><span>낮음</span><span>중간</span><span>높음</span></div>';
+      html += '</div>';
+
       // 연관검색어
-      if (_settings.related && keywords.length > 1) {
+      if (_settings.related && related.length > 0) {
         html += '<div class="ninfl-d-related-title">연관검색어</div>';
         html += '<div class="ninfl-d-related-list">';
-        for (var i = 1; i < keywords.length && i <= 10; i++) {
-          var kw = keywords[i];
-          var kwTotal = parseVolume(kw.monthlyPcQcCnt) + parseVolume(kw.monthlyMobileQcCnt);
-          var url = 'https://search.naver.com/search.naver?query=' + encodeURIComponent(kw.relKeyword);
+        for (var i = 0; i < related.length; i++) {
+          var kw = related[i];
+          var url = 'https://search.naver.com/search.naver?query=' + encodeURIComponent(kw.keyword);
+          var kwCompCls = kw.competition === '높음' ? 'high' : kw.competition === '중간' ? 'medium' : 'low';
           html += '<a class="ninfl-d-related-item" href="' + url + '" target="_self">';
-          html += escHtml(kw.relKeyword);
-          html += ' <span class="ninfl-d-related-vol">' + formatVolume(kwTotal) + '</span>';
+          html += escHtml(kw.keyword);
+          html += ' <span class="ninfl-d-related-vol">' + formatVolume(kw.total) + '</span>';
+          html += '<span class="ninfl-d-related-comp ' + kwCompCls + '">' + kw.competition + '</span>';
           html += '</a>';
         }
         html += '</div>';

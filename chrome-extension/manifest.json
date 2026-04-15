@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "N인플 키워드 분석",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "네이버 검색 페이지에서 키워드 검색량, 연관검색어, 글자수세기를 한눈에",
   "permissions": [
     "storage"

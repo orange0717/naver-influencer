@@ -107,6 +107,28 @@
     .ninfl-d-footer { text-align: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid #F0E6E0; }
     .ninfl-d-footer a { font-size: 11px; color: #F29C6B; text-decoration: none; font-weight: 600; }
 
+    .ninfl-trend-up { color: #D1FAE5; }
+    .ninfl-trend-down { color: #FECACA; }
+    .ninfl-trend-stable { color: rgba(255,255,255,0.6); }
+    .ninfl-d-trend {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; margin-bottom: 12px;
+      background: #FFF8F3; border-radius: 8px;
+      font-size: 12px; color: #6B5B54; font-weight: 600;
+    }
+    .ninfl-d-trend-up { color: #059669; }
+    .ninfl-d-trend-down { color: #DC2626; }
+    .ninfl-d-trend-stable { color: #9B8A82; }
+    .ninfl-d-comp { margin-bottom: 12px; }
+    .ninfl-d-comp-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; color: #6B5B54; margin-bottom: 6px; }
+    .ninfl-d-comp-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+    .ninfl-d-comp-fill { height: 100%; border-radius: 4px; }
+    .ninfl-d-comp-info { display: flex; justify-content: space-between; font-size: 10px; color: #9B8A82; margin-top: 4px; }
+    .ninfl-d-related-comp { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; margin-left: 2px; }
+    .ninfl-d-related-comp.low { background: #ECFDF5; color: #059669; }
+    .ninfl-d-related-comp.medium { background: #FFF7ED; color: #D97706; }
+    .ninfl-d-related-comp.high { background: #FEF2F2; color: #DC2626; }
+
     #ninfl-char-widget {
       all: initial;
       display: block;
@@ -143,11 +165,11 @@
             <div class="ninfl-bar-logo">N</div>
             <span class="ninfl-bar-kw">맛집추천</span>
             <div class="ninfl-bar-sep"></div>
-            <span class="ninfl-bar-item"><strong>5.1만</strong></span>
+            <span class="ninfl-bar-item"><strong>5.1만</strong><span class="ninfl-trend-up" style="font-size:10px;margin-left:3px;"> ▲12.5%</span></span>
             <div class="ninfl-bar-sep"></div>
             <span class="ninfl-bar-item">PC 25% / 모바일 75%</span>
             <div class="ninfl-bar-sep"></div>
-            <span class="ninfl-bar-item">경쟁도 <span class="ninfl-comp-high">높음</span></span>
+            <span class="ninfl-bar-item">경쟁도 <span class="ninfl-comp-high">높음</span><span style="font-size:10px;opacity:0.7;">(78)</span></span>
             <div class="ninfl-bar-sep"></div>
             <span class="ninfl-bar-item">연관 9개</span>
             <span class="ninfl-bar-toggle" id="demo-toggle">펼치기 <span class="ninfl-bar-arrow" id="demo-arrow">&#9660;</span></span>
@@ -160,19 +182,25 @@
               <div class="ninfl-d-stat"><div class="ninfl-d-stat-value pc">1.2만</div><div class="ninfl-d-stat-label">PC</div></div>
               <div class="ninfl-d-stat"><div class="ninfl-d-stat-value mobile">3.8만</div><div class="ninfl-d-stat-label">모바일</div></div>
             </div>
+            <div class="ninfl-d-trend">최근 30일 <span class="ninfl-d-trend-up">▲ 12.5% 상승</span> &middot; 참여자 142명</div>
             <div class="ninfl-d-ratio"><div class="ninfl-d-ratio-bar"><div class="ninfl-d-ratio-pc" style="width:25%"></div><div class="ninfl-d-ratio-mobile" style="width:75%"></div></div></div>
             <div class="ninfl-d-ratio-labels"><span>PC 25%</span><span>모바일 75%</span></div>
+            <div class="ninfl-d-comp">
+              <div class="ninfl-d-comp-header"><span>경쟁도</span><span>높음 (78/100)</span></div>
+              <div class="ninfl-d-comp-bar"><div class="ninfl-d-comp-fill" style="width:78%;background:#DC2626;"></div></div>
+              <div class="ninfl-d-comp-info"><span>낮음</span><span>중간</span><span>높음</span></div>
+            </div>
             <div class="ninfl-d-related-title">연관검색어</div>
             <div class="ninfl-d-related-list">
-              <a class="ninfl-d-related-item" href="#">서울맛집 <span class="ninfl-d-related-vol">3.6만</span></a>
-              <a class="ninfl-d-related-item" href="#">강남맛집 <span class="ninfl-d-related-vol">2.2만</span></a>
-              <a class="ninfl-d-related-item" href="#">홍대맛집 <span class="ninfl-d-related-vol">1.7만</span></a>
-              <a class="ninfl-d-related-item" href="#">이태원맛집 <span class="ninfl-d-related-vol">1.2만</span></a>
-              <a class="ninfl-d-related-item" href="#">데이트맛집 <span class="ninfl-d-related-vol">1.5만</span></a>
-              <a class="ninfl-d-related-item" href="#">혼밥맛집 <span class="ninfl-d-related-vol">9.7K</span></a>
-              <a class="ninfl-d-related-item" href="#">점심맛집 <span class="ninfl-d-related-vol">7K</span></a>
-              <a class="ninfl-d-related-item" href="#">저녁맛집 <span class="ninfl-d-related-vol">5.3K</span></a>
-              <a class="ninfl-d-related-item" href="#">맛집추천 블로그 <span class="ninfl-d-related-vol">8.1K</span></a>
+              <a class="ninfl-d-related-item" href="#">서울맛집 <span class="ninfl-d-related-vol">3.6만</span><span class="ninfl-d-related-comp high">높음</span></a>
+              <a class="ninfl-d-related-item" href="#">강남맛집 <span class="ninfl-d-related-vol">2.2만</span><span class="ninfl-d-related-comp medium">중간</span></a>
+              <a class="ninfl-d-related-item" href="#">홍대맛집 <span class="ninfl-d-related-vol">1.7만</span><span class="ninfl-d-related-comp medium">중간</span></a>
+              <a class="ninfl-d-related-item" href="#">이태원맛집 <span class="ninfl-d-related-vol">1.2만</span><span class="ninfl-d-related-comp low">낮음</span></a>
+              <a class="ninfl-d-related-item" href="#">데이트맛집 <span class="ninfl-d-related-vol">1.5만</span><span class="ninfl-d-related-comp medium">중간</span></a>
+              <a class="ninfl-d-related-item" href="#">혼밥맛집 <span class="ninfl-d-related-vol">9.7K</span><span class="ninfl-d-related-comp low">낮음</span></a>
+              <a class="ninfl-d-related-item" href="#">점심맛집 <span class="ninfl-d-related-vol">7K</span><span class="ninfl-d-related-comp low">낮음</span></a>
+              <a class="ninfl-d-related-item" href="#">저녁맛집 <span class="ninfl-d-related-vol">5.3K</span><span class="ninfl-d-related-comp low">낮음</span></a>
+              <a class="ninfl-d-related-item" href="#">맛집추천 블로그 <span class="ninfl-d-related-vol">8.1K</span><span class="ninfl-d-related-comp low">낮음</span></a>
             </div>
             <div class="ninfl-d-footer"><a href="https://naver-influencer.vercel.app" target="_blank">N인플 대시보드에서 더 보기 &rarr;</a></div>
           </div>
