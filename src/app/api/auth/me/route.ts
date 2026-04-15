@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       const supabase = createServiceClient();
       const { data: user } = await supabase
         .from('users')
-        .select('id, nickname, blog_id')
+        .select('id, nickname, blog_id, email')
         .or(`blog_id.eq.${naverId},blog_id.eq.${blogId || ''}`)
         .limit(1)
         .single();
@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
         id: naverId,
         blogId: user.blog_id || blogId || null,
         name: user.nickname || safeDecode(blogName),
+        restricted: isRestricted(user.email),
       });
     }
 
@@ -129,6 +130,14 @@ export async function GET(request: NextRequest) {
         .from('influencers')
         .select('display_name')
         .eq('naver_id', naverId)
+        .single();
+
+      // 등록된 사용자인지 확인하여 제한 여부 체크
+      const { data: registeredUser } = await supabase
+        .from('users')
+        .select('email')
+        .or(`blog_id.eq.${naverId},blog_id.eq.${blogId || ''}`)
+        .limit(1)
         .single();
 
       const trialStarted = cookieStore.get('trial_started')?.value;
@@ -146,6 +155,7 @@ export async function GET(request: NextRequest) {
         id: naverId,
         blogId: blogId || null,
         name: inf?.display_name || naverId,
+        restricted: isRestricted(registeredUser?.email),
         ...(trialDaysLeft !== undefined && { trialDaysLeft }),
         ...(isDemo && { isDemo: true }),
       });
@@ -156,7 +166,7 @@ export async function GET(request: NextRequest) {
       const supabase = createServiceClient();
       const { data: user } = await supabase
         .from('users')
-        .select('id, nickname')
+        .select('id, nickname, email')
         .eq('blog_id', blogId)
         .limit(1)
         .single();
@@ -165,6 +175,7 @@ export async function GET(request: NextRequest) {
         type: 'blogger',
         id: blogId,
         name: user.nickname || safeDecode(blogName) || blogId,
+        restricted: isRestricted(user.email),
       });
     }
 
