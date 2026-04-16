@@ -42,7 +42,7 @@ export default function Footer() {
         {/* 사업자정보 + 저작권 */}
         <div className="border-t border-white/10 pt-4 text-[11px] text-footer-dim/70 leading-relaxed">
           <p>오렌지도서관 · 대표 한미선 · 사업자등록번호 702-62-00986 · 통신판매 2025-충남천안-1491 · 전화 0507-1394-5091 · 이메일 orange@orangelibrary.co.kr</p>
-          <p>충남 천안시 서북구 검은들 3길 46 803-2(886호) · 개인정보보호책임자 한미선</p>
+          <p>충청남도 아산시 탕정면 탕정면로 22번길 15-12 301호 · 개인정보보호책임자 한미선</p>
           <p className="mt-2 text-footer-dim/50">&copy; 2026 오렌지도서관 · Built with Claude by Anthropic</p>
         </div>
       </div>
