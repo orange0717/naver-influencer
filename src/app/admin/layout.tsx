@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
 import { isAdmin } from '@/lib/admin';
 import AdminSidebar from './AdminSidebar';
+import AdminLogoutButton from './AdminLogoutButton';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   let authorized = false;
@@ -45,11 +46,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)]">
+    <div className="fixed inset-0 z-[9999] flex bg-bg">
       <AdminSidebar />
-      <main className="flex-1 p-6 max-w-7xl">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-end px-6 py-3 border-b border-border bg-surface shrink-0">
+          <AdminLogoutButton />
+        </div>
+        <main className="flex-1 overflow-y-auto p-6 max-w-7xl">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

@@ -17,13 +17,13 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-52 bg-surface border-r border-border shrink-0">
+    <aside className="w-48 bg-surface border-r border-border shrink-0 flex flex-col">
       <div className="p-5 border-b border-border">
-        <Link href="/admin" className="text-lg font-extrabold text-accent">
-          관리자
+        <Link href="/admin" className="text-base font-extrabold text-accent">
+          N인플
         </Link>
       </div>
-      <nav className="p-3 space-y-0.5">
+      <nav className="p-3 space-y-0.5 flex-1">
         {MENU_ITEMS.map(item => {
           const active = item.href === '/admin'
             ? pathname === '/admin'
@@ -44,7 +44,7 @@ export default function AdminSidebar() {
           );
         })}
       </nav>
-      <div className="p-3 mt-4 border-t border-border">
+      <div className="p-3 border-t border-border">
         <Link href="/" className="block px-3 py-2 text-xs text-dim hover:text-accent transition">
           ← 사이트로 돌아가기
         </Link>
