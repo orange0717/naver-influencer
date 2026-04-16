@@ -108,6 +108,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [toast, setToast] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -165,6 +167,7 @@ export default function ProfilePage() {
       setLinkedInfluencer(data.linked_influencer);
       setTransactions(data.transactions || []);
       setNicknameInput(data.user.nickname);
+      setAvatarUrl(data.user.avatar_url || null);
       setBlogIdInput(data.user.blog_id || '');
       if (data.ad_profile) {
         setAdFeeAmount(data.ad_profile.ad_fee_amount ?? null);
@@ -428,9 +431,51 @@ export default function ProfilePage() {
       {/* 기본 정보 */}
       <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-accent/20 rounded-full flex items-center justify-center text-xl font-bold text-accent">
-            {user.nickname[0]}
-          </div>
+          <label className="relative w-14 h-14 rounded-full cursor-pointer group shrink-0">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="프로필" className="w-14 h-14 rounded-full object-cover" />
+            ) : (
+              <div className="w-14 h-14 bg-accent/20 rounded-full flex items-center justify-center text-xl font-bold text-accent">
+                {user.nickname[0]}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 2 * 1024 * 1024) { showToast('2MB 이하 이미지만 업로드 가능합니다.'); return; }
+                setAvatarUploading(true);
+                try {
+                  const supabase = createSupabaseBrowserClient();
+                  const ext = file.name.split('.').pop() || 'jpg';
+                  const path = `avatars/${user.id}.${ext}`;
+                  const { error: uploadErr } = await supabase.storage.from('public-assets').upload(path, file, { upsert: true });
+                  if (uploadErr) throw uploadErr;
+                  const { data: urlData } = supabase.storage.from('public-assets').getPublicUrl(path);
+                  const publicUrl = urlData.publicUrl + '?t=' + Date.now();
+                  await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+                  setAvatarUrl(publicUrl);
+                  showToast('프로필 사진이 변경되었습니다.');
+                } catch (err) {
+                  showToast('업로드 실패: ' + (err instanceof Error ? err.message : '오류'));
+                } finally {
+                  setAvatarUploading(false);
+                }
+              }}
+              disabled={avatarUploading}
+            />
+            {avatarUploading && (
+              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              </div>
+            )}
+          </label>
           <div className="flex-1">
             {editingNickname ? (
               <div className="flex items-center gap-2">
