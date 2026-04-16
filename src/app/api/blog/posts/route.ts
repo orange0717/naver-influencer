@@ -5,8 +5,23 @@ export const dynamic = 'force-dynamic';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
-// 캐시 (5분)
+// 캐시 (5분, 최대 200개)
+const MAX_CACHE_SIZE = 200;
 const cache = new Map<string, { data: unknown; expires: number }>();
+
+function setPostCache(key: string, data: unknown) {
+  const now = Date.now();
+  // 만료된 엔트리 정리
+  for (const [k, v] of cache) {
+    if (v.expires < now) cache.delete(k);
+  }
+  // 크기 제한
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldest = cache.keys().next().value;
+    if (oldest) cache.delete(oldest);
+  }
+  cache.set(key, { data, expires: now + 5 * 60 * 1000 });
+}
 
 interface NaverPostItem {
   logNo: string;
@@ -253,7 +268,7 @@ export async function GET(request: NextRequest) {
         countPerPage: count,
         source: 'api',
       };
-      cache.set(cacheKey, { data: result, expires: Date.now() + 5 * 60 * 1000 });
+      setPostCache(cacheKey, result);
       return NextResponse.json(result);
     }
 
@@ -270,7 +285,7 @@ export async function GET(request: NextRequest) {
         countPerPage: count,
         source: 'page',
       };
-      cache.set(cacheKey, { data: result, expires: Date.now() + 5 * 60 * 1000 });
+      setPostCache(cacheKey, result);
       return NextResponse.json(result);
     }
 
@@ -293,7 +308,7 @@ export async function GET(request: NextRequest) {
         blogId: rssResult.blogId,
         source: 'rss',
       };
-      cache.set(cacheKey, { data: result, expires: Date.now() + 5 * 60 * 1000 });
+      setPostCache(cacheKey, result);
       return NextResponse.json(result);
     }
 

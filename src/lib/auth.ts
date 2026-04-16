@@ -27,8 +27,8 @@ export async function getAuthUser(request: Request) {
       const supabaseAuth = await createRouteHandlerClient();
       const { data: { user } } = await supabaseAuth.auth.getUser();
       authUser = user;
-    } catch {
-      // 쿠키 인증 실패 무시
+    } catch (err) {
+      console.warn('[auth] cookie auth failed:', err instanceof Error ? err.message : err);
     }
   }
 

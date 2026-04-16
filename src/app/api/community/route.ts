@@ -54,8 +54,8 @@ export async function GET(req: NextRequest) {
       totalPages: Math.ceil((count || 0) / limit),
     });
   } catch (err) {
-    console.error('[community] GET error:', err);
-    return NextResponse.json({ posts: [], total: 0, page: 1, totalPages: 1 });
+    console.error('[community] GET error:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: '게시글 목록을 불러올 수 없습니다.' }, { status: 500 });
   }
 }
 
