@@ -39,16 +39,17 @@ export async function POST(req: NextRequest) {
       if (error) {
         const { data: existing } = await supabase
           .from('site_visits')
-          .select('visit_count')
+          .select('visit_count, desktop_count, mobile_count, tablet_count')
           .eq('visit_date', today)
           .single();
 
         if (existing) {
+          const deviceKey = `${deviceType}_count` as keyof typeof existing;
           await supabase
             .from('site_visits')
             .update({
               visit_count: (existing.visit_count || 0) + 1,
-              [`${deviceType}_count`]: (existing[`${deviceType}_count`] || 0) + 1,
+              [deviceKey]: ((existing[deviceKey] as number) || 0) + 1,
             })
             .eq('visit_date', today);
         } else {
