@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const MENU_ITEMS = [
-  { href: '/admin', label: '대시보드' },
-  { href: '/admin/members', label: '회원 관리' },
-  { href: '/admin/community', label: '커뮤니티 관리' },
-  { href: '/admin/payments', label: '결제 관리' },
-  { href: '/admin/restricted', label: '접근 제한' },
-  { href: '/admin/analytics', label: '유입 분석' },
-  { href: '/admin/promo', label: '프로모션' },
+  { href: '/admin', label: '대시보드', icon: '+' },
+  { href: '/admin/members', label: '회원 관리', icon: 'U' },
+  { href: '/admin/community', label: '커뮤니티 관리', icon: '?' },
+  { href: '/admin/payments', label: '결제 관리', icon: '#' },
+  { href: '/admin/restricted', label: '접근 제한', icon: '!' },
+  { href: '/admin/analytics', label: '유입 분석', icon: 'R' },
+  { href: '/admin/promo', label: '프로모션', icon: '*' },
 ];
 
 export default function AdminSidebar() {
@@ -32,12 +32,13 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                 active
                   ? 'bg-accent/15 text-accent'
                   : 'text-dim hover:text-text hover:bg-surface-hover'
               }`}
             >
+              <span className="w-4 text-center text-xs font-bold">{item.icon}</span>
               {item.label}
             </Link>
           );

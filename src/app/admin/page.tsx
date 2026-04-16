@@ -5,11 +5,14 @@ import { useState, useEffect } from 'react';
 interface DashboardData {
   totalUsers: number;
   todaySignups: number;
+  monthSignups: number;
   subscribers: number;
   totalRevenue: number;
-  activeDemos: number;
   pendingReports: number;
+  totalReports: number;
   dailySignups: { date: string; count: number }[];
+  recentUsers: { nickname: string; email: string; created_at: string }[];
+  recentReports: { id: string; reason: string; status: string; created_at: string }[];
 }
 
 export default function AdminDashboardPage() {
@@ -34,12 +37,10 @@ export default function AdminDashboardPage() {
   if (!data) return <div className="py-20 text-center text-dim">데이터를 불러올 수 없습니다.</div>;
 
   const cards = [
-    { label: '총 회원', value: data.totalUsers.toLocaleString(), accent: false },
-    { label: '오늘 가입', value: data.todaySignups.toLocaleString(), accent: true },
-    { label: '유료 구독', value: `${data.subscribers}명`, accent: true },
-    { label: '총 매출', value: `${data.totalRevenue.toLocaleString()}원`, accent: false },
-    { label: '활성 데모', value: data.activeDemos.toLocaleString(), accent: false },
-    { label: '신고 대기', value: data.pendingReports.toLocaleString(), accent: data.pendingReports > 0 },
+    { label: '총 회원', value: data.totalUsers.toLocaleString(), sub: `오늘 ${data.todaySignups}명` },
+    { label: '이번 달 가입', value: data.monthSignups.toLocaleString(), sub: `오늘 ${data.todaySignups}명` },
+    { label: '유료 구독', value: data.subscribers.toLocaleString(), sub: `월 ${data.totalRevenue.toLocaleString()}원` },
+    { label: '신고 대기', value: data.pendingReports.toLocaleString(), sub: `전체 ${data.totalReports}건` },
   ];
 
   const maxCount = Math.max(...data.dailySignups.map(d => d.count), 1);
@@ -49,18 +50,71 @@ export default function AdminDashboardPage() {
       <h1 className="text-xl font-extrabold">대시보드</h1>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map(card => (
-          <div key={card.label} className="bg-surface rounded-xl border border-border p-4 text-center">
-            <p className="text-xs text-dim mb-1">{card.label}</p>
-            <p className={`text-2xl font-extrabold font-rank ${card.accent ? 'text-accent' : 'text-text'}`}>
-              {card.value}
-            </p>
+          <div key={card.label} className="bg-surface rounded-xl border border-border p-5">
+            <p className="text-xs text-dim mb-2">{card.label}</p>
+            <p className="text-3xl font-extrabold text-text">{card.value}</p>
+            <p className="text-xs text-dim mt-1">{card.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* 일별 가입 추이 */}
+      {/* 최근 가입 회원 */}
+      <div className="bg-surface rounded-xl border border-border">
+        <h2 className="text-sm font-bold p-5 pb-3">최근 가입 회원</h2>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-t border-border text-xs text-dim">
+              <th className="text-left px-5 py-2.5 font-semibold">이름</th>
+              <th className="text-left px-5 py-2.5 font-semibold">이메일</th>
+              <th className="text-right px-5 py-2.5 font-semibold">가입일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.recentUsers.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="text-center py-8 text-dim text-xs">가입 회원이 없습니다.</td>
+              </tr>
+            ) : (
+              data.recentUsers.map((user, i) => (
+                <tr key={i} className="border-t border-border hover:bg-surface-hover transition">
+                  <td className="px-5 py-3 font-medium">{user.nickname || '-'}</td>
+                  <td className="px-5 py-3 text-dim">{user.email || '-'}</td>
+                  <td className="px-5 py-3 text-dim text-right">{new Date(user.created_at).toLocaleDateString('ko-KR')}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 최근 신고 */}
+      <div className="bg-surface rounded-xl border border-border">
+        <h2 className="text-sm font-bold p-5 pb-3">최근 신고</h2>
+        {data.recentReports.length === 0 ? (
+          <div className="text-center py-8 text-dim text-xs border-t border-border">신고가 없습니다.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-t border-border text-xs text-dim">
+                <th className="text-left px-5 py-2.5 font-semibold">사유</th>
+                <th className="text-right px-5 py-2.5 font-semibold">일시</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.recentReports.map(report => (
+                <tr key={report.id} className="border-t border-border hover:bg-surface-hover transition">
+                  <td className="px-5 py-3 font-medium">{report.reason || '-'}</td>
+                  <td className="px-5 py-3 text-dim text-right">{new Date(report.created_at).toLocaleDateString('ko-KR')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* 30일 가입 추이 */}
       <div className="bg-surface rounded-xl border border-border p-5">
         <h2 className="text-sm font-bold mb-3">최근 30일 가입 추이</h2>
         <div className="flex items-end gap-[2px] h-32">

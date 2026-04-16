@@ -19,29 +19,41 @@ export async function GET(req: NextRequest) {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
 
+  // 이번 달 1일
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+
   const [
     usersResult,
     todayUsersResult,
+    monthUsersResult,
     subscribersResult,
     paymentsResult,
-    demoResult,
     reportsResult,
+    reportsAllResult,
     dailySignupsResult,
+    recentUsersResult,
+    recentReportsResult,
   ] = await Promise.all([
     // 총 회원수
     supabase.from('users').select('*', { count: 'exact', head: true }),
     // 오늘 가입
     supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', todayISO),
+    // 이번 달 가입
+    supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', monthStart),
     // 유료 구독자
     supabase.from('users').select('*', { count: 'exact', head: true }).not('subscription_plan', 'is', null),
     // 총 결제금액
     supabase.from('payment_transactions').select('amount').eq('status', 'PAID'),
-    // 활성 데모 세션
-    supabase.from('demo_sessions').select('*', { count: 'exact', head: true }).gte('expires_at', new Date().toISOString()),
     // 대기 중 신고
     supabase.from('community_reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    // 전체 신고
+    supabase.from('community_reports').select('*', { count: 'exact', head: true }),
     // 30일 일별 가입
     supabase.from('users').select('created_at').gte('created_at', thirtyDaysAgoISO).order('created_at', { ascending: true }),
+    // 최근 가입 회원 5명
+    supabase.from('users').select('nickname, email, created_at').order('created_at', { ascending: false }).limit(5),
+    // 최근 대기 신고 5건
+    supabase.from('community_reports').select('id, reason, status, created_at').eq('status', 'pending').order('created_at', { ascending: false }).limit(5),
   ]);
 
   // 총 결제금액 계산
@@ -63,10 +75,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     totalUsers: usersResult.count || 0,
     todaySignups: todayUsersResult.count || 0,
+    monthSignups: monthUsersResult.count || 0,
     subscribers: subscribersResult.count || 0,
     totalRevenue,
-    activeDemos: demoResult.count || 0,
     pendingReports: reportsResult.count || 0,
+    totalReports: reportsAllResult.count || 0,
     dailySignups,
+    recentUsers: recentUsersResult.data || [],
+    recentReports: recentReportsResult.data || [],
   });
 }
