@@ -1,0 +1,165 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+
+interface RestrictedUser {
+  id: string;
+  email: string;
+  nickname: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+export default function AdminRestrictedPage() {
+  const [users, setUsers] = useState<RestrictedUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch('/api/admin/restricted');
+    const data = await res.json();
+    setUsers(data.users || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitting(true);
+    setError('');
+
+    const res = await fetch('/api/admin/restricted', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), nickname: nickname.trim(), reason: reason.trim() }),
+    });
+
+    if (res.ok) {
+      setEmail('');
+      setNickname('');
+      setReason('');
+      fetchUsers();
+    } else {
+      const data = await res.json();
+      setError(data.error || '추가 실패');
+    }
+    setSubmitting(false);
+  };
+
+  const handleDelete = async (targetEmail: string, targetNickname: string | null) => {
+    const label = targetNickname || targetEmail;
+    if (!confirm(`"${label}"의 접근 제한을 해제하시겠습니까?`)) return;
+
+    const res = await fetch('/api/admin/restricted', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: targetEmail }),
+    });
+
+    if (res.ok) {
+      fetchUsers();
+    } else {
+      alert('삭제 실패');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-xl font-extrabold">접근 제한 관리</h1>
+
+      {/* 추가 폼 */}
+      <form onSubmit={handleAdd} className="bg-surface rounded-xl border border-border p-5 space-y-3">
+        <h2 className="text-sm font-bold">제한 사용자 추가</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="이메일 (필수)"
+            required
+            className="px-4 py-2.5 bg-bg border border-border rounded-xl text-sm"
+          />
+          <input
+            type="text"
+            value={nickname}
+            onChange={e => setNickname(e.target.value)}
+            placeholder="닉네임 (선택)"
+            className="px-4 py-2.5 bg-bg border border-border rounded-xl text-sm"
+          />
+          <input
+            type="text"
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="사유 (선택)"
+            className="px-4 py-2.5 bg-bg border border-border rounded-xl text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={submitting || !email.trim()}
+            className="px-5 py-2.5 bg-accent text-white font-bold rounded-xl text-sm cursor-pointer disabled:opacity-50"
+          >
+            {submitting ? '추가 중...' : '추가'}
+          </button>
+          {error && <span className="text-sm text-red-500 font-semibold">{error}</span>}
+        </div>
+      </form>
+
+      {/* 목록 */}
+      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-bold">제한 사용자 목록</h2>
+          <span className="text-xs text-dim">{users.length}명</span>
+        </div>
+
+        {loading ? (
+          <div className="py-12 text-center">
+            <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : users.length === 0 ? (
+          <div className="py-12 text-center text-dim text-sm">등록된 제한 사용자가 없습니다.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-[11px] text-dim">
+                <th className="text-left px-4 py-2.5 font-semibold">이메일</th>
+                <th className="text-left px-4 py-2.5 font-semibold">닉네임</th>
+                <th className="text-left px-4 py-2.5 font-semibold">사유</th>
+                <th className="text-left px-4 py-2.5 font-semibold">등록일</th>
+                <th className="text-center px-4 py-2.5 font-semibold">해제</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/20">
+              {users.map(u => (
+                <tr key={u.id} className="hover:bg-surface-hover transition">
+                  <td className="px-4 py-2.5 font-semibold">{u.email}</td>
+                  <td className="px-4 py-2.5 text-dim">{u.nickname || '-'}</td>
+                  <td className="px-4 py-2.5 text-dim">{u.reason || '-'}</td>
+                  <td className="px-4 py-2.5 text-xs text-dim">
+                    {new Date(u.created_at).toLocaleDateString('ko-KR')}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <button
+                      onClick={() => handleDelete(u.email, u.nickname)}
+                      className="px-3 py-1 bg-red-500/10 text-red-500 font-bold rounded-lg text-xs hover:bg-red-500/20 transition cursor-pointer"
+                    >
+                      해제
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}

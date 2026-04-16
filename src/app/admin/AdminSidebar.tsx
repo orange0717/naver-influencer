@@ -8,6 +8,7 @@ const MENU_ITEMS = [
   { href: '/admin/members', label: '회원 관리' },
   { href: '/admin/community', label: '커뮤니티 관리' },
   { href: '/admin/payments', label: '결제 관리' },
+  { href: '/admin/restricted', label: '접근 제한' },
   { href: '/admin/analytics', label: '유입 분석' },
   { href: '/admin/promo', label: '프로모션' },
 ];

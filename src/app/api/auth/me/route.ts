@@ -49,7 +49,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     email: email || profile.email,
     authId: authUserId,
     isAdmin: isAdmin(profile.id),
-    restricted: isRestricted(email || profile.email),
+    restricted: await isRestricted(email || profile.email),
     subscriptionPlan: profile.subscription_plan || null,
     subscriptionActive,
   };
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
         id: naverId,
         blogId: user.blog_id || blogId || null,
         name: user.nickname || safeDecode(blogName),
-        restricted: isRestricted(user.email),
+        restricted: await isRestricted(user.email),
       });
     }
 
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
         id: naverId,
         blogId: blogId || null,
         name: inf?.display_name || naverId,
-        restricted: isRestricted(registeredUser?.email),
+        restricted: await isRestricted(registeredUser?.email),
         ...(trialDaysLeft !== undefined && { trialDaysLeft }),
         ...(isDemo && { isDemo: true }),
       });
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
         type: 'blogger',
         id: blogId,
         name: user.nickname || safeDecode(blogName) || blogId,
-        restricted: isRestricted(user.email),
+        restricted: await isRestricted(user.email),
       });
     }
 

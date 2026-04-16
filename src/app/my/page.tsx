@@ -53,7 +53,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       // 제한 사용자 체크
       const { isRestricted } = await import('@/lib/admin');
-      if (isRestricted(authUser.email)) {
+      if (await isRestricted(authUser.email)) {
         redirect('/subscribe');
       }
 
