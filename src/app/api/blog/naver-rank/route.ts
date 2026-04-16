@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser, getCookieUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,12 @@ const cache = new Map<string, { data: unknown; expires: number }>();
  * GET /api/blog/naver-rank?keyword=네이버검색광고&blogId=orangelibrary
  */
 export async function GET(request: NextRequest) {
+  const authUser = await getAuthUser(request);
+  const cookieUser = await getCookieUser();
+  if (!authUser && !cookieUser) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
   const keyword = request.nextUrl.searchParams.get('keyword');
   const blogId = request.nextUrl.searchParams.get('blogId');
 

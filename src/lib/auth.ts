@@ -65,7 +65,24 @@ export async function getCookieUser(): Promise<{ id: string; type: 'influencer' 
   const naverId = cookieStore.get('naver_id')?.value;
   const blogId = cookieStore.get('blog_id')?.value;
 
+  // unified 타입 처리 (네이버 로그인 + 블로그 연동 사용자)
+  if (userType === 'unified' && naverId) {
+    return { id: naverId, type: 'influencer' };
+  }
   if (userType === 'influencer' && naverId) {
+    // 데모 세션 만료 검증
+    const supabase = createServiceClient();
+    const { data: demo } = await supabase
+      .from('demo_sessions')
+      .select('expires_at')
+      .eq('naver_id', naverId)
+      .not('verified_at', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (demo && new Date(demo.expires_at) < new Date()) {
+      return null; // 데모 만료
+    }
     return { id: naverId, type: 'influencer' };
   }
   if (userType === 'blogger' && blogId) {

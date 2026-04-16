@@ -4,16 +4,25 @@ import { getAuthUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-// 프로모션 코드 목록 (하드코딩 — 추후 DB로 이동 가능)
-const PROMO_CODES: Record<string, { plan: 'blogger' | 'influencer'; days: number; label: string }> = {
-  'NINFL7': { plan: 'blogger', days: 7, label: '블로거 7일 무료' },
-  'NINFL30': { plan: 'blogger', days: 30, label: '블로거 30일 무료' },
-  'NINFL90': { plan: 'blogger', days: 90, label: '블로거 90일 무료' },
-  'INFLU7': { plan: 'influencer', days: 7, label: '인플루언서 7일 무료' },
-  'INFLU30': { plan: 'influencer', days: 30, label: '인플루언서 30일 무료' },
-  'INFLU90': { plan: 'influencer', days: 90, label: '인플루언서 90일 무료' },
-  'WELCOME': { plan: 'blogger', days: 30, label: '웰컴 블로거 30일 무료' },
-};
+// 프로모션 코드 — 환경변수에서 로드 (형식: CODE:plan:days:label,CODE2:plan:days:label)
+// 예: PROMO_CODES_CONFIG="NINFL7:blogger:7:블로거7일,WELCOME:blogger:30:웰컴"
+function loadPromoCodes(): Record<string, { plan: 'blogger' | 'influencer'; days: number; label: string }> {
+  const config = process.env.PROMO_CODES_CONFIG || '';
+  const codes: Record<string, { plan: 'blogger' | 'influencer'; days: number; label: string }> = {};
+  if (!config) return codes;
+  config.split(',').forEach(entry => {
+    const [code, plan, days, label] = entry.split(':');
+    if (code && plan && days && label) {
+      codes[code.trim().toUpperCase()] = {
+        plan: plan.trim() as 'blogger' | 'influencer',
+        days: parseInt(days.trim(), 10),
+        label: label.trim(),
+      };
+    }
+  });
+  return codes;
+}
+const PROMO_CODES = loadPromoCodes();
 
 /**
  * POST /api/promo — 프로모션 코드 적용

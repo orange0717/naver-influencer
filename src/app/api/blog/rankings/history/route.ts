@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAuthUser, getCookieUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,12 @@ export const dynamic = 'force-dynamic';
  * 블로거 키워드 순위 히스토리 조회 (RankTrendSection용)
  */
 export async function GET(request: NextRequest) {
+  const authUser = await getAuthUser(request);
+  const cookieUser = await getCookieUser();
+  if (!authUser && !cookieUser) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const blogId = searchParams.get('blogId');
   const days = parseInt(searchParams.get('days') || '15', 10);

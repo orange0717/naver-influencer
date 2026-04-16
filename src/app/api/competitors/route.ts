@@ -19,6 +19,11 @@ export async function GET(request: NextRequest) {
     const competitorId = searchParams.get('naverId');
     const myNaverId = searchParams.get('myNaverId');
 
+    // 소유권 검증: myNaverId가 로그인한 사용자와 일치하는지 확인
+    if (myNaverId && myNaverId !== cookieUser.id) {
+      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+    }
+
     if (!competitorId) {
       return NextResponse.json({ error: 'naverId가 필요합니다.' }, { status: 400 });
     }

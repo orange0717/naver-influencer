@@ -52,8 +52,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6자리 인증번호 생성
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    // 6자리 인증번호 생성 (암호학적 안전 난수)
+    const { randomInt } = await import('crypto');
+    const code = String(randomInt(100000, 1000000));
     const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10분
 
     // 기존 미인증 세션 삭제 후 새로 생성

@@ -47,7 +47,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '인증 정보를 찾을 수 없습니다. 다시 시도해주세요.' }, { status: 400 });
     }
 
-    if (session.verification_code !== code) {
+    // 타이밍 안전 비교 (타이밍 공격 방지)
+    const { timingSafeEqual } = await import('crypto');
+    const codeMatch = timingSafeEqual(
+      Buffer.from(session.verification_code.padEnd(6, '0')),
+      Buffer.from(code.padEnd(6, '0'))
+    );
+    if (!codeMatch) {
       return NextResponse.json({ error: '인증번호가 일치하지 않습니다.' }, { status: 400 });
     }
 
