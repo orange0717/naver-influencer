@@ -3,6 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
 
+function extractBlogId(input: string): string {
+  const trimmed = input.trim();
+  const urlMatch = trimmed.match(/^https?:\/\/(?:m\.)?blog\.naver\.com\/([^/?#]+)/);
+  if (urlMatch) return urlMatch[1];
+  return trimmed;
+}
+
 type AnalysisTab = 'challenge' | 'blog' | 'posting';
 
 interface AuthInfo {
@@ -91,10 +98,11 @@ export default function CompetitorPage() {
     if (!blogCompetitorId.trim() || !authInfo) return;
     setBlogLoading(true);
     setBlogCompareData(null);
+    const compId = extractBlogId(blogCompetitorId);
     try {
       const [myRes, compRes] = await Promise.all([
         fetch(`/api/blog/stats?blogId=${encodeURIComponent(authInfo.blogId)}`),
-        fetch(`/api/blog/stats?blogId=${encodeURIComponent(blogCompetitorId.trim())}`),
+        fetch(`/api/blog/stats?blogId=${encodeURIComponent(compId)}`),
       ]);
       if (myRes.ok && compRes.ok) {
         const myData = await myRes.json();
@@ -111,7 +119,7 @@ export default function CompetitorPage() {
             totalVisitor: compData.totalVisitor || 0,
             subscriberCount: compData.subscriberCount || 0,
             postCount: compData.postCount || 0,
-            blogName: compData.blogName || blogCompetitorId.trim(),
+            blogName: compData.blogName || compId,
           },
         });
       }
@@ -124,14 +132,15 @@ export default function CompetitorPage() {
     if (!postCompetitorId.trim()) return;
     setPostLoading(true);
     setCompetitorPosts([]);
+    const postCompId = extractBlogId(postCompetitorId);
     try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(postCompetitorId.trim())}&page=1&count=10`);
+      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(postCompId)}&page=1&count=10`);
       if (res.ok) {
         const data = await res.json();
         setCompetitorPosts((data.posts || []).map((p: { logNo?: string; id?: string; title: string; url?: string; date: string; commentCount?: number }) => ({
           id: p.logNo || p.id || '',
           title: p.title,
-          url: p.url || `https://blog.naver.com/${postCompetitorId.trim()}/${p.logNo || p.id}`,
+          url: p.url || `https://blog.naver.com/${postCompId}/${p.logNo || p.id}`,
           date: p.date,
           commentCount: p.commentCount || 0,
         })));
@@ -146,7 +155,7 @@ export default function CompetitorPage() {
       const res = await fetch('/api/blog/check-missing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blogId: postCompetitorId.trim(), postTitle: post.title, postId: post.id }),
+        body: JSON.stringify({ blogId: extractBlogId(postCompetitorId), postTitle: post.title, postId: post.id }),
       });
       if (res.ok) {
         const data = await res.json();

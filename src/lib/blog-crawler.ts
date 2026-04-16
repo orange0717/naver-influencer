@@ -310,6 +310,14 @@ export interface BlogProfileStats {
   isOfficialBlog: boolean;
 }
 
+export function extractBlogId(input: string): string {
+  const trimmed = input.trim();
+  // https://blog.naver.com/BLOGID 또는 https://m.blog.naver.com/BLOGID 형태 처리
+  const urlMatch = trimmed.match(/^https?:\/\/(?:m\.)?blog\.naver\.com\/([^/?#]+)/);
+  if (urlMatch) return urlMatch[1];
+  return trimmed;
+}
+
 export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfileStats> {
   const result: BlogProfileStats = {
     totalVisitor: 0,
@@ -319,8 +327,10 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
     isOfficialBlog: false,
   };
 
+  const id = extractBlogId(blogId);
+
   try {
-    const res = await fetch(`https://m.blog.naver.com/${blogId}`, {
+    const res = await fetch(`https://m.blog.naver.com/${id}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
         'Accept-Language': 'ko-KR,ko;q=0.9',
