@@ -497,15 +497,36 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const totalKeywords = allKeywords.length;
   const participatedCount = participatedKeywords.length;
 
-  // ─── 주제별 강점 통계 ───
+  // ─── 주제별 강점 통계 (키워드 텍스트 기반 세부 분류) ───
+  const TOPIC_RULES: [string, RegExp][] = [
+    ['소설/문학', /소설|문학|시집|에세이|단편|장편|작가|문예/i],
+    ['자기계발', /자기계발|성장|습관|마인드|동기부여|멘탈|성공|목표/i],
+    ['경제/재테크', /경제|재테크|투자|주식|부동산|금융|돈|자산|펀드|ETF/i],
+    ['육아/교육', /육아|교육|아이|유아|초등|학습|엄마|아빠|자녀|태교/i],
+    ['건강/운동', /건강|운동|다이어트|헬스|요가|필라테스|식단|영양/i],
+    ['요리/레시피', /요리|레시피|맛집|음식|베이킹|식재료|밥|반찬/i],
+    ['여행', /여행|관광|숙소|호텔|맛집|투어|해외|국내여행/i],
+    ['IT/과학', /IT|프로그래밍|코딩|AI|인공지능|과학|기술|개발|컴퓨터/i],
+    ['역사/인문', /역사|인문|철학|사회|문화|심리|정치/i],
+    ['만화/웹툰', /만화|웹툰|애니|캐릭터|그림/i],
+    ['외국어', /영어|일본어|중국어|외국어|토익|어학|단어|회화/i],
+    ['종교/명상', /종교|명상|기도|불교|기독교|성경|마음/i],
+  ];
+  function classifyKeyword(keyword: string, category: string): string {
+    for (const [topic, regex] of TOPIC_RULES) {
+      if (regex.test(keyword)) return topic;
+    }
+    return category || '기타';
+  }
+
   const catStatMap = new Map<string, { total: number; top10: number; sumRank: number }>();
   for (const kw of participatedKeywords) {
-    const cat = kw.category || '기타';
-    const entry = catStatMap.get(cat) || { total: 0, top10: 0, sumRank: 0 };
+    const topic = classifyKeyword(kw.keyword, kw.category);
+    const entry = catStatMap.get(topic) || { total: 0, top10: 0, sumRank: 0 };
     entry.total++;
     if (kw.rank_position && kw.rank_position <= 10) entry.top10++;
     entry.sumRank += kw.rank_position || 0;
-    catStatMap.set(cat, entry);
+    catStatMap.set(topic, entry);
   }
   const categoryStats = Array.from(catStatMap.entries())
     .map(([category, s]) => ({
