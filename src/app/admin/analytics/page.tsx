@@ -48,7 +48,7 @@ export default function AdminAnalyticsPage() {
   const totalDevices = (referrers?.devices.desktop || 0) + (referrers?.devices.mobile || 0) + (referrers?.devices.tablet || 0);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">유입 분석</h1>
       </div>
