@@ -453,14 +453,18 @@ export default function ProfilePage() {
                 setAvatarUploading(true);
                 try {
                   const supabase = createSupabaseBrowserClient();
-                  const ext = file.name.split('.').pop() || 'jpg';
-                  const path = `avatars/${user.id}.${ext}`;
-                  const { error: uploadErr } = await supabase.storage.from('public-assets').upload(path, file, { upsert: true });
-                  if (uploadErr) throw uploadErr;
-                  const { data: urlData } = supabase.storage.from('public-assets').getPublicUrl(path);
-                  const publicUrl = urlData.publicUrl + '?t=' + Date.now();
-                  await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
-                  setAvatarUrl(publicUrl);
+                  const session = await supabase.auth.getSession();
+                  const token = session.data.session?.access_token || '';
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  const res = await fetch('/api/profile/avatar', {
+                    method: 'POST',
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    body: formData,
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || '업로드 실패');
+                  setAvatarUrl(data.url);
                   showToast('프로필 사진이 변경되었습니다.');
                 } catch (err) {
                   showToast('업로드 실패: ' + (err instanceof Error ? err.message : '오류'));
