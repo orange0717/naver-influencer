@@ -108,6 +108,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [toast, setToast] = useState('');
@@ -167,6 +169,7 @@ export default function ProfilePage() {
       setLinkedInfluencer(data.linked_influencer);
       setTransactions(data.transactions || []);
       setNicknameInput(data.user.nickname);
+      setEmailInput(data.user.email);
       setAvatarUrl(data.user.avatar_url || null);
       setBlogIdInput(data.user.blog_id || '');
       if (data.ad_profile) {
@@ -204,6 +207,29 @@ export default function ProfilePage() {
       setUser(prev => prev ? { ...prev, nickname: name } : null);
       setEditingNickname(false);
       showToast('닉네임이 변경되었습니다.');
+    }
+  };
+
+  const saveEmail = async () => {
+    const email = emailInput.trim();
+    if (!email || !user) return;
+
+    const supabase = createSupabaseBrowserClient();
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (res.ok) {
+      setUser(prev => prev ? { ...prev, email } : null);
+      setEditingEmail(false);
+      showToast('이메일이 변경되었습니다.');
     }
   };
 
@@ -510,7 +536,35 @@ export default function ProfilePage() {
                 </button>
               </div>
             )}
-            <p className="text-sm text-dim">{user.email}</p>
+            {editingEmail ? (
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveEmail()}
+                  className="flex-1 px-3 py-1 bg-bg border border-accent rounded-lg text-sm text-text focus:outline-none"
+                  autoFocus
+                  placeholder="이메일 주소"
+                />
+                <button onClick={saveEmail}
+                  className="px-3 py-1 bg-accent text-white text-xs font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer">
+                  저장
+                </button>
+                <button onClick={() => { setEditingEmail(false); setEmailInput(user.email); }}
+                  className="px-3 py-1 bg-surface-hover text-dim text-xs rounded-lg cursor-pointer">
+                  취소
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-dim">{user.email}</p>
+                <button onClick={() => setEditingEmail(true)}
+                  className="text-xs text-dim border border-border rounded px-2 py-0.5 hover:border-accent/40 cursor-pointer">
+                  변경
+                </button>
+              </div>
+            )}
             <p className="text-xs text-dim">가입일: {new Date(user.created_at).toLocaleDateString('ko-KR')}</p>
           </div>
         </div>

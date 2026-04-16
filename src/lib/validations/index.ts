@@ -74,6 +74,7 @@ export const linkInfluencerSchema = z.object({
 /** 프로필 업데이트 — 인플루언서 연결은 /my/link, 해제만 여기서 허용 */
 export const profileUpdateSchema = z.object({
   nickname: z.string().min(1).max(20).optional(),
+  email: z.string().email().max(100).optional(),
   blog_id: z.string().max(50).optional(),
   unlink_influencer: z.literal(true).optional(),
   ad_fee_amount: z.number().int().min(0).max(99999999).nullable().optional(),

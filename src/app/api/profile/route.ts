@@ -61,6 +61,7 @@ export async function PATCH(request: NextRequest) {
   const userUpdates: Record<string, unknown> = {};
 
   if (v.data.nickname !== undefined) userUpdates.nickname = v.data.nickname;
+  if (v.data.email !== undefined) userUpdates.email = v.data.email;
   if (v.data.blog_id !== undefined) userUpdates.blog_id = v.data.blog_id || null;
   if (v.data.unlink_influencer) userUpdates.linked_influencer_id = null;
 
