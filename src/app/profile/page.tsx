@@ -446,6 +446,7 @@ export default function ProfilePage() {
               type="file"
               accept="image/*"
               className="hidden"
+              onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;

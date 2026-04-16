@@ -1,13 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, getCookieUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
 /** POST /api/profile/avatar — 프로필 사진 업로드 */
 export async function POST(req: NextRequest) {
+  // Supabase Auth 또는 쿠키 기반 인증
   const auth = await getAuthUser(req);
-  if (!auth) {
+  let userId: string | null = auth?.userId || null;
+
+  if (!userId) {
+    // 쿠키 기반 로그인 사용자: blog_id 또는 naver_id로 users 테이블에서 검색
+    const cookieUser = await getCookieUser();
+    if (cookieUser) {
+      const supabase = createServiceClient();
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .or(`blog_id.eq.${cookieUser.id},email.ilike.%${cookieUser.id}%`)
+        .limit(1)
+        .maybeSingle();
+      userId = user?.id || null;
+    }
+  }
+
+  if (!userId) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
@@ -23,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const ext = file.name.split('.').pop() || 'jpg';
-    const path = `avatars/${auth.userId}.${ext}`;
+    const path = `avatars/${userId}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const supabase = createServiceClient();
@@ -43,7 +61,7 @@ export async function POST(req: NextRequest) {
     const { data: urlData } = supabase.storage.from('public-assets').getPublicUrl(path);
     const publicUrl = urlData.publicUrl + '?t=' + Date.now();
 
-    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', auth.userId);
+    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', userId);
 
     return NextResponse.json({ url: publicUrl });
   } catch (err) {
