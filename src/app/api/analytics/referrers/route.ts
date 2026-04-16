@@ -15,17 +15,33 @@ export async function GET(req: NextRequest) {
     const kstDateStr = new Date(now.getTime() + 9 * 3600000).toISOString().slice(0, 10);
     const kstMidnightUTC = new Date(kstDateStr + 'T00:00:00Z');
     kstMidnightUTC.setHours(kstMidnightUTC.getHours() - 9); // KST 자정 = UTC 15:00 전날
-    const since = new Date(kstMidnightUTC.getTime() - (days - 1) * 86400000).toISOString();
+
+    // days=1: 오늘만, days=2: 어제만, days=N: 최근 N일
+    let since: string;
+    let until: string | null = null;
+    if (days === 1) {
+      since = kstMidnightUTC.toISOString();
+    } else if (days === 2) {
+      // 어제: 어제 자정 ~ 오늘 자정
+      since = new Date(kstMidnightUTC.getTime() - 86400000).toISOString();
+      until = kstMidnightUTC.toISOString();
+    } else {
+      since = new Date(kstMidnightUTC.getTime() - (days - 1) * 86400000).toISOString();
+    }
 
     const supabase = createServiceClient();
 
     // Supabase 기본 1000행 제한 → 명시적으로 충분한 수 지정
-    const { data: logs } = await supabase
+    let query = supabase
       .from('visit_logs')
       .select('referrer, referrer_domain, utm_source, utm_medium, utm_campaign, device_type, page_path')
       .gte('visited_at', since)
       .order('visited_at', { ascending: false })
       .limit(10000);
+    if (until) {
+      query = query.lt('visited_at', until);
+    }
+    const { data: logs } = await query;
 
     if (!logs || logs.length === 0) {
       return NextResponse.json({

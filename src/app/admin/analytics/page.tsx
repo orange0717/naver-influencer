@@ -56,11 +56,7 @@ export default function AdminAnalyticsPage() {
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(() => {
-          const periodVisits = days === 1
-            ? stats?.todayVisits || 0
-            : days === 2
-            ? stats?.yesterdayVisits || 0
-            : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0);
+          const periodVisits = referrers?.total || 0;
           const periodSignups = days === 1
             ? stats?.todaySignups || 0
             : days === 2
