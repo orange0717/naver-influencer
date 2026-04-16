@@ -1,14 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
-
-function extractBlogId(input: string): string {
-  const trimmed = input.trim();
-  const urlMatch = trimmed.match(/^https?:\/\/(?:m\.)?blog\.naver\.com\/([^/?#]+)/);
-  if (urlMatch) return urlMatch[1];
-  return trimmed;
-}
+import { extractBlogId, isValidBlogId } from '@/lib/blog-utils';
 
 type AnalysisTab = 'challenge' | 'blog' | 'posting';
 
@@ -31,8 +25,6 @@ interface MissingCheckResult {
   total: number;
   viewExposed: number;
   blogExposed: number;
-  viewMissing: number;
-  blogMissing: number;
   viewRate: number; // 누락율 %
   blogRate: number;
   keywords: { title: string; viewExposed: boolean; blogExposed: boolean; viewRank: number | null; blogRank: number | null }[];
@@ -57,11 +49,13 @@ export default function CompetitorPage() {
   const [blogCompetitorId, setBlogCompetitorId] = useState('');
   const [blogCompareData, setBlogCompareData] = useState<BlogCompareData | null>(null);
   const [blogLoading, setBlogLoading] = useState(false);
+  const [blogError, setBlogError] = useState('');
 
   // 누락율 비교
   const [missingData, setMissingData] = useState<{ mine: MissingCheckResult | null; competitor: MissingCheckResult | null } | null>(null);
   const [missingLoading, setMissingLoading] = useState(false);
   const [missingProgress, setMissingProgress] = useState({ current: 0, total: 0 });
+  const missingProgressRef = useRef(0);
 
   // 포스팅 탭
   const [postCompetitorId, setPostCompetitorId] = useState('');
@@ -105,9 +99,15 @@ export default function CompetitorPage() {
         top3Count: stats.top3Count,
         avgRank: stats.avgRank,
       });
-    } catch { /* ignore */ }
+    } catch {
+      console.error('[competitor] loadAuth failed');
+    }
     finally { setLoading(false); }
   }
+
+  // blogId 유효성 확인
+  const myBlogId = authInfo ? extractBlogId(authInfo.blogId) : '';
+  const myBlogIdValid = isValidBlogId(myBlogId);
 
   // ─── 블로그 비교 ───
   const compareBlog = useCallback(async () => {
@@ -115,43 +115,55 @@ export default function CompetitorPage() {
     setBlogLoading(true);
     setBlogCompareData(null);
     setMissingData(null);
+    setBlogError('');
+
     const compId = extractBlogId(blogCompetitorId);
-    const myBlogId = extractBlogId(authInfo.blogId);
+
+    if (!myBlogIdValid) {
+      setBlogError(`내 블로그 ID(${myBlogId})가 유효하지 않습니다. 프로필 설정에서 블로그 ID를 확인해주세요.`);
+    }
+
     try {
       const [myRes, compRes] = await Promise.all([
         fetch(`/api/blog/stats?blogId=${encodeURIComponent(myBlogId)}`),
         fetch(`/api/blog/stats?blogId=${encodeURIComponent(compId)}`),
       ]);
-      if (myRes.ok && compRes.ok) {
-        const myData = await myRes.json();
-        const compData = await compRes.json();
-        setBlogCompareData({
-          mine: {
-            todayVisitor: myData.todayVisitor || 0,
-            totalVisitor: myData.totalVisitor || 0,
-            subscriberCount: myData.subscriberCount || 0,
-            postCount: myData.postCount || 0,
-          },
-          competitor: {
-            todayVisitor: compData.todayVisitor || 0,
-            totalVisitor: compData.totalVisitor || 0,
-            subscriberCount: compData.subscriberCount || 0,
-            postCount: compData.postCount || 0,
-            blogName: compData.blogName || compId,
-          },
-        });
-      }
-    } catch { /* ignore */ }
-    finally { setBlogLoading(false); }
-  }, [blogCompetitorId, authInfo]);
 
-  // ─── 누락율 비교 확인 ───
+      if (!myRes.ok || !compRes.ok) {
+        setBlogError('블로그 통계를 가져오지 못했습니다. 블로그 ID를 확인해주세요.');
+        return;
+      }
+
+      const myData = await myRes.json();
+      const compData = await compRes.json();
+      setBlogCompareData({
+        mine: {
+          todayVisitor: myData.todayVisitor || 0,
+          totalVisitor: myData.totalVisitor || 0,
+          subscriberCount: myData.subscriberCount || 0,
+          postCount: myData.postCount || 0,
+        },
+        competitor: {
+          todayVisitor: compData.todayVisitor || 0,
+          totalVisitor: compData.totalVisitor || 0,
+          subscriberCount: compData.subscriberCount || 0,
+          postCount: compData.postCount || 0,
+          blogName: compData.blogName || compId,
+        },
+      });
+    } catch (err) {
+      console.error('[competitor] compareBlog error:', err);
+      setBlogError('블로그 통계 조회 중 오류가 발생했습니다.');
+    }
+    finally { setBlogLoading(false); }
+  }, [blogCompetitorId, authInfo, myBlogId, myBlogIdValid]);
+
+  // ─── 누락율 비교 확인 (순차 실행으로 rate limit 방지) ───
   const checkMissingRate = useCallback(async () => {
     if (!authInfo || !blogCompetitorId.trim()) return;
     setMissingLoading(true);
     setMissingData(null);
 
-    const myBlogId = extractBlogId(authInfo.blogId);
     const compId = extractBlogId(blogCompetitorId);
 
     try {
@@ -165,9 +177,10 @@ export default function CompetitorPage() {
       const compPosts = compPostsRes.ok ? ((await compPostsRes.json()).posts || []) : [];
 
       const totalChecks = myPosts.length + compPosts.length;
+      missingProgressRef.current = 0;
       setMissingProgress({ current: 0, total: totalChecks });
 
-      // 2. 각 포스팅 누락 확인
+      // 포스팅별 누락 확인 (순차 실행)
       async function checkPosts(posts: { logNo?: string; id?: string; title: string }[], blogId: string): Promise<MissingCheckResult> {
         const keywords: MissingCheckResult['keywords'] = [];
         let viewExposed = 0, blogExposed = 0;
@@ -191,8 +204,12 @@ export default function CompetitorPage() {
               if (data.viewTab?.exposed) viewExposed++;
               if (data.blogTab?.exposed) blogExposed++;
             }
-          } catch { /* ignore */ }
-          setMissingProgress(prev => ({ ...prev, current: prev.current + 1 }));
+          } catch (err) {
+            console.error(`[competitor] check-missing failed for "${post.title}":`, err);
+          }
+          // ref 기반 카운터로 race condition 방지
+          missingProgressRef.current++;
+          setMissingProgress({ current: missingProgressRef.current, total: totalChecks });
         }
 
         const total = posts.length;
@@ -200,23 +217,22 @@ export default function CompetitorPage() {
           total,
           viewExposed,
           blogExposed,
-          viewMissing: total - viewExposed,
-          blogMissing: total - blogExposed,
           viewRate: total > 0 ? Math.round(((total - viewExposed) / total) * 100) : 0,
           blogRate: total > 0 ? Math.round(((total - blogExposed) / total) * 100) : 0,
           keywords,
         };
       }
 
-      const [myResult, compResult] = await Promise.all([
-        checkPosts(myPosts, myBlogId),
-        checkPosts(compPosts, compId),
-      ]);
+      // 2. 순차 실행: 내 블로그 → 경쟁자 (rate limit 방지)
+      const myResult = await checkPosts(myPosts, myBlogId);
+      const compResult = await checkPosts(compPosts, compId);
 
       setMissingData({ mine: myResult, competitor: compResult });
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('[competitor] checkMissingRate error:', err);
+    }
     finally { setMissingLoading(false); }
-  }, [authInfo, blogCompetitorId]);
+  }, [authInfo, blogCompetitorId, myBlogId]);
 
   // ─── 포스팅 비교 ───
   const loadCompetitorPosts = useCallback(async () => {
@@ -236,7 +252,9 @@ export default function CompetitorPage() {
           commentCount: p.commentCount || 0,
         })));
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('[competitor] loadCompetitorPosts error:', err);
+    }
     finally { setPostLoading(false); }
   }, [postCompetitorId]);
 
@@ -254,7 +272,9 @@ export default function CompetitorPage() {
           p.id === post.id ? { ...p, blogTab: data.blogTab, viewTab: data.viewTab } : p
         ));
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('[competitor] checkPostRank error:', err);
+    }
     finally { setCheckingPostId(''); }
   };
 
@@ -313,6 +333,14 @@ export default function CompetitorPage() {
       {/* ─── 블로그 탭 ─── */}
       {tab === 'blog' && (
         <div className="space-y-4">
+          {/* blogId 경고 */}
+          {!myBlogIdValid && (
+            <div className="bg-down/10 border border-down/30 rounded-xl px-4 py-3 text-xs text-down">
+              내 블로그 ID({myBlogId || '없음'})가 유효하지 않습니다.
+              <a href="/profile" className="underline font-semibold ml-1">프로필 설정</a>에서 네이버 블로그 ID를 확인해주세요.
+            </div>
+          )}
+
           <div className="bg-surface rounded-xl border border-border p-5">
             <h3 className="font-bold text-sm mb-3">경쟁자 블로그 ID 입력</h3>
             <p className="text-[11px] text-dim mb-2">블로그 ID 또는 URL을 입력하세요 (예: akzkfltm2 또는 https://blog.naver.com/akzkfltm2)</p>
@@ -335,12 +363,26 @@ export default function CompetitorPage() {
             </div>
           </div>
 
+          {/* 에러 메시지 */}
+          {blogError && !blogCompareData && (
+            <div className="bg-down/10 border border-down/30 rounded-xl px-4 py-3 text-xs text-down">
+              {blogError}
+            </div>
+          )}
+
           {blogCompareData && (
             <>
+              {/* blogId 경고 (비교 결과와 함께) */}
+              {blogError && (
+                <div className="bg-down/10 border border-down/30 rounded-xl px-4 py-3 text-xs text-down">
+                  {blogError}
+                </div>
+              )}
+
               {/* 기본 통계 비교 */}
               <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
                 <h3 className="font-bold text-sm">
-                  내 블로그 <span className="text-[11px] text-dim font-normal">({extractBlogId(authInfo.blogId)})</span>
+                  내 블로그 <span className="text-[11px] text-dim font-normal">({myBlogId})</span>
                   {' '}vs{' '}
                   {blogCompareData.competitor.blogName}
                 </h3>
@@ -393,7 +435,7 @@ export default function CompetitorPage() {
                       {/* 내 블로그 누락율 */}
                       <div className="space-y-3">
                         <p className="text-xs text-dim font-semibold text-center">내 블로그</p>
-                        {missingData.mine ? (
+                        {missingData.mine && missingData.mine.total > 0 ? (
                           <>
                             <StatRow label="통합검색 누락율" value={missingData.mine.viewRate} suffix="%" />
                             <StatRow label="블로그탭 누락율" value={missingData.mine.blogRate} suffix="%" />
@@ -407,7 +449,7 @@ export default function CompetitorPage() {
                       {/* 경쟁자 누락율 */}
                       <div className="space-y-3">
                         <p className="text-xs text-dim font-semibold text-center">{blogCompareData.competitor.blogName}</p>
-                        {missingData.competitor ? (
+                        {missingData.competitor && missingData.competitor.total > 0 ? (
                           <>
                             <StatRow
                               label="통합검색 누락율"
@@ -445,43 +487,11 @@ export default function CompetitorPage() {
 
                     {/* 키워드 상세 */}
                     {missingData.mine && missingData.mine.keywords.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <p className="text-xs text-dim font-semibold mb-2">내 포스팅 키워드 상세</p>
-                        <div className="space-y-1.5">
-                          {missingData.mine.keywords.map((kw, i) => (
-                            <div key={i} className="flex items-center gap-2 text-[11px]">
-                              <span className={`w-12 text-center font-bold px-1 py-0.5 rounded-full ${
-                                (kw.viewExposed || kw.blogExposed) ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
-                              }`}>
-                                {(kw.viewExposed || kw.blogExposed) ? '유효' : '무효'}
-                              </span>
-                              <span className="text-text truncate flex-1">{kw.title}</span>
-                              {kw.viewExposed && <span className="text-up text-[10px] shrink-0">통합 {kw.viewRank}위</span>}
-                              {kw.blogExposed && <span className="text-up text-[10px] shrink-0">블로그 {kw.blogRank}위</span>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <KeywordDetail label="내 포스팅 키워드 상세" keywords={missingData.mine.keywords} />
                     )}
 
                     {missingData.competitor && missingData.competitor.keywords.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <p className="text-xs text-dim font-semibold mb-2">{blogCompareData.competitor.blogName} 포스팅 키워드 상세</p>
-                        <div className="space-y-1.5">
-                          {missingData.competitor.keywords.map((kw, i) => (
-                            <div key={i} className="flex items-center gap-2 text-[11px]">
-                              <span className={`w-12 text-center font-bold px-1 py-0.5 rounded-full ${
-                                (kw.viewExposed || kw.blogExposed) ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
-                              }`}>
-                                {(kw.viewExposed || kw.blogExposed) ? '유효' : '무효'}
-                              </span>
-                              <span className="text-text truncate flex-1">{kw.title}</span>
-                              {kw.viewExposed && <span className="text-up text-[10px] shrink-0">통합 {kw.viewRank}위</span>}
-                              {kw.blogExposed && <span className="text-up text-[10px] shrink-0">블로그 {kw.blogRank}위</span>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <KeywordDetail label={`${blogCompareData.competitor.blogName} 포스팅 키워드 상세`} keywords={missingData.competitor.keywords} />
                     )}
                   </>
                 )}
@@ -624,6 +634,32 @@ export default function CompetitorPage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── 키워드 상세 컴포넌트 ───
+function KeywordDetail({ label, keywords }: {
+  label: string;
+  keywords: { title: string; viewExposed: boolean; blogExposed: boolean; viewRank: number | null; blogRank: number | null }[];
+}) {
+  return (
+    <div className="mt-4 pt-4 border-t border-border">
+      <p className="text-xs text-dim font-semibold mb-2">{label}</p>
+      <div className="space-y-1.5">
+        {keywords.map((kw, i) => (
+          <div key={i} className="flex items-center gap-2 text-[11px]">
+            <span className={`w-12 text-center font-bold px-1 py-0.5 rounded-full ${
+              (kw.viewExposed || kw.blogExposed) ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+            }`}>
+              {(kw.viewExposed || kw.blogExposed) ? '유효' : '무효'}
+            </span>
+            <span className="text-text truncate flex-1">{kw.title}</span>
+            {kw.viewExposed && <span className="text-up text-[10px] shrink-0">통합 {kw.viewRank}위</span>}
+            {kw.blogExposed && <span className="text-up text-[10px] shrink-0">블로그 {kw.blogRank}위</span>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

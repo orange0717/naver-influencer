@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { extractBlogId } from './blog-utils';
 
 interface ExtractedKeyword {
   keyword: string;
@@ -310,13 +311,7 @@ export interface BlogProfileStats {
   isOfficialBlog: boolean;
 }
 
-export function extractBlogId(input: string): string {
-  const trimmed = input.trim();
-  // https://blog.naver.com/BLOGID 또는 https://m.blog.naver.com/BLOGID 형태 처리
-  const urlMatch = trimmed.match(/^https?:\/\/(?:m\.)?blog\.naver\.com\/([^/?#]+)/);
-  if (urlMatch) return urlMatch[1];
-  return trimmed;
-}
+export { extractBlogId } from './blog-utils';
 
 export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfileStats> {
   const result: BlogProfileStats = {
