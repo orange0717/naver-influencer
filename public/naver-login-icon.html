@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head><title>N인플 서비스 이미지 생성 (140x140)</title></head>
+<body style="margin:40px;font-family:sans-serif;">
+<h2>N인플 서비스 이미지 (140 x 140)</h2>
+<canvas id="c" width="140" height="140"></canvas>
+<br><br>
+<button onclick="download()">PNG 다운로드</button>
+
+<script>
+var c = document.getElementById('c');
+var ctx = c.getContext('2d');
+
+// 배경 (둥근 사각형)
+ctx.fillStyle = '#BF877A';
+var r = 20;
+ctx.beginPath();
+ctx.moveTo(r, 0);
+ctx.lineTo(140-r, 0);
+ctx.quadraticCurveTo(140, 0, 140, r);
+ctx.lineTo(140, 140-r);
+ctx.quadraticCurveTo(140, 140, 140-r, 140);
+ctx.lineTo(r, 140);
+ctx.quadraticCurveTo(0, 140, 0, 140-r);
+ctx.lineTo(0, r);
+ctx.quadraticCurveTo(0, 0, r, 0);
+ctx.closePath();
+ctx.fill();
+
+// N 텍스트
+ctx.fillStyle = '#FFFFFF';
+ctx.font = '700 90px Arial, Helvetica, sans-serif';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText('N', 70, 75);
+
+function download() {
+  var a = document.createElement('a');
+  a.download = 'ninfl-icon-140x140.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>
