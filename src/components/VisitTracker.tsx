@@ -57,8 +57,8 @@ export default function VisitTracker() {
     // 같은 도메인에서의 내부 이동은 referrer로 기록하지 않음
     const isSameSite = referrerDomain === window.location.hostname.replace(/^www\./, '');
 
-    // visit_logs: 페이지별 1회 기록 (유입경로 추적)
-    if (!alreadyVisitedPage) {
+    // visit_logs + site_visits: 1인 1일 1회만 기록 (순 방문자)
+    if (isFirstVisit) {
       fetch('/api/analytics/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,7 +70,7 @@ export default function VisitTracker() {
           utm_medium: searchParams.get('utm_medium') || null,
           utm_campaign: searchParams.get('utm_campaign') || null,
           device_type: getDeviceType(),
-          first_visit: isFirstVisit,
+          first_visit: true,
         }),
       }).catch(() => {});
     }
