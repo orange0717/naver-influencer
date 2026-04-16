@@ -27,6 +27,17 @@ interface BlogCompareData {
   competitor: { todayVisitor: number; totalVisitor: number; subscriberCount: number; postCount: number; blogName: string };
 }
 
+interface MissingCheckResult {
+  total: number;
+  viewExposed: number;
+  blogExposed: number;
+  viewMissing: number;
+  blogMissing: number;
+  viewRate: number; // 누락율 %
+  blogRate: number;
+  keywords: { title: string; viewExposed: boolean; blogExposed: boolean; viewRank: number | null; blogRank: number | null }[];
+}
+
 interface CompetitorPost {
   id: string;
   title: string;
@@ -46,6 +57,11 @@ export default function CompetitorPage() {
   const [blogCompetitorId, setBlogCompetitorId] = useState('');
   const [blogCompareData, setBlogCompareData] = useState<BlogCompareData | null>(null);
   const [blogLoading, setBlogLoading] = useState(false);
+
+  // 누락율 비교
+  const [missingData, setMissingData] = useState<{ mine: MissingCheckResult | null; competitor: MissingCheckResult | null } | null>(null);
+  const [missingLoading, setMissingLoading] = useState(false);
+  const [missingProgress, setMissingProgress] = useState({ current: 0, total: 0 });
 
   // 포스팅 탭
   const [postCompetitorId, setPostCompetitorId] = useState('');
@@ -98,10 +114,12 @@ export default function CompetitorPage() {
     if (!blogCompetitorId.trim() || !authInfo) return;
     setBlogLoading(true);
     setBlogCompareData(null);
+    setMissingData(null);
     const compId = extractBlogId(blogCompetitorId);
+    const myBlogId = extractBlogId(authInfo.blogId);
     try {
       const [myRes, compRes] = await Promise.all([
-        fetch(`/api/blog/stats?blogId=${encodeURIComponent(authInfo.blogId)}`),
+        fetch(`/api/blog/stats?blogId=${encodeURIComponent(myBlogId)}`),
         fetch(`/api/blog/stats?blogId=${encodeURIComponent(compId)}`),
       ]);
       if (myRes.ok && compRes.ok) {
@@ -126,6 +144,79 @@ export default function CompetitorPage() {
     } catch { /* ignore */ }
     finally { setBlogLoading(false); }
   }, [blogCompetitorId, authInfo]);
+
+  // ─── 누락율 비교 확인 ───
+  const checkMissingRate = useCallback(async () => {
+    if (!authInfo || !blogCompetitorId.trim()) return;
+    setMissingLoading(true);
+    setMissingData(null);
+
+    const myBlogId = extractBlogId(authInfo.blogId);
+    const compId = extractBlogId(blogCompetitorId);
+
+    try {
+      // 1. 양쪽 최근 포스팅 10개씩 가져오기
+      const [myPostsRes, compPostsRes] = await Promise.all([
+        fetch(`/api/blog/posts?blogId=${encodeURIComponent(myBlogId)}&page=1&count=10`),
+        fetch(`/api/blog/posts?blogId=${encodeURIComponent(compId)}&page=1&count=10`),
+      ]);
+
+      const myPosts = myPostsRes.ok ? ((await myPostsRes.json()).posts || []) : [];
+      const compPosts = compPostsRes.ok ? ((await compPostsRes.json()).posts || []) : [];
+
+      const totalChecks = myPosts.length + compPosts.length;
+      setMissingProgress({ current: 0, total: totalChecks });
+
+      // 2. 각 포스팅 누락 확인
+      async function checkPosts(posts: { logNo?: string; id?: string; title: string }[], blogId: string): Promise<MissingCheckResult> {
+        const keywords: MissingCheckResult['keywords'] = [];
+        let viewExposed = 0, blogExposed = 0;
+
+        for (const post of posts) {
+          try {
+            const res = await fetch('/api/blog/check-missing', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ blogId, postTitle: post.title, postId: post.logNo || post.id || '' }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              keywords.push({
+                title: post.title,
+                viewExposed: data.viewTab?.exposed || false,
+                blogExposed: data.blogTab?.exposed || false,
+                viewRank: data.viewTab?.rank || null,
+                blogRank: data.blogTab?.rank || null,
+              });
+              if (data.viewTab?.exposed) viewExposed++;
+              if (data.blogTab?.exposed) blogExposed++;
+            }
+          } catch { /* ignore */ }
+          setMissingProgress(prev => ({ ...prev, current: prev.current + 1 }));
+        }
+
+        const total = posts.length;
+        return {
+          total,
+          viewExposed,
+          blogExposed,
+          viewMissing: total - viewExposed,
+          blogMissing: total - blogExposed,
+          viewRate: total > 0 ? Math.round(((total - viewExposed) / total) * 100) : 0,
+          blogRate: total > 0 ? Math.round(((total - blogExposed) / total) * 100) : 0,
+          keywords,
+        };
+      }
+
+      const [myResult, compResult] = await Promise.all([
+        checkPosts(myPosts, myBlogId),
+        checkPosts(compPosts, compId),
+      ]);
+
+      setMissingData({ mine: myResult, competitor: compResult });
+    } catch { /* ignore */ }
+    finally { setMissingLoading(false); }
+  }, [authInfo, blogCompetitorId]);
 
   // ─── 포스팅 비교 ───
   const loadCompetitorPosts = useCallback(async () => {
@@ -224,13 +315,14 @@ export default function CompetitorPage() {
         <div className="space-y-4">
           <div className="bg-surface rounded-xl border border-border p-5">
             <h3 className="font-bold text-sm mb-3">경쟁자 블로그 ID 입력</h3>
+            <p className="text-[11px] text-dim mb-2">블로그 ID 또는 URL을 입력하세요 (예: akzkfltm2 또는 https://blog.naver.com/akzkfltm2)</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={blogCompetitorId}
                 onChange={e => setBlogCompetitorId(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && compareBlog()}
-                placeholder="네이버 블로그 ID"
+                placeholder="네이버 블로그 ID 또는 URL"
                 className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
               />
               <button
@@ -244,27 +336,161 @@ export default function CompetitorPage() {
           </div>
 
           {blogCompareData && (
-            <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
-              <h3 className="font-bold text-sm">내 블로그 vs {blogCompareData.competitor.blogName}</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {/* 내 블로그 */}
-                <div className="space-y-3">
-                  <p className="text-xs text-dim font-semibold text-center">내 블로그</p>
-                  <StatRow label="TODAY 방문자" value={blogCompareData.mine.todayVisitor} />
-                  <StatRow label="전체 방문자" value={blogCompareData.mine.totalVisitor} />
-                  <StatRow label="이웃수" value={blogCompareData.mine.subscriberCount} />
-                  <StatRow label="전체 포스팅" value={blogCompareData.mine.postCount} />
-                </div>
-                {/* 경쟁자 */}
-                <div className="space-y-3">
-                  <p className="text-xs text-dim font-semibold text-center">{blogCompareData.competitor.blogName}</p>
-                  <StatRow label="TODAY 방문자" value={blogCompareData.competitor.todayVisitor} compare={blogCompareData.mine.todayVisitor} />
-                  <StatRow label="전체 방문자" value={blogCompareData.competitor.totalVisitor} compare={blogCompareData.mine.totalVisitor} />
-                  <StatRow label="이웃수" value={blogCompareData.competitor.subscriberCount} compare={blogCompareData.mine.subscriberCount} />
-                  <StatRow label="전체 포스팅" value={blogCompareData.competitor.postCount} compare={blogCompareData.mine.postCount} />
+            <>
+              {/* 기본 통계 비교 */}
+              <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+                <h3 className="font-bold text-sm">
+                  내 블로그 <span className="text-[11px] text-dim font-normal">({extractBlogId(authInfo.blogId)})</span>
+                  {' '}vs{' '}
+                  {blogCompareData.competitor.blogName}
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* 내 블로그 */}
+                  <div className="space-y-3">
+                    <p className="text-xs text-dim font-semibold text-center">내 블로그</p>
+                    <StatRow label="TODAY 방문자" value={blogCompareData.mine.todayVisitor} />
+                    <StatRow label="전체 방문자" value={blogCompareData.mine.totalVisitor} />
+                    <StatRow label="이웃수" value={blogCompareData.mine.subscriberCount} />
+                    <StatRow label="전체 포스팅" value={blogCompareData.mine.postCount} />
+                  </div>
+                  {/* 경쟁자 */}
+                  <div className="space-y-3">
+                    <p className="text-xs text-dim font-semibold text-center">{blogCompareData.competitor.blogName}</p>
+                    <StatRow label="TODAY 방문자" value={blogCompareData.competitor.todayVisitor} compare={blogCompareData.mine.todayVisitor} />
+                    <StatRow label="전체 방문자" value={blogCompareData.competitor.totalVisitor} compare={blogCompareData.mine.totalVisitor} />
+                    <StatRow label="이웃수" value={blogCompareData.competitor.subscriberCount} compare={blogCompareData.mine.subscriberCount} />
+                    <StatRow label="전체 포스팅" value={blogCompareData.competitor.postCount} compare={blogCompareData.mine.postCount} />
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* 누락율 비교 */}
+              <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm">누락율 비교</h3>
+                  {!missingData && !missingLoading && (
+                    <button
+                      onClick={checkMissingRate}
+                      className="px-4 py-2 bg-accent text-white font-bold rounded-lg text-xs hover:bg-accent-hover transition cursor-pointer"
+                    >
+                      누락율 확인
+                    </button>
+                  )}
+                </div>
+
+                {missingLoading && (
+                  <div className="text-center py-6">
+                    <span className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block mb-2" />
+                    <p className="text-xs text-dim">
+                      포스팅 누락 확인 중... ({missingProgress.current}/{missingProgress.total})
+                    </p>
+                  </div>
+                )}
+
+                {missingData && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* 내 블로그 누락율 */}
+                      <div className="space-y-3">
+                        <p className="text-xs text-dim font-semibold text-center">내 블로그</p>
+                        {missingData.mine ? (
+                          <>
+                            <StatRow label="통합검색 누락율" value={missingData.mine.viewRate} suffix="%" />
+                            <StatRow label="블로그탭 누락율" value={missingData.mine.blogRate} suffix="%" />
+                            <StatRow label="유효 포스팅" value={Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed)} suffix={`/${missingData.mine.total}개`} />
+                            <StatRow label="무효 포스팅" value={missingData.mine.total - Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed)} suffix={`/${missingData.mine.total}개`} />
+                          </>
+                        ) : (
+                          <p className="text-xs text-dim text-center py-4">포스팅이 없습니다</p>
+                        )}
+                      </div>
+                      {/* 경쟁자 누락율 */}
+                      <div className="space-y-3">
+                        <p className="text-xs text-dim font-semibold text-center">{blogCompareData.competitor.blogName}</p>
+                        {missingData.competitor ? (
+                          <>
+                            <StatRow
+                              label="통합검색 누락율"
+                              value={missingData.competitor.viewRate}
+                              suffix="%"
+                              compare={missingData.mine?.viewRate}
+                              invertCompare
+                            />
+                            <StatRow
+                              label="블로그탭 누락율"
+                              value={missingData.competitor.blogRate}
+                              suffix="%"
+                              compare={missingData.mine?.blogRate}
+                              invertCompare
+                            />
+                            <StatRow
+                              label="유효 포스팅"
+                              value={Math.max(missingData.competitor.viewExposed, missingData.competitor.blogExposed)}
+                              suffix={`/${missingData.competitor.total}개`}
+                              compare={missingData.mine ? Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed) : undefined}
+                            />
+                            <StatRow
+                              label="무효 포스팅"
+                              value={missingData.competitor.total - Math.max(missingData.competitor.viewExposed, missingData.competitor.blogExposed)}
+                              suffix={`/${missingData.competitor.total}개`}
+                              compare={missingData.mine ? missingData.mine.total - Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed) : undefined}
+                              invertCompare
+                            />
+                          </>
+                        ) : (
+                          <p className="text-xs text-dim text-center py-4">포스팅이 없습니다</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 키워드 상세 */}
+                    {missingData.mine && missingData.mine.keywords.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <p className="text-xs text-dim font-semibold mb-2">내 포스팅 키워드 상세</p>
+                        <div className="space-y-1.5">
+                          {missingData.mine.keywords.map((kw, i) => (
+                            <div key={i} className="flex items-center gap-2 text-[11px]">
+                              <span className={`w-12 text-center font-bold px-1 py-0.5 rounded-full ${
+                                (kw.viewExposed || kw.blogExposed) ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                              }`}>
+                                {(kw.viewExposed || kw.blogExposed) ? '유효' : '무효'}
+                              </span>
+                              <span className="text-text truncate flex-1">{kw.title}</span>
+                              {kw.viewExposed && <span className="text-up text-[10px] shrink-0">통합 {kw.viewRank}위</span>}
+                              {kw.blogExposed && <span className="text-up text-[10px] shrink-0">블로그 {kw.blogRank}위</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {missingData.competitor && missingData.competitor.keywords.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <p className="text-xs text-dim font-semibold mb-2">{blogCompareData.competitor.blogName} 포스팅 키워드 상세</p>
+                        <div className="space-y-1.5">
+                          {missingData.competitor.keywords.map((kw, i) => (
+                            <div key={i} className="flex items-center gap-2 text-[11px]">
+                              <span className={`w-12 text-center font-bold px-1 py-0.5 rounded-full ${
+                                (kw.viewExposed || kw.blogExposed) ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                              }`}>
+                                {(kw.viewExposed || kw.blogExposed) ? '유효' : '무효'}
+                              </span>
+                              <span className="text-text truncate flex-1">{kw.title}</span>
+                              {kw.viewExposed && <span className="text-up text-[10px] shrink-0">통합 {kw.viewRank}위</span>}
+                              {kw.blogExposed && <span className="text-up text-[10px] shrink-0">블로그 {kw.blogRank}위</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!missingData && !missingLoading && (
+                  <p className="text-[11px] text-dim">최근 10개 포스팅의 검색 노출 여부를 확인합니다.</p>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -280,7 +506,7 @@ export default function CompetitorPage() {
                 value={postCompetitorId}
                 onChange={e => setPostCompetitorId(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && loadCompetitorPosts()}
-                placeholder="네이버 블로그 ID"
+                placeholder="네이버 블로그 ID 또는 URL"
                 className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
               />
               <button
@@ -296,7 +522,7 @@ export default function CompetitorPage() {
           {competitorPosts.length > 0 && (
             <div className="bg-surface rounded-xl border border-border overflow-hidden">
               <div className="px-5 py-3 border-b border-border bg-bg/30">
-                <h3 className="font-bold text-sm">{postCompetitorId}의 최근 포스팅</h3>
+                <h3 className="font-bold text-sm">{extractBlogId(postCompetitorId)}의 최근 포스팅</h3>
               </div>
 
               {/* 데스크톱 */}
@@ -403,18 +629,32 @@ export default function CompetitorPage() {
 }
 
 // ─── 통계 비교 행 컴포넌트 ───
-function StatRow({ label, value, compare }: { label: string; value: number; compare?: number }) {
+function StatRow({ label, value, compare, suffix, invertCompare }: {
+  label: string;
+  value: number;
+  compare?: number;
+  suffix?: string;
+  invertCompare?: boolean; // true면 낮을수록 좋음 (누락율)
+}) {
   const formatted = value.toLocaleString();
   const isHigher = compare !== undefined && value > compare;
   const isLower = compare !== undefined && value < compare;
 
+  // invertCompare: 누락율은 낮을수록 좋으므로 색상 반전
+  const colorClass = invertCompare
+    ? (isHigher ? 'text-down' : isLower ? 'text-up' : 'text-text')
+    : (isHigher ? 'text-up' : isLower ? 'text-down' : 'text-text');
+
+  const showUp = invertCompare ? isLower : isHigher;
+  const showDown = invertCompare ? isHigher : isLower;
+
   return (
     <div className="flex items-center justify-between py-2 px-3 bg-bg/50 rounded-lg">
       <span className="text-xs text-dim">{label}</span>
-      <span className={`text-sm font-bold font-rank ${isHigher ? 'text-up' : isLower ? 'text-down' : 'text-text'}`}>
-        {formatted}
-        {isHigher && <span className="text-[10px] ml-1">▲</span>}
-        {isLower && <span className="text-[10px] ml-1">▼</span>}
+      <span className={`text-sm font-bold font-rank ${colorClass}`}>
+        {formatted}{suffix || ''}
+        {showUp && <span className="text-[10px] ml-1">▲</span>}
+        {showDown && <span className="text-[10px] ml-1">▼</span>}
       </span>
     </div>
   );
