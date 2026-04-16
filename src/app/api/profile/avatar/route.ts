@@ -4,17 +4,17 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-/** POST /api/profile/avatar — 프로필 사진 업로드 */
+/** POST /api/profile/avatar — 프로필 사진 업로드 (base64 → DB 저장) */
 export async function POST(req: NextRequest) {
+  const supabase = createServiceClient();
+
   // Supabase Auth 또는 쿠키 기반 인증
   const auth = await getAuthUser(req);
   let userId: string | null = auth?.userId || null;
 
   if (!userId) {
-    // 쿠키 기반 로그인 사용자: blog_id 또는 naver_id로 users 테이블에서 검색
     const cookieUser = await getCookieUser();
     if (cookieUser) {
-      const supabase = createServiceClient();
       const { data: user } = await supabase
         .from('users')
         .select('id')
@@ -40,28 +40,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '2MB 이하 이미지만 업로드 가능합니다.' }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `avatars/${userId}.${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
+    // Storage 업로드 시도 → 실패 시 base64 폴백
+    let publicUrl: string;
 
-    const supabase = createServiceClient();
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `avatars/${userId}.${ext}`;
+      const buffer = Buffer.from(await file.arrayBuffer());
 
-    const { error: uploadErr } = await supabase.storage
-      .from('public-assets')
-      .upload(path, buffer, {
-        upsert: true,
-        contentType: file.type,
-      });
+      const { error: uploadErr } = await supabase.storage
+        .from('public-assets')
+        .upload(path, buffer, { upsert: true, contentType: file.type });
 
-    if (uploadErr) {
-      console.error('[avatar] upload error:', uploadErr);
-      return NextResponse.json({ error: '업로드 실패: ' + uploadErr.message }, { status: 500 });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage.from('public-assets').getPublicUrl(path);
+      publicUrl = urlData.publicUrl + '?t=' + Date.now();
+    } catch {
+      // Storage 실패 → base64 데이터 URI로 저장
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      publicUrl = `data:${file.type};base64,${base64}`;
     }
 
-    const { data: urlData } = supabase.storage.from('public-assets').getPublicUrl(path);
-    const publicUrl = urlData.publicUrl + '?t=' + Date.now();
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ avatar_url: publicUrl })
+      .eq('id', userId);
 
-    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', userId);
+    if (updateErr) {
+      return NextResponse.json({ error: 'DB 저장 실패: ' + updateErr.message }, { status: 500 });
+    }
 
     return NextResponse.json({ url: publicUrl });
   } catch (err) {
