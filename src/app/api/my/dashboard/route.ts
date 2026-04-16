@@ -228,6 +228,26 @@ export async function GET(request: NextRequest) {
     };
   }).sort((a, b) => a.rank_position - b.rank_position);
 
+  // 주제별 강점 통계
+  const catMap = new Map<string, { total: number; top10: number; sumRank: number }>();
+  for (const r of rankings) {
+    const cat = r.category || '기타';
+    const entry = catMap.get(cat) || { total: 0, top10: 0, sumRank: 0 };
+    entry.total++;
+    if (r.rank_position <= 10) entry.top10++;
+    entry.sumRank += r.rank_position;
+    catMap.set(cat, entry);
+  }
+  const categoryStats = Array.from(catMap.entries())
+    .map(([category, s]) => ({
+      category,
+      totalKeywords: s.total,
+      top10Count: s.top10,
+      top10Rate: s.total > 0 ? Math.round((s.top10 / s.total) * 100) : 0,
+      avgRank: s.total > 0 ? parseFloat((s.sumRank / s.total).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => b.top10Rate - a.top10Rate || a.avgRank - b.avgRank);
+
   // 팔로워수 갱신 대기 (최대 8초, 실패해도 기존 데이터 사용)
   const freshFollowerCount = await followerRefresh;
 
@@ -244,6 +264,7 @@ export async function GET(request: NextRequest) {
     },
     stats,
     rankings,
+    categoryStats,
     competitors,
     guide,
   });

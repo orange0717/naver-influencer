@@ -12,6 +12,7 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
+import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
@@ -496,6 +497,26 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const totalKeywords = allKeywords.length;
   const participatedCount = participatedKeywords.length;
 
+  // ─── 주제별 강점 통계 ───
+  const catStatMap = new Map<string, { total: number; top10: number; sumRank: number }>();
+  for (const kw of participatedKeywords) {
+    const cat = kw.category || '기타';
+    const entry = catStatMap.get(cat) || { total: 0, top10: 0, sumRank: 0 };
+    entry.total++;
+    if (kw.rank_position && kw.rank_position <= 10) entry.top10++;
+    entry.sumRank += kw.rank_position || 0;
+    catStatMap.set(cat, entry);
+  }
+  const categoryStats = Array.from(catStatMap.entries())
+    .map(([category, s]) => ({
+      category,
+      totalKeywords: s.total,
+      top10Count: s.top10,
+      top10Rate: s.total > 0 ? Math.round((s.top10 / s.total) * 100) : 0,
+      avgRank: s.total > 0 ? parseFloat((s.sumRank / s.total).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => b.top10Rate - a.top10Rate || a.avgRank - b.avgRank);
+
   // ─── 3. 활동 이벤트 생성 ───
   const activityEvents = generateActivityEvents(rankings);
 
@@ -647,6 +668,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         compMid={compMid}
         compHigh={compHigh}
       />
+
+      {/* ─── 2-1-1. 주제별 강점 분석 ─── */}
+      <CategoryStrengthSection categoryStats={categoryStats} />
 
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
