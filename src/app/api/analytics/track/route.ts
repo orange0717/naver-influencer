@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2) visit_logs 개별 기록 (유입경로 추적)
+    // 2) visit_logs 개별 기록 (순 방문자 유입경로 추적)
     const pagePath = typeof body.path === 'string' ? body.path.slice(0, 500) : '/';
     const referrer = typeof body.referrer === 'string' ? body.referrer.slice(0, 1000) : '';
     const referrerDomain = typeof body.referrer_domain === 'string' ? body.referrer_domain.slice(0, 200) : null;
@@ -75,15 +75,17 @@ export async function POST(req: NextRequest) {
     const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
     const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
 
-    await supabase.from('visit_logs').insert({
-      page_path: pagePath,
-      referrer: referrer || null,
-      referrer_domain: referrerDomain,
-      utm_source: utmSource,
-      utm_medium: utmMedium,
-      utm_campaign: utmCampaign,
-      device_type: deviceType,
-    });
+    if (isFirstVisit) {
+      await supabase.from('visit_logs').insert({
+        page_path: pagePath,
+        referrer: referrer || null,
+        referrer_domain: referrerDomain,
+        utm_source: utmSource,
+        utm_medium: utmMedium,
+        utm_campaign: utmCampaign,
+        device_type: deviceType,
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch {

@@ -47,6 +47,13 @@ export default function AdminAnalyticsPage() {
   }
 
   const totalDevices = (stats?.devices?.desktop || 0) + (stats?.devices?.mobile || 0) + (stats?.devices?.tablet || 0);
+  const periodVisits = days === 1
+    ? stats?.todayVisits || 0
+    : days === 2
+    ? stats?.yesterdayVisits || 0
+    : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0);
+  const periodLabel = days === 1 ? '오늘' : days === 2 ? '어제' : `${days}일`;
+  const logTotal = referrers?.total || 0;
 
   return (
     <div className="space-y-6">
@@ -57,17 +64,11 @@ export default function AdminAnalyticsPage() {
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(() => {
-          const periodVisits = days === 1
-            ? stats?.todayVisits || 0
-            : days === 2
-            ? stats?.yesterdayVisits || 0
-            : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0);
           const periodSignups = days === 1
             ? stats?.todaySignups || 0
             : days === 2
             ? stats?.yesterdaySignups || 0
             : 0;
-          const periodLabel = days === 1 ? '오늘' : days === 2 ? '어제' : `${days}일`;
           return [
             { label: `${periodLabel} 방문`, value: periodVisits, accent: true },
             { label: '총 방문', value: stats?.totalVisits || 0 },
@@ -107,11 +108,7 @@ export default function AdminAnalyticsPage() {
             {d.label}
           </button>
         ))}
-        <span className="text-xs text-dim ml-2">총 {days === 1
-          ? stats?.todayVisits || 0
-          : days === 2
-          ? stats?.yesterdayVisits || 0
-          : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0)}건</span>
+        <span className="text-xs text-dim ml-2">총 {periodVisits}건</span>
       </div>
 
       {/* 일별 방문 추이 */}
@@ -147,20 +144,23 @@ export default function AdminAnalyticsPage() {
           <h2 className="text-sm font-bold mb-3">유입 경로</h2>
           {referrers?.referrers.length ? (
             <div className="space-y-2">
-              {referrers.referrers.map(r => (
-                <div key={r.domain} className="flex items-center justify-between">
-                  <span className="text-sm text-text truncate flex-1">{r.domain}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="w-20 h-1.5 bg-bg rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-accent rounded-full"
-                        style={{ width: `${Math.min(100, (r.count / (referrers.total || 1)) * 100)}%` }}
-                      />
+              {referrers.referrers.map(r => {
+                const scaled = logTotal > 0 ? Math.round((r.count / logTotal) * periodVisits) : 0;
+                return (
+                  <div key={r.domain} className="flex items-center justify-between">
+                    <span className="text-sm text-text truncate flex-1">{r.domain}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-20 h-1.5 bg-bg rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-accent rounded-full"
+                          style={{ width: `${Math.min(100, (r.count / (logTotal || 1)) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-dim font-rank w-8 text-right">{scaled}</span>
                     </div>
-                    <span className="text-xs text-dim font-rank w-8 text-right">{r.count}</span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-dim">데이터 없음</p>
@@ -201,12 +201,15 @@ export default function AdminAnalyticsPage() {
           <h2 className="text-sm font-bold mb-3">인기 페이지</h2>
           {referrers?.pages.length ? (
             <div className="space-y-2">
-              {referrers.pages.map(p => (
-                <div key={p.path} className="flex items-center justify-between">
-                  <span className="text-sm text-text truncate flex-1 font-mono">{p.path}</span>
-                  <span className="text-xs text-dim font-rank shrink-0 ml-2">{p.count}</span>
-                </div>
-              ))}
+              {referrers.pages.map(p => {
+                const scaled = logTotal > 0 ? Math.round((p.count / logTotal) * periodVisits) : 0;
+                return (
+                  <div key={p.path} className="flex items-center justify-between">
+                    <span className="text-sm text-text truncate flex-1 font-mono">{p.path}</span>
+                    <span className="text-xs text-dim font-rank shrink-0 ml-2">{scaled}</span>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-dim">데이터 없음</p>
