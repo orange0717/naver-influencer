@@ -9,6 +9,7 @@ interface Stats {
   todaySignups: number;
   yesterdaySignups: number;
   totalSignups: number;
+  devices?: { desktop: number; mobile: number; tablet: number };
   daily?: { date: string; count: number }[];
 }
 
@@ -45,7 +46,7 @@ export default function AdminAnalyticsPage() {
     );
   }
 
-  const totalDevices = (referrers?.devices.desktop || 0) + (referrers?.devices.mobile || 0) + (referrers?.devices.tablet || 0);
+  const totalDevices = (stats?.devices?.desktop || 0) + (stats?.devices?.mobile || 0) + (stats?.devices?.tablet || 0);
 
   return (
     <div className="space-y-6">
@@ -56,7 +57,11 @@ export default function AdminAnalyticsPage() {
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(() => {
-          const periodVisits = referrers?.total || 0;
+          const periodVisits = days === 1
+            ? stats?.todayVisits || 0
+            : days === 2
+            ? stats?.yesterdayVisits || 0
+            : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0);
           const periodSignups = days === 1
             ? stats?.todaySignups || 0
             : days === 2
@@ -102,7 +107,11 @@ export default function AdminAnalyticsPage() {
             {d.label}
           </button>
         ))}
-        <span className="text-xs text-dim ml-2">총 {referrers?.total || 0}건</span>
+        <span className="text-xs text-dim ml-2">총 {days === 1
+          ? stats?.todayVisits || 0
+          : days === 2
+          ? stats?.yesterdayVisits || 0
+          : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0)}건</span>
       </div>
 
       {/* 일별 방문 추이 */}
@@ -164,9 +173,9 @@ export default function AdminAnalyticsPage() {
           {totalDevices > 0 ? (
             <div className="space-y-3">
               {[
-                { label: '데스크톱', value: referrers?.devices.desktop || 0, color: 'bg-accent' },
-                { label: '모바일', value: referrers?.devices.mobile || 0, color: 'bg-[#2DB400]' },
-                { label: '태블릿', value: referrers?.devices.tablet || 0, color: 'bg-[#F29C68]' },
+                { label: '데스크톱', value: stats?.devices?.desktop || 0, color: 'bg-accent' },
+                { label: '모바일', value: stats?.devices?.mobile || 0, color: 'bg-[#2DB400]' },
+                { label: '태블릿', value: stats?.devices?.tablet || 0, color: 'bg-[#F29C68]' },
               ].map(d => (
                 <div key={d.label}>
                   <div className="flex items-center justify-between text-xs mb-1">

@@ -29,8 +29,12 @@ export async function POST(req: NextRequest) {
 
     // 1) site_visits 일별 집계 — 세션 첫 방문(순 방문자)일 때만 카운트
     const isFirstVisit = body.first_visit === true;
+    const deviceType = ['mobile', 'tablet', 'desktop'].includes(body.device_type)
+      ? body.device_type
+      : 'desktop';
+
     if (isFirstVisit) {
-      const { error } = await supabase.rpc('increment_visit', { p_date: today });
+      const { error } = await supabase.rpc('increment_visit', { p_date: today, p_device: deviceType });
 
       if (error) {
         const { data: existing } = await supabase
@@ -42,12 +46,22 @@ export async function POST(req: NextRequest) {
         if (existing) {
           await supabase
             .from('site_visits')
-            .update({ visit_count: (existing.visit_count || 0) + 1 })
+            .update({
+              visit_count: (existing.visit_count || 0) + 1,
+              [`${deviceType}_count`]: (existing[`${deviceType}_count`] || 0) + 1,
+            })
             .eq('visit_date', today);
         } else {
           await supabase
             .from('site_visits')
-            .insert({ visit_date: today, visit_count: 1, unique_visitors: 1 });
+            .insert({
+              visit_date: today,
+              visit_count: 1,
+              unique_visitors: 1,
+              desktop_count: deviceType === 'desktop' ? 1 : 0,
+              mobile_count: deviceType === 'mobile' ? 1 : 0,
+              tablet_count: deviceType === 'tablet' ? 1 : 0,
+            });
         }
       }
     }
@@ -59,9 +73,6 @@ export async function POST(req: NextRequest) {
     const utmSource = typeof body.utm_source === 'string' ? body.utm_source.slice(0, 100) : null;
     const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
     const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
-    const deviceType = ['mobile', 'tablet', 'desktop'].includes(body.device_type)
-      ? body.device_type
-      : 'desktop';
 
     await supabase.from('visit_logs').insert({
       page_path: pagePath,
