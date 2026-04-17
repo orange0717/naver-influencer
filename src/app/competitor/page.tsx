@@ -370,64 +370,42 @@ export default function CompetitorPage() {
             </div>
           )}
 
-          {blogCompareData && (() => {
-            const hasMine = blogCompareData.mine.totalVisitor > 0 || blogCompareData.mine.postCount > 0;
-            return (
+          {blogCompareData && (
             <>
-              {/* blogId 경고 (비교 결과와 함께) */}
+              {/* blogId 경고 */}
               {blogError && (
                 <div className="bg-down/10 border border-down/30 rounded-xl px-4 py-3 text-xs text-down">
                   {blogError}
                 </div>
               )}
 
-              {/* 기본 통계 */}
+              {/* 경쟁자 블로그 기본 통계 */}
               <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
                 <h3 className="font-bold text-sm">
-                  {hasMine ? (
-                    <>
-                      내 블로그 <span className="text-[11px] text-dim font-normal">({myBlogId})</span>
-                      {' '}vs{' '}
-                      {blogCompareData.competitor.blogName}
-                    </>
-                  ) : (
-                    <>{blogCompareData.competitor.blogName} 블로그 정보</>
-                  )}
+                  {blogCompareData.competitor.blogName} 블로그 정보
                 </h3>
-                <div className={hasMine ? 'grid grid-cols-2 gap-4' : 'space-y-3 max-w-sm mx-auto'}>
-                  {/* 내 블로그 (데이터 있을 때만) */}
-                  {hasMine && (
-                    <div className="space-y-3">
-                      <p className="text-xs text-dim font-semibold text-center">내 블로그</p>
-                      <StatRow label="TODAY 방문자" value={blogCompareData.mine.todayVisitor} />
-                      <StatRow label="전체 방문자" value={blogCompareData.mine.totalVisitor} />
-                      <StatRow label="이웃수" value={blogCompareData.mine.subscriberCount} />
-                      <StatRow label="전체 포스팅" value={blogCompareData.mine.postCount} />
-                    </div>
+                <div className="space-y-3 max-w-sm mx-auto">
+                  <StatRow label="TODAY 방문자" value={blogCompareData.competitor.todayVisitor} />
+                  <StatRow label="전체 방문자" value={blogCompareData.competitor.totalVisitor} />
+                  <StatRow label="이웃수" value={blogCompareData.competitor.subscriberCount} />
+                  <StatRow label="전체 포스팅" value={blogCompareData.competitor.postCount} />
+                  {blogCompareData.competitor.postCount > 0 && (
+                    <StatRow
+                      label="포스팅당 평균 방문"
+                      value={Math.round(blogCompareData.competitor.totalVisitor / blogCompareData.competitor.postCount)}
+                      suffix="명"
+                    />
                   )}
-                  {/* 경쟁자 */}
-                  <div className="space-y-3">
-                    {hasMine && <p className="text-xs text-dim font-semibold text-center">{blogCompareData.competitor.blogName}</p>}
-                    <StatRow label="TODAY 방문자" value={blogCompareData.competitor.todayVisitor} compare={hasMine ? blogCompareData.mine.todayVisitor : undefined} />
-                    <StatRow label="전체 방문자" value={blogCompareData.competitor.totalVisitor} compare={hasMine ? blogCompareData.mine.totalVisitor : undefined} />
-                    <StatRow label="이웃수" value={blogCompareData.competitor.subscriberCount} compare={hasMine ? blogCompareData.mine.subscriberCount : undefined} />
-                    <StatRow label="전체 포스팅" value={blogCompareData.competitor.postCount} compare={hasMine ? blogCompareData.mine.postCount : undefined} />
-                  </div>
                 </div>
-                {!hasMine && (
-                  <p className="text-[11px] text-dim text-center pt-2 border-t border-border/50">
-                    내 블로그({myBlogId})는 포스팅/방문자가 없어 비교가 생략되었습니다.
-                  </p>
-                )}
               </div>
 
-              {/* 검색 노출 비교 */}
+              {/* 검색 노출 */}
               <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-sm">검색 노출 비교</h3>
+                    <h3 className="font-bold text-sm">검색 노출</h3>
                     <p className="text-[11px] text-dim mt-0.5">
-                      최근 10개 포스팅이 네이버 검색에서 노출되는 개수를 비교합니다.
+                      {blogCompareData.competitor.blogName}의 최근 10개 포스팅이 네이버 검색에 노출되는 개수를 확인합니다.
                     </p>
                   </div>
                   {!missingData && !missingLoading && (
@@ -444,72 +422,35 @@ export default function CompetitorPage() {
                   <div className="text-center py-6">
                     <span className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block mb-2" />
                     <p className="text-xs text-dim">
-                      포스팅 누락 확인 중... ({missingProgress.current}/{missingProgress.total})
+                      포스팅 노출 확인 중... ({missingProgress.current}/{missingProgress.total})
                     </p>
                   </div>
                 )}
 
                 {missingData && (
                   <>
-                    <div className={hasMine ? 'grid grid-cols-2 gap-4' : 'space-y-3 max-w-sm mx-auto'}>
-                      {/* 내 블로그 노출 (데이터 있을 때만) */}
-                      {hasMine && (
-                        <div className="space-y-3">
-                          <p className="text-xs text-dim font-semibold text-center">내 블로그</p>
-                          {missingData.mine && missingData.mine.total > 0 ? (
-                            <>
-                              <StatRow label="통합검색 노출" value={missingData.mine.viewExposed} suffix={`/${missingData.mine.total}개`} />
-                              <StatRow label="블로그탭 노출" value={missingData.mine.blogExposed} suffix={`/${missingData.mine.total}개`} />
-                              <StatRow label="유효 포스팅" value={Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed)} suffix={`/${missingData.mine.total}개`} />
-                              <StatRow label="무효 포스팅" value={missingData.mine.total - Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed)} suffix={`/${missingData.mine.total}개`} />
-                            </>
-                          ) : (
-                            <p className="text-xs text-dim text-center py-4">포스팅이 없습니다</p>
-                          )}
-                        </div>
+                    <div className="space-y-3 max-w-sm mx-auto">
+                      {missingData.competitor && missingData.competitor.total > 0 ? (
+                        <>
+                          <StatRow label="통합검색 노출" value={missingData.competitor.viewExposed} suffix={`/${missingData.competitor.total}개`} />
+                          <StatRow label="블로그탭 노출" value={missingData.competitor.blogExposed} suffix={`/${missingData.competitor.total}개`} />
+                          <StatRow
+                            label="유효 포스팅"
+                            value={Math.max(missingData.competitor.viewExposed, missingData.competitor.blogExposed)}
+                            suffix={`/${missingData.competitor.total}개`}
+                          />
+                          <StatRow
+                            label="무효 포스팅"
+                            value={missingData.competitor.total - Math.max(missingData.competitor.viewExposed, missingData.competitor.blogExposed)}
+                            suffix={`/${missingData.competitor.total}개`}
+                          />
+                        </>
+                      ) : (
+                        <p className="text-xs text-dim text-center py-4">포스팅이 없습니다</p>
                       )}
-                      {/* 경쟁자 노출 */}
-                      <div className="space-y-3">
-                        {hasMine && <p className="text-xs text-dim font-semibold text-center">{blogCompareData.competitor.blogName}</p>}
-                        {missingData.competitor && missingData.competitor.total > 0 ? (
-                          <>
-                            <StatRow
-                              label="통합검색 노출"
-                              value={missingData.competitor.viewExposed}
-                              suffix={`/${missingData.competitor.total}개`}
-                              compare={hasMine ? missingData.mine?.viewExposed : undefined}
-                            />
-                            <StatRow
-                              label="블로그탭 노출"
-                              value={missingData.competitor.blogExposed}
-                              suffix={`/${missingData.competitor.total}개`}
-                              compare={hasMine ? missingData.mine?.blogExposed : undefined}
-                            />
-                            <StatRow
-                              label="유효 포스팅"
-                              value={Math.max(missingData.competitor.viewExposed, missingData.competitor.blogExposed)}
-                              suffix={`/${missingData.competitor.total}개`}
-                              compare={hasMine && missingData.mine ? Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed) : undefined}
-                            />
-                            <StatRow
-                              label="무효 포스팅"
-                              value={missingData.competitor.total - Math.max(missingData.competitor.viewExposed, missingData.competitor.blogExposed)}
-                              suffix={`/${missingData.competitor.total}개`}
-                              compare={hasMine && missingData.mine ? missingData.mine.total - Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed) : undefined}
-                              invertCompare
-                            />
-                          </>
-                        ) : (
-                          <p className="text-xs text-dim text-center py-4">포스팅이 없습니다</p>
-                        )}
-                      </div>
                     </div>
 
                     {/* 키워드 상세 */}
-                    {hasMine && missingData.mine && missingData.mine.keywords.length > 0 && (
-                      <KeywordDetail label="내 포스팅 키워드 상세" keywords={missingData.mine.keywords} />
-                    )}
-
                     {missingData.competitor && missingData.competitor.keywords.length > 0 && (
                       <KeywordDetail label={`${blogCompareData.competitor.blogName} 포스팅 키워드 상세`} keywords={missingData.competitor.keywords} />
                     )}
@@ -521,8 +462,7 @@ export default function CompetitorPage() {
                 )}
               </div>
             </>
-            );
-          })()}
+          )}
         </div>
       )}
 
