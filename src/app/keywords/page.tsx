@@ -336,7 +336,12 @@ export default function KeywordsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold">키워드 전체 목록</h1>
+        <div>
+          <h1 className="text-xl font-extrabold">키워드 전체 목록</h1>
+          <p className="text-xs text-dim mt-1">
+            키워드를 누르면 검색어 트렌드와 전체 인플루언서 순위를 볼 수 있어요.
+          </p>
+        </div>
         <span className="text-xs text-dim font-rank">
           {loading ? '로딩 중...' : `총 ${total.toLocaleString()}개`}
         </span>

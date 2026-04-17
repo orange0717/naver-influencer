@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useNotificationSettings } from '@/hooks/useNotifications';
-import SavedKeywords from '@/components/dashboard/SavedKeywords';
 
 interface UserProfile {
   id: string;
@@ -812,9 +811,6 @@ export default function ProfilePage() {
 
       {/* 알림 설정 */}
       <NotificationSettingsSection />
-
-      {/* 저장된 키워드 */}
-      <SavedKeywords />
 
       {/* 사용 내역 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
