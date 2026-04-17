@@ -46,11 +46,11 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: '키워드',
     children: [
-      { href: '/keywords/hot', label: '실시간 상승 키워드' },
       { href: '/keywords/google-trends', label: '구글 트렌드' },
       { href: '/keywords/blogger', label: '키워드 검색' },
       { href: '/keywords', label: '키워드 챌린지' },
       { href: '/keywords/blog-ranking', label: '키워드 검색순위' },
+      { href: '/keywords/hot', label: '실시간 상승 키워드' },
     ],
   },
   { href: '/community', label: '커뮤니티' },

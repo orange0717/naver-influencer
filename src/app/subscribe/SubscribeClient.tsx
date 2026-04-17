@@ -114,7 +114,7 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 블로그</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>연도별 선정 현황</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (월 1회)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (일 1회)</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">커뮤니티</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드순위</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">포스팅 분석</span></li>
