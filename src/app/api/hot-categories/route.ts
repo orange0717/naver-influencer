@@ -1,25 +1,12 @@
 import { NextResponse } from 'next/server';
+import { SHOPPING_CATEGORIES } from '@/lib/shopping-categories';
 
 export const runtime = 'nodejs';
 export const revalidate = 1800; // 30분 캐시
 
 const SHOPPING_INSIGHTS_URL = 'https://openapi.naver.com/v1/datalab/shopping/categories';
 
-// 네이버 쇼핑 1차 카테고리
-const CATEGORIES: { name: string; code: string }[] = [
-  { name: '패션의류', code: '50000000' },
-  { name: '패션잡화', code: '50000001' },
-  { name: '화장품/미용', code: '50000002' },
-  { name: '디지털/가전', code: '50000003' },
-  { name: '가구/인테리어', code: '50000004' },
-  { name: '출산/육아', code: '50000005' },
-  { name: '식품', code: '50000006' },
-  { name: '스포츠/레저', code: '50000007' },
-  { name: '생활/건강', code: '50000008' },
-  { name: '여가/생활편의', code: '50000009' },
-  { name: '면세점', code: '50000010' },
-  { name: '도서', code: '50005542' },
-];
+const CATEGORIES = SHOPPING_CATEGORIES;
 
 interface DatalabResult {
   title: string;
@@ -121,7 +108,7 @@ export async function GET() {
       categories: ranked,
     });
   } catch (err) {
-    console.error('핫 카테고리 조회 실패:', err);
+    console.error('실시간 상승 키워드 조회 실패:', err);
     return NextResponse.json({
       categories: [],
       error: '네이버 데이터랩 API 호출 중 오류',

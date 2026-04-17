@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { findCategoryByName } from '@/lib/shopping-categories';
 
 interface HotCategory {
   name: string;
@@ -27,7 +28,7 @@ export default function HotCategoriesPage() {
         setCategories(data.categories || []);
         setPeriod(data.period || null);
       } catch (err) {
-        console.error('핫 카테고리 로드 실패:', err);
+        console.error('실시간 상승 키워드 로드 실패:', err);
         setError('데이터를 불러올 수 없습니다.');
       } finally {
         setLoading(false);
@@ -39,7 +40,7 @@ export default function HotCategoriesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold mb-1">이번 주 핫 카테고리</h1>
+        <h1 className="text-2xl font-extrabold mb-1">실시간 상승 키워드</h1>
         <p className="text-sm text-dim">
           네이버 쇼핑인사이트 기준 최근 2주 동안 상승폭이 큰 카테고리 TOP 10 (공식 API)
         </p>
@@ -81,11 +82,13 @@ export default function HotCategoriesPage() {
                 : i === 2
                 ? 'text-amber-700 bg-amber-700/10'
                 : 'text-dim bg-bg/50';
-            return (
-              <div
-                key={c.name}
-                className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-border/50 last:border-b-0 items-center hover:bg-bg/30 transition-colors"
-              >
+
+            const code = findCategoryByName(c.name)?.code;
+            const rowClass =
+              'grid grid-cols-12 gap-2 px-5 py-3 border-b border-border/50 last:border-b-0 items-center hover:bg-bg/30 transition-colors';
+
+            const rowContent = (
+              <>
                 <div className="col-span-1">
                   <span
                     className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-black ${rankColor}`}
@@ -94,7 +97,10 @@ export default function HotCategoriesPage() {
                   </span>
                 </div>
                 <div className="col-span-5">
-                  <div className="text-sm font-bold">{c.name}</div>
+                  <div className="text-sm font-bold flex items-center gap-1">
+                    {c.name}
+                    {code && <span className="text-[10px] text-dim">›</span>}
+                  </div>
                 </div>
                 <div className="col-span-2 text-right">
                   <span
@@ -111,6 +117,16 @@ export default function HotCategoriesPage() {
                 <div className="col-span-2 text-right text-xs font-bold font-rank text-dim">
                   {c.peak}
                 </div>
+              </>
+            );
+
+            return code ? (
+              <a key={c.name} href={`/keywords/hot/${code}`} className={rowClass}>
+                {rowContent}
+              </a>
+            ) : (
+              <div key={c.name} className={rowClass}>
+                {rowContent}
               </div>
             );
           })}
