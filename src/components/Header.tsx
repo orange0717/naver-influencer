@@ -46,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: '키워드',
     children: [
+      { href: '/keywords/hot', label: '핫 카테고리' },
       { href: '/keywords/google-trends', label: '구글 트렌드' },
       { href: '/keywords/blogger', label: '키워드 검색' },
       { href: '/keywords', label: '키워드 챌린지' },
