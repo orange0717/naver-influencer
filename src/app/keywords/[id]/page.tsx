@@ -45,10 +45,10 @@ export default function KeywordDetailPage() {
   const [rankings, setRankings] = useState<RankingItem[]>([]);
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [trendSummary, setTrendSummary] = useState<TrendSummary | null>(null);
-  const [googleTrendData, setGoogleTrendData] = useState<TrendPoint[]>([]);
-  const [googleTrendSummary, setGoogleTrendSummary] = useState<TrendSummary | null>(null);
-  const [googleTrendLoading, setGoogleTrendLoading] = useState(true);
-  const [googleTrendError, setGoogleTrendError] = useState<string | null>(null);
+  const [naverTrendData, setNaverTrendData] = useState<TrendPoint[]>([]);
+  const [naverTrendSummary, setNaverTrendSummary] = useState<TrendSummary | null>(null);
+  const [naverTrendLoading, setNaverTrendLoading] = useState(true);
+  const [naverTrendError, setNaverTrendError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [rankLoading, setRankLoading] = useState(true);
 
@@ -104,29 +104,29 @@ export default function KeywordDetailPage() {
     loadTrend();
   }, [id]);
 
-  // 구글 트렌드 fetch
+  // 네이버 검색어 트렌드 fetch (데이터랩 실시간)
   useEffect(() => {
-    async function loadGoogleTrend() {
-      setGoogleTrendLoading(true);
-      setGoogleTrendError(null);
+    async function loadNaverTrend() {
+      setNaverTrendLoading(true);
+      setNaverTrendError(null);
       try {
-        const res = await fetch(`/api/keywords/${id}/google-trend`);
+        const res = await fetch(`/api/keywords/${id}/naver-trend`);
         if (!res.ok) {
-          setGoogleTrendError('구글 트렌드를 불러올 수 없습니다.');
+          setNaverTrendError('네이버 트렌드를 불러올 수 없습니다.');
           return;
         }
         const data = await res.json();
         if (data.error) {
-          setGoogleTrendError(data.error);
+          setNaverTrendError(data.error);
         }
-        setGoogleTrendData(
-          (data.trendData || []).map((d: { date: string; value: number }) => ({
+        setNaverTrendData(
+          (data.trendData || []).map((d: { date: string; ratio: number }) => ({
             week: d.date,
-            volume: d.value,
+            volume: d.ratio,
           }))
         );
         if (data.summary) {
-          setGoogleTrendSummary({
+          setNaverTrendSummary({
             trend_direction: data.summary.trend_direction,
             trend_percentage: data.summary.trend_percentage,
             peak_volume: data.summary.peak_value,
@@ -134,13 +134,13 @@ export default function KeywordDetailPage() {
           });
         }
       } catch (err) {
-        console.error('구글 트렌드 로드 실패:', err);
-        setGoogleTrendError('구글 트렌드를 불러올 수 없습니다.');
+        console.error('네이버 트렌드 로드 실패:', err);
+        setNaverTrendError('네이버 트렌드를 불러올 수 없습니다.');
       } finally {
-        setGoogleTrendLoading(false);
+        setNaverTrendLoading(false);
       }
     }
-    loadGoogleTrend();
+    loadNaverTrend();
   }, [id]);
 
   if (loading) {
@@ -240,48 +240,45 @@ export default function KeywordDetailPage() {
         </div>
       )}
 
-      {/* 구글 트렌드 섹션 */}
+      {/* 네이버 검색어 트렌드 (데이터랩 실시간) */}
       <div className="bg-surface rounded-xl border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-bold">
-            구글 검색 관심도
-            <span className="ml-2 text-[11px] font-normal text-dim">최근 90일 · 한국</span>
+            네이버 검색어 트렌드
+            <span className="ml-2 text-[11px] font-normal text-dim">최근 90일 · 데이터랩</span>
           </div>
-          {googleTrendSummary && googleTrendData.length > 0 && (
+          {naverTrendSummary && naverTrendData.length > 0 && (
             <div className="flex items-center gap-2">
               <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                googleTrendSummary.trend_direction === 'up' ? 'text-up bg-up/12' :
-                googleTrendSummary.trend_direction === 'down' ? 'text-down bg-down/12' :
+                naverTrendSummary.trend_direction === 'up' ? 'text-up bg-up/12' :
+                naverTrendSummary.trend_direction === 'down' ? 'text-down bg-down/12' :
                 'text-dim bg-dim/12'
               }`}>
-                {googleTrendSummary.trend_direction === 'up' ? '▲' : googleTrendSummary.trend_direction === 'down' ? '▼' : '→'}
-                {' '}{Math.abs(googleTrendSummary.trend_percentage)}%
+                {naverTrendSummary.trend_direction === 'up' ? '▲' : naverTrendSummary.trend_direction === 'down' ? '▼' : '→'}
+                {' '}{Math.abs(naverTrendSummary.trend_percentage)}%
               </span>
-              {googleTrendSummary.peak_volume > 0 && (
-                <span className="text-xs text-dim">최고 지수 {googleTrendSummary.peak_volume}</span>
+              {naverTrendSummary.peak_volume > 0 && (
+                <span className="text-xs text-dim">최고 지수 {naverTrendSummary.peak_volume}</span>
               )}
             </div>
           )}
         </div>
 
-        {googleTrendLoading ? (
+        {naverTrendLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin w-6 h-6 border-2 border-accent border-t-transparent rounded-full" />
           </div>
-        ) : googleTrendData.length > 0 ? (
+        ) : naverTrendData.length > 0 ? (
           <>
-            <TrendAreaChart data={googleTrendData} direction={googleTrendSummary?.trend_direction || 'stable'} />
+            <TrendAreaChart data={naverTrendData} direction={naverTrendSummary?.trend_direction || 'stable'} />
             <p className="text-[11px] text-dim mt-3">
-              구글 트렌드 기준 상대적 관심도 (0~100). 네이버 데이터랩과 교차 확인용 지표입니다.
+              네이버 데이터랩 기준 상대적 검색 지수 (0~100, 최대치=100).
             </p>
           </>
         ) : (
           <div className="py-10 text-center">
             <p className="text-sm text-dim">
-              {googleTrendError || '구글 트렌드 데이터가 없습니다.'}
-            </p>
-            <p className="text-[11px] text-dim mt-2">
-              무료 스크래핑 방식은 일시 차단될 수 있습니다. 추후 유료 API로 안정화 예정입니다.
+              {naverTrendError || '네이버 트렌드 데이터가 없습니다.'}
             </p>
           </div>
         )}

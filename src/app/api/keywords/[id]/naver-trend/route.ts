@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import googleTrends from 'google-trends-api';
 import { findKeywordById } from '@/lib/naver-api';
 
 export const runtime = 'nodejs';
 export const revalidate = 3600;
 
-interface TimelineEntry {
-  time: string;
-  formattedAxisTime?: string;
-  value: number[];
-  hasData?: boolean[];
-  formattedValue?: string[];
+const DATALAB_API_URL = 'https://openapi.naver.com/v1/datalab/search';
+
+interface DatalabPoint {
+  period: string;
+  ratio: number;
 }
 
 export async function GET(
@@ -29,39 +27,57 @@ export async function GET(
   }
   const keyword = found.keyword.name;
 
-  const endTime = new Date();
-  const startTime = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const clientId = process.env.NAVER_DATALAB_CLIENT_ID;
+  const clientSecret = process.env.NAVER_DATALAB_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return NextResponse.json({
+      keyword,
+      trendData: [],
+      summary: null,
+      error: '네이버 데이터랩 API 키가 설정되지 않았습니다.',
+    });
+  }
+
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 90);
 
   try {
-    const raw = await googleTrends.interestOverTime({
-      keyword: keyword,
-      geo: 'KR',
-      hl: 'ko',
-      startTime,
-      endTime,
+    const res = await fetch(DATALAB_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Naver-Client-Id': clientId,
+        'X-Naver-Client-Secret': clientSecret,
+      },
+      body: JSON.stringify({
+        startDate: startDate.toISOString().slice(0, 10),
+        endDate: endDate.toISOString().slice(0, 10),
+        timeUnit: 'date',
+        keywordGroups: [{ groupName: keyword, keywords: [keyword] }],
+      }),
     });
 
-    let parsed: { default?: { timelineData?: TimelineEntry[] } };
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[naver-trend] DataLab API ${res.status}:`, errText);
       return NextResponse.json({
-        keyword: keyword,
+        keyword,
         trendData: [],
         summary: null,
-        error: '구글 트렌드 응답 파싱 실패',
+        error: `네이버 데이터랩 API 오류 (${res.status})`,
       });
     }
 
-    const timeline = parsed?.default?.timelineData ?? [];
-    const trendData = timeline.map(entry => ({
-      date: new Date(Number(entry.time) * 1000).toISOString().split('T')[0],
-      value: entry.value?.[0] ?? 0,
-    }));
+    const data = await res.json();
+    const points: DatalabPoint[] = data?.results?.[0]?.data ?? [];
+    const trendData = points.map(p => ({ date: p.period, ratio: Math.round(p.ratio * 10) / 10 }));
 
-    const values = trendData.map(d => d.value);
+    const values = trendData.map(d => d.ratio);
     const peakValue = values.length ? Math.max(...values) : 0;
     const peakIndex = values.indexOf(peakValue);
+
     const first = values.slice(0, Math.max(1, Math.floor(values.length / 3)));
     const last = values.slice(-Math.max(1, Math.floor(values.length / 3)));
     const firstAvg = first.reduce((a, b) => a + b, 0) / (first.length || 1);
@@ -71,7 +87,7 @@ export async function GET(
       changePercent > 5 ? 'up' : changePercent < -5 ? 'down' : 'stable';
 
     return NextResponse.json({
-      keyword: keyword,
+      keyword,
       trendData,
       summary: {
         trend_direction: direction,
@@ -81,12 +97,12 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error('구글 트렌드 조회 실패:', err);
+    console.error('네이버 트렌드 조회 실패:', err);
     return NextResponse.json({
-      keyword: keyword,
+      keyword,
       trendData: [],
       summary: null,
-      error: '구글 트렌드 데이터를 가져올 수 없습니다 (차단 또는 네트워크 오류)',
+      error: '네이버 트렌드 데이터를 가져올 수 없습니다.',
     });
   }
 }
