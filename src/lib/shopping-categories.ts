@@ -1,6 +1,6 @@
 /**
  * 네이버 쇼핑 1차 카테고리 공용 상수
- * 블로거/인플루언서 콘텐츠 주제와 무관한 카테고리(면세점, 도서)는 제외
+ * 블로거 타깃과 무관한 면세점은 제외
  */
 export interface ShoppingCategory {
   name: string;
@@ -18,6 +18,7 @@ export const SHOPPING_CATEGORIES: ShoppingCategory[] = [
   { name: '스포츠/레저', code: '50000007' },
   { name: '생활/건강', code: '50000008' },
   { name: '여가/생활편의', code: '50000009' },
+  { name: '도서', code: '50005542' },
 ];
 
 export function findCategoryByCode(code: string): ShoppingCategory | undefined {
