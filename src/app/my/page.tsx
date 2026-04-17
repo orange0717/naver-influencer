@@ -622,7 +622,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
             <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
             <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
             <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
-            <span className="text-dim">통합검색 <strong className="text-text font-rank">{integratedCount}</strong>개</span>
             <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
             <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || 0)}</strong></span>
           </div>
