@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { validateBody, linkInfluencerSchema } from '@/lib/validations';
+import { isRestricted } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,9 @@ export async function POST(request: NextRequest) {
 
   if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (authUser.email && await isRestricted(authUser.email)) {
+    return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
   }
 
   let body;
