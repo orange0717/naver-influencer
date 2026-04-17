@@ -3,6 +3,31 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+/** user-agent -> OS 분류 */
+function parseOS(ua: string | null | undefined): string {
+  if (!ua) return '기타';
+  if (/iPhone|iPad|iPod|iOS/i.test(ua)) return 'iOS';
+  if (/Android/i.test(ua)) return 'Android';
+  if (/Windows NT|Win64|Win32/i.test(ua)) return 'Windows';
+  if (/Mac OS X|Macintosh/i.test(ua)) return 'macOS';
+  if (/CrOS/i.test(ua)) return 'ChromeOS';
+  if (/Linux/i.test(ua)) return 'Linux';
+  return '기타';
+}
+
+/** user-agent -> 브라우저 분류 (순서 중요) */
+function parseBrowser(ua: string | null | undefined): string {
+  if (!ua) return '기타';
+  if (/Edg\/|Edge\/|EdgA\/|EdgiOS\//i.test(ua)) return 'Edge';
+  if (/OPR\/|Opera/i.test(ua)) return 'Opera';
+  if (/SamsungBrowser/i.test(ua)) return 'Samsung Internet';
+  if (/Whale/i.test(ua)) return 'Whale';
+  if (/FxiOS|Firefox/i.test(ua)) return 'Firefox';
+  if (/CriOS|Chrome|Chromium/i.test(ua)) return 'Chrome';
+  if (/Safari/i.test(ua)) return 'Safari';
+  return '기타';
+}
+
 /**
  * 유입경로 통계 API
  * GET /api/analytics/referrers?days=7
@@ -34,7 +59,7 @@ export async function GET(req: NextRequest) {
     // Supabase 기본 1000행 제한 → 명시적으로 충분한 수 지정
     let query = supabase
       .from('visit_logs')
-      .select('referrer, referrer_domain, utm_source, utm_medium, utm_campaign, device_type, page_path')
+      .select('referrer, referrer_domain, utm_source, utm_medium, utm_campaign, device_type, page_path, user_agent')
       .gte('visited_at', since)
       .order('visited_at', { ascending: false })
       .limit(10000);
@@ -50,6 +75,8 @@ export async function GET(req: NextRequest) {
         utm_sources: [],
         devices: {},
         pages: [],
+        os_stats: [],
+        browser_stats: [],
       });
     }
 
@@ -96,6 +123,23 @@ export async function GET(req: NextRequest) {
       deviceMap[dt] = (deviceMap[dt] || 0) + 1;
     }
 
+    // 3-b) OS / 브라우저 집계 (user_agent 파싱)
+    const osMap = new Map<string, number>();
+    const browserMap = new Map<string, number>();
+    for (const log of logs as Array<{ user_agent?: string | null }>) {
+      const ua = log.user_agent || '';
+      const os = parseOS(ua);
+      const br = parseBrowser(ua);
+      osMap.set(os, (osMap.get(os) || 0) + 1);
+      browserMap.set(br, (browserMap.get(br) || 0) + 1);
+    }
+    const os_stats = [...osMap.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+    const browser_stats = [...browserMap.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
     // 4) 페이지별 방문수
     const pageMap = new Map<string, number>();
     for (const log of logs) {
@@ -115,6 +159,8 @@ export async function GET(req: NextRequest) {
       utm_sources,
       devices: deviceMap,
       pages,
+      os_stats,
+      browser_stats,
     });
   } catch {
     return NextResponse.json({ error: 'failed' }, { status: 500 });

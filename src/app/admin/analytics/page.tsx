@@ -20,6 +20,54 @@ interface ReferrerData {
   utm_sources: { source: string; count: number }[];
   devices: { desktop: number; mobile: number; tablet: number };
   pages: { path: string; count: number }[];
+  os_stats?: { name: string; count: number }[];
+  browser_stats?: { name: string; count: number }[];
+}
+
+const OS_COLORS: Record<string, string> = {
+  'Windows': 'bg-[#0078D4]',
+  'macOS': 'bg-[#999999]',
+  'iOS': 'bg-[#333333]',
+  'Android': 'bg-[#3DDC84]',
+  'Linux': 'bg-[#FCC624]',
+  'ChromeOS': 'bg-[#4285F4]',
+  '기타': 'bg-[#C4B8B3]',
+};
+
+const BROWSER_COLORS: Record<string, string> = {
+  'Chrome': 'bg-[#4285F4]',
+  'Safari': 'bg-[#0FB5EE]',
+  'Edge': 'bg-[#0078D7]',
+  'Firefox': 'bg-[#FF7139]',
+  'Opera': 'bg-[#FF1B2D]',
+  'Whale': 'bg-[#03C75A]',
+  'Samsung Internet': 'bg-[#1428A0]',
+  '기타': 'bg-[#C4B8B3]',
+};
+
+function BarList({ items, colorMap }: { items?: { name: string; count: number }[]; colorMap: Record<string, string> }) {
+  const list = items || [];
+  const sum = list.reduce((s, x) => s + x.count, 0);
+  if (sum === 0) return <p className="text-sm text-dim">데이터 없음</p>;
+  return (
+    <div className="space-y-3">
+      {list.map(d => {
+        const pct = Math.round((d.count / sum) * 100);
+        const color = colorMap[d.name] || 'bg-accent';
+        return (
+          <div key={d.name}>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-text font-semibold">{d.name}</span>
+              <span className="text-dim">{d.count}건 ({pct}%)</span>
+            </div>
+            <div className="w-full h-2 bg-bg rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function AdminAnalyticsPage() {
@@ -194,6 +242,18 @@ export default function AdminAnalyticsPage() {
           ) : (
             <p className="text-sm text-dim">데이터 없음</p>
           )}
+        </div>
+
+        {/* OS */}
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h2 className="text-sm font-bold mb-3">OS</h2>
+          <BarList items={referrers?.os_stats} colorMap={OS_COLORS} />
+        </div>
+
+        {/* 브라우저 */}
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h2 className="text-sm font-bold mb-3">브라우저</h2>
+          <BarList items={referrers?.browser_stats} colorMap={BROWSER_COLORS} />
         </div>
 
         {/* 인기 페이지 */}

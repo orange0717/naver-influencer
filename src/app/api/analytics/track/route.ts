@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
         utm_medium: utmMedium,
         utm_campaign: utmCampaign,
         device_type: deviceType,
+        user_agent: ua.slice(0, 500) || null,
       });
     }
 
