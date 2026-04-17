@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { paymentLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { PAYMENT_PLANS } from '@/lib/payment-config';
 import { generatePaymentId } from '@/lib/portone';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,24 @@ export async function POST(req: NextRequest) {
       console.error('[PortOne] 사전등록 실패:', preRegRes.status, errText);
       return NextResponse.json(
         { error: '결제 사전등록에 실패했습니다.' },
+        { status: 500 },
+      );
+    }
+
+    // payment_intents 에 서버측 진실을 저장 (customData 대신 이걸로 complete 검증)
+    const supabase = createServiceClient();
+    const { error: intentError } = await supabase
+      .from('payment_intents')
+      .insert({
+        payment_id: paymentId,
+        user_id: userId,
+        plan_key: planKey,
+        amount: plan.amount,
+      });
+    if (intentError) {
+      console.error('[PortOne] intent 저장 실패:', intentError);
+      return NextResponse.json(
+        { error: '결제 준비 중 오류가 발생했습니다.' },
         { status: 500 },
       );
     }

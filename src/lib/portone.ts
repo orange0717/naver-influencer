@@ -60,24 +60,34 @@ export async function verifyAndGrantLicense(
     return { verified: false, error: '결제가 완료되지 않았습니다.' };
   }
 
-  // 3. customData에서 userId + planKey 추출
-  let customData: { userId?: string; planKey?: string } = {};
-  try {
-    customData = JSON.parse(payment.customData || '{}');
-  } catch { /* ignore */ }
+  // 3. payment_intents 에서 서버가 저장한 진실 조회 (customData 변조 방지)
+  const supabase = createServiceClient();
+  const { data: intent } = await supabase
+    .from('payment_intents')
+    .select('user_id, plan_key, amount, expires_at')
+    .eq('payment_id', paymentId)
+    .single();
 
-  const planKey = customData.planKey || '';
+  if (!intent) {
+    console.error('[PortOne] payment_intent 없음:', paymentId);
+    return { verified: false, error: '결제 요청 기록을 찾을 수 없습니다.' };
+  }
 
-  // 4. 소유권 검증 — complete 호출자와 customData의 userId가 일치하는지 확인
-  if (userId && customData.userId && customData.userId !== userId) {
-    console.error(`[PortOne] 소유권 불일치: caller=${userId}, customData=${customData.userId}`);
+  // intent 만료 확인 (prepare 후 30분 내 complete)
+  if (new Date(intent.expires_at) < new Date()) {
+    return { verified: false, error: '결제 요청이 만료되었습니다.' };
+  }
+
+  const planKey = intent.plan_key as string;
+  const storedUserId = intent.user_id as string;
+
+  // 4. 소유권 검증 — complete 호출자와 intent 저장 시 userId 일치 확인
+  if (userId && storedUserId !== userId) {
+    console.error(`[PortOne] 소유권 불일치: caller=${userId}, intent=${storedUserId}`);
     return { verified: false, error: '결제 사용자 정보가 일치하지 않습니다.' };
   }
 
-  const buyerId = userId || customData.userId;
-  if (!buyerId) {
-    return { verified: false, error: '사용자 정보를 확인할 수 없습니다.' };
-  }
+  const buyerId = storedUserId;
 
   // 5. 플랜 확인 + 금액 검증
   const plan = PAYMENT_PLANS[planKey];
@@ -97,7 +107,6 @@ export async function verifyAndGrantLicense(
   }
 
   // 6. 트랜잭션 기록 (UNIQUE 제약으로 중복 방지 — TOCTOU 레이스 컨디션 해결)
-  const supabase = createServiceClient();
   const { error: txError } = await supabase
     .from('payment_transactions')
     .insert({
