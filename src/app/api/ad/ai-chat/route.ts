@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
     let query = supabase
       .from('influencers')
-      .select('id, naver_id, display_name, image_url, introduction, category, my_keyword_category, category_my_type, my_keyword, subscriber_count, total_keywords, integrated_top3_count, top1_count, top2_count, top3_count, top3_ratio, avg_rank, best_rank, ad_fee_amount, ad_fee_text, last_challenged_at, ninfl_score')
+      .select('id, naver_id, display_name, image_url, introduction, category, my_keyword_category, category_my_type, my_keyword, subscriber_count, total_follower_count, total_keywords, integrated_top3_count, top1_count, top2_count, top3_count, top3_ratio, avg_rank, best_rank, ad_fee_amount, ad_fee_text, last_challenged_at, ninfl_score')
       .gt('subscriber_count', 0);
 
     if (filters.category) {
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
               category: inf.my_keyword_category || inf.category || '',
               categoryType: inf.category_my_type || '',
               myKeyword: inf.my_keyword || '',
-              subscriberCount: inf.subscriber_count || 0,
+              subscriberCount: inf.total_follower_count || inf.subscriber_count || 0,
               totalKeywords: totalKw,
               integratedTop3Count: inf.integrated_top3_count || 0,
               top3Ratio: ratio,

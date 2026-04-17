@@ -214,7 +214,7 @@ async function getInfluencersFromDB(
     profileUrl: inf.profile_url || `https://in.naver.com/${inf.naver_id}`,
     imageUrl: inf.image_url || '',
     introduction: inf.introduction || '',
-    subscriberCount: inf.subscriber_count || 0,
+    subscriberCount: inf.total_follower_count || inf.subscriber_count || 0,
     totalFollowerCount: inf.total_follower_count || 0,
     myKeywordCategory: inf.my_keyword_category || inf.category || '',
     myKeyword: inf.my_keyword || '',

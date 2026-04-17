@@ -383,7 +383,7 @@ export default function InfluencersPage() {
                       )}
                     </td>
                     <td className="py-3 px-3 text-right text-xs font-bold font-rank text-accent">
-                      {formatCount(inf.subscriberCount)}
+                      {formatCount(inf.totalFollowerCount || inf.subscriberCount)}
                     </td>
                     <td className="py-3 px-3 text-right text-xs font-rank">
                       {(inf.keywordScore || 0) > 0 ? (
@@ -490,7 +490,7 @@ export default function InfluencersPage() {
                     {viewTab === 'ninfl' && inf.ninflRank && (
                       <div className="text-xs font-bold text-accent font-rank mb-0.5">{inf.ninflRank}위</div>
                     )}
-                    <div className="text-xs font-bold text-accent font-rank">{formatCount(inf.subscriberCount)}</div>
+                    <div className="text-xs font-bold text-accent font-rank">{formatCount(inf.totalFollowerCount || inf.subscriberCount)}</div>
                     <div className="text-[10px] text-dim">팬수</div>
                   </div>
                 </div>

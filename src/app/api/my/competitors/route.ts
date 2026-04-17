@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     .from('competitor_watches')
     .select(`
       id, memo, created_at,
-      influencers!competitor_id(id, naver_id, display_name, image_url, category, my_keyword_category, subscriber_count)
+      influencers!competitor_id(id, naver_id, display_name, image_url, category, my_keyword_category, subscriber_count, total_follower_count)
     `)
     .eq('user_id', auth.userId)
     .order('created_at', { ascending: true });
@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       id: string; naver_id: string; display_name: string;
       image_url: string; category: string; my_keyword_category: string;
       subscriber_count: number;
+      total_follower_count: number;
     } | null;
     return {
       watch_id: w.id,
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
       display_name: inf?.display_name || '',
       image_url: inf?.image_url || '',
       category: inf?.my_keyword_category || inf?.category || '',
-      subscriber_count: inf?.subscriber_count || 0,
+      subscriber_count: inf?.total_follower_count || inf?.subscriber_count || 0,
     };
   });
 
