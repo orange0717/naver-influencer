@@ -11,6 +11,7 @@ const MENU_ITEMS = [
   { href: '/admin/restricted', label: '접근 제한', icon: '!' },
   { href: '/admin/analytics', label: '유입 분석', icon: 'R' },
   { href: '/admin/promo', label: '프로모션', icon: '*' },
+  { href: '/admin/bulk-grant', label: '플랜 일괄 부여', icon: '+' },
 ];
 
 export default function AdminSidebar() {
