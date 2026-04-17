@@ -77,6 +77,8 @@ export async function GET(req: NextRequest) {
         pages: [],
         os_stats: [],
         browser_stats: [],
+        device_os_stats: [],
+        device_browser_stats: [],
       });
     }
 
@@ -123,15 +125,22 @@ export async function GET(req: NextRequest) {
       deviceMap[dt] = (deviceMap[dt] || 0) + 1;
     }
 
-    // 3-b) OS / 브라우저 집계 (user_agent 파싱)
+    // 3-b) OS / 브라우저 집계 (user_agent 파싱) + 교차집계 (기기 × OS, 기기 × 브라우저)
     const osMap = new Map<string, number>();
     const browserMap = new Map<string, number>();
-    for (const log of logs as Array<{ user_agent?: string | null }>) {
+    const deviceOsMap: Record<string, Map<string, number>> = {};
+    const deviceBrowserMap: Record<string, Map<string, number>> = {};
+    for (const log of logs as Array<{ user_agent?: string | null; device_type?: string | null }>) {
       const ua = log.user_agent || '';
       const os = parseOS(ua);
       const br = parseBrowser(ua);
+      const dev = log.device_type || 'desktop';
       osMap.set(os, (osMap.get(os) || 0) + 1);
       browserMap.set(br, (browserMap.get(br) || 0) + 1);
+      if (!deviceOsMap[dev]) deviceOsMap[dev] = new Map();
+      if (!deviceBrowserMap[dev]) deviceBrowserMap[dev] = new Map();
+      deviceOsMap[dev].set(os, (deviceOsMap[dev].get(os) || 0) + 1);
+      deviceBrowserMap[dev].set(br, (deviceBrowserMap[dev].get(br) || 0) + 1);
     }
     const os_stats = [...osMap.entries()]
       .map(([name, count]) => ({ name, count }))
@@ -139,6 +148,14 @@ export async function GET(req: NextRequest) {
     const browser_stats = [...browserMap.entries()]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
+    const toCross = (m: Record<string, Map<string, number>>) =>
+      Object.entries(m).map(([device, inner]) => ({
+        device,
+        total: [...inner.values()].reduce((a, b) => a + b, 0),
+        items: [...inner.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      })).sort((a, b) => b.total - a.total);
+    const device_os_stats = toCross(deviceOsMap);
+    const device_browser_stats = toCross(deviceBrowserMap);
 
     // 4) 페이지별 방문수
     const pageMap = new Map<string, number>();
@@ -161,6 +178,8 @@ export async function GET(req: NextRequest) {
       pages,
       os_stats,
       browser_stats,
+      device_os_stats,
+      device_browser_stats,
     });
   } catch {
     return NextResponse.json({ error: 'failed' }, { status: 500 });

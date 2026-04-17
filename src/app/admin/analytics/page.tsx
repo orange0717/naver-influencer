@@ -22,7 +22,15 @@ interface ReferrerData {
   pages: { path: string; count: number }[];
   os_stats?: { name: string; count: number }[];
   browser_stats?: { name: string; count: number }[];
+  device_os_stats?: { device: string; total: number; items: { name: string; count: number }[] }[];
+  device_browser_stats?: { device: string; total: number; items: { name: string; count: number }[] }[];
 }
+
+const DEVICE_LABEL: Record<string, string> = {
+  desktop: '데스크톱',
+  mobile: '모바일',
+  tablet: '태블릿',
+};
 
 const OS_COLORS: Record<string, string> = {
   'Windows': 'bg-[#0078D4]',
@@ -44,6 +52,40 @@ const BROWSER_COLORS: Record<string, string> = {
   'Samsung Internet': 'bg-[#1428A0]',
   '기타': 'bg-[#C4B8B3]',
 };
+
+function CrossTabList({ groups, colorMap }: { groups?: { device: string; total: number; items: { name: string; count: number }[] }[]; colorMap: Record<string, string> }) {
+  const list = (groups || []).filter(g => g.total > 0);
+  if (list.length === 0) return <p className="text-sm text-dim">데이터 없음</p>;
+  return (
+    <div className="space-y-4">
+      {list.map(g => (
+        <div key={g.device}>
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="text-text font-bold">{DEVICE_LABEL[g.device] || g.device}</span>
+            <span className="text-dim">총 {g.total}건</span>
+          </div>
+          <div className="space-y-1.5 pl-3 border-l-2 border-border">
+            {g.items.map(it => {
+              const pct = Math.round((it.count / g.total) * 100);
+              const color = colorMap[it.name] || 'bg-accent';
+              return (
+                <div key={it.name}>
+                  <div className="flex items-center justify-between text-[11px] mb-0.5">
+                    <span className="text-text">{it.name}</span>
+                    <span className="text-dim">{it.count}건 ({pct}%)</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-bg rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function BarList({ items, colorMap }: { items?: { name: string; count: number }[]; colorMap: Record<string, string> }) {
   const list = items || [];
@@ -254,6 +296,18 @@ export default function AdminAnalyticsPage() {
         <div className="bg-surface rounded-xl border border-border p-5">
           <h2 className="text-sm font-bold mb-3">브라우저</h2>
           <BarList items={referrers?.browser_stats} colorMap={BROWSER_COLORS} />
+        </div>
+
+        {/* 기기 × OS */}
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h2 className="text-sm font-bold mb-3">기기 × OS</h2>
+          <CrossTabList groups={referrers?.device_os_stats} colorMap={OS_COLORS} />
+        </div>
+
+        {/* 기기 × 브라우저 */}
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h2 className="text-sm font-bold mb-3">기기 × 브라우저</h2>
+          <CrossTabList groups={referrers?.device_browser_stats} colorMap={BROWSER_COLORS} />
         </div>
 
         {/* 인기 페이지 */}
