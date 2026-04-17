@@ -135,8 +135,39 @@ export default function PrivacyPage() {
           </p>
         </section>
 
+        <section className="space-y-2">
+          <h2 className="text-base font-bold text-text">11. 제3자 블로그 공개정보 수집 (순위 서비스)</h2>
+          <p>
+            서비스는 블로거 순위·카테고리 통계 제공을 위해 네이버 공식 Open API 를 이용하여 공개된 블로그 정보를 수집합니다.
+          </p>
+          <ul className="list-disc list-inside pl-2 space-y-1">
+            <li><strong>수집 항목:</strong> 블로그 ID(공개된 URL 식별자), 블로그 닉네임, 최근 포스팅 날짜, 발견 경로 키워드</li>
+            <li><strong>수집 방법:</strong> 네이버 Open API (openapi.naver.com) 만 사용. HTML 스크래핑·비공식 API 호출 없음.</li>
+            <li><strong>수집하지 않는 정보:</strong> 이메일·전화번호 등 개인 연락처, 비공개 포스트 내용, 로그인이 필요한 정보</li>
+            <li><strong>수집 원칙:</strong> robots.txt 준수, 네이버 일일 할당량의 80% 이내 사용, 요청 간격 250ms 이상</li>
+            <li><strong>이용 목적:</strong> 블로거 순위 산정·카테고리별 통계 제공 서비스 운영 (수집한 데이터의 제3자 판매·재배포 금지)</li>
+            <li><strong>보유 기간:</strong> 서비스 제공 목적 달성 시까지. 블로그 소유자의 요청 시 즉시 삭제 + 재수집 차단 리스트에 추가.</li>
+            <li><strong>제외 요청:</strong> 블로그 소유자는 <a href="/bot-info" className="text-accent underline">/bot-info</a> 페이지를 통해 본인 블로그의 수집 중단·삭제를 요청할 수 있으며, 48시간 이내 처리됩니다.</li>
+            <li><strong>봇 식별:</strong> User-Agent 에 <code className="text-[10px] font-mono bg-bg px-1 py-0.5 rounded">NinflBot/1.0 (+https://naver-influencer.vercel.app/bot-info)</code> 명시하여 투명하게 운영합니다.</li>
+          </ul>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-bold text-text">12. 크롬 확장 프로그램 (N인플 키워드 분석)</h2>
+          <p>
+            N인플 키워드 분석 크롬 확장 프로그램은 아래와 같이 데이터를 처리합니다.
+          </p>
+          <ul className="list-disc list-inside pl-2 space-y-1">
+            <li><strong>수집하지 않는 정보:</strong> 확장 프로그램은 사용자의 개인정보를 별도로 수집하거나 서버에 저장하지 않습니다.</li>
+            <li><strong>기기 내 처리 데이터:</strong> 네이버 검색 키워드, 블로그 에디터 텍스트(글자수 카운트 및 키워드 추출)는 기기 내에서만 일시적으로 처리됩니다.</li>
+            <li><strong>API 전송:</strong> 키워드 검색량 조회를 위해 키워드 텍스트만 자체 API 서버(naver-influencer.vercel.app)로 전송됩니다. 사용자 식별 정보는 포함되지 않습니다.</li>
+            <li><strong>Chrome Storage:</strong> 분석 컨텍스트(선택한 키워드, 페이지 정보)를 기기 내에 일시적으로 저장하며, 확장 프로그램 비활성화 시 삭제됩니다.</li>
+            <li><strong>제3자 제공:</strong> 확장 프로그램은 어떠한 사용자 데이터도 제3자에게 판매, 제공 또는 공유하지 않습니다.</li>
+          </ul>
+        </section>
+
         <div className="pt-4 border-t border-border">
-          <p className="text-xs text-dim">시행일자: 2026년 3월 1일</p>
+          <p className="text-xs text-dim">시행일자: 2026년 3월 1일 | 최종 수정: 2026년 4월 17일</p>
         </div>
       </div>
     </div>
