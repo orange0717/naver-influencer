@@ -43,21 +43,16 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    label: 'N인플',
-    children: [
-      { href: '/notice', label: '공지사항' },
-    ],
-  },
+  { href: '/notice', label: '공지사항' },
   {
     label: 'MY',
     children: [
       { href: '/my/blogger', label: 'MY 블로그' },
+      { href: '/my/campaigns', label: 'MY 캠페인', requiredPlan: 'influencer' },
+      { href: '/my/settlements', label: 'MY 정산내역', requiredPlan: 'influencer' },
       { href: '/my/keyword-ranking', label: 'MY 키워드순위', requiredPlan: 'blogger' },
       { href: '/my/post-analysis', label: 'MY 포스팅 분석', requiredPlan: 'blogger' },
-      { href: '/my/campaigns', label: 'MY 캠페인', requiredPlan: 'influencer' },
       { href: '/my', label: 'MY 키워드 챌린지', requiredPlan: 'influencer' },
-      { href: '/my/settlements', label: 'MY 정산내역', requiredPlan: 'influencer' },
     ],
   },
   { href: '/competitor', label: '경쟁자 분석' },
@@ -73,9 +68,9 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { href: '/keywords/google-trends', label: '구글 트렌드' },
       { href: '/keywords/blogger', label: '키워드 검색' },
-      { href: '/keywords', label: '키워드 챌린지 리스트', requiredPlan: 'influencer' },
       { href: '/keywords/blog-ranking', label: '키워드 검색순위', requiredPlan: 'blogger' },
       { href: '/keywords/hot', label: '실시간 상승 키워드' },
+      { href: '/keywords', label: '키워드 챌린지 리스트', requiredPlan: 'influencer' },
     ],
   },
   { href: '/community', label: '커뮤니티', requiredPlan: 'blogger' },
