@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getAuthUser } from '@/lib/auth';
+import { isRestrictedByUserId } from '@/lib/admin';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 interface JoinedKeywordChallenge {
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  if (await isRestrictedByUserId(auth.userId)) return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
 
   const supabase = createServiceClient();
 

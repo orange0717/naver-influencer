@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { isRestricted } from '@/lib/admin';
 
 export async function GET(request: NextRequest) {
   const rawDays = parseInt(request.nextUrl.searchParams.get('days') || '15');
@@ -15,6 +16,9 @@ export async function GET(request: NextRequest) {
     const supabaseAuth = await createRouteHandlerClient();
     const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
     if (authUser) {
+      if (authUser.email && await isRestricted(authUser.email)) {
+        return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
+      }
       const { data: profile } = await supabase
         .from('users')
         .select('linked_influencer_id')

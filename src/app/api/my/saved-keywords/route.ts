@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
 
   const auth = await getAuthUser(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (await isRestrictedByUserId(auth.userId)) return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
 
   const supabase = createServiceClient();
   const { data, error } = await supabase
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
 
   const auth = await getAuthUser(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (await isRestrictedByUserId(auth.userId)) return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
 
   const body = await request.json();
   const { keyword, monthly_pc, monthly_mobile, monthly_total, competition } = body;
@@ -84,6 +87,7 @@ export async function DELETE(request: NextRequest) {
 
   const auth = await getAuthUser(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (await isRestrictedByUserId(auth.userId)) return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const keyword = searchParams.get('keyword');

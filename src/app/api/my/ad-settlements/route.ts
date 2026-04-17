@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-/** 인증된 유저의 linked_influencer_id로 naver_id 조회 */
+/** 인증된 유저의 linked_influencer_id로 naver_id 조회 (제한 사용자는 null) */
 async function getLinkedNaverId(request: Request) {
   const auth = await getAuthUser(request);
   if (!auth) return null;
+  if (await isRestrictedByUserId(auth.userId)) return null;
 
   const linkedId = auth.user.linked_influencer_id;
   if (!linkedId) return null;

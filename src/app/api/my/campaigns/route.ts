@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,7 @@ export async function GET(request: NextRequest) {
 
   const auth = await getAuthUser(request);
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  if (await isRestrictedByUserId(auth.userId)) return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
 
   const supabase = createServiceClient();
 

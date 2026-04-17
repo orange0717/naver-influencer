@@ -54,3 +54,41 @@ export async function requireAdmin(request: NextRequest): Promise<
   }
   return { authUser };
 }
+
+/**
+ * 주어진 userId가 제한된 사용자인지 확인 (users 테이블에서 email 조회 후 판정)
+ */
+export async function isRestrictedByUserId(userId: string): Promise<boolean> {
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('users')
+      .select('email')
+      .eq('id', userId)
+      .single();
+    if (!data?.email) return false;
+    return await isRestricted(data.email);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 유료 기능 접근 권한 확인
+ * - 비로그인 → 401
+ * - 제한 사용자 → 403
+ * 관리자(requireAdmin)처럼 API 라우트 진입부에서 단일 호출로 사용
+ */
+export async function requirePaidAccess(request: NextRequest): Promise<
+  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null } }; error?: never }
+  | { error: NextResponse; authUser?: never }
+> {
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
+  }
+  if (await isRestrictedByUserId(authUser.userId)) {
+    return { error: NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 }) };
+  }
+  return { authUser };
+}

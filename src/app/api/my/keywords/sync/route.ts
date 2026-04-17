@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { isRestricted } from '@/lib/admin';
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -113,6 +114,10 @@ export async function POST(request: NextRequest) {
     const supabaseAuth = await createRouteHandlerClient();
     const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
     if (authUser) {
+      // 제한 사용자 차단
+      if (authUser.email && await isRestricted(authUser.email)) {
+        return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
+      }
       const { data: profile } = await supabase
         .from('users')
         .select('linked_influencer_id')
