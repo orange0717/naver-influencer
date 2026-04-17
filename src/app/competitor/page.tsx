@@ -18,7 +18,16 @@ interface AuthInfo {
 
 interface BlogCompareData {
   mine: { todayVisitor: number; totalVisitor: number; subscriberCount: number; postCount: number };
-  competitor: { todayVisitor: number; totalVisitor: number; subscriberCount: number; postCount: number; blogName: string };
+  competitor: {
+    todayVisitor: number;
+    totalVisitor: number;
+    subscriberCount: number;
+    postCount: number;
+    blogName: string;
+    isInfluencer: boolean;
+    influencerCategory: string | null;
+    influencerSubCategory: string | null;
+  };
 }
 
 interface MissingCheckResult {
@@ -149,6 +158,9 @@ export default function CompetitorPage() {
           subscriberCount: compData.subscriberCount || 0,
           postCount: compData.postCount || 0,
           blogName: compData.blogName || compId,
+          isInfluencer: !!compData.isInfluencer,
+          influencerCategory: compData.influencerCategory || null,
+          influencerSubCategory: compData.influencerSubCategory || null,
         },
       });
     } catch (err) {
@@ -381,9 +393,38 @@ export default function CompetitorPage() {
 
               {/* 경쟁자 블로그 기본 통계 */}
               <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
-                <h3 className="font-bold text-sm">
-                  {blogCompareData.competitor.blogName} 블로그 정보
-                </h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-bold text-sm">
+                    {blogCompareData.competitor.blogName} 블로그 정보
+                  </h3>
+                  {blogCompareData.competitor.isInfluencer ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent">
+                      ⭐ 네이버 인플루언서{blogCompareData.competitor.influencerCategory ? ` · ${blogCompareData.competitor.influencerCategory}` : ''}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-dim/15 text-dim">
+                      일반 블로거
+                    </span>
+                  )}
+                  {(() => {
+                    const avgPerPost = blogCompareData.competitor.postCount > 0
+                      ? blogCompareData.competitor.totalVisitor / blogCompareData.competitor.postCount
+                      : 0;
+                    const activityRate = blogCompareData.competitor.subscriberCount > 0
+                      ? (blogCompareData.competitor.todayVisitor / blogCompareData.competitor.subscriberCount) * 100
+                      : 0;
+                    const lowActivity = blogCompareData.competitor.subscriberCount >= 1000
+                      && (activityRate < 0.5 || avgPerPost < 200);
+                    return lowActivity ? (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-down/15 text-down"
+                        title="이웃 수 대비 실제 활성도가 낮습니다. 이웃 광고성 수집 블로그일 가능성이 있어요."
+                      >
+                        ⚠ 활성도 낮음
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
                 <div className="space-y-3 max-w-sm mx-auto">
                   <StatRow label="TODAY 방문자" value={blogCompareData.competitor.todayVisitor} />
                   <StatRow label="전체 방문자" value={blogCompareData.competitor.totalVisitor} />
