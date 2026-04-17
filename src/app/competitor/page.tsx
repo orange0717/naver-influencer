@@ -406,16 +406,21 @@ export default function CompetitorPage() {
                 </div>
               </div>
 
-              {/* 누락율 비교 */}
+              {/* 검색 노출 비교 */}
               <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm">누락율 비교</h3>
+                  <div>
+                    <h3 className="font-bold text-sm">검색 노출 비교</h3>
+                    <p className="text-[11px] text-dim mt-0.5">
+                      최근 10개 포스팅이 네이버 검색에서 노출되는 개수를 비교합니다.
+                    </p>
+                  </div>
                   {!missingData && !missingLoading && (
                     <button
                       onClick={checkMissingRate}
-                      className="px-4 py-2 bg-accent text-white font-bold rounded-lg text-xs hover:bg-accent-hover transition cursor-pointer"
+                      className="px-4 py-2 bg-accent text-white font-bold rounded-lg text-xs hover:bg-accent-hover transition cursor-pointer whitespace-nowrap"
                     >
-                      누락율 확인
+                      노출 확인
                     </button>
                   )}
                 </div>
@@ -437,8 +442,8 @@ export default function CompetitorPage() {
                         <p className="text-xs text-dim font-semibold text-center">내 블로그</p>
                         {missingData.mine && missingData.mine.total > 0 ? (
                           <>
-                            <StatRow label="통합검색 누락율" value={missingData.mine.viewRate} suffix="%" />
-                            <StatRow label="블로그탭 누락율" value={missingData.mine.blogRate} suffix="%" />
+                            <StatRow label="통합검색 노출" value={missingData.mine.viewExposed} suffix={`/${missingData.mine.total}개`} />
+                            <StatRow label="블로그탭 노출" value={missingData.mine.blogExposed} suffix={`/${missingData.mine.total}개`} />
                             <StatRow label="유효 포스팅" value={Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed)} suffix={`/${missingData.mine.total}개`} />
                             <StatRow label="무효 포스팅" value={missingData.mine.total - Math.max(missingData.mine.viewExposed, missingData.mine.blogExposed)} suffix={`/${missingData.mine.total}개`} />
                           </>
@@ -452,18 +457,16 @@ export default function CompetitorPage() {
                         {missingData.competitor && missingData.competitor.total > 0 ? (
                           <>
                             <StatRow
-                              label="통합검색 누락율"
-                              value={missingData.competitor.viewRate}
-                              suffix="%"
-                              compare={missingData.mine?.viewRate}
-                              invertCompare
+                              label="통합검색 노출"
+                              value={missingData.competitor.viewExposed}
+                              suffix={`/${missingData.competitor.total}개`}
+                              compare={missingData.mine?.viewExposed}
                             />
                             <StatRow
-                              label="블로그탭 누락율"
-                              value={missingData.competitor.blogRate}
-                              suffix="%"
-                              compare={missingData.mine?.blogRate}
-                              invertCompare
+                              label="블로그탭 노출"
+                              value={missingData.competitor.blogExposed}
+                              suffix={`/${missingData.competitor.total}개`}
+                              compare={missingData.mine?.blogExposed}
                             />
                             <StatRow
                               label="유효 포스팅"
