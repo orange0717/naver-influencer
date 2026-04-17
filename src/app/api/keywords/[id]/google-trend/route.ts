@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import googleTrends from 'google-trends-api';
-import { createServiceClient } from '@/lib/supabase-server';
+import { findKeywordById } from '@/lib/naver-api';
 
 export const runtime = 'nodejs';
 export const revalidate = 3600;
@@ -19,24 +19,22 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const supabase = createServiceClient();
+  if (!id || !/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {
+    return NextResponse.json({ error: '잘못된 키워드 ID입니다.' }, { status: 400 });
+  }
 
-  const { data: kw } = await supabase
-    .from('keyword_challenges')
-    .select('keyword')
-    .eq('id', id)
-    .single();
-
-  if (!kw?.keyword) {
+  const found = await findKeywordById(id);
+  if (!found) {
     return NextResponse.json({ error: '키워드를 찾을 수 없습니다' }, { status: 404 });
   }
+  const keyword = found.keyword.name;
 
   const endTime = new Date();
   const startTime = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
   try {
     const raw = await googleTrends.interestOverTime({
-      keyword: kw.keyword,
+      keyword: keyword,
       geo: 'KR',
       hl: 'ko',
       startTime,
@@ -48,7 +46,7 @@ export async function GET(
       parsed = JSON.parse(raw);
     } catch {
       return NextResponse.json({
-        keyword: kw.keyword,
+        keyword: keyword,
         trendData: [],
         summary: null,
         error: '구글 트렌드 응답 파싱 실패',
@@ -73,7 +71,7 @@ export async function GET(
       changePercent > 5 ? 'up' : changePercent < -5 ? 'down' : 'stable';
 
     return NextResponse.json({
-      keyword: kw.keyword,
+      keyword: keyword,
       trendData,
       summary: {
         trend_direction: direction,
@@ -85,7 +83,7 @@ export async function GET(
   } catch (err) {
     console.error('구글 트렌드 조회 실패:', err);
     return NextResponse.json({
-      keyword: kw.keyword,
+      keyword: keyword,
       trendData: [],
       summary: null,
       error: '구글 트렌드 데이터를 가져올 수 없습니다 (차단 또는 네트워크 오류)',
