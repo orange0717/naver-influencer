@@ -471,7 +471,14 @@
       if (el.closest && (el.closest('#' + WIDGET_ID) || el.closest('#' + BAR_ID))) return;
       var isEditor = false;
       if (el.tagName === 'TEXTAREA') isEditor = true;
-      if (el.tagName === 'INPUT' && el.type === 'text' && el.offsetWidth > 200) isEditor = true;
+      if (el.tagName === 'INPUT' && el.type === 'text' && el.offsetWidth > 200) {
+        // 네이버 검색창은 제외 (글자수 위젯 부적절)
+        var isSearch = el.name === 'query' || el.name === 'q'
+          || el.id === 'query' || el.id === 'nx_query'
+          || el.getAttribute('role') === 'combobox'
+          || (el.closest && el.closest('form[action*="search"], #search, .search_box, .sch_area'));
+        if (!isSearch) isEditor = true;
+      }
       if (el.isContentEditable) isEditor = true;
       if (isEditor && el !== _activeEditor) {
         detachWidget();
@@ -492,7 +499,11 @@
     widget.id = WIDGET_ID;
     widget.innerHTML = '<span id="ninfl-w-stroke">타자수 0타</span><span class="ninfl-w-sep">/</span><span id="ninfl-w-char">글자수 0자</span><span class="ninfl-w-sep">/</span><span id="ninfl-w-nospace">공백제외 0자</span>';
     if (!_settings.charWidget) widget.style.display = 'none';
-    if (el.parentNode) el.parentNode.insertBefore(widget, el);
+    // 에디터 바로 아래(afterend)에 삽입
+    if (el.parentNode) {
+      if (el.nextSibling) el.parentNode.insertBefore(widget, el.nextSibling);
+      else el.parentNode.appendChild(widget);
+    }
     var text = getEditorText(el);
     if (text.length > 0) {
       updateCharWidget(text);
