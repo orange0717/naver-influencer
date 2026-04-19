@@ -98,34 +98,44 @@ export default function BloggerRankingView() {
                   )}
                 </div>
                 {myRank.is_active ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-bg rounded-lg p-3">
-                        <p className="text-[11px] text-dim mb-1">전체 순위</p>
-                        <p className="text-xl font-extrabold text-accent">
-                          {myRank.global_rank?.toLocaleString()}위
-                        </p>
-                        <p className="text-[10px] text-dim mt-1">
-                          활성 블로거 {myRank.total_active?.toLocaleString()}명 중
-                        </p>
-                      </div>
-                      <div className="bg-bg rounded-lg p-3">
-                        <p className="text-[11px] text-dim mb-1">상위</p>
-                        <p className="text-xl font-extrabold text-accent">
-                          {myRank.global_percentile}%
-                        </p>
-                        <p className="text-[10px] text-dim mt-1">백분위</p>
-                      </div>
+                  myRank.global_rank == null ? (
+                    <div className="bg-bg rounded-lg p-3 text-xs text-dim leading-relaxed">
+                      활성 블로거로 감지됐지만 아직 순위가 집계되지 않았습니다.
+                      순위는 <span className="font-semibold">주 1회 갱신</span>됩니다 — 다음 갱신 때 반영될 예정이에요.
+                      {typeof myRank.total_active === 'number' && (
+                        <> 현재 활성 블로거 {myRank.total_active.toLocaleString()}명.</>
+                      )}
                     </div>
-                    {myRank.category_rank && (
-                      <div className="bg-bg rounded-lg p-3">
-                        <p className="text-[11px] text-dim mb-1">{myRank.category} 카테고리 순위</p>
-                        <p className="text-base font-bold">
-                          {myRank.category_rank}위 / {myRank.total_category?.toLocaleString()}명
-                        </p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-bg rounded-lg p-3">
+                          <p className="text-[11px] text-dim mb-1">전체 순위</p>
+                          <p className="text-xl font-extrabold text-accent">
+                            {myRank.global_rank.toLocaleString()}위
+                          </p>
+                          <p className="text-[10px] text-dim mt-1">
+                            활성 블로거 {myRank.total_active?.toLocaleString()}명 중
+                          </p>
+                        </div>
+                        <div className="bg-bg rounded-lg p-3">
+                          <p className="text-[11px] text-dim mb-1">상위</p>
+                          <p className="text-xl font-extrabold text-accent">
+                            {myRank.global_percentile ?? '-'}%
+                          </p>
+                          <p className="text-[10px] text-dim mt-1">백분위</p>
+                        </div>
                       </div>
-                    )}
-                  </>
+                      {myRank.category_rank && (
+                        <div className="bg-bg rounded-lg p-3">
+                          <p className="text-[11px] text-dim mb-1">{myRank.category} 카테고리 순위</p>
+                          <p className="text-base font-bold">
+                            {myRank.category_rank}위 / {myRank.total_category?.toLocaleString()}명
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )
                 ) : (
                   <p className="text-xs text-dim">
                     최근 1년 이상 포스팅이 없어 순위 대상에서 제외되었습니다. 최근 포스팅 감지 시 자동 복귀됩니다.
