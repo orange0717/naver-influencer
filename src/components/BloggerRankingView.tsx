@@ -150,42 +150,14 @@ export default function BloggerRankingView() {
         )}
       </div>
 
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <h2 className="text-sm font-bold">Top 50 블로거 순위</h2>
-        </div>
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
-          </div>
-        ) : rows.length === 0 ? (
-          <p className="p-8 text-sm text-dim text-center">
-            아직 데이터가 쌓이는 중입니다. 잠시 후 다시 확인해주세요.
-          </p>
-        ) : (
-          <div className="divide-y divide-border">
-            {rows.map((r) => (
-              <div key={r.blog_id} className="flex items-center gap-3 px-5 py-3">
-                <span className="w-10 text-sm font-bold text-accent font-rank shrink-0">
-                  {r.rank_pos}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {r.blog_name || r.blog_id}
-                  </p>
-                  <div className="flex items-center gap-2 text-[11px] text-dim">
-                    {r.category && <span>{r.category}</span>}
-                    {r.last_post_date && <span>· {r.last_post_date}</span>}
-                  </div>
-                </div>
-                <span className="text-xs text-dim font-mono shrink-0">
-                  {Math.round(Number(r.rank_score))}점
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="bg-surface rounded-xl border border-border p-5 text-sm text-dim leading-relaxed">
+        <p className="font-semibold text-text mb-1">Top 50 블로거 순위 — 준비 중</p>
+        전체 블로거 순위는 포스팅 수 · 구독자 수 · 카테고리 정보가 충분히 수집된 뒤 공개합니다.
+        현재는 위의 <span className="font-semibold">내 블로그 순위 확인</span> 기능만 사용 가능합니다.
+        <span className="block mt-1 text-[11px]">데이터 수집 진행률은 <a href="/bot-info" className="underline">봇 정보</a>에서 확인하세요.</span>
       </div>
+      {/* rows/loading 은 내부 용도로 보존 — 사용하지 않으므로 경고 억제 */}
+      <span className="hidden">{loading ? '' : rows.length}</span>
     </>
   );
 }

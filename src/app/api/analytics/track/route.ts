@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp } from '@/lib/rate-limit';
+import { getAuthUser } from '@/lib/auth';
+import { isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +21,12 @@ export async function POST(req: NextRequest) {
     const ua = req.headers.get('user-agent') || '';
     if (!ua || BOT_PATTERNS.test(ua)) {
       return NextResponse.json({ ok: true, skipped: 'bot' });
+    }
+
+    // 관리자 로그인 상태면 집계 제외 (본인 유입 자료 왜곡 방지)
+    const authUser = await getAuthUser(req).catch(() => null);
+    if (authUser && isAdmin(authUser.userId)) {
+      return NextResponse.json({ ok: true, skipped: 'admin' });
     }
 
     const body = await req.json().catch(() => ({}));
