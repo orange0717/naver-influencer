@@ -6,7 +6,12 @@ import { isAdmin } from '@/lib/admin';
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/notices/[id] — 공지 상세 + 댓글
+ * GET /api/notices/[id] — 공지 상세 + 댓글 + 투표(선택적)
+ *
+ * 투표 응답 정책:
+ * - 일반 사용자: poll.question, options[label], my_vote(자신의 선택) 만 표시
+ *                vote_count, total_votes, voters 는 숨김 (결과는 관리자만)
+ * - 관리자: 모든 정보 + voters(이메일/익명 표시) 포함
  */
 export async function GET(
   _req: NextRequest,
@@ -49,9 +54,99 @@ export async function GET(
       .eq('is_deleted', false)
       .order('created_at', { ascending: true });
 
+    // 투표 조회 (있으면)
+    const authUser = await getAuthUser(_req).catch(() => null);
+    const isAdminUser = authUser ? isAdmin(authUser.userId) : false;
+    const voterFingerprint = _req.headers.get('x-voter-fp') || '';
+
+    let pollPayload: unknown = null;
+    const { data: poll } = await supabase
+      .from('notice_polls')
+      .select('id, question, is_multiple, created_at')
+      .eq('notice_id', id)
+      .maybeSingle();
+
+    if (poll) {
+      const { data: options } = await supabase
+        .from('notice_poll_options')
+        .select('id, label, sort_order, vote_count')
+        .eq('poll_id', poll.id)
+        .order('sort_order', { ascending: true });
+
+      // 사용자 투표 내역 조회
+      let myVote: string[] = [];
+      if (authUser) {
+        const { data: myVotes } = await supabase
+          .from('notice_poll_votes')
+          .select('option_id')
+          .eq('poll_id', poll.id)
+          .eq('user_id', authUser.userId);
+        myVote = (myVotes || []).map(v => v.option_id);
+      } else if (voterFingerprint) {
+        const { data: myVotes } = await supabase
+          .from('notice_poll_votes')
+          .select('option_id')
+          .eq('poll_id', poll.id)
+          .is('user_id', null)
+          .eq('voter_fingerprint', voterFingerprint);
+        myVote = (myVotes || []).map(v => v.option_id);
+      }
+
+      // 관리자 전용: 투표자 목록 (선택지별)
+      let voters: Record<string, Array<{ user_email?: string; anon_label?: string }>> | null = null;
+      let totalVotes = 0;
+      if (isAdminUser) {
+        const { data: allVotes } = await supabase
+          .from('notice_poll_votes')
+          .select('option_id, user_id, voter_fingerprint, created_at')
+          .eq('poll_id', poll.id)
+          .order('created_at', { ascending: true });
+
+        const userIds = Array.from(new Set((allVotes || []).filter(v => v.user_id).map(v => v.user_id)));
+        const emailsById = new Map<string, string>();
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, email, nickname')
+            .in('id', userIds);
+          (users || []).forEach(u => emailsById.set(u.id, u.nickname || u.email || u.id));
+        }
+
+        voters = {};
+        (allVotes || []).forEach(v => {
+          const arr = voters![v.option_id] || [];
+          if (v.user_id) {
+            arr.push({ user_email: emailsById.get(v.user_id) || v.user_id });
+          } else {
+            const tail = (v.voter_fingerprint || '').slice(-4);
+            arr.push({ anon_label: `익명-${tail}` });
+          }
+          voters![v.option_id] = arr;
+          totalVotes++;
+        });
+      }
+
+      pollPayload = {
+        id: poll.id,
+        question: poll.question,
+        is_multiple: poll.is_multiple,
+        options: (options || []).map(o => ({
+          id: o.id,
+          label: o.label,
+          sort_order: o.sort_order,
+          // 관리자만 실시간 집계 수 확인
+          vote_count: isAdminUser ? o.vote_count : null,
+        })),
+        my_vote: myVote,
+        results_hidden: !isAdminUser,
+        ...(isAdminUser ? { voters, total_votes: totalVotes } : {}),
+      };
+    }
+
     return NextResponse.json({
       notice: { ...notice, view_count: viewCount },
       comments: comments || [],
+      poll: pollPayload,
     });
   } catch (err) {
     console.error('[notices] GET detail error:', err);

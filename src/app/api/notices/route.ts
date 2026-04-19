@@ -88,6 +88,38 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
 
+    // 투표 데이터가 함께 전달되면 저장 (선택적)
+    const rawPoll = body?.poll;
+    if (rawPoll && typeof rawPoll === 'object') {
+      const question = typeof rawPoll.question === 'string' ? rawPoll.question.trim() : '';
+      const options = Array.isArray(rawPoll.options)
+        ? rawPoll.options.map((o: unknown) => (typeof o === 'string' ? o.trim() : '')).filter(Boolean)
+        : [];
+      const isMultiple = !!rawPoll.is_multiple;
+
+      if (question.length >= 1 && question.length <= 200 && options.length >= 2 && options.length <= 5 && options.every((o: string) => o.length <= 100)) {
+        const { data: poll, error: pollErr } = await supabase
+          .from('notice_polls')
+          .insert({ notice_id: data.id, question, is_multiple: isMultiple })
+          .select('id')
+          .single();
+
+        if (!pollErr && poll) {
+          const optionsRows = options.map((label: string, idx: number) => ({
+            poll_id: poll.id,
+            label,
+            sort_order: idx,
+          }));
+          const { error: optsErr } = await supabase.from('notice_poll_options').insert(optionsRows);
+          if (optsErr) {
+            console.error('[notices] poll options insert error:', optsErr);
+          }
+        } else if (pollErr) {
+          console.error('[notices] poll insert error:', pollErr);
+        }
+      }
+    }
+
     // 전체 사용자에게 공지 알림 (비동기, 실패해도 공지 생성은 성공)
     createNoticeNotification(supabase, data.id, title).catch(err =>
       console.error('[notices] 알림 생성 실패:', err)

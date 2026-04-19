@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { getVoterFingerprint } from '@/lib/voter-fingerprint';
 
 const TAG_LABEL: Record<string, string> = {
   notice: '공지',
@@ -40,6 +41,29 @@ interface Comment {
   created_at: string;
 }
 
+interface PollOption {
+  id: string;
+  label: string;
+  sort_order: number;
+  vote_count: number | null; // 관리자만 실제 숫자, 일반은 null
+}
+
+interface PollVoter {
+  user_email?: string;
+  anon_label?: string;
+}
+
+interface Poll {
+  id: string;
+  question: string;
+  is_multiple: boolean;
+  options: PollOption[];
+  my_vote: string[];
+  results_hidden: boolean;
+  voters?: Record<string, PollVoter[]>; // 관리자만
+  total_votes?: number; // 관리자만
+}
+
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   const now = Date.now();
@@ -66,6 +90,9 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [poll, setPoll] = useState<Poll | null>(null);
+  const [pollSelections, setPollSelections] = useState<string[]>([]);
+  const [voting, setVoting] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -96,19 +123,34 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       headers['X-Count-View'] = '1';
     }
 
-    fetch(`/api/notices/${noticeId}`, { headers })
-      .then(r => {
-        if (!r.ok) throw new Error();
-        if (isFirstView) sessionStorage.setItem(viewedKey, '1');
-        return r.json();
-      })
-      .then(data => {
-        setNotice(data.notice);
-        setComments(data.comments || []);
-        setLikeCount(data.notice.like_count || 0);
-      })
-      .catch(() => setNotice(null))
-      .finally(() => setLoading(false));
+    // 인증 토큰 + 비회원 fingerprint를 헤더에 포함해서 요청
+    (async () => {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      } catch { /* ignore */ }
+      const fp = getVoterFingerprint();
+      if (fp) headers['X-Voter-Fp'] = fp;
+
+      fetch(`/api/notices/${noticeId}`, { headers })
+        .then(r => {
+          if (!r.ok) throw new Error();
+          if (isFirstView) sessionStorage.setItem(viewedKey, '1');
+          return r.json();
+        })
+        .then(data => {
+          setNotice(data.notice);
+          setComments(data.comments || []);
+          setLikeCount(data.notice.like_count || 0);
+          if (data.poll) {
+            setPoll(data.poll);
+            setPollSelections(data.poll.my_vote || []);
+          }
+        })
+        .catch(() => setNotice(null))
+        .finally(() => setLoading(false));
+    })();
   }, [noticeId]);
 
   // 좋아요 상태 체크
@@ -166,6 +208,49 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       alert('댓글 작성에 실패했습니다.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const toggleSelection = (optionId: string) => {
+    if (!poll) return;
+    if (poll.is_multiple) {
+      setPollSelections(prev => prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId]);
+    } else {
+      setPollSelections([optionId]);
+    }
+  };
+
+  const handleVote = async () => {
+    if (!poll || pollSelections.length === 0 || voting) return;
+    setVoting(true);
+    try {
+      const headers = await getAuthHeaders();
+      const fp = getVoterFingerprint();
+      const res = await fetch(`/api/notices/${noticeId}/poll/vote`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ option_ids: pollSelections, voter_fingerprint: fp }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || '투표에 실패했습니다.');
+        return;
+      }
+      // 투표 후 최신 데이터 다시 조회 (관리자면 결과 포함)
+      const reloadHeaders: Record<string, string> = { ...headers };
+      if (fp) reloadHeaders['X-Voter-Fp'] = fp;
+      const r = await fetch(`/api/notices/${noticeId}`, { headers: reloadHeaders });
+      if (r.ok) {
+        const data = await r.json();
+        if (data.poll) {
+          setPoll(data.poll);
+          setPollSelections(data.poll.my_vote || []);
+        }
+      }
+    } catch {
+      alert('투표에 실패했습니다.');
+    } finally {
+      setVoting(false);
     }
   };
 
@@ -229,6 +314,124 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
         <div className="text-sm text-text leading-relaxed whitespace-pre-wrap mb-4">
           {notice.content}
         </div>
+
+        {/* 투표 위젯 */}
+        {poll && (
+          <div className="mt-4 mb-4 p-4 rounded-xl border border-border bg-bg/60">
+            <div className="flex items-start gap-2 mb-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent shrink-0 mt-0.5">
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-text mb-0.5">{poll.question}</p>
+                <p className="text-[11px] text-dim">
+                  {poll.is_multiple ? '복수 선택 가능' : '1개 선택'}
+                  {poll.my_vote.length > 0 && ' · 이미 참여하셨습니다 (재투표 가능)'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {poll.options.map((opt) => {
+                const selected = pollSelections.includes(opt.id);
+                const isAdminView = !poll.results_hidden && opt.vote_count !== null;
+                const totalForBar = isAdminView && poll.total_votes
+                  ? poll.total_votes
+                  : 0;
+                const pct = totalForBar > 0 && opt.vote_count !== null
+                  ? Math.round(((opt.vote_count || 0) / totalForBar) * 100)
+                  : 0;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => toggleSelection(opt.id)}
+                    disabled={voting}
+                    className={`w-full relative px-3 py-2.5 rounded-lg border text-left text-sm transition cursor-pointer overflow-hidden ${
+                      selected
+                        ? 'border-accent bg-accent/10 text-accent font-bold'
+                        : 'border-border bg-surface text-text hover:border-accent/40'
+                    }`}
+                  >
+                    {isAdminView && (
+                      <div
+                        className="absolute inset-y-0 left-0 bg-accent/10 pointer-events-none"
+                        style={{ width: `${pct}%` }}
+                      />
+                    )}
+                    <span className="relative flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full border ${
+                          selected ? 'border-accent bg-accent' : 'border-border'
+                        }`}>
+                          {selected && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                              <path d="M5 12l5 5L20 7" />
+                            </svg>
+                          )}
+                        </span>
+                        {opt.label}
+                      </span>
+                      {isAdminView && (
+                        <span className="text-[11px] font-bold text-accent">
+                          {opt.vote_count ?? 0}표 ({pct}%)
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between mt-3 gap-2">
+              {poll.results_hidden ? (
+                <p className="text-[11px] text-dim">
+                  {poll.my_vote.length > 0
+                    ? '투표해주셔서 감사합니다. 결과는 공개되지 않습니다.'
+                    : '결과는 공개되지 않는 비공개 투표입니다.'}
+                </p>
+              ) : (
+                <p className="text-[11px] text-dim">
+                  총 {poll.total_votes || 0}명 참여 · 관리자 뷰
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleVote}
+                disabled={voting || pollSelections.length === 0}
+                className="px-4 py-1.5 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {voting ? '제출 중...' : (poll.my_vote.length > 0 ? '다시 투표' : '투표하기')}
+              </button>
+            </div>
+
+            {/* 관리자 전용: 투표자 목록 */}
+            {!poll.results_hidden && poll.voters && (
+              <div className="mt-4 pt-3 border-t border-border space-y-2">
+                <p className="text-[11px] font-bold text-dim">투표자 목록 (관리자 전용)</p>
+                {poll.options.map(opt => (
+                  <div key={opt.id} className="text-[11px]">
+                    <p className="text-dim mb-1">
+                      <span className="font-semibold text-text">{opt.label}</span>
+                      {' '}
+                      — {(poll.voters?.[opt.id] || []).length}명
+                    </p>
+                    {(poll.voters?.[opt.id] || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 pl-2">
+                        {(poll.voters?.[opt.id] || []).map((v, i) => (
+                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-bg border border-border text-dim">
+                            {v.user_email || v.anon_label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t border-border">
           <div className="flex items-center gap-3 text-xs text-dim">
