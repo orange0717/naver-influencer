@@ -41,15 +41,20 @@ interface NewInfluencer {
 
 function useNewInfluencers() {
   const [list, setList] = useState<NewInfluencer[]>([]);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     fetch('/api/influencers/recent')
       .then(r => r.json())
-      .then(d => setList(d.influencers || []))
+      .then(d => {
+        setList(d.influencers || []);
+        setLoaded(true);
+      })
       .catch(err => {
         console.warn('[landing] 신규 인플루언서 로드 실패', err instanceof Error ? err.message : err);
+        setLoaded(true);
       });
   }, []);
-  return list;
+  return { list, loaded };
 }
 
 /* ── 섹션 구분선 ── */
@@ -64,7 +69,9 @@ function SectionDivider() {
 export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
-  const newInfluencers = useNewInfluencers();
+  const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
+  // 로딩 완료 후 결과가 0명이면 섹션 전체를 숨김 (엄격 모드: naver_created_at 기준 7일)
+  const showNewInfluencersSection = !newInfluencersLoaded || newInfluencers.length > 0;
   const [demoOpen, setDemoOpen] = useState(false);
 
   return (
@@ -110,9 +117,10 @@ export default function LandingPage() {
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
 
-      <SectionDivider />
+      {showNewInfluencersSection && <SectionDivider />}
 
       {/* ═══════════ 신규 인플루언서 (surface) ═══════════ */}
+      {showNewInfluencersSection && (
       <section className="bg-surface px-4 py-16 md:py-20">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
@@ -168,6 +176,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+      )}
 
       <SectionDivider />
 
