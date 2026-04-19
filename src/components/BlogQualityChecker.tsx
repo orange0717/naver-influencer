@@ -30,17 +30,15 @@ interface QualityResult {
 }
 
 const GRADE_LABEL: Record<string, string> = {
-  OPTIMAL_1: '최적1',
-  OPTIMAL_2: '최적2',
-  SEMI_OPTIMAL: '준최적',
+  EXCELLENT: '우수',
+  GOOD: '양호',
   NORMAL: '일반',
   LOW: '저품질',
 };
 
 const GRADE_COLOR: Record<string, string> = {
-  OPTIMAL_1: 'text-up',
-  OPTIMAL_2: 'text-accent',
-  SEMI_OPTIMAL: 'text-accent',
+  EXCELLENT: 'text-up',
+  GOOD: 'text-accent',
   NORMAL: 'text-dim',
   LOW: 'text-down',
 };

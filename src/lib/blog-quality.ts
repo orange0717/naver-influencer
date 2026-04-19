@@ -39,7 +39,7 @@ interface PostExposure {
 
 export interface QualityBreakdown {
   score: number;              // 0~100 최종
-  grade: 'OPTIMAL_1' | 'OPTIMAL_2' | 'SEMI_OPTIMAL' | 'NORMAL' | 'LOW';
+  grade: 'EXCELLENT' | 'GOOD' | 'NORMAL' | 'LOW';
   gradeLabel: string;         // 한국어 표시용
   exposureScore: number;      // 0~100
   activityScore: number;      // 0~100
@@ -260,9 +260,8 @@ function computeExposureScore(exposures: PostExposure[]): { score: number; expos
 }
 
 function gradeFromScore(score: number): { grade: QualityBreakdown['grade']; label: string } {
-  if (score >= 85) return { grade: 'OPTIMAL_1', label: '최적1' };
-  if (score >= 70) return { grade: 'OPTIMAL_2', label: '최적2' };
-  if (score >= 55) return { grade: 'SEMI_OPTIMAL', label: '준최적' };
+  if (score >= 70) return { grade: 'EXCELLENT', label: '우수' };
+  if (score >= 55) return { grade: 'GOOD', label: '양호' };
   if (score >= 35) return { grade: 'NORMAL', label: '일반' };
   return { grade: 'LOW', label: '저품질' };
 }
