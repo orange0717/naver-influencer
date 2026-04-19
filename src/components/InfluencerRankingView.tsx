@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface InfluencerRank {
   name: string;
@@ -16,20 +16,50 @@ interface InfluencerRank {
   ninflRank?: number | null;
 }
 
+const CATEGORIES = [
+  '전체',
+  '여행',
+  '패션', '뷰티',
+  '푸드',
+  'IT테크', '자동차',
+  '리빙', '육아', '생활건강',
+  '게임',
+  '동물/펫',
+  '운동/레저', '프로스포츠',
+  '방송/연예', '대중음악', '영화',
+  '공연/전시/예술', '도서',
+  '경제/비즈니스', '어학/교육',
+];
+
 export default function InfluencerRankingView() {
+  const [category, setCategory] = useState('전체');
   const [influencers, setInfluencers] = useState<InfluencerRank[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    fetch('/api/influencers?ninfl=true&sort=keyword_score&order=desc&limit=50&page=1')
-      .then((r) => r.json())
-      .then((d) => {
-        setInfluencers(d.influencers || []);
-        setTotal(d.total || 0);
-      })
-      .finally(() => setLoading(false));
+  const load = useCallback(async (cat: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        ninfl: 'true',
+        sort: 'keyword_score',
+        order: 'desc',
+        limit: '50',
+        page: '1',
+      });
+      if (cat && cat !== '전체') params.set('category', cat);
+      const res = await fetch(`/api/influencers?${params}`);
+      const data = await res.json();
+      setInfluencers(data.influencers || []);
+      setTotal(data.total || 0);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load(category);
+  }, [category, load]);
 
   return (
     <>
@@ -38,16 +68,42 @@ export default function InfluencerRankingView() {
         {total > 0 && ` · 총 ${total.toLocaleString()}명`}
       </p>
 
+      {/* 카테고리 필터 */}
+      <div className="flex flex-wrap gap-1.5">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setCategory(cat)}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer ${
+              category === cat
+                ? 'bg-accent text-white'
+                : 'bg-surface text-dim border border-border hover:text-text'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <h2 className="text-sm font-bold">Top 50 인플루언서 순위</h2>
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-bold">
+            {category === '전체' ? 'Top 50 인플루언서 순위' : `${category} Top 50`}
+          </h2>
+          {loading && (
+            <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+          )}
         </div>
-        {loading ? (
+        {loading && influencers.length === 0 ? (
           <div className="p-8 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
           </div>
         ) : influencers.length === 0 ? (
-          <p className="p-8 text-sm text-dim text-center">데이터가 없습니다.</p>
+          <p className="p-8 text-sm text-dim text-center">
+            {category === '전체'
+              ? '데이터가 없습니다.'
+              : `${category} 카테고리에 해당하는 인플루언서가 없습니다.`}
+          </p>
         ) : (
           <div className="divide-y divide-border">
             {influencers.map((inf, idx) => (
@@ -57,7 +113,7 @@ export default function InfluencerRankingView() {
                 className="flex items-center gap-3 px-5 py-3 hover:bg-bg transition"
               >
                 <span className="w-10 text-sm font-bold text-accent font-rank shrink-0">
-                  {inf.ninflRank ?? idx + 1}
+                  {category === '전체' ? (inf.ninflRank ?? idx + 1) : idx + 1}
                 </span>
                 {inf.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

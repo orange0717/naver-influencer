@@ -57,15 +57,6 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: '/competitor', label: '경쟁자 분석' },
   {
-    label: '랭킹',
-    children: [
-      { href: '/rankings', label: '전체 보기' },
-      { href: '/rankings/blogger', label: '블로거 순위' },
-      { href: '/rankings/influencer', label: '인플루언서 순위' },
-      { href: '/blog-quality', label: '블로그 품질지수 (무료)' },
-    ],
-  },
-  {
     label: '인플루언서',
     children: [
       { href: '/influencers', label: '리스트', requiredPlan: 'influencer' },
@@ -80,6 +71,15 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/keywords/blog-ranking', label: '키워드 검색순위', requiredPlan: 'blogger' },
       { href: '/keywords/hot', label: '실시간 상승 키워드' },
       { href: '/keywords', label: '키워드 챌린지 리스트', requiredPlan: 'influencer' },
+    ],
+  },
+  {
+    label: '랭킹',
+    children: [
+      { href: '/rankings', label: '전체 보기' },
+      { href: '/rankings/blogger', label: '블로거 순위' },
+      { href: '/rankings/influencer', label: '인플루언서 순위' },
+      { href: '/blog-quality', label: '블로그 품질지수 (무료)' },
     ],
   },
   { href: '/community', label: '커뮤니티', requiredPlan: 'blogger' },
