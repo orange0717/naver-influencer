@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireAdmin } from '@/lib/admin';
+import { requireAdmin, isRestrictedByUserId } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +72,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const normalized = typeof rawPlan === 'string' ? rawPlan.toUpperCase() : null;
   const plan: 'BLOGGER' | 'INFLUENCER' | null =
     normalized === 'BLOGGER' || normalized === 'INFLUENCER' ? normalized : null;
+
+  // 제한 사용자(경쟁자)에게 유료 플랜 부여 금지. 해제(FREE/null)는 허용.
+  const isGrant = !(rawPlan === null || rawPlan === '' || rawPlan === 'FREE');
+  if (isGrant && await isRestrictedByUserId(id)) {
+    return NextResponse.json(
+      { error: '제한 사용자에게는 유료 플랜을 부여할 수 없습니다.' },
+      { status: 403 }
+    );
+  }
 
   const supabase = createServiceClient();
 
