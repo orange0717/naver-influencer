@@ -57,19 +57,32 @@ export async function requireAdmin(request: NextRequest): Promise<
 
 /**
  * 주어진 userId가 제한된 사용자인지 확인 (users 테이블에서 email 조회 후 판정)
+ *
+ * 보안 정책 (fail-secure):
+ * - DB 오류나 사용자 조회 실패 시 true(제한됨) 반환하여 유료 기능 접근 차단
+ * - 에러 상황에서 "제한 없음"으로 잘못 판정되어 유료 기능이 열리는 것을 방지
  */
 export async function isRestrictedByUserId(userId: string): Promise<boolean> {
   try {
     const supabase = createServiceClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('users')
       .select('email')
       .eq('id', userId)
       .single();
-    if (!data?.email) return false;
+
+    if (error) {
+      console.error('[isRestrictedByUserId] DB error:', error.message);
+      return true; // fail-secure: 에러 시 차단
+    }
+    if (!data?.email) {
+      // 이메일 없는 사용자 계정 — 유료 기능 열지 않음
+      return true;
+    }
     return await isRestricted(data.email);
-  } catch {
-    return false;
+  } catch (err) {
+    console.error('[isRestrictedByUserId] unexpected error:', err);
+    return true; // fail-secure: 예외 시 차단
   }
 }
 
