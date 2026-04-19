@@ -50,10 +50,10 @@ export default function ChatBot() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showLiveAgentCta, setShowLiveAgentCta] = useState(false);
 
-  // 챗봇 패널이 열리면 Tawk.to 비동기 로드 시작 (상담원 연결 준비)
+  // 컴포넌트 마운트 즉시 Tawk.to 백그라운드 로드 시작 (상담원 연결 시 지연 최소화)
   useEffect(() => {
-    if (open) loadTawkOnce();
-  }, [open]);
+    loadTawkOnce();
+  }, []);
 
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
@@ -91,7 +91,7 @@ export default function ChatBot() {
         try { api.maximize?.(); } catch { /* ignore */ }
         // 챗봇 패널은 닫아서 Tawk.to 창에 집중
         setOpen(false);
-      } else if (attempt < 40) {
+      } else if (attempt < 80) {
         setTimeout(() => tryOpen(attempt + 1), 300);
       } else {
         setMessages(prev => [
@@ -221,6 +221,20 @@ export default function ChatBot() {
               </svg>
               상담원 연결하기
             </button>
+
+            {/* 네이버 톡톡 연결 */}
+            <a
+              href="https://talk.naver.com/w4bz2x"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full px-3 py-2 text-xs font-semibold text-white rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5"
+              style={{ backgroundColor: '#03C75A' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#02B351'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#03C75A'; }}
+            >
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-sm bg-white text-[9px] font-black" style={{ color: '#03C75A' }}>N</span>
+              네이버 톡톡으로 문의하기
+            </a>
           </div>
         </div>
       )}
