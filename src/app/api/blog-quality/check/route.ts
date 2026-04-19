@@ -3,9 +3,9 @@
  *
  * Body: { blogId: string }
  *
- * 블로그 품질지수 산출.
- * - 24시간 내 같은 blog_id 결과가 있으면 재사용 (API 쿼터 절약)
- * - Rate limit: 비로그인 IP 1/일, 로그인 3/일, 유료 무제한
+ * 블로그 품질지수 산출 — 완전 무료 공개.
+ * - 24시간 내 같은 blog_id 결과가 있으면 즉시 재사용 (API 쿼터 보호)
+ * - 로그인 유저는 user_id 와 함께 기록되어 본인 검사 이력 조회 가능
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,11 +28,6 @@ function normalizeBlogId(raw: string): string {
     .toLowerCase();
 }
 
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get('x-forwarded-for') || '';
-  return xff.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown';
-}
-
 export async function POST(req: NextRequest) {
   let body: { blogId?: string };
   try {
@@ -50,7 +45,7 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req).catch(() => null);
   const now = Date.now();
 
-  // 24시간 캐시 우선 (쿼터 소비 없이 반환)
+  // 24시간 캐시 우선
   const { data: cached } = await supabase
     .from('blog_quality_checks')
     .select('*')
@@ -72,49 +67,6 @@ export async function POST(req: NextRequest) {
       details: cached.details,
       checkedAt: cached.checked_at,
     });
-  }
-
-  // Rate limit (새로 측정하는 경우에만 적용)
-  const dayAgo = new Date(now - 86400000).toISOString();
-  let limit = 1; // 비로그인 IP 기본
-  let scope: 'ip' | 'user' = 'ip';
-  let rateKey = getClientIp(req);
-
-  if (authUser) {
-    scope = 'user';
-    rateKey = authUser.userId;
-    // 유료 회원 체크
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('subscription_plan, subscription_expires_at')
-      .eq('id', authUser.userId)
-      .single();
-    const isPaid =
-      userRow?.subscription_plan &&
-      (!userRow.subscription_expires_at || new Date(userRow.subscription_expires_at).getTime() > now);
-    limit = isPaid ? Number.POSITIVE_INFINITY : 3;
-  }
-
-  if (Number.isFinite(limit)) {
-    const { count: usedCount } = await supabase
-      .from('blog_quality_rate_limits')
-      .select('*', { count: 'exact', head: true })
-      .eq('ip_or_user', rateKey)
-      .eq('scope', scope)
-      .gte('checked_at', dayAgo);
-
-    if ((usedCount || 0) >= limit) {
-      return NextResponse.json(
-        {
-          error: scope === 'user'
-            ? '일일 검사 한도를 초과했습니다. 유료 플랜에서는 무제한 이용 가능합니다.'
-            : '비로그인 체험은 하루 1회로 제한됩니다. 로그인하시면 3회 가능합니다.',
-          remaining: 0,
-          limit,
-        },
-        { status: 429 }
-      );
-    }
   }
 
   // 실제 계산
@@ -142,12 +94,6 @@ export async function POST(req: NextRequest) {
   if (saveError) {
     console.error('[blog-quality] save error:', saveError);
   }
-
-  // Rate limit 기록
-  await supabase.from('blog_quality_rate_limits').insert({
-    ip_or_user: rateKey,
-    scope,
-  });
 
   return NextResponse.json({
     cached: false,

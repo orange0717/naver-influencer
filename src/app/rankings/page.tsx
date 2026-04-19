@@ -309,7 +309,7 @@ export default function RankingsPage() {
             </div>
 
             <p className="text-[11px] text-dim">
-              · 비로그인 1일 1회, 로그인 1일 3회, 유료 무제한<br />
+              · 누구나 무료로 사용 가능<br />
               · 같은 블로그는 24시간 캐시됩니다
             </p>
 
