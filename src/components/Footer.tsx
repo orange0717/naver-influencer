@@ -1,7 +1,5 @@
 import Link from 'next/link';
 
-const NAVER_TALK_URL = 'https://talk.naver.com/w4bz2x';
-
 const FOOTER_LINKS = [
   { href: '/influencers', label: '리스트' },
   { href: '/keywords/blogger', label: '키워드검색' },
@@ -24,22 +22,12 @@ export default function Footer() {
             <div className="w-7 h-7 rounded-md bg-white/20 flex items-center justify-center text-white font-bold text-xs">N</div>
             <span className="font-title font-extrabold text-white text-sm">N인플</span>
           </div>
-          <nav className="flex flex-wrap gap-4 items-center">
+          <nav className="flex flex-wrap gap-4">
             {FOOTER_LINKS.map(link => (
               <Link key={link.href} href={link.href} className="text-xs text-footer-dim hover:text-white transition-colors">
                 {link.label}
               </Link>
             ))}
-            <a
-              href={NAVER_TALK_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-semibold text-white inline-flex items-center gap-1 px-2.5 py-1 rounded-full transition"
-              style={{ backgroundColor: '#03C75A' }}
-            >
-              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-sm bg-white text-[9px] font-black" style={{ color: '#03C75A' }}>N</span>
-              고객센터
-            </a>
           </nav>
         </div>
 
