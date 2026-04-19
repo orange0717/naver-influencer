@@ -44,7 +44,7 @@ export default function InfluencerRankingView() {
         ninfl: 'true',
         sort: 'keyword_score',
         order: 'desc',
-        limit: '50',
+        limit: '2000',
         page: '1',
       });
       if (cat && cat !== '전체') params.set('category', cat);
@@ -86,9 +86,14 @@ export default function InfluencerRankingView() {
       </div>
 
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-bold">
-            {category === '전체' ? 'Top 50 인플루언서 순위' : `${category} Top 50`}
+            {category === '전체' ? '전체 인플루언서 순위' : `${category} 전체`}
+            {influencers.length > 0 && (
+              <span className="ml-1.5 text-[11px] font-semibold text-dim">
+                {influencers.length.toLocaleString()}명
+              </span>
+            )}
           </h2>
           {loading && (
             <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
@@ -110,28 +115,28 @@ export default function InfluencerRankingView() {
               <a
                 key={inf.naverId}
                 href={`/influencers/${encodeURIComponent(inf.naverId)}`}
-                className="flex items-center gap-3 px-5 py-3 hover:bg-bg transition"
+                className="flex items-center gap-2.5 px-4 py-2 hover:bg-bg transition"
               >
-                <span className="w-10 text-sm font-bold text-accent font-rank shrink-0">
+                <span className="w-7 text-xs font-bold text-accent font-rank shrink-0 text-right tabular-nums">
                   {category === '전체' ? (inf.ninflRank ?? idx + 1) : idx + 1}
                 </span>
                 {inf.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={inf.imageUrl} alt="" className="w-8 h-8 rounded-full shrink-0 object-cover" />
+                  <img src={inf.imageUrl} alt="" loading="lazy" className="w-8 h-8 rounded-full shrink-0 object-cover" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-bg shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{inf.name}</p>
-                  <div className="flex items-center gap-2 text-[11px] text-dim">
-                    {inf.myKeywordCategory && <span>{inf.myKeywordCategory}</span>}
-                    <span>· 팬 {inf.subscriberCount?.toLocaleString() || 0}</span>
+                  <p className="text-sm font-semibold truncate leading-tight">{inf.name}</p>
+                  <div className="flex items-center gap-1.5 text-[11px] text-dim leading-tight mt-0.5">
+                    {inf.myKeywordCategory && <span className="truncate">{inf.myKeywordCategory}</span>}
+                    <span className="shrink-0">· 팬 {inf.subscriberCount?.toLocaleString() || 0}</span>
                     {typeof inf.integratedTop3Count === 'number' && (
-                      <span>· TOP3 {inf.integratedTop3Count}</span>
+                      <span className="shrink-0">· TOP3 {inf.integratedTop3Count}</span>
                     )}
                   </div>
                 </div>
-                <span className="text-xs text-dim font-mono shrink-0">
+                <span className="text-xs text-dim font-mono shrink-0 tabular-nums">
                   {typeof inf.keywordScore === 'number' ? Math.round(inf.keywordScore) : 0}점
                 </span>
               </a>
@@ -139,10 +144,6 @@ export default function InfluencerRankingView() {
           </div>
         )}
       </div>
-
-      <p className="text-[11px] text-dim text-center">
-        전체 인플루언서 리스트는 <a href="/influencers" className="underline">인플루언서 리스트</a>에서 카테고리·정렬·검색으로 조회하세요.
-      </p>
     </>
   );
 }

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get('category') || undefined;
   const search = searchParams.get('search') || undefined;
   const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50));
+  const limit = Math.min(2000, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50));
   const newOnly = searchParams.get('new') === 'true';
   const showInactive = searchParams.get('inactive') === 'true';
   const sortBy = searchParams.get('sort') || 'first_seen_at';
