@@ -187,17 +187,6 @@ export default function ChatBot() {
               </div>
             ) : (
               <>
-                {showLiveAgentCta && (
-                  <button
-                    onClick={handleConnectAgent}
-                    className="w-full px-3 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-hover transition cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                    </svg>
-                    고객센터 직원으로 연결하기
-                  </button>
-                )}
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {filteredFaq.map((faq, i) => (
                     <button
@@ -217,6 +206,21 @@ export default function ChatBot() {
                 </button>
               </>
             )}
+
+            {/* 상담원 연결 — 항상 노출 (강조 CTA는 답변 후 표시) */}
+            <button
+              onClick={handleConnectAgent}
+              className={
+                showLiveAgentCta
+                  ? "w-full px-3 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-hover transition cursor-pointer flex items-center justify-center gap-1.5"
+                  : "w-full px-3 py-2 text-xs font-semibold bg-white border border-accent text-accent rounded-lg hover:bg-accent/5 transition cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+              }
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+              상담원 연결하기
+            </button>
           </div>
         </div>
       )}
