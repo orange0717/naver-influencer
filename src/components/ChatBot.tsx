@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FAQ_DATA, FAQ_CATEGORIES } from '@/data/faq-data';
 
 interface Message {
@@ -8,39 +8,8 @@ interface Message {
   text: string;
 }
 
-// Tawk.to 실시간 상담원 연결
-const TAWK_PROPERTY_ID = '69e45c7bb7e2101c33b3cd82';
-const TAWK_WIDGET_ID = '1jmi0igtn';
-
-declare global {
-  interface Window {
-    Tawk_API?: {
-      maximize?: () => void;
-      showWidget?: () => void;
-      hideWidget?: () => void;
-      onLoad?: () => void;
-      visitor?: { name?: string; email?: string };
-    };
-    Tawk_LoadStart?: Date;
-  }
-}
-
-function loadTawkOnce() {
-  if (typeof window === 'undefined') return;
-  if (window.Tawk_API && window.Tawk_API.maximize) return;
-  window.Tawk_API = window.Tawk_API || {};
-  window.Tawk_LoadStart = new Date();
-  // 로드 완료 즉시 플로팅 버튼 숨기기 (N인플 챗봇과 겹치지 않도록)
-  window.Tawk_API.onLoad = function () {
-    try { window.Tawk_API?.hideWidget?.(); } catch { /* ignore */ }
-  };
-  const s = document.createElement('script');
-  s.async = true;
-  s.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
-  s.charset = 'UTF-8';
-  s.setAttribute('crossorigin', '*');
-  document.head.appendChild(s);
-}
+// 네이버 톡톡 고객 문의 링크
+const NAVER_TALK_URL = 'https://talk.naver.com/w4bz2x';
 
 export default function ChatBot() {
   const [open, setOpen] = useState(false);
@@ -49,11 +18,6 @@ export default function ChatBot() {
   ]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showLiveAgentCta, setShowLiveAgentCta] = useState(false);
-
-  // 컴포넌트 마운트 즉시 Tawk.to 백그라운드 로드 시작 (상담원 연결 시 지연 최소화)
-  useEffect(() => {
-    loadTawkOnce();
-  }, []);
 
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
@@ -76,31 +40,13 @@ export default function ChatBot() {
   };
 
   const handleConnectAgent = () => {
-    loadTawkOnce();
+    // 앵커 태그(target="_blank")가 실제 이동을 담당하므로 상태만 업데이트
     setMessages(prev => [
       ...prev,
       { type: 'user', text: '상담원 연결하기' },
-      { type: 'bot', text: '상담원 채팅창을 열었습니다. 잠시만 기다려주세요!' },
+      { type: 'bot', text: '네이버 톡톡 상담 페이지를 새 창으로 열었습니다.' },
     ]);
     setShowLiveAgentCta(false);
-    // 위젯 로드 대기 후 열기 (최대 12초)
-    const tryOpen = (attempt = 0) => {
-      const api = window.Tawk_API;
-      if (api && typeof api.maximize === 'function') {
-        try { api.showWidget?.(); } catch { /* ignore */ }
-        try { api.maximize?.(); } catch { /* ignore */ }
-        // 챗봇 패널은 닫아서 Tawk.to 창에 집중
-        setOpen(false);
-      } else if (attempt < 80) {
-        setTimeout(() => tryOpen(attempt + 1), 300);
-      } else {
-        setMessages(prev => [
-          ...prev,
-          { type: 'bot', text: '상담원 채팅을 여는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
-        ]);
-      }
-    };
-    tryOpen();
   };
 
   const handleReset = () => {
@@ -207,33 +153,19 @@ export default function ChatBot() {
               </>
             )}
 
-            {/* 상담원 연결 — 항상 노출 (강조 CTA는 답변 후 표시) */}
-            <button
-              onClick={handleConnectAgent}
-              className={
-                showLiveAgentCta
-                  ? "w-full px-3 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-hover transition cursor-pointer flex items-center justify-center gap-1.5"
-                  : "w-full px-3 py-2 text-xs font-semibold bg-white border border-accent text-accent rounded-lg hover:bg-accent/5 transition cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-              }
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-              상담원 연결하기
-            </button>
-
-            {/* 네이버 톡톡 연결 */}
+            {/* 네이버 톡톡 상담원 연결 — 항상 노출 */}
             <a
-              href="https://talk.naver.com/w4bz2x"
+              href={NAVER_TALK_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full px-3 py-2 text-xs font-semibold text-white rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5"
+              onClick={handleConnectAgent}
+              className={`w-full px-3 py-2 text-xs font-bold text-white rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${showLiveAgentCta ? '' : 'mt-2'}`}
               style={{ backgroundColor: '#03C75A' }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#02B351'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#03C75A'; }}
             >
               <span className="inline-flex items-center justify-center w-4 h-4 rounded-sm bg-white text-[9px] font-black" style={{ color: '#03C75A' }}>N</span>
-              네이버 톡톡으로 문의하기
+              네이버 톡톡으로 상담원 연결
             </a>
           </div>
         </div>
