@@ -57,6 +57,13 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: '/competitor', label: '경쟁자 분석' },
   {
+    label: '랭킹',
+    children: [
+      { href: '/rankings', label: '블로거 · 인플루언서 랭킹' },
+      { href: '/blog-quality', label: '블로그 품질지수 (무료)' },
+    ],
+  },
+  {
     label: '인플루언서',
     children: [
       { href: '/influencers', label: '리스트', requiredPlan: 'influencer' },
