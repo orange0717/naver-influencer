@@ -47,6 +47,72 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 /**
+ * PATCH /api/admin/members/[id] — 회원 구독 플랜 변경
+ *
+ * Body:
+ * {
+ *   plan: 'BLOGGER' | 'INFLUENCER' | null,   // null 이면 무료로 되돌림
+ *   durationDays?: number                     // plan 이 있을 때 필수 (1~3650)
+ * }
+ */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (auth.error) return auth.error;
+
+  const { id } = await params;
+
+  let body: { plan?: string | null; durationDays?: number };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: '요청 본문을 읽을 수 없습니다.' }, { status: 400 });
+  }
+
+  const rawPlan = body.plan;
+  const normalized = typeof rawPlan === 'string' ? rawPlan.toUpperCase() : null;
+  const plan: 'BLOGGER' | 'INFLUENCER' | null =
+    normalized === 'BLOGGER' || normalized === 'INFLUENCER' ? normalized : null;
+
+  const supabase = createServiceClient();
+
+  // 무료로 되돌리기
+  if (rawPlan === null || rawPlan === '' || rawPlan === 'FREE') {
+    const { error } = await supabase
+      .from('users')
+      .update({ subscription_plan: null, subscription_expires_at: null })
+      .eq('id', id);
+    if (error) {
+      console.error('[admin/members/PATCH] reset error:', error);
+      return NextResponse.json({ error: '변경 실패' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, plan: null, expiresAt: null });
+  }
+
+  if (!plan) {
+    return NextResponse.json({ error: 'plan은 BLOGGER, INFLUENCER 또는 null 이어야 합니다.' }, { status: 400 });
+  }
+
+  const durationDays = Number(body.durationDays);
+  if (!Number.isFinite(durationDays) || durationDays <= 0 || durationDays > 3650) {
+    return NextResponse.json({ error: 'durationDays는 1~3650 사이여야 합니다.' }, { status: 400 });
+  }
+
+  const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await supabase
+    .from('users')
+    .update({ subscription_plan: plan, subscription_expires_at: expiresAt })
+    .eq('id', id);
+
+  if (error) {
+    console.error('[admin/members/PATCH] update error:', error);
+    return NextResponse.json({ error: '변경 실패' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true, plan, expiresAt });
+}
+
+/**
  * DELETE /api/admin/members/[id] — 회원 삭제
  */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

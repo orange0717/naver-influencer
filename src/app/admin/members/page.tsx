@@ -32,6 +32,10 @@ export default function AdminMembersPage() {
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<MemberDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [planEditing, setPlanEditing] = useState(false);
+  const [planChoice, setPlanChoice] = useState<'INFLUENCER' | 'BLOGGER' | 'FREE'>('INFLUENCER');
+  const [planDuration, setPlanDuration] = useState(30);
+  const [planSaving, setPlanSaving] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -57,10 +61,58 @@ export default function AdminMembersPage() {
   const openDetail = async (id: string) => {
     setDetailLoading(true);
     setDetail(null);
+    setPlanEditing(false);
     const res = await fetch(`/api/admin/members/${id}`);
     const data = await res.json();
     setDetail(data);
+    // 편집 기본값: 현재 플랜 유지, 없으면 INFLUENCER
+    const current = data?.user?.subscription_plan;
+    setPlanChoice(current === 'BLOGGER' || current === 'INFLUENCER' ? current : 'INFLUENCER');
+    setPlanDuration(30);
     setDetailLoading(false);
+  };
+
+  const savePlan = async () => {
+    if (!detail || planSaving) return;
+    const body: { plan: string | null; durationDays?: number } =
+      planChoice === 'FREE'
+        ? { plan: null }
+        : { plan: planChoice, durationDays: planDuration };
+
+    const label =
+      planChoice === 'FREE'
+        ? '무료(구독 해제)'
+        : `${planChoice === 'INFLUENCER' ? '인플루언서' : '블로거'} · ${planDuration}일`;
+    if (!window.confirm(`"${detail.user.nickname || detail.user.email}" 님을 ${label}로 변경하시겠습니까?`)) return;
+
+    setPlanSaving(true);
+    try {
+      const res = await fetch(`/api/admin/members/${detail.user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || '변경 실패');
+        return;
+      }
+      // 상세 갱신
+      setDetail({
+        ...detail,
+        user: {
+          ...detail.user,
+          subscription_plan: data.plan,
+          subscription_expires_at: data.expiresAt,
+        },
+      });
+      setPlanEditing(false);
+      fetchMembers();
+    } catch {
+      alert('네트워크 오류');
+    } finally {
+      setPlanSaving(false);
+    }
   };
 
   const handleDelete = async (id: string, nickname: string) => {
@@ -204,6 +256,12 @@ export default function AdminMembersPage() {
                           (~{new Date(detail.user.subscription_expires_at).toLocaleDateString('ko-KR')})
                         </span>
                       )}
+                      <button
+                        onClick={() => setPlanEditing(v => !v)}
+                        className="ml-2 text-[10px] font-bold text-accent underline underline-offset-2 cursor-pointer"
+                      >
+                        {planEditing ? '닫기' : '변경'}
+                      </button>
                     </p>
                   </div>
                   <div>
@@ -224,6 +282,70 @@ export default function AdminMembersPage() {
                       {detail.influencer.display_name} ({detail.influencer.naver_id})
                       <span className="text-dim text-xs ml-2">{detail.influencer.category} · 팬 {detail.influencer.fan_count.toLocaleString()}</span>
                     </p>
+                  </div>
+                )}
+
+                {/* 플랜 변경 */}
+                {planEditing && (
+                  <div className="bg-bg rounded-xl p-3 border border-accent/30 space-y-3">
+                    <p className="text-xs font-bold text-accent">플랜 변경</p>
+                    <div className="flex gap-1.5">
+                      {([
+                        ['INFLUENCER', '인플루언서'],
+                        ['BLOGGER', '블로거'],
+                        ['FREE', '무료(해제)'],
+                      ] as const).map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => setPlanChoice(val)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                            planChoice === val
+                              ? 'bg-accent text-white'
+                              : 'bg-surface text-dim border border-border hover:text-text'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {planChoice !== 'FREE' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            max={3650}
+                            value={planDuration}
+                            onChange={e => setPlanDuration(Math.max(1, Math.min(3650, parseInt(e.target.value) || 1)))}
+                            className="w-20 px-2 py-1.5 bg-surface border border-border rounded-lg text-xs"
+                          />
+                          <span className="text-xs text-dim">일</span>
+                          <span className="text-[11px] text-dim">
+                            만료: {new Date(Date.now() + planDuration * 86400000).toLocaleDateString('ko-KR')}
+                          </span>
+                        </div>
+                        <div className="flex gap-1">
+                          {[7, 30, 90, 365].map(d => (
+                            <button
+                              key={d}
+                              onClick={() => setPlanDuration(d)}
+                              className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface border border-border text-dim hover:text-accent hover:border-accent/40 cursor-pointer"
+                            >
+                              {d}일
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={savePlan}
+                      disabled={planSaving}
+                      className="w-full px-3 py-2 bg-accent text-white font-bold rounded-lg text-xs hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+                    >
+                      {planSaving ? '저장 중...' : '저장'}
+                    </button>
                   </div>
                 )}
 
