@@ -16,6 +16,14 @@ interface InfluencerRank {
   ninflRank?: number | null;
 }
 
+function formatScore(n?: number): string {
+  if (typeof n !== 'number' || !isFinite(n)) return '0점';
+  const v = Math.round(n);
+  if (v >= 100_000_000) return (v / 100_000_000).toFixed(1) + '억점';
+  if (v >= 10_000) return (v / 10_000).toFixed(1) + '만점';
+  return v.toLocaleString() + '점';
+}
+
 const CATEGORIES = [
   '전체',
   '여행',
@@ -110,14 +118,14 @@ export default function InfluencerRankingView() {
               : `${category} 카테고리에 해당하는 인플루언서가 없습니다.`}
           </p>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x divide-border">
             {influencers.map((inf, idx) => (
               <a
                 key={inf.naverId}
                 href={`/influencers/${encodeURIComponent(inf.naverId)}`}
-                className="flex items-center gap-2.5 px-4 py-2 hover:bg-bg transition"
+                className="flex items-center gap-2.5 px-4 py-2 hover:bg-bg transition border-b border-border"
               >
-                <span className="w-7 text-xs font-bold text-accent font-rank shrink-0 text-right tabular-nums">
+                <span className="w-8 text-xs font-bold text-accent font-rank shrink-0 text-right tabular-nums">
                   {category === '전체' ? (inf.ninflRank ?? idx + 1) : idx + 1}
                 </span>
                 {inf.imageUrl ? (
@@ -137,7 +145,7 @@ export default function InfluencerRankingView() {
                   </div>
                 </div>
                 <span className="text-xs text-dim font-mono shrink-0 tabular-nums">
-                  {typeof inf.keywordScore === 'number' ? Math.round(inf.keywordScore) : 0}점
+                  {formatScore(inf.keywordScore)}
                 </span>
               </a>
             ))}

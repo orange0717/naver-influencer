@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function InfluencerRankingPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <div>
         <nav className="text-[11px] text-dim mb-2">
           <a href="/rankings" className="underline">랭킹</a> · 인플루언서 순위
