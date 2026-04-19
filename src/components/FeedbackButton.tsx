@@ -33,6 +33,13 @@ export default function FeedbackButton() {
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, handleClose]);
 
+  // 외부(ChatBot 등)에서 열기 위한 커스텀 이벤트 리스너
+  useEffect(() => {
+    const handleOpen = () => setOpen(true);
+    window.addEventListener('open-feedback', handleOpen);
+    return () => window.removeEventListener('open-feedback', handleOpen);
+  }, []);
+
   const handleSubmit = async () => {
     if (!message.trim() || sending) return;
     setSending(true);
@@ -70,17 +77,7 @@ export default function FeedbackButton() {
 
   return (
     <>
-      {/* 플로팅 버튼 */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-6 z-40 w-14 h-14 rounded-full bg-white text-accent shadow-lg border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center cursor-pointer"
-        title="피드백 보내기"
-        aria-label="피드백 보내기"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      </button>
+      {/* 플로팅 버튼은 ChatBot 헤더로 통합됨 — 'open-feedback' 이벤트로 호출 */}
 
       {/* 모달 */}
       {open && (
