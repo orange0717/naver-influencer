@@ -18,7 +18,7 @@ export default function ChatBot() {
         padding: '0 22px',
         fontSize: '14px',
         letterSpacing: '-0.3px',
-        borderRadius: '12px',
+        borderRadius: '999px',
         boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
       }}
     >
