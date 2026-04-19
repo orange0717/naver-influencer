@@ -124,10 +124,7 @@ export default function BlogQualityChecker() {
           <div className="bg-bg rounded-xl p-5 text-center">
             <p className="text-[11px] text-dim">{qualityResult.blogId}</p>
             <p className={`text-5xl font-extrabold mt-2 ${GRADE_COLOR[qualityResult.grade] || ''}`}>
-              {qualityResult.score}
-            </p>
-            <p className={`text-lg font-bold mt-1 ${GRADE_COLOR[qualityResult.grade] || ''}`}>
-              {qualityResult.gradeLabel || GRADE_LABEL[qualityResult.grade]}
+              {qualityResult.score}<span className="text-2xl">%</span>
             </p>
             <p className="text-[10px] text-dim mt-2">
               {qualityResult.cached ? '24시간 내 캐시된 결과' : '방금 측정'}
@@ -137,15 +134,15 @@ export default function BlogQualityChecker() {
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-bg rounded-lg p-3 text-center">
               <p className="text-[10px] text-dim">검색노출 (70%)</p>
-              <p className="text-lg font-bold mt-1">{qualityResult.exposureScore}</p>
+              <p className="text-lg font-bold mt-1">{qualityResult.exposureScore}%</p>
             </div>
             <div className="bg-bg rounded-lg p-3 text-center">
               <p className="text-[10px] text-dim">활동성 (15%)</p>
-              <p className="text-lg font-bold mt-1">{qualityResult.activityScore}</p>
+              <p className="text-lg font-bold mt-1">{qualityResult.activityScore}%</p>
             </div>
             <div className="bg-bg rounded-lg p-3 text-center">
               <p className="text-[10px] text-dim">주제집중도 (15%)</p>
-              <p className="text-lg font-bold mt-1">{qualityResult.topicScore}</p>
+              <p className="text-lg font-bold mt-1">{qualityResult.topicScore}%</p>
             </div>
           </div>
 

@@ -1,11 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FAQ_DATA, FAQ_CATEGORIES } from '@/data/faq-data';
 
 interface Message {
   type: 'bot' | 'user';
   text: string;
+}
+
+// Tawk.to 실시간 상담원 연결
+const TAWK_PROPERTY_ID = '69e45c7bb7e2101c33b3cd82';
+const TAWK_WIDGET_ID = '1jmi0igtn';
+
+declare global {
+  interface Window {
+    Tawk_API?: {
+      maximize?: () => void;
+      showWidget?: () => void;
+      hideWidget?: () => void;
+      onLoad?: () => void;
+      visitor?: { name?: string; email?: string };
+    };
+    Tawk_LoadStart?: Date;
+  }
+}
+
+function loadTawkOnce() {
+  if (typeof window === 'undefined') return;
+  if (window.Tawk_API && window.Tawk_API.maximize) return;
+  window.Tawk_API = window.Tawk_API || {};
+  window.Tawk_LoadStart = new Date();
+  // 로드 완료 즉시 플로팅 버튼 숨기기 (N인플 챗봇과 겹치지 않도록)
+  window.Tawk_API.onLoad = function () {
+    try { window.Tawk_API?.hideWidget?.(); } catch { /* ignore */ }
+  };
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
+  s.charset = 'UTF-8';
+  s.setAttribute('crossorigin', '*');
+  document.head.appendChild(s);
 }
 
 export default function ChatBot() {
@@ -14,6 +48,12 @@ export default function ChatBot() {
     { type: 'bot', text: '안녕하세요! N인플 고객센터입니다.\n궁금한 카테고리를 선택해주세요.' },
   ]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showLiveAgentCta, setShowLiveAgentCta] = useState(false);
+
+  // 챗봇 패널이 열리면 Tawk.to 비동기 로드 시작 (상담원 연결 준비)
+  useEffect(() => {
+    if (open) loadTawkOnce();
+  }, [open]);
 
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
@@ -22,6 +62,7 @@ export default function ChatBot() {
       { type: 'user', text: cat },
       { type: 'bot', text: '궁금한 질문을 선택해주세요.' },
     ]);
+    setShowLiveAgentCta(false);
   };
 
   const handleQuestionSelect = (q: string, a: string) => {
@@ -29,11 +70,42 @@ export default function ChatBot() {
       ...prev,
       { type: 'user', text: q },
       { type: 'bot', text: a },
+      { type: 'bot', text: '답변이 도움이 되셨나요?\n추가로 궁금한 점이 있으시면 고객센터 직원으로 연결해드릴까요?' },
     ]);
+    setShowLiveAgentCta(true);
+  };
+
+  const handleConnectAgent = () => {
+    loadTawkOnce();
+    setMessages(prev => [
+      ...prev,
+      { type: 'user', text: '상담원 연결하기' },
+      { type: 'bot', text: '상담원 채팅창을 열었습니다. 잠시만 기다려주세요!' },
+    ]);
+    setShowLiveAgentCta(false);
+    // 위젯 로드 대기 후 열기 (최대 12초)
+    const tryOpen = (attempt = 0) => {
+      const api = window.Tawk_API;
+      if (api && typeof api.maximize === 'function') {
+        try { api.showWidget?.(); } catch { /* ignore */ }
+        try { api.maximize?.(); } catch { /* ignore */ }
+        // 챗봇 패널은 닫아서 Tawk.to 창에 집중
+        setOpen(false);
+      } else if (attempt < 40) {
+        setTimeout(() => tryOpen(attempt + 1), 300);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          { type: 'bot', text: '상담원 채팅을 여는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
+        ]);
+      }
+    };
+    tryOpen();
   };
 
   const handleReset = () => {
     setSelectedCategory(null);
+    setShowLiveAgentCta(false);
     setMessages([
       { type: 'bot', text: '안녕하세요! N인플 고객센터입니다.\n궁금한 카테고리를 선택해주세요.' },
     ]);
@@ -115,6 +187,17 @@ export default function ChatBot() {
               </div>
             ) : (
               <>
+                {showLiveAgentCta && (
+                  <button
+                    onClick={handleConnectAgent}
+                    className="w-full px-3 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-hover transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    </svg>
+                    고객센터 직원으로 연결하기
+                  </button>
+                )}
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {filteredFaq.map((faq, i) => (
                     <button

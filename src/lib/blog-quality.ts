@@ -263,7 +263,7 @@ function gradeFromScore(score: number): { grade: QualityBreakdown['grade']; labe
   if (score >= 70) return { grade: 'EXCELLENT', label: '우수' };
   if (score >= 55) return { grade: 'GOOD', label: '양호' };
   if (score >= 35) return { grade: 'NORMAL', label: '일반' };
-  return { grade: 'LOW', label: '저품질' };
+  return { grade: 'LOW', label: '기초' };
 }
 
 /**
