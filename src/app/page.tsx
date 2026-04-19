@@ -70,8 +70,6 @@ export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
   const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
-  // 로딩 완료 후 결과가 0명이면 섹션 전체를 숨김 (엄격 모드: naver_created_at 기준 7일)
-  const showNewInfluencersSection = !newInfluencersLoaded || newInfluencers.length > 0;
   const [demoOpen, setDemoOpen] = useState(false);
 
   return (
@@ -117,10 +115,9 @@ export default function LandingPage() {
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
 
-      {showNewInfluencersSection && <SectionDivider />}
+      <SectionDivider />
 
       {/* ═══════════ 신규 인플루언서 (surface) ═══════════ */}
-      {showNewInfluencersSection && (
       <section className="bg-surface px-4 py-16 md:py-20">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
@@ -163,6 +160,11 @@ export default function LandingPage() {
                   </a>
                 ))}
               </div>
+            ) : newInfluencersLoaded ? (
+              <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-bg/60">
+                <p className="text-sm text-text font-semibold mb-1">최근 7일간 새로 선정된 인플루언서가 없습니다</p>
+                <p className="text-xs text-dim">네이버 인플루언서 신규 선정은 비정기적으로 이루어집니다. 새로운 인플루언서가 선정되면 이곳에 표시됩니다.</p>
+              </div>
             ) : (
               <div className="text-center py-8 text-sm text-dim">
                 최근 선정된 인플루언서 정보를 불러오는 중...
@@ -176,7 +178,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-      )}
 
       <SectionDivider />
 
