@@ -2,6 +2,10 @@
 
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+
+// 관리자 이메일 (방문자 카운트 제외)
+const ADMIN_EMAILS = ['orange@orangelibrary.co.kr'];
 
 function getDeviceType(): string {
   if (typeof navigator === 'undefined') return 'desktop';
@@ -16,6 +20,18 @@ function extractDomain(url: string): string | null {
     return new URL(url).hostname.replace(/^www\./, '');
   } catch {
     return null;
+  }
+}
+
+/** 관리자 이메일인지 확인 (Supabase 세션에서 이메일 조회) */
+async function isAdminUser(): Promise<boolean> {
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase.auth.getUser();
+    const email = data?.user?.email?.toLowerCase();
+    return email ? ADMIN_EMAILS.includes(email) : false;
+  } catch {
+    return false;
   }
 }
 
@@ -59,20 +75,24 @@ export default function VisitTracker() {
 
     // visit_logs + site_visits: 1인 1일 1회만 기록 (순 방문자)
     if (isFirstVisit) {
-      fetch('/api/analytics/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: pathname,
-          referrer: isSameSite ? '' : referrer,
-          referrer_domain: isSameSite ? null : referrerDomain,
-          utm_source: searchParams.get('utm_source') || null,
-          utm_medium: searchParams.get('utm_medium') || null,
-          utm_campaign: searchParams.get('utm_campaign') || null,
-          device_type: getDeviceType(),
-          first_visit: true,
-        }),
-      }).catch(() => {});
+      // 관리자 이메일은 카운트에서 제외
+      isAdminUser().then(isAdmin => {
+        if (isAdmin) return;
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: pathname,
+            referrer: isSameSite ? '' : referrer,
+            referrer_domain: isSameSite ? null : referrerDomain,
+            utm_source: searchParams.get('utm_source') || null,
+            utm_medium: searchParams.get('utm_medium') || null,
+            utm_campaign: searchParams.get('utm_campaign') || null,
+            device_type: getDeviceType(),
+            first_visit: true,
+          }),
+        }).catch(() => {});
+      });
     }
   }, [pathname, searchParams]);
 
