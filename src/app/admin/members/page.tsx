@@ -14,6 +14,7 @@ interface Member {
   subscription_plan: string | null;
   subscription_expires_at: string | null;
   created_at: string;
+  visit_count: number;
 }
 
 interface MemberDetail {
@@ -164,6 +165,8 @@ export default function AdminMembersPage() {
                 <th className="text-left px-3 py-2.5 font-semibold">블로그</th>
                 <th className="text-left px-3 py-2.5 font-semibold">인플루언서</th>
                 <th className="text-center px-3 py-2.5 font-semibold">플랜</th>
+                <th className="text-right px-3 py-2.5 font-semibold">기간</th>
+                <th className="text-right px-3 py-2.5 font-semibold">방문횟수</th>
                 <th className="text-right px-3 py-2.5 font-semibold">가입일</th>
               </tr>
             </thead>
@@ -186,12 +189,22 @@ export default function AdminMembersPage() {
                     ) : <span className="text-[10px] text-dim">무료</span>}
                   </td>
                   <td className="px-3 py-2.5 text-right text-xs text-dim">
+                    {m.subscription_plan && m.subscription_expires_at ? (() => {
+                      const remainMs = new Date(m.subscription_expires_at).getTime() - Date.now();
+                      const remainDays = Math.max(0, Math.ceil(remainMs / 86400000));
+                      return remainDays > 0 ? `${remainDays}일 남음` : '만료';
+                    })() : '-'}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-xs text-dim font-rank">
+                    {m.visit_count?.toLocaleString() || 0}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-xs text-dim">
                     {new Date(m.created_at).toLocaleDateString('ko-KR')}
                   </td>
                 </tr>
               ))}
               {members.length === 0 && (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
               )}
             </tbody>
           </table>

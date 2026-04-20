@@ -47,9 +47,24 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 방문 횟수 (visit_logs 최대 90일 보관)
+  const userIds = (users || []).map(u => u.id);
+  const visitCountMap = new Map<string, number>();
+  if (userIds.length > 0) {
+    const { data: visits } = await supabase
+      .from('visit_logs')
+      .select('user_id')
+      .in('user_id', userIds);
+    for (const v of (visits || [])) {
+      if (!v.user_id) continue;
+      visitCountMap.set(v.user_id, (visitCountMap.get(v.user_id) || 0) + 1);
+    }
+  }
+
   const result = (users || []).map(u => ({
     ...u,
     influencer_name: u.linked_influencer_id ? infMap.get(u.linked_influencer_id) || null : null,
+    visit_count: visitCountMap.get(u.id) || 0,
   }));
 
   return NextResponse.json({
