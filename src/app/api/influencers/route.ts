@@ -61,7 +61,7 @@ async function getInfluencersFromDB(
   ];
   const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
-  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank';
+  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank, stopped_manual';
 
   // 공통 필터 적용 헬퍼 (배치 페치 때 재사용)
   const applyFilters = <T extends { or: (f: string) => T; not: (c: string, op: string, v: unknown) => T; gt: (c: string, v: unknown) => T; gte: (c: string, v: unknown) => T }>(q: T): T => {
@@ -117,7 +117,8 @@ async function getInfluencersFromDB(
   // NULL은 항상 맨 뒤로
   const isDateSort = sortColumn === 'naver_created_at';
 
-  // N인플 순위: 활성(검증된 최근 365일 참여) → 미검증(두 값 NULL) → 활동중단(365일 초과)
+  // N인플 순위: 활성 → 활동중단(관리자 수동 지정)
+  // stopped_manual = true 인 인플루언서만 활동중단 그룹으로 이동.
   // Supabase max-rows(1000) 캡 때문에 배치로 전부 가져와서 서버에서 분류·정렬·페이지네이션
   const isGroupSort = ninflRanking && !isRatioSort;
 
@@ -162,16 +163,10 @@ async function getInfluencersFromDB(
 
   if (error) throw new Error(error.message);
 
-  const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  // 활성 그룹 판정: last_challenged_at(실제 참여일) 우선, 없으면 last_crawled_at 사용
-  // 0 = 활성(365일 내), 1 = 미검증(두 값 모두 NULL), 2 = 활동중단(365일 초과)
+  // 활동 그룹 판정: 관리자 수동 지정(stopped_manual)만 사용
+  // 0 = 활성, 1 = 활동중단(관리자 지정)
   const activityGroup = (inf: Record<string, unknown>): number => {
-    const ref = (inf.last_challenged_at as string | null | undefined)
-      || (inf.last_crawled_at as string | null | undefined);
-    if (!ref) return 1;
-    const age = now - new Date(ref).getTime();
-    return age <= YEAR_MS ? 0 : 2;
+    return inf.stopped_manual === true ? 1 : 0;
   };
 
   // N인플 그룹 정렬 + 활성 그룹만 ninflRank 부여 (slice 전 전체 기준)
@@ -291,11 +286,8 @@ async function getInfluencersFromDB(
     lastCrawledAt: inf.last_crawled_at || null,
     lastChallengedAt: inf.last_challenged_at || null,
     isInactive: !inf.image_url && (inf.subscriber_count || 0) === 0,
-    // 활동중단 판정: last_challenged_at 우선, 없으면 last_crawled_at. 둘 다 NULL이면 중단 아님(미검증)
-    isStopped: (() => {
-      const ref = inf.last_challenged_at || inf.last_crawled_at;
-      return ref ? (Date.now() - new Date(ref).getTime()) > 365 * 24 * 60 * 60 * 1000 : false;
-    })(),
+    // 활동중단 판정: 관리자 수동 지정(stopped_manual)만 사용 — 자동 분류 없음
+    isStopped: inf.stopped_manual === true,
     officialNaverRank: inf.official_naver_rank || null,
     officialRankCategory: inf.official_rank_category || null,
     keywordScore: inf.keyword_score || 0,
