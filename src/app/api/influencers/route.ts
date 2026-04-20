@@ -182,10 +182,20 @@ async function getInfluencersFromDB(
     }
   }
 
-  // 활동 그룹 판정: 관리자 수동 지정(stopped_manual)만 사용
-  // 0 = 활성, 1 = 활동중단(관리자 지정)
+  // 활동 그룹 판정: 3단계
+  // 0 = 활성 (keyword_score > 0 이거나 최근 1년 내 챌린지 참여)
+  // 1 = 비활성 (1년 이상 챌린지 이력 없음)
+  // 2 = 활동중단 (관리자 수동 지정)
   const activityGroup = (inf: Record<string, unknown>): number => {
-    return stoppedSet.has(inf.id as string) ? 1 : 0;
+    if (stoppedSet.has(inf.id as string)) return 2;
+    const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
+    const lastMs = inf.last_challenged_at ? new Date(inf.last_challenged_at as string).getTime() : 0;
+    const isOldChallenge = lastMs > 0 && lastMs < oneYearAgo;
+    const isEmpty = !inf.image_url
+      && (inf.subscriber_count || 0) === 0
+      && (inf.total_follower_count || 0) === 0;
+    if (isOldChallenge || isEmpty) return 1;
+    return 0;
   };
 
   // N인플 그룹 정렬 + 활성 그룹만 ninflRank 부여 (slice 전 전체 기준)
