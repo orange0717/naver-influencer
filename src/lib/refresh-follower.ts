@@ -1,15 +1,32 @@
 import { createServiceClient } from '@/lib/supabase-server';
 
 const PROFILE_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 
-/** 네이버 프로필에서 최신 팔로워수 가져와 DB 갱신 (6시간 캐시) */
+export interface FreshProfile {
+  total_follower_count: number | null;
+  subscriber_count: number | null;
+  total_keywords: number | null;
+}
+
+/** 네이버 인플홈에서 최신 팬수/팔로워수/참여 키워드 수를 가져와 DB 갱신 (6시간 캐시) */
 export async function refreshFollowerCount(
   supabase: ReturnType<typeof createServiceClient>,
   influencerId: string,
   naverId: string,
-  lastCrawledAt: string | null,
+  _lastCrawledAt: string | null,
 ): Promise<number | null> {
-  // updated_at 기반 6시간 캐시 (last_crawled_at은 마지막 참여일이므로 사용하지 않음)
+  const fresh = await refreshInfluencerProfile(supabase, influencerId, naverId);
+  return fresh?.total_follower_count ?? null;
+}
+
+/** 인플홈(__PRELOADED_STATE__) + 참여키워드 API에서 최신값을 모아 DB 갱신. 6시간 캐시. */
+export async function refreshInfluencerProfile(
+  supabase: ReturnType<typeof createServiceClient>,
+  influencerId: string,
+  naverId: string,
+): Promise<FreshProfile | null> {
+  // updated_at 기반 6시간 캐시
   const { data: infRow, error: infRowError } = await supabase
     .from('influencers')
     .select('updated_at')
@@ -50,22 +67,46 @@ export async function refreshFollowerCount(
     if (jsonEnd === -1) return null;
 
     const state = JSON.parse(html.substring(jsonStart, jsonEnd));
-    const followerCount = state?.space?.data?.totalFollowerCount;
+    const followerCount: number | undefined = state?.space?.data?.totalFollowerCount;
+    const subscriberCount: number | undefined = state?.space?.data?.subscriberCount;
+    const ownerId: string | number | undefined = state?.space?.data?.ownerId;
 
-    if (followerCount && followerCount > 0) {
-      const updateData: Record<string, unknown> = {
-        total_follower_count: followerCount,
-        updated_at: new Date().toISOString(),
-      };
-      // subscriberCount(팬수)도 있으면 함께 업데이트
-      const subscriberCount = state?.space?.data?.subscriberCount;
-      if (subscriberCount && subscriberCount > 0) {
-        updateData.subscriber_count = subscriberCount;
+    // 참여 키워드 총개수 실시간 조회 (paging.total만 필요하므로 limit=1)
+    let totalKeywords: number | null = null;
+    if (ownerId) {
+      try {
+        const kwController = new AbortController();
+        const kwTimeout = setTimeout(() => kwController.abort(), 5000);
+        const kwRes = await fetch(`${PARTICIPATED_API}?ownerId=${ownerId}&limit=1`, {
+          signal: kwController.signal,
+          headers: { 'User-Agent': PROFILE_UA, 'Accept-Language': 'ko-KR,ko;q=0.9', Referer: `https://in.naver.com/${naverId}` },
+        });
+        clearTimeout(kwTimeout);
+        if (kwRes.ok) {
+          const kwJson = await kwRes.json();
+          const total = kwJson?.paging?.total;
+          if (typeof total === 'number' && total >= 0) totalKeywords = total;
+        }
+      } catch (err) {
+        console.warn(`[refresh-follower] participated-keywords ${naverId} 실패:`, err instanceof Error ? err.message : err);
       }
-      // last_crawled_at은 업데이트하지 않음 (마지막 참여일 의미 보존 - crawl-influencers cron만 갱신)
-      await supabase.from('influencers').update(updateData).eq('id', influencerId);
-      return followerCount;
     }
+
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (followerCount && followerCount > 0) updateData.total_follower_count = followerCount;
+    if (subscriberCount && subscriberCount > 0) updateData.subscriber_count = subscriberCount;
+    if (totalKeywords !== null) updateData.total_keywords = totalKeywords;
+
+    // 갱신할 실제 값이 하나도 없으면 updated_at만 찍지 말고 포기
+    if (Object.keys(updateData).length <= 1) return null;
+
+    await supabase.from('influencers').update(updateData).eq('id', influencerId);
+
+    return {
+      total_follower_count: followerCount ?? null,
+      subscriber_count: subscriberCount ?? null,
+      total_keywords: totalKeywords,
+    };
   } catch (err) {
     console.warn(`[refresh-follower] ${naverId} 실패:`, err instanceof Error ? err.message : err);
   }

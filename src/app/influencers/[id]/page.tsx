@@ -149,8 +149,8 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
             </div>
             <p className="text-sm text-dim">{influencer.sub_category || influencer.category}</p>
             <div className="flex flex-wrap gap-3 mt-2 text-xs text-dim">
-              {((influencer.total_follower_count || influencer.subscriber_count || 0) > 0) && (
-                <span>팬 {(influencer.total_follower_count || influencer.subscriber_count || 0).toLocaleString()}</span>
+              {((influencer.subscriber_count || influencer.total_follower_count || 0) > 0) && (
+                <span>팬 {(influencer.subscriber_count || influencer.total_follower_count || 0).toLocaleString()}</span>
               )}
               <a
                 href={`https://in.naver.com/${influencer.naver_id}`}

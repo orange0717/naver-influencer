@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       display_name: inf?.display_name || '',
       image_url: inf?.image_url || '',
       category: inf?.my_keyword_category || inf?.category || '',
-      subscriber_count: inf?.total_follower_count || inf?.subscriber_count || 0,
+      subscriber_count: inf?.subscriber_count || inf?.total_follower_count || 0,
     };
   });
 

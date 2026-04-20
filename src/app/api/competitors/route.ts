@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
         displayName: competitor.display_name,
         imageUrl: competitor.image_url,
         category: competitor.my_keyword_category || competitor.category,
-        subscriberCount: competitor.total_follower_count || competitor.subscriber_count,
+        subscriberCount: competitor.subscriber_count || competitor.total_follower_count,
         firstSeenAt: competitor.naver_created_at || competitor.first_seen_at,
       },
       stats: {

@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
         category: inf.my_keyword_category || inf.category || '',
         categoryType: inf.category_my_type || '',
         myKeyword: inf.my_keyword || '',
-        subscriberCount: inf.total_follower_count || inf.subscriber_count || 0,
+        subscriberCount: inf.subscriber_count || inf.total_follower_count || 0,
         totalKeywords: totalKw,
         integratedTop3Count: inf.integrated_top3_count || 0,
         top3Ratio: Math.round(ratio * 1000) / 10,

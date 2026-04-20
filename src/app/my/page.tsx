@@ -564,7 +564,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         displayName={influencer.display_name}
         imageUrl={influencer.image_url}
         category={influencer.my_keyword_category || influencer.category}
-        subscriberCount={influencer.total_follower_count || influencer.subscriber_count || 0}
+        subscriberCount={influencer.subscriber_count || influencer.total_follower_count || 0}
         firstSeenAt={influencer.naver_created_at || undefined}
         type="influencer"
         subscribed={!!subscriptionPlan}
@@ -630,7 +630,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
             <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
             <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
             <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
-            <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.total_follower_count || influencer.subscriber_count || 0)}</strong></span>
+            <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || influencer.total_follower_count || 0)}</strong></span>
           </div>
         </div>
       )}

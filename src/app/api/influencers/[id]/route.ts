@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { refreshFollowerCount } from '@/lib/refresh-follower';
+import { refreshInfluencerProfile } from '@/lib/refresh-follower';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -124,8 +124,8 @@ export async function GET(
     });
   }
 
-  // 팔로워수 실시간 갱신 (6시간 캐시, 병렬 실행)
-  const followerRefresh = refreshFollowerCount(supabase, influencer.id, influencer.naver_id, influencer.last_crawled_at);
+  // 팬수/팔로워수/참여 키워드수 실시간 갱신 (6시간 캐시, 병렬 실행)
+  const profileRefresh = refreshInfluencerProfile(supabase, influencer.id, influencer.naver_id);
 
   // 1) influencer_keywords 테이블에서 참여 키워드 조회 (전체)
   interface KwChallenge { id: string; keyword: string; category: string; participant_count: number; search_volume_monthly: number }
@@ -251,8 +251,8 @@ export async function GET(
     });
   });
 
-  // 팔로워수 갱신 대기
-  const freshFollowerCount = await followerRefresh;
+  // 프로필 갱신 대기
+  const freshProfile = await profileRefresh;
 
   // 가입 회원 여부 확인
   const { data: memberCheck } = await supabase
@@ -265,7 +265,9 @@ export async function GET(
   return NextResponse.json({
     influencer: {
       ...influencer,
-      total_follower_count: freshFollowerCount || influencer.total_follower_count,
+      total_follower_count: freshProfile?.total_follower_count || influencer.total_follower_count,
+      subscriber_count: freshProfile?.subscriber_count || influencer.subscriber_count,
+      total_keywords: freshProfile?.total_keywords ?? influencer.total_keywords,
       keywords: keywordsWithRank,
       recent_rankings: rankings || [],
       rank_history: rankHistory,

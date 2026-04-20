@@ -36,7 +36,7 @@ export async function GET() {
       display_name: inf.display_name,
       image_url: fix(inf.image_url || ''),
       category: fix(inf.my_keyword_category || inf.category || '기타'),
-      subscriber_count: inf.total_follower_count || inf.subscriber_count || 0,
+      subscriber_count: inf.subscriber_count || inf.total_follower_count || 0,
       first_seen_at: inf.naver_created_at,
     }));
 

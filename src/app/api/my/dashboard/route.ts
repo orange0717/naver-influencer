@@ -261,7 +261,7 @@ export async function GET(request: NextRequest) {
       display_name: influencer.display_name,
       category: influencer.my_keyword_category || influencer.category,
       image_url: influencer.image_url,
-      subscriber_count: freshFollowerCount || influencer.total_follower_count || influencer.subscriber_count,
+      subscriber_count: influencer.subscriber_count || freshFollowerCount || influencer.total_follower_count,
       total_follower_count: freshFollowerCount || influencer.total_follower_count,
     },
     stats,
