@@ -15,6 +15,7 @@ interface Member {
   subscription_expires_at: string | null;
   created_at: string;
   visit_count: number;
+  is_admin: boolean;
 }
 
 interface MemberDetail {
@@ -177,7 +178,14 @@ export default function AdminMembersPage() {
                   onClick={() => openDetail(m.id)}
                   className="hover:bg-surface-hover transition cursor-pointer"
                 >
-                  <td className="px-3 py-2.5 font-semibold">{m.nickname || '-'}</td>
+                  <td className="px-3 py-2.5 font-semibold">
+                    <span className="inline-flex items-center gap-1.5">
+                      {m.nickname || '-'}
+                      {m.is_admin && (
+                        <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded-full leading-none">관리자</span>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-3 py-2.5 text-dim text-xs">{m.email}</td>
                   <td className="px-3 py-2.5 text-xs">{m.blog_id || '-'}</td>
                   <td className="px-3 py-2.5 text-xs">{m.influencer_name || '-'}</td>

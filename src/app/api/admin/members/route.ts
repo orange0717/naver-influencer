@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireAdmin } from '@/lib/admin';
+import { requireAdmin, isAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
     ...u,
     influencer_name: u.linked_influencer_id ? infMap.get(u.linked_influencer_id) || null : null,
     visit_count: visitCountMap.get(u.id) || 0,
+    is_admin: isAdmin(u.id),
   }));
 
   return NextResponse.json({
