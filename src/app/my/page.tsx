@@ -6,6 +6,7 @@ import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import RankDistribution from '@/components/dashboard/RankDistribution';
 import WidgetSection from '@/components/dashboard/WidgetSection';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
+import UsagePeriodCard from '@/components/dashboard/UsagePeriodCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
@@ -30,6 +31,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   let naverId: string | undefined;
   let subscriptionPlan: string | null = null;
   let subscriptionExpiresAt: string | null = null;
+  let userCreatedAt: string | null = null;
   const params = await searchParams;
 
   const cookieStore = await cookies();
@@ -62,12 +64,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       const { data: profile } = await supabase
         .from('users')
-        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at')
+        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at, created_at')
         .eq('auth_id', authUser.id)
         .single();
 
       subscriptionPlan = profile?.subscription_plan || null;
       subscriptionExpiresAt = profile?.subscription_expires_at || null;
+      userCreatedAt = profile?.created_at || null;
 
       if (profile?.linked_influencer_id) {
         const { data: linkedInf } = await supabase
@@ -558,6 +561,14 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 체험/데모 배너 ─── */}
       {isTrial && <TrialBanner isDemo={isDemo} />}
+
+      {/* ─── 사용 기간 카드 (가입일 / 구독 만료 / 체험 종료) ─── */}
+      <UsagePeriodCard
+        userCreatedAt={userCreatedAt}
+        subscriptionExpiresAt={subscriptionExpiresAt}
+        trialStartedTs={trialStarted || null}
+        isDemo={isDemo}
+      />
 
       {/* ─── 1. 프로필 헤더 ─── */}
       <ProfileHeader
