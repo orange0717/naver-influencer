@@ -21,7 +21,19 @@ CREATE INDEX IF NOT EXISTS idx_payment_intents_user_id ON payment_intents(user_i
 CREATE INDEX IF NOT EXISTS idx_payment_intents_expires_at ON payment_intents(expires_at);
 
 -- RLS: 서비스 롤만 접근 (Worker / API route 에서만)
+-- RLS 활성화 + 명시적 deny 정책. service_role 은 RLS 우회.
 ALTER TABLE payment_intents ENABLE ROW LEVEL SECURITY;
+
+-- 기존 정책 정리 (재실행 대비)
+DROP POLICY IF EXISTS "payment_intents_deny_all" ON payment_intents;
+
+-- anon / authenticated 모두 차단. API route(service_role)만 접근 허용.
+CREATE POLICY "payment_intents_deny_all"
+  ON payment_intents
+  FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
 
 -- 만료된 intent 일괄 삭제 함수 (스케줄러에서 주기 호출 권장)
 CREATE OR REPLACE FUNCTION cleanup_expired_payment_intents()
