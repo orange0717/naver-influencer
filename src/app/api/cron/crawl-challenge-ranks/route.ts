@@ -6,7 +6,9 @@ export const maxDuration = 300;
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-const BATCH_SIZE = 50; // 3시간마다 실행, 하루 ~400명 크롤링
+// 30분마다 실행 → 48회/일. 활성 인플루언서 약 15,700명을 매일 동일 주기로 커버
+const BATCH_SIZE = 400;
+const CONCURRENCY = 3; // 병렬 처리 (네이버 API 부하 고려)
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_RUNTIME_MS = 270_000; // 300초 중 안전 마진 30초
 
@@ -179,46 +181,19 @@ async function ensureKeywordsExist(
   }
 }
 
-/** 크롤할 인플루언서 목록 조회 — 가입 유저 우선 + 나머지 30명 순환 */
+/** 크롤할 인플루언서 목록 조회 — 활성 인플루언서(total_keywords > 0)를 last_crawled_at 오래된 순으로 전부 동일 주기로 순환
+ *  가입 유저도 동일한 우선순위로 취급 (공정한 순위 집계를 위해)
+ */
 async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>) {
-  const seen = new Set<string>();
-  const result: { id: string; naver_id: string; naver_owner_id: string | null; category: string; my_keyword_category: string }[] = [];
-
-  // ── 1단계: 가입 유저가 연결한 인플루언서 (항상 최우선) ──
-  const { data: linked } = await supabase
-    .from('users')
-    .select('linked_influencer_id')
-    .not('linked_influencer_id', 'is', null);
-
-  const linkedIds = (linked || []).map(u => u.linked_influencer_id).filter(Boolean);
-
-  if (linkedIds.length > 0) {
-    const { data: linkedInfluencers } = await supabase
-      .from('influencers')
-      .select('id, naver_id, naver_owner_id, category, my_keyword_category')
-      .in('id', linkedIds);
-
-    for (const inf of linkedInfluencers || []) {
-      seen.add(inf.id);
-      result.push(inf);
-    }
-  }
-
-  // ── 2단계: 나머지 인플루언서 순환 크롤 (오래된 순 30명) ──
-  const { data: others } = await supabase
+  const { data } = await supabase
     .from('influencers')
     .select('id, naver_id, naver_owner_id, category, my_keyword_category')
+    .gt('total_keywords', 0) // 키워드챌린지 참여 이력 있는 인플루언서만
     .order('last_crawled_at', { ascending: true, nullsFirst: true })
-    .limit(BATCH_SIZE + linkedIds.length); // 연결된 유저가 포함될 수 있으므로 여유분
+    .limit(BATCH_SIZE);
 
-  for (const inf of others || []) {
-    if (!seen.has(inf.id) && result.length < linkedIds.length + BATCH_SIZE) {
-      seen.add(inf.id);
-      result.push(inf);
-    }
-  }
-
-  console.log(`[crawl-challenge-ranks] Target: ${linkedIds.length} linked + ${result.length - linkedIds.length} others = ${result.length} total`);
+  const result = data || [];
+  console.log(`[crawl-challenge-ranks] Target: ${result.length} active influencers (oldest crawled first)`);
   return result;
 }
 
@@ -259,193 +234,163 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'No influencers', processed: 0 });
     }
 
-    console.log(`[crawl-challenge-ranks] Processing ${influencers.length} influencers`);
+    console.log(`[crawl-challenge-ranks] Processing ${influencers.length} influencers (concurrency=${CONCURRENCY})`);
 
     const startTime = Date.now();
-    for (const inf of influencers) {
+
+    async function processInfluencer(inf: typeof influencers[number]): Promise<{ ok: boolean; count: number }> {
+      // 1. ownerId 확보
+      let ownerId = inf.naver_owner_id;
+      if (!ownerId) {
+        ownerId = await fetchOwnerId(inf.naver_id);
+        if (!ownerId) {
+          console.log(`[crawl-challenge-ranks] Cannot get ownerId for ${inf.naver_id}`);
+          return { ok: false, count: 0 };
+        }
+        await supabase.from('influencers').update({ naver_owner_id: ownerId }).eq('id', inf.id);
+      }
+
+      // 2. 전체 참여 키워드+순위 가져오기
+      const { keywords } = await fetchAllParticipatedKeywords(ownerId);
+      if (keywords.length === 0) {
+        console.log(`[crawl-challenge-ranks] No keywords for ${inf.naver_id}`);
+        return { ok: false, count: 0 };
+      }
+
+      // 3. naver_keyword_id로 keyword_challenges 매칭
+      const naverKeywordIds = keywords.map(k => k.id);
+      const keywordMap = new Map<number, string>();
+      for (let i = 0; i < naverKeywordIds.length; i += 500) {
+        const batch = naverKeywordIds.slice(i, i + 500);
+        const { data: dbKeywords } = await supabase
+          .from('keyword_challenges')
+          .select('id, naver_keyword_id')
+          .in('naver_keyword_id', batch);
+        dbKeywords?.forEach(kw => { if (kw.naver_keyword_id) keywordMap.set(kw.naver_keyword_id, kw.id); });
+      }
+
+      const categoryFallback = inf.my_keyword_category || inf.category || '';
+      await ensureKeywordsExist(supabase, keywords, keywordMap, categoryFallback);
+
+      const linkRows: { influencer_id: string; keyword_id: string }[] = [];
+      for (const kw of keywords) {
+        const kwId = keywordMap.get(kw.id);
+        if (kwId) linkRows.push({ influencer_id: inf.id, keyword_id: kwId });
+      }
+      for (let i = 0; i < linkRows.length; i += 100) {
+        const batch = linkRows.slice(i, i + 100);
+        await supabase.from('influencer_keywords').upsert(batch, { onConflict: 'influencer_id,keyword_id', ignoreDuplicates: true });
+      }
+
+      // 4. 전일 순위 조회 (rank_change 계산용)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      const { data: prevRankings } = await supabase
+        .from('keyword_rankings')
+        .select('keyword_id, rank_position')
+        .eq('influencer_id', inf.id)
+        .eq('snapshot_date', yesterdayStr);
+
+      const prevRankMap = new Map<string, number>();
+      prevRankings?.forEach(r => prevRankMap.set(r.keyword_id, r.rank_position));
+
+      // 5. keyword_rankings UPSERT (배치)
+      let batchCount = 0;
+      const upsertRows: Array<{
+        keyword_id: string; influencer_id: string; rank_position: number;
+        previous_rank: number | null; rank_change: number; is_integrated_top3: boolean;
+        snapshot_date: string; crawled_at: string;
+      }> = [];
+
+      for (const kw of keywords) {
+        const keywordId = keywordMap.get(kw.id);
+        if (!keywordId) continue;
+        if (!kw.rank && kw.rank !== 0) continue;
+        const prevRank = prevRankMap.get(keywordId);
+        const rankChange = prevRank ? prevRank - kw.rank : 0;
+        upsertRows.push({
+          keyword_id: keywordId,
+          influencer_id: inf.id,
+          rank_position: kw.rank,
+          previous_rank: prevRank ?? null,
+          rank_change: rankChange,
+          is_integrated_top3: kw.rank <= 3,
+          snapshot_date: snapshotDate,
+          crawled_at: new Date().toISOString(),
+        });
+      }
+
+      const validRows = upsertRows.filter(r => r.rank_position != null && r.rank_position > 0);
+      for (let i = 0; i < validRows.length; i += 100) {
+        const batch = validRows.slice(i, i + 100);
+        const { error } = await supabase
+          .from('keyword_rankings')
+          .upsert(batch, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
+        if (error) console.error(`[crawl-challenge-ranks] Upsert error:`, error.message);
+        else batchCount += batch.length;
+      }
+
+      // 6. influencers 테이블 집계 업데이트
+      const rankedKeywords = keywords.filter(k => k.rank != null && k.rank > 0);
+      const challengeDates = keywords.map(k => k.lastChallengedAt).filter(Boolean)
+        .map(d => new Date(d + '+09:00').getTime()).filter(t => !isNaN(t));
+      const lastChallengedAt = challengeDates.length > 0 ? new Date(Math.max(...challengeDates)).toISOString() : null;
+
+      const top1 = rankedKeywords.filter(k => k.rank === 1).length;
+      const top2 = rankedKeywords.filter(k => k.rank === 2).length;
+      const top3 = rankedKeywords.filter(k => k.rank === 3).length;
+      const totalKw = keywords.length;
+
+      const updateData: Record<string, unknown> = {
+        total_keywords: totalKw,
+        best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
+        avg_rank: rankedKeywords.length > 0
+          ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
+          : null,
+        integrated_top3_count: top1 + top2 + top3,
+        top1_count: top1,
+        top2_count: top2,
+        top3_count: top3,
+        top3_ratio: totalKw > 0 ? +((top1 + top2 + top3) / totalKw).toFixed(4) : 0,
+      };
+
+      if (lastChallengedAt) {
+        updateData.last_crawled_at = lastChallengedAt;
+        updateData.last_challenged_at = lastChallengedAt;
+      } else {
+        // 참여일이 없어도 크롤된 시점은 기록 (순환 크롤용)
+        updateData.last_crawled_at = new Date().toISOString();
+      }
+
+      await supabase.from('influencers').update(updateData).eq('id', inf.id);
+
+      console.log(`[crawl-challenge-ranks] ${inf.naver_id}: ${keywords.length} keywords (${batchCount} matched in DB)`);
+      return { ok: true, count: batchCount };
+    }
+
+    // CONCURRENCY 만큼 병렬 처리 (웨이브)
+    for (let i = 0; i < influencers.length; i += CONCURRENCY) {
       if (Date.now() - startTime > MAX_RUNTIME_MS) {
-        console.log(`[crawl-challenge-ranks] Time limit reached, stopping early`);
+        console.log(`[crawl-challenge-ranks] Time limit reached, stopping early at ${i}/${influencers.length}`);
         break;
       }
-      try {
-        // 1. ownerId 확보
-        let ownerId = inf.naver_owner_id;
-        if (!ownerId) {
-          ownerId = await fetchOwnerId(inf.naver_id);
-          if (!ownerId) {
-            console.log(`[crawl-challenge-ranks] Cannot get ownerId for ${inf.naver_id}`);
-            totalFailed++;
-            continue;
-          }
-          // DB에 저장
-          await supabase
-            .from('influencers')
-            .update({ naver_owner_id: ownerId })
-            .eq('id', inf.id);
-          await sleep(500);
-        }
-
-        // 2. 전체 참여 키워드+순위 가져오기
-        const { keywords, totalFromApi } = await fetchAllParticipatedKeywords(ownerId);
-        if (keywords.length === 0) {
-          console.log(`[crawl-challenge-ranks] No keywords for ${inf.naver_id}`);
+      const wave = influencers.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(wave.map(inf =>
+        processInfluencer(inf).catch(err => {
+          console.error(`[crawl-challenge-ranks] Error for "${inf.naver_id}":`, err);
+          return { ok: false, count: 0 } as const;
+        }),
+      ));
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value.ok) {
+          totalProcessed++;
+          totalKeywords += r.value.count;
+        } else {
           totalFailed++;
-          continue;
         }
-
-        // 3. naver_keyword_id로 keyword_challenges 매칭
-        const naverKeywordIds = keywords.map(k => k.id);
-
-        // 배치로 조회 (500개 단위)
-        const keywordMap = new Map<number, string>(); // naver_keyword_id → keyword_challenges.id
-        for (let i = 0; i < naverKeywordIds.length; i += 500) {
-          const batch = naverKeywordIds.slice(i, i + 500);
-          const { data: dbKeywords } = await supabase
-            .from('keyword_challenges')
-            .select('id, naver_keyword_id')
-            .in('naver_keyword_id', batch);
-
-          dbKeywords?.forEach(kw => {
-            if (kw.naver_keyword_id) keywordMap.set(kw.naver_keyword_id, kw.id);
-          });
-        }
-
-        // 3-1. DB에 없는 키워드 → keyword_challenges에 생성
-        const categoryFallback = inf.my_keyword_category || inf.category || '';
-        await ensureKeywordsExist(supabase, keywords, keywordMap, categoryFallback);
-
-        // 3-2. influencer_keywords 연결
-        const linkRows: { influencer_id: string; keyword_id: string }[] = [];
-        for (const kw of keywords) {
-          const kwId = keywordMap.get(kw.id);
-          if (kwId) linkRows.push({ influencer_id: inf.id, keyword_id: kwId });
-        }
-        for (let i = 0; i < linkRows.length; i += 100) {
-          const batch = linkRows.slice(i, i + 100);
-          await supabase
-            .from('influencer_keywords')
-            .upsert(batch, { onConflict: 'influencer_id,keyword_id', ignoreDuplicates: true });
-        }
-
-        // 4. 전일 순위 조회 (rank_change 계산용)
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-        const { data: prevRankings } = await supabase
-          .from('keyword_rankings')
-          .select('keyword_id, rank_position')
-          .eq('influencer_id', inf.id)
-          .eq('snapshot_date', yesterdayStr);
-
-        const prevRankMap = new Map<string, number>();
-        prevRankings?.forEach(r => prevRankMap.set(r.keyword_id, r.rank_position));
-
-        // 5. keyword_rankings UPSERT (배치)
-        let batchCount = 0;
-        const upsertRows: Array<{
-          keyword_id: string;
-          influencer_id: string;
-          rank_position: number;
-          previous_rank: number | null;
-          rank_change: number;
-          is_integrated_top3: boolean;
-          snapshot_date: string;
-          crawled_at: string;
-        }> = [];
-
-        for (const kw of keywords) {
-          const keywordId = keywordMap.get(kw.id);
-          if (!keywordId) continue; // DB에 없는 키워드는 스킵
-          if (!kw.rank && kw.rank !== 0) continue; // rank가 null/undefined면 스킵
-
-          const prevRank = prevRankMap.get(keywordId);
-          const rankChange = prevRank ? prevRank - kw.rank : 0;
-
-          upsertRows.push({
-            keyword_id: keywordId,
-            influencer_id: inf.id,
-            rank_position: kw.rank,
-            previous_rank: prevRank ?? null,
-            rank_change: rankChange,
-            is_integrated_top3: kw.rank <= 3,
-            snapshot_date: snapshotDate,
-            crawled_at: new Date().toISOString(),
-          });
-        }
-
-        // 배치 upsert (100개씩) — rank_position null인 행 제외
-        const validRows = upsertRows.filter(r => r.rank_position != null && r.rank_position > 0);
-        for (let i = 0; i < validRows.length; i += 100) {
-          const batch = validRows.slice(i, i + 100);
-          const { error } = await supabase
-            .from('keyword_rankings')
-            .upsert(batch, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
-
-          if (error) {
-            console.error(`[crawl-challenge-ranks] Upsert error:`, error.message);
-          } else {
-            batchCount += batch.length;
-          }
-        }
-
-        // 6. influencers 테이블 집계 업데이트 (rank가 유효한 것만)
-        const rankedKeywords = keywords.filter(k => k.rank != null && k.rank > 0);
-
-        // 마지막 참여일: 네이버 API의 lastChallengedAt 중 가장 최근 날짜 사용
-        // 네이버 API는 KST 시간을 타임존 없이 반환하므로 +09:00 명시
-        const challengeDates = keywords
-          .map(k => k.lastChallengedAt)
-          .filter(Boolean)
-          .map(d => new Date(d + '+09:00').getTime())
-          .filter(t => !isNaN(t));
-        const lastChallengedAt = challengeDates.length > 0
-          ? new Date(Math.max(...challengeDates)).toISOString()
-          : null;
-
-        const top1 = rankedKeywords.filter(k => k.rank === 1).length;
-        const top2 = rankedKeywords.filter(k => k.rank === 2).length;
-        const top3 = rankedKeywords.filter(k => k.rank === 3).length;
-        // 실제 크롤한 키워드 수를 기준으로 사용 (paging.total은 부정확할 수 있음)
-        // totalFromApi가 실제보다 크면 top3_ratio가 왜곡됨
-        const totalKw = keywords.length;
-
-        const updateData: Record<string, unknown> = {
-          total_keywords: totalKw,
-          best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
-          avg_rank: rankedKeywords.length > 0
-            ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
-            : null,
-          integrated_top3_count: top1 + top2 + top3,
-          top1_count: top1,
-          top2_count: top2,
-          top3_count: top3,
-          top3_ratio: totalKw > 0 ? +((top1 + top2 + top3) / totalKw).toFixed(4) : 0,
-        };
-
-        // 실제 참여일이 있을 때만 업데이트
-        if (lastChallengedAt) {
-          updateData.last_crawled_at = lastChallengedAt;
-          updateData.last_challenged_at = lastChallengedAt;
-        }
-
-        await supabase
-          .from('influencers')
-          .update(updateData)
-          .eq('id', inf.id);
-
-        totalProcessed++;
-        totalKeywords += batchCount;
-        console.log(
-          `[crawl-challenge-ranks] ${inf.naver_id}: ${keywords.length} keywords (${batchCount} matched in DB)`,
-        );
-
-        await sleep(300);
-      } catch (err) {
-        console.error(`[crawl-challenge-ranks] Error for "${inf.naver_id}":`, err);
-        totalFailed++;
-        await sleep(200);
       }
+      await sleep(150);
     }
 
     await updateCrawlJob(jobId, {

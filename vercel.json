@@ -19,7 +19,7 @@
     },
     {
       "path": "/api/cron/aggregate-influencers",
-      "schedule": "30 0,3,6,9,12,15,18,21 * * *"
+      "schedule": "15 * * * *"
     },
     {
       "path": "/api/cron/generate-recommendations",
@@ -27,7 +27,7 @@
     },
     {
       "path": "/api/cron/crawl-challenge-ranks",
-      "schedule": "0 0,3,6,9,12,15,18,21 * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/crawl-blog-ranks",
