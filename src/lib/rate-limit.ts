@@ -11,7 +11,7 @@ const hasRedis = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_RE
  * Redis 환경변수가 없으면 인메모리 슬라이딩 윈도우로 폴백한다.
  * (로컬 개발 시 Redis 없이 동작)
  */
-function createRateLimiter(opts: { limit: number; windowMs: number }) {
+export function createRateLimiter(opts: { limit: number; windowMs: number }) {
   const { limit, windowMs } = opts;
   const windowSec = Math.ceil(windowMs / 1000);
 
