@@ -78,7 +78,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { href: '/rankings/blogger', label: '블로거 순위' },
       { href: '/rankings/influencer', label: '인플루언서 순위' },
-      { href: '/blog-quality', label: '블로그 품질지수 (무료)' },
+      { href: '/blog-quality', label: '블로그 품질지수' },
     ],
   },
   { href: '/community', label: '커뮤니티', requiredPlan: 'blogger' },
