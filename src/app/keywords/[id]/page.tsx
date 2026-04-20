@@ -39,6 +39,13 @@ interface TrendSummary {
   peak_date: string;
 }
 
+interface MonthlyVolume {
+  pc: number | string;
+  mobile: number | string;
+  total: number | string;
+  competition: string;
+}
+
 export default function KeywordDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [keyword, setKeyword] = useState<KeywordDetail | null>(null);
@@ -49,6 +56,9 @@ export default function KeywordDetailPage() {
   const [naverTrendSummary, setNaverTrendSummary] = useState<TrendSummary | null>(null);
   const [naverTrendLoading, setNaverTrendLoading] = useState(true);
   const [naverTrendError, setNaverTrendError] = useState<string | null>(null);
+  const [monthlyVolume, setMonthlyVolume] = useState<MonthlyVolume | null>(null);
+  const [monthlyVolumeLoading, setMonthlyVolumeLoading] = useState(false);
+  const [monthlyVolumeError, setMonthlyVolumeError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [rankLoading, setRankLoading] = useState(true);
 
@@ -103,6 +113,42 @@ export default function KeywordDetailPage() {
     }
     loadTrend();
   }, [id]);
+
+  // 월간 검색수 fetch (네이버 광고 키워드 도구 API)
+  useEffect(() => {
+    if (!keyword?.keyword) return;
+    async function loadMonthlyVolume() {
+      setMonthlyVolumeLoading(true);
+      setMonthlyVolumeError(null);
+      try {
+        const res = await fetch(`/api/search-volume?keyword=${encodeURIComponent(keyword!.keyword)}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          setMonthlyVolumeError(errData.error || '월간 검색수를 불러올 수 없습니다.');
+          return;
+        }
+        const data = await res.json();
+        const list = data.keywords || [];
+        // 정확히 일치하는 키워드 우선, 없으면 첫 항목 사용
+        const exact = list.find((k: { keyword: string }) => k.keyword === keyword!.keyword);
+        const match = exact || list[0];
+        if (match) {
+          setMonthlyVolume({
+            pc: match.monthlyPc,
+            mobile: match.monthlyMobile,
+            total: match.monthlyTotal,
+            competition: match.competition,
+          });
+        }
+      } catch (err) {
+        console.error('월간 검색수 로드 실패:', err);
+        setMonthlyVolumeError('월간 검색수를 불러올 수 없습니다.');
+      } finally {
+        setMonthlyVolumeLoading(false);
+      }
+    }
+    loadMonthlyVolume();
+  }, [keyword?.keyword]);
 
   // 네이버 검색어 트렌드 fetch (데이터랩 실시간)
   useEffect(() => {
@@ -240,11 +286,67 @@ export default function KeywordDetailPage() {
         </div>
       )}
 
+      {/* 월간 검색수 (네이버 광고 키워드 도구) */}
+      <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm font-bold">
+            월간 검색수
+            <span className="ml-2 text-[11px] font-normal text-dim">네이버 광고 키워드 도구 기준</span>
+          </div>
+          {monthlyVolume?.competition && (
+            <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+              monthlyVolume.competition === '낮음' ? 'text-up bg-up/12' :
+              monthlyVolume.competition === '중간' ? 'text-gold bg-gold/12' :
+              'text-down bg-down/12'
+            }`}>
+              광고 경쟁도 {monthlyVolume.competition}
+            </span>
+          )}
+        </div>
+        {monthlyVolumeLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="animate-spin w-6 h-6 border-2 border-accent border-t-transparent rounded-full" />
+          </div>
+        ) : monthlyVolume ? (
+          <>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-[11px] font-semibold text-dim mb-1">PC</div>
+                <div className="text-2xl font-extrabold font-rank">
+                  {typeof monthlyVolume.pc === 'number' ? monthlyVolume.pc.toLocaleString() : monthlyVolume.pc}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-dim mb-1">Mobile</div>
+                <div className="text-2xl font-extrabold font-rank">
+                  {typeof monthlyVolume.mobile === 'number' ? monthlyVolume.mobile.toLocaleString() : monthlyVolume.mobile}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-dim mb-1">합계</div>
+                <div className="text-2xl font-extrabold text-accent font-rank">
+                  {typeof monthlyVolume.total === 'number' ? monthlyVolume.total.toLocaleString() : monthlyVolume.total}
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-dim mt-3">
+              최근 한 달간 실제 검색 건수 (PC / Mobile). 네이버 광고 키워드 도구 공식 집계 기준.
+            </p>
+          </>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-sm text-dim">
+              {monthlyVolumeError || '월간 검색수 데이터가 없습니다.'}
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* 네이버 검색어 트렌드 (데이터랩 실시간) */}
       <div className="bg-surface rounded-xl border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-bold">
-            네이버 검색어 트렌드
+            검색 트렌드 지수
             <span className="ml-2 text-[11px] font-normal text-dim">최근 90일 · 데이터랩</span>
           </div>
           {naverTrendSummary && naverTrendData.length > 0 && (
@@ -272,7 +374,7 @@ export default function KeywordDetailPage() {
           <>
             <TrendAreaChart data={naverTrendData} direction={naverTrendSummary?.trend_direction || 'stable'} />
             <p className="text-[11px] text-dim mt-3">
-              네이버 데이터랩 기준 상대적 검색 지수 (0~100, 최대치=100).
+              기간 내 검색량의 <strong>상대적 추세</strong>를 0~100으로 정규화한 값(최고점=100). 실제 월간 검색 건수가 아니며, 트렌드 모양 비교용 지수입니다.
             </p>
           </>
         ) : (
