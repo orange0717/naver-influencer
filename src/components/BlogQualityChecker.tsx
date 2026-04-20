@@ -102,7 +102,6 @@ export default function BlogQualityChecker() {
       </div>
 
       <p className="text-[11px] text-dim">
-        · 누구나 무료로 사용 가능<br />
         · 같은 블로그는 24시간 캐시됩니다
       </p>
 

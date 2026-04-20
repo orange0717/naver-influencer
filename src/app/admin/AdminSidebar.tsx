@@ -5,14 +5,14 @@ import { usePathname } from 'next/navigation';
 
 const MENU_ITEMS = [
   { href: '/admin', label: '대시보드', icon: '+' },
-  { href: '/admin/members', label: '회원 관리', icon: 'U' },
-  { href: '/admin/influencers', label: '인플루언서 관리', icon: 'I' },
-  { href: '/admin/community', label: '커뮤니티 관리', icon: '?' },
-  { href: '/admin/payments', label: '결제 관리', icon: '#' },
-  { href: '/admin/restricted', label: '접근 제한', icon: '!' },
-  { href: '/admin/analytics', label: '유입 분석', icon: 'R' },
   { href: '/admin/promo', label: '프로모션', icon: '*' },
+  { href: '/admin/payments', label: '결제 관리', icon: '#' },
+  { href: '/admin/analytics', label: '유입 분석', icon: 'R' },
+  { href: '/admin/restricted', label: '접근 제한', icon: '!' },
+  { href: '/admin/members', label: '회원 관리', icon: 'U' },
+  { href: '/admin/community', label: '커뮤니티 관리', icon: '?' },
   { href: '/admin/bulk-grant', label: '플랜 일괄 부여', icon: '+' },
+  { href: '/admin/influencers', label: '인플루언서 관리', icon: 'I' },
 ];
 
 export default function AdminSidebar() {
