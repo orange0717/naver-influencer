@@ -132,3 +132,6 @@ export const aiAnalyzeLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 *
 
 /** 광고주 캠페인 CRUD: 1분에 20회 */
 export const campaignLimiter = createRateLimiter({ limit: 20, windowMs: 60 * 1000 });
+
+/** 공지 조회수 카운트: 동일 IP+notice 당 30분에 1회 (조작 방지) */
+export const noticeViewLimiter = createRateLimiter({ limit: 1, windowMs: 30 * 60 * 1000 });

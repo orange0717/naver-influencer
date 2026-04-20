@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
 import { isAdmin } from '@/lib/admin';
+import { noticeViewLimiter, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,7 @@ export async function GET(
     }
 
     // 조회수 증가: 클라이언트가 X-Count-View 헤더를 보낸 경우만 (첫 조회)
+    // + 동일 IP 의 반복 호출로 조회수 부풀리기를 막기 위해 30분 rate limit 적용.
     let viewCount = notice.view_count;
     const shouldCount = _req.headers.get('x-count-view') === '1';
 
@@ -41,8 +43,12 @@ export async function GET(
       const ua = _req.headers.get('user-agent') || '';
       const isBot = /bot|crawl|spider|preview|headless|phantom|puppeteer|playwright/i.test(ua);
       if (!isBot) {
-        const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
-        viewCount = newViewCount ?? notice.view_count + 1;
+        const ip = getClientIp(_req);
+        const limited = await noticeViewLimiter.check(`view:${id}:${ip}`);
+        if (!limited) {
+          const { data: newViewCount } = await supabase.rpc('increment_notice_view_count', { notice_id: id });
+          viewCount = newViewCount ?? notice.view_count + 1;
+        }
       }
     }
 
