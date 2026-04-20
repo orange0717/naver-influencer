@@ -77,6 +77,12 @@ export default function LandingPage() {
 
       {/* ═══════════ HERO (bg) ═══════════ */}
       <section className="bg-accent/[0.06] px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
+        <div className="mb-5 flex justify-center">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/15 text-accent text-[11px] font-bold tracking-wide">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            현재 베타버전 프로그램입니다
+          </span>
+        </div>
         <p className="text-sm text-accent font-semibold tracking-wide mb-8">
           네이버 인플루언서를 위한 플랫폼
         </p>
