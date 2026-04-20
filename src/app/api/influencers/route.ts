@@ -61,45 +61,42 @@ async function getInfluencersFromDB(
   ];
   const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
+  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank';
+
+  // 공통 필터 적용 헬퍼 (배치 페치 때 재사용)
+  const applyFilters = <T extends { or: (f: string) => T; not: (c: string, op: string, v: unknown) => T; gt: (c: string, v: unknown) => T; gte: (c: string, v: unknown) => T }>(q: T): T => {
+    if (category && category !== '전체') {
+      const safeCategory = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&.]/g, '');
+      if (safeCategory) {
+        q = q.or(`my_keyword_category.eq.${safeCategory},category.eq.${safeCategory}`);
+      }
+    }
+    if (search?.trim()) {
+      const qq = search.trim().replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s._-]/g, '');
+      if (qq) {
+        q = q.or(
+          `display_name.ilike.%${qq}%,naver_id.ilike.%${qq}%,my_keyword_category.ilike.%${qq}%,my_keyword.ilike.%${qq}%,category_my_type.ilike.%${qq}%`,
+        );
+      }
+    }
+    if (officialOnly) {
+      q = q.not('official_naver_rank', 'is', null);
+    }
+    if (ninflRanking) {
+      q = q.gt('keyword_score', 0);
+    }
+    if (newOnly) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      q = q.gte('first_seen_at', sevenDaysAgo.toISOString());
+    }
+    return q;
+  };
+
   // 메인 쿼리 구성 (필요한 컬럼만 조회)
-  let query = supabase
-    .from('influencers')
-    .select('id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank', { count: 'exact' });
-
-  // 카테고리 필터 (화이트리스트: 한글/영문/숫자/공백/특수구분자만 허용)
-  if (category && category !== '전체') {
-    const safeCategory = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&.]/g, '');
-    if (safeCategory) {
-      query = query.or(`my_keyword_category.eq.${safeCategory},category.eq.${safeCategory}`);
-    }
-  }
-
-  // 검색 필터 (화이트리스트: 한글/영문/숫자/공백만 허용)
-  if (search?.trim()) {
-    const q = search.trim().replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s._-]/g, '');
-    if (q) {
-      query = query.or(
-        `display_name.ilike.%${q}%,naver_id.ilike.%${q}%,my_keyword_category.ilike.%${q}%,my_keyword.ilike.%${q}%,category_my_type.ilike.%${q}%`,
-      );
-    }
-  }
-
-  // 공식 순위 인플루언서만
-  if (officialOnly) {
-    query = query.not('official_naver_rank', 'is', null);
-  }
-
-  // N인플 순위: keyword_score > 0
-  if (ninflRanking) {
-    query = query.gt('keyword_score', 0);
-  }
-
-  // 신규 인플루언서만
-  if (newOnly) {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    query = query.gte('first_seen_at', sevenDaysAgo.toISOString());
-  }
+  let query = applyFilters(
+    supabase.from('influencers').select(SELECT_COLS, { count: 'exact' })
+  );
 
   // 정렬 + 페이지네이션
   const allowedSorts: Record<string, string> = {
@@ -120,20 +117,84 @@ async function getInfluencersFromDB(
   // NULL은 항상 맨 뒤로
   const isDateSort = sortColumn === 'naver_created_at';
 
-  if (!isRatioSort) {
+  // N인플 순위: 활성(검증된 최근 365일 참여) → 미검증(두 값 NULL) → 활동중단(365일 초과)
+  // Supabase max-rows(1000) 캡 때문에 배치로 전부 가져와서 서버에서 분류·정렬·페이지네이션
+  const isGroupSort = ninflRanking && !isRatioSort;
+
+  let influencers: Record<string, unknown>[] | null = null;
+  let count: number | null = null;
+  let error: { message: string } | null = null;
+
+  if (isGroupSort) {
+    // 배치 페치 (Supabase max-rows 1000 우회)
+    const BATCH = 1000;
+    const MAX_FETCH = 30000;
+    const allRows: Record<string, unknown>[] = [];
+    let exactCount = 0;
+    for (let start = 0; start < MAX_FETCH; start += BATCH) {
+      let q = applyFilters(
+        supabase.from('influencers').select(SELECT_COLS, { count: start === 0 ? 'exact' : undefined })
+      );
+      q = q.order(sortColumn, { ascending, nullsFirst: false }).range(start, start + BATCH - 1);
+      const { data, count: cnt, error: batchErr } = await q;
+      if (batchErr) { error = batchErr; break; }
+      if (start === 0 && cnt != null) exactCount = cnt;
+      if (!data || data.length === 0) break;
+      allRows.push(...data);
+      if (data.length < BATCH) break;
+    }
+    influencers = allRows;
+    count = exactCount;
+  } else if (!isRatioSort) {
     query = query.order(sortColumn, { ascending, nullsFirst: false });
     if (isDateSort) {
       query = query.order('first_seen_at', { ascending });
     }
     query = query.range(offset, offset + limit - 1);
+    const res = await query;
+    influencers = res.data; count = res.count; error = res.error;
   } else {
     // 비율 정렬: 키워드 참여 인플루언서만 가져와서 서버에서 정렬 (최대 5000건)
     query = query.not('total_keywords', 'is', null).gt('total_keywords', 0).limit(5000);
+    const res = await query;
+    influencers = res.data; count = res.count; error = res.error;
   }
 
-  let { data: influencers, count, error } = await query;
-
   if (error) throw new Error(error.message);
+
+  const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  // 활성 그룹 판정: last_challenged_at(실제 참여일) 우선, 없으면 last_crawled_at 사용
+  // 0 = 활성(365일 내), 1 = 미검증(두 값 모두 NULL), 2 = 활동중단(365일 초과)
+  const activityGroup = (inf: Record<string, unknown>): number => {
+    const ref = (inf.last_challenged_at as string | null | undefined)
+      || (inf.last_crawled_at as string | null | undefined);
+    if (!ref) return 1;
+    const age = now - new Date(ref).getTime();
+    return age <= YEAR_MS ? 0 : 2;
+  };
+
+  // N인플 그룹 정렬 + 활성 그룹만 ninflRank 부여 (slice 전 전체 기준)
+  const groupRankMap = new Map<string, number>();
+  if (isGroupSort && influencers) {
+    influencers.sort((a, b) => {
+      const ga = activityGroup(a);
+      const gb = activityGroup(b);
+      if (ga !== gb) return ga - gb;
+      const sa = Number(a[sortColumn] ?? 0);
+      const sb = Number(b[sortColumn] ?? 0);
+      return ascending ? sa - sb : sb - sa;
+    });
+    let activeRank = 0;
+    for (const inf of influencers) {
+      if (activityGroup(inf) === 0 && (Number(inf.keyword_score) || 0) > 0) {
+        activeRank++;
+        groupRankMap.set(inf.id as string, activeRank);
+      }
+    }
+    // count 는 배치 페치 시 이미 exactCount 로 설정되어 있음 — 덮어쓰지 않음
+    influencers = influencers.slice(offset, offset + limit);
+  }
 
   // 비율 정렬 시 서버에서 정렬 + 페이지네이션
   if (isRatioSort && influencers) {
@@ -185,9 +246,9 @@ async function getInfluencersFromDB(
     }
   }
 
-  // N인플 순위 계산: offset 기반 (keyword_score 내림차순 정렬이므로 offset + index + 1 = 순위)
-  const ninflRankMap = new Map<string, number>();
-  if (ninflRanking && influencers && influencers.length > 0) {
+  // N인플 순위: 그룹 정렬 시 groupRankMap 그대로 사용, 그 외 경로(비율 정렬 등)는 offset 기반
+  const ninflRankMap = isGroupSort ? groupRankMap : new Map<string, number>();
+  if (!isGroupSort && ninflRanking && influencers && influencers.length > 0) {
     for (let i = 0; i < influencers.length; i++) {
       const inf = influencers[i];
       if ((inf.keyword_score || 0) > 0) {
@@ -228,10 +289,13 @@ async function getInfluencersFromDB(
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
+    lastChallengedAt: inf.last_challenged_at || null,
     isInactive: !inf.image_url && (inf.subscriber_count || 0) === 0,
-    isStopped: inf.last_crawled_at
-      ? (Date.now() - new Date(inf.last_crawled_at).getTime()) > 365 * 24 * 60 * 60 * 1000
-      : !!(inf.official_naver_rank && !inf.last_crawled_at),
+    // 활동중단 판정: last_challenged_at 우선, 없으면 last_crawled_at. 둘 다 NULL이면 중단 아님(미검증)
+    isStopped: (() => {
+      const ref = inf.last_challenged_at || inf.last_crawled_at;
+      return ref ? (Date.now() - new Date(ref).getTime()) > 365 * 24 * 60 * 60 * 1000 : false;
+    })(),
     officialNaverRank: inf.official_naver_rank || null,
     officialRankCategory: inf.official_rank_category || null,
     keywordScore: inf.keyword_score || 0,

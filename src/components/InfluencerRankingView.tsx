@@ -24,6 +24,7 @@ interface InfluencerItem {
   naverCreatedAt?: string;
   firstSeenAt?: string;
   lastCrawledAt?: string;
+  lastChallengedAt?: string;
   isInactive?: boolean;
   isStopped?: boolean;
   officialNaverRank?: number | null;
@@ -54,12 +55,6 @@ function isNew(d: string | null | undefined): boolean {
   if (!d) return false;
   const diff = Date.now() - new Date(d).getTime();
   return diff < 30 * 24 * 60 * 60 * 1000;
-}
-
-function isInactive(d: string | null | undefined): boolean {
-  if (!d) return false;
-  const diff = Date.now() - new Date(d).getTime();
-  return diff > 365 * 24 * 60 * 60 * 1000;
 }
 
 export default function InfluencerRankingView() {
@@ -374,10 +369,10 @@ export default function InfluencerRankingView() {
                       {inf.naverCreatedAt ? formatDate(inf.naverCreatedAt) : '—'}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
-                      {isInactive(inf.lastCrawledAt) ? (
+                      {inf.isStopped ? (
                         <span className="text-down/70">활동하지 않음</span>
                       ) : (
-                        formatDate(inf.lastCrawledAt)
+                        formatDate(inf.lastChallengedAt || inf.lastCrawledAt)
                       )}
                     </td>
                   </tr>
@@ -444,10 +439,10 @@ export default function InfluencerRankingView() {
                   {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
                   {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
                   {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
-                  {inf.lastCrawledAt && (
-                    isInactive(inf.lastCrawledAt)
+                  {(inf.lastChallengedAt || inf.lastCrawledAt) && (
+                    inf.isStopped
                       ? <span className="text-down/70">활동하지 않음</span>
-                      : <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>
+                      : <span>마지막 참여일 {formatDate(inf.lastChallengedAt || inf.lastCrawledAt)}</span>
                   )}
                 </div>
               </div>
