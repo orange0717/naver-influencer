@@ -27,6 +27,16 @@ interface MyRank {
   message?: string;
 }
 
+interface NameHit {
+  blog_id: string;
+  blog_name: string | null;
+  category: string | null;
+  is_active: boolean;
+  global_rank: number | null;
+  rank_score: number | null;
+  last_post_date: string | null;
+}
+
 export default function BloggerRankingView() {
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [totalActive, setTotalActive] = useState(0);
@@ -34,6 +44,7 @@ export default function BloggerRankingView() {
   const [searchId, setSearchId] = useState('');
   const [myRank, setMyRank] = useState<MyRank | null>(null);
   const [searching, setSearching] = useState(false);
+  const [nameHits, setNameHits] = useState<NameHit[] | null>(null);
 
   useEffect(() => {
     fetch('/api/rankings/top?limit=50')
@@ -45,15 +56,56 @@ export default function BloggerRankingView() {
       .finally(() => setLoading(false));
   }, []);
 
+  // 영숫자·언더스코어·하이픈만 있으면 블로그 ID로 간주
+  const isLikelyBlogId = (s: string) => /^[a-zA-Z0-9_-]+$/.test(s);
+
+  const fetchRankById = async (id: string) => {
+    const res = await fetch(`/api/rankings/${encodeURIComponent(id)}`);
+    return (await res.json()) as MyRank;
+  };
+
   const searchMyRank = async () => {
-    const id = searchId.trim().replace(/^https?:\/\/blog\.naver\.com\//, '').replace(/\/.*$/, '');
-    if (!id) return;
+    const raw = searchId.trim();
+    if (!raw) return;
+
+    // URL 입력이면 ID 추출
+    const fromUrl = raw.replace(/^https?:\/\/blog\.naver\.com\//, '').replace(/\/.*$/, '');
     setSearching(true);
     setMyRank(null);
+    setNameHits(null);
+
     try {
-      const res = await fetch(`/api/rankings/${encodeURIComponent(id)}`);
-      const data = await res.json();
-      setMyRank(data);
+      if (isLikelyBlogId(fromUrl)) {
+        // 블로그 ID 로 직접 조회
+        const data = await fetchRankById(fromUrl);
+        setMyRank(data);
+      } else {
+        // 블로그 이름으로 검색 (한글·특수문자 포함)
+        const res = await fetch(`/api/rankings/search?q=${encodeURIComponent(raw)}`);
+        const data = await res.json();
+        const hits: NameHit[] = data.results || [];
+        if (hits.length === 0) {
+          setMyRank({ found: false, message: `"${raw}"와(과) 일치하는 블로거를 찾지 못했습니다.` });
+        } else if (hits.length === 1) {
+          // 단일 매치면 바로 상세 순위 조회
+          const detail = await fetchRankById(hits[0].blog_id);
+          setMyRank(detail);
+        } else {
+          // 여러 매치면 선택 리스트 표시
+          setNameHits(hits);
+        }
+      }
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const selectNameHit = async (hit: NameHit) => {
+    setSearching(true);
+    setNameHits(null);
+    try {
+      const detail = await fetchRankById(hit.blog_id);
+      setMyRank(detail);
     } finally {
       setSearching(false);
     }
@@ -73,7 +125,7 @@ export default function BloggerRankingView() {
             value={searchId}
             onChange={(e) => setSearchId(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && searchMyRank()}
-            placeholder="블로그 ID 또는 주소 (예: blog.naver.com/myid)"
+            placeholder="블로그 이름 · ID · 주소 (예: 쭌이덕, myid, blog.naver.com/myid)"
             className="flex-1 px-3 py-2 text-sm rounded-lg bg-bg border border-border focus:outline-none focus:border-accent/50"
           />
           <button
@@ -84,6 +136,42 @@ export default function BloggerRankingView() {
             {searching ? '조회 중...' : '조회'}
           </button>
         </div>
+
+        {nameHits && nameHits.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border space-y-2">
+            <p className="text-xs text-dim">
+              &quot;{searchId.trim()}&quot; 검색 결과 {nameHits.length}건 — 순위를 볼 블로거를 선택하세요.
+            </p>
+            <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+              {nameHits.map((h) => (
+                <li key={h.blog_id}>
+                  <button
+                    type="button"
+                    onClick={() => selectNameHit(h)}
+                    className="w-full text-left px-3 py-2 hover:bg-bg transition flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold truncate">{h.blog_name || h.blog_id}</span>
+                      <span className="text-[11px] text-dim truncate">@{h.blog_id}</span>
+                      {h.category && (
+                        <span className="text-[10px] text-dim bg-bg px-1.5 py-0.5 rounded shrink-0">
+                          {h.category}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-xs text-accent font-bold shrink-0">
+                      {h.is_active && h.global_rank
+                        ? `${h.global_rank.toLocaleString()}위`
+                        : h.is_active
+                          ? '집계 대기'
+                          : '비활성'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {myRank && (
           <div className="mt-3 pt-3 border-t border-border">
