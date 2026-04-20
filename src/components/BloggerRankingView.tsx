@@ -83,6 +83,13 @@ export default function BloggerRankingView() {
         // 블로그 이름으로 검색 (한글·특수문자 포함)
         const res = await fetch(`/api/rankings/search?q=${encodeURIComponent(raw)}`);
         const data = await res.json();
+        if (!res.ok) {
+          setMyRank({
+            found: false,
+            message: `검색 중 오류가 발생했습니다 (${res.status}). 잠시 후 다시 시도해주세요.`,
+          });
+          return;
+        }
         const hits: NameHit[] = data.results || [];
         if (hits.length === 0) {
           setMyRank({ found: false, message: `"${raw}"와(과) 일치하는 블로거를 찾지 못했습니다.` });
