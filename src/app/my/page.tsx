@@ -28,6 +28,8 @@ export const dynamic = 'force-dynamic';
 export default async function MyDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const supabase = createServiceClient();
   let naverId: string | undefined;
+  let subscriptionPlan: string | null = null;
+  let subscriptionExpiresAt: string | null = null;
   const params = await searchParams;
 
   const cookieStore = await cookies();
@@ -60,9 +62,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       const { data: profile } = await supabase
         .from('users')
-        .select('linked_influencer_id, blog_id')
+        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at')
         .eq('auth_id', authUser.id)
         .single();
+
+      subscriptionPlan = profile?.subscription_plan || null;
+      subscriptionExpiresAt = profile?.subscription_expires_at || null;
 
       if (profile?.linked_influencer_id) {
         const { data: linkedInf } = await supabase
@@ -562,7 +567,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         subscriberCount={influencer.total_follower_count || influencer.subscriber_count || 0}
         firstSeenAt={influencer.naver_created_at || undefined}
         type="influencer"
-        subscribed={true}
+        subscribed={!!subscriptionPlan}
+        subscriptionPlan={subscriptionPlan}
+        subscriptionExpiresAt={subscriptionExpiresAt}
         top3Count={top3Count}
         totalKeywords={totalRankedKeywords}
         myKeyword={influencer.my_keyword || undefined}

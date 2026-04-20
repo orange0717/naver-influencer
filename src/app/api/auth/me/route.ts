@@ -51,6 +51,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     isAdmin: isAdmin(profile.id),
     restricted: await isRestricted(email || profile.email),
     subscriptionPlan: profile.subscription_plan || null,
+    subscriptionExpiresAt: profile.subscription_expires_at || null,
     subscriptionActive,
   };
 }

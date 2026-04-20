@@ -13,6 +13,8 @@ interface BloggerProfile {
   isInfluencer: boolean;
   imageUrl?: string;
   needsBlogId?: boolean;
+  subscriptionPlan?: string | null;
+  subscriptionExpiresAt?: string | null;
 }
 
 interface BlogPost {
@@ -98,14 +100,18 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
 
     const res = await fetch('/api/auth/me', { headers });
     const data = await res.json();
+    const sub = {
+      subscriptionPlan: data.subscriptionPlan ?? null,
+      subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
+    };
     if (data.type === 'unified' && (data.blogId || data.id)) {
-      return { blogId: data.blogId || data.id, displayName: data.name || data.blogId || data.id, isInfluencer: true };
+      return { blogId: data.blogId || data.id, displayName: data.name || data.blogId || data.id, isInfluencer: true, ...sub };
     }
     if (data.type === 'blogger' && data.id) {
-      return { blogId: data.id, displayName: data.name || data.id, isInfluencer: false };
+      return { blogId: data.id, displayName: data.name || data.id, isInfluencer: false, ...sub };
     }
     if (data.type === 'influencer' && data.id) {
-      return { blogId: data.blogId || data.id, displayName: data.name || data.id, isInfluencer: true, needsBlogId: !data.blogId };
+      return { blogId: data.blogId || data.id, displayName: data.name || data.id, isInfluencer: true, needsBlogId: !data.blogId, ...sub };
     }
 
     // API 인증 실패 시 URL의 blogId 파라미터 폴백
@@ -662,7 +668,9 @@ export default function BloggerDashboard() {
         imageUrl={customProfile.imageUrl || profile.imageUrl}
         blogId={profile.blogId}
         type={profile.isInfluencer ? 'influencer' : 'blogger'}
-        subscribed={true}
+        subscribed={!!profile.subscriptionPlan}
+        subscriptionPlan={profile.subscriptionPlan}
+        subscriptionExpiresAt={profile.subscriptionExpiresAt}
         editable={true}
         onProfileChange={handleProfileChange}
         isOfficialBlog={blogStats?.isOfficialBlog}

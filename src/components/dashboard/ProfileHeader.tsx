@@ -12,6 +12,8 @@ interface ProfileHeaderProps {
   blogId?: string;
   type: 'influencer' | 'blogger';
   subscribed?: boolean;
+  subscriptionPlan?: string | null;
+  subscriptionExpiresAt?: string | null;
   extraStats?: ReactNode;
   children?: ReactNode;
   editable?: boolean;
@@ -32,6 +34,8 @@ export default function ProfileHeader({
   blogId,
   type,
   subscribed = false,
+  subscriptionPlan,
+  subscriptionExpiresAt,
   extraStats,
   children,
   editable = false,
@@ -166,7 +170,14 @@ export default function ProfileHeader({
             {subscribed && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-accent bg-accent/10 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />
-                구독중
+                {subscriptionPlan === 'INFLUENCER' ? '인플루언서 구독중'
+                  : subscriptionPlan === 'BLOGGER' ? '블로거 구독중'
+                  : '구독중'}
+                {subscriptionExpiresAt && (
+                  <span className="text-accent/70 font-normal ml-0.5">
+                    · ~{formatDate(subscriptionExpiresAt)}
+                  </span>
+                )}
               </span>
             )}
           </div>
