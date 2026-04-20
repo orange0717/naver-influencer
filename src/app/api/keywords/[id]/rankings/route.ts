@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { findKeywordById, fetchRankings } from '@/lib/naver-api';
 
 export const dynamic = 'force-dynamic';
+// 네이버 search.naver.com HTML 스크래핑 시 해외 데이터센터 IP 차단 회피 — 서울 리전 고정
+export const preferredRegion = 'icn1';
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +20,12 @@ export async function GET(
 
     // 네이버 검색에서 실시간 순위 가져오기
     const naverRankings = await fetchRankings(found.keyword.name);
+
+    if (naverRankings.length === 0) {
+      console.warn(
+        `[rankings] 빈 결과: keywordId=${id}, name="${found.keyword.name}"`,
+      );
+    }
 
     const rankings = naverRankings.map((r, i) => ({
       id: `rank-${id}-${i + 1}`,
@@ -43,6 +51,10 @@ export async function GET(
       is_limited: false,
     });
   } catch (err) {
+    console.error(
+      `[rankings] 실패: keywordId=${id}`,
+      err instanceof Error ? err.message : err,
+    );
     return NextResponse.json(
       { error: '순위 정보를 불러오지 못했습니다.' },
       { status: 500 },

@@ -312,6 +312,13 @@ export async function fetchRankings(keyword: string): Promise<NaverRanking[]> {
   const rankings: NaverRanking[] = [];
   const items = $('li.keyword_bx._item');
 
+  if (items.length === 0) {
+    const isBlocked = /captcha|차단|비정상적인|blocked|access.*denied/i.test(html);
+    console.warn(
+      `[fetchRankings] 0건: keyword="${keyword}", status=${res.status}, htmlLen=${html.length}, blocked=${isBlocked}`,
+    );
+  }
+
   items.each((i, el) => {
     const $el = $(el);
     const name = $el.find('.name.elss .txt').first().text().trim();
