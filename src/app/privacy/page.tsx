@@ -38,7 +38,7 @@ export default function PrivacyPage() {
                 </tr>
                 <tr className="border-b border-border/50">
                   <td className="py-2 px-3">자동 수집</td>
-                  <td className="py-2 px-3">접속 IP, 접속 일시, 서비스 이용 기록</td>
+                  <td className="py-2 px-3">접속 IP, 접속 일시, 방문 페이지·유입 경로(리퍼러, UTM), 기기·브라우저 정보, 서비스 이용 기록(로그인 회원은 회원 식별자와 함께 저장될 수 있음)</td>
                   <td className="py-2 px-3">서비스 이용</td>
                 </tr>
                 <tr className="border-b border-border/50">

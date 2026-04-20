@@ -43,7 +43,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .order('created_at', { ascending: false })
     .limit(20);
 
-  return NextResponse.json({ user, influencer, payments: payments || [] });
+  // 방문 통계 (visit_logs는 최장 90일 보관)
+  const { count: visitCount } = await supabase
+    .from('visit_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', id);
+
+  const { data: lastVisit } = await supabase
+    .from('visit_logs')
+    .select('visited_at, page_path')
+    .eq('user_id', id)
+    .order('visited_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return NextResponse.json({
+    user,
+    influencer,
+    payments: payments || [],
+    visits: {
+      count: visitCount || 0,
+      last_visited_at: lastVisit?.visited_at || null,
+      last_page: lastVisit?.page_path || null,
+    },
+  });
 }
 
 /**

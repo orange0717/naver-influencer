@@ -20,6 +20,7 @@ interface MemberDetail {
   user: Member & { total_charged: number; total_used: number; updated_at: string };
   influencer: { naver_id: string; display_name: string; category: string; fan_count: number } | null;
   payments: { id: string; order_id: string; amount: number; plan_name: string; status: string; created_at: string }[];
+  visits?: { count: number; last_visited_at: string | null; last_page: string | null };
 }
 
 export default function AdminMembersPage() {
@@ -346,6 +347,33 @@ export default function AdminMembersPage() {
                     >
                       {planSaving ? '저장 중...' : '저장'}
                     </button>
+                  </div>
+                )}
+
+                {/* 방문 통계 (최근 90일) */}
+                {detail.visits && (
+                  <div>
+                    <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(최근 90일)</span></p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-bg rounded-lg px-3 py-2">
+                        <p className="text-[11px] text-dim">방문 횟수</p>
+                        <p className="font-rank font-bold text-sm">{detail.visits.count.toLocaleString()}회</p>
+                      </div>
+                      <div className="bg-bg rounded-lg px-3 py-2">
+                        <p className="text-[11px] text-dim">마지막 방문</p>
+                        <p className="font-rank font-bold text-sm">
+                          {detail.visits.last_visited_at
+                            ? new Date(detail.visits.last_visited_at).toLocaleString('ko-KR', {
+                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                hour: '2-digit', minute: '2-digit',
+                              })
+                            : '-'}
+                        </p>
+                        {detail.visits.last_page && (
+                          <p className="text-[10px] text-dim truncate mt-0.5">{detail.visits.last_page}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 

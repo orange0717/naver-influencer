@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
         utm_campaign: utmCampaign,
         device_type: deviceType,
         user_agent: ua.slice(0, 500) || null,
+        user_id: authUser?.userId || null,
       });
     }
 
