@@ -144,6 +144,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // naver_id 로만 들어온 쿠키 기반 세션도 제한 사용자 차단.
+  // 제한 이메일이 {naver_id}@naver.com 형식이면 동일인으로 간주.
+  if (await isRestricted(`${naverId}@naver.com`)) {
+    return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
+  }
+
   // body에서 offset 읽기 (프론트 호환용 — 첫 호출만 실행, 이후는 done:true)
   const body = await request.json().catch(() => ({}));
   const offset = body.offset || 0;
