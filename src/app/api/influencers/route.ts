@@ -306,7 +306,16 @@ async function getInfluencersFromDB(
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
     lastChallengedAt: inf.last_challenged_at || null,
-    isInactive: !inf.image_url && (inf.subscriber_count || 0) === 0,
+    // 1년 이상 챌린지 이력 없음 OR 프로필이 완전 빈 상태 (팬수·팔로워·이미지 모두 없음)
+    isInactive: (() => {
+      const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
+      const lastMs = inf.last_challenged_at ? new Date(inf.last_challenged_at as string).getTime() : 0;
+      const isOldChallenge = lastMs > 0 && lastMs < oneYearAgo;
+      const isEmpty = !inf.image_url
+        && (inf.subscriber_count || 0) === 0
+        && (inf.total_follower_count || 0) === 0;
+      return isOldChallenge || isEmpty;
+    })(),
     // 활동중단 판정: 관리자 수동 지정(stopped_manual)만 사용 — 자동 분류 없음
     isStopped: stoppedSet.has(inf.id as string),
     officialNaverRank: inf.official_naver_rank || null,
