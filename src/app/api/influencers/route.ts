@@ -216,8 +216,10 @@ async function getInfluencersFromDB(
     influencers.sort((a, b) => {
       const top3A = getTop3(a);
       const top3B = getTop3(b);
-      const ratioA = (a.total_keywords || 0) > 0 ? top3A / (a.total_keywords as number) : 0;
-      const ratioB = (b.total_keywords || 0) > 0 ? top3B / (b.total_keywords as number) : 0;
+      const totalA = Number(a.total_keywords) || 0;
+      const totalB = Number(b.total_keywords) || 0;
+      const ratioA = totalA > 0 ? top3A / totalA : 0;
+      const ratioB = totalB > 0 ? top3B / totalB : 0;
       if (ratioA !== ratioB) return ascending ? ratioA - ratioB : ratioB - ratioA;
       // 비율 같으면 TOP3 개수순
       return ascending ? top3A - top3B : top3B - top3A;
@@ -265,8 +267,8 @@ async function getInfluencersFromDB(
   if (!isGroupSort && ninflRanking && influencers && influencers.length > 0) {
     for (let i = 0; i < influencers.length; i++) {
       const inf = influencers[i];
-      if ((inf.keyword_score || 0) > 0) {
-        ninflRankMap.set(inf.id, offset + i + 1);
+      if ((Number(inf.keyword_score) || 0) > 0) {
+        ninflRankMap.set(inf.id as string, offset + i + 1);
       }
     }
   }
@@ -294,12 +296,12 @@ async function getInfluencersFromDB(
     myKeywordCategory: inf.my_keyword_category || inf.category || '',
     myKeyword: inf.my_keyword || '',
     categoryMyType: inf.category_my_type || '',
-    foundInKeywords: keywordMap.get(inf.id) || [],
-    totalKeywords: inf.total_keywords || 0,
-    top1Count: inf.top1_count || 0,
-    top2Count: inf.top2_count || 0,
-    top3Count: inf.top3_count || 0,
-    integratedTop3Count: (inf.top1_count || 0) + (inf.top2_count || 0) + (inf.top3_count || 0),
+    foundInKeywords: keywordMap.get(inf.id as string) || [],
+    totalKeywords: Number(inf.total_keywords) || 0,
+    top1Count: Number(inf.top1_count) || 0,
+    top2Count: Number(inf.top2_count) || 0,
+    top3Count: Number(inf.top3_count) || 0,
+    integratedTop3Count: (Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0),
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
@@ -309,9 +311,9 @@ async function getInfluencersFromDB(
     isStopped: stoppedSet.has(inf.id as string),
     officialNaverRank: inf.official_naver_rank || null,
     officialRankCategory: inf.official_rank_category || null,
-    keywordScore: inf.keyword_score || 0,
-    ninflRank: ninflRankMap.get(inf.id) || null,
-    isMember: memberSet.has(inf.id),
+    keywordScore: Number(inf.keyword_score) || 0,
+    ninflRank: ninflRankMap.get(inf.id as string) || null,
+    isMember: memberSet.has(inf.id as string),
   }));
 
   // 활성 인플루언서 수 (전체 카테고리 + 검색 없을 때만 조회)
