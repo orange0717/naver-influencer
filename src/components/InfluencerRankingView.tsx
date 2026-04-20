@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { formatCount, formatScore } from '@/lib/format';
+import { formatCount } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
 
 interface InfluencerItem {
@@ -237,9 +237,6 @@ export default function InfluencerRankingView() {
                   <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('subscriber_count')}>
                     팬수{sortArrow('subscriber_count')}
                   </th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('keyword_score')}>
-                    점수{sortArrow('keyword_score')}
-                  </th>
                   <th className="text-center py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('total_keywords')}>
                     챌린지{sortArrow('total_keywords')}
                   </th>
@@ -319,13 +316,6 @@ export default function InfluencerRankingView() {
                     </td>
                     <td className="py-3 px-3 text-right text-xs font-bold font-rank text-accent">
                       {formatCount(inf.subscriberCount || inf.totalFollowerCount)}
-                    </td>
-                    <td className="py-3 px-3 text-right text-xs font-rank">
-                      {(inf.keywordScore || 0) > 0 ? (
-                        <span className="font-bold text-accent">{formatScore(inf.keywordScore || 0)}</span>
-                      ) : (
-                        <span className="text-dim">—</span>
-                      )}
                     </td>
                     <td className="py-3 px-3 text-center text-xs font-rank">
                       {(inf.totalKeywords || 0) > 0 ? (
@@ -432,7 +422,6 @@ export default function InfluencerRankingView() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 text-[10px] text-dim">
-                  {(inf.keywordScore || 0) > 0 && <span className="text-accent font-bold">점수 {formatScore(inf.keywordScore || 0)}</span>}
                   {(inf.totalKeywords || 0) > 0 && <span>챌린지 {inf.totalKeywords}개</span>}
                   {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
                   {(inf.top1Count || 0) > 0 && <span className="text-red-500 font-bold">1위 {inf.top1Count}</span>}
