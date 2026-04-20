@@ -90,8 +90,8 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords
 
       results.push(...items);
 
-      if (results.length >= 500) {
-        console.warn('[crawl-challenge-ranks] Reached max items limit (500)');
+      if (results.length >= 2000) {
+        console.warn('[crawl-challenge-ranks] Reached max items limit (2000)');
         break;
       }
 
