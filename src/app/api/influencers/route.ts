@@ -83,9 +83,8 @@ async function getInfluencersFromDB(
     if (officialOnly) {
       q = q.not('official_naver_rank', 'is', null);
     }
-    if (ninflRanking) {
-      q = q.gt('keyword_score', 0);
-    }
+    // ninflRanking 모드에서도 keyword_score = 0 인 인플루언서 포함.
+    // 활성(keyword_score > 0) 이 위에, 비활성이 아래에 그룹 정렬됨.
     if (newOnly) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
