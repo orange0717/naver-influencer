@@ -56,6 +56,10 @@
     {
       "path": "/api/cron/crawl-search-exposure?size=100",
       "schedule": "30 23 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-intents",
+      "schedule": "0 17 * * *"
     }
   ]
 }
