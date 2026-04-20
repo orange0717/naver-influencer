@@ -61,7 +61,8 @@ async function getInfluencersFromDB(
   ];
   const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
-  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank, stopped_manual';
+  // stopped_manual 은 migration-062 적용 전에는 존재하지 않으므로 별도 쿼리로 조회 (fallback 지원)
+  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank';
 
   // 공통 필터 적용 헬퍼 (배치 페치 때 재사용)
   const applyFilters = <T extends { or: (f: string) => T; not: (c: string, op: string, v: unknown) => T; gt: (c: string, v: unknown) => T; gte: (c: string, v: unknown) => T }>(q: T): T => {
@@ -163,10 +164,29 @@ async function getInfluencersFromDB(
 
   if (error) throw new Error(error.message);
 
+  // stopped_manual 플래그 별도 조회 (migration-062 미적용 환경에서도 동작하도록 fallback)
+  // 컬럼이 없으면 stoppedSet 은 비어 있어 "모두 활성"으로 처리됨 — 기존 자동 분류 제거 효과와 동일.
+  const stoppedSet = new Set<string>();
+  if (influencers && influencers.length > 0) {
+    try {
+      const { data: stoppedRows, error: stoppedErr } = await supabase
+        .from('influencers')
+        .select('id')
+        .in('id', influencers.map(i => i.id as string))
+        .eq('stopped_manual', true);
+      if (!stoppedErr && stoppedRows) {
+        for (const r of stoppedRows) stoppedSet.add(r.id as string);
+      }
+      // 컬럼이 없으면 stoppedErr 가 발생하지만 무시하고 빈 Set 유지
+    } catch {
+      // swallow — migration 미적용 상태
+    }
+  }
+
   // 활동 그룹 판정: 관리자 수동 지정(stopped_manual)만 사용
   // 0 = 활성, 1 = 활동중단(관리자 지정)
   const activityGroup = (inf: Record<string, unknown>): number => {
-    return inf.stopped_manual === true ? 1 : 0;
+    return stoppedSet.has(inf.id as string) ? 1 : 0;
   };
 
   // N인플 그룹 정렬 + 활성 그룹만 ninflRank 부여 (slice 전 전체 기준)
@@ -287,7 +307,7 @@ async function getInfluencersFromDB(
     lastChallengedAt: inf.last_challenged_at || null,
     isInactive: !inf.image_url && (inf.subscriber_count || 0) === 0,
     // 활동중단 판정: 관리자 수동 지정(stopped_manual)만 사용 — 자동 분류 없음
-    isStopped: inf.stopped_manual === true,
+    isStopped: stoppedSet.has(inf.id as string),
     officialNaverRank: inf.official_naver_rank || null,
     officialRankCategory: inf.official_rank_category || null,
     keywordScore: inf.keyword_score || 0,
