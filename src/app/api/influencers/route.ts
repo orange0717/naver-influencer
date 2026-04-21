@@ -83,8 +83,7 @@ async function getInfluencersFromDB(
     if (officialOnly) {
       q = q.not('official_naver_rank', 'is', null);
     }
-    // ninflRanking 모드에서도 keyword_score = 0 인 인플루언서 포함.
-    // 활성(keyword_score > 0) 이 위에, 비활성이 아래에 그룹 정렬됨.
+    // ninflRanking: 전체 포함, 비활성(1년 이상 미활동)은 UI에서 배지로 표시하고 뒤로 정렬
     if (newOnly) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
