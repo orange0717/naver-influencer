@@ -226,6 +226,73 @@ export default function InfluencerRankingView() {
         </div>
       ) : (
         <>
+          {/* 검색 결과가 1건일 때 강조 순위 카드 */}
+          {search.trim() && influencers.length === 1 && (() => {
+            const inf = influencers[0];
+            const t3 = inf.integratedTop3Count || 0;
+            const totalKw = inf.totalKeywords || 0;
+            const ratio = totalKw > 0 ? (t3 / totalKw) * 100 : 0;
+            return (
+              <div className="bg-accent/5 border border-accent/30 rounded-xl p-5 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {inf.imageUrl ? (
+                      <img src={inf.imageUrl} alt={inf.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <span className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-lg shrink-0">
+                        {inf.name.charAt(0)}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <a href={inf.profileUrl} target="_blank" rel="noopener noreferrer"
+                          className="font-bold text-base hover:text-accent transition-colors truncate">
+                          {inf.name}
+                        </a>
+                        {inf.isStopped && <span className="text-[10px] font-medium text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded shrink-0">활동 중단</span>}
+                        {inf.isInactive && <span className="text-[10px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">1년이상 활동이력 없음</span>}
+                      </div>
+                      <div className="text-xs text-dim">@{inf.naverId} · {inf.myKeywordCategory}{inf.categoryMyType ? ` · ${inf.categoryMyType}` : ''}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="bg-surface rounded-lg p-3 border border-border">
+                    <p className="text-[11px] text-dim mb-1">N인플 전체 순위</p>
+                    <p className="text-2xl font-extrabold text-accent font-rank">
+                      {inf.ninflRank ? `${inf.ninflRank.toLocaleString()}위` : '집계 대기'}
+                    </p>
+                  </div>
+                  <div className="bg-surface rounded-lg p-3 border border-border">
+                    <p className="text-[11px] text-dim mb-1">{inf.officialRankCategory || '카테고리'} 공식 순위</p>
+                    <p className="text-2xl font-extrabold text-gold font-rank">
+                      {inf.officialNaverRank ? `${inf.officialNaverRank}위` : '—'}
+                    </p>
+                  </div>
+                  <div className="bg-surface rounded-lg p-3 border border-border">
+                    <p className="text-[11px] text-dim mb-1">TOP3 진입 / 챌린지</p>
+                    <p className="text-base font-extrabold">
+                      <span className="text-gold">{t3}</span>
+                      <span className="text-dim font-normal"> / {totalKw}</span>
+                      {totalKw > 0 && (
+                        <span className="text-xs text-dim font-normal ml-1">({ratio.toFixed(1)}%)</span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-dim mt-1">
+                      1위 {inf.top1Count || 0} · 2위 {inf.top2Count || 0} · 3위 {inf.top3Count || 0}
+                    </p>
+                  </div>
+                  <div className="bg-surface rounded-lg p-3 border border-border">
+                    <p className="text-[11px] text-dim mb-1">팬수</p>
+                    <p className="text-2xl font-extrabold text-accent font-rank">
+                      {formatCount(inf.subscriberCount || inf.totalFollowerCount)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Desktop table */}
           <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
