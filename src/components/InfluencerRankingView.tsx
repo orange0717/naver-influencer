@@ -173,7 +173,7 @@ export default function InfluencerRankingView() {
           <span className="font-semibold text-text">계산 방식:</span> 참여 중인 키워드 중 <strong className="text-text">TOP 3</strong> 진입 키워드에 대해{' '}
           <span className="font-mono bg-surface px-1.5 py-0.5 rounded border border-border text-[11px]">(참여자수 - 내 순위) × 월간검색량</span>
           {' '}을 합산합니다.
-          검색량이 높은 키워드에서 TOP 3 에 올수록 점수가 높아집니다. 최근 7일 이내 최신 데이터 기준.
+          검색량이 높은 키워드에서 TOP 3 에 올수록 점수가 높아집니다. 각 키워드별 최신 순위 기록 기준 (최대 90일).
         </p>
       </div>
 
