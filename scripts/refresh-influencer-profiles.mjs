@@ -152,10 +152,17 @@ async function fetchProfile(naverId) {
   const data = state?.space?.data;
   if (!data) return null;
 
+  // subscriberCount 는 2026-04 경부터 data.stats 하위로 이동됨. legacy 경로도 폴백으로 확인.
+  const rawSub = (typeof data?.stats?.subscriberCount === 'number')
+    ? data.stats.subscriberCount
+    : (typeof data?.subscriberCount === 'number' ? data.subscriberCount : null);
+
   return {
     totalFollowerCount: typeof data.totalFollowerCount === 'number' ? data.totalFollowerCount : null,
-    subscriberCount: typeof data.subscriberCount === 'number' ? data.subscriberCount : null,
+    subscriberCount: rawSub,
     ownerId: data.ownerId ? String(data.ownerId) : null,
+    lastChallengedAt: (typeof data?.keywordChallengeInfo?.lastChallengedAt === 'string')
+      ? data.keywordChallengeInfo.lastChallengedAt : null,
   };
 }
 
@@ -201,7 +208,7 @@ async function main() {
   if (onlyNaverId) {
     const { data, error } = await supabase
       .from('influencers')
-      .select('id, naver_id, subscriber_count, total_follower_count, total_keywords, naver_owner_id, updated_at')
+      .select('id, naver_id, subscriber_count, total_follower_count, total_keywords, naver_owner_id, updated_at, last_crawled_at')
       .eq('naver_id', onlyNaverId)
       .limit(1)
       .maybeSingle();
@@ -215,7 +222,7 @@ async function main() {
     while (true) {
       const { data, error } = await supabase
         .from('influencers')
-        .select('id, naver_id, subscriber_count, total_follower_count, total_keywords, naver_owner_id, updated_at')
+        .select('id, naver_id, subscriber_count, total_follower_count, total_keywords, naver_owner_id, updated_at, last_crawled_at')
         .gt('keyword_score', 0)
         .or(`updated_at.is.null,updated_at.lt.${staleThreshold}`)
         .order('updated_at', { ascending: true, nullsFirst: true })
@@ -271,6 +278,14 @@ async function main() {
       }
       if (totalKw !== null && totalKw !== inf.total_keywords) {
         updateData.total_keywords = totalKw;
+      }
+      // 마지막 챌린지 참여 시각 — keywordChallengeInfo.lastChallengedAt
+      if (profile.lastChallengedAt) {
+        const currentIso = inf.last_crawled_at ? new Date(inf.last_crawled_at).toISOString() : null;
+        const freshIso = new Date(profile.lastChallengedAt).toISOString();
+        if (currentIso !== freshIso) {
+          updateData.last_crawled_at = freshIso;
+        }
       }
 
       if (Object.keys(updateData).length === 0) {

@@ -68,8 +68,11 @@ export async function refreshInfluencerProfile(
 
     const state = JSON.parse(html.substring(jsonStart, jsonEnd));
     const followerCount: number | undefined = state?.space?.data?.totalFollowerCount;
-    const subscriberCount: number | undefined = state?.space?.data?.subscriberCount;
+    // subscriberCount 는 2026-04 경부터 data.stats 하위로 이동됨. legacy 경로도 폴백.
+    const subscriberCount: number | undefined =
+      state?.space?.data?.stats?.subscriberCount ?? state?.space?.data?.subscriberCount;
     const ownerId: string | number | undefined = state?.space?.data?.ownerId;
+    const lastChallengedAt: string | undefined = state?.space?.data?.keywordChallengeInfo?.lastChallengedAt;
 
     // 참여 키워드 총개수 실시간 조회 (paging.total만 필요하므로 limit=1)
     let totalKeywords: number | null = null;
@@ -96,6 +99,7 @@ export async function refreshInfluencerProfile(
     if (followerCount && followerCount > 0) updateData.total_follower_count = followerCount;
     if (subscriberCount && subscriberCount > 0) updateData.subscriber_count = subscriberCount;
     if (totalKeywords !== null) updateData.total_keywords = totalKeywords;
+    if (lastChallengedAt) updateData.last_crawled_at = new Date(lastChallengedAt).toISOString();
 
     // 갱신할 실제 값이 하나도 없으면 updated_at만 찍지 말고 포기
     if (Object.keys(updateData).length <= 1) return null;
