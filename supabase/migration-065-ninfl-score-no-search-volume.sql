@@ -1,13 +1,14 @@
 -- =============================================
 -- migration-065-ninfl-score-no-search-volume.sql
--- N인플 점수 공식에서 월간검색량 가중치 제거
--- 기존: (참여자수 - 내 순위) × 월간검색량
--- 변경: (참여자수 - 내 순위)
+-- N인플 점수 공식 — 검색량 제거 + 성공률 반영
 --
--- 변경 이유: 검색량이 큰 키워드에서 1 TOP 만 먹어도 점수가
--- 비대해져 "순위가 치열한 키워드에서 상위 진입" 가치를
--- 올바르게 반영하지 못함. 검색량을 빼면 TOP3 키워드 개수
--- + 경쟁자 규모에 비례하는 순수한 경쟁 기여도 점수가 됨.
+-- 최종 공식:
+--   score = SUM( TOP3 키워드의 (참여자수 - 내 순위) )
+--           × (TOP3 개수 / 전체 도전 수)
+--
+-- 2000개 도전해서 100개 성공(5%) 인플 vs 200개 도전해서
+-- 100개 성공(50%) 인플을 구분하기 위해 성공률 곱 적용.
+-- 회원/비회원 여부는 점수·순위에 관여하지 않음.
 --
 -- Supabase SQL Editor 에서 순서대로 실행하세요.
 -- =============================================
@@ -56,21 +57,37 @@ BEGIN
     FROM latest_rankings
     GROUP BY influencer_id
   ),
-  keyword_scores AS (
+  challenge_counts AS (
+    -- 인플루언서별 전체 도전 수와 TOP3 성공 수
+    SELECT
+      influencer_id AS inf_id,
+      COUNT(*)::NUMERIC AS total_challenges,
+      COUNT(*) FILTER (WHERE rank_position <= 3)::NUMERIC AS top3_challenges
+    FROM latest_rankings
+    GROUP BY influencer_id
+  ),
+  top3_sums AS (
+    -- TOP3(1~3위) 진입 키워드만: (참여자수 - 내 순위) 합산
     SELECT
       lr.influencer_id AS inf_id,
-      -- TOP3(1~3위) 진입 키워드만 점수화. 공식: (참여자수 - 내 순위)
-      -- 4위 이하는 점수 0 (합산 제외)
-      ROUND(SUM(
-        GREATEST(
-          COALESCE(kc.participant_count, 0) - lr.rank_position,
-          0
-        )::NUMERIC
-      ), 2) AS score
+      SUM(
+        GREATEST(COALESCE(kc.participant_count, 0) - lr.rank_position, 0)::NUMERIC
+      ) AS sum_score
     FROM latest_rankings lr
     LEFT JOIN keyword_challenges kc ON kc.id = lr.keyword_id
     WHERE lr.rank_position <= 3
     GROUP BY lr.influencer_id
+  ),
+  keyword_scores AS (
+    -- 최종 공식: TOP3 점수합 × 성공률(TOP3 개수 / 전체 도전 수)
+    SELECT
+      cc.inf_id,
+      ROUND(
+        COALESCE(ts.sum_score, 0) *
+        (cc.top3_challenges / NULLIF(cc.total_challenges, 0))
+      , 2) AS score
+    FROM challenge_counts cc
+    LEFT JOIN top3_sums ts ON ts.inf_id = cc.inf_id
   )
   SELECT
     s.inf_id,

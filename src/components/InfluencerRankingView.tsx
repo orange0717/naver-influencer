@@ -170,10 +170,12 @@ export default function InfluencerRankingView() {
       <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-sm">
         <p className="font-bold text-accent mb-1">N인플 자체 순위 — 키워드 점수 기반</p>
         <p className="text-dim text-xs leading-relaxed">
-          <span className="font-semibold text-text">계산 방식:</span> 참여 중인 키워드 중 <strong className="text-text">TOP 3</strong> 진입 키워드(1~3위)에 대해{' '}
-          <span className="font-mono bg-surface px-1.5 py-0.5 rounded border border-border text-[11px]">참여자수 - 내 순위</span>
-          {' '}를 합산합니다 (4위 이하는 0점).
-          경쟁자가 많은 키워드에서 상위 순위를 자주 차지할수록 점수가 높아집니다. 각 키워드별 최신 순위 기록 기준.
+          <span className="font-semibold text-text">계산 방식:</span>{' '}
+          <span className="font-mono bg-surface px-1.5 py-0.5 rounded border border-border text-[11px]">
+            Σ (참여자수 - 내 순위) × (TOP3 개수 / 전체 도전 수)
+          </span>
+          {' '}— TOP3(1~3위) 진입 키워드만 합산하고 전체 도전 대비 성공률을 곱합니다.
+          경쟁자가 많은 키워드에서 상위 순위를 자주 차지하고 도전 성공률이 높을수록 점수가 높아집니다. 회원 여부와 무관하게 실력으로만 순위가 매겨집니다.
         </p>
       </div>
 
