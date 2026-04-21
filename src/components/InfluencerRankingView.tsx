@@ -172,6 +172,14 @@ export default function InfluencerRankingView() {
         </div>
       </div>
 
+      {/* 연구 중 안내 배너 */}
+      <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-sm">
+        <p className="text-yellow-800 text-xs leading-relaxed">
+          <span className="font-bold">⚠ 순위 산정 로직을 연구 중입니다</span>
+          {' '}— 현재 공식은 검증·조정을 거치며 변경될 수 있습니다. 순위 수치는 참고용으로만 사용해주세요.
+        </p>
+      </div>
+
       {/* N인플 순위 설명 */}
       <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-sm">
         <p className="font-bold text-accent mb-1">N인플 자체 순위 — 본인 카테고리 키워드 점수 기반</p>
