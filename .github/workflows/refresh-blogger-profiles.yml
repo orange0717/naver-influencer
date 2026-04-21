@@ -1,16 +1,25 @@
-name: 블로거 순위 주간 갱신
+name: 블로거 프로필(포스트 수/최근 포스트일) 매일 갱신
 
-# 매일 KST 04:00 (전날 19:00 UTC) 에 실행
+# 매일 KST 02:00 (전날 17:00 UTC) 에 실행
 on:
   schedule:
-    - cron: '0 19 * * *'
+    - cron: '0 17 * * *'
   workflow_dispatch:
+    inputs:
+      limit:
+        description: '상위 N명 (기본 3000, global_rank 순)'
+        required: false
+        default: '3000'
+      stale_days:
+        description: 'N일 이상 stale 만 갱신 (기본 1)'
+        required: false
+        default: '1'
 
 jobs:
   refresh:
-    name: refresh_blogger_rankings() 실행
+    name: PostTitleListAsync.naver 기반 프로필 갱신
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 330
 
     steps:
       - uses: actions/checkout@v4
@@ -34,8 +43,11 @@ jobs:
           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
 
       - name: 실행
-        run: node scripts/refresh-blogger-rankings.mjs
+        run: |
+          LIMIT=${{ inputs.limit || '3000' }}
+          STALE=${{ inputs.stale_days || '1' }}
+          node scripts/refresh-blogger-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE"
 
       - name: 정리
         if: always()
-        run: rm -f .env.local
+        run: rm -f scripts/.refresh-blogger-profiles-progress.json .env.local
