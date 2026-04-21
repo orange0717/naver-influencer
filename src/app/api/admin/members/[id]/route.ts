@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, total_charged, total_used, subscription_plan, subscription_expires_at, created_at, updated_at')
+    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, total_charged, total_used, subscription_plan, subscription_expires_at, created_at, updated_at, total_visit_count, last_visited_at')
     .eq('id', id)
     .single();
 
@@ -43,15 +43,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .order('created_at', { ascending: false })
     .limit(20);
 
-  // 방문 통계 (visit_logs는 최장 90일 보관)
-  const { count: visitCount } = await supabase
-    .from('visit_logs')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', id);
-
+  // 누적 방문 횟수는 users 컬럼에서, 마지막 방문 페이지는 visit_logs(최장 90일)에서 조회
   const { data: lastVisit } = await supabase
     .from('visit_logs')
-    .select('visited_at, page_path')
+    .select('page_path')
     .eq('user_id', id)
     .order('visited_at', { ascending: false })
     .limit(1)
@@ -62,8 +57,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     influencer,
     payments: payments || [],
     visits: {
-      count: visitCount || 0,
-      last_visited_at: lastVisit?.visited_at || null,
+      count: user.total_visit_count || 0,
+      last_visited_at: user.last_visited_at || null,
       last_page: lastVisit?.page_path || null,
     },
   });

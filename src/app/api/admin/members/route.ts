@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   // 회원 목록 쿼리
   let query = supabase
     .from('users')
-    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, subscription_plan, subscription_expires_at, created_at', { count: 'exact' });
+    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, subscription_plan, subscription_expires_at, created_at, total_visit_count', { count: 'exact' });
 
   if (search) {
     query = query.or(`nickname.ilike.%${search}%,email.ilike.%${search}%,blog_id.ilike.%${search}%`);
@@ -47,24 +47,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 방문 횟수 (visit_logs 최대 90일 보관)
-  const userIds = (users || []).map(u => u.id);
-  const visitCountMap = new Map<string, number>();
-  if (userIds.length > 0) {
-    const { data: visits } = await supabase
-      .from('visit_logs')
-      .select('user_id')
-      .in('user_id', userIds);
-    for (const v of (visits || [])) {
-      if (!v.user_id) continue;
-      visitCountMap.set(v.user_id, (visitCountMap.get(v.user_id) || 0) + 1);
-    }
-  }
-
+  // 누적 방문 횟수는 users.total_visit_count 컬럼에서 직접 읽음 (migration-065 트리거로 유지)
   const result = (users || []).map(u => ({
     ...u,
     influencer_name: u.linked_influencer_id ? infMap.get(u.linked_influencer_id) || null : null,
-    visit_count: visitCountMap.get(u.id) || 0,
+    visit_count: u.total_visit_count || 0,
     is_admin: isAdmin(u.id),
   }));
 

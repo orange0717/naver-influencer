@@ -374,7 +374,7 @@ export default function AdminMembersPage() {
                 {/* 방문 통계 (최근 90일) */}
                 {detail.visits && (
                   <div>
-                    <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(최근 90일)</span></p>
+                    <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(누적)</span></p>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-bg rounded-lg px-3 py-2">
                         <p className="text-[11px] text-dim">방문 횟수</p>
