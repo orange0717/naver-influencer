@@ -153,9 +153,15 @@ export default function InfluencerRankingView() {
         </div>
         <div className="text-right">
           <span className="text-xs text-dim font-rank">
-            {loading ? '수집 중...' : category === '전체'
-              ? <><span className="text-accent font-bold">{activeTotal.toLocaleString()}</span> / {total.toLocaleString()}명</>
-              : `${category} ${total.toLocaleString()}명`}
+            {loading ? (
+              '수집 중...'
+            ) : (
+              <>
+                {category !== '전체' && <span className="mr-1">{category} ·</span>}
+                <span className="text-accent font-bold">활동 {activeTotal.toLocaleString()}</span>
+                {' / '}전체 {total.toLocaleString()}명
+              </>
+            )}
           </span>
           {!loading && (
             <div className="flex items-center gap-1 mt-0.5">

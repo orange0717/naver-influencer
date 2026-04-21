@@ -340,16 +340,23 @@ async function getInfluencersFromDB(
     isMember: memberSet.has(inf.id as string),
   }));
 
-  // 활성 인플루언서 수 (전체 카테고리 + 검색 없을 때만 조회)
+  // 활성 인플루언서 수 (검색 없을 때만 조회, 카테고리 필터가 있으면 그 안에서)
   let activeTotal = 0;
-  if (!category || category === '전체') {
-    if (!search?.trim()) {
-      const { count: activeCount } = await supabase
-        .from('influencers')
-        .select('id', { count: 'exact', head: true })
-        .gt('subscriber_count', 0);
-      activeTotal = activeCount || 0;
+  if (!search?.trim()) {
+    let activeQuery = supabase
+      .from('influencers')
+      .select('id', { count: 'exact', head: true })
+      .gt('subscriber_count', 0);
+
+    if (category && category !== '전체') {
+      // my_keyword_category 또는 category 어느 쪽이든 매칭
+      activeQuery = activeQuery.or(
+        `my_keyword_category.eq.${category},category.eq.${category}`,
+      );
     }
+
+    const { count: activeCount } = await activeQuery;
+    activeTotal = activeCount || 0;
   }
 
   return NextResponse.json({
