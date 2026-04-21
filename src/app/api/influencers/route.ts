@@ -62,7 +62,7 @@ async function getInfluencersFromDB(
   const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
   // stopped_manual 은 migration-062 적용 전에는 존재하지 않으므로 별도 쿼리로 조회 (fallback 지원)
-  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank';
+  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank, ninfl_rank';
 
   // 공통 필터 적용 헬퍼 (배치 페치 때 재사용)
   const applyFilters = <T extends { or: (f: string) => T; not: (c: string, op: string, v: unknown) => T; gt: (c: string, v: unknown) => T; gte: (c: string, v: unknown) => T }>(q: T): T => {
@@ -335,7 +335,8 @@ async function getInfluencersFromDB(
     officialNaverRank: inf.official_naver_rank || null,
     officialRankCategory: inf.official_rank_category || null,
     keywordScore: Number(inf.keyword_score) || 0,
-    ninflRank: ninflRankMap.get(inf.id as string) || null,
+    // DB 의 ninfl_rank 컬럼(전체 순위)을 우선 사용, 없으면 subset 기반 fallback
+    ninflRank: (inf.ninfl_rank != null ? Number(inf.ninfl_rank) : null) ?? ninflRankMap.get(inf.id as string) ?? null,
     isMember: memberSet.has(inf.id as string),
   }));
 
