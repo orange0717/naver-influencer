@@ -226,9 +226,12 @@ export default function InfluencerRankingView() {
         </div>
       ) : (
         <>
-          {/* 검색 결과가 1건일 때 강조 순위 카드 */}
-          {search.trim() && influencers.length === 1 && (() => {
+          {/* 검색어가 첫 번째 결과 이름에 포함되면 인물 검색으로 간주해 강조 카드 표시 */}
+          {search.trim() && influencers.length >= 1 && (() => {
             const inf = influencers[0];
+            const q = search.trim().toLowerCase();
+            const nameMatches = inf.name.toLowerCase().includes(q) || inf.naverId.toLowerCase().includes(q);
+            if (!nameMatches) return null;
             const t3 = inf.integratedTop3Count || 0;
             const totalKw = inf.totalKeywords || 0;
             const ratio = totalKw > 0 ? (t3 / totalKw) * 100 : 0;
@@ -255,6 +258,11 @@ export default function InfluencerRankingView() {
                       <div className="text-xs text-dim">@{inf.naverId} · {inf.myKeywordCategory}{inf.categoryMyType ? ` · ${inf.categoryMyType}` : ''}</div>
                     </div>
                   </div>
+                  {influencers.length > 1 && (
+                    <span className="text-[10px] text-dim shrink-0">
+                      총 {total.toLocaleString()}건 중 상위
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <div className="bg-surface rounded-lg p-3 border border-border">
