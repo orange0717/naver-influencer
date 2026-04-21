@@ -1,8 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp } from '@/lib/rate-limit';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, getCookieUser } from '@/lib/auth';
 import { isAdmin } from '@/lib/admin';
+
+/**
+ * Supabase Auth 실패 시 쿠키 세션(데모/블로거)을 users.id로 매핑한다.
+ * 네이버 로그인: naver_id -> influencers.id -> users.linked_influencer_id
+ * 블로거 로그인: blog_id -> users.blog_id
+ */
+async function resolveCookieUserId(
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<string | null> {
+  const cookieUser = await getCookieUser().catch(() => null);
+  if (!cookieUser) return null;
+
+  if (cookieUser.type === 'influencer') {
+    const { data: inf } = await supabase
+      .from('influencers')
+      .select('id')
+      .eq('naver_id', cookieUser.id)
+      .maybeSingle();
+    if (!inf) return null;
+    const { data: u } = await supabase
+      .from('users')
+      .select('id')
+      .eq('linked_influencer_id', inf.id)
+      .maybeSingle();
+    return u?.id ?? null;
+  }
+
+  if (cookieUser.type === 'blogger') {
+    const { data: u } = await supabase
+      .from('users')
+      .select('id')
+      .eq('blog_id', cookieUser.id)
+      .maybeSingle();
+    return u?.id ?? null;
+  }
+
+  return null;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -23,21 +61,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, skipped: 'bot' });
     }
 
-    // 관리자 로그인 상태면 집계 제외 (본인 유입 자료 왜곡 방지)
+    // Supabase Auth 우선, 실패 시 쿠키 세션(데모/블로거)으로 폴백
+    const supabase = createServiceClient();
     const authUser = await getAuthUser(req).catch(() => null);
-    if (authUser && isAdmin(authUser.userId)) {
+    const cookieUserId = authUser?.userId ? null : await resolveCookieUserId(supabase).catch(() => null);
+    const trackedUserId = authUser?.userId ?? cookieUserId;
+
+    // 관리자는 집계 제외 (본인 유입 자료 왜곡 방지)
+    if (trackedUserId && isAdmin(trackedUserId)) {
       return NextResponse.json({ ok: true, skipped: 'admin' });
     }
 
     const body = await req.json().catch(() => ({}));
-    const supabase = createServiceClient();
     const now = new Date();
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const today = kst.toISOString().slice(0, 10);
 
     // 로그인 사용자는 페이지뷰마다 누적 방문횟수 +1 (isFirstVisit 여부 무관)
-    if (authUser?.userId) {
-      await supabase.rpc('increment_user_total_visit', { p_user_id: authUser.userId });
+    if (trackedUserId) {
+      await supabase.rpc('increment_user_total_visit', { p_user_id: trackedUserId });
     }
 
     // 1) site_visits 일별 집계 — 세션 첫 방문(순 방문자)일 때만 카운트
@@ -98,7 +140,7 @@ export async function POST(req: NextRequest) {
         utm_campaign: utmCampaign,
         device_type: deviceType,
         user_agent: ua.slice(0, 500) || null,
-        user_id: authUser?.userId || null,
+        user_id: trackedUserId || null,
       });
     }
 

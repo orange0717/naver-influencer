@@ -23,7 +23,13 @@ function extractDomain(url: string): string | null {
   }
 }
 
-/** 관리자 여부 + 로그인 여부를 한 번에 확인 */
+/** 쿠키 세션(데모/블로거 로그인)이 있는지 브라우저에서 확인 */
+function hasCookieSession(): boolean {
+  if (typeof document === 'undefined') return false;
+  return /(?:^|;\s*)user_type=/.test(document.cookie);
+}
+
+/** 관리자 여부 + 로그인 여부를 한 번에 확인 (Supabase Auth + 쿠키 세션 모두 인식) */
 async function getVisitorStatus(): Promise<{ isAdmin: boolean; isLoggedIn: boolean }> {
   try {
     const supabase = createSupabaseBrowserClient();
@@ -31,10 +37,10 @@ async function getVisitorStatus(): Promise<{ isAdmin: boolean; isLoggedIn: boole
     const email = data?.user?.email?.toLowerCase();
     return {
       isAdmin: email ? ADMIN_EMAILS.includes(email) : false,
-      isLoggedIn: !!data?.user,
+      isLoggedIn: !!data?.user || hasCookieSession(),
     };
   } catch {
-    return { isAdmin: false, isLoggedIn: false };
+    return { isAdmin: false, isLoggedIn: hasCookieSession() };
   }
 }
 
