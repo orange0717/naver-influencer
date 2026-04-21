@@ -100,7 +100,12 @@ export async function POST(
       throw voteError;
     }
 
-    await supabase.rpc('increment_poll_vote_count', { p_option_id: option_id });
+    // 카운터 증가 실패 시 투표 레코드는 이미 insert 되어 있으므로 성공 응답을 반환하지 말고 500 으로 명확히 실패를 알림.
+    const { error: rpcError } = await supabase.rpc('increment_poll_vote_count', { p_option_id: option_id });
+    if (rpcError) {
+      console.error('[community/vote] increment_poll_vote_count RPC 실패:', rpcError.message);
+      return NextResponse.json({ error: '투표 집계 중 오류가 발생했습니다.' }, { status: 500 });
+    }
 
     // 업데이트된 결과 반환
     const { data: options } = await supabase
