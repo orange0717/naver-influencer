@@ -178,10 +178,10 @@ export default function InfluencerRankingView() {
         <p className="text-dim text-xs leading-relaxed">
           <span className="font-semibold text-text">계산 방식:</span>{' '}
           <span className="font-mono bg-surface px-1.5 py-0.5 rounded border border-border text-[11px]">
-            Σ (참여자수 - 내 순위) × (TOP3 개수 / 전체 도전 수)
+            Σ (참여자수 - 내 순위) × (유효 TOP3 / 전체 도전)
           </span>
-          {' '}— TOP3(1~3위) 진입 키워드만 합산하고 전체 도전 대비 성공률을 곱합니다.
-          경쟁자가 많은 키워드에서 상위 순위를 자주 차지하고 도전 성공률이 높을수록 점수가 높아집니다. 회원 여부와 무관하게 실력으로만 순위가 매겨집니다.
+          {' '}— 유효 TOP3는 <strong className="text-text">참여자수 &gt; 내 순위</strong> 인 경우만 인정합니다
+          (예: 참여자 3명에서 3등은 0점이라 제외). 경쟁자가 많은 키워드에서 상위 순위를 자주 차지하고 성공률이 높을수록 점수가 높아집니다. 회원 여부와 무관하게 실력으로만 순위가 매겨집니다.
         </p>
       </div>
 

@@ -1,15 +1,15 @@
 -- =============================================
 -- migration-065-ninfl-score-no-search-volume.sql
--- N인플 점수 공식 — 검색량 제거 + 성공률 반영
+-- N인플 점수 공식 — 검색량 제거 + 성공률 반영 + 0점 TOP3 제외
 --
 -- 최종 공식:
---   score = SUM( TOP3 키워드의 (참여자수 - 내 순위) )
---           × (TOP3 개수 / 전체 도전 수)
+--   score = SUM( 유효 TOP3 키워드의 (참여자수 - 내 순위) )
+--           × (유효 TOP3 개수 / 전체 도전 수)
 --
--- 2000개 도전해서 100개 성공(5%) 인플 vs 200개 도전해서
--- 100개 성공(50%) 인플을 구분하기 위해 성공률 곱 적용.
+-- 유효 TOP3 = rank_position <= 3 AND participant_count > rank_position
+--   (참여자수가 너무 적어 점수가 0 이하인 TOP3 는 카운트에서 제외)
+--
 -- 회원/비회원 여부는 점수·순위에 관여하지 않음.
---
 -- Supabase SQL Editor 에서 순서대로 실행하세요.
 -- =============================================
 
@@ -58,24 +58,30 @@ BEGIN
     GROUP BY influencer_id
   ),
   challenge_counts AS (
-    -- 인플루언서별 전체 도전 수와 TOP3 성공 수
+    -- 인플루언서별 전체 도전 수와 "유효 TOP3" 성공 수
+    -- 유효 TOP3 = rank <= 3 AND participant_count > rank_position (점수 > 0)
     SELECT
-      influencer_id AS inf_id,
+      lr.influencer_id AS inf_id,
       COUNT(*)::NUMERIC AS total_challenges,
-      COUNT(*) FILTER (WHERE rank_position <= 3)::NUMERIC AS top3_challenges
-    FROM latest_rankings
-    GROUP BY influencer_id
+      COUNT(*) FILTER (
+        WHERE lr.rank_position <= 3
+          AND COALESCE(kc.participant_count, 0) > lr.rank_position
+      )::NUMERIC AS top3_challenges
+    FROM latest_rankings lr
+    LEFT JOIN keyword_challenges kc ON kc.id = lr.keyword_id
+    GROUP BY lr.influencer_id
   ),
   top3_sums AS (
-    -- TOP3(1~3위) 진입 키워드만: (참여자수 - 내 순위) 합산
+    -- 유효 TOP3 키워드만: (참여자수 - 내 순위) 합산
     SELECT
       lr.influencer_id AS inf_id,
       SUM(
-        GREATEST(COALESCE(kc.participant_count, 0) - lr.rank_position, 0)::NUMERIC
+        (COALESCE(kc.participant_count, 0) - lr.rank_position)::NUMERIC
       ) AS sum_score
     FROM latest_rankings lr
     LEFT JOIN keyword_challenges kc ON kc.id = lr.keyword_id
     WHERE lr.rank_position <= 3
+      AND COALESCE(kc.participant_count, 0) > lr.rank_position
     GROUP BY lr.influencer_id
   ),
   keyword_scores AS (
