@@ -1,0 +1,63 @@
+name: 블로거 주간 수집 (키워드 풀 확장 + polite-crawler)
+
+# 매주 목요일 KST 04:00 (수요일 19:00 UTC) 에 실행
+on:
+  schedule:
+    - cron: '0 19 * * 3'
+  workflow_dispatch:
+    inputs:
+      expand_max:
+        description: '키워드 풀 확장 시 병합할 최대 개수 (기본 2000)'
+        required: false
+        default: '2000'
+      quota:
+        description: '네이버 API 쿼터 (기본 20000)'
+        required: false
+        default: '20000'
+
+jobs:
+  crawl:
+    name: 키워드 풀 확장 + 블로거 신규 수집
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 의존성 설치
+        run: npm install @supabase/supabase-js dotenv --no-save --no-audit --no-fund
+
+      - name: 환경변수 구성
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NAVER_SEARCH_CLIENT_ID: ${{ secrets.NAVER_SEARCH_CLIENT_ID }}
+          NAVER_SEARCH_CLIENT_SECRET: ${{ secrets.NAVER_SEARCH_CLIENT_SECRET }}
+        run: |
+          for v in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NAVER_SEARCH_CLIENT_ID NAVER_SEARCH_CLIENT_SECRET; do
+            if [ -z "${!v}" ]; then
+              echo "::error ::$v secret 미설정"
+              exit 1
+            fi
+          done
+          echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
+          echo "NAVER_SEARCH_CLIENT_ID=$NAVER_SEARCH_CLIENT_ID" >> .env.local
+          echo "NAVER_SEARCH_CLIENT_SECRET=$NAVER_SEARCH_CLIENT_SECRET" >> .env.local
+
+      - name: 1단계 - 키워드 풀 확장
+        run: |
+          MAX=${{ inputs.expand_max || '2000' }}
+          node scripts/expand-keyword-pool.mjs --apply --max "$MAX"
+
+      - name: 2단계 - polite-crawler 실행 (블로거 신규 수집)
+        run: |
+          QUOTA=${{ inputs.quota || '20000' }}
+          node scripts/polite-crawler.mjs --quota "$QUOTA"
+
+      - name: 정리
+        if: always()
+        run: rm -f .env.local
