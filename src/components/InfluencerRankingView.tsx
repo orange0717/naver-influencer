@@ -344,9 +344,7 @@ export default function InfluencerRankingView() {
                 {influencers.map((inf, i) => (
                   <tr key={inf.naverId || inf.name + i} className={`border-b border-border/50 hover:bg-surface-hover transition-colors ${inf.isStopped || inf.isInactive ? 'opacity-50 bg-gray-50' : ''}`}>
                     <td className="py-3 px-4 font-bold font-rank text-xs">
-                      {inf.ninflRank
-                        ? <span className="text-accent">{inf.ninflRank}</span>
-                        : <span className="text-dim">{(page - 1) * 50 + i + 1}</span>}
+                      <span className="text-accent">{(page - 1) * 50 + i + 1}</span>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
@@ -480,9 +478,7 @@ export default function InfluencerRankingView() {
                     <span className="text-xs text-dim">@{inf.naverId}</span>
                   </div>
                   <div className="text-right shrink-0">
-                    {inf.ninflRank && (
-                      <div className="text-xs font-bold text-accent font-rank mb-0.5">{inf.ninflRank}위</div>
-                    )}
+                    <div className="text-xs font-bold text-accent font-rank mb-0.5">{(page - 1) * 50 + i + 1}위</div>
                     <div className="text-xs font-bold text-accent font-rank">{formatCount(inf.subscriberCount || inf.totalFollowerCount)}</div>
                     <div className="text-[10px] text-dim">팬수</div>
                   </div>
