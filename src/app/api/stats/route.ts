@@ -8,13 +8,14 @@ export async function GET() {
   const supabase = createServiceClient();
 
   try {
-    // 활동 인플루언서: 1년 내 키워드 챌린지 참여 기록이 있는 사람
+    // 활동 인플루언서: 1년 내 챌린지 OR TOP3 진입 이력 있음
+    // (last_challenged_at은 API 갱신 지연 가능 → integrated_top3_count 와 OR 조합)
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const { count: activeCount } = await supabase
       .from('influencers')
       .select('*', { count: 'exact', head: true })
-      .gte('last_challenged_at', oneYearAgo.toISOString());
+      .or(`last_challenged_at.gte.${oneYearAgo.toISOString()},integrated_top3_count.gt.0`);
 
     // 미활동 인플루언서: 1년 이상 챌린지 이력 없음 or 챌린지 한 번도 안 함
     const { count: totalCount } = await supabase

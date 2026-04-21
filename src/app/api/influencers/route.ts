@@ -189,11 +189,13 @@ async function getInfluencersFromDB(
     if (stoppedSet.has(inf.id as string)) return 2;
     const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
     const lastMs = inf.last_challenged_at ? new Date(inf.last_challenged_at as string).getTime() : 0;
-    const isOldChallenge = lastMs > 0 && lastMs < oneYearAgo;
+    const hasRecentChallenge = lastMs > 0 && lastMs >= oneYearAgo;
+    const hasTop3 = ((Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0)) > 0;
+    const isActive = hasRecentChallenge || hasTop3;
     const isEmpty = !inf.image_url
       && (inf.subscriber_count || 0) === 0
       && (inf.total_follower_count || 0) === 0;
-    if (isOldChallenge || isEmpty) return 1;
+    if (!isActive || isEmpty) return 1;
     return 0;
   };
 
@@ -315,15 +317,18 @@ async function getInfluencersFromDB(
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
     lastChallengedAt: inf.last_challenged_at || null,
-    // 1년 이상 챌린지 이력 없음 OR 프로필이 완전 빈 상태 (팬수·팔로워·이미지 모두 없음)
+    // 비활성 판정: (1년 이상 챌린지 없음 AND TOP3 진입 이력도 없음) OR 프로필이 완전 빈 상태
+    // last_challenged_at 은 API 갱신 지연 가능 → integrated_top3_count 와 함께 판정
     isInactive: (() => {
       const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
       const lastMs = inf.last_challenged_at ? new Date(inf.last_challenged_at as string).getTime() : 0;
-      const isOldChallenge = lastMs > 0 && lastMs < oneYearAgo;
+      const hasRecentChallenge = lastMs > 0 && lastMs >= oneYearAgo;
+      const hasTop3 = ((Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0)) > 0;
+      const isActive = hasRecentChallenge || hasTop3;
       const isEmpty = !inf.image_url
         && (inf.subscriber_count || 0) === 0
         && (inf.total_follower_count || 0) === 0;
-      return isOldChallenge || isEmpty;
+      return !isActive || isEmpty;
     })(),
     // 활동중단 판정: 관리자 수동 지정(stopped_manual)만 사용 — 자동 분류 없음
     isStopped: stoppedSet.has(inf.id as string),
