@@ -45,6 +45,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ keywords: [] });
   }
 
+  // naver_id 로만 들어온 쿠키 기반 세션도 제한 사용자 차단.
+  // 제한 이메일이 {naver_id}@naver.com 형식이면 동일인으로 간주.
+  if (await isRestricted(`${naverId}@naver.com`)) {
+    return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
+  }
+
   // naver_id로 인플루언서 조회
   const { data: influencer } = await supabase
     .from('influencers')
