@@ -23,15 +23,18 @@ function extractDomain(url: string): string | null {
   }
 }
 
-/** 관리자 이메일인지 확인 (Supabase 세션에서 이메일 조회) */
-async function isAdminUser(): Promise<boolean> {
+/** 관리자 여부 + 로그인 여부를 한 번에 확인 */
+async function getVisitorStatus(): Promise<{ isAdmin: boolean; isLoggedIn: boolean }> {
   try {
     const supabase = createSupabaseBrowserClient();
     const { data } = await supabase.auth.getUser();
     const email = data?.user?.email?.toLowerCase();
-    return email ? ADMIN_EMAILS.includes(email) : false;
+    return {
+      isAdmin: email ? ADMIN_EMAILS.includes(email) : false,
+      isLoggedIn: !!data?.user,
+    };
   } catch {
-    return false;
+    return { isAdmin: false, isLoggedIn: false };
   }
 }
 
@@ -73,27 +76,27 @@ export default function VisitTracker() {
     // 같은 도메인에서의 내부 이동은 referrer로 기록하지 않음
     const isSameSite = referrerDomain === window.location.hostname.replace(/^www\./, '');
 
-    // visit_logs + site_visits: 1인 1일 1회만 기록 (순 방문자)
-    if (isFirstVisit) {
-      // 관리자 이메일은 카운트에서 제외
-      isAdminUser().then(isAdmin => {
-        if (isAdmin) return;
-        fetch('/api/analytics/track', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            path: pathname,
-            referrer: isSameSite ? '' : referrer,
-            referrer_domain: isSameSite ? null : referrerDomain,
-            utm_source: searchParams.get('utm_source') || null,
-            utm_medium: searchParams.get('utm_medium') || null,
-            utm_campaign: searchParams.get('utm_campaign') || null,
-            device_type: getDeviceType(),
-            first_visit: true,
-          }),
-        }).catch(() => {});
-      });
-    }
+    // 로그인 사용자는 페이지뷰마다 카운트 증가를 위해 매번 호출,
+    // 비로그인 사용자는 세션 첫 방문만 (site_visits/visit_logs 집계용).
+    getVisitorStatus().then(({ isAdmin, isLoggedIn }) => {
+      if (isAdmin) return;
+      if (!isLoggedIn && !isFirstVisit) return;
+
+      fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: pathname,
+          referrer: isSameSite ? '' : referrer,
+          referrer_domain: isSameSite ? null : referrerDomain,
+          utm_source: searchParams.get('utm_source') || null,
+          utm_medium: searchParams.get('utm_medium') || null,
+          utm_campaign: searchParams.get('utm_campaign') || null,
+          device_type: getDeviceType(),
+          first_visit: isFirstVisit,
+        }),
+      }).catch(() => {});
+    });
   }, [pathname, searchParams]);
 
   return null;

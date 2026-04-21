@@ -35,6 +35,11 @@ export async function POST(req: NextRequest) {
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const today = kst.toISOString().slice(0, 10);
 
+    // 로그인 사용자는 페이지뷰마다 누적 방문횟수 +1 (isFirstVisit 여부 무관)
+    if (authUser?.userId) {
+      await supabase.rpc('increment_user_total_visit', { p_user_id: authUser.userId });
+    }
+
     // 1) site_visits 일별 집계 — 세션 첫 방문(순 방문자)일 때만 카운트
     const isFirstVisit = body.first_visit === true;
     const deviceType = ['mobile', 'tablet', 'desktop'].includes(body.device_type)
