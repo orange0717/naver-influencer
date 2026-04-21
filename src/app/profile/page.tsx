@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useNotificationSettings } from '@/hooks/useNotifications';
+import UsagePeriodCard from '@/components/dashboard/UsagePeriodCard';
 
 interface UserProfile {
   id: string;
@@ -568,6 +569,14 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* 구독 기간 요약 카드 (가입일 / 구독 만료까지) */}
+      <UsagePeriodCard
+        userCreatedAt={user.created_at}
+        subscriptionExpiresAt={user.subscription_expires_at}
+        trialStartedTs={null}
+        isDemo={false}
+      />
 
       {/* 구독 등급 */}
       <div className="bg-surface rounded-xl border border-border p-5">

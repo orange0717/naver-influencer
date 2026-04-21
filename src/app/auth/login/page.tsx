@@ -25,13 +25,7 @@ export default function LoginPage() {
           .eq('auth_id', authUser.id)
           .single();
 
-        if (profile?.linked_influencer_id) {
-          router.replace('/my');
-        } else if (profile?.blog_id) {
-          router.replace(`/my/blogger?blogId=${profile.blog_id}`);
-        } else {
-          router.replace('/profile');
-        }
+        router.replace('/');
       } else {
         setAuthChecked(true);
       }
@@ -99,20 +93,8 @@ export default function LoginPage() {
       // 레거시 쿠키 동기화 (헤더 닉네임 표시용)
       await fetch('/api/auth/sync-cookies', { method: 'POST' }).catch(() => {});
 
-      // 사용자 프로필에 따라 적절한 페이지로 이동
-      const { data: fullProfile } = await supabase
-        .from('users')
-        .select('linked_influencer_id, blog_id')
-        .eq('id', userRecord.id)
-        .single();
-
-      if (fullProfile?.linked_influencer_id) {
-        router.push('/my');
-      } else if (fullProfile?.blog_id) {
-        router.push(`/my/blogger?blogId=${fullProfile.blog_id}`);
-      } else {
-        router.push('/profile');
-      }
+      // 로그인 후 메인 화면으로 이동
+      router.push('/');
       router.refresh();
     } catch {
       setError('로그인 중 오류가 발생했습니다.');
