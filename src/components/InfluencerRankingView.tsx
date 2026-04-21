@@ -174,14 +174,16 @@ export default function InfluencerRankingView() {
 
       {/* N인플 순위 설명 */}
       <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-sm">
-        <p className="font-bold text-accent mb-1">N인플 자체 순위 — 키워드 점수 기반</p>
+        <p className="font-bold text-accent mb-1">N인플 자체 순위 — 카테고리별 키워드 점수 기반</p>
         <p className="text-dim text-xs leading-relaxed">
-          <span className="font-semibold text-text">계산 방식:</span>{' '}
+          <span className="font-semibold text-text">점수:</span>{' '}
           <span className="font-mono bg-surface px-1.5 py-0.5 rounded border border-border text-[11px]">
             Σ (참여자수 - 내 순위) × (유효 TOP3 / 전체 도전)
           </span>
           {' '}— 유효 TOP3는 <strong className="text-text">참여자수 &gt; 내 순위</strong> 인 경우만 인정합니다
-          (예: 참여자 3명에서 3등은 0점이라 제외). 경쟁자가 많은 키워드에서 상위 순위를 자주 차지하고 성공률이 높을수록 점수가 높아집니다. 회원 여부와 무관하게 실력으로만 순위가 매겨집니다.
+          (예: 참여자 3명에서 3등은 0점이라 제외).
+          <br />
+          <span className="font-semibold text-text">순위:</span> 카테고리별로 독립 산정 — 뷰티·도서·생활건강 등 각 주제 내에서만 비교합니다. 회원 여부와 무관하게 실력으로만 순위가 매겨집니다.
         </p>
       </div>
 
@@ -274,7 +276,9 @@ export default function InfluencerRankingView() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <div className="bg-surface rounded-lg p-3 border border-border">
-                    <p className="text-[11px] text-dim mb-1">N인플 전체 순위</p>
+                    <p className="text-[11px] text-dim mb-1">
+                      {inf.myKeywordCategory || '카테고리'} 내 N인플 순위
+                    </p>
                     <p className="text-2xl font-extrabold text-accent font-rank">
                       {inf.ninflRank ? `${inf.ninflRank.toLocaleString()}위` : '집계 대기'}
                     </p>
