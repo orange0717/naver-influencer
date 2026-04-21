@@ -1,13 +1,16 @@
 -- =============================================
 -- migration-065-ninfl-score-no-search-volume.sql
--- N인플 점수 공식 — 검색량 제거 + 성공률 반영 + 0점 TOP3 제외
+-- N인플 점수 공식 — 본인 카테고리 키워드만 집계
 --
 -- 최종 공식:
---   score = SUM( 유효 TOP3 키워드의 (참여자수 - 내 순위) )
---           × (유효 TOP3 개수 / 전체 도전 수)
+--   score = SUM( 본인 카테고리 · 유효 TOP3 의 (참여자수 - 내 순위) )
+--           × (본인 카테고리 유효 TOP3 / 본인 카테고리 전체 도전)
 --
+-- 본인 카테고리 = influencers.my_keyword_category (없으면 category)
 -- 유효 TOP3 = rank_position <= 3 AND participant_count > rank_position
---   (참여자수가 너무 적어 점수가 0 이하인 TOP3 는 카운트에서 제외)
+--
+-- 예: 오렌지도서관은 도서 카테고리 키워드만 점수·성공률에 반영,
+-- 우연히 참여한 여행·뷰티 키워드는 완전히 제외.
 --
 -- 회원/비회원 여부는 점수·순위에 관여하지 않음.
 -- Supabase SQL Editor 에서 순서대로 실행하세요.
@@ -58,8 +61,7 @@ BEGIN
     GROUP BY influencer_id
   ),
   challenge_counts AS (
-    -- 인플루언서별 전체 도전 수와 "유효 TOP3" 성공 수
-    -- 유효 TOP3 = rank <= 3 AND participant_count > rank_position (점수 > 0)
+    -- 본인 카테고리 키워드만 집계
     SELECT
       lr.influencer_id AS inf_id,
       COUNT(*)::NUMERIC AS total_challenges,
@@ -68,20 +70,24 @@ BEGIN
           AND COALESCE(kc.participant_count, 0) > lr.rank_position
       )::NUMERIC AS top3_challenges
     FROM latest_rankings lr
-    LEFT JOIN keyword_challenges kc ON kc.id = lr.keyword_id
+    JOIN keyword_challenges kc ON kc.id = lr.keyword_id
+    JOIN influencers inf ON inf.id = lr.influencer_id
+    WHERE kc.category = COALESCE(NULLIF(inf.my_keyword_category, ''), inf.category)
     GROUP BY lr.influencer_id
   ),
   top3_sums AS (
-    -- 유효 TOP3 키워드만: (참여자수 - 내 순위) 합산
+    -- 본인 카테고리 유효 TOP3 만: (참여자수 - 내 순위) 합산
     SELECT
       lr.influencer_id AS inf_id,
       SUM(
         (COALESCE(kc.participant_count, 0) - lr.rank_position)::NUMERIC
       ) AS sum_score
     FROM latest_rankings lr
-    LEFT JOIN keyword_challenges kc ON kc.id = lr.keyword_id
+    JOIN keyword_challenges kc ON kc.id = lr.keyword_id
+    JOIN influencers inf ON inf.id = lr.influencer_id
     WHERE lr.rank_position <= 3
       AND COALESCE(kc.participant_count, 0) > lr.rank_position
+      AND kc.category = COALESCE(NULLIF(inf.my_keyword_category, ''), inf.category)
     GROUP BY lr.influencer_id
   ),
   keyword_scores AS (

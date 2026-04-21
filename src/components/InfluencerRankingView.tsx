@@ -174,16 +174,16 @@ export default function InfluencerRankingView() {
 
       {/* N인플 순위 설명 */}
       <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-sm">
-        <p className="font-bold text-accent mb-1">N인플 자체 순위 — 카테고리별 키워드 점수 기반</p>
+        <p className="font-bold text-accent mb-1">N인플 자체 순위 — 본인 카테고리 키워드 점수 기반</p>
         <p className="text-dim text-xs leading-relaxed">
           <span className="font-semibold text-text">점수:</span>{' '}
           <span className="font-mono bg-surface px-1.5 py-0.5 rounded border border-border text-[11px]">
             Σ (참여자수 - 내 순위) × (유효 TOP3 / 전체 도전)
           </span>
-          {' '}— 유효 TOP3는 <strong className="text-text">참여자수 &gt; 내 순위</strong> 인 경우만 인정합니다
-          (예: 참여자 3명에서 3등은 0점이라 제외).
           <br />
-          <span className="font-semibold text-text">순위:</span> 카테고리별로 독립 산정 — 뷰티·도서·생활건강 등 각 주제 내에서만 비교합니다. 회원 여부와 무관하게 실력으로만 순위가 매겨집니다.
+          <span className="font-semibold text-text">집계 대상:</span> 인플루언서 <strong className="text-text">본인 카테고리</strong> 키워드만 포함 — 예: 도서 인플은 도서 키워드만, 뷰티 인플은 뷰티 키워드만 점수화. 유효 TOP3는 <strong className="text-text">참여자수 &gt; 내 순위</strong> 인 경우만 인정합니다 (참여자 3명에서 3등은 0점이라 제외).
+          <br />
+          <span className="font-semibold text-text">순위:</span> 카테고리 내에서만 비교 — 회원 여부와 무관하게 실력으로만 순위가 매겨집니다.
         </p>
       </div>
 
