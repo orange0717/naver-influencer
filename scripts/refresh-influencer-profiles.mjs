@@ -225,7 +225,7 @@ async function main() {
       influencers.push(...data);
       offset += data.length;
       if (data.length < 1000) break;
-      if (influencers.length >= 10000) break; // 안전상 상한
+      if (influencers.length >= 50000) break; // 안전상 상한 (현재 활성 ~12.6k)
     }
   }
 
