@@ -361,9 +361,6 @@ export default function InfluencerRankingView() {
                               className="font-bold hover:text-accent transition-colors truncate max-w-[180px]">
                               {inf.name}
                             </a>
-                            {inf.isMember && (
-                              <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
-                            )}
                             {isNew(inf.firstSeenAt) && (
                               <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                             )}
@@ -468,9 +465,6 @@ export default function InfluencerRankingView() {
                         className="font-bold text-sm hover:text-accent transition-colors truncate">
                         {inf.name}
                       </a>
-                      {inf.isMember && (
-                        <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
-                      )}
                       {isNew(inf.firstSeenAt) && (
                         <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                       )}
