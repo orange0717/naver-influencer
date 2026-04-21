@@ -8,17 +8,19 @@ export async function GET() {
   const supabase = createServiceClient();
 
   try {
-    // 활동 인플루언서 (키챌 참여: total_keywords > 0)
+    // 활동 인플루언서: 1년 내 키워드 챌린지 참여 기록이 있는 사람
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const { count: activeCount } = await supabase
       .from('influencers')
       .select('*', { count: 'exact', head: true })
-      .gt('total_keywords', 0);
+      .gte('last_challenged_at', oneYearAgo.toISOString());
 
-    // 미활동 인플루언서 (키챌 미참여: total_keywords = 0 or null)
-    const { count: inactiveCount } = await supabase
+    // 미활동 인플루언서: 1년 이상 챌린지 이력 없음 or 챌린지 한 번도 안 함
+    const { count: totalCount } = await supabase
       .from('influencers')
-      .select('*', { count: 'exact', head: true })
-      .or('total_keywords.is.null,total_keywords.eq.0');
+      .select('*', { count: 'exact', head: true });
+    const inactiveCount = (totalCount || 0) - (activeCount || 0);
 
     // 신규 인플루언서 (최근 7일)
     const weekAgo = new Date();
@@ -62,9 +64,9 @@ export async function GET() {
       .select('*', { count: 'exact', head: true });
 
     return NextResponse.json({
-      influencer_count: (activeCount || 0) + (inactiveCount || 0),
+      influencer_count: totalCount || 0,
       active_count: activeCount || 0,
-      inactive_count: inactiveCount || 0,
+      inactive_count: inactiveCount,
       new_count: newCount || 0,
       category_count: categoryCount,
       keyword_count: keywordCount || 0,
