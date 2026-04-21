@@ -176,7 +176,7 @@ export default function InfluencerRankingView() {
       <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-sm">
         <p className="text-yellow-800 text-xs leading-relaxed">
           <span className="font-bold">🔬 N인플 자체 순위 연구 중</span>
-          {' '}— 현재 네이버에서 제공하는 순위에는 4년 전 활동을 중단한 사람들이 상위권을 차지하고 있어, 광고주에게 제대로 된 순위를 전달하기 위해 연구 중입니다.
+          {' '}— 현재 네이버에서 제공하는 공식 인플루언서 순위에는 4년 전 활동을 중단한 사람들이 여전히 상위권을 차지하고 있어, 광고주에게 제대로 된 순위를 전달하기 위해 연구 중입니다.
         </p>
       </div>
 
