@@ -31,7 +31,7 @@ config({ path: resolve(__dirname, '../.env.local') });
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-const DELAY_MS = 600;
+const DELAY_MS = 300;
 const PROGRESS_FILE = resolve(__dirname, '.content-count-progress.json');
 
 const supabase = createClient(
@@ -151,7 +151,7 @@ async function loadInfluencers() {
       .eq('naver_id', filterNaverId);
     return data || [];
   }
-  // 전체 활동 인플루언서 (naver_owner_id 있는 사람)
+  // 활동 인플루언서 (naver_owner_id 있고 + integrated_top3_count > 0)
   const result = [];
   let off = 0;
   while (true) {
@@ -159,6 +159,7 @@ async function loadInfluencers() {
       .from('influencers')
       .select('id, display_name, naver_id, naver_owner_id')
       .not('naver_owner_id', 'is', null)
+      .gt('integrated_top3_count', 0)
       .order('subscriber_count', { ascending: false, nullsFirst: false })
       .range(off, off + 999);
     if (!data || data.length === 0) break;
@@ -206,15 +207,17 @@ async function processInfluencer(inf, keywordMap) {
     return { ok: updates.length, skip: keywords.length - updates.length - miss, miss, sample: updates.slice(0, 3) };
   }
 
-  // 배치 업데이트 (Supabase에 단일 트랜잭션 update_many 없음 → upsert로)
+  // 개별 update (upsert는 NOT NULL 컬럼들 때문에 INSERT 분기에서 실패함)
   let okCount = 0;
-  const BATCH = 200;
-  for (let i = 0; i < updates.length; i += BATCH) {
-    const batch = updates.slice(i, i + BATCH);
-    const { error } = await supabase
-      .from('keyword_rankings')
-      .upsert(batch, { onConflict: 'id' });
-    if (!error) okCount += batch.length;
+  const CONCURRENCY = 20;
+  for (let i = 0; i < updates.length; i += CONCURRENCY) {
+    const batch = updates.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(u =>
+      supabase.from('keyword_rankings').update({ content_count: u.content_count }).eq('id', u.id)
+    ));
+    for (const { error } of results) {
+      if (!error) okCount++;
+    }
   }
   return { ok: okCount, skip: keywords.length - updates.length - miss, miss };
 }
@@ -238,30 +241,40 @@ async function main() {
 
   let totalOk = 0, totalMiss = 0, totalSkip = 0, processed = 0;
   const t0 = Date.now();
+  const PARALLEL = 5; // 인플루언서 동시 처리
 
-  for (let i = startIdx; i < total; i++) {
-    const inf = influencers[i];
-    try {
-      const r = await processInfluencer(inf, keywordMap);
+  for (let i = startIdx; i < total; i += PARALLEL) {
+    const chunk = influencers.slice(i, Math.min(i + PARALLEL, total));
+    const results = await Promise.all(chunk.map(async (inf) => {
+      try {
+        const r = await processInfluencer(inf, keywordMap);
+        return { inf, r };
+      } catch (err) {
+        return { inf, err };
+      }
+    }));
+
+    for (const { inf, r, err } of results) {
+      if (err) {
+        process.stdout.write(`\n  ${inf.display_name || inf.naver_id} 실패: ${err.message}\n`);
+        continue;
+      }
       totalOk += r.ok;
       totalMiss += r.miss;
       totalSkip += r.skip;
       processed++;
-
-      const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
-      const eta = processed > 0 ? Math.round(((total - i - 1) * (Date.now() - t0) / processed / 1000 / 60)) : '-';
-      process.stdout.write(`\r  [${i + 1}/${total}] ${(inf.display_name || inf.naver_id).slice(0, 20).padEnd(20)} ok=${r.ok} miss=${r.miss} skip=${r.skip} | total ok=${totalOk} | ${elapsed}s | ETA ${eta}m   `);
-
-      if (isDryRun && r.sample?.length) {
-        console.log('\n  sample:', r.sample);
-      }
-
-      if (!isDryRun && processed % 10 === 0) {
-        saveProgress({ lastIndex: i + 1 });
-      }
-    } catch (err) {
-      console.log(`\n  ${inf.display_name || inf.naver_id} 실패: ${err.message}`);
     }
+
+    const lastIdx = i + chunk.length;
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
+    const eta = processed > 0 ? Math.round(((total - lastIdx) * (Date.now() - t0) / processed / 1000 / 60)) : '-';
+    const lastName = chunk[chunk.length - 1].display_name || chunk[chunk.length - 1].naver_id;
+    process.stdout.write(`\r  [${lastIdx}/${total}] ${lastName.slice(0, 18).padEnd(18)} | total ok=${totalOk} miss=${totalMiss} | ${elapsed}s | ETA ${eta}m   `);
+
+    if (!isDryRun && processed % 50 === 0) {
+      saveProgress({ lastIndex: lastIdx });
+    }
+
     await sleep(DELAY_MS);
   }
 
