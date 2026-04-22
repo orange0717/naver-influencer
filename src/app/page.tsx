@@ -267,161 +267,230 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════════ 추천 대상 (surface) ═══════════ */}
+      {/* ═══════════ 추천 대상 (bg) ═══════════ */}
       <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto text-left">
-          <div className="bg-bg rounded-2xl border border-border p-6">
-            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
-            <h3 className="font-bold text-text mb-2">키워드챌린지를 시작하는 분</h3>
-            <p className="text-sm text-dim leading-relaxed">블루오션 키워드를 발굴하고, 내 순위와 경쟁도를 분석하세요. 무료로 시작할 수 있습니다.</p>
+          <div className="bg-bg rounded-2xl border border-border p-7">
+            <p className="text-xs font-bold text-accent tracking-wide mb-3">블로거</p>
+            <h3 className="font-bold text-text mb-3 text-lg">네이버 블로그를 운영하는 분</h3>
+            <p className="text-sm text-dim leading-relaxed mb-4">블로그 품질지수와 키워드별 블로그 순위를 추적해 상위노출 전략을 세우세요. 인플루언서 선정을 준비하는 분에게도 좋습니다.</p>
+            <ul className="space-y-1.5 text-xs text-dim">
+              <li>· 블로그 품질지수·최적화 점수 분석</li>
+              <li>· 키워드별 내 글 순위 추적</li>
+              <li>· 포스트 단위 성과 분석</li>
+              <li className="text-accent font-semibold pt-1">월 5,500원</li>
+            </ul>
           </div>
-          <div className="bg-bg rounded-2xl border border-border p-6">
-            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
-            <h3 className="font-bold text-text mb-2">키워드챌린지에서 우위를 점하고 싶은 분</h3>
-            <p className="text-sm text-dim leading-relaxed">경쟁 키워드 분석과 검색량 트렌드로 데이터 기반 전략을 수립하세요.</p>
-          </div>
-          <div className="bg-bg rounded-2xl border border-border p-6">
-            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
-            <h3 className="font-bold text-text mb-2">순위 하락에 빠르게 대응하고 싶은 분</h3>
-            <p className="text-sm text-dim leading-relaxed">스마트 알림으로 하락 위험 키워드를 감지하고, TOP 3 진입 기회를 놓치지 마세요.</p>
-          </div>
-          <div className="bg-bg rounded-2xl border border-border p-6">
-            <p className="text-xs font-bold text-accent tracking-wide mb-3">네이버 인플루언서</p>
-            <h3 className="font-bold text-text mb-2">경쟁자와 비교하고 싶은 분</h3>
-            <p className="text-sm text-dim leading-relaxed">같은 키워드에 참여 중인 인플루언서와 순위를 비교하고 전략을 세우세요.</p>
+          <div className="bg-bg rounded-2xl border border-border p-7">
+            <p className="text-xs font-bold text-accent tracking-wide mb-3">인플루언서</p>
+            <h3 className="font-bold text-text mb-3 text-lg">네이버 인플루언서로 활동 중인 분</h3>
+            <p className="text-sm text-dim leading-relaxed mb-4">키워드챌린지 TOP3 진입과 팬 확대를 위한 데이터를 제공합니다. 경쟁자 분석과 알림으로 순위를 지키세요.</p>
+            <ul className="space-y-1.5 text-xs text-dim">
+              <li>· 키워드챌린지 실시간 순위 추적</li>
+              <li>· 경쟁 인플루언서 비교 분석</li>
+              <li>· 블루오션 키워드 추천·알림</li>
+              <li className="text-accent font-semibold pt-1">월 9,900원</li>
+            </ul>
           </div>
         </div>
       </section>
 
       <SectionDivider />
 
-      {/* ═══════════ 서비스 미리보기 (surface) ═══════════ */}
+      {/* ═══════════ 서비스 흐름 (surface) ═══════════ */}
       <section className="bg-surface px-4 py-20 md:py-24">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-xs text-accent font-semibold tracking-widest mb-3">HOW IT WORKS</p>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">서비스 흐름</h2>
+            <p className="text-sm text-dim">가입부터 전략 실행까지 단 4단계</p>
+          </div>
+
+          <ol className="relative space-y-6 before:absolute before:left-[22px] before:top-3 before:bottom-3 before:w-px before:bg-accent/20">
+            {[
+              {
+                step: '01',
+                title: '가입하기',
+                desc: '이메일 또는 네이버 계정으로 가입하세요. 7일 무료 체험이 바로 시작됩니다.',
+              },
+              {
+                step: '02',
+                title: '내 채널 연결',
+                desc: '인플루언서 홈 주소나 블로그 주소를 연결하면, 채널 정보와 키워드를 자동으로 불러옵니다.',
+              },
+              {
+                step: '03',
+                title: '데이터 분석',
+                desc: '키워드챌린지 순위, 블로그 품질지수, 경쟁자 비교, 검색량 트렌드를 자동으로 분석합니다.',
+              },
+              {
+                step: '04',
+                title: '전략 실행',
+                desc: '대시보드와 스마트 알림으로 하락 위험·TOP3 진입 기회를 포착하고 바로 대응하세요.',
+              },
+            ].map((item) => (
+              <li key={item.step} className="relative flex gap-5 pl-1">
+                <div className="relative z-10 flex-shrink-0 w-11 h-11 rounded-full bg-accent text-white font-rank font-bold text-sm flex items-center justify-center shadow-sm">
+                  {item.step}
+                </div>
+                <div className="flex-1 pt-1.5">
+                  <h3 className="font-bold text-text mb-1">{item.title}</h3>
+                  <p className="text-sm text-dim leading-relaxed">{item.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <SectionDivider />
+
+      {/* ═══════════ 서비스 미리보기 (bg) ═══════════ */}
+      <section className="bg-accent/[0.06] px-4 py-20 md:py-24">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PREVIEW</p>
             <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">서비스 미리보기</h2>
-            <p className="text-sm text-dim">N인플의 핵심 기능을 확인하세요</p>
+            <p className="text-sm text-dim">N인플의 핵심 기능을 카테고리별로 확인하세요</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
+                url: 'ninfl.co.kr/influencers',
+                category: '인플루언서 분석',
+                title: '인플루언서 검색·랭킹',
+                desc: '2만명 규모 인플루언서 DB에서 검색·카테고리·키워드·점수별로 분석하고 경쟁자를 비교합니다.',
+                features: ['카테고리별 랭킹', 'TOP3 키워드 점유율', '경쟁 인플루언서 비교'],
+                link: '/rankings/influencer',
+                linkText: '인플루언서 랭킹 →',
+                mockup: (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] py-1 border-b border-border/60">
+                      <div className="flex items-center gap-2">
+                        <span className="font-rank font-bold text-accent w-4">1</span>
+                        <span className="font-semibold text-text">푸드크리에이터</span>
+                      </div>
+                      <span className="text-dim">팬 12.3만</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] py-1 border-b border-border/60">
+                      <div className="flex items-center gap-2">
+                        <span className="font-rank font-bold text-accent w-4">2</span>
+                        <span className="font-semibold text-text">여행블로거</span>
+                      </div>
+                      <span className="text-dim">팬 9.8만</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-rank font-bold text-dim w-4">3</span>
+                        <span className="font-semibold text-text">카페투어</span>
+                      </div>
+                      <span className="text-dim">팬 7.2만</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[9px] text-accent pt-1">
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M10 5l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      TOP3 점유율·챌린지수 확인
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                url: 'ninfl.co.kr/blog-quality',
+                category: '블로거 분석',
+                title: '블로그 품질지수·순위',
+                desc: '네이버 블로그 품질지수와 최적화 점수, 키워드별 블로그 순위를 추적합니다.',
+                features: ['블로그 품질지수 조회', '키워드별 블로그 순위', '블로거 랭킹 8만+'],
+                link: '/blog-quality',
+                linkText: '블로그 품질 확인 →',
+                mockup: (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-bold text-accent">블로그 품질지수</div>
+                    <div className="flex items-end gap-2">
+                      <span className="font-rank font-extrabold text-accent text-2xl leading-none">87</span>
+                      <span className="text-[9px] text-dim pb-1">/ 100</span>
+                      <span className="text-[9px] text-up font-bold pb-1 ml-auto">+3</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-accent/10 overflow-hidden">
+                      <div className="h-full bg-accent rounded-full" style={{ width: '87%' }} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 pt-1 text-[9px] text-center">
+                      <div className="py-1 rounded bg-bg">
+                        <p className="text-dim">최적화</p>
+                        <p className="font-bold text-text">A</p>
+                      </div>
+                      <div className="py-1 rounded bg-bg">
+                        <p className="text-dim">활동성</p>
+                        <p className="font-bold text-text">B+</p>
+                      </div>
+                      <div className="py-1 rounded bg-bg">
+                        <p className="text-dim">신뢰도</p>
+                        <p className="font-bold text-text">A</p>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
                 url: 'ninfl.co.kr/my',
-                title: '내 대시보드',
-                desc: '내 인플루언서 점수, 키워드 순위, 성장 추이를 한눈에 확인하세요.',
+                category: '내 성장 관리',
+                title: '대시보드·순위 추적·알림',
+                desc: '내 키워드 순위 변동, 포스트 분석, 하락 위험·TOP3 기회를 한 곳에서 관리합니다.',
+                features: ['키워드 순위 실시간 추적', '포스트 단위 성과 분석', '스마트 알림'],
                 link: '/my',
-                linkText: '대시보드 보기',
-                mockup: (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-accent">종합 점수</div>
-                    <div className="flex gap-1">
-                      {[78, 85, 72, 90, 68, 82].map((v, i) => (
-                        <div key={i} className="flex-1 bg-accent/10 rounded overflow-hidden" style={{ height: 40 }}>
-                          <div className="bg-accent/40 rounded-t w-full" style={{ height: `${v}%`, marginTop: `${100 - v}%` }} />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between text-[8px] text-dim">
-                      <span>활동성</span><span>영향력</span><span>성장성</span><span>안정성</span><span>소통</span><span>전문성</span>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                url: 'ninfl.co.kr/keywords/분석',
-                title: '키워드 순위 추적',
-                desc: '키워드별 내 순위 변동을 실시간으로 추적하고, 하락 전에 대응하세요.',
-                link: '/search-volume',
-                linkText: '키워드 분석하기',
+                linkText: '내 대시보드 →',
                 mockup: (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-text">맛집 추천</span>
-                      <span className="text-up font-bold">2위 (+1)</span>
+                      <span className="font-semibold text-text">맛집 추천</span>
+                      <span className="text-up font-bold">2위 ▲1</span>
                     </div>
                     <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-text">서울 카페</span>
-                      <span className="text-down font-bold">5위 (-2)</span>
+                      <span className="font-semibold text-text">서울 카페</span>
+                      <span className="text-down font-bold">5위 ▼2</span>
                     </div>
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-text">여행 코스</span>
-                      <span className="text-up font-bold">1위 (=)</span>
-                    </div>
-                    <div className="h-[1px] bg-border" />
-                    <div className="flex items-center gap-1 text-[9px] text-accent">
-                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      TOP3 달성률 67%
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                url: 'ninfl.co.kr/alerts',
-                title: '스마트 알림',
-                desc: '순위 하락 위험과 TOP3 진입 기회를 자동으로 감지해 알려드립니다.',
-                link: '/my',
-                linkText: '알림 확인하기',
-                mockup: (
-                  <div className="space-y-2">
-                    <div className="bg-down/10 border border-down/20 rounded-lg px-2.5 py-2">
+                    <div className="bg-down/10 border border-down/20 rounded-md px-2 py-1.5">
                       <p className="text-[9px] font-bold text-down">하락 위험</p>
-                      <p className="text-[9px] text-dim">&quot;맛집 추천&quot; 2일 연속 하락 (3위→5위)</p>
+                      <p className="text-[9px] text-dim">&quot;서울 카페&quot; 2일 연속 하락</p>
                     </div>
-                    <div className="bg-up/10 border border-up/20 rounded-lg px-2.5 py-2">
-                      <p className="text-[9px] font-bold text-up">TOP3 기회</p>
-                      <p className="text-[9px] text-dim">&quot;서울 카페&quot; 현재 4위, 상승 추세</p>
+                    <div className="bg-up/10 border border-up/20 rounded-md px-2 py-1.5">
+                      <p className="text-[9px] font-bold text-up">TOP3 진입 기회</p>
+                      <p className="text-[9px] text-dim">&quot;브런치 맛집&quot; 상승 추세</p>
                     </div>
-                  </div>
-                ),
-              },
-              {
-                url: 'ninfl.co.kr/compare',
-                title: '경쟁자 비교',
-                desc: '같은 키워드에 참여 중인 경쟁자와 점수를 비교하고 전략을 세우세요.',
-                link: '/my',
-                linkText: '비교 분석하기',
-                mockup: (
-                  <div className="space-y-2">
-                    <div className="flex items-end gap-1" style={{ height: 50 }}>
-                      {[
-                        { name: '나', h: 85, accent: true },
-                        { name: 'A', h: 72, accent: false },
-                        { name: 'B', h: 68, accent: false },
-                      ].map(b => (
-                        <div key={b.name} className="flex-1 text-center">
-                          <div className={`rounded-t mx-auto ${b.accent ? 'bg-accent' : 'bg-border'}`} style={{ height: `${b.h}%`, width: '70%' }} />
-                          <p className={`text-[8px] mt-1 ${b.accent ? 'font-bold text-accent' : 'text-dim'}`}>{b.name}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[9px] text-dim text-center">종합 점수 비교</p>
                   </div>
                 ),
               },
             ].map(card => (
-              <div key={card.title} className="bg-surface rounded-2xl border border-border overflow-hidden">
+              <div key={card.title} className="bg-bg rounded-2xl border border-border overflow-hidden flex flex-col">
                 {/* 브라우저 목업 */}
-                <div className="bg-bg border-b border-border">
-                  <div className="flex items-center gap-1.5 px-3 py-2">
+                <div className="bg-surface border-b border-border">
+                  <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/60">
                     <div className="w-2 h-2 rounded-full bg-[#FF6058]" />
                     <div className="w-2 h-2 rounded-full bg-[#FFBD2E]" />
                     <div className="w-2 h-2 rounded-full bg-[#27CA40]" />
-                    <span className="ml-2 text-[9px] text-dim">{card.url}</span>
+                    <span className="ml-2 text-[9px] text-dim truncate">{card.url}</span>
                   </div>
-                  <div className="px-4 py-4">
+                  <div className="px-4 py-4 min-h-[140px]">
                     {card.mockup}
                   </div>
                 </div>
                 {/* 설명 */}
-                <div className="p-5">
-                  <h3 className="font-bold text-text mb-1.5">{card.title}</h3>
+                <div className="p-5 flex-1 flex flex-col">
+                  <p className="text-[11px] font-bold text-accent tracking-wide mb-1.5">{card.category}</p>
+                  <h3 className="font-bold text-text mb-2">{card.title}</h3>
                   <p className="text-xs text-dim leading-relaxed mb-3">{card.desc}</p>
-                  <Link href={card.link} className="text-sm text-accent font-semibold hover:underline">
-                    {card.linkText} →
+                  <ul className="space-y-1 text-[11px] text-dim mb-4">
+                    {card.features.map(f => (
+                      <li key={f} className="flex items-start gap-1.5">
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-accent mt-0.5 flex-shrink-0"><path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={card.link} className="text-sm text-accent font-semibold hover:underline mt-auto">
+                    {card.linkText}
                   </Link>
                 </div>
               </div>
