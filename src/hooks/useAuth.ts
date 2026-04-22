@@ -8,7 +8,9 @@ type UserInfo = {
   id: string | null;
   blogId?: string | null;
   name: string | null;
+  nickname?: string | null;
   email?: string | null;
+  authId?: string | null;
   isAdmin?: boolean;
   restricted?: boolean;
   subscriptionPlan?: string | null;

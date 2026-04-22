@@ -46,6 +46,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     id: naverId || profile.blog_id || profile.id,
     blogId: profile.blog_id || naverId || null,
     name: displayName,
+    nickname: profile.nickname ?? null,
     email: email || profile.email,
     authId: authUserId,
     isAdmin: isAdmin(profile.id),

@@ -10,6 +10,7 @@ import FeedbackButton from "@/components/FeedbackButton";
 import Providers from "@/components/Providers";
 import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
+import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -45,6 +46,7 @@ export default function RootLayout({
           <FeedbackButton />
           <ChatBot />
           <InstallBanner />
+          <NicknameRequiredModal />
         </Providers>
         <Script src="https://cdn.portone.io/v2/browser-sdk.js" strategy="lazyOnload" />
       </body>
