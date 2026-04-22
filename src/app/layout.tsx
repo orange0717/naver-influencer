@@ -11,6 +11,7 @@ import Providers from "@/components/Providers";
 import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
+import SentryUserIdentity from "@/components/SentryUserIdentity";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -36,6 +37,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <Providers>
+          <SentryUserIdentity />
           <HeaderWrapper />
           <UpdateBanner />
           <Suspense fallback={null}><VisitTracker /></Suspense>
