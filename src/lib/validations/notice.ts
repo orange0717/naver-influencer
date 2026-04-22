@@ -13,6 +13,7 @@ export const createNoticeSchema = z.object({
     .max(5000, '내용은 5000자 이하로 입력해주세요.')
     .transform((v) => v.trim()),
   tag: z.enum(['notice', 'update', 'event']).default('notice'),
+  showOnBanner: z.boolean().optional().default(false),
 });
 
 /** POST /api/notices/[id]/comments — 댓글 작성 */

@@ -71,9 +71,10 @@ export async function POST(req: NextRequest) {
     const v = validateBody(createNoticeSchema, body);
     if (!v.success) return v.response;
 
-    const { title, content, tag } = v.data;
+    const { title, content, tag, showOnBanner } = v.data;
 
     const supabase = createServiceClient();
+
     const { data, error } = await supabase
       .from('notices')
       .insert({
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
         tag,
         author_id: authUser.userId,
         author_name: authUser.user.nickname || '관리자',
+        show_on_banner: !!showOnBanner,
       })
       .select('id')
       .single();

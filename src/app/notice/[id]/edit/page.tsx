@@ -16,6 +16,7 @@ export default function NoticeEditPage({ params }: { params: Promise<{ id: strin
   const [tag, setTag] = useState('notice');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [showOnBanner, setShowOnBanner] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
@@ -44,6 +45,7 @@ export default function NoticeEditPage({ params }: { params: Promise<{ id: strin
         setTag(data.notice.tag);
         setTitle(data.notice.title);
         setContent(data.notice.content);
+        setShowOnBanner(!!data.notice.show_on_banner);
       })
       .catch(() => {
         setError('공지를 찾을 수 없습니다.');
@@ -68,7 +70,7 @@ export default function NoticeEditPage({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/notices/${noticeId}`, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({ tag, title: title.trim(), content: content.trim() }),
+        body: JSON.stringify({ tag, title: title.trim(), content: content.trim(), showOnBanner }),
       });
 
       if (!res.ok) {
@@ -131,6 +133,17 @@ export default function NoticeEditPage({ params }: { params: Promise<{ id: strin
             placeholder="내용을 입력하세요" maxLength={5000} rows={12}
             className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 resize-none transition" />
           <p className="text-[11px] text-dim text-right mt-1">{content.length}/5000</p>
+        </div>
+
+        {/* 배너 등록 */}
+        <div className="border-t border-border pt-5">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={showOnBanner}
+              onChange={e => setShowOnBanner(e.target.checked)}
+              className="w-4 h-4 accent-accent" />
+            <span className="text-sm font-semibold text-text">상단 UPDATE 배너에 등록</span>
+            <span className="text-[11px] text-dim">(여러 개 등록 가능 · 최신 1건만 노출)</span>
+          </label>
         </div>
 
         {error && (

@@ -202,6 +202,9 @@ export async function PATCH(
       }
       updates.tag = body.tag;
     }
+    if (body.showOnBanner !== undefined) {
+      updates.show_on_banner = !!body.showOnBanner;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: '수정할 내용이 없습니다.' }, { status: 400 });
@@ -210,6 +213,7 @@ export async function PATCH(
     updates.updated_at = new Date().toISOString();
 
     const supabase = createServiceClient();
+
     const { error } = await supabase
       .from('notices')
       .update(updates)
