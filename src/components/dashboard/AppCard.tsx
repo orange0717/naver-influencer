@@ -89,7 +89,10 @@ export default function AppCard({
     ? `${planLabel(app.requiredPlan!)} 플랜`
     : needsLogin
       ? '무료'
-      : '무료플랜';
+      : (app.ctaLabel || '무료플랜');
+
+  // 외부 링크는 새 탭으로 열기 (Next Link 대신 일반 a)
+  const isExternal = !!app.external && !locked && !needsLogin;
 
   return (
     <div className="group relative flex flex-col aspect-square bg-surface rounded-2xl border border-border p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40">
@@ -150,12 +153,23 @@ export default function AppCard({
       </div>
 
       {/* 풀폭 CTA */}
-      <Link
-        href={targetHref}
-        className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-colors ${category.buttonClass} ${locked ? 'opacity-90' : ''}`}
-      >
-        {buttonLabel}
-      </Link>
+      {isExternal ? (
+        <a
+          href={targetHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-colors ${category.buttonClass}`}
+        >
+          {buttonLabel}
+        </a>
+      ) : (
+        <Link
+          href={targetHref}
+          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-colors ${category.buttonClass} ${locked ? 'opacity-90' : ''}`}
+        >
+          {buttonLabel}
+        </Link>
+      )}
     </div>
   );
 }

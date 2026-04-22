@@ -11,7 +11,8 @@ export type AppCategoryKey =
   | 'my'
   | 'ranking'
   | 'search'
-  | 'info';
+  | 'info'
+  | 'partner';
 
 export interface AppCategoryMeta {
   key: AppCategoryKey;
@@ -61,6 +62,14 @@ export const APP_CATEGORIES: AppCategoryMeta[] = [
     badgeClass: BADGE,
     buttonClass: BUTTON,
   },
+  {
+    key: 'partner',
+    label: '관련 서비스',
+    description: '함께 쓰면 좋은 외부 도구',
+    tag: '파트너',
+    badgeClass: BADGE,
+    buttonClass: BUTTON,
+  },
 ];
 
 export interface DashboardApp {
@@ -75,6 +84,10 @@ export interface DashboardApp {
   devPreview?: boolean;
   /** 로그인 필요 */
   authOnly?: boolean;
+  /** 외부 링크 — 새 탭으로 열기 */
+  external?: boolean;
+  /** CTA 버튼 라벨 커스텀 (기본 '무료플랜') */
+  ctaLabel?: string;
 }
 
 export const DASHBOARD_APPS: DashboardApp[] = [
@@ -237,5 +250,16 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '서비스 가이드',
     description: 'N인플 사용 방법·FAQ',
     href: '/guide',
+  },
+
+  // ── 관련 서비스 ──
+  {
+    id: 'orangerefine',
+    category: 'partner',
+    title: 'OrangeRefine',
+    description: '글쓰기 실력을 키우고 싶다면 오렌지리파인 — AI 교정·교열·윤문, 글쓰기 학습',
+    href: 'https://orangerefine.kr',
+    external: true,
+    ctaLabel: '바로가기',
   },
 ];
