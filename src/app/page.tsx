@@ -118,6 +118,10 @@ export default function LandingPage() {
           인플루언서홈 또는 블로그 주소 입력 후 7일간 모든 기능을 무료로 이용할 수 있습니다.
         </p>
 
+        <p className="text-[11px] text-dim/70 mt-3">
+          인플루언서 지망생부터 현 인플루언서까지
+        </p>
+
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
 
