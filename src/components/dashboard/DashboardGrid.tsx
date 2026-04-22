@@ -9,6 +9,7 @@ import {
   type AppCategoryKey,
   type PlanTier,
 } from '@/lib/dashboard-catalog';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Props {
   currentPlan: PlanTier;
@@ -39,7 +40,7 @@ function formatDate(iso: string | null): string {
 }
 
 export default function DashboardGrid({
-  currentPlan,
+  currentPlan: serverPlan,
   isLoggedIn,
   userName,
   subscriptionExpiresAt,
@@ -47,6 +48,15 @@ export default function DashboardGrid({
 }: Props) {
   const { favorites, toggle } = useFavorites();
   const [query, setQuery] = useState('');
+  const { user } = useAuth();
+
+  // 클라이언트에서 /api/auth/me 로 로드된 최신 플랜으로 덮어쓰기 (서버 초기값 폴백)
+  const currentPlan: PlanTier = (() => {
+    if (user.subscriptionActive && user.subscriptionPlan === 'INFLUENCER') return 'influencer';
+    if (user.subscriptionActive && user.subscriptionPlan === 'BLOGGER') return 'blogger';
+    if (user.id) return 'free'; // 로그인 됐지만 유료 구독 없음
+    return serverPlan; // 비로그인 시 서버값 유지
+  })();
 
   const categoryMap = useMemo(
     () => Object.fromEntries(APP_CATEGORIES.map(c => [c.key, c])) as Record<AppCategoryKey, (typeof APP_CATEGORIES)[number]>,
@@ -78,7 +88,7 @@ export default function DashboardGrid({
             <h1 className="font-title font-black text-2xl lg:text-3xl text-white leading-relaxed">
               네이버 크리에이터의 꿈이 실현되는 곳,
               <br />
-              검증 가능한 데이터, N인플에서 확인하세요.
+              정직하고 투명한 데이터, N인플에서 확인하세요.
             </h1>
           </div>
           <div className="flex items-center gap-3">
