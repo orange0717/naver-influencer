@@ -3,14 +3,19 @@
 import { useState, useEffect } from 'react';
 
 interface Stats {
-  todayVisits: number;
+  todayVisits: number;       // 오늘 UV
   yesterdayVisits: number;
   totalVisits: number;
+  todayPageviews: number;    // 오늘 PV
+  yesterdayPageviews: number;
+  totalPageviews: number;
   todaySignups: number;
   yesterdaySignups: number;
   totalSignups: number;
-  devices?: { desktop: number; mobile: number; tablet: number };
-  daily?: { date: string; count: number }[];
+  devices?: { desktop: number; mobile: number; tablet: number };     // UV 기준 (세션)
+  devicesPV?: { desktop: number; mobile: number; tablet: number };   // PV 기준
+  periodLabel?: string;
+  daily?: { date: string; count: number; pageviews: number }[];
 }
 
 interface ReferrerData {
@@ -136,12 +141,17 @@ export default function AdminAnalyticsPage() {
     );
   }
 
-  const totalDevices = (stats?.devices?.desktop || 0) + (stats?.devices?.mobile || 0) + (stats?.devices?.tablet || 0);
+  const totalDevicesPV = (stats?.devicesPV?.desktop || 0) + (stats?.devicesPV?.mobile || 0) + (stats?.devicesPV?.tablet || 0);
   const periodVisits = days === 1
     ? stats?.todayVisits || 0
     : days === 2
     ? stats?.yesterdayVisits || 0
     : (stats?.daily || []).reduce((sum, d) => sum + d.count, 0);
+  const periodPageviews = days === 1
+    ? stats?.todayPageviews || 0
+    : days === 2
+    ? stats?.yesterdayPageviews || 0
+    : (stats?.daily || []).reduce((sum, d) => sum + (d.pageviews || 0), 0);
   const periodLabel = days === 1 ? '오늘' : days === 2 ? '어제' : `${days}일`;
   const logTotal = referrers?.total || 0;
 
@@ -151,8 +161,8 @@ export default function AdminAnalyticsPage() {
         <h1 className="text-xl font-extrabold">유입 분석</h1>
       </div>
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* 요약 카드: UV(순방문자), PV(페이지뷰), 가입 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {(() => {
           const periodSignups = days === 1
             ? stats?.todaySignups || 0
@@ -160,16 +170,19 @@ export default function AdminAnalyticsPage() {
             ? stats?.yesterdaySignups || 0
             : 0;
           return [
-            { label: `${periodLabel} 방문`, value: periodVisits, accent: true },
-            { label: '총 방문', value: stats?.totalVisits || 0 },
-            { label: `${periodLabel} 가입`, value: periodSignups, accent: true },
-            { label: '총 가입', value: stats?.totalSignups || 0 },
+            { label: `${periodLabel} 순방문자(UV)`, sub: '1인 1일 1회', value: periodVisits, total: stats?.totalVisits || 0, accent: true },
+            { label: `${periodLabel} 페이지뷰(PV)`, sub: '페이지 이동마다', value: periodPageviews, total: stats?.totalPageviews || 0, accent: true },
+            { label: `${periodLabel} 가입`, sub: '신규 회원', value: periodSignups, total: stats?.totalSignups || 0, accent: true },
           ].map(item => (
-            <div key={item.label} className="bg-surface rounded-xl border border-border p-4 text-center">
-              <p className="text-xs text-dim mb-1">{item.label}</p>
+            <div key={item.label} className="bg-surface rounded-xl border border-border p-4">
+              <div className="flex items-baseline justify-between mb-1">
+                <p className="text-xs text-dim font-semibold">{item.label}</p>
+                <p className="text-[10px] text-dim">{item.sub}</p>
+              </div>
               <p className={`text-2xl font-extrabold font-rank ${item.accent ? 'text-accent' : 'text-text'}`}>
                 {item.value.toLocaleString()}
               </p>
+              <p className="text-[10px] text-dim mt-0.5">누적 {item.total.toLocaleString()}</p>
             </div>
           ));
         })()}
@@ -198,24 +211,38 @@ export default function AdminAnalyticsPage() {
             {d.label}
           </button>
         ))}
-        <span className="text-xs text-dim ml-2">총 {periodVisits}건</span>
+        <span className="text-xs text-dim ml-2">UV {periodVisits.toLocaleString()} · PV {periodPageviews.toLocaleString()}</span>
       </div>
 
-      {/* 일별 방문 추이 */}
+      {/* 일별 방문 추이 — UV/PV 같이 표시 */}
       {stats?.daily && stats.daily.length > 0 && (
         <div className="bg-surface rounded-xl border border-border p-5">
-          <h2 className="text-sm font-bold mb-3">일별 방문 추이</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold">일별 방문 추이</h2>
+            <div className="flex items-center gap-3 text-[10px] text-dim">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-accent" /> UV
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-accent/30" /> PV
+              </span>
+            </div>
+          </div>
           <div className="flex items-end gap-[2px] h-32">
             {(() => {
-              const maxCount = Math.max(...stats.daily.map(d => d.count), 1);
+              const maxPV = Math.max(...stats.daily.map(d => Math.max(d.count, d.pageviews || 0)), 1);
               return stats.daily.map(d => (
-                <div key={d.date} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                  <div className="absolute -top-5 hidden group-hover:block text-[10px] text-dim whitespace-nowrap bg-surface border border-border rounded px-1.5 py-0.5 shadow-sm z-10">
-                    {d.date.slice(5)} · {d.count}명
+                <div key={d.date} className="flex-1 group relative flex items-end justify-center gap-px h-full">
+                  <div className="absolute -top-8 hidden group-hover:block text-[10px] text-dim whitespace-nowrap bg-surface border border-border rounded px-1.5 py-0.5 shadow-sm z-10">
+                    {d.date.slice(5)} · UV {d.count} · PV {d.pageviews || 0}
                   </div>
                   <div
-                    className="w-full bg-accent/70 rounded-t hover:bg-accent transition min-h-[2px]"
-                    style={{ height: `${(d.count / maxCount) * 100}%` }}
+                    className="flex-1 bg-accent/30 rounded-t transition min-h-[2px]"
+                    style={{ height: `${((d.pageviews || 0) / maxPV) * 100}%` }}
+                  />
+                  <div
+                    className="flex-1 bg-accent/80 rounded-t hover:bg-accent transition min-h-[2px]"
+                    style={{ height: `${(d.count / maxPV) * 100}%` }}
                   />
                 </div>
               ));
@@ -257,25 +284,28 @@ export default function AdminAnalyticsPage() {
           )}
         </div>
 
-        {/* 기기 비율 */}
+        {/* 기기 비율 (페이지뷰 기준) */}
         <div className="bg-surface rounded-xl border border-border p-5">
-          <h2 className="text-sm font-bold mb-3">기기</h2>
-          {totalDevices > 0 ? (
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm font-bold">기기</h2>
+            <span className="text-[10px] text-dim">{stats?.periodLabel || periodLabel} · PV 기준</span>
+          </div>
+          {totalDevicesPV > 0 ? (
             <div className="space-y-3">
               {[
-                { label: '데스크톱', value: stats?.devices?.desktop || 0, color: 'bg-accent' },
-                { label: '모바일', value: stats?.devices?.mobile || 0, color: 'bg-[#2DB400]' },
-                { label: '태블릿', value: stats?.devices?.tablet || 0, color: 'bg-[#F29C68]' },
+                { label: '데스크톱', value: stats?.devicesPV?.desktop || 0, color: 'bg-accent' },
+                { label: '모바일', value: stats?.devicesPV?.mobile || 0, color: 'bg-[#2DB400]' },
+                { label: '태블릿', value: stats?.devicesPV?.tablet || 0, color: 'bg-[#F29C68]' },
               ].map(d => (
                 <div key={d.label}>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-text font-semibold">{d.label}</span>
-                    <span className="text-dim">{d.value}건 ({totalDevices > 0 ? Math.round((d.value / totalDevices) * 100) : 0}%)</span>
+                    <span className="text-dim">{d.value}건 ({totalDevicesPV > 0 ? Math.round((d.value / totalDevicesPV) * 100) : 0}%)</span>
                   </div>
                   <div className="w-full h-2 bg-bg rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${d.color}`}
-                      style={{ width: `${totalDevices > 0 ? (d.value / totalDevices) * 100 : 0}%` }}
+                      style={{ width: `${totalDevicesPV > 0 ? (d.value / totalDevicesPV) * 100 : 0}%` }}
                     />
                   </div>
                 </div>

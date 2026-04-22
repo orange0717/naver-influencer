@@ -82,11 +82,11 @@ export default function VisitTracker() {
     // 같은 도메인에서의 내부 이동은 referrer로 기록하지 않음
     const isSameSite = referrerDomain === window.location.hostname.replace(/^www\./, '');
 
-    // 로그인 사용자는 페이지뷰마다 카운트 증가를 위해 매번 호출,
-    // 비로그인 사용자는 세션 첫 방문만 (site_visits/visit_logs 집계용).
-    getVisitorStatus().then(({ isAdmin, isLoggedIn }) => {
+    // 모든 페이지뷰(PV)마다 track 호출.
+    // 서버에서 PV는 항상 집계하고, UV(순방문자)는 first_visit=true일 때만 카운트한다.
+    // (로그인/비로그인 무관, 관리자만 제외)
+    getVisitorStatus().then(({ isAdmin }) => {
       if (isAdmin) return;
-      if (!isLoggedIn && !isFirstVisit) return;
 
       fetch('/api/analytics/track', {
         method: 'POST',

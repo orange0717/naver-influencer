@@ -167,7 +167,7 @@ export default function AdminMembersPage() {
                 <th className="text-left px-3 py-2.5 font-semibold">인플루언서</th>
                 <th className="text-center px-3 py-2.5 font-semibold">플랜</th>
                 <th className="text-right px-3 py-2.5 font-semibold">기간</th>
-                <th className="text-right px-3 py-2.5 font-semibold">방문횟수</th>
+                <th className="text-right px-3 py-2.5 font-semibold">페이지뷰</th>
                 <th className="text-right px-3 py-2.5 font-semibold">가입일</th>
               </tr>
             </thead>
@@ -371,13 +371,13 @@ export default function AdminMembersPage() {
                   </div>
                 )}
 
-                {/* 방문 통계 (최근 90일) */}
+                {/* 방문 통계 — 누적 페이지뷰 */}
                 {detail.visits && (
                   <div>
-                    <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(누적)</span></p>
+                    <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(누적 PV)</span></p>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-bg rounded-lg px-3 py-2">
-                        <p className="text-[11px] text-dim">방문 횟수</p>
+                        <p className="text-[11px] text-dim">페이지뷰</p>
                         <p className="font-rank font-bold text-sm">{detail.visits.count.toLocaleString()}회</p>
                       </div>
                       <div className="bg-bg rounded-lg px-3 py-2">

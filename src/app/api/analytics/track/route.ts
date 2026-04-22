@@ -77,17 +77,20 @@ export async function POST(req: NextRequest) {
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const today = kst.toISOString().slice(0, 10);
 
-    // 로그인 사용자는 페이지뷰마다 누적 방문횟수 +1 (isFirstVisit 여부 무관)
-    if (trackedUserId) {
-      await supabase.rpc('increment_user_total_visit', { p_user_id: trackedUserId });
-    }
-
-    // 1) site_visits 일별 집계 — 세션 첫 방문(순 방문자)일 때만 카운트
     const isFirstVisit = body.first_visit === true;
     const deviceType = ['mobile', 'tablet', 'desktop'].includes(body.device_type)
       ? body.device_type
       : 'desktop';
 
+    // 1) PV — 모든 페이지뷰마다 집계
+    //    - users.total_visit_count (로그인 회원)
+    //    - site_visits.pageview_count + 디바이스별 PV
+    if (trackedUserId) {
+      await supabase.rpc('increment_user_total_visit', { p_user_id: trackedUserId });
+    }
+    await supabase.rpc('increment_pageview', { p_date: today, p_device: deviceType });
+
+    // 2) UV (순방문자) — 세션 첫 방문일 때만 site_visits.visit_count / 디바이스 UV 카운트
     if (isFirstVisit) {
       const { error } = await supabase.rpc('increment_visit', { p_date: today, p_device: deviceType });
 
@@ -122,7 +125,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2) visit_logs 개별 기록 (순 방문자 유입경로 추적)
+    // 3) visit_logs — 모든 페이지뷰 기록 (is_first_visit 플래그로 세션 첫 방문 구분)
     const pagePath = typeof body.path === 'string' ? body.path.slice(0, 500) : '/';
     const referrer = typeof body.referrer === 'string' ? body.referrer.slice(0, 1000) : '';
     const referrerDomain = typeof body.referrer_domain === 'string' ? body.referrer_domain.slice(0, 200) : null;
@@ -130,19 +133,18 @@ export async function POST(req: NextRequest) {
     const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
     const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
 
-    if (isFirstVisit) {
-      await supabase.from('visit_logs').insert({
-        page_path: pagePath,
-        referrer: referrer || null,
-        referrer_domain: referrerDomain,
-        utm_source: utmSource,
-        utm_medium: utmMedium,
-        utm_campaign: utmCampaign,
-        device_type: deviceType,
-        user_agent: ua.slice(0, 500) || null,
-        user_id: trackedUserId || null,
-      });
-    }
+    await supabase.from('visit_logs').insert({
+      page_path: pagePath,
+      referrer: referrer || null,
+      referrer_domain: referrerDomain,
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      device_type: deviceType,
+      user_agent: ua.slice(0, 500) || null,
+      user_id: trackedUserId || null,
+      is_first_visit: isFirstVisit,
+    });
 
     return NextResponse.json({ ok: true });
   } catch {
