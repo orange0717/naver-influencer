@@ -76,7 +76,7 @@ export default function LandingPage() {
     <div className="-mt-6 -mb-10 w-screen relative left-1/2 -ml-[50vw]">
 
       {/* ═══════════ HERO (bg) ═══════════ */}
-      <section className="bg-accent/[0.06] px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
+      <section className="bg-white px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
         <div className="mb-5 flex justify-center">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/15 text-accent text-[11px] font-bold tracking-wide">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
