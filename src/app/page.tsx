@@ -357,7 +357,7 @@ export default function LandingPage() {
             <p className="text-sm text-dim">N인플의 핵심 기능을 카테고리별로 확인하세요</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
                 url: 'ninfl.co.kr/my',
@@ -491,21 +491,21 @@ export default function LandingPage() {
               <Link key={card.title} href={card.link} className="bg-bg rounded-2xl border border-border overflow-hidden flex flex-col hover:border-accent/40 transition group">
                 {/* 브라우저 목업 */}
                 <div className="bg-surface border-b border-border">
-                  <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-border/60">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#FF6058]" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#FFBD2E]" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#27CA40]" />
-                    <span className="ml-1.5 text-[8px] text-dim truncate">{card.url}</span>
+                  <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/60">
+                    <div className="w-2 h-2 rounded-full bg-[#FF6058]" />
+                    <div className="w-2 h-2 rounded-full bg-[#FFBD2E]" />
+                    <div className="w-2 h-2 rounded-full bg-[#27CA40]" />
+                    <span className="ml-2 text-[10px] text-dim truncate">{card.url}</span>
                   </div>
-                  <div className="px-3 py-3 min-h-[110px]">
+                  <div className="px-5 py-5 min-h-[150px] [&_.text-\[10px\]]:text-xs [&_.text-\[9px\]]:text-[11px] [&_.text-\[8px\]]:text-[10px]">
                     {card.mockup}
                   </div>
                 </div>
                 {/* 설명 */}
-                <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="font-bold text-text mb-1.5 group-hover:text-accent transition-colors">{card.title}</h3>
-                  <p className="text-[11px] text-dim leading-relaxed mb-3 flex-1">{card.desc}</p>
-                  <span className="text-xs text-accent font-semibold">바로가기 →</span>
+                <div className="p-5 flex-1 flex flex-col">
+                  <h3 className="font-bold text-text mb-2 text-base group-hover:text-accent transition-colors">{card.title}</h3>
+                  <p className="text-sm text-dim leading-relaxed mb-4 flex-1">{card.desc}</p>
+                  <span className="text-sm text-accent font-semibold">바로가기 →</span>
                 </div>
               </Link>
             ))}
