@@ -24,8 +24,8 @@ interface Props {
 
 function planName(plan: PlanTier): string {
   if (plan === 'influencer') return '인플루언서';
-  if (plan === 'blogger') return '블로거+';
-  return '무료';
+  if (plan === 'blogger') return '예비 인플루언서 +';
+  return '무료플랜';
 }
 
 function formatDate(iso: string | null): string {
