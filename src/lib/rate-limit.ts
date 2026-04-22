@@ -135,3 +135,15 @@ export const campaignLimiter = createRateLimiter({ limit: 20, windowMs: 60 * 100
 
 /** 공지 조회수 카운트: 동일 IP+notice 당 30분에 1회 (조작 방지) */
 export const noticeViewLimiter = createRateLimiter({ limit: 1, windowMs: 30 * 60 * 1000 });
+
+/** 채팅 메시지 전송: 1분에 10회 */
+export const chatMessageLimiter = createRateLimiter({ limit: 10, windowMs: 60 * 1000 });
+
+/** 채팅 리액션 토글: 1분에 60회 */
+export const chatReactionLimiter = createRateLimiter({ limit: 60, windowMs: 60 * 1000 });
+
+/** 채팅 이미지 업로드: 5분에 10회 */
+export const chatUploadLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
+
+/** 채팅 신고: 10분에 5회 */
+export const chatReportLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 1000 });

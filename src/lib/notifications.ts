@@ -605,3 +605,63 @@ export async function createCommunityReactionNotification(
       kakao_sent: false,
     });
 }
+
+// ─── 채팅 멘션 알림 ───
+
+/**
+ * 채팅방에서 @멘션된 사용자들에게 알림을 생성한다.
+ * mentionedIds 는 naver_id 또는 blog_id 의 배열.
+ */
+export async function createChatMentionNotification(
+  supabase: SupabaseClient,
+  opts: {
+    messageId: string;
+    messagePreview: string;
+    mentionedIds: string[];
+    mentionerName: string;
+  },
+) {
+  const { messageId, messagePreview, mentionedIds, mentionerName } = opts;
+  if (!mentionedIds || mentionedIds.length === 0) return;
+
+  // 각 멘션 ID → users.id (linked_influencer_id 경유 또는 blog_id) 매핑
+  // 1) 인플루언서 경로: influencers.naver_id → users.linked_influencer_id
+  const { data: inf } = await supabase
+    .from('influencers')
+    .select('id, naver_id')
+    .in('naver_id', mentionedIds);
+  const naverToInfId = new Map<string, string>((inf || []).map(i => [i.naver_id, i.id]));
+
+  const infIds = Array.from(naverToInfId.values());
+  let userIds: string[] = [];
+  if (infIds.length > 0) {
+    const { data: u } = await supabase
+      .from('users')
+      .select('id, linked_influencer_id')
+      .in('linked_influencer_id', infIds);
+    userIds = userIds.concat((u || []).map(r => r.id));
+  }
+
+  // 2) 블로거 경로: users.blog_id
+  const { data: bu } = await supabase
+    .from('users')
+    .select('id')
+    .in('blog_id', mentionedIds);
+  userIds = userIds.concat((bu || []).map(r => r.id));
+
+  userIds = Array.from(new Set(userIds));
+  if (userIds.length === 0) return;
+
+  const rows = userIds.map(uid => ({
+    user_id: uid,
+    notification_type: 'chat_mention',
+    title: `${mentionerName}님이 채팅에서 회원님을 언급했습니다`,
+    body: messagePreview,
+    metadata: { message_id: messageId, mentioner_name: mentionerName },
+    is_read: false,
+    email_sent: false,
+    kakao_sent: false,
+  }));
+
+  await supabase.from('notifications').insert(rows);
+}

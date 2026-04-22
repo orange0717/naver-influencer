@@ -46,11 +46,20 @@ export default function CommunityPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(0);
 
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.json())
-      .then(data => setIsLoggedIn(!!data.id))
+      .then(data => {
+        setIsLoggedIn(!!data.id);
+        if (data.id) {
+          fetch('/api/chat/unread-count')
+            .then(r => r.json())
+            .then(d => setUnreadChat(d.count || 0))
+            .catch(() => {});
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -107,6 +116,34 @@ export default function CommunityPage() {
           </Link>
         )}
       </div>
+
+      {/* 실시간 채팅방 진입 배너 (로그인 사용자만) */}
+      {isLoggedIn && (
+        <Link
+          href="/community/chat"
+          className="block bg-gradient-to-r from-accent/15 to-accent/5 border border-accent/30 rounded-2xl p-4 hover:border-accent transition group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-text flex items-center gap-2">
+                실시간 채팅방
+                {unreadChat > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold bg-down text-white rounded-full">
+                    {unreadChat >= 99 ? '99+' : unreadChat}
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-dim mt-0.5">회원끼리 실시간으로 대화해보세요</p>
+            </div>
+            <span className="text-xs text-accent font-bold group-hover:translate-x-1 transition">입장 →</span>
+          </div>
+        </Link>
+      )}
 
       {/* 카테고리 탭 */}
       <div className="flex gap-2 overflow-x-auto pb-1">

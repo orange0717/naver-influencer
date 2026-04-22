@@ -36,17 +36,18 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 export default function AdminCommunityPage() {
-  const [tab, setTab] = useState<'posts' | 'reports'>('posts');
+  const [tab, setTab] = useState<'posts' | 'reports' | 'chat_reports'>('posts');
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-extrabold">커뮤니티 관리</h1>
 
       {/* 탭 */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {[
           { key: 'posts' as const, label: '게시글' },
           { key: 'reports' as const, label: '신고 접수' },
+          { key: 'chat_reports' as const, label: '채팅 신고' },
         ].map(t => (
           <button
             key={t.key}
@@ -62,7 +63,130 @@ export default function AdminCommunityPage() {
         ))}
       </div>
 
-      {tab === 'posts' ? <PostsTab /> : <ReportsTab />}
+      {tab === 'posts' && <PostsTab />}
+      {tab === 'reports' && <ReportsTab />}
+      {tab === 'chat_reports' && <ChatReportsTab />}
+    </div>
+  );
+}
+
+// ─── 채팅 신고 탭 ───
+interface ChatReportRow {
+  id: string;
+  message_id: string;
+  reporter_id: string;
+  reason: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  message: { content: string; author_name: string; is_deleted: boolean } | null;
+}
+
+function ChatReportsTab() {
+  const [items, setItems] = useState<ChatReportRow[]>([]);
+  const [status, setStatus] = useState<'pending' | 'reviewed' | 'dismissed'>('pending');
+  const [loading, setLoading] = useState(true);
+
+  const fetchReports = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/chat?tab=reports&status=${status}`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items || []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [status]);
+
+  useEffect(() => { fetchReports(); }, [fetchReports]);
+
+  async function handleAction(action: string, body: Record<string, unknown>) {
+    const res = await fetch('/api/admin/chat', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...body }),
+    });
+    if (res.ok) {
+      fetchReports();
+    } else {
+      alert('처리 실패');
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        {(['pending', 'reviewed', 'dismissed'] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setStatus(s)}
+            className={`px-3 py-1.5 rounded text-xs font-semibold transition ${
+              status === s ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:text-text'
+            }`}
+          >
+            {s === 'pending' ? '대기' : s === 'reviewed' ? '처리완료' : '기각'}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <p className="text-dim text-sm">불러오는 중...</p>
+      ) : items.length === 0 ? (
+        <p className="text-dim text-sm py-10 text-center">신고가 없습니다.</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map(r => (
+            <div key={r.id} className="bg-surface border border-border rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between text-xs text-dim">
+                <span>{REASON_LABELS[r.reason] || r.reason} · 신고자 {r.reporter_id}</span>
+                <span>{new Date(r.created_at).toLocaleString('ko-KR')}</span>
+              </div>
+              {r.message ? (
+                <div className={`text-sm p-3 rounded-lg ${r.message.is_deleted ? 'bg-down/10 line-through text-dim' : 'bg-bg'}`}>
+                  <p className="font-semibold text-xs text-dim mb-1">{r.message.author_name}{r.message.is_deleted ? ' · 삭제됨' : ''}</p>
+                  <p className="whitespace-pre-wrap break-words">{r.message.content}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-dim italic">메시지를 찾을 수 없습니다</p>
+              )}
+              {r.description && (
+                <p className="text-xs text-dim">사유: {r.description}</p>
+              )}
+              {status === 'pending' && (
+                <div className="flex gap-2 flex-wrap pt-2">
+                  {r.message && !r.message.is_deleted && (
+                    <button
+                      onClick={() => {
+                        if (confirm('메시지를 삭제하시겠습니까?')) {
+                          handleAction('delete_message', { message_id: r.message_id });
+                          handleAction('update_report', { report_id: r.id, status: 'reviewed' });
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-down text-white text-xs font-bold rounded hover:opacity-90"
+                    >
+                      메시지 삭제
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleAction('update_report', { report_id: r.id, status: 'reviewed' })}
+                    className="px-3 py-1.5 bg-accent text-white text-xs font-bold rounded hover:bg-accent-hover"
+                  >
+                    처리완료
+                  </button>
+                  <button
+                    onClick={() => handleAction('update_report', { report_id: r.id, status: 'dismissed' })}
+                    className="px-3 py-1.5 bg-surface border border-border text-dim text-xs font-bold rounded hover:text-text"
+                  >
+                    기각
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
