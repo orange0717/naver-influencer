@@ -25,7 +25,7 @@ export default function CommunityPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 min-h-[calc(100vh-10rem)]">
+    <div className="max-w-7xl mx-auto space-y-3 min-h-[calc(100vh-10rem)] px-2 sm:px-4">
       <div className="pt-4">
         <p className="text-xs text-accent font-semibold tracking-widest mb-1">COMMUNITY</p>
         <h1 className="font-title text-2xl md:text-3xl font-extrabold text-text">커뮤니티</h1>

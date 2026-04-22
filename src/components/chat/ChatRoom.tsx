@@ -198,29 +198,35 @@ export default function ChatRoom({ currentUserId, isAdmin }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] bg-surface rounded-2xl border border-border overflow-hidden">
-      {initialLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <span className="inline-block w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <MessageList
-          messages={messages}
-          reactions={reactions}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-          loadingMore={loadingMore}
-          hasMore={hasMore}
-          onLoadMore={loadMore}
-          onReact={handleReact}
-          onDelete={handleDelete}
-        />
-      )}
+    <div className="flex flex-col gap-3 h-[calc(100vh-12rem)]">
+      {/* 대화창 (넓고 큰 영역) */}
+      <div className="flex-1 min-h-0 bg-surface rounded-2xl border border-border overflow-hidden flex flex-col">
+        {initialLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <span className="inline-block w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <MessageList
+            messages={messages}
+            reactions={reactions}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+            loadingMore={loadingMore}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+            onReact={handleReact}
+            onDelete={handleDelete}
+          />
+        )}
+      </div>
 
-      <MessageInput
-        onSend={handleSend}
-        disabled={!currentUserId || !!accessError}
-      />
+      {/* 입력 박스 (분리된 별도 카드) */}
+      <div className="bg-surface rounded-2xl border border-border overflow-hidden shrink-0">
+        <MessageInput
+          onSend={handleSend}
+          disabled={!currentUserId || !!accessError}
+        />
+      </div>
 
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-accent/50 text-text px-5 py-3 rounded-xl shadow-lg text-sm font-semibold">

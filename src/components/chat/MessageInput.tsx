@@ -72,7 +72,7 @@ export default function MessageInput({ onSend, disabled }: Props) {
   }
 
   return (
-    <div className="border-t border-border bg-surface">
+    <div className="bg-surface">
       {images.length > 0 && (
         <div className="flex gap-2 px-4 pt-3 flex-wrap">
           {images.map((url, i) => (
