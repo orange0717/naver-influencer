@@ -91,7 +91,11 @@ export async function POST(req: NextRequest) {
     await supabase.rpc('increment_pageview', { p_date: today, p_device: deviceType });
 
     // 2) UV (순방문자) — 세션 첫 방문일 때만 site_visits.visit_count / 디바이스 UV 카운트
+    //    + 로그인 회원은 users.total_session_count +1
     if (isFirstVisit) {
+      if (trackedUserId) {
+        await supabase.rpc('increment_user_session', { p_user_id: trackedUserId });
+      }
       const { error } = await supabase.rpc('increment_visit', { p_date: today, p_device: deviceType });
 
       if (error) {

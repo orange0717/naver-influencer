@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   // 회원 목록 쿼리
   let query = supabase
     .from('users')
-    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, subscription_plan, subscription_expires_at, created_at, total_visit_count', { count: 'exact' });
+    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, subscription_plan, subscription_expires_at, created_at, total_visit_count, total_session_count', { count: 'exact' });
 
   if (search) {
     query = query.or(`nickname.ilike.%${search}%,email.ilike.%${search}%,blog_id.ilike.%${search}%`);
@@ -47,11 +47,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 누적 방문 횟수는 users.total_visit_count 컬럼에서 직접 읽음 (migration-065 트리거로 유지)
+  // 누적 방문횟수(세션) + 페이지뷰(PV) 분리
   const result = (users || []).map(u => ({
     ...u,
     influencer_name: u.linked_influencer_id ? infMap.get(u.linked_influencer_id) || null : null,
-    visit_count: u.total_visit_count || 0,
+    session_count: u.total_session_count || 0,
+    pageview_count: u.total_visit_count || 0,
     is_admin: isAdmin(u.id),
   }));
 

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, total_charged, total_used, subscription_plan, subscription_expires_at, created_at, updated_at, total_visit_count, last_visited_at')
+    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, total_charged, total_used, subscription_plan, subscription_expires_at, created_at, updated_at, total_visit_count, total_session_count, last_visited_at')
     .eq('id', id)
     .single();
 
@@ -57,7 +57,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     influencer,
     payments: payments || [],
     visits: {
-      count: user.total_visit_count || 0,
+      count: user.total_visit_count || 0,               // PV (누적 페이지뷰) — 하위 호환
+      pageview_count: user.total_visit_count || 0,      // PV
+      session_count: user.total_session_count || 0,     // 세션(방문) 수
       last_visited_at: user.last_visited_at || null,
       last_page: lastVisit?.page_path || null,
     },

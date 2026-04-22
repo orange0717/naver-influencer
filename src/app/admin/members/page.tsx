@@ -14,7 +14,8 @@ interface Member {
   subscription_plan: string | null;
   subscription_expires_at: string | null;
   created_at: string;
-  visit_count: number;
+  session_count: number;    // 방문횟수 (세션)
+  pageview_count: number;   // 페이지뷰 (PV)
   is_admin: boolean;
 }
 
@@ -22,7 +23,13 @@ interface MemberDetail {
   user: Member & { total_charged: number; total_used: number; updated_at: string };
   influencer: { naver_id: string; display_name: string; category: string; fan_count: number } | null;
   payments: { id: string; order_id: string; amount: number; plan_name: string; status: string; created_at: string }[];
-  visits?: { count: number; last_visited_at: string | null; last_page: string | null };
+  visits?: {
+    count: number;            // 하위 호환 (= pageview_count)
+    pageview_count?: number;
+    session_count?: number;
+    last_visited_at: string | null;
+    last_page: string | null;
+  };
 }
 
 export default function AdminMembersPage() {
@@ -167,6 +174,7 @@ export default function AdminMembersPage() {
                 <th className="text-left px-3 py-2.5 font-semibold">인플루언서</th>
                 <th className="text-center px-3 py-2.5 font-semibold">플랜</th>
                 <th className="text-right px-3 py-2.5 font-semibold">기간</th>
+                <th className="text-right px-3 py-2.5 font-semibold">방문횟수</th>
                 <th className="text-right px-3 py-2.5 font-semibold">페이지뷰</th>
                 <th className="text-right px-3 py-2.5 font-semibold">가입일</th>
               </tr>
@@ -204,7 +212,10 @@ export default function AdminMembersPage() {
                     })() : '-'}
                   </td>
                   <td className="px-3 py-2.5 text-right text-xs text-dim font-rank">
-                    {m.visit_count?.toLocaleString() || 0}
+                    {(m.session_count ?? 0).toLocaleString()}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-xs text-dim font-rank">
+                    {(m.pageview_count ?? 0).toLocaleString()}
                   </td>
                   <td className="px-3 py-2.5 text-right text-xs text-dim">
                     {new Date(m.created_at).toLocaleDateString('ko-KR')}
@@ -212,7 +223,7 @@ export default function AdminMembersPage() {
                 </tr>
               ))}
               {members.length === 0 && (
-                <tr><td colSpan={8} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
+                <tr><td colSpan={9} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
               )}
             </tbody>
           </table>
@@ -371,14 +382,18 @@ export default function AdminMembersPage() {
                   </div>
                 )}
 
-                {/* 방문 통계 — 누적 페이지뷰 */}
+                {/* 방문 통계 — 세션(방문횟수) + 페이지뷰 분리 */}
                 {detail.visits && (
                   <div>
-                    <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(누적 PV)</span></p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(누적)</span></p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-bg rounded-lg px-3 py-2">
+                        <p className="text-[11px] text-dim">방문횟수</p>
+                        <p className="font-rank font-bold text-sm">{(detail.visits.session_count ?? 0).toLocaleString()}회</p>
+                      </div>
                       <div className="bg-bg rounded-lg px-3 py-2">
                         <p className="text-[11px] text-dim">페이지뷰</p>
-                        <p className="font-rank font-bold text-sm">{detail.visits.count.toLocaleString()}회</p>
+                        <p className="font-rank font-bold text-sm">{(detail.visits.pageview_count ?? detail.visits.count).toLocaleString()}회</p>
                       </div>
                       <div className="bg-bg rounded-lg px-3 py-2">
                         <p className="text-[11px] text-dim">마지막 방문</p>
