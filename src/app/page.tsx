@@ -119,7 +119,7 @@ export default function LandingPage() {
         </p>
 
         <p className="text-[11px] text-dim/70 mt-3">
-          인플루언서 지망생부터 현 인플루언서까지
+          네이버 크리에이터의 꿈이 실현되는 곳, 정직하고 투명한 데이터, N인플에서 확인하세요.
         </p>
 
         <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
