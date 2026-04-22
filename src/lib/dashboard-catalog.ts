@@ -137,13 +137,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
 
   // ── 랭킹 ──
   {
-    id: 'rankings-hub',
-    category: 'ranking',
-    title: '랭킹 허브',
-    description: '블로거·인플루언서·품질지수 순위 모아보기',
-    href: '/rankings',
-  },
-  {
     id: 'rankings-blogger',
     category: 'ranking',
     title: '블로거 순위',

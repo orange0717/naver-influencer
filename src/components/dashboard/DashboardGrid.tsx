@@ -51,10 +51,13 @@ export default function DashboardGrid({
   const { user } = useAuth();
 
   // 클라이언트에서 /api/auth/me 로 로드된 최신 플랜으로 덮어쓰기 (서버 초기값 폴백)
+  // 주의: /api/auth/me 의 쿠키 폴백 경로는 subscriptionPlan 을 응답에 포함하지 않음 (undefined).
+  // 이 경우 SSR(serverPlan) 값을 유지해야 정확한 플랜이 보임.
   const currentPlan: PlanTier = (() => {
+    if (user.subscriptionPlan === undefined) return serverPlan; // me API 가 구독 정보를 안 줬으면 SSR 값 유지
     if (user.subscriptionActive && user.subscriptionPlan === 'INFLUENCER') return 'influencer';
     if (user.subscriptionActive && user.subscriptionPlan === 'BLOGGER') return 'blogger';
-    if (user.id) return 'free'; // 로그인 됐지만 유료 구독 없음
+    if (user.id) return 'free'; // 로그인 됐지만 유료 구독 없음/만료
     return serverPlan; // 비로그인 시 서버값 유지
   })();
 
