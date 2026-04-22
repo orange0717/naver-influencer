@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const DEFAULT_FALLBACKS = ['', 'N사용자'];
 
@@ -19,11 +18,41 @@ export default function NicknameRequiredModal() {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const shouldShow = !!user && !!user.authId && !user.isAdmin && needsNickname(user.nickname);
+
+  // blocking modal — ESC 는 소비하되 닫히지 않음, Tab 은 모달 내부에서 순환.
+  useEffect(() => {
+    if (!shouldShow) return;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const focusable = modal.querySelectorAll<HTMLElement>(
+        'input:not([disabled]), button:not([disabled])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [shouldShow]);
 
   // 대상 외: 비로그인, Supabase Auth 가입자 아님, 관리자, 닉네임 정상
-  if (!user || !user.authId) return null;
-  if (user.isAdmin) return null;
-  if (!needsNickname(user.nickname)) return null;
+  if (!shouldShow) return null;
 
   const handleSave = async () => {
     const trimmed = value.trim();
@@ -44,16 +73,12 @@ export default function NicknameRequiredModal() {
     setError(null);
 
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
+      // getSession() 는 hang 가능성이 있어 제거. getAuthUser 가 쿠키 폴백을 지원하므로
+      // credentials: 'include' 로 Supabase SSR 쿠키만 동반 전송해도 인증 가능.
       const res = await fetch('/api/profile', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ nickname: trimmed }),
       });
 
@@ -76,6 +101,7 @@ export default function NicknameRequiredModal() {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4">
       <div
+        ref={modalRef}
         className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-md p-6"
         role="dialog"
         aria-modal="true"
