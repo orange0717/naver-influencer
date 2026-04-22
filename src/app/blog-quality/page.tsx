@@ -15,6 +15,10 @@ export default function BlogQualityPage() {
         </p>
       </div>
 
+      <div className="bg-accent/10 border border-accent/30 rounded-xl px-4 py-3 text-sm text-accent font-semibold text-center">
+        현재 로직을 연구중입니다.
+      </div>
+
       <BlogQualityChecker />
 
       <p className="text-[11px] text-dim text-center">
