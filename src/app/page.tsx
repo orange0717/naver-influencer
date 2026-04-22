@@ -501,8 +501,8 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════════ 하단 CTA (bg) ═══════════ */}
-      <section className="bg-accent/[0.06] px-4 py-20 md:py-28 text-center">
+      {/* ═══════════ 하단 CTA (surface) ═══════════ */}
+      <section className="bg-surface px-4 py-20 md:py-28 text-center">
         <h2 className="font-title text-2xl md:text-4xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
         <p className="text-sm text-dim mb-10">
           키워드챌린지는 시작일 뿐, 인플루언서 성장을 돕는 곳 N인플.
@@ -516,19 +516,19 @@ export default function LandingPage() {
         </button>
 
         <div className="flex items-center justify-center gap-4 md:gap-6 max-w-md mx-auto mt-10">
-          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
+          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">오늘 방문</p>
             <p className="text-xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
           </div>
-          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
+          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">누적 방문</p>
             <p className="text-xl font-extrabold text-accent font-rank">{siteStats.totalVisits.toLocaleString()}</p>
           </div>
-          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
+          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">신규 가입</p>
             <p className="text-xl font-extrabold text-accent font-rank">{siteStats.todaySignups.toLocaleString()}</p>
           </div>
-          <div className="flex-1 bg-surface rounded-xl border border-border py-3 px-2 text-center">
+          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
             <p className="text-[11px] text-dim mb-0.5">누적 가입</p>
             <p className="text-xl font-extrabold text-accent font-rank">{siteStats.totalSignups.toLocaleString()}</p>
           </div>
