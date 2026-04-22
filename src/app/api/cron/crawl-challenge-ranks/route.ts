@@ -6,9 +6,10 @@ export const maxDuration = 300;
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-// 30분마다 실행 → 48회/일. 활성 인플루언서 약 15,700명을 매일 동일 주기로 커버
-const BATCH_SIZE = 400;
-const CONCURRENCY = 3; // 병렬 처리 (네이버 API 부하 고려)
+// 30분마다 실행 → 48회/일. 전체 약 12,700명을 매일 1회 커버 목표
+// 한 크론당 5분 내 ~500명 처리 = 48 × 500 = 24,000건/일 (여유 90%)
+const BATCH_SIZE = 300;
+const CONCURRENCY = 6; // 병렬 처리 (네이버 API 부하 감안, 3 → 6 상향)
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_RUNTIME_MS = 270_000; // 300초 중 안전 마진 30초
 

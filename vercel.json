@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/crawl-keywords",
-      "schedule": "0 18 * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/cron/crawl-rankings",
@@ -43,7 +43,7 @@
     },
     {
       "path": "/api/cron/update-followers",
-      "schedule": "0 21,3,9 * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/demo-expiry",
