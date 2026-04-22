@@ -39,6 +39,18 @@ function formatDate(iso: string | null): string {
   }
 }
 
+/** 카테고리 내 정렬 우선순위: 무료(0) → 블로거+(1) → 인플루언서(2) → 개발 중(3) */
+function planSortKey(app: typeof DASHBOARD_APPS[number]): number {
+  if (app.devPreview) return 3;
+  if (app.requiredPlan === 'influencer') return 2;
+  if (app.requiredPlan === 'blogger') return 1;
+  return 0;
+}
+
+function sortAppsByPlan(apps: typeof DASHBOARD_APPS): typeof DASHBOARD_APPS {
+  return [...apps].sort((a, b) => planSortKey(a) - planSortKey(b));
+}
+
 export default function DashboardGrid({
   currentPlan: serverPlan,
   isLoggedIn,
@@ -77,12 +89,22 @@ export default function DashboardGrid({
   };
 
   const favoriteApps = DASHBOARD_APPS.filter(app => favorites.has(app.id));
-  const visibleFavorites = filterApps(favoriteApps);
+  const visibleFavorites = sortAppsByPlan(filterApps(favoriteApps));
 
   const greeting = userName ? `@${userName} 님,` : '반갑습니다,';
 
   return (
     <div className="flex flex-col gap-8">
+      {/* ── 베타 안내 배너 ── */}
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-semibold">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>현재 베타버전 프로그램입니다.</span>
+      </div>
+
       {/* ── 상단 인사 + 구독 + 지표 ── */}
       <section className="bg-header rounded-2xl p-6 lg:p-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
@@ -224,7 +246,7 @@ export default function DashboardGrid({
 
       {/* ── 카테고리 섹션 ── */}
       {APP_CATEGORIES.map(cat => {
-        const catApps = filterApps(DASHBOARD_APPS.filter(a => a.category === cat.key));
+        const catApps = sortAppsByPlan(filterApps(DASHBOARD_APPS.filter(a => a.category === cat.key)));
         if (catApps.length === 0) return null;
         return (
           <section key={cat.key} id={`section-${cat.key}`} className="scroll-mt-28 pt-6 border-t border-border">
