@@ -155,6 +155,10 @@ export default function CompetitorDashboard({
       if (res.ok) {
         const data = await res.json();
         setCompareData(prev => ({ ...prev, [competitorNaverId]: data }));
+      } else if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || '오늘의 경쟁자 분석 횟수를 모두 사용했습니다.');
+        setExpandedId(null);
       }
     } catch { /* ignore */ }
     setLoadingCompare(null);

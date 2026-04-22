@@ -112,19 +112,20 @@ export default function SubscribeClient() {
           </Link>
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 블로그</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 리스트</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>연도별 선정 현황</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (일 1회)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">커뮤니티</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드순위</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">포스팅 분석</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">캠페인 현황</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 (대시보드)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 (키워드)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 구글 트렌드</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 1회)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 키워드순위</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 포스팅 분석</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 캠페인 (개발 중)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 정산내역 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 검색순위</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">인플루언서 리스트</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">원고료 정산내역</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">경쟁자 분석 (무제한)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">실시간 상승 키워드</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 리스트</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">랭킹 (블로거 / 인플루언서 / 품질지수)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">커뮤니티</span></li>
           </ul>
         </div>
 
@@ -172,15 +173,19 @@ export default function SubscribeClient() {
 
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>무료 플랜 전체 포함</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드순위</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 분석</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>MY 포스팅 분석</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>MY 캠페인 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">캠페인 현황</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 (대시보드)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 (키워드)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">원고료 정산내역</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>실시간 상승 키워드</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 블로거 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 블로그 품질지수 (개발 중)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 5회)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 정산내역 (개발 중)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 리스트</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">랭킹 &gt; 인플루언서 순위</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">경쟁자 분석 (무제한)</span></li>
           </ul>
         </div>
 
@@ -226,11 +231,11 @@ export default function SubscribeClient() {
 
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>블로거 플랜 전체 포함</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>캠페인 현황</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 (대시보드)</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 (키워드)</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>원고료 정산내역</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 리스트</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>MY 정산내역 (개발 중)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드 챌린지</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 리스트</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 인플루언서 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
           </ul>
         </div>
       </div>

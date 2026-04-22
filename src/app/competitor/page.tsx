@@ -49,10 +49,19 @@ interface CompetitorPost {
   viewTab?: { exposed: boolean; rank: number | null };
 }
 
+interface QuotaInfo {
+  plan: 'free' | 'blogger' | 'influencer';
+  limit: number | null;
+  used: number;
+  remaining: number | null;
+  unlimited: boolean;
+}
+
 export default function CompetitorPage() {
   const [tab, setTab] = useState<AnalysisTab>('challenge');
   const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
 
   // 블로그 탭
   const [blogCompetitorId, setBlogCompetitorId] = useState('');
@@ -74,7 +83,20 @@ export default function CompetitorPage() {
 
   useEffect(() => {
     loadAuth();
+    loadQuota();
   }, []);
+
+  async function loadQuota() {
+    try {
+      const res = await fetch('/api/competitor/quota');
+      if (res.ok) {
+        const data = await res.json();
+        setQuota(data);
+      }
+    } catch {
+      // 무시: 배너 미표시
+    }
+  }
 
   async function loadAuth() {
     try {
@@ -306,6 +328,46 @@ export default function CompetitorPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold">경쟁자 분석</h1>
+
+      {/* ─── 일일 사용 현황 배너 ─── */}
+      {quota && (
+        <div
+          className={`rounded-xl border px-4 py-3 text-xs flex items-center justify-between gap-3 ${
+            quota.unlimited
+              ? 'bg-up/5 border-up/20 text-up'
+              : quota.remaining === 0
+              ? 'bg-down/10 border-down/30 text-down'
+              : 'bg-surface border-border text-text'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-bold">
+              {quota.unlimited
+                ? '경쟁자 분석: 무제한 이용 가능'
+                : `오늘 경쟁자 분석 ${quota.used} / ${quota.limit}회 사용`}
+            </span>
+            {!quota.unlimited && (
+              <span className="text-dim">
+                (플랜:
+                {quota.plan === 'blogger'
+                  ? ' 블로거 · 1일 5회'
+                  : quota.plan === 'free'
+                  ? ' 무료 · 1일 1회'
+                  : ' 인플루언서'}
+                )
+              </span>
+            )}
+          </div>
+          {!quota.unlimited && quota.plan !== 'influencer' && (
+            <a
+              href="/subscribe"
+              className="text-accent font-bold hover:underline whitespace-nowrap"
+            >
+              업그레이드 →
+            </a>
+          )}
+        </div>
+      )}
 
       {/* ─── 탭 선택 ─── */}
       <div className="flex rounded-xl border border-border overflow-hidden">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
+import { getPlanTierByCookieUser, tryConsumeCompetitor } from '@/lib/competitor-quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,29 @@ export async function GET(request: NextRequest) {
 
     if (!competitorId) {
       return NextResponse.json({ error: 'naverId가 필요합니다.' }, { status: 400 });
+    }
+
+    // ─── 1일 횟수 제한 (free=1, blogger=5, influencer=무제한) ───
+    // 본인 ID는 자기분석이므로 카운트하지 않음
+    if (competitorId !== cookieUser.id) {
+      const plan = await getPlanTierByCookieUser(cookieUser);
+      const { allowed, count, limit } = await tryConsumeCompetitor(
+        cookieUser.id,
+        competitorId,
+        plan,
+      );
+      if (!allowed) {
+        return NextResponse.json(
+          {
+            error: `오늘의 경쟁자 분석 횟수(${limit}회)를 모두 사용했습니다. 내일 다시 시도하거나 상위 플랜으로 업그레이드해주세요.`,
+            limitExceeded: true,
+            plan,
+            used: count,
+            limit,
+          },
+          { status: 429 },
+        );
+      }
     }
 
     const supabase = createServiceClient();

@@ -48,8 +48,8 @@ const NAV_ITEMS: NavItem[] = [
     label: 'MY',
     children: [
       { href: '/my/blogger', label: 'MY 블로그' },
-      { href: '/my/campaigns', label: 'MY 캠페인', requiredPlan: 'influencer' },
-      { href: '/my/settlements', label: 'MY 정산내역', requiredPlan: 'influencer' },
+      { href: '/my/campaigns', label: 'MY 캠페인 (개발 중)', requiredPlan: 'blogger' },
+      { href: '/my/settlements', label: 'MY 정산내역 (개발 중)', requiredPlan: 'influencer' },
       { href: '/my/keyword-ranking', label: 'MY 키워드순위', requiredPlan: 'blogger' },
       { href: '/my/post-analysis', label: 'MY 포스팅 분석', requiredPlan: 'blogger' },
       { href: '/my', label: 'MY 키워드 챌린지', requiredPlan: 'influencer' },
@@ -59,7 +59,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: '인플루언서',
     children: [
-      { href: '/influencers', label: '리스트', requiredPlan: 'influencer' },
+      { href: '/influencers', label: '리스트' },
       { href: '/stats', label: '연도별 선정 현황' },
     ],
   },
@@ -69,16 +69,16 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/keywords/google-trends', label: '구글 트렌드' },
       { href: '/keywords/blogger', label: '키워드 검색' },
       { href: '/keywords/blog-ranking', label: '키워드 검색순위', requiredPlan: 'blogger' },
-      { href: '/keywords/hot', label: '실시간 상승 키워드' },
+      { href: '/keywords/hot', label: '실시간 상승 키워드', requiredPlan: 'blogger' },
       { href: '/keywords', label: '키워드 챌린지 리스트', requiredPlan: 'influencer' },
     ],
   },
   {
     label: '랭킹',
     children: [
-      { href: '/rankings/blogger', label: '블로거 순위' },
-      { href: '/rankings/influencer', label: '인플루언서 순위' },
-      { href: '/blog-quality', label: '블로그 품질지수' },
+      { href: '/rankings/blogger', label: '블로거 순위', requiredPlan: 'blogger' },
+      { href: '/rankings/influencer', label: '인플루언서 순위', requiredPlan: 'influencer' },
+      { href: '/blog-quality', label: '블로그 품질지수 (개발 중)', requiredPlan: 'blogger' },
     ],
   },
   { href: '/community', label: '커뮤니티', requiredPlan: 'blogger' },
