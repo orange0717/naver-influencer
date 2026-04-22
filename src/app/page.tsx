@@ -128,7 +128,7 @@ export default function LandingPage() {
       <SectionDivider />
 
       {/* ═══════════ 신규 인플루언서 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-16 md:py-20">
+      <section className="bg-accent/[0.06] px-4 py-16 md:py-20">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
               <p className="text-xs text-accent font-semibold tracking-widest mb-3">NEW INFLUENCERS</p>
@@ -192,7 +192,7 @@ export default function LandingPage() {
       <SectionDivider />
 
       {/* ═══════════ 데이터 현황 (bg) ═══════════ */}
-      <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
+      <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">DATA</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
         <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되는 네이버 인플루언서 데이터</p>
@@ -216,8 +216,8 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════════ 핵심 기능 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24">
+      {/* ═══════════ 핵심 기능 (white) ═══════════ */}
+      <section className="bg-white px-4 py-20 md:py-24">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">FEATURES</p>
@@ -271,7 +271,7 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════════ 추천 대상 (bg) ═══════════ */}
+      {/* ═══════════ 추천 대상 (accent) ═══════════ */}
       <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
@@ -304,8 +304,8 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════════ 서비스 흐름 (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-24">
+      {/* ═══════════ 서비스 흐름 (bg) ═══════════ */}
+      <section className="bg-bg px-4 py-20 md:py-24">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">HOW IT WORKS</p>
@@ -352,8 +352,8 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════════ 서비스 미리보기 (bg) ═══════════ */}
-      <section className="bg-accent/[0.06] px-4 py-20 md:py-24">
+      {/* ═══════════ 서비스 미리보기 (white) ═══════════ */}
+      <section className="bg-white px-4 py-20 md:py-24">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs text-accent font-semibold tracking-widest mb-3">PREVIEW</p>
@@ -490,8 +490,8 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════════ 하단 CTA (surface) ═══════════ */}
-      <section className="bg-surface px-4 py-20 md:py-28 text-center">
+      {/* ═══════════ 하단 CTA (accent) ═══════════ */}
+      <section className="bg-accent/[0.06] px-4 py-20 md:py-28 text-center">
         <h2 className="font-title text-2xl md:text-4xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
         <p className="text-sm text-dim mb-10">
           키워드챌린지는 시작일 뿐, 인플루언서 성장을 돕는 곳 N인플.
