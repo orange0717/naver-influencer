@@ -357,7 +357,7 @@ export default function LandingPage() {
             <p className="text-sm text-dim">N인플의 핵심 기능을 카테고리별로 확인하세요</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
             {[
               {
                 url: 'ninfl.co.kr/my',
@@ -404,8 +404,8 @@ export default function LandingPage() {
               },
               {
                 url: 'ninfl.co.kr/influencers',
-                title: '인플루언서 검색',
-                desc: '2만명 DB에서 카테고리·키워드·점수별 검색',
+                title: '인플루언서 리스트',
+                desc: '2만명 DB에서 카테고리·키워드·점수별 인플루언서 탐색',
                 link: '/influencers',
                 mockup: (
                   <div className="space-y-2">
@@ -427,62 +427,33 @@ export default function LandingPage() {
               {
                 url: 'ninfl.co.kr/rankings',
                 title: '랭킹',
-                desc: '인플루언서·블로거·품질지수 실시간 순위',
+                desc: '인플루언서·블로거 순위와 키워드별 블로그 순위 추적',
                 link: '/rankings',
                 mockup: (
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] py-1 border-b border-border/60">
+                    <div className="flex items-center justify-between text-[10px] py-0.5 border-b border-border/60">
                       <div className="flex items-center gap-2">
                         <span className="font-rank font-bold text-accent w-3">1</span>
                         <span className="font-semibold text-text">뷰티노트</span>
                       </div>
                       <span className="text-up font-bold">▲2</span>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] py-1 border-b border-border/60">
+                    <div className="flex items-center justify-between text-[10px] py-0.5 border-b border-border/60">
                       <div className="flex items-center gap-2">
                         <span className="font-rank font-bold text-accent w-3">2</span>
                         <span className="font-semibold text-text">미식가</span>
                       </div>
                       <span className="text-dim">-</span>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] py-1">
+                    <div className="flex items-center justify-between text-[10px] py-0.5">
                       <div className="flex items-center gap-2">
                         <span className="font-rank font-bold text-dim w-3">3</span>
                         <span className="font-semibold text-text">여행수첩</span>
                       </div>
                       <span className="text-down font-bold">▼1</span>
                     </div>
-                  </div>
-                ),
-              },
-              {
-                url: 'ninfl.co.kr/keywords/blog-ranking',
-                title: '블로그 순위',
-                desc: '키워드별 블로그 검색 순위·상위 노출 추적',
-                link: '/keywords/blog-ranking',
-                mockup: (
-                  <div className="space-y-1.5">
-                    <div className="text-[10px] font-bold text-accent">&quot;서울 브런치&quot;</div>
-                    <div className="flex items-center justify-between text-[10px] py-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-rank font-bold text-accent w-3">1</span>
-                        <span className="text-text truncate">daily_brunch</span>
-                      </div>
-                      <span className="text-dim">VIEW</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] py-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-rank font-bold text-accent w-3">2</span>
-                        <span className="text-text truncate">seoul_foodie</span>
-                      </div>
-                      <span className="text-dim">블로그</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] py-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-rank font-bold text-dim w-3">3</span>
-                        <span className="text-text truncate">morning_cafe</span>
-                      </div>
-                      <span className="text-dim">블로그</span>
+                    <div className="pt-1 mt-1 border-t border-border/60 text-[10px] text-dim">
+                      키워드 <span className="text-accent font-semibold">&quot;서울 브런치&quot;</span> 블로그 순위 →
                     </div>
                   </div>
                 ),
