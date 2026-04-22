@@ -42,46 +42,11 @@ interface NavItem {
   requiredPlan?: PlanTier;
 }
 
+// 대시보드(/dashboard)가 기능 허브 역할을 하므로 상단 네비는 최소화
 const NAV_ITEMS: NavItem[] = [
   { href: '/notice', label: '공지사항' },
-  {
-    label: 'MY',
-    children: [
-      { href: '/my/blogger', label: 'MY 블로그' },
-      { href: '/my/campaigns', label: 'MY 캠페인 (개발 중)', requiredPlan: 'blogger' },
-      { href: '/my/settlements', label: 'MY 정산내역 (개발 중)', requiredPlan: 'influencer' },
-      { href: '/my/keyword-ranking', label: 'MY 키워드순위', requiredPlan: 'blogger' },
-      { href: '/my/post-analysis', label: 'MY 포스팅 분석', requiredPlan: 'blogger' },
-      { href: '/my', label: 'MY 키워드 챌린지', requiredPlan: 'influencer' },
-    ],
-  },
-  { href: '/competitor', label: '경쟁자 분석' },
-  {
-    label: '인플루언서',
-    children: [
-      { href: '/influencers', label: '리스트' },
-      { href: '/stats', label: '연도별 선정 현황' },
-    ],
-  },
-  {
-    label: '키워드',
-    children: [
-      { href: '/keywords/google-trends', label: '구글 트렌드' },
-      { href: '/keywords/blogger', label: '키워드 검색' },
-      { href: '/keywords/blog-ranking', label: '키워드 검색순위', requiredPlan: 'blogger' },
-      { href: '/keywords/hot', label: '실시간 상승 키워드', requiredPlan: 'blogger' },
-      { href: '/keywords', label: '키워드 챌린지 리스트', requiredPlan: 'influencer' },
-    ],
-  },
-  {
-    label: '랭킹',
-    children: [
-      { href: '/rankings/blogger', label: '블로거 순위', requiredPlan: 'blogger' },
-      { href: '/rankings/influencer', label: '인플루언서 순위', requiredPlan: 'influencer' },
-      { href: '/blog-quality', label: '블로그 품질지수 (개발 중)', requiredPlan: 'blogger' },
-    ],
-  },
-  { href: '/community', label: '커뮤니티', requiredPlan: 'blogger' },
+  { href: '/dashboard', label: '대시보드' },
+  { href: '/community', label: '커뮤니티' },
   { href: '/subscribe', label: '이용권' },
 ];
 
@@ -291,12 +256,12 @@ export default function Header({ serverUser }: HeaderProps) {
 
           {/* ── 우측: 로그인/프로필 ── */}
           <div className="flex items-center gap-3">
+            <MessageBell />
+            <NotificationBell />
             {authLoading ? (
               <div className="w-20 h-8" />
             ) : user.id ? (
               <div className="flex items-center gap-2">
-                <MessageBell />
-                <NotificationBell />
                 <div className="relative" ref={profileRef}>
                   <button
                     onClick={() => setProfileOpen(!profileOpen)}

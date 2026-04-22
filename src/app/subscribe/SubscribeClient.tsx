@@ -135,7 +135,7 @@ export default function SubscribeClient() {
             추천
           </div>
           <div>
-            <p className="text-xs text-accent font-semibold">BLOGGER</p>
+            <p className="text-xs text-accent font-semibold">예비 인플루언서 +</p>
             <div className="flex items-baseline gap-1 mt-1">
               {period === 'monthly' ? (
                 <>
