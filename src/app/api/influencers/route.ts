@@ -317,25 +317,16 @@ async function getInfluencersFromDB(
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
     lastChallengedAt: inf.last_challenged_at || null,
-    // 비활성 판정: (1년 이상 챌린지 없음 AND TOP3 진입 이력도 없음) OR 프로필이 완전 빈 상태
-    // last_challenged_at 은 API 갱신 지연 가능 → integrated_top3_count 와 함께 판정
-    // 신규 인플루언서(first_seen_at 30일 이내)는 활동 이력이 쌓일 시간이 없으므로 비활성 판정에서 제외
+    // 비활성 판정: 마지막 챌린지 기록이 존재하면서 1년 이상 경과했고 TOP3 이력도 없는 경우
+    // last_challenged_at 이 NULL 인 경우(데이터 미수집/신규 인플루언서)는 "판단 불가"이므로 비활성으로 분류하지 않음
+    // → 모든 인플루언서에 동일 규칙 적용
     isInactive: (() => {
-      const nowMs = Date.now();
-      const oneYearAgo = nowMs - 365 * 24 * 60 * 60 * 1000;
-      const firstSeenMs = inf.first_seen_at
-        ? new Date(inf.first_seen_at as string).getTime()
-        : (inf.created_at ? new Date(inf.created_at as string).getTime() : 0);
-      const isNewlyAdded = firstSeenMs > 0 && (nowMs - firstSeenMs) < 30 * 24 * 60 * 60 * 1000;
-      if (isNewlyAdded) return false;
       const lastMs = inf.last_challenged_at ? new Date(inf.last_challenged_at as string).getTime() : 0;
-      const hasRecentChallenge = lastMs > 0 && lastMs >= oneYearAgo;
+      if (lastMs === 0) return false; // 챌린지 기록이 없으면 판단 보류
+      const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
+      const hasRecentChallenge = lastMs >= oneYearAgo;
       const hasTop3 = ((Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0)) > 0;
-      const isActive = hasRecentChallenge || hasTop3;
-      const isEmpty = !inf.image_url
-        && (inf.subscriber_count || 0) === 0
-        && (inf.total_follower_count || 0) === 0;
-      return !isActive || isEmpty;
+      return !hasRecentChallenge && !hasTop3;
     })(),
     // 활동중단 판정: 관리자 수동 지정(stopped_manual)만 사용 — 자동 분류 없음
     isStopped: stoppedSet.has(inf.id as string),
