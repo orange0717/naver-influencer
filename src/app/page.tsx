@@ -172,8 +172,8 @@ export default function LandingPage() {
               </div>
             ) : newInfluencersLoaded ? (
               <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-bg/60">
-                <p className="text-sm text-text font-semibold mb-1">최근 7일간 새로 선정된 인플루언서가 없습니다</p>
-                <p className="text-xs text-dim">네이버 인플루언서 신규 선정은 비정기적으로 이루어집니다. 새로운 인플루언서가 선정되면 이곳에 표시됩니다.</p>
+                <p className="text-sm text-text font-semibold mb-1">이번 주 새로 선정된 인플루언서가 없습니다</p>
+                <p className="text-xs text-dim">매주 일요일 00:00에 집계가 초기화됩니다. 네이버 인플루언서 신규 선정은 비정기적으로 이루어지며, 이번 주에 선정된 인플루언서가 있으면 이곳에 표시됩니다.</p>
               </div>
             ) : (
               <div className="text-center py-8 text-sm text-dim">
@@ -201,7 +201,7 @@ export default function LandingPage() {
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-accent">{stats.new_count.toLocaleString()}</p>
             <p className="text-xs text-dim mt-2">신규 인플루언서</p>
-            <p className="text-[10px] text-dim/60">최근 일주일</p>
+            <p className="text-[10px] text-dim/60">이번 주 (일요일 기준)</p>
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.active_count.toLocaleString()}</p>

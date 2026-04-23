@@ -3,20 +3,31 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+/** 한국 시간(KST) 기준 가장 최근 일요일 00:00을 UTC ISO 문자열로 반환 */
+function lastSundayKstIso(): string {
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+  const dow = nowKst.getUTCDay(); // 0=Sun..6=Sat
+  const sundayKst = new Date(nowKst);
+  sundayKst.setUTCDate(sundayKst.getUTCDate() - dow);
+  sundayKst.setUTCHours(0, 0, 0, 0);
+  return new Date(sundayKst.getTime() - KST_OFFSET_MS).toISOString();
+}
+
 /**
  * 최근 선정된 인플루언서 조회 (메인페이지용)
- * 네이버가 실제로 최근 7일 내 인플루언서로 선정한 사람만 반환 (naver_created_at 기준)
+ * 가장 최근에 지나간 일요일 00:00 KST 이후로 네이버가 신규 선정한 인플루언서만 반환
+ * (naver_created_at 기준)
  * GET /api/influencers/recent
  */
 export async function GET() {
   try {
     const supabase = createServiceClient();
 
-    const since = new Date();
-    since.setDate(since.getDate() - 7);
-    const sinceStr = since.toISOString();
+    const sinceStr = lastSundayKstIso();
 
-    // naver_created_at(네이버가 인플루언서로 선정한 날짜)이 최근 7일인 사람만
+    // naver_created_at(네이버가 인플루언서로 선정한 날짜)이
+    // 가장 최근 일요일 00:00 KST 이후인 사람만 (이번 주 신규 선정분)
     // first_seen_at(우리 크롤러가 처음 발견한 날짜)은 사용하지 않음
     // → 크롤링 일괄 수집 시 기존 인플루언서가 "신규"로 잘못 노출되는 문제 방지
     const { data } = await supabase

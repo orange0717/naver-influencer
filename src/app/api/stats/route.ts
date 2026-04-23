@@ -4,6 +4,17 @@ import { fetchCategories } from '@/lib/naver-api';
 
 export const dynamic = 'force-dynamic';
 
+/** 한국 시간(KST) 기준 가장 최근 일요일 00:00을 UTC ISO 문자열로 반환 */
+function lastSundayKstIso(): string {
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+  const dow = nowKst.getUTCDay(); // 0=Sun..6=Sat
+  const sundayKst = new Date(nowKst);
+  sundayKst.setUTCDate(sundayKst.getUTCDate() - dow);
+  sundayKst.setUTCHours(0, 0, 0, 0);
+  return new Date(sundayKst.getTime() - KST_OFFSET_MS).toISOString();
+}
+
 export async function GET() {
   const supabase = createServiceClient();
 
@@ -23,13 +34,11 @@ export async function GET() {
       .select('*', { count: 'exact', head: true });
     const inactiveCount = (totalCount || 0) - (activeCount || 0);
 
-    // 신규 인플루언서 (최근 7일)
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    // 신규 인플루언서 (이번 주 — 지난 일요일 00:00 KST 이후)
     const { count: newCount } = await supabase
       .from('influencers')
       .select('*', { count: 'exact', head: true })
-      .gte('naver_created_at', weekAgo.toISOString());
+      .gte('naver_created_at', lastSundayKstIso());
 
     // 키워드 총 수
     const { count: keywordCount } = await supabase
