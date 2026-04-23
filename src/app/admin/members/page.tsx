@@ -14,8 +14,9 @@ interface Member {
   subscription_plan: string | null;
   subscription_expires_at: string | null;
   created_at: string;
-  session_count: number;    // 방문횟수 (세션)
-  pageview_count: number;   // 페이지뷰 (PV)
+  session_count: number;         // 방문횟수 (세션)
+  pageview_count: number;        // 페이지뷰 (PV)
+  last_visited_at: string | null; // 마지막 방문
   is_admin: boolean;
 }
 
@@ -141,7 +142,18 @@ export default function AdminMembersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">회원 관리</h1>
-        <span className="text-sm text-dim">총 {total.toLocaleString()}명</span>
+        <div className="flex items-center gap-3 text-sm">
+          {(() => {
+            const now = new Date();
+            const todayStr = now.toDateString();
+            const todayCount = members.filter(m => m.last_visited_at && new Date(m.last_visited_at).toDateString() === todayStr).length;
+            return (
+              <span className="text-dim">
+                오늘 방문 <span className="text-accent font-bold">{todayCount}</span>명 · 총 {total.toLocaleString()}명
+              </span>
+            );
+          })()}
+        </div>
       </div>
 
       {/* 검색 */}
@@ -177,6 +189,7 @@ export default function AdminMembersPage() {
                 <th className="text-right px-3 py-2.5 font-semibold">방문횟수</th>
                 <th className="text-right px-3 py-2.5 font-semibold">반복방문</th>
                 <th className="text-right px-3 py-2.5 font-semibold">페이지뷰</th>
+                <th className="text-right px-3 py-2.5 font-semibold">마지막 방문</th>
                 <th className="text-right px-3 py-2.5 font-semibold">가입일</th>
               </tr>
             </thead>
@@ -228,13 +241,33 @@ export default function AdminMembersPage() {
                   <td className="px-3 py-2.5 text-right text-xs text-dim font-rank">
                     {(m.pageview_count ?? 0).toLocaleString()}
                   </td>
+                  <td className="px-3 py-2.5 text-right text-xs font-rank">
+                    {(() => {
+                      if (!m.last_visited_at) return <span className="text-dim">-</span>;
+                      const last = new Date(m.last_visited_at);
+                      const now = new Date();
+                      const sameDay = last.toDateString() === now.toDateString();
+                      const yesterday = new Date(now.getTime() - 86400000);
+                      const wasYesterday = last.toDateString() === yesterday.toDateString();
+                      const label = sameDay
+                        ? `오늘 ${last.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+                        : wasYesterday
+                        ? '어제'
+                        : last.toLocaleDateString('ko-KR');
+                      return (
+                        <span className={sameDay ? 'text-accent font-bold' : 'text-dim'}>
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-3 py-2.5 text-right text-xs text-dim">
                     {new Date(m.created_at).toLocaleDateString('ko-KR')}
                   </td>
                 </tr>
               ))}
               {members.length === 0 && (
-                <tr><td colSpan={10} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
+                <tr><td colSpan={11} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
               )}
             </tbody>
           </table>
