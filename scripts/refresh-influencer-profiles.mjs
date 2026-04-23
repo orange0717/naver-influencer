@@ -185,6 +185,8 @@ const getArg = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] :
 const isApply = hasArg('--apply');
 const isAll = hasArg('--all');
 const isResume = hasArg('--resume');
+const includeNew = hasArg('--include-new');
+const onlyNew = hasArg('--only-new'); // keyword_score = 0 or NULL 만
 const limitCount = getArg('--limit') ? parseInt(getArg('--limit')) : Infinity;
 const staleDays = getArg('--stale-days') ? parseInt(getArg('--stale-days')) : 3;
 const onlyNaverId = getArg('--naver-id');
@@ -220,10 +222,15 @@ async function main() {
     const staleThreshold = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000).toISOString();
     let offset = 0;
     while (true) {
-      const { data, error } = await supabase
+      let query = supabase
         .from('influencers')
-        .select('id, naver_id, subscriber_count, total_follower_count, total_keywords, naver_owner_id, updated_at, last_crawled_at')
-        .gt('keyword_score', 0)
+        .select('id, naver_id, subscriber_count, total_follower_count, total_keywords, naver_owner_id, updated_at, last_crawled_at');
+      if (onlyNew) {
+        query = query.or('keyword_score.is.null,keyword_score.eq.0');
+      } else if (!includeNew) {
+        query = query.gt('keyword_score', 0);
+      }
+      const { data, error } = await query
         .or(`updated_at.is.null,updated_at.lt.${staleThreshold}`)
         .order('updated_at', { ascending: true, nullsFirst: true })
         .range(offset, offset + 999);
