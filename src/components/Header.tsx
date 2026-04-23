@@ -88,7 +88,7 @@ function NavDropdown({
   return (
     <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
-        className={`font-title px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+        className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
           anyActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
         }`}
       >
@@ -202,7 +202,7 @@ export default function Header({ serverUser }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+      <header className="font-title sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
             {/* ── 로고 ── */}
@@ -232,7 +232,7 @@ export default function Header({ serverUser }: HeaderProps) {
                     <button
                       key={item.href}
                       onClick={() => goToSubscribe(item.requiredPlan!)}
-                      className="font-title px-3 py-1.5 rounded-lg text-sm font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>{item.label}</span>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
@@ -244,7 +244,7 @@ export default function Header({ serverUser }: HeaderProps) {
                 }
                 return (
                   <Link key={item.href} href={item.href!}
-                    className={`font-title px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                       isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
                     }`}>
                     {item.label}
