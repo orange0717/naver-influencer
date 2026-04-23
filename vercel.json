@@ -34,6 +34,10 @@
       "schedule": "*/5 17-20 * * *"
     },
     {
+      "path": "/api/cron/verify-daily-coverage",
+      "schedule": "30 21 * * *"
+    },
+    {
       "path": "/api/cron/crawl-blog-ranks",
       "schedule": "0 22 * * *"
     },
