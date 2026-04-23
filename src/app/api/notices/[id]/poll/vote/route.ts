@@ -64,7 +64,7 @@ export async function POST(
       return NextResponse.json({ error: '투표 저장에 실패했습니다.' }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, voted: voted || [] });
+    return NextResponse.json({ success: true, voted: voted || [] });
   } catch (err) {
     console.error('[notice-poll-vote] error:', err);
     return NextResponse.json({ error: '서버 오류' }, { status: 500 });
