@@ -70,13 +70,21 @@ export async function POST(
 
     if (existing) {
       // 좋아요 취소
-      await supabase
+      const { error: delError } = await supabase
         .from('notice_likes')
         .delete()
         .eq('notice_id', id)
         .eq('user_id', userId);
+      if (delError) {
+        console.error('[notice-like] delete error:', delError);
+        return NextResponse.json({ error: '좋아요 취소에 실패했습니다.' }, { status: 500 });
+      }
 
-      const { data: newCount } = await supabase.rpc('decrement_notice_like_count', { p_notice_id: id });
+      const { data: newCount, error: rpcError } = await supabase.rpc('decrement_notice_like_count', { p_notice_id: id });
+      if (rpcError) {
+        console.error('[notice-like] decrement RPC 실패:', rpcError.message);
+        return NextResponse.json({ error: '좋아요 집계 중 오류가 발생했습니다.' }, { status: 500 });
+      }
 
       return NextResponse.json({ liked: false, like_count: newCount ?? 0 });
     }
@@ -91,9 +99,14 @@ export async function POST(
         return NextResponse.json({ error: '이미 좋아요했습니다.' }, { status: 409 });
       }
       console.error('[notice-like] insert error:', likeError);
+      return NextResponse.json({ error: '좋아요 등록에 실패했습니다.' }, { status: 500 });
     }
 
-    const { data: newCount } = await supabase.rpc('increment_notice_like_count', { p_notice_id: id });
+    const { data: newCount, error: rpcError } = await supabase.rpc('increment_notice_like_count', { p_notice_id: id });
+    if (rpcError) {
+      console.error('[notice-like] increment RPC 실패:', rpcError.message);
+      return NextResponse.json({ error: '좋아요 집계 중 오류가 발생했습니다.' }, { status: 500 });
+    }
 
     return NextResponse.json({ liked: true, like_count: newCount ?? 0 });
   } catch (err) {
