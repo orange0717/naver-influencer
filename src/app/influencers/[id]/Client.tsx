@@ -34,9 +34,25 @@ interface InfluencerData {
   ad_fee_amount?: number | null;
   ad_fee_text?: string | null;
   ad_process?: string | null;
+  last_crawled_at?: string | null;
   keywords: InfluencerKeyword[];
   recent_rankings: unknown[];
   is_member?: boolean;
+}
+
+function formatRelativeTime(iso?: string | null): string | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return null;
+  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (diffSec < 60) return '방금 전';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return `${diffDay}일 전`;
+  return new Date(iso).toLocaleDateString('ko-KR');
 }
 
 export default function InfluencerProfile({ params }: { params: Promise<{ id: string }> }) {
@@ -148,7 +164,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
               )}
             </div>
             <p className="text-sm text-dim">{influencer.sub_category || influencer.category}</p>
-            <div className="flex flex-wrap gap-3 mt-2 text-xs text-dim">
+            <div className="flex flex-wrap gap-3 mt-2 text-xs text-dim items-center">
               {((influencer.subscriber_count || influencer.total_follower_count || 0) > 0) && (
                 <span>팬 {(influencer.subscriber_count || influencer.total_follower_count || 0).toLocaleString()}</span>
               )}
@@ -160,6 +176,15 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
               >
                 @{influencer.naver_id}
               </a>
+              {formatRelativeTime(influencer.last_crawled_at) && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full"
+                  title={influencer.last_crawled_at ? new Date(influencer.last_crawled_at).toLocaleString('ko-KR') : ''}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                  {formatRelativeTime(influencer.last_crawled_at)} 업데이트
+                </span>
+              )}
             </div>
           </div>
         </div>
