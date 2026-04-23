@@ -175,6 +175,7 @@ export default function AdminMembersPage() {
                 <th className="text-center px-3 py-2.5 font-semibold">플랜</th>
                 <th className="text-right px-3 py-2.5 font-semibold">기간</th>
                 <th className="text-right px-3 py-2.5 font-semibold">방문횟수</th>
+                <th className="text-right px-3 py-2.5 font-semibold">반복방문</th>
                 <th className="text-right px-3 py-2.5 font-semibold">페이지뷰</th>
                 <th className="text-right px-3 py-2.5 font-semibold">가입일</th>
               </tr>
@@ -214,6 +215,16 @@ export default function AdminMembersPage() {
                   <td className="px-3 py-2.5 text-right text-xs text-dim font-rank">
                     {(m.session_count ?? 0).toLocaleString()}
                   </td>
+                  <td className="px-3 py-2.5 text-right text-xs font-rank">
+                    {(() => {
+                      const repeat = Math.max(0, (m.session_count ?? 0) - 1);
+                      return repeat > 0 ? (
+                        <span className="text-accent font-bold">{repeat.toLocaleString()}</span>
+                      ) : (
+                        <span className="text-dim">0</span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-3 py-2.5 text-right text-xs text-dim font-rank">
                     {(m.pageview_count ?? 0).toLocaleString()}
                   </td>
@@ -223,7 +234,7 @@ export default function AdminMembersPage() {
                 </tr>
               ))}
               {members.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
+                <tr><td colSpan={10} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
               )}
             </tbody>
           </table>
@@ -382,14 +393,23 @@ export default function AdminMembersPage() {
                   </div>
                 )}
 
-                {/* 방문 통계 — 세션(방문횟수) + 페이지뷰 분리 */}
+                {/* 방문 통계 — 방문횟수 + 반복방문 + 페이지뷰 */}
                 {detail.visits && (
                   <div>
                     <p className="text-xs font-bold text-dim mb-2">방문 통계 <span className="font-normal text-dim/70">(누적)</span></p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="bg-bg rounded-lg px-3 py-2">
                         <p className="text-[11px] text-dim">방문횟수</p>
                         <p className="font-rank font-bold text-sm">{(detail.visits.session_count ?? 0).toLocaleString()}회</p>
+                      </div>
+                      <div className="bg-bg rounded-lg px-3 py-2">
+                        <p className="text-[11px] text-dim">반복방문</p>
+                        <p className="font-rank font-bold text-sm">
+                          {(() => {
+                            const repeat = Math.max(0, (detail.visits.session_count ?? 0) - 1);
+                            return repeat > 0 ? <span className="text-accent">{repeat.toLocaleString()}회</span> : '0회';
+                          })()}
+                        </p>
                       </div>
                       <div className="bg-bg rounded-lg px-3 py-2">
                         <p className="text-[11px] text-dim">페이지뷰</p>
