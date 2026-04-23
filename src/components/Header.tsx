@@ -88,7 +88,7 @@ function NavDropdown({
   return (
     <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
-        className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+        className={`font-title px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
           anyActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
         }`}
       >
@@ -232,7 +232,7 @@ export default function Header({ serverUser }: HeaderProps) {
                     <button
                       key={item.href}
                       onClick={() => goToSubscribe(item.requiredPlan!)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="font-title px-3 py-1.5 rounded-lg text-sm font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>{item.label}</span>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
@@ -244,7 +244,7 @@ export default function Header({ serverUser }: HeaderProps) {
                 }
                 return (
                   <Link key={item.href} href={item.href!}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`font-title px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                       isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
                     }`}>
                     {item.label}
@@ -326,7 +326,7 @@ export default function Header({ serverUser }: HeaderProps) {
               if (item.children) {
                 return (
                   <div key={item.label}>
-                    <p className="px-5 py-2 text-xs font-bold text-dim uppercase">{item.label}</p>
+                    <p className="font-title px-5 py-2 text-xs font-bold text-dim uppercase">{item.label}</p>
                     {item.children.map(child => {
                       const locked = !canAccess(child.requiredPlan, currentPlan);
                       if (locked) {
@@ -334,7 +334,7 @@ export default function Header({ serverUser }: HeaderProps) {
                           <button
                             key={child.href}
                             onClick={() => { setMobileOpen(false); goToSubscribe(child.requiredPlan!); }}
-                            className="w-full flex items-center gap-3 px-8 py-3 rounded-xl text-sm font-semibold text-dim/70 hover:text-text hover:bg-surface transition-colors text-left cursor-pointer"
+                            className="font-title w-full flex items-center gap-3 px-8 py-3 rounded-xl text-sm font-semibold text-dim/70 hover:text-text hover:bg-surface transition-colors text-left cursor-pointer"
                           >
                             <span>{child.label}</span>
                             <LockBadge plan={child.requiredPlan!} />
@@ -343,7 +343,7 @@ export default function Header({ serverUser }: HeaderProps) {
                       }
                       return (
                         <Link key={child.href} href={child.href} onClick={() => setMobileOpen(false)}
-                          className={`flex items-center gap-3 px-8 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                          className={`font-title flex items-center gap-3 px-8 py-3 rounded-xl text-sm font-semibold transition-colors ${
                             isActive(child.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                           }`}>
                           {child.label}
@@ -359,7 +359,7 @@ export default function Header({ serverUser }: HeaderProps) {
                   <button
                     key={item.href}
                     onClick={() => { setMobileOpen(false); goToSubscribe(item.requiredPlan!); }}
-                    className="w-full flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-dim/70 hover:text-text hover:bg-surface transition-colors text-left cursor-pointer"
+                    className="font-title w-full flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-dim/70 hover:text-text hover:bg-surface transition-colors text-left cursor-pointer"
                   >
                     <span>{item.label}</span>
                     <LockBadge plan={item.requiredPlan!} />
@@ -368,7 +368,7 @@ export default function Header({ serverUser }: HeaderProps) {
               }
               return (
                 <Link key={item.href} href={item.href!} onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                  className={`font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
                     isActive(item.href!) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
                   }`}>
                   {item.label}
