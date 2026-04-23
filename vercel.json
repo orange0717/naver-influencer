@@ -30,6 +30,10 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/api/cron/crawl-challenge-ranks",
+      "schedule": "*/10 17-20 * * *"
+    },
+    {
       "path": "/api/cron/crawl-blog-ranks",
       "schedule": "0 22 * * *"
     },
