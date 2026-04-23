@@ -8,8 +8,11 @@ const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/parti
 const PAGE_LIMIT = 50;
 // 30분마다 실행 → 48회/일. 전체 약 12,700명을 매일 1회 커버 목표
 // 한 크론당 5분 내 ~500명 처리 = 48 × 500 = 24,000건/일 (여유 90%)
-const BATCH_SIZE = 300;
-const CONCURRENCY = 6; // 병렬 처리 (네이버 API 부하 감안, 3 → 6 상향)
+// 새벽 시간대에는 ?batch=1000&concurrency=10 쿼리로 증량 실행 가능
+const DEFAULT_BATCH_SIZE = 300;
+const DEFAULT_CONCURRENCY = 6;
+const MAX_BATCH_SIZE = 1500;
+const MAX_CONCURRENCY = 15;
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_RUNTIME_MS = 270_000; // 300초 중 안전 마진 30초
 
@@ -185,13 +188,13 @@ async function ensureKeywordsExist(
 /** 크롤할 인플루언서 목록 조회 — 활성 인플루언서(total_keywords > 0)를 last_crawled_at 오래된 순으로 전부 동일 주기로 순환
  *  가입 유저도 동일한 우선순위로 취급 (공정한 순위 집계를 위해)
  */
-async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>) {
+async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>, batchSize: number) {
   const { data } = await supabase
     .from('influencers')
     .select('id, naver_id, naver_owner_id, category, my_keyword_category')
     .gt('total_keywords', 0) // 키워드챌린지 참여 이력 있는 인플루언서만
     .order('last_crawled_at', { ascending: true, nullsFirst: true })
-    .limit(BATCH_SIZE);
+    .limit(batchSize);
 
   const result = data || [];
   console.log(`[crawl-challenge-ranks] Target: ${result.length} active influencers (oldest crawled first)`);
@@ -213,7 +216,17 @@ export async function GET(request: NextRequest) {
   // ?naver_id=xxx 파라미터로 특정 인플루언서만 처리 가능
   const targetNaverId = request.nextUrl.searchParams.get('naver_id');
 
-  console.log('[Cron] crawl-challenge-ranks started at', new Date().toISOString());
+  // ?batch=N&concurrency=N 파라미터로 새벽 증량 실행 가능 (상한 존재)
+  const batchParam = Number(request.nextUrl.searchParams.get('batch'));
+  const concurrencyParam = Number(request.nextUrl.searchParams.get('concurrency'));
+  const BATCH_SIZE = Number.isFinite(batchParam) && batchParam > 0
+    ? Math.min(batchParam, MAX_BATCH_SIZE)
+    : DEFAULT_BATCH_SIZE;
+  const CONCURRENCY = Number.isFinite(concurrencyParam) && concurrencyParam > 0
+    ? Math.min(concurrencyParam, MAX_CONCURRENCY)
+    : DEFAULT_CONCURRENCY;
+
+  console.log(`[Cron] crawl-challenge-ranks started at ${new Date().toISOString()} (batch=${BATCH_SIZE}, concurrency=${CONCURRENCY})`);
 
   try {
     let influencers: { id: string; naver_id: string; naver_owner_id: string | null; category: string; my_keyword_category: string }[];
@@ -226,7 +239,7 @@ export async function GET(request: NextRequest) {
         .limit(1);
       influencers = data || [];
     } else {
-      influencers = await getInfluencersToCrawl(supabase);
+      influencers = await getInfluencersToCrawl(supabase, BATCH_SIZE);
     }
 
     if (influencers.length === 0) {
