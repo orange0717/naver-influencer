@@ -141,7 +141,8 @@ export default function AdminAnalyticsPage() {
     );
   }
 
-  const totalDevicesPV = (stats?.devicesPV?.desktop || 0) + (stats?.devicesPV?.mobile || 0) + (stats?.devicesPV?.tablet || 0);
+  const devicesUV = (referrers?.devices as { desktop?: number; mobile?: number; tablet?: number } | undefined) || {};
+  const totalDevicesUV = (devicesUV.desktop || 0) + (devicesUV.mobile || 0) + (devicesUV.tablet || 0);
   const periodVisits = days === 1
     ? stats?.todayVisits || 0
     : days === 2
@@ -284,28 +285,28 @@ export default function AdminAnalyticsPage() {
           )}
         </div>
 
-        {/* 기기 비율 (페이지뷰 기준) */}
+        {/* 기기 비율 (UV 기준) */}
         <div className="bg-surface rounded-xl border border-border p-5">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-sm font-bold">기기</h2>
-            <span className="text-[10px] text-dim">{stats?.periodLabel || periodLabel} · PV 기준</span>
+            <span className="text-[10px] text-dim">{periodLabel} · UV 기준</span>
           </div>
-          {totalDevicesPV > 0 ? (
+          {totalDevicesUV > 0 ? (
             <div className="space-y-3">
               {[
-                { label: '데스크톱', value: stats?.devicesPV?.desktop || 0, color: 'bg-accent' },
-                { label: '모바일', value: stats?.devicesPV?.mobile || 0, color: 'bg-[#2DB400]' },
-                { label: '태블릿', value: stats?.devicesPV?.tablet || 0, color: 'bg-[#F29C68]' },
+                { label: '데스크톱', value: devicesUV.desktop || 0, color: 'bg-accent' },
+                { label: '모바일', value: devicesUV.mobile || 0, color: 'bg-[#2DB400]' },
+                { label: '태블릿', value: devicesUV.tablet || 0, color: 'bg-[#F29C68]' },
               ].map(d => (
                 <div key={d.label}>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-text font-semibold">{d.label}</span>
-                    <span className="text-dim">{d.value}건 ({totalDevicesPV > 0 ? Math.round((d.value / totalDevicesPV) * 100) : 0}%)</span>
+                    <span className="text-dim">{d.value}건 ({totalDevicesUV > 0 ? Math.round((d.value / totalDevicesUV) * 100) : 0}%)</span>
                   </div>
                   <div className="w-full h-2 bg-bg rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${d.color}`}
-                      style={{ width: `${totalDevicesPV > 0 ? (d.value / totalDevicesPV) * 100 : 0}%` }}
+                      style={{ width: `${totalDevicesUV > 0 ? (d.value / totalDevicesUV) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
