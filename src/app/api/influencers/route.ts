@@ -319,8 +319,15 @@ async function getInfluencersFromDB(
     lastChallengedAt: inf.last_challenged_at || null,
     // 비활성 판정: (1년 이상 챌린지 없음 AND TOP3 진입 이력도 없음) OR 프로필이 완전 빈 상태
     // last_challenged_at 은 API 갱신 지연 가능 → integrated_top3_count 와 함께 판정
+    // 신규 인플루언서(first_seen_at 30일 이내)는 활동 이력이 쌓일 시간이 없으므로 비활성 판정에서 제외
     isInactive: (() => {
-      const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
+      const nowMs = Date.now();
+      const oneYearAgo = nowMs - 365 * 24 * 60 * 60 * 1000;
+      const firstSeenMs = inf.first_seen_at
+        ? new Date(inf.first_seen_at as string).getTime()
+        : (inf.created_at ? new Date(inf.created_at as string).getTime() : 0);
+      const isNewlyAdded = firstSeenMs > 0 && (nowMs - firstSeenMs) < 30 * 24 * 60 * 60 * 1000;
+      if (isNewlyAdded) return false;
       const lastMs = inf.last_challenged_at ? new Date(inf.last_challenged_at as string).getTime() : 0;
       const hasRecentChallenge = lastMs > 0 && lastMs >= oneYearAgo;
       const hasTop3 = ((Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0)) > 0;
