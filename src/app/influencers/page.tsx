@@ -47,6 +47,14 @@ function formatDate(d: string | null | undefined): string {
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Seoul' });
 }
 
+// 네이버 선정일 전용: 네이버는 UTC 기준 날짜로 선정일을 표기하므로 UTC 기준으로 출력
+function formatNaverDate(d: string | null | undefined): string {
+  if (!d) return '—';
+  const isDateOnly = typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  const date = isDateOnly ? new Date(`${d}T12:00:00Z`) : new Date(d);
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 function isNew(d: string | null | undefined): boolean {
   if (!d) return false;
   const diff = Date.now() - new Date(d).getTime();
@@ -304,18 +312,10 @@ export default function InfluencersPage() {
                       {formatCount(inf.subscriberCount || inf.totalFollowerCount)}
                     </td>
                     <td className="py-3 px-3 text-center text-xs font-rank">
-                      {(inf.totalKeywords || 0) > 0 ? (
-                        <span className="font-bold">{inf.totalKeywords}</span>
-                      ) : (
-                        <span className="text-dim">—</span>
-                      )}
+                      <span className={(inf.totalKeywords || 0) > 0 ? 'font-bold' : 'text-dim'}>{inf.totalKeywords || 0}</span>
                     </td>
                     <td className="py-3 px-3 text-center text-xs font-rank">
-                      {(inf.integratedTop3Count || 0) > 0 ? (
-                        <span className="font-bold text-gold">{inf.integratedTop3Count}</span>
-                      ) : (
-                        <span className="text-dim">—</span>
-                      )}
+                      <span className={(inf.integratedTop3Count || 0) > 0 ? 'font-bold text-gold' : 'text-dim'}>{inf.integratedTop3Count || 0}</span>
                     </td>
                     <td className="py-3 px-2 text-center text-xs font-rank">
                       {(() => {
@@ -333,16 +333,16 @@ export default function InfluencersPage() {
                       })()}
                     </td>
                     <td className="py-3 px-2 text-center text-xs font-rank">
-                      {(inf.top1Count || 0) > 0 ? <span className="font-bold text-red-500">{inf.top1Count}</span> : <span className="text-dim">—</span>}
+                      <span className={(inf.top1Count || 0) > 0 ? 'font-bold text-red-500' : 'text-dim'}>{inf.top1Count || 0}</span>
                     </td>
                     <td className="py-3 px-2 text-center text-xs font-rank">
-                      {(inf.top2Count || 0) > 0 ? <span className="font-bold text-blue-500">{inf.top2Count}</span> : <span className="text-dim">—</span>}
+                      <span className={(inf.top2Count || 0) > 0 ? 'font-bold text-blue-500' : 'text-dim'}>{inf.top2Count || 0}</span>
                     </td>
                     <td className="py-3 px-2 text-center text-xs font-rank">
-                      {(inf.top3Count || 0) > 0 ? <span className="font-bold text-green-600">{inf.top3Count}</span> : <span className="text-dim">—</span>}
+                      <span className={(inf.top3Count || 0) > 0 ? 'font-bold text-green-600' : 'text-dim'}>{inf.top3Count || 0}</span>
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
-                      {inf.naverCreatedAt ? formatDate(inf.naverCreatedAt) : '—'}
+                      {inf.naverCreatedAt ? formatNaverDate(inf.naverCreatedAt) : '—'}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
                       {isInactive(inf.lastCrawledAt) ? (
@@ -407,7 +407,7 @@ export default function InfluencersPage() {
                   {(inf.top1Count || 0) > 0 && <span className="text-red-500 font-bold">1위 {inf.top1Count}</span>}
                   {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
                   {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
-                  {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
+                  {inf.naverCreatedAt && <span>선정일 {formatNaverDate(inf.naverCreatedAt)}</span>}
                   {inf.lastCrawledAt && (
                     isInactive(inf.lastCrawledAt)
                       ? <span className="text-down/70">활동하지 않음</span>
