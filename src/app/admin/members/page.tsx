@@ -247,12 +247,8 @@ export default function AdminMembersPage() {
                       const last = new Date(m.last_visited_at);
                       const now = new Date();
                       const sameDay = last.toDateString() === now.toDateString();
-                      const yesterday = new Date(now.getTime() - 86400000);
-                      const wasYesterday = last.toDateString() === yesterday.toDateString();
                       const label = sameDay
                         ? `오늘 ${last.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
-                        : wasYesterday
-                        ? '어제'
                         : last.toLocaleDateString('ko-KR');
                       return (
                         <span className={sameDay ? 'text-accent font-bold' : 'text-dim'}>
