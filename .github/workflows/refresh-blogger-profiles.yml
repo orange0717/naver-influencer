@@ -7,13 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: '상위 N명 (기본 3000, global_rank 순)'
+        description: '하루 처리량 (기본 10000, 로테이션)'
         required: false
-        default: '3000'
+        default: '10000'
       stale_days:
-        description: 'N일 이상 stale 만 갱신 (기본 1)'
+        description: 'N일 이상 stale 만 (기본 0 = 전일 이후 갱신 안 된 것)'
         required: false
-        default: '1'
+        default: '0'
+      order:
+        description: '정렬 (stale=오래된 순 로테이션 / rank=상위 우선)'
+        required: false
+        default: 'stale'
 
 jobs:
   refresh:
@@ -44,9 +48,10 @@ jobs:
 
       - name: 실행
         run: |
-          LIMIT=${{ inputs.limit || '3000' }}
-          STALE=${{ inputs.stale_days || '1' }}
-          node scripts/refresh-blogger-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE"
+          LIMIT=${{ inputs.limit || '10000' }}
+          STALE=${{ inputs.stale_days || '0' }}
+          ORDER=${{ inputs.order || 'stale' }}
+          node scripts/refresh-blogger-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE" --order "$ORDER"
 
       - name: 정리
         if: always()

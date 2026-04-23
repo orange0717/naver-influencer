@@ -164,6 +164,10 @@ const isResume = hasArg('--resume');
 const limitCount = getArg('--limit') ? parseInt(getArg('--limit')) : 1000;
 const staleDays = getArg('--stale-days') ? parseInt(getArg('--stale-days')) : 1;
 const onlyBlogId = getArg('--blog-id');
+// 정렬 모드:
+//   기본 = 'stale'  → crawled_at ASC NULLS FIRST (로테이션. 오래된 것부터 →  매일 N명 꾸준히 갱신하면 전체 커버)
+//   'rank'         → global_rank ASC (상위 랭커 우선)
+const orderMode = (getArg('--order') === 'rank') ? 'rank' : 'stale';
 
 function loadProgress() {
   if (isResume && existsSync(CONFIG.PROGRESS_FILE)) {
@@ -185,14 +189,26 @@ async function main() {
     if (data) bloggers = [data];
   } else {
     const staleThreshold = new Date(Date.now() - staleDays * 86400000).toISOString();
-    const { data } = await supabase.from('bloggers')
-      .select('id, blog_id, total_posts, last_post_date, crawled_at, global_rank')
-      .eq('is_active', true)
-      .not('global_rank', 'is', null)
-      .or(`crawled_at.is.null,crawled_at.lt.${staleThreshold}`)
-      .order('global_rank', { ascending: true })
-      .limit(limitCount);
-    bloggers = data || [];
+    const pageSize = 1000;
+    let offset = 0;
+    while (bloggers.length < limitCount) {
+      const remaining = limitCount - bloggers.length;
+      const chunk = Math.min(pageSize, remaining);
+      let q = supabase.from('bloggers')
+        .select('id, blog_id, total_posts, last_post_date, crawled_at, global_rank')
+        .eq('is_active', true)
+        .not('global_rank', 'is', null)
+        .or(`crawled_at.is.null,crawled_at.lt.${staleThreshold}`);
+      q = orderMode === 'rank'
+        ? q.order('global_rank', { ascending: true })
+        : q.order('crawled_at', { ascending: true, nullsFirst: true });
+      const { data, error } = await q.range(offset, offset + chunk - 1);
+      if (error) { console.error('조회 실패:', error.message); process.exit(1); }
+      if (!data || data.length === 0) break;
+      bloggers.push(...data);
+      offset += data.length;
+      if (data.length < chunk) break;
+    }
   }
 
   const total = bloggers.length;
