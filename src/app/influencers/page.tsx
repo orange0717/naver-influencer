@@ -41,7 +41,10 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+  // 날짜만 온 경우(YYYY-MM-DD) UTC 파싱으로 하루 밀리는 것을 방지
+  const isDateOnly = typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  const date = isDateOnly ? new Date(`${d}T00:00:00+09:00`) : new Date(d);
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Seoul' });
 }
 
 function isNew(d: string | null | undefined): boolean {
@@ -272,9 +275,6 @@ export default function InfluencersPage() {
                               className="font-bold hover:text-accent transition-colors truncate max-w-[180px]">
                               {inf.name}
                             </a>
-                            {inf.isMember && (
-                              <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
-                            )}
                             {isNew(inf.firstSeenAt) && (
                               <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                             )}
@@ -379,9 +379,6 @@ export default function InfluencersPage() {
                         className="font-bold text-sm hover:text-accent transition-colors truncate">
                         {inf.name}
                       </a>
-                      {inf.isMember && (
-                        <span className="text-[9px] font-bold text-accent bg-accent/12 px-1.5 py-0.5 rounded shrink-0" title="N인플 인증 회원">N</span>
-                      )}
                       {isNew(inf.firstSeenAt) && (
                         <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                       )}
@@ -405,7 +402,7 @@ export default function InfluencersPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 text-[10px] text-dim">
-                  {(inf.totalKeywords || 0) > 0 && <span>챌린지 {inf.totalKeywords}개</span>}
+                  <span>챌린지 {inf.totalKeywords || 0}개</span>
                   {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
                   {(inf.top1Count || 0) > 0 && <span className="text-red-500 font-bold">1위 {inf.top1Count}</span>}
                   {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
