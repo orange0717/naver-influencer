@@ -5,6 +5,23 @@ import Link from 'next/link';
 import DemoModal from '@/components/DemoModal';
 
 
+/* ── 이번 주 범위 (일요일 ~ 토요일, KST) ── */
+function useCurrentWeekRangeKst() {
+  const [range, setRange] = useState<{ start: string; end: string } | null>(null);
+  useEffect(() => {
+    const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+    const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+    const dow = nowKst.getUTCDay(); // 0=Sun..6=Sat
+    const sunday = new Date(nowKst);
+    sunday.setUTCDate(sunday.getUTCDate() - dow);
+    const saturday = new Date(sunday);
+    saturday.setUTCDate(saturday.getUTCDate() + 6);
+    const fmt = (d: Date) => `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+    setRange({ start: fmt(sunday), end: fmt(saturday) });
+  }, []);
+  return range;
+}
+
 /* ── 실시간 DB 통계 ── */
 function useStats() {
   const [stats, setStats] = useState({ influencer_count: 9000, active_count: 0, inactive_count: 0, new_count: 0, category_count: 20, keyword_count: 115000, total_users: 0 });
@@ -70,6 +87,8 @@ export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
   const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
+  const weekRange = useCurrentWeekRangeKst();
+  const weekLabel = weekRange ? `${weekRange.start} ~ ${weekRange.end}` : '';
   const [demoOpen, setDemoOpen] = useState(false);
 
   return (
@@ -133,7 +152,9 @@ export default function LandingPage() {
             <div className="text-center mb-10">
               <p className="text-xs text-accent font-semibold tracking-widest mb-3">NEW INFLUENCERS</p>
               <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">신규 인플루언서</h2>
-              <p className="text-sm text-dim">최근 선정된 인플루언서들입니다</p>
+              <p className="text-sm text-dim">
+                이번 주{weekLabel && <span className="text-accent font-semibold"> ({weekLabel})</span>} 선정된 인플루언서들입니다
+              </p>
             </div>
 
             {newInfluencers.length > 0 ? (
@@ -172,7 +193,9 @@ export default function LandingPage() {
               </div>
             ) : newInfluencersLoaded ? (
               <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-bg/60">
-                <p className="text-sm text-text font-semibold mb-1">이번 주 새로 선정된 인플루언서가 없습니다</p>
+                <p className="text-sm text-text font-semibold mb-1">
+                  이번 주{weekLabel && <span className="text-accent"> ({weekLabel})</span>} 새로 선정된 인플루언서가 없습니다
+                </p>
                 <p className="text-xs text-dim">매주 일요일 00:00에 집계가 초기화됩니다. 네이버 인플루언서 신규 선정은 비정기적으로 이루어지며, 이번 주에 선정된 인플루언서가 있으면 이곳에 표시됩니다.</p>
               </div>
             ) : (
@@ -201,7 +224,7 @@ export default function LandingPage() {
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-accent">{stats.new_count.toLocaleString()}</p>
             <p className="text-xs text-dim mt-2">신규 인플루언서</p>
-            <p className="text-[10px] text-dim/60">이번 주 (일요일 기준)</p>
+            <p className="text-[10px] text-dim/60">이번 주{weekLabel && ` (${weekLabel})`}</p>
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.active_count.toLocaleString()}</p>
