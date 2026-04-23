@@ -8,19 +8,19 @@ const ITEMS = [
     href: '/rankings/blogger',
     title: '블로거 순위',
     desc: '네이버 블로거 활동 점수 기반 종합 순위 Top 50 + 내 블로그 순위 조회',
-    badge: '주 1회 갱신',
+    badge: '개발 중',
   },
   {
     href: '/rankings/influencer',
     title: '인플루언서 순위',
     desc: 'N인플 자체 순위 — 키워드 참여·상위노출·월간 검색량 기반 Top 50',
-    badge: '실시간',
+    badge: '개발 중',
   },
   {
     href: '/blog-quality',
     title: '블로그 품질지수',
     desc: '블로그 ID 입력으로 C-rank · D.I.A. · D.I.A.+ 종합 추정 점수 확인',
-    badge: '무료',
+    badge: '개발 중',
   },
 ];
 
