@@ -82,20 +82,19 @@ export async function POST(req: NextRequest) {
       ? body.device_type
       : 'desktop';
 
-    // 1) PV — 모든 페이지뷰마다 집계
-    //    - users.total_visit_count (로그인 회원)
-    //    - site_visits.pageview_count + 디바이스별 PV
+    // 1) 로그인 회원 집계 — DAU 방식 세션 + PV
+    //    세션 RPC가 먼저 실행되어 옛 last_visited_at 을 읽고 오늘 KST 날짜와 비교,
+    //    다른 날이면 total_session_count +1. 그 다음 PV RPC 가 last_visited_at을 NOW()로 갱신.
     if (trackedUserId) {
+      await supabase.rpc('increment_user_session', { p_user_id: trackedUserId });
       await supabase.rpc('increment_user_total_visit', { p_user_id: trackedUserId });
     }
+
+    // 2) 사이트 전체 PV — 모든 페이지뷰마다
     await supabase.rpc('increment_pageview', { p_date: today, p_device: deviceType });
 
-    // 2) UV (순방문자) — 세션 첫 방문일 때만 site_visits.visit_count / 디바이스 UV 카운트
-    //    + 로그인 회원은 users.total_session_count +1
+    // 3) UV (순방문자) — 브라우저 세션 첫 방문일 때만 site_visits.visit_count / 디바이스 UV
     if (isFirstVisit) {
-      if (trackedUserId) {
-        await supabase.rpc('increment_user_session', { p_user_id: trackedUserId });
-      }
       const { error } = await supabase.rpc('increment_visit', { p_date: today, p_device: deviceType });
 
       if (error) {
