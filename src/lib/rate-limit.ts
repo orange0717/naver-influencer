@@ -150,3 +150,6 @@ export const chatReportLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60
 
 /** 캐릭터챗북 메시지: 1분에 20회 */
 export const chatbookMessageLimiter = createRateLimiter({ limit: 20, windowMs: 60 * 1000 });
+
+/** 캐릭터챗북 캐릭터 생성: 1시간에 10회 */
+export const chatbookCreateLimiter = createRateLimiter({ limit: 10, windowMs: 60 * 60 * 1000 });
