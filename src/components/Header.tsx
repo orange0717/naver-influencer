@@ -46,6 +46,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/notice', label: '공지사항' },
   { href: '/dashboard', label: '대시보드' },
+  { href: '/chatbook', label: '캐릭터챗북' },
   { href: '/community', label: '커뮤니티' },
   { href: '/subscribe', label: '이용권' },
 ];

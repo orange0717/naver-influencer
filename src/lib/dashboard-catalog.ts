@@ -253,6 +253,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     description: 'N인플 사용 방법·FAQ',
     href: '/guide',
   },
+  {
+    id: 'chatbook',
+    category: 'info',
+    title: '캐릭터챗북',
+    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (무료 베타)',
+    href: '/chatbook',
+    ctaLabel: '대화하기',
+  },
 
   // ── 관련 서비스 ──
   {
