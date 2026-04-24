@@ -18,6 +18,7 @@ interface Member {
   pageview_count: number;        // 페이지뷰 (PV)
   last_visited_at: string | null; // 마지막 방문
   is_admin: boolean;
+  is_restricted?: boolean;        // 유료 기능 제한 대상
 }
 
 interface MemberDetail {
@@ -206,13 +207,20 @@ export default function AdminMembersPage() {
                       {m.is_admin && (
                         <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded-full leading-none">관리자</span>
                       )}
+                      {m.is_restricted && (
+                        <span className="text-[9px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full leading-none">제한</span>
+                      )}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-dim text-xs">{m.email}</td>
                   <td className="px-3 py-2.5 text-xs">{m.blog_id || '-'}</td>
                   <td className="px-3 py-2.5 text-xs">{m.influencer_name || '-'}</td>
                   <td className="px-3 py-2.5 text-center">
-                    {m.subscription_plan ? (
+                    {m.is_restricted ? (
+                      <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+                        차단
+                      </span>
+                    ) : m.subscription_plan ? (
                       <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
                         {m.subscription_plan}
                       </span>

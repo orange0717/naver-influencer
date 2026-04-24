@@ -1,0 +1,75 @@
+name: 키워드챌린지 등수(게시글 수) 매일 갱신
+
+# 매일 KST 05:00 (전날 20:00 UTC) 실행
+# 전체 6,814명 × 약 30초 = 57시간 → 하루 5시간씩 로테이션(약 12일 주기)
+# 진행 상태(.content-count-progress.json)는 actions/cache 로 유지
+on:
+  schedule:
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '하루 처리할 인플루언서 수 (기본 600)'
+        required: false
+        default: '600'
+      reset_progress:
+        description: '진행 상태 초기화 (처음부터 다시)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+concurrency:
+  group: crawl-content-counts
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    name: content_count 로테이션 크롤
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 의존성 설치
+        run: npm install @supabase/supabase-js dotenv --no-save --no-audit --no-fund
+
+      - name: 진행 상태 캐시 복원
+        id: cache-progress
+        uses: actions/cache@v4
+        with:
+          path: scripts/.content-count-progress.json
+          key: content-count-progress-v1-${{ github.run_id }}
+          restore-keys: |
+            content-count-progress-v1-
+
+      - name: 진행 상태 초기화 (옵션)
+        if: ${{ inputs.reset_progress == 'true' }}
+        run: rm -f scripts/.content-count-progress.json
+
+      - name: 환경변수 구성
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error ::Supabase secrets 미설정"
+            exit 1
+          fi
+          echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
+
+      - name: crawl-content-counts 실행 (resume + limit 로테이션)
+        run: |
+          LIMIT=${{ inputs.limit || '600' }}
+          node scripts/crawl-content-counts.mjs --resume --limit "$LIMIT"
+
+      - name: 환경변수 정리
+        if: always()
+        run: rm -f .env.local

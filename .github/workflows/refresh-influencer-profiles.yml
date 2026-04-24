@@ -1,4 +1,4 @@
-name: 인플루언서 프로필 주간 갱신
+name: 인플루언서 프로필 매일 갱신
 
 # 매일 KST 03:00 (전날 18:00 UTC) 에 실행
 # 필요 시 수동 실행도 가능 (workflow_dispatch)
@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       stale_days:
-        description: 'N일 이상 stale 인 인플루언서만 갱신 (기본 3)'
+        description: 'N일 이상 stale 인 인플루언서만 갱신 (기본 0 = 전일 이후 갱신 안 된 것 전부)'
         required: false
-        default: '3'
+        default: '0'
       limit:
         description: '최대 N명 (기본 all)'
         required: false
@@ -50,7 +50,7 @@ jobs:
 
       - name: 갱신 실행
         run: |
-          STALE=${{ inputs.stale_days || '3' }}
+          STALE=${{ inputs.stale_days || '0' }}
           LIMIT="${{ inputs.limit }}"
           if [ -n "$LIMIT" ]; then
             node scripts/refresh-influencer-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE"

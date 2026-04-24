@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireAdmin, isAdmin } from '@/lib/admin';
+import { requireAdmin, isAdmin, isRestricted } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,13 +47,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 제한 사용자 여부 배치 조회 (환경변수 + restricted_users DB)
+  const restrictedFlags = await Promise.all(
+    (users || []).map(u => isRestricted(u.email))
+  );
+
   // 누적 방문횟수(세션) + 페이지뷰(PV) 분리
-  const result = (users || []).map(u => ({
+  const result = (users || []).map((u, idx) => ({
     ...u,
     influencer_name: u.linked_influencer_id ? infMap.get(u.linked_influencer_id) || null : null,
     session_count: u.total_session_count || 0,
     pageview_count: u.total_visit_count || 0,
     is_admin: isAdmin(u.id),
+    is_restricted: restrictedFlags[idx],
   }));
 
   return NextResponse.json({
