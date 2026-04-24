@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { isAdmin } from '@/lib/admin';
 import AdminSidebar from './AdminSidebar';
 import AdminLogoutButton from './AdminLogoutButton';
+import AdminVisitFlag from './AdminVisitFlag';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   let authorized = false;
@@ -47,6 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="fixed inset-0 z-[9999] flex bg-bg">
+      <AdminVisitFlag />
       <AdminSidebar />
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-end px-6 py-3 border-b border-border bg-surface shrink-0">

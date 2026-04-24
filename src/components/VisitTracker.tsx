@@ -29,6 +29,29 @@ function hasCookieSession(): boolean {
   return /(?:^|;\s*)user_type=/.test(document.cookie);
 }
 
+/**
+ * 관리자가 /admin 에 진입한 적이 있으면 localStorage 에 플래그가 심어져 있다.
+ * 로그아웃 / 시크릿창 / 다른 이메일로 로그인해도 같은 브라우저면 집계에서 제외.
+ * 30일 경과 시 만료.
+ */
+function isAdminByLocalFlag(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = localStorage.getItem('or_admin_visit');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { t?: number };
+    if (!parsed?.t) return false;
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    if (Date.now() - parsed.t > thirtyDays) {
+      localStorage.removeItem('or_admin_visit');
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** 관리자 여부 + 로그인 여부를 한 번에 확인 (Supabase Auth + 쿠키 세션 모두 인식) */
 async function getVisitorStatus(): Promise<{ isAdmin: boolean; isLoggedIn: boolean }> {
   try {
@@ -85,6 +108,10 @@ export default function VisitTracker() {
     // 모든 페이지뷰(PV)마다 track 호출.
     // 서버에서 PV는 항상 집계하고, UV(순방문자)는 first_visit=true일 때만 카운트한다.
     // (로그인/비로그인 무관, 관리자만 제외)
+    // 1차: localStorage 플래그(로그아웃·시크릿창에서도 동작)로 즉시 차단
+    if (isAdminByLocalFlag()) return;
+
+    // 2차: Supabase Auth 이메일 기반 차단
     getVisitorStatus().then(({ isAdmin }) => {
       if (isAdmin) return;
 
