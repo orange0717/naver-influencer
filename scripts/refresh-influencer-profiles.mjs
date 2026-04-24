@@ -190,6 +190,17 @@ const onlyNew = hasArg('--only-new'); // keyword_score = 0 or NULL 만
 const limitCount = getArg('--limit') ? parseInt(getArg('--limit')) : Infinity;
 const staleDays = getArg('--stale-days') ? parseInt(getArg('--stale-days')) : 3;
 const onlyNaverId = getArg('--naver-id');
+const shardNum = getArg('--shard') ? parseInt(getArg('--shard')) : 0;
+const shardCount = getArg('--shards') ? parseInt(getArg('--shards')) : 1;
+
+if (shardCount > 1) {
+  if (shardNum < 0 || shardNum >= shardCount) {
+    console.error(`--shard 값은 0 <= N < ${shardCount} 이어야 합니다.`);
+    process.exit(1);
+  }
+  // shard 별 progress 파일 분리
+  CONFIG.PROGRESS_FILE = resolve(__dirname, `.refresh-profiles-progress-shard${shardNum}of${shardCount}.json`);
+}
 
 if (!isFinite(limitCount) && !isAll && !onlyNaverId) {
   // 안전장치: --all 또는 --limit 또는 --naver-id 를 명시적으로 주어야 실행
@@ -241,6 +252,15 @@ async function main() {
       if (data.length < 1000) break;
       if (influencers.length >= 50000) break; // 안전상 상한 (현재 활성 ~12.6k)
     }
+  }
+
+  // shard 적용 (index % shardCount === shardNum 인 것만)
+  if (shardCount > 1 && !onlyNaverId) {
+    const before = influencers.length;
+    const sharded = influencers.filter((_, i) => i % shardCount === shardNum);
+    influencers.length = 0;
+    influencers.push(...sharded);
+    console.log(`shard ${shardNum}/${shardCount} 적용: ${before}명 → ${influencers.length}명`);
   }
 
   const total = influencers.length;

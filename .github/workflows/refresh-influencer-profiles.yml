@@ -1,25 +1,17 @@
 name: 인플루언서 프로필 매일 갱신
 
 # 매일 KST 03:00 (전날 18:00 UTC) 에 실행
-# 필요 시 수동 실행도 가능 (workflow_dispatch)
-#
-# 대상: 전체 인플루언서 약 19,980명 (keyword_score 조건 없음, --include-new)
-# 19,980명 × 1.5초 ≒ 8.3시간 → 타임아웃 5시간 50분 내에서 처리 후
-# 남은 분량은 --resume 으로 다음 날 이어서 (actions/cache 로 progress 파일 유지).
-# 약 1.5~2일 주기로 1바퀴.
+# 3-way matrix 로 전체 19,980명을 3등분 병렬 처리
+# 각 shard 약 6,660명 × 1.5초 = 약 2.8시간 → 하루 안에 전체 1바퀴 완료
 on:
   schedule:
     - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
       stale_days:
-        description: 'N일 이상 stale 인 인플루언서만 갱신 (기본 0 = 전일 이후 갱신 안 된 것 전부)'
+        description: 'N일 이상 stale 인 인플루언서만 갱신 (기본 0)'
         required: false
         default: '0'
-      limit:
-        description: '최대 N명 (기본 all)'
-        required: false
-        default: ''
       reset_progress:
         description: '진행 상태 초기화 (처음부터 다시)'
         required: false
@@ -30,40 +22,39 @@ on:
           - 'true'
 
 concurrency:
-  group: refresh-influencer-profiles
+  group: refresh-influencer-profiles-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
   refresh:
-    name: 프로필(팬수/챌린지수) 일괄 갱신
+    name: shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
-    # 전체 19,980명 × 1.5초 ≒ 8.3h → 한 job 최대 5시간 50분 사용 후 resume
-    timeout-minutes: 350
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
 
     steps:
-      - name: 리포지토리 체크아웃
-        uses: actions/checkout@v4
-
-      - name: Node 설치
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: 의존성 설치 (supabase-js 만 필요)
+      - name: 의존성 설치
         run: npm install @supabase/supabase-js --no-save --no-audit --no-fund
 
       - name: 진행 상태 캐시 복원
-        id: cache-progress
         uses: actions/cache@v4
         with:
-          path: scripts/.refresh-profiles-progress.json
-          key: refresh-influencer-profiles-v2-${{ github.run_id }}
+          path: scripts/.refresh-profiles-progress-shard${{ matrix.shard }}of3.json
+          key: refresh-influencer-profiles-v3-shard${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
-            refresh-influencer-profiles-v2-
+            refresh-influencer-profiles-v3-shard${{ matrix.shard }}-
 
       - name: 진행 상태 초기화 (옵션)
         if: ${{ inputs.reset_progress == 'true' }}
-        run: rm -f scripts/.refresh-profiles-progress.json
+        run: rm -f scripts/.refresh-profiles-progress-shard${{ matrix.shard }}of3.json
 
       - name: 환경변수 구성
         env:
@@ -71,22 +62,16 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error ::NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY secrets 가 설정되어 있지 않습니다."
+            echo "::error ::Supabase secrets 미설정"
             exit 1
           fi
-          # .env.local 로 작성 (스크립트가 읽음)
           echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
 
-      - name: 갱신 실행 (전체 인플루언서 resume + include-new)
+      - name: 갱신 실행 (shard ${{ matrix.shard }}/3)
         run: |
           STALE=${{ inputs.stale_days || '0' }}
-          LIMIT="${{ inputs.limit }}"
-          if [ -n "$LIMIT" ]; then
-            node scripts/refresh-influencer-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE" --include-new --resume
-          else
-            node scripts/refresh-influencer-profiles.mjs --apply --all --stale-days "$STALE" --include-new --resume
-          fi
+          node scripts/refresh-influencer-profiles.mjs --apply --all --stale-days "$STALE" --include-new --resume --shard ${{ matrix.shard }} --shards 3
 
       - name: 환경변수 정리
         if: always()

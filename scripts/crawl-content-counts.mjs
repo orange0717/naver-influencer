@@ -51,6 +51,18 @@ const isAllOwners = has('--all-owners'); // integrated_top3_count > 0 필터 제
 const limitCount = parseInt(arg('--limit') || '999999', 10);
 const filterDisplayName = arg('--display-name');
 const filterNaverId = arg('--naver-id');
+const shardNum = parseInt(arg('--shard') || '0', 10);
+const shardCount = parseInt(arg('--shards') || '1', 10);
+
+if (shardCount > 1 && (shardNum < 0 || shardNum >= shardCount)) {
+  console.error(`--shard 값은 0 <= N < ${shardCount} 이어야 합니다.`);
+  process.exit(1);
+}
+
+// shard 별 progress 파일 분리
+const PROGRESS_FILE_FINAL = shardCount > 1
+  ? resolve(__dirname, `.content-count-progress-shard${shardNum}of${shardCount}.json`)
+  : PROGRESS_FILE;
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -109,14 +121,14 @@ async function fetchParticipatedKeywords(ownerId) {
 }
 
 function loadProgress() {
-  if (existsSync(PROGRESS_FILE)) {
-    try { return JSON.parse(readFileSync(PROGRESS_FILE, 'utf-8')); } catch {}
+  if (existsSync(PROGRESS_FILE_FINAL)) {
+    try { return JSON.parse(readFileSync(PROGRESS_FILE_FINAL, 'utf-8')); } catch {}
   }
   return { lastIndex: 0 };
 }
 
 function saveProgress(p) {
-  writeFileSync(PROGRESS_FILE, JSON.stringify(p, null, 2));
+  writeFileSync(PROGRESS_FILE_FINAL, JSON.stringify(p, null, 2));
 }
 
 async function loadKeywordMap() {
@@ -237,8 +249,16 @@ async function main() {
   const keywordMap = await loadKeywordMap();
   console.log(`keyword 매핑 로드: ${keywordMap.size}개`);
 
-  const influencers = await loadInfluencers();
+  let influencers = await loadInfluencers();
   console.log(`인플루언서 ${influencers.length}명`);
+
+  // shard 적용
+  if (shardCount > 1) {
+    const before = influencers.length;
+    influencers = influencers.filter((_, i) => i % shardCount === shardNum);
+    console.log(`shard ${shardNum}/${shardCount} 적용: ${before}명 → ${influencers.length}명`);
+  }
+
   if (influencers.length === 0) return;
 
   const progress = loadProgress();

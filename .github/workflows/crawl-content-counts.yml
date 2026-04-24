@@ -1,18 +1,13 @@
 name: 키워드챌린지 등수(게시글 수) 매일 갱신
 
 # 매일 KST 05:00 (전날 20:00 UTC) 실행
-# 대상: naver_owner_id 있는 전체 인플루언서 약 13,000명 (--all-owners)
-# 13,000명 × 약 30초 = 108시간 → 하루 1200명씩 로테이션(약 11일 주기)
-# 진행 상태(.content-count-progress.json)는 actions/cache 로 유지
+# 6-way matrix 로 전체 약 13,000명을 6등분 병렬 처리 (스크립트 내부 PARALLEL=5)
+# 각 shard 약 2,170명 × 30초 / 5 동시 ≒ 3.6시간 → 하루 안에 전체 1바퀴 완료
 on:
   schedule:
     - cron: '0 20 * * *'
   workflow_dispatch:
     inputs:
-      limit:
-        description: '하루 처리할 인플루언서 수 (기본 1200)'
-        required: false
-        default: '1200'
       reset_progress:
         description: '진행 상태 초기화 (처음부터 다시)'
         required: false
@@ -23,14 +18,18 @@ on:
           - 'true'
 
 concurrency:
-  group: crawl-content-counts
+  group: crawl-content-counts-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
   crawl:
-    name: content_count 로테이션 크롤
+    name: shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
 
     steps:
       - uses: actions/checkout@v4
@@ -42,17 +41,16 @@ jobs:
         run: npm install @supabase/supabase-js dotenv --no-save --no-audit --no-fund
 
       - name: 진행 상태 캐시 복원
-        id: cache-progress
         uses: actions/cache@v4
         with:
-          path: scripts/.content-count-progress.json
-          key: content-count-progress-v1-${{ github.run_id }}
+          path: scripts/.content-count-progress-shard${{ matrix.shard }}of6.json
+          key: content-count-progress-v2-shard${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
-            content-count-progress-v1-
+            content-count-progress-v2-shard${{ matrix.shard }}-
 
       - name: 진행 상태 초기화 (옵션)
         if: ${{ inputs.reset_progress == 'true' }}
-        run: rm -f scripts/.content-count-progress.json
+        run: rm -f scripts/.content-count-progress-shard${{ matrix.shard }}of6.json
 
       - name: 환경변수 구성
         env:
@@ -66,10 +64,9 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
 
-      - name: crawl-content-counts 실행 (resume + all-owners + limit 로테이션)
+      - name: crawl-content-counts 실행 (shard ${{ matrix.shard }}/6)
         run: |
-          LIMIT=${{ inputs.limit || '1200' }}
-          node scripts/crawl-content-counts.mjs --resume --all-owners --limit "$LIMIT"
+          node scripts/crawl-content-counts.mjs --resume --all-owners --shard ${{ matrix.shard }} --shards 6
 
       - name: 환경변수 정리
         if: always()
