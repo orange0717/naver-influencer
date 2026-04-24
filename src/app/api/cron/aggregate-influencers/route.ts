@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
+// RPC 집계 + Promise.all(500 개 업데이트) 로 10 초를 초과할 수 있어 확장.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
+// 활성 키워드 전체 로드 + 정렬이라 데이터 증가 시 10 초를 초과할 수 있어 확장.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 const TOP_N = 20; // 일일 추천 개수
 const FREE_COUNT = 3; // 무료 추천 개수
 

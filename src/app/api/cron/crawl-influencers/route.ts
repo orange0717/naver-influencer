@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
+// BATCH_SIZE × sleep 800ms + Feed 페이지 2회 → 10초 넘을 수 있어 명시적으로 확장.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 const FEED_API_BASE = 'https://gw.in.naver.com/feed/query/v1';
 const BATCH_SIZE = 12; // Vercel 60초 제한 내 안전한 키워드 수
 

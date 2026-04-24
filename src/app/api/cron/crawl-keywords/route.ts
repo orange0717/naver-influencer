@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
+// Vercel 기본 10초 제한을 회피 — 카테고리가 많을 때 끝까지 순회하도록 확장.
+export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
+
 const GRAPHQL_URL = 'https://in.naver.com/graphql';
 const REST_API_BASE = 'https://gw.in.naver.com/keyword-challenge/api/v2';
 const PAGE_SIZE = 50;
