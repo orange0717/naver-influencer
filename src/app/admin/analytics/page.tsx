@@ -18,6 +18,24 @@ interface Stats {
   daily?: { date: string; count: number; pageviews: number }[];
 }
 
+interface TodayLog {
+  id: string;
+  visited_at: string;
+  user_id: string | null;
+  nickname: string | null;
+  email: string | null;
+  page_path: string;
+  referrer_domain: string;
+  browser: string;
+  os: string;
+}
+
+interface TodayLogsData {
+  total: number;
+  uniqueVisitors: number;
+  logs: TodayLog[];
+}
+
 interface ReferrerData {
   total: number;
   days: number;
@@ -120,6 +138,7 @@ function BarList({ items, colorMap }: { items?: { name: string; count: number }[
 export default function AdminAnalyticsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [referrers, setReferrers] = useState<ReferrerData | null>(null);
+  const [todayLogs, setTodayLogs] = useState<TodayLogsData | null>(null);
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(true);
 
@@ -132,6 +151,14 @@ export default function AdminAnalyticsPage() {
       setReferrers(ref);
     }).finally(() => setLoading(false));
   }, [days]);
+
+  // 오늘 방문 로그 (기간 변경과 무관, 항상 오늘)
+  useEffect(() => {
+    fetch('/api/admin/stats/today-logs')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setTodayLogs(d); })
+      .catch(() => {});
+  }, []);
 
   if (loading) {
     return (
@@ -187,6 +214,76 @@ export default function AdminAnalyticsPage() {
             </div>
           ));
         })()}
+      </div>
+
+      {/* 오늘 방문 로그 */}
+      <div className="bg-surface rounded-xl border border-border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-extrabold">오늘 방문 로그</h2>
+            <p className="text-[11px] text-dim mt-0.5">
+              {todayLogs
+                ? `${todayLogs.total.toLocaleString()}건 · 고유 방문자 ${todayLogs.uniqueVisitors}명 (로그인+익명)`
+                : '불러오는 중...'}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setTodayLogs(null);
+              fetch('/api/admin/stats/today-logs').then(r => r.ok ? r.json() : null).then(d => d && setTodayLogs(d));
+            }}
+            className="px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-border text-dim hover:text-accent hover:border-accent/40 cursor-pointer"
+          >
+            새로고침
+          </button>
+        </div>
+        <div className="max-h-[500px] overflow-y-auto">
+          {!todayLogs ? (
+            <div className="py-8 text-center">
+              <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+            </div>
+          ) : todayLogs.logs.length === 0 ? (
+            <p className="py-8 text-center text-dim text-sm">오늘 방문 기록이 없습니다.</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-surface">
+                <tr className="border-b border-border text-[10px] text-dim">
+                  <th className="text-left py-2 px-2 font-semibold w-16">시간</th>
+                  <th className="text-left py-2 px-2 font-semibold">사용자</th>
+                  <th className="text-left py-2 px-2 font-semibold">페이지</th>
+                  <th className="text-left py-2 px-2 font-semibold">유입</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/20">
+                {todayLogs.logs.map(log => {
+                  const t = new Date(log.visited_at);
+                  const timeLabel = t.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                  const isLoggedIn = !!log.user_id;
+                  return (
+                    <tr key={log.id} className="hover:bg-bg transition">
+                      <td className="py-2 px-2 text-dim font-rank">{timeLabel}</td>
+                      <td className="py-2 px-2">
+                        {isLoggedIn ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded-full leading-none">회원</span>
+                            <span className="font-semibold">{log.nickname || '(닉네임 없음)'}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-dim bg-bg px-1.5 py-0.5 rounded-full leading-none">익명</span>
+                            <span className="text-dim">{log.browser} · {log.os}</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 font-mono text-[11px] truncate max-w-xs">{log.page_path}</td>
+                      <td className="py-2 px-2 text-dim truncate max-w-[140px]">{log.referrer_domain}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {/* 기간 선택 */}
