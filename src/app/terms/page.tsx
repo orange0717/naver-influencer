@@ -63,7 +63,7 @@ export default function TermsPage() {
           <ol className="list-decimal list-inside space-y-1 pl-2">
             <li>블로거 이용권(월간/연간) 또는 인플루언서 이용권(월간/연간) 구매 시 해당 플랜의 기능을 이용할 수 있습니다.</li>
             <li>이용권 가격 및 기간은 이용권 페이지에 표시된 바에 따릅니다.</li>
-            <li>7일 무료 체험은 1회에 한하여 제공됩니다.</li>
+            <li>3일 무료 체험은 1회에 한하여 제공됩니다.</li>
           </ol>
         </section>
 

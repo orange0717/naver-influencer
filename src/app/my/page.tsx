@@ -100,7 +100,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // 체험/데모 만료 체크
   const trialStarted = cookieStore.get('trial_started')?.value;
   const isTrial = !!trialStarted;
-  const durationMs = (isDemo ? 7 : 3) * 24 * 60 * 60 * 1000;
+  const durationMs = 3 * 24 * 60 * 60 * 1000;
   let trialExpired = false;
   if (trialStarted) {
     const elapsed = Date.now() - Number(trialStarted);

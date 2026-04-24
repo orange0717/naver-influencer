@@ -167,7 +167,7 @@ export default function SubscribeClient() {
               href="/auth/signup"
               className="block text-center py-3 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition"
             >
-              7일 무료체험
+              3일 무료체험
             </Link>
           )}
 
@@ -225,7 +225,7 @@ export default function SubscribeClient() {
               href="/auth/signup"
               className="block text-center py-3 bg-accent/10 text-accent font-bold text-sm rounded-xl hover:bg-accent/20 transition"
             >
-              7일 무료체험
+              3일 무료체험
             </Link>
           )}
 

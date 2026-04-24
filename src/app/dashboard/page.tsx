@@ -32,6 +32,11 @@ export default async function DashboardPage() {
   const isDemo = cookieStore.get('demo_mode')?.value === 'true';
   const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
 
+  // 무료플랜 포함 모든 대시보드는 회원가입/로그인(또는 데모 세션) 필수
+  if (!authUser && !demoNaverId) {
+    redirect('/auth/login');
+  }
+
   // 제한 사용자 → /subscribe 리다이렉트 (Supabase + 데모 양쪽)
   if (authUser) {
     if (await isRestricted(authUser.email)) {

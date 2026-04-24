@@ -29,7 +29,7 @@ export async function sendDemoVerificationEmail(to: string, code: string) {
         <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
           <p style="font-size:16px;font-weight:bold;margin:0 0 16px">데모 체험 인증번호</p>
           <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
-            아래 인증번호를 입력하면 7일간 무료 데모 체험이 시작됩니다.
+            아래 인증번호를 입력하면 3일간 무료 데모 체험이 시작됩니다.
           </p>
           <div style="text-align:center;margin:24px 0;padding:20px;background:#f8f4f2;border-radius:12px">
             <p style="font-size:32px;font-weight:900;letter-spacing:8px;color:#c8816b;margin:0">${code}</p>

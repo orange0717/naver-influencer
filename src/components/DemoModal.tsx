@@ -75,16 +75,16 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
           {/* 배지 */}
           <div className="text-center mb-6">
             <span className="inline-block px-4 py-1.5 bg-accent/10 text-accent text-xs font-bold rounded-full">
-              7일 무료
+              3일 무료
             </span>
           </div>
 
           <h2 className="text-lg font-bold text-text text-center mb-2">
-            7일 데모체험을 시작하시겠습니까?
+            3일 데모체험을 시작하시겠습니까?
           </h2>
           <p className="text-sm text-dim text-center mb-8 leading-relaxed">
             인플루언서홈 또는 블로그 주소를 입력하면<br />
-            7일간 모든 기능을 무료로 이용할 수 있습니다.
+            3일간 모든 기능을 무료로 이용할 수 있습니다.
           </p>
 
           <div className="space-y-4 mb-6">

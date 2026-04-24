@@ -130,11 +130,11 @@ export default function LandingPage() {
           onClick={() => setDemoOpen(true)}
           className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm"
         >
-          7일 데모체험 →
+          3일 데모체험 →
         </button>
 
         <p className="text-xs text-dim mt-5">
-          인플루언서홈 또는 블로그 주소 입력 후 7일간 모든 기능을 무료로 이용할 수 있습니다.
+          인플루언서홈 또는 블로그 주소 입력 후 3일간 모든 기능을 무료로 이용할 수 있습니다.
         </p>
 
         <p className="text-[11px] text-dim/70 mt-3">
@@ -341,7 +341,7 @@ export default function LandingPage() {
               {
                 step: '01',
                 title: '가입하기',
-                desc: '이메일 또는 네이버 계정으로 가입하세요. 7일 무료 체험이 바로 시작됩니다.',
+                desc: '이메일 또는 네이버 계정으로 가입하세요. 3일 무료 체험이 바로 시작됩니다.',
               },
               {
                 step: '02',
@@ -524,7 +524,7 @@ export default function LandingPage() {
           onClick={() => setDemoOpen(true)}
           className="inline-block px-12 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm mb-4"
         >
-          7일 데모체험 →
+          3일 데모체험 →
         </button>
 
         <div className="flex items-center justify-center gap-4 md:gap-6 max-w-md mx-auto mt-10">

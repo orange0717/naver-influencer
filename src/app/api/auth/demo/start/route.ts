@@ -4,7 +4,7 @@ import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_DAYS = 7;
+const DEMO_DAYS = 3;
 const DEMO_MAX_AGE = 60 * 60 * 24 * DEMO_DAYS;
 
 /** 데모 세션 생성 + 쿠키 설정 공통 로직 */
