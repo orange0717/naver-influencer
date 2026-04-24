@@ -19,6 +19,7 @@ interface Character {
   tags: string[] | null;
   platform: 'both' | 'ninfl' | 'orangerefine';
   sort_order: number;
+  owner_user_id?: string | null;
 }
 
 interface ChatMessage {
@@ -47,6 +48,7 @@ const DISCLAIMER = (
 
 export default function ChatbookClient() {
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [myCharacters, setMyCharacters] = useState<Character[]>([]);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -57,6 +59,13 @@ export default function ChatbookClient() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
+
+  // 캐릭터 생성 모달
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createDesc, setCreateDesc] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   /* ── 초기 로드 ───────────────────────────── */
   useEffect(() => {
@@ -69,6 +78,7 @@ export default function ChatbookClient() {
         ]);
         const charData = await charRes.json().catch(() => ({}));
         if (!cancelled && charData.characters) setCharacters(charData.characters);
+        if (!cancelled && charData.mine) setMyCharacters(charData.mine);
 
         if (sessRes.ok) {
           const sessData = await sessRes.json().catch(() => ({}));
@@ -238,12 +248,92 @@ export default function ChatbookClient() {
     }
   };
 
+  /* ── 캐릭터 생성 ───────────────────────────────── */
+  const reloadCharacters = useCallback(async () => {
+    try {
+      const res = await fetch('/api/chatbook/characters', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (data.characters) setCharacters(data.characters);
+      if (data.mine) setMyCharacters(data.mine);
+    } catch (err) {
+      console.error('[chatbook] reload characters failed', err);
+    }
+  }, []);
+
+  const submitCreate = useCallback(
+    async (ev?: React.FormEvent) => {
+      if (ev) ev.preventDefault();
+      if (creating) return;
+      const name = createName.trim();
+      const description = createDesc.trim();
+      if (!name) {
+        setCreateError('캐릭터 이름을 입력해주세요.');
+        return;
+      }
+      if (!description) {
+        setCreateError('캐릭터 설정을 입력해주세요.');
+        return;
+      }
+      setCreating(true);
+      setCreateError(null);
+      try {
+        const res = await fetch('/api/chatbook/characters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setCreateError(data.error || '캐릭터를 만들지 못했습니다.');
+          return;
+        }
+        // 성공 → 모달 닫고 목록 새로고침
+        setCreateName('');
+        setCreateDesc('');
+        setShowCreateModal(false);
+        await reloadCharacters();
+      } catch (err) {
+        console.error('[chatbook] create failed', err);
+        setCreateError('네트워크 오류가 발생했습니다.');
+      } finally {
+        setCreating(false);
+      }
+    },
+    [createName, createDesc, creating, reloadCharacters],
+  );
+
+  const deleteCharacter = useCallback(
+    async (character: Character, ev?: React.MouseEvent) => {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      if (!confirm(`"${character.name}" 캐릭터를 삭제할까요? 관련 대화 기록도 모두 삭제됩니다.`)) return;
+      try {
+        const res = await fetch(`/api/chatbook/characters?id=${encodeURIComponent(character.id)}`, {
+          method: 'DELETE',
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setErrorMsg(data.error || '삭제에 실패했습니다.');
+          return;
+        }
+        await reloadCharacters();
+      } catch (err) {
+        console.error('[chatbook] delete failed', err);
+        setErrorMsg('삭제 중 오류가 발생했습니다.');
+      }
+    },
+    [reloadCharacters],
+  );
+
   /* ── 사이드: 최근 세션 + 캐릭터 매핑 ───────────────── */
   const sessionChars = useMemo(() => {
     const map = new Map<string, Character>();
     characters.forEach((c) => map.set(c.id, c));
+    myCharacters.forEach((c) => map.set(c.id, c));
     return map;
-  }, [characters]);
+  }, [characters, myCharacters]);
 
   /* ── 렌더 ──────────────────────────────────── */
   if (loading) {
@@ -271,38 +361,106 @@ export default function ChatbookClient() {
 
       {!activeCharacter ? (
         <>
-          {/* 캐릭터 갤러리 */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {characters.map((c) => (
+          {/* 내가 만든 캐릭터 */}
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-foreground">
+                내가 만든 캐릭터 <span className="text-muted font-normal">({myCharacters.length}/20)</span>
+              </h2>
               <button
-                key={c.id}
                 type="button"
-                onClick={() => openCharacter(c)}
-                className="group rounded-2xl border border-border bg-surface hover:border-accent hover:shadow-md transition-all p-4 text-left flex flex-col gap-2"
-                style={{ borderTop: `3px solid ${c.accent_color || '#BF8C80'}` }}
+                onClick={() => {
+                  setCreateError(null);
+                  setShowCreateModal(true);
+                }}
+                className="rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold px-4 py-2"
               >
-                <div className="text-center pt-1">
-                  <div className="text-sm font-bold text-foreground">{c.name}</div>
-                  <div className="text-[11px] text-muted mt-1 leading-snug min-h-[32px]">
-                    {c.origin}
-                  </div>
-                </div>
-                <p className="text-[12px] text-muted leading-relaxed text-center min-h-[48px]">
-                  {c.short_bio}
-                </p>
-                <div className="flex flex-wrap justify-center gap-1 mt-1">
-                  {(c.tags || []).slice(0, 3).map((t) => (
-                    <span
-                      key={t}
-                      className="text-[10px] font-semibold text-accent bg-accent/10 rounded-full px-2 py-0.5"
-                    >
-                      #{t}
-                    </span>
-                  ))}
-                </div>
+                + 새 캐릭터 만들기
               </button>
-            ))}
-          </div>
+            </div>
+            {myCharacters.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-surface/40 px-4 py-6 text-center text-xs text-muted">
+                아직 만든 캐릭터가 없습니다. 위 버튼을 눌러 나만의 캐릭터를 만들어보세요.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {myCharacters.map((c) => (
+                  <div
+                    key={c.id}
+                    className="relative group rounded-2xl border border-border bg-surface hover:border-accent hover:shadow-md transition-all"
+                    style={{ borderTop: `3px solid ${c.accent_color || '#BF8C80'}` }}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => deleteCharacter(c, e)}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="캐릭터 삭제"
+                      aria-label="캐릭터 삭제"
+                    >
+                      ×
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openCharacter(c)}
+                      className="w-full p-4 text-left flex flex-col gap-2"
+                    >
+                      <div className="text-center pt-1">
+                        <div className="text-sm font-bold text-foreground">{c.name}</div>
+                        <div className="text-[11px] text-muted mt-1 leading-snug min-h-[32px]">{c.origin}</div>
+                      </div>
+                      <p className="text-[12px] text-muted leading-relaxed text-center min-h-[48px]">{c.short_bio}</p>
+                      <div className="flex flex-wrap justify-center gap-1 mt-1">
+                        {(c.tags || []).slice(0, 3).map((t) => (
+                          <span
+                            key={t}
+                            className="text-[10px] font-semibold text-accent bg-accent/10 rounded-full px-2 py-0.5"
+                          >
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* 기본 제공 캐릭터 */}
+          <section>
+            <h2 className="text-base font-bold text-foreground mb-3">기본 제공 캐릭터 (저작권 만료 고전)</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {characters.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => openCharacter(c)}
+                  className="group rounded-2xl border border-border bg-surface hover:border-accent hover:shadow-md transition-all p-4 text-left flex flex-col gap-2"
+                  style={{ borderTop: `3px solid ${c.accent_color || '#BF8C80'}` }}
+                >
+                  <div className="text-center pt-1">
+                    <div className="text-sm font-bold text-foreground">{c.name}</div>
+                    <div className="text-[11px] text-muted mt-1 leading-snug min-h-[32px]">
+                      {c.origin}
+                    </div>
+                  </div>
+                  <p className="text-[12px] text-muted leading-relaxed text-center min-h-[48px]">
+                    {c.short_bio}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1 mt-1">
+                    {(c.tags || []).slice(0, 3).map((t) => (
+                      <span
+                        key={t}
+                        className="text-[10px] font-semibold text-accent bg-accent/10 rounded-full px-2 py-0.5"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
 
           {/* 최근 대화 */}
           {sessions.length > 0 && (
@@ -414,6 +572,82 @@ export default function ChatbookClient() {
       <div className="mt-6 rounded-xl border border-border bg-surface/50 px-4 py-3 text-xs text-muted leading-relaxed">
         {DISCLAIMER}
       </div>
+
+      {/* 캐릭터 생성 모달 */}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+          onClick={() => !creating && setShowCreateModal(false)}
+        >
+          <div
+            className="bg-surface border border-border rounded-2xl shadow-xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-foreground mb-1">새 캐릭터 만들기</h3>
+            <p className="text-xs text-muted mb-4 leading-relaxed">
+              이름과 한 줄 설정을 입력하면 AI가 말투·배경·인사말을 자동으로 완성합니다.
+              저작권이 살아있는 캐릭터·실존 인물·유해 컨셉은 거절될 수 있습니다.
+            </p>
+
+            <form onSubmit={submitCreate} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  캐릭터 이름 <span className="text-muted font-normal">(40자 이내)</span>
+                </label>
+                <input
+                  type="text"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  maxLength={40}
+                  disabled={creating}
+                  placeholder="예: 베테랑 여행작가 김지혜"
+                  className="w-full rounded-lg border border-border bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  캐릭터 설정 <span className="text-muted font-normal">(400자 이내)</span>
+                </label>
+                <textarea
+                  value={createDesc}
+                  onChange={(e) => setCreateDesc(e.target.value)}
+                  maxLength={400}
+                  rows={5}
+                  disabled={creating}
+                  placeholder="예: 30년 경력 여행기자. 동남아·유럽·중동을 주로 취재. 블로그 글감을 발굴해주고 구성과 제목을 조언."
+                  className="w-full rounded-lg border border-border bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-muted/60 resize-y focus:outline-none focus:border-accent"
+                />
+                <div className="text-[10px] text-muted mt-1 text-right">{createDesc.length} / 400</div>
+              </div>
+
+              {createError && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-400">
+                  {createError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  disabled={creating}
+                  className="rounded-xl border border-border bg-surface hover:border-accent text-foreground text-xs font-semibold px-4 py-2 disabled:opacity-40"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating || !createName.trim() || !createDesc.trim()}
+                  className="rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold px-5 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {creating ? 'AI가 캐릭터 만드는 중…' : '캐릭터 만들기'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
