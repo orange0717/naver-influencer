@@ -151,10 +151,12 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'chatbook',
     category: 'my',
     title: '캐릭터챗북',
-    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (예비인플루언서 플랜)',
+    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (개발 중)',
     href: '/chatbook',
+    requiredPlan: 'blogger',
     authOnly: true,
     ctaLabel: '대화하기',
+    devPreview: true,
   },
 
   // ── 랭킹 ──
