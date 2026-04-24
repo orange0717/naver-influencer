@@ -9,6 +9,7 @@ import {
   mergeMatches,
   type Match,
 } from '@/lib/spellcheck/engine';
+import ErrorReportModal, { type ReportPayload } from '@/components/writing/ErrorReportModal';
 
 const MAX_LEN = 10_000;
 
@@ -18,6 +19,7 @@ export default function SpellcheckClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [reportPayload, setReportPayload] = useState<ReportPayload | null>(null);
 
   const charCount = text.length;
 
@@ -252,6 +254,21 @@ export default function SpellcheckClient() {
                       {m.reason && (
                         <div className="text-xs text-dim mt-1.5 pl-7">{m.reason}</div>
                       )}
+                      <div className="text-right mt-1">
+                        <button
+                          onClick={() =>
+                            setReportPayload({
+                              tool: m.source === 'claude' ? 'ninfl-spellcheck-ai' : 'ninfl-spellcheck',
+                              original: m.word,
+                              replacement: m.fix,
+                              category: m.category,
+                            })
+                          }
+                          className="text-[11px] text-dim hover:text-accent hover:underline"
+                        >
+                          오류 제보
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -260,6 +277,12 @@ export default function SpellcheckClient() {
           </div>
         </div>
       </div>
+
+      <ErrorReportModal
+        open={!!reportPayload}
+        payload={reportPayload}
+        onClose={() => setReportPayload(null)}
+      />
     </div>
   );
 }

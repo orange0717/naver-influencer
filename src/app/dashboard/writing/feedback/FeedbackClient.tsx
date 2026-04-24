@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ErrorReportModal, { type ReportPayload } from '@/components/writing/ErrorReportModal';
 
 const MAX_LEN = 12_000;
 const MIN_LEN = 50;
@@ -33,6 +34,7 @@ export default function FeedbackClient() {
   const [result, setResult] = useState<FeedbackResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportPayload, setReportPayload] = useState<ReportPayload | null>(null);
 
   async function runAnalyze() {
     const trimmed = text.trim();
@@ -219,9 +221,24 @@ export default function FeedbackClient() {
                   <div className="space-y-1.5">
                     {result.spelling_errors.map((e, i) => (
                       <div key={i} className="text-xs p-2 rounded bg-bg border border-border">
-                        <span className="text-red-600 line-through">{e.wrong}</span>
-                        <span className="mx-2 text-dim">→</span>
-                        <span className="text-green-700 font-semibold">{e.correct}</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-red-600 line-through">{e.wrong}</span>
+                          <span className="text-dim">→</span>
+                          <span className="text-green-700 font-semibold">{e.correct}</span>
+                          <button
+                            onClick={() =>
+                              setReportPayload({
+                                tool: 'ninfl-feedback',
+                                original: e.wrong,
+                                replacement: e.correct,
+                                category: '맞춤법',
+                              })
+                            }
+                            className="ml-auto text-[11px] text-dim hover:text-accent hover:underline"
+                          >
+                            오류 제보
+                          </button>
+                        </div>
                         {e.rule && <div className="text-dim mt-0.5">{e.rule}</div>}
                       </div>
                     ))}
@@ -232,6 +249,12 @@ export default function FeedbackClient() {
           )}
         </div>
       </div>
+
+      <ErrorReportModal
+        open={!!reportPayload}
+        payload={reportPayload}
+        onClose={() => setReportPayload(null)}
+      />
     </div>
   );
 }
