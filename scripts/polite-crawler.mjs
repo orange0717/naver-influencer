@@ -140,8 +140,23 @@ async function searchNaver(keyword, start) {
         signal: AbortSignal.timeout(15000),
       });
       if (res.status === 429) {
-        console.warn(`  [429] Rate limit, ${CONFIG.DELAY_ON_ERROR}ms 대기...`);
-        await sleep(CONFIG.DELAY_ON_ERROR);
+        // Retry-After 헤더가 있으면 그 값을 우선 존중한다.
+        // 값은 초 단위 정수 또는 HTTP-date 중 하나.
+        const retryAfter = res.headers.get('Retry-After');
+        let waitMs = CONFIG.DELAY_ON_ERROR;
+        if (retryAfter) {
+          const asInt = parseInt(retryAfter, 10);
+          if (Number.isFinite(asInt) && asInt > 0) {
+            waitMs = Math.min(asInt * 1000, 60_000); // 최대 60초로 상한
+          } else {
+            const asDate = Date.parse(retryAfter);
+            if (!Number.isNaN(asDate)) {
+              waitMs = Math.max(0, Math.min(asDate - Date.now(), 60_000));
+            }
+          }
+        }
+        console.warn(`  [429] Rate limit, ${waitMs}ms 대기...`);
+        await sleep(waitMs);
         continue;
       }
       if (res.status === 401 || res.status === 403) {
