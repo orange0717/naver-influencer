@@ -74,7 +74,10 @@ export default function FeedbackClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <header className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-text">AI 심층 피드백</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-text">
+          AI 심층 피드백
+          <span className="ml-2 align-middle text-xs font-semibold text-accent border border-accent/30 bg-accent/10 rounded px-2 py-0.5">인플루언서 전용</span>
+        </h1>
         <p className="text-sm text-dim mt-1">
           Claude Opus 4.6이 4영역(기능적·구조적·언어·가독성) 품질을 평가하고 강점·개선점을 제시합니다.
           분석에는 30초~1분이 소요될 수 있습니다.

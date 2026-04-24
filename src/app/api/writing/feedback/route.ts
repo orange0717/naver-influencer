@@ -9,7 +9,7 @@ export const maxDuration = 120;
 const WORKER_URL = 'https://jolly-term-4055.orange-e65.workers.dev';
 const MAX_TEXT_LENGTH = 12_000;
 
-async function hasActivePaidPlan(userId: string): Promise<boolean> {
+async function hasInfluencerPlan(userId: string): Promise<boolean> {
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
@@ -20,7 +20,7 @@ async function hasActivePaidPlan(userId: string): Promise<boolean> {
     if (!data?.subscription_plan || !data?.subscription_expires_at) return false;
     const expires = new Date(data.subscription_expires_at).getTime();
     if (Number.isNaN(expires) || expires < Date.now()) return false;
-    return data.subscription_plan === 'INFLUENCER' || data.subscription_plan === 'BLOGGER';
+    return data.subscription_plan === 'INFLUENCER';
   } catch {
     return false;
   }
@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
   const auth = await requirePaidAccess(request);
   if (auth.error) return auth.error;
 
-  if (!(await hasActivePaidPlan(auth.authUser.userId))) {
+  if (!(await hasInfluencerPlan(auth.authUser.userId))) {
     return NextResponse.json(
-      { error: '구독 플랜이 필요합니다. 블로거+ 또는 인플루언서 플랜으로 업그레이드해주세요.' },
+      { error: 'AI 심층 피드백은 인플루언서 플랜 전용입니다.' },
       { status: 402 },
     );
   }

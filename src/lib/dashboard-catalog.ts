@@ -281,7 +281,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: 'AI 심층 피드백',
     description: '4영역(기능·구조·언어·가독성) 품질 평가 + 강점·개선점 (Claude Opus)',
     href: '/dashboard/writing/feedback',
-    requiredPlan: 'blogger',
+    requiredPlan: 'influencer',
     authOnly: true,
   },
 

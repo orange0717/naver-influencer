@@ -28,9 +28,9 @@ export default async function FeedbackPage() {
 
   const plan = profile?.subscription_plan;
   const expires = profile?.subscription_expires_at ? new Date(profile.subscription_expires_at).getTime() : 0;
-  const isPaid = (plan === 'BLOGGER' || plan === 'INFLUENCER') && expires > Date.now();
+  const isInfluencer = plan === 'INFLUENCER' && expires > Date.now();
 
-  if (!isPaid) redirect('/subscribe?highlight=blogger');
+  if (!isInfluencer) redirect('/subscribe?highlight=influencer');
 
   return <FeedbackClient />;
 }
