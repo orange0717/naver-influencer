@@ -74,6 +74,29 @@ function useNewInfluencers() {
   return { list, loaded };
 }
 
+/* ── 성장 후기 (랜딩 하이라이트) ── */
+interface FeaturedStory {
+  id: string;
+  title: string;
+  short_excerpt: string;
+  author_name: string;
+  is_anonymous: boolean;
+  metric_before: string | null;
+  metric_after: string | null;
+  period: string | null;
+}
+
+function useFeaturedStories() {
+  const [list, setList] = useState<FeaturedStory[]>([]);
+  useEffect(() => {
+    fetch('/api/stories/featured')
+      .then((r) => r.json())
+      .then((d) => setList(d.stories || []))
+      .catch(() => {});
+  }, []);
+  return list;
+}
+
 /* ── 섹션 구분선 ── */
 function SectionDivider() {
   return (
@@ -87,6 +110,7 @@ export default function LandingPage() {
   const stats = useStats();
   const siteStats = useSiteStats();
   const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
+  const featuredStories = useFeaturedStories();
   const weekRange = useCurrentWeekRangeKst();
   const weekLabel = weekRange ? `${weekRange.start} ~ ${weekRange.end}` : '';
   const [demoOpen, setDemoOpen] = useState(false);
@@ -236,6 +260,60 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {featuredStories.length > 0 && (
+        <>
+          <SectionDivider />
+
+          {/* ═══════════ 성장 후기 (surface) ═══════════ */}
+          <section className="bg-accent/[0.06] px-4 py-16 md:py-20">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-10">
+                <p className="text-xs text-accent font-semibold tracking-widest mb-3">GROWTH STORIES</p>
+                <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">실사용자 성장 후기</h2>
+                <p className="text-sm text-dim">N인플을 통해 성장한 인플루언서들의 이야기</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {featuredStories.map((s) => (
+                  <Link
+                    key={s.id}
+                    href={`/stories/${s.id}`}
+                    className="block p-5 rounded-xl bg-bg border border-border hover:border-accent/40 transition"
+                  >
+                    {(s.metric_before || s.metric_after) && (
+                      <div className="flex items-center gap-2 text-xs mb-3">
+                        {s.metric_before && (
+                          <span className="px-2 py-0.5 rounded bg-border/40 text-dim">{s.metric_before}</span>
+                        )}
+                        <span className="text-accent">→</span>
+                        {s.metric_after && (
+                          <span className="px-2 py-0.5 rounded bg-accent/15 text-accent font-semibold">
+                            {s.metric_after}
+                          </span>
+                        )}
+                        {s.period && <span className="text-dim">({s.period})</span>}
+                      </div>
+                    )}
+                    <h3 className="font-bold text-sm mb-2 text-text">{s.title}</h3>
+                    <p className="text-sm text-dim line-clamp-3 mb-3">{s.short_excerpt}</p>
+                    <p className="text-xs text-dim">— {s.author_name}</p>
+                  </Link>
+                ))}
+              </div>
+
+              <div className="text-center mt-8">
+                <Link
+                  href="/stories"
+                  className="inline-block px-6 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition"
+                >
+                  후기 전체 보기 →
+                </Link>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       <SectionDivider />
 
