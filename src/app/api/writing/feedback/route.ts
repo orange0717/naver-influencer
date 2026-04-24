@@ -1,0 +1,93 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requirePaidAccess } from '@/lib/admin';
+import { createServiceClient } from '@/lib/supabase-server';
+import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
+
+const WORKER_URL = 'https://jolly-term-4055.orange-e65.workers.dev';
+const MAX_TEXT_LENGTH = 12_000;
+
+async function hasActivePaidPlan(userId: string): Promise<boolean> {
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('users')
+      .select('subscription_plan, subscription_expires_at')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!data?.subscription_plan || !data?.subscription_expires_at) return false;
+    const expires = new Date(data.subscription_expires_at).getTime();
+    if (Number.isNaN(expires) || expires < Date.now()) return false;
+    return data.subscription_plan === 'INFLUENCER' || data.subscription_plan === 'BLOGGER';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * AI 심층 피드백 — OrangeRefine Worker /api/feedback 프록시
+ * 4영역(기능적/구조적/언어/가독성) 점수 + 강점/개선점/독자반응
+ */
+export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
+
+  const auth = await requirePaidAccess(request);
+  if (auth.error) return auth.error;
+
+  if (!(await hasActivePaidPlan(auth.authUser.userId))) {
+    return NextResponse.json(
+      { error: '구독 플랜이 필요합니다. 블로거+ 또는 인플루언서 플랜으로 업그레이드해주세요.' },
+      { status: 402 },
+    );
+  }
+
+  let body: { text?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+  }
+
+  const text = (body.text || '').trim();
+  if (!text || text.length < 50) {
+    return NextResponse.json({ error: '최소 50자 이상 입력해주세요.' }, { status: 400 });
+  }
+  if (text.length > MAX_TEXT_LENGTH) {
+    return NextResponse.json(
+      { error: `최대 ${MAX_TEXT_LENGTH.toLocaleString()}자까지 분석할 수 있습니다.` },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const res = await fetch(`${WORKER_URL}/api/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://naver-influencer.vercel.app',
+      },
+      body: JSON.stringify({ text: text.slice(0, MAX_TEXT_LENGTH) }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error('[writing/feedback] worker error:', res.status, errText.slice(0, 200));
+      return NextResponse.json(
+        { error: 'AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
+        { status: 502 },
+      );
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error('[writing/feedback] fetch failed:', err);
+    return NextResponse.json(
+      { error: 'AI 분석 중 오류가 발생했습니다.' },
+      { status: 502 },
+    );
+  }
+}

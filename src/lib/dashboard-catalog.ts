@@ -11,6 +11,7 @@ export type AppCategoryKey =
   | 'my'
   | 'ranking'
   | 'search'
+  | 'writing'
   | 'info'
   | 'partner';
 
@@ -51,6 +52,14 @@ export const APP_CATEGORIES: AppCategoryMeta[] = [
     label: '검색 · 리서치',
     description: '인플루언서 · 키워드 · 트렌드 검색',
     tag: '검색',
+    badgeClass: BADGE,
+    buttonClass: BUTTON,
+  },
+  {
+    key: 'writing',
+    label: '글쓰기',
+    description: 'AI 맞춤법 검사와 심층 피드백으로 글 품질 점검',
+    tag: '글쓰기',
     badgeClass: BADGE,
     buttonClass: BUTTON,
   },
@@ -254,6 +263,26 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '경쟁자 분석',
     description: '경쟁 블로그 지표 비교·변화 추이',
     href: '/competitor',
+  },
+
+  // ── 글쓰기 ──
+  {
+    id: 'writing-spellcheck',
+    category: 'writing',
+    title: '맞춤법 검사',
+    description: '국립국어원 기준 1,600+개 규칙 + Claude AI 하이브리드 교정',
+    href: '/dashboard/writing/spellcheck',
+    requiredPlan: 'blogger',
+    authOnly: true,
+  },
+  {
+    id: 'writing-feedback',
+    category: 'writing',
+    title: 'AI 심층 피드백',
+    description: '4영역(기능·구조·언어·가독성) 품질 평가 + 강점·개선점 (Claude Opus)',
+    href: '/dashboard/writing/feedback',
+    requiredPlan: 'blogger',
+    authOnly: true,
   },
 
   // ── 서비스 가이드 ──
