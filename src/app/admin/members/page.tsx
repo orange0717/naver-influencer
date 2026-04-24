@@ -34,6 +34,23 @@ interface MemberDetail {
   };
 }
 
+interface TodayVisitor {
+  id: string;
+  nickname: string;
+  email: string;
+  last_visited_at: string;
+  last_page: string | null;
+  session_count: number;
+  pageview_count: number;
+}
+
+interface ActiveStats {
+  dau: number;
+  wau: number;
+  mau: number;
+  todayVisitors: TodayVisitor[];
+}
+
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
@@ -48,6 +65,8 @@ export default function AdminMembersPage() {
   const [planChoice, setPlanChoice] = useState<'INFLUENCER' | 'BLOGGER' | 'FREE'>('INFLUENCER');
   const [planDuration, setPlanDuration] = useState(30);
   const [planSaving, setPlanSaving] = useState(false);
+  const [stats, setStats] = useState<ActiveStats | null>(null);
+  const [todayModalOpen, setTodayModalOpen] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -63,6 +82,14 @@ export default function AdminMembersPage() {
   }, [page, search]);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
+
+  // 활성 사용자 통계 (DAU/WAU/MAU + 오늘 방문자)
+  useEffect(() => {
+    fetch('/api/admin/stats/active-users')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStats(d); })
+      .catch(() => {});
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,17 +170,39 @@ export default function AdminMembersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">회원 관리</h1>
-        <div className="flex items-center gap-3 text-sm">
-          {(() => {
-            const now = new Date();
-            const todayStr = now.toDateString();
-            const todayCount = members.filter(m => m.last_visited_at && new Date(m.last_visited_at).toDateString() === todayStr).length;
-            return (
-              <span className="text-dim">
-                오늘 방문 <span className="text-accent font-bold">{todayCount}</span>명 · 총 {total.toLocaleString()}명
-              </span>
-            );
-          })()}
+        <span className="text-sm text-dim">총 {total.toLocaleString()}명</span>
+      </div>
+
+      {/* 활성 사용자 카드 (DAU/WAU/MAU) */}
+      <div className="grid grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => setTodayModalOpen(true)}
+          disabled={!stats || stats.dau === 0}
+          className="bg-surface border border-border rounded-xl px-4 py-3 text-left hover:border-accent/40 transition cursor-pointer disabled:cursor-default disabled:hover:border-border"
+        >
+          <p className="text-[11px] text-dim font-semibold">DAU · 오늘</p>
+          <p className="font-rank font-extrabold text-2xl text-accent">
+            {stats ? stats.dau.toLocaleString() : '-'}
+            <span className="text-xs text-dim font-semibold ml-1">명</span>
+          </p>
+          {stats && stats.dau > 0 && (
+            <p className="text-[10px] text-accent mt-0.5">클릭해서 목록 보기 →</p>
+          )}
+        </button>
+        <div className="bg-surface border border-border rounded-xl px-4 py-3">
+          <p className="text-[11px] text-dim font-semibold">WAU · 최근 7일</p>
+          <p className="font-rank font-extrabold text-2xl">
+            {stats ? stats.wau.toLocaleString() : '-'}
+            <span className="text-xs text-dim font-semibold ml-1">명</span>
+          </p>
+        </div>
+        <div className="bg-surface border border-border rounded-xl px-4 py-3">
+          <p className="text-[11px] text-dim font-semibold">MAU · 최근 30일</p>
+          <p className="font-rank font-extrabold text-2xl">
+            {stats ? stats.mau.toLocaleString() : '-'}
+            <span className="text-xs text-dim font-semibold ml-1">명</span>
+          </p>
         </div>
       </div>
 
@@ -291,6 +340,53 @@ export default function AdminMembersPage() {
           </div>
         )}
       </div>
+
+      {/* 오늘 방문자 모달 */}
+      {todayModalOpen && stats && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setTodayModalOpen(false)}>
+          <div className="bg-surface rounded-2xl border border-border w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-extrabold">
+                  오늘 방문자 <span className="text-accent">{stats.dau}</span>명
+                </h2>
+                <button onClick={() => setTodayModalOpen(false)} className="text-dim hover:text-text text-lg cursor-pointer">x</button>
+              </div>
+              <p className="text-[11px] text-dim">
+                KST 자정 이후 로그인한 유저만 집계됩니다. 익명 방문자는 포함되지 않습니다.
+              </p>
+              <div className="divide-y divide-border/20">
+                {stats.todayVisitors.length === 0 ? (
+                  <p className="py-8 text-center text-dim text-sm">방문자가 없습니다.</p>
+                ) : stats.todayVisitors.map(v => {
+                  const t = new Date(v.last_visited_at);
+                  const timeLabel = t.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => { setTodayModalOpen(false); openDetail(v.id); }}
+                      className="w-full flex items-center gap-3 py-2.5 text-left hover:bg-bg rounded-lg px-2 transition cursor-pointer"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{v.nickname || '(닉네임 없음)'}</p>
+                        <p className="text-[11px] text-dim truncate">{v.email}</p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] text-dim">마지막 페이지</p>
+                        <p className="text-xs font-mono truncate">{v.last_page || '-'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-rank text-sm font-bold text-accent">{timeLabel}</p>
+                        <p className="text-[10px] text-dim">PV {v.pageview_count.toLocaleString()}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 상세 모달 */}
       {(detail || detailLoading) && (
