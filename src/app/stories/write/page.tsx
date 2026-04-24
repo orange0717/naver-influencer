@@ -80,7 +80,7 @@ export default function StoryWritePage() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="예: 3개월 만에 팬수 8배 늘린 이야기"
+            placeholder="예: 3개월 만에 인플루언서 선정된 이야기 / 일방문자 5배 성장기"
             maxLength={100}
             className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:border-accent outline-none"
           />
@@ -104,7 +104,7 @@ export default function StoryWritePage() {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="어떤 변화가 있었는지 자유롭게 적어주세요."
+            placeholder="어떤 변화가 있었는지 자유롭게 적어주세요. (예: 상위노출 키워드 수, 일방문자/조회수 변화, 인플루언서 선정 여부, 팬수·챌린지 결과 등)"
             rows={10}
             maxLength={5000}
             className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:border-accent outline-none resize-y"
@@ -119,7 +119,7 @@ export default function StoryWritePage() {
               type="text"
               value={metricBefore}
               onChange={(e) => setMetricBefore(e.target.value)}
-              placeholder="예: 팬수 1,200"
+              placeholder="예: 일방문자 300 / 상위노출 0건"
               maxLength={50}
               className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:border-accent outline-none"
             />
@@ -130,7 +130,7 @@ export default function StoryWritePage() {
               type="text"
               value={metricAfter}
               onChange={(e) => setMetricAfter(e.target.value)}
-              placeholder="예: 팬수 8,500"
+              placeholder="예: 일방문자 2,500 / 인플루언서 선정"
               maxLength={50}
               className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:border-accent outline-none"
             />
