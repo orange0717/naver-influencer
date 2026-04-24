@@ -93,6 +93,15 @@ export interface DashboardApp {
 export const DASHBOARD_APPS: DashboardApp[] = [
   // ── 내 정보 ──
   {
+    id: 'chatbook',
+    category: 'my',
+    title: '캐릭터챗북',
+    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (예비인플루언서 플랜)',
+    href: '/chatbook',
+    authOnly: true,
+    ctaLabel: '대화하기',
+  },
+  {
     id: 'my-blogger',
     category: 'my',
     title: '블로그',
@@ -146,6 +155,15 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
     authOnly: true,
     devPreview: true,
+  },
+  {
+    id: 'chatbook',
+    category: 'my',
+    title: '캐릭터챗북',
+    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (무료 베타)',
+    href: '/chatbook',
+    authOnly: true,
+    ctaLabel: '대화하기',
   },
 
   // ── 랭킹 ──
@@ -252,14 +270,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '서비스 가이드',
     description: 'N인플 사용 방법·FAQ',
     href: '/guide',
-  },
-  {
-    id: 'chatbook',
-    category: 'info',
-    title: '캐릭터챗북',
-    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (무료 베타)',
-    href: '/chatbook',
-    ctaLabel: '대화하기',
   },
 
   // ── 관련 서비스 ──

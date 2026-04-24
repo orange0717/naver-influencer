@@ -259,7 +259,7 @@ export default function ChatbookClient() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-foreground mb-2">캐릭터챗북</h1>
         <p className="text-sm text-muted leading-relaxed">
-          저작권 만료 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어·주제·관점을 발굴하세요. 현재 베타로 무료 공개 중입니다.
+          저작권 만료 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어·주제·관점을 발굴하세요. 예비인플루언서 플랜 전용 기능입니다.
         </p>
       </header>
 
@@ -279,14 +279,9 @@ export default function ChatbookClient() {
                 type="button"
                 onClick={() => openCharacter(c)}
                 className="group rounded-2xl border border-border bg-surface hover:border-accent hover:shadow-md transition-all p-4 text-left flex flex-col gap-2"
+                style={{ borderTop: `3px solid ${c.accent_color || '#BF8C80'}` }}
               >
-                <div
-                  className="w-14 h-14 rounded-xl mx-auto flex items-center justify-center text-white text-2xl font-serif"
-                  style={{ background: c.accent_color || '#BF8C80' }}
-                >
-                  {c.avatar_emoji || '☺'}
-                </div>
-                <div className="text-center">
+                <div className="text-center pt-1">
                   <div className="text-sm font-bold text-foreground">{c.name}</div>
                   <div className="text-[11px] text-muted mt-1 leading-snug min-h-[32px]">
                     {c.origin}
@@ -323,13 +318,8 @@ export default function ChatbookClient() {
                       type="button"
                       onClick={() => openSession(s)}
                       className="w-full flex items-center gap-3 rounded-xl border border-border bg-surface hover:border-accent px-4 py-3 text-left transition-colors"
+                      style={{ borderLeft: `3px solid ${c.accent_color || '#BF8C80'}` }}
                     >
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-base font-serif flex-shrink-0"
-                        style={{ background: c.accent_color || '#BF8C80' }}
-                      >
-                        {c.avatar_emoji || '☺'}
-                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-foreground">{c.name}</div>
                         <div className="text-[11px] text-muted mt-0.5">
@@ -363,13 +353,10 @@ export default function ChatbookClient() {
             >
               ← 캐릭터 목록
             </button>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-base font-serif flex-shrink-0"
-                style={{ background: activeCharacter.accent_color || '#BF8C80' }}
-              >
-                {activeCharacter.avatar_emoji || '☺'}
-              </div>
+            <div
+              className="flex items-center gap-2 flex-1 min-w-0 pl-3"
+              style={{ borderLeft: `3px solid ${activeCharacter.accent_color || '#BF8C80'}` }}
+            >
               <div className="min-w-0">
                 <div className="text-sm font-bold text-foreground truncate">{activeCharacter.name}</div>
                 <div className="text-[11px] text-muted truncate">{activeCharacter.origin}</div>
@@ -411,7 +398,7 @@ export default function ChatbookClient() {
               className="w-full rounded-xl border border-border bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-muted/60 resize-y focus:outline-none focus:border-accent"
             />
             <div className="flex items-center justify-between mt-2 gap-2">
-              <span className="text-[11px] text-muted">베타 공개 중 · 무료</span>
+              <span className="text-[11px] text-muted">예비인플루언서 플랜 전용</span>
               <button
                 type="submit"
                 disabled={sending || !input.trim()}
