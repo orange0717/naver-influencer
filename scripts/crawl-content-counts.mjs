@@ -47,6 +47,7 @@ const arg = (k) => {
 const has = (k) => args.includes(k);
 const isDryRun = has('--dry-run');
 const isResume = has('--resume');
+const isAllOwners = has('--all-owners'); // integrated_top3_count > 0 필터 제거 (ownerId 있는 전체)
 const limitCount = parseInt(arg('--limit') || '999999', 10);
 const filterDisplayName = arg('--display-name');
 const filterNaverId = arg('--naver-id');
@@ -151,15 +152,20 @@ async function loadInfluencers() {
       .eq('naver_id', filterNaverId);
     return data || [];
   }
-  // 활동 인플루언서 (naver_owner_id 있고 + integrated_top3_count > 0)
+  // 대상 인플루언서
+  //   --all-owners : naver_owner_id 만 있으면 전체 포함 (TOP3 필터 없음)
+  //   기본(활동)   : naver_owner_id 있고 + integrated_top3_count > 0
   const result = [];
   let off = 0;
   while (true) {
-    const { data } = await supabase
+    let query = supabase
       .from('influencers')
       .select('id, display_name, naver_id, naver_owner_id')
-      .not('naver_owner_id', 'is', null)
-      .gt('integrated_top3_count', 0)
+      .not('naver_owner_id', 'is', null);
+    if (!isAllOwners) {
+      query = query.gt('integrated_top3_count', 0);
+    }
+    const { data } = await query
       .order('subscriber_count', { ascending: false, nullsFirst: false })
       .range(off, off + 999);
     if (!data || data.length === 0) break;

@@ -2,6 +2,11 @@ name: 인플루언서 프로필 매일 갱신
 
 # 매일 KST 03:00 (전날 18:00 UTC) 에 실행
 # 필요 시 수동 실행도 가능 (workflow_dispatch)
+#
+# 대상: 전체 인플루언서 약 19,980명 (keyword_score 조건 없음, --include-new)
+# 19,980명 × 1.5초 ≒ 8.3시간 → 타임아웃 5시간 50분 내에서 처리 후
+# 남은 분량은 --resume 으로 다음 날 이어서 (actions/cache 로 progress 파일 유지).
+# 약 1.5~2일 주기로 1바퀴.
 on:
   schedule:
     - cron: '0 18 * * *'
@@ -15,13 +20,25 @@ on:
         description: '최대 N명 (기본 all)'
         required: false
         default: ''
+      reset_progress:
+        description: '진행 상태 초기화 (처음부터 다시)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+concurrency:
+  group: refresh-influencer-profiles
+  cancel-in-progress: false
 
 jobs:
   refresh:
     name: 프로필(팬수/챌린지수) 일괄 갱신
     runs-on: ubuntu-latest
-    # 10,000명 × 1.5초 ≒ 4시간 10분 + 여유 → 5시간 상한
-    timeout-minutes: 330
+    # 전체 19,980명 × 1.5초 ≒ 8.3h → 한 job 최대 5시간 50분 사용 후 resume
+    timeout-minutes: 350
 
     steps:
       - name: 리포지토리 체크아웃
@@ -34,6 +51,19 @@ jobs:
 
       - name: 의존성 설치 (supabase-js 만 필요)
         run: npm install @supabase/supabase-js --no-save --no-audit --no-fund
+
+      - name: 진행 상태 캐시 복원
+        id: cache-progress
+        uses: actions/cache@v4
+        with:
+          path: scripts/.refresh-profiles-progress.json
+          key: refresh-influencer-profiles-v2-${{ github.run_id }}
+          restore-keys: |
+            refresh-influencer-profiles-v2-
+
+      - name: 진행 상태 초기화 (옵션)
+        if: ${{ inputs.reset_progress == 'true' }}
+        run: rm -f scripts/.refresh-profiles-progress.json
 
       - name: 환경변수 구성
         env:
@@ -48,18 +78,16 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
 
-      - name: 갱신 실행
+      - name: 갱신 실행 (전체 인플루언서 resume + include-new)
         run: |
           STALE=${{ inputs.stale_days || '0' }}
           LIMIT="${{ inputs.limit }}"
           if [ -n "$LIMIT" ]; then
-            node scripts/refresh-influencer-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE"
+            node scripts/refresh-influencer-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE" --include-new --resume
           else
-            node scripts/refresh-influencer-profiles.mjs --apply --all --stale-days "$STALE"
+            node scripts/refresh-influencer-profiles.mjs --apply --all --stale-days "$STALE" --include-new --resume
           fi
 
-      - name: 종료
+      - name: 환경변수 정리
         if: always()
-        run: |
-          # 진행 파일 및 .env.local 제거
-          rm -f scripts/.refresh-profiles-progress.json .env.local
+        run: rm -f .env.local

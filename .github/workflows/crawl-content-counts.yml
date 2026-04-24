@@ -1,7 +1,8 @@
 name: 키워드챌린지 등수(게시글 수) 매일 갱신
 
 # 매일 KST 05:00 (전날 20:00 UTC) 실행
-# 전체 6,814명 × 약 30초 = 57시간 → 하루 5시간씩 로테이션(약 12일 주기)
+# 대상: naver_owner_id 있는 전체 인플루언서 약 13,000명 (--all-owners)
+# 13,000명 × 약 30초 = 108시간 → 하루 1200명씩 로테이션(약 11일 주기)
 # 진행 상태(.content-count-progress.json)는 actions/cache 로 유지
 on:
   schedule:
@@ -9,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: '하루 처리할 인플루언서 수 (기본 600)'
+        description: '하루 처리할 인플루언서 수 (기본 1200)'
         required: false
-        default: '600'
+        default: '1200'
       reset_progress:
         description: '진행 상태 초기화 (처음부터 다시)'
         required: false
@@ -65,10 +66,10 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
 
-      - name: crawl-content-counts 실행 (resume + limit 로테이션)
+      - name: crawl-content-counts 실행 (resume + all-owners + limit 로테이션)
         run: |
-          LIMIT=${{ inputs.limit || '600' }}
-          node scripts/crawl-content-counts.mjs --resume --limit "$LIMIT"
+          LIMIT=${{ inputs.limit || '1200' }}
+          node scripts/crawl-content-counts.mjs --resume --all-owners --limit "$LIMIT"
 
       - name: 환경변수 정리
         if: always()
