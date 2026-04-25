@@ -482,7 +482,7 @@ export default function KeywordRankingPage() {
                                 </div>
                                 {keywords.length < 5 && (
                                   <button onClick={() => addKeyword(post.id)}
-                                    className="text-[10px] text-accent mt-1.5 cursor-pointer hover:underline">
+                                    className="text-xs text-accent mt-1.5 cursor-pointer hover:underline">
                                     + 키워드 추가
                                   </button>
                                 )}
@@ -634,7 +634,7 @@ export default function KeywordRankingPage() {
                       })}
                       {keywords.length < 5 && (
                         <button onClick={() => addKeyword(post.id)}
-                          className="text-[10px] text-accent cursor-pointer hover:underline">
+                          className="text-xs text-accent cursor-pointer hover:underline">
                           + 키워드 추가
                         </button>
                       )}
