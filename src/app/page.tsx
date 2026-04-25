@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DemoModal from '@/components/DemoModal';
+import LandingFaq from '@/components/LandingFaq';
 
 
 /* ── 이번 주 범위 (일요일 ~ 토요일, KST) ── */
@@ -587,6 +588,13 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
+      </section>
+
+      <SectionDivider />
+
+      {/* ═══════════ 자주 묻는 질문 ═══════════ */}
+      <section className="bg-white px-4 py-20 md:py-24">
+        <LandingFaq />
       </section>
 
       <SectionDivider />
