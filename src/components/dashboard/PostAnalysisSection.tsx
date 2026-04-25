@@ -24,10 +24,9 @@ interface SearchRankInfo {
 }
 
 function getRankBadge(rank: number) {
-  if (rank === 1) return { bg: 'bg-gold/20', text: 'text-gold', border: 'border-gold/30', label: '1위' };
+  if (rank === 1) return { bg: 'bg-down/15', text: 'text-down', border: 'border-down/30', label: '1위' };
   if (rank <= 3) return { bg: 'bg-accent/15', text: 'text-accent', border: 'border-accent/30', label: `${rank}위` };
-  if (rank <= 5) return { bg: 'bg-up/15', text: 'text-up', border: 'border-up/30', label: `${rank}위` };
-  if (rank <= 10) return { bg: 'bg-blue-500/15', text: 'text-blue-500', border: 'border-blue-500/30', label: `${rank}위` };
+  if (rank <= 10) return { bg: 'bg-text/10', text: 'text-text', border: 'border-text/20', label: `${rank}위` };
   if (rank <= 30) return { bg: 'bg-border/40', text: 'text-text', border: 'border-border/50', label: `${rank}위` };
   return { bg: 'bg-border/30', text: 'text-dim', border: 'border-border/30', label: `${rank}위` };
 }
@@ -396,7 +395,7 @@ export default function PostAnalysisSection({
                   )}
                   {top10.length > 0 && (
                     <span className="text-dim">
-                      TOP 10 <strong className="text-up font-rank">{top10.length}</strong>개
+                      TOP 10 <strong className="text-text font-rank">{top10.length}</strong>개
                     </span>
                   )}
                 </>

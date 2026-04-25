@@ -90,9 +90,9 @@ interface TextAnalysisResult {
 }
 
 function getAiBadge(score: number) {
-  if (score <= 30) return { bg: 'bg-up/10', text: 'text-up', border: 'border-up/30', label: '사람' };
-  if (score <= 60) return { bg: 'bg-gold/10', text: 'text-gold', border: 'border-gold/30', label: '불확실' };
-  return { bg: 'bg-down/10', text: 'text-down', border: 'border-down/30', label: 'AI 의심' };
+  if (score <= 30) return { bg: 'bg-text/10', text: 'text-text', border: 'border-text/20', label: '사람' };
+  if (score <= 60) return { bg: 'bg-accent/15', text: 'text-accent', border: 'border-accent/30', label: '불확실' };
+  return { bg: 'bg-down/15', text: 'text-down', border: 'border-down/30', label: 'AI 의심' };
 }
 
 const sentenceTypeLabel: Record<string, string> = {
@@ -458,7 +458,7 @@ export default function PostAnalysisPage() {
                             </span>
                           )}
                           {plagResult && (
-                            <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ml-1 ${plagResult.originalRate >= 80 ? 'bg-up/10 text-up' : plagResult.originalRate >= 50 ? 'bg-gold/10 text-gold' : 'bg-down/10 text-down'}`}>
+                            <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ml-1 ${plagResult.originalRate >= 80 ? 'bg-text/10 text-text' : plagResult.originalRate >= 50 ? 'bg-accent/10 text-accent' : 'bg-down/10 text-down'}`}>
                               원본 {plagResult.originalRate}%
                             </span>
                           )}
@@ -487,18 +487,18 @@ export default function PostAnalysisPage() {
                               </button>
                             ) : null}
                             {isCheckingPlag ? (
-                              <span className="w-3.5 h-3.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin inline-block" />
+                              <span className="w-3.5 h-3.5 border-2 border-text/30 border-t-text rounded-full animate-spin inline-block" />
                             ) : !plagResult ? (
                               <button onClick={e => { e.stopPropagation(); runPlagiarismCheck(post.id); }}
-                                className="text-[11px] px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-500 font-bold hover:bg-blue-500/20 transition cursor-pointer">
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-text/10 text-text font-bold hover:bg-text/20 transition cursor-pointer">
                                 표절검사
                               </button>
                             ) : null}
                             {isAnalyzingText ? (
-                              <span className="w-3.5 h-3.5 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin inline-block" />
+                              <span className="w-3.5 h-3.5 border-2 border-down/30 border-t-down rounded-full animate-spin inline-block" />
                             ) : !textResult ? (
                               <button onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
-                                className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-500 font-bold hover:bg-purple-500/20 transition cursor-pointer">
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-down/10 text-down font-bold hover:bg-down/20 transition cursor-pointer">
                                 형태소분석
                               </button>
                             ) : null}
@@ -546,14 +546,14 @@ export default function PostAnalysisPage() {
                                   <div className="flex items-center gap-3">
                                     <span className="text-sm font-bold">AI 확률:</span>
                                     <span className={`text-lg font-black font-rank ${
-                                      aiResult.aiProbability <= 30 ? 'text-up' : aiResult.aiProbability <= 60 ? 'text-gold' : 'text-down'
+                                      aiResult.aiProbability <= 30 ? 'text-text' : aiResult.aiProbability <= 60 ? 'text-accent' : 'text-down'
                                     }`}>
                                       {aiResult.aiProbability}%
                                     </span>
                                     <div className="flex-1 h-2 bg-border/30 rounded-full overflow-hidden">
                                       <div
                                         className={`h-full rounded-full ${
-                                          aiResult.aiProbability <= 30 ? 'bg-up' : aiResult.aiProbability <= 60 ? 'bg-gold' : 'bg-down'
+                                          aiResult.aiProbability <= 30 ? 'bg-text' : aiResult.aiProbability <= 60 ? 'bg-accent' : 'bg-down'
                                         }`}
                                         style={{ width: `${aiResult.aiProbability}%` }}
                                       />
@@ -604,9 +604,9 @@ export default function PostAnalysisPage() {
                                           <div key={i} className="flex items-start gap-2 text-sm">
                                             <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
                                               s.type === 'topic' ? 'bg-accent/10 text-accent'
-                                              : s.type === 'evidence' ? 'bg-blue-500/10 text-blue-500'
-                                              : s.type === 'conclusion' ? 'bg-up/10 text-up'
-                                              : 'bg-gold/10 text-gold'
+                                              : s.type === 'evidence' ? 'bg-text/10 text-text'
+                                              : s.type === 'conclusion' ? 'bg-down/10 text-down'
+                                              : 'bg-text/15 text-text'
                                             }`}>
                                               {sentenceTypeLabel[s.type] || s.type}
                                             </span>
@@ -638,7 +638,7 @@ export default function PostAnalysisPage() {
                               {!plagResult && !isCheckingPlag && (
                                 <button
                                   onClick={e => { e.stopPropagation(); e.preventDefault(); runPlagiarismCheck(post.id); }}
-                                  className="text-sm px-4 py-2 rounded-xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition cursor-pointer"
+                                  className="text-sm px-4 py-2 rounded-xl bg-text text-white font-bold hover:bg-text/90 transition cursor-pointer"
                                 >
                                   표절검사 실행
                                 </button>
@@ -647,7 +647,7 @@ export default function PostAnalysisPage() {
                               {/* 표절검사 진행 중 */}
                               {isCheckingPlag && (
                                 <div className="flex items-center gap-2 text-sm text-dim py-2">
-                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full" />
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-text/30 border-t-text rounded-full" />
                                   표절검사 중...
                                   {plagProgress && (
                                     <span className="text-xs">({plagProgress.current}/{plagProgress.total})</span>
@@ -658,20 +658,20 @@ export default function PostAnalysisPage() {
                               {/* 표절검사 결과 */}
                               {plagResult && (
                                 <div className="space-y-4 pt-2 border-t border-border/30">
-                                  <h4 className="text-xs font-bold text-blue-500">표절검사 결과</h4>
+                                  <h4 className="text-xs font-bold text-text">표절검사 결과</h4>
 
                                   {/* 원본율 */}
                                   <div className="flex items-center gap-3">
                                     <span className="text-sm font-bold">원본율:</span>
                                     <span className={`text-lg font-black font-rank ${
-                                      plagResult.originalRate >= 80 ? 'text-up' : plagResult.originalRate >= 50 ? 'text-gold' : 'text-down'
+                                      plagResult.originalRate >= 80 ? 'text-text' : plagResult.originalRate >= 50 ? 'text-accent' : 'text-down'
                                     }`}>
                                       {plagResult.originalRate}%
                                     </span>
                                     <div className="flex-1 h-2 bg-border/30 rounded-full overflow-hidden">
                                       <div
                                         className={`h-full rounded-full ${
-                                          plagResult.originalRate >= 80 ? 'bg-up' : plagResult.originalRate >= 50 ? 'bg-gold' : 'bg-down'
+                                          plagResult.originalRate >= 80 ? 'bg-text' : plagResult.originalRate >= 50 ? 'bg-accent' : 'bg-down'
                                         }`}
                                         style={{ width: `${plagResult.originalRate}%` }}
                                       />
@@ -680,18 +680,18 @@ export default function PostAnalysisPage() {
 
                                   <div className="flex gap-3 text-xs text-dim">
                                     <span>검사 문장: <strong className="text-text">{plagResult.totalChecked}개</strong></span>
-                                    <span>유사 발견: <strong className={plagResult.duplicateCount > 0 ? 'text-down' : 'text-up'}>{plagResult.duplicateCount}개</strong></span>
+                                    <span>유사 발견: <strong className={plagResult.duplicateCount > 0 ? 'text-down' : 'text-text'}>{plagResult.duplicateCount}개</strong></span>
                                   </div>
 
                                   {/* 문장별 결과 */}
                                   <div className="space-y-2">
                                     {plagResult.sentences.map((s, i) => (
                                       <div key={i} className={`text-sm rounded-xl p-3 border ${
-                                        s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-up/5 border-up/20'
+                                        s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-text/5 border-text/15'
                                       }`}>
                                         <div className="flex items-start gap-2">
                                           <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                            s.isDuplicate ? 'bg-down/10 text-down' : 'bg-up/10 text-up'
+                                            s.isDuplicate ? 'bg-down/10 text-down' : 'bg-text/10 text-text'
                                           }`}>
                                             {s.isDuplicate ? '유사' : '원본'}
                                           </span>
@@ -717,7 +717,7 @@ export default function PostAnalysisPage() {
                               {!textResult && !isAnalyzingText && (
                                 <button
                                   onClick={e => { e.stopPropagation(); e.preventDefault(); runTextAnalysis(post.id); }}
-                                  className="text-sm px-4 py-2 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 transition cursor-pointer"
+                                  className="text-sm px-4 py-2 rounded-xl bg-down text-white font-bold hover:bg-down/90 transition cursor-pointer"
                                 >
                                   형태소/문장 분석
                                 </button>
@@ -725,7 +725,7 @@ export default function PostAnalysisPage() {
 
                               {isAnalyzingText && (
                                 <div className="flex items-center gap-2 text-sm text-dim py-2">
-                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-purple-500/30 border-t-purple-500 rounded-full" />
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-down/30 border-t-down rounded-full" />
                                   형태소/문장 분석 중...
                                 </div>
                               )}
@@ -733,7 +733,7 @@ export default function PostAnalysisPage() {
                               {/* 형태소/문장 분석 결과 */}
                               {textResult && (
                                 <div className="space-y-4 pt-2 border-t border-border/30">
-                                  <h4 className="text-xs font-bold text-purple-500">형태소/문장 분석 결과</h4>
+                                  <h4 className="text-xs font-bold text-down">형태소/문장 분석 결과</h4>
 
                                   {/* 문자 구성 */}
                                   <div className="grid grid-cols-5 gap-2">
@@ -765,7 +765,7 @@ export default function PostAnalysisPage() {
                                     <div className="flex items-center gap-4 mb-2 text-xs">
                                       <span>문장 수: <strong className="text-text">{textResult.sentences.count}개</strong></span>
                                       <span>평균 길이: <strong className="text-text">{textResult.sentences.avgLength}자</strong></span>
-                                      <span>가독성: <strong className={textResult.sentences.readabilityScore >= 70 ? 'text-up' : textResult.sentences.readabilityScore >= 40 ? 'text-gold' : 'text-down'}>{textResult.sentences.readabilityLabel} ({textResult.sentences.readabilityScore}점)</strong></span>
+                                      <span>가독성: <strong className={textResult.sentences.readabilityScore >= 70 ? 'text-text' : textResult.sentences.readabilityScore >= 40 ? 'text-accent' : 'text-down'}>{textResult.sentences.readabilityLabel} ({textResult.sentences.readabilityScore}점)</strong></span>
                                     </div>
                                     {/* 길이 분포 바 */}
                                     <div className="flex gap-1 h-6 rounded-lg overflow-hidden">
@@ -774,7 +774,7 @@ export default function PostAnalysisPage() {
                                           <div
                                             key={i}
                                             className={`flex items-center justify-center text-[9px] font-bold text-white ${
-                                              i === 0 ? 'bg-up' : i === 1 ? 'bg-up/70' : i === 2 ? 'bg-gold' : i === 3 ? 'bg-down/70' : 'bg-down'
+                                              i === 0 ? 'bg-text' : i === 1 ? 'bg-text/70' : i === 2 ? 'bg-accent' : i === 3 ? 'bg-down/70' : 'bg-down'
                                             }`}
                                             style={{ flex: d.count }}
                                             title={`${d.label}: ${d.count}개 (${d.percent}%)`}
@@ -797,10 +797,10 @@ export default function PostAnalysisPage() {
                                     <div className="flex gap-2 flex-wrap">
                                       {[
                                         { label: '명사', count: textResult.morphemes.distribution.nouns, color: 'bg-accent/10 text-accent border-accent/20' },
-                                        { label: '동사', count: textResult.morphemes.distribution.verbs, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-                                        { label: '형용사', count: textResult.morphemes.distribution.adjectives, color: 'bg-up/10 text-up border-up/20' },
-                                        { label: '부사', count: textResult.morphemes.distribution.adverbs, color: 'bg-gold/10 text-gold border-gold/20' },
-                                        { label: '접속사', count: textResult.morphemes.distribution.conjunctions, color: 'bg-down/10 text-down border-down/20' },
+                                        { label: '동사', count: textResult.morphemes.distribution.verbs, color: 'bg-text/10 text-text border-text/20' },
+                                        { label: '형용사', count: textResult.morphemes.distribution.adjectives, color: 'bg-down/10 text-down border-down/20' },
+                                        { label: '부사', count: textResult.morphemes.distribution.adverbs, color: 'bg-accent/15 text-accent border-accent/30' },
+                                        { label: '접속사', count: textResult.morphemes.distribution.conjunctions, color: 'bg-text/15 text-text border-text/30' },
                                       ].map(item => (
                                         <span key={item.label} className={`text-xs px-2.5 py-1 rounded-lg border ${item.color}`}>
                                           {item.label}: <strong>{item.count}</strong>
@@ -833,7 +833,7 @@ export default function PostAnalysisPage() {
                                         {textResult.sentences.sentences.map((s, i) => (
                                           <div key={i} className="flex items-start gap-2 text-xs">
                                             <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                              s.type === 'longest' ? 'bg-down/10 text-down' : 'bg-up/10 text-up'
+                                              s.type === 'longest' ? 'bg-down/10 text-down' : 'bg-text/10 text-text'
                                             }`}>
                                               {s.type === 'longest' ? '긴 문장' : '짧은 문장'} {s.length}자
                                             </span>
@@ -908,27 +908,27 @@ export default function PostAnalysisPage() {
                           </button>
                         )}
                         {isCheckingPlag ? (
-                          <span className="animate-spin inline-block w-3 h-3 border border-blue-500 border-t-transparent rounded-full" />
+                          <span className="animate-spin inline-block w-3 h-3 border border-text border-t-transparent rounded-full" />
                         ) : plagResult ? (
-                          <span className={`font-bold ${plagResult.originalRate >= 80 ? 'text-up' : 'text-down'}`}>
+                          <span className={`font-bold ${plagResult.originalRate >= 80 ? 'text-text' : 'text-down'}`}>
                             원본 {plagResult.originalRate}%
                           </span>
                         ) : (
                           <button
                             onClick={e => { e.stopPropagation(); runPlagiarismCheck(post.id); }}
-                            className="text-blue-500 font-bold cursor-pointer"
+                            className="text-text font-bold cursor-pointer"
                           >
                             표절검사
                           </button>
                         )}
                         {isAnalyzingText ? (
-                          <span className="animate-spin inline-block w-3 h-3 border border-purple-500 border-t-transparent rounded-full" />
+                          <span className="animate-spin inline-block w-3 h-3 border border-down border-t-transparent rounded-full" />
                         ) : textResult ? (
-                          <span className="text-purple-500 font-bold">형태소</span>
+                          <span className="text-down font-bold">형태소</span>
                         ) : (
                           <button
                             onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
-                            className="text-purple-500 font-bold cursor-pointer"
+                            className="text-down font-bold cursor-pointer"
                           >
                             형태소분석
                           </button>
@@ -953,7 +953,7 @@ export default function PostAnalysisPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold">AI 확률:</span>
                               <span className={`font-black font-rank ${
-                                aiResult.aiProbability <= 30 ? 'text-up' : aiResult.aiProbability <= 60 ? 'text-gold' : 'text-down'
+                                aiResult.aiProbability <= 30 ? 'text-text' : aiResult.aiProbability <= 60 ? 'text-accent' : 'text-down'
                               }`}>
                                 {aiResult.aiProbability}%
                               </span>
@@ -975,7 +975,7 @@ export default function PostAnalysisPage() {
                                 {aiResult.keySentences.map((s, i) => (
                                   <div key={i} className="flex items-start gap-1.5 text-xs">
                                     <span className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded ${
-                                      s.type === 'topic' ? 'bg-accent/10 text-accent' : s.type === 'evidence' ? 'bg-blue-500/10 text-blue-500' : s.type === 'conclusion' ? 'bg-up/10 text-up' : 'bg-gold/10 text-gold'
+                                      s.type === 'topic' ? 'bg-accent/10 text-accent' : s.type === 'evidence' ? 'bg-text/10 text-text' : s.type === 'conclusion' ? 'bg-down/10 text-down' : 'bg-text/15 text-text'
                                     }`}>{sentenceTypeLabel[s.type]}</span>
                                     <span className="leading-relaxed">{s.sentence}</span>
                                   </div>
@@ -989,14 +989,14 @@ export default function PostAnalysisPage() {
                         {!plagResult && !isCheckingPlag && (
                           <button
                             onClick={() => runPlagiarismCheck(post.id)}
-                            className="text-sm px-4 py-2 rounded-xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition cursor-pointer w-full"
+                            className="text-sm px-4 py-2 rounded-xl bg-text text-white font-bold hover:bg-text/90 transition cursor-pointer w-full"
                           >
                             표절검사 실행
                           </button>
                         )}
                         {isCheckingPlag && (
                           <div className="flex items-center gap-2 text-sm text-dim">
-                            <span className="animate-spin inline-block w-3 h-3 border border-blue-500 border-t-transparent rounded-full" />
+                            <span className="animate-spin inline-block w-3 h-3 border border-text border-t-transparent rounded-full" />
                             표절검사 중... {plagProgress && `(${plagProgress.current}/${plagProgress.total})`}
                           </div>
                         )}
@@ -1004,16 +1004,16 @@ export default function PostAnalysisPage() {
                           <div className="space-y-3 pt-2 border-t border-border/30">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold">원본율:</span>
-                              <span className={`font-black font-rank ${plagResult.originalRate >= 80 ? 'text-up' : plagResult.originalRate >= 50 ? 'text-gold' : 'text-down'}`}>
+                              <span className={`font-black font-rank ${plagResult.originalRate >= 80 ? 'text-text' : plagResult.originalRate >= 50 ? 'text-accent' : 'text-down'}`}>
                                 {plagResult.originalRate}%
                               </span>
                               <span className="text-[10px] text-dim">({plagResult.duplicateCount}/{plagResult.totalChecked} 유사)</span>
                             </div>
                             <div className="space-y-1.5">
                               {plagResult.sentences.map((s, i) => (
-                                <div key={i} className={`text-xs rounded-lg p-2 border ${s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-up/5 border-up/20'}`}>
+                                <div key={i} className={`text-xs rounded-lg p-2 border ${s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-text/5 border-text/15'}`}>
                                   <div className="flex items-start gap-1.5">
-                                    <span className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded ${s.isDuplicate ? 'bg-down/10 text-down' : 'bg-up/10 text-up'}`}>
+                                    <span className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded ${s.isDuplicate ? 'bg-down/10 text-down' : 'bg-text/10 text-text'}`}>
                                       {s.isDuplicate ? '유사' : '원본'}
                                     </span>
                                     <span className="line-clamp-1">{s.sentence}</span>
@@ -1037,20 +1037,20 @@ export default function PostAnalysisPage() {
                         {!textResult && !isAnalyzingText && (
                           <button
                             onClick={() => runTextAnalysis(post.id)}
-                            className="text-sm px-4 py-2 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 transition cursor-pointer w-full"
+                            className="text-sm px-4 py-2 rounded-xl bg-down text-white font-bold hover:bg-down/90 transition cursor-pointer w-full"
                           >
                             형태소/문장 분석
                           </button>
                         )}
                         {isAnalyzingText && (
                           <div className="flex items-center gap-2 text-sm text-dim">
-                            <span className="animate-spin inline-block w-3 h-3 border border-purple-500 border-t-transparent rounded-full" />
+                            <span className="animate-spin inline-block w-3 h-3 border border-down border-t-transparent rounded-full" />
                             형태소/문장 분석 중...
                           </div>
                         )}
                         {textResult && (
                           <div className="space-y-3 pt-2 border-t border-border/30">
-                            <h4 className="text-xs font-bold text-purple-500">형태소/문장 분석</h4>
+                            <h4 className="text-xs font-bold text-down">형태소/문장 분석</h4>
                             <div className="grid grid-cols-3 gap-1.5 text-center">
                               <div className="bg-bg rounded-lg p-1.5">
                                 <p className="text-[9px] text-dim">문장수</p>
@@ -1062,7 +1062,7 @@ export default function PostAnalysisPage() {
                               </div>
                               <div className="bg-bg rounded-lg p-1.5">
                                 <p className="text-[9px] text-dim">가독성</p>
-                                <p className={`text-xs font-bold ${textResult.sentences.readabilityScore >= 70 ? 'text-up' : textResult.sentences.readabilityScore >= 40 ? 'text-gold' : 'text-down'}`}>{textResult.sentences.readabilityScore}점</p>
+                                <p className={`text-xs font-bold ${textResult.sentences.readabilityScore >= 70 ? 'text-text' : textResult.sentences.readabilityScore >= 40 ? 'text-accent' : 'text-down'}`}>{textResult.sentences.readabilityScore}점</p>
                               </div>
                             </div>
                             <div className="flex flex-wrap gap-1">
