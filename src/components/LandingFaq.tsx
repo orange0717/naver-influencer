@@ -1,44 +1,26 @@
 import { FAQ_DATA, FAQ_CATEGORIES } from '@/data/faq-data';
 
-// 카테고리별 색상 팔레트 (배경 + 카드 + 강조)
-const CATEGORY_COLORS: Record<
-  string,
-  { bg: string; card: string; border: string; accent: string; chip: string }
-> = {
+// 카테고리별 강조 색상 (칩 + Q번호 + 아이콘)
+const CATEGORY_COLORS: Record<string, { accent: string; chip: string }> = {
   '서비스 이용': {
-    bg: 'bg-rose-50',
-    card: 'bg-white',
-    border: 'border-rose-200',
     accent: 'text-rose-500',
-    chip: 'bg-rose-100 text-rose-600',
+    chip: 'bg-rose-50 text-rose-600 border-rose-200',
   },
   '키워드 분석': {
-    bg: 'bg-sky-50',
-    card: 'bg-white',
-    border: 'border-sky-200',
     accent: 'text-sky-500',
-    chip: 'bg-sky-100 text-sky-600',
+    chip: 'bg-sky-50 text-sky-600 border-sky-200',
   },
   '경쟁자 분석': {
-    bg: 'bg-amber-50',
-    card: 'bg-white',
-    border: 'border-amber-200',
     accent: 'text-amber-600',
-    chip: 'bg-amber-100 text-amber-700',
+    chip: 'bg-amber-50 text-amber-700 border-amber-200',
   },
   '결제·플랜': {
-    bg: 'bg-emerald-50',
-    card: 'bg-white',
-    border: 'border-emerald-200',
     accent: 'text-emerald-600',
-    chip: 'bg-emerald-100 text-emerald-700',
+    chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   },
   '계정': {
-    bg: 'bg-violet-50',
-    card: 'bg-white',
-    border: 'border-violet-200',
     accent: 'text-violet-500',
-    chip: 'bg-violet-100 text-violet-600',
+    chip: 'bg-violet-50 text-violet-600 border-violet-200',
   },
 };
 
@@ -46,7 +28,7 @@ export default function LandingFaq() {
   const categories = FAQ_CATEGORIES.filter(c => c !== '전체');
 
   return (
-    <div className="space-y-0">
+    <div className="max-w-3xl mx-auto px-4">
       {/* 상단 헤더 */}
       <div className="text-center pb-12">
         <p className="text-xs font-bold tracking-[0.3em] text-accent mb-4">FAQ</p>
@@ -58,21 +40,18 @@ export default function LandingFaq() {
         </p>
       </div>
 
-      {/* 카테고리별 섹션 (각 다른 배경색) */}
-      {categories.map(category => {
-        const items = FAQ_DATA.filter(item => item.category === category);
-        if (items.length === 0) return null;
-        const colors = CATEGORY_COLORS[category] ?? CATEGORY_COLORS['서비스 이용'];
+      {/* 카테고리별 그룹 (배경색 없이) */}
+      <div className="space-y-12">
+        {categories.map(category => {
+          const items = FAQ_DATA.filter(item => item.category === category);
+          if (items.length === 0) return null;
+          const colors = CATEGORY_COLORS[category] ?? CATEGORY_COLORS['서비스 이용'];
 
-        return (
-          <section
-            key={category}
-            className={`${colors.bg} px-4 py-12 md:py-16`}
-          >
-            <div className="max-w-3xl mx-auto">
-              <div className="flex items-center justify-center gap-2 mb-8">
+          return (
+            <section key={category}>
+              <div className="flex items-center justify-center mb-6">
                 <span
-                  className={`text-[11px] font-bold tracking-wider px-3 py-1 rounded-full ${colors.chip}`}
+                  className={`text-[11px] font-bold tracking-wider px-3 py-1 rounded-full border ${colors.chip}`}
                 >
                   {category}
                 </span>
@@ -82,7 +61,7 @@ export default function LandingFaq() {
                 {items.map((item, idx) => (
                   <details
                     key={`${category}-${idx}`}
-                    className={`group ${colors.card} border ${colors.border} rounded-2xl overflow-hidden transition-all hover:shadow-sm`}
+                    className="group bg-surface border border-border rounded-2xl overflow-hidden transition-all hover:border-accent/30"
                   >
                     <summary className="flex items-center gap-4 px-5 md:px-7 py-4 md:py-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                       <span
@@ -107,13 +86,13 @@ export default function LandingFaq() {
                   </details>
                 ))}
               </div>
-            </div>
-          </section>
-        );
-      })}
+            </section>
+          );
+        })}
+      </div>
 
       {/* 하단 안내 */}
-      <div className="text-center py-12 px-4">
+      <div className="text-center pt-12 pb-4">
         <p className="text-sm text-dim">
           더 궁금하신 점은{' '}
           <a

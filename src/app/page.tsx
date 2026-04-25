@@ -593,7 +593,7 @@ export default function LandingPage() {
       <SectionDivider />
 
       {/* ═══════════ 자주 묻는 질문 ═══════════ */}
-      <section className="bg-white pt-20 md:pt-24 pb-0">
+      <section className="bg-white py-20 md:py-24">
         <LandingFaq />
       </section>
 
