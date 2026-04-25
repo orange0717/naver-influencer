@@ -13,16 +13,15 @@ interface Props {
 }
 
 function getRankColor(avgRank: number): string {
-  if (avgRank <= 3) return 'text-green-600';
   if (avgRank <= 10) return 'text-accent';
   return 'text-dim';
 }
 
 function getBarColor(rate: number): string {
-  if (rate >= 80) return 'bg-green-500';
-  if (rate >= 50) return 'bg-accent';
-  if (rate >= 30) return 'bg-yellow-500';
-  return 'bg-gray-300';
+  if (rate >= 80) return 'bg-pink-500';
+  if (rate >= 50) return 'bg-pink-400';
+  if (rate >= 30) return 'bg-pink-300';
+  return 'bg-pink-200';
 }
 
 export default function CategoryStrengthSection({ categoryStats }: Props) {
