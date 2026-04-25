@@ -269,7 +269,9 @@ export default function AdminMembersPage() {
                     ) : <span className="text-[10px] text-dim">무료</span>}
                   </td>
                   <td className="px-3 py-2.5 text-right text-xs text-dim">
-                    {m.subscription_plan && m.subscription_expires_at ? (() => {
+                    {m.is_admin ? (
+                      <span className="text-accent font-bold">관리자</span>
+                    ) : m.subscription_plan && m.subscription_expires_at ? (() => {
                       const remainMs = new Date(m.subscription_expires_at).getTime() - Date.now();
                       const remainDays = Math.max(0, Math.ceil(remainMs / 86400000));
                       return remainDays > 0 ? `${remainDays}일 남음` : '만료';
