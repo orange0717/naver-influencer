@@ -10,7 +10,8 @@ export type PlanTier = 'free' | 'blogger' | 'influencer';
 export type AppCategoryKey =
   | 'my'
   | 'ranking'
-  | 'search'
+  | 'research'
+  | 'keyword'
   | 'writing'
   | 'info'
   | 'partner';
@@ -48,10 +49,18 @@ export const APP_CATEGORIES: AppCategoryMeta[] = [
     buttonClass: BUTTON,
   },
   {
-    key: 'search',
-    label: '검색 · 리서치',
-    description: '인플루언서 · 키워드 · 트렌드 검색',
-    tag: '검색',
+    key: 'research',
+    label: '정보',
+    description: '인플루언서 · 경쟁자 정보 검색',
+    tag: '정보',
+    badgeClass: BADGE,
+    buttonClass: BUTTON,
+  },
+  {
+    key: 'keyword',
+    label: '키워드',
+    description: '키워드 검색·검색량·트렌드·챌린지',
+    tag: '키워드',
     badgeClass: BADGE,
     buttonClass: BUTTON,
   },
@@ -204,32 +213,48 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/stats',
   },
 
-  // ── 검색 · 리서치 ──
+  // ── 정보 ──
   {
     id: 'influencers',
-    category: 'search',
+    category: 'research',
     title: '인플루언서 리스트',
     description: '네이버 인플루언서 전체 목록·검색·필터',
     href: '/influencers',
   },
   {
-    id: 'keywords-list',
-    category: 'search',
-    title: '키워드 챌린지 리스트',
-    description: '인플루언서 키워드 챌린지 전체 목록',
-    href: '/keywords',
-    requiredPlan: 'influencer',
+    id: 'competitor',
+    category: 'research',
+    title: '경쟁자 분석',
+    description: '경쟁 블로그 지표 비교·변화 추이',
+    href: '/competitor',
+    ctaLabel: '일일 1회 무료',
   },
+
+  // ── 키워드 ──
   {
     id: 'keywords-blogger',
-    category: 'search',
+    category: 'keyword',
     title: '키워드 검색',
     description: '블로그·검색량·경쟁도 기반 키워드 조사',
     href: '/keywords/blogger',
   },
   {
+    id: 'search-volume',
+    category: 'keyword',
+    title: '검색량 조회',
+    description: '네이버 월간 검색량 조회',
+    href: '/search-volume',
+  },
+  {
+    id: 'keywords-google-trends',
+    category: 'keyword',
+    title: '구글 트렌드',
+    description: '구글 트렌드 기반 키워드 인사이트',
+    href: '/keywords/google-trends',
+  },
+  {
     id: 'keywords-blog-ranking',
-    category: 'search',
+    category: 'keyword',
     title: '키워드 검색순위',
     description: '특정 키워드의 상위 블로그·인플루언서 노출',
     href: '/keywords/blog-ranking',
@@ -237,33 +262,19 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   },
   {
     id: 'keywords-hot',
-    category: 'search',
+    category: 'keyword',
     title: '실시간 상승 키워드',
     description: '급상승 중인 키워드 모니터링',
     href: '/keywords/hot',
     requiredPlan: 'blogger',
   },
   {
-    id: 'keywords-google-trends',
-    category: 'search',
-    title: '구글 트렌드',
-    description: '구글 트렌드 기반 키워드 인사이트',
-    href: '/keywords/google-trends',
-  },
-  {
-    id: 'search-volume',
-    category: 'search',
-    title: '검색량 조회',
-    description: '네이버 월간 검색량 조회',
-    href: '/search-volume',
-  },
-  {
-    id: 'competitor',
-    category: 'search',
-    title: '경쟁자 분석',
-    description: '경쟁 블로그 지표 비교·변화 추이',
-    href: '/competitor',
-    ctaLabel: '일일 1회 무료',
+    id: 'keywords-list',
+    category: 'keyword',
+    title: '키워드 챌린지 리스트',
+    description: '인플루언서 키워드 챌린지 전체 목록',
+    href: '/keywords',
+    requiredPlan: 'influencer',
   },
 
   // ── 글쓰기 ──
