@@ -35,11 +35,20 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
   // 블로거 타입이면서 blog_id가 있으면 'unified'로 반환 (대시보드 접근용)
   const effectiveType = (!profile.linked_influencer_id && profile.blog_id) ? 'unified' : type;
 
-  const subscriptionActive = !!(
+  const adminFlag = isAdmin(profile.id);
+  const realActive = !!(
     profile.subscription_plan &&
     profile.subscription_expires_at &&
     new Date(profile.subscription_expires_at) > new Date()
   );
+  // 관리자: 모든 유료 기능을 무제한으로 사용 — 가상 INFLUENCER 플랜 부여
+  const subscriptionActive = adminFlag || realActive;
+  const effectivePlan = adminFlag
+    ? (profile.subscription_plan || 'INFLUENCER')
+    : (profile.subscription_plan || null);
+  const effectiveExpires = adminFlag
+    ? (profile.subscription_expires_at || '2099-12-31T00:00:00Z')
+    : (profile.subscription_expires_at || null);
 
   return {
     type: effectiveType,
@@ -49,10 +58,10 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     nickname: profile.nickname ?? null,
     email: email || profile.email,
     authId: authUserId,
-    isAdmin: isAdmin(profile.id),
+    isAdmin: adminFlag,
     restricted: await isRestricted(email || profile.email),
-    subscriptionPlan: profile.subscription_plan || null,
-    subscriptionExpiresAt: profile.subscription_expires_at || null,
+    subscriptionPlan: effectivePlan,
+    subscriptionExpiresAt: effectiveExpires,
     subscriptionActive,
   };
 }

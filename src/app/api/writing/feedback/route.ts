@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidAccess } from '@/lib/admin';
+import { requirePaidAccess, isAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -10,6 +10,7 @@ const WORKER_URL = 'https://jolly-term-4055.orange-e65.workers.dev';
 const MAX_TEXT_LENGTH = 12_000;
 
 async function hasInfluencerPlan(userId: string): Promise<boolean> {
+  if (isAdmin(userId)) return true;
   try {
     const supabase = createServiceClient();
     const { data } = await supabase

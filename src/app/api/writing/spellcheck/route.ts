@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidAccess } from '@/lib/admin';
+import { requirePaidAccess, isAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -13,6 +13,7 @@ const MAX_TEXT_LENGTH = 10_000;
  * 사용자의 구독 플랜 확인 (blogger+ 또는 influencer 만 허용)
  */
 async function hasActivePaidPlan(userId: string): Promise<boolean> {
+  if (isAdmin(userId)) return true;
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
