@@ -7,6 +7,15 @@
 -- - growth_stories.comment_count 컬럼
 -- - increment/decrement RPC
 
+-- 0. updated_at 트리거 함수 (migration-076 누락 대비, 자체 완결)
+CREATE OR REPLACE FUNCTION update_growth_stories_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 1. images 컬럼
 ALTER TABLE growth_stories
   ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
