@@ -74,6 +74,7 @@ export default function AppCard({
 }: AppCardProps) {
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
   const locked =
+    !app.devPreview &&
     !!app.requiredPlan && PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan];
   const needsLogin = !!app.authOnly && !isLoggedIn;
 
@@ -143,7 +144,7 @@ export default function AppCard({
       </div>
 
       {/* 제목 + 설명 */}
-      <div className="flex-1 min-h-0 mb-3">
+      <div className={`flex-1 min-h-0 mb-3 transition-opacity ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}>
         <h3 className="font-title font-bold text-base text-text mb-1 leading-snug line-clamp-2">
           {app.title}
         </h3>
@@ -158,14 +159,14 @@ export default function AppCard({
           href={targetHref}
           target="_blank"
           rel="noopener noreferrer"
-          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-colors ${category.buttonClass}`}
+          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass} ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}
         >
           {buttonLabel}
         </a>
       ) : (
         <Link
           href={targetHref}
-          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-colors ${category.buttonClass} ${locked ? 'opacity-90' : ''}`}
+          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass} ${locked ? 'opacity-90' : ''} ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}
         >
           {buttonLabel}
         </Link>
