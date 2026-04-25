@@ -246,6 +246,192 @@ export default function SubscribeClient() {
         <p className="text-xs text-dim">결제는 PortOne 안전결제로 처리됩니다</p>
       </div>
 
+      {/* 기능과 스펙 비교표 */}
+      <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
+        <div className="space-y-1">
+          <h2 className="text-base font-bold">기능과 스펙</h2>
+          <p className="text-xs text-dim">플랜별 제공 기능을 한눈에 비교하세요</p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-2 font-semibold text-dim w-2/5">기능</th>
+                <th className="text-center py-3 px-2 font-semibold">무료</th>
+                <th className="text-center py-3 px-2 font-semibold text-accent">블로거</th>
+                <th className="text-center py-3 px-2 font-semibold text-accent">인플루언서</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {/* MY 카테고리 */}
+              <tr>
+                <td className="py-2.5 px-2 font-semibold text-dim" colSpan={4}>MY</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">MY 블로그</td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">MY 키워드순위</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">MY 포스팅 분석</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">MY 캠페인 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">MY 정산내역 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">MY 키워드 챌린지</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+
+              {/* 인플루언서 카테고리 */}
+              <tr>
+                <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>인플루언서</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">인플루언서 리스트</td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">연도별 선정 현황</td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+
+              {/* 키워드 카테고리 */}
+              <tr>
+                <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>키워드</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">키워드 검색</td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">키워드 구글 트렌드</td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">키워드 검색순위</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">실시간 상승 키워드</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">키워드 챌린지 리스트</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+
+              {/* 랭킹 카테고리 */}
+              <tr>
+                <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>랭킹</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">블로거 순위</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">블로그 품질지수 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">인플루언서 순위</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+
+              {/* 도구 */}
+              <tr>
+                <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>도구</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">경쟁자 분석</td>
+                <td className="text-center text-[11px] text-dim">1일 1회</td>
+                <td className="text-center text-[11px] text-accent font-semibold">1일 5회</td>
+                <td className="text-center text-[11px] text-accent font-semibold">무제한</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">커뮤니티</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* 운영 스펙 */}
+        <div className="border-t border-border pt-5 space-y-3">
+          <h3 className="text-sm font-bold">운영 스펙</h3>
+          <div className="grid sm:grid-cols-2 gap-3 text-xs">
+            <div className="bg-bg rounded-xl p-3 space-y-1">
+              <p className="text-dim">데이터 갱신 주기</p>
+              <p className="font-semibold">키워드 일 1회 / 인플루언서 주 1회</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3 space-y-1">
+              <p className="text-dim">수집 인플루언서</p>
+              <p className="font-semibold">전체 19,980명 (활동 13,104명)</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3 space-y-1">
+              <p className="text-dim">결제 방식</p>
+              <p className="font-semibold">신용/체크카드, 간편결제 (PortOne)</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3 space-y-1">
+              <p className="text-dim">무료 체험</p>
+              <p className="font-semibold">3일 (회원가입 시 자동 적용)</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3 space-y-1">
+              <p className="text-dim">결제 주기</p>
+              <p className="font-semibold">월간 / 연간 (1개월 할인)</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3 space-y-1">
+              <p className="text-dim">고객 지원</p>
+              <p className="font-semibold">네이버 톡톡 / 이메일</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 환불 정책 */}
       <div className="bg-surface rounded-2xl border border-border p-6 space-y-3">
         <h2 className="text-sm font-bold">환불 정책</h2>
