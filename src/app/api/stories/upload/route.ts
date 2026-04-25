@@ -50,7 +50,15 @@ export async function POST(req: NextRequest) {
 
     if (uploadErr) {
       console.error('[stories/upload] storage error:', uploadErr);
-      return NextResponse.json({ error: '업로드에 실패했습니다.' }, { status: 500 });
+      const msg = (uploadErr as { message?: string })?.message || '업로드에 실패했습니다.';
+      // 버킷 미존재일 가능성 높음
+      if (msg.toLowerCase().includes('bucket') || msg.toLowerCase().includes('not found')) {
+        return NextResponse.json(
+          { error: `Storage 버킷(public-assets) 설정 필요: ${msg}` },
+          { status: 500 },
+        );
+      }
+      return NextResponse.json({ error: `업로드 실패: ${msg}` }, { status: 500 });
     }
 
     const { data } = supabase.storage.from('public-assets').getPublicUrl(path);
