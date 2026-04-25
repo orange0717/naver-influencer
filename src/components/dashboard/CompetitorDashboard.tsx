@@ -281,7 +281,6 @@ export default function CompetitorDashboard({
                   {data && (
                     <div className="hidden sm:flex items-center gap-3 text-[11px] shrink-0">
                       <span className="text-dim">TOP3 <strong className="text-text font-rank">{data.stats.top3Count}</strong></span>
-                      <span className="text-dim">평균 <strong className="text-text font-rank">{data.stats.avgRank}</strong>위</span>
                     </div>
                   )}
 

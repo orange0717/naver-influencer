@@ -15,7 +15,7 @@ interface ChallengeRanking {
   is_integrated_top3: boolean;
 }
 
-type SortKey = 'rank' | 'volume' | 'participants' | 'change';
+type SortKey = 'volume' | 'participants' | 'change';
 type CompFilter = 'all' | 'low' | 'mid' | 'high';
 
 function getCompLevel(participants: number): CompFilter {
@@ -32,7 +32,7 @@ const compLabels: Record<CompFilter, { label: string; className: string }> = {
 };
 
 export default function ChallengeTable({ rankings }: { rankings: ChallengeRanking[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>('rank');
+  const [sortKey, setSortKey] = useState<SortKey>('volume');
   const [compFilter, setCompFilter] = useState<CompFilter>('all');
   const [visibleCount, setVisibleCount] = useState(10);
 
@@ -43,7 +43,6 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
     }
     list.sort((a, b) => {
       switch (sortKey) {
-        case 'rank': return a.rank_position - b.rank_position;
         case 'volume': return (b.search_volume || 0) - (a.search_volume || 0);
         case 'participants': return b.participant_count - a.participant_count;
         case 'change': return Math.abs(b.rank_change) - Math.abs(a.rank_change);
@@ -97,7 +96,6 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
               onChange={e => setSortKey(e.target.value as SortKey)}
               className="text-[11px] border border-border rounded-lg px-2 py-1 bg-bg font-medium"
             >
-              <option value="rank">순위순</option>
               <option value="volume">검색량순</option>
               <option value="participants">참여자순</option>
               <option value="change">변동순</option>
@@ -112,7 +110,6 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
           <thead>
             <tr className="text-[11px] text-dim border-b border-border/50">
               <th className="text-left px-5 py-2.5 font-semibold">키워드</th>
-              <th className="text-center px-3 py-2.5 font-semibold">순위</th>
               <th className="text-center px-3 py-2.5 font-semibold">변동</th>
               <th className="text-center px-3 py-2.5 font-semibold">참여자</th>
               <th className="text-center px-3 py-2.5 font-semibold">월 검색량</th>
@@ -130,13 +127,6 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
                       <span className="text-sm font-semibold">{r.keyword}</span>
                       <span className="text-[11px] text-dim ml-1.5">{r.category}</span>
                     </Link>
-                  </td>
-                  <td className="text-center px-3 py-3">
-                    <span className={`text-sm font-black font-rank ${
-                      r.rank_position === 1 ? 'text-gold' : r.rank_position <= 3 ? 'text-accent' : ''
-                    }`}>
-                      {r.rank_position}위
-                    </span>
                   </td>
                   <td className="text-center px-3 py-3">
                     {r.rank_change !== 0 ? (
@@ -202,11 +192,6 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
                     {r.rank_change > 0 ? '▲' : '▼'}{Math.abs(r.rank_change)}
                   </span>
                 )}
-                <span className={`text-sm font-black font-rank ${
-                  r.rank_position === 1 ? 'text-gold' : r.rank_position <= 3 ? 'text-accent' : ''
-                }`}>
-                  {r.rank_position}위
-                </span>
               </div>
             </Link>
           );
