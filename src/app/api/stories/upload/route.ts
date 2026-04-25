@@ -44,20 +44,37 @@ export async function POST(req: NextRequest) {
     const path = `stories/${safeUserId}/${today}-${randomUUID()}.${ext}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { error: uploadErr } = await supabase.storage
-      .from('public-assets')
-      .upload(path, buffer, { upsert: false, contentType: file.type });
+
+    async function tryUpload() {
+      return supabase.storage
+        .from('public-assets')
+        .upload(path, buffer, { upsert: false, contentType: file.type });
+    }
+
+    let { error: uploadErr } = await tryUpload();
+
+    // 버킷이 없으면 즉시 생성하고 한 번 더 시도
+    if (uploadErr) {
+      const msg = (uploadErr as { message?: string })?.message || '';
+      if (/bucket|not found/i.test(msg)) {
+        const { error: createErr } = await supabase.storage.createBucket('public-assets', {
+          public: true,
+          fileSizeLimit: 10 * 1024 * 1024,
+        });
+        if (createErr && !/exists/i.test(createErr.message || '')) {
+          console.error('[stories/upload] bucket create error:', createErr);
+          return NextResponse.json(
+            { error: `버킷 생성 실패: ${createErr.message}` },
+            { status: 500 },
+          );
+        }
+        ({ error: uploadErr } = await tryUpload());
+      }
+    }
 
     if (uploadErr) {
       console.error('[stories/upload] storage error:', uploadErr);
-      const msg = (uploadErr as { message?: string })?.message || '업로드에 실패했습니다.';
-      // 버킷 미존재일 가능성 높음
-      if (msg.toLowerCase().includes('bucket') || msg.toLowerCase().includes('not found')) {
-        return NextResponse.json(
-          { error: `Storage 버킷(public-assets) 설정 필요: ${msg}` },
-          { status: 500 },
-        );
-      }
+      const msg = (uploadErr as { message?: string })?.message || '업로드 실패';
       return NextResponse.json({ error: `업로드 실패: ${msg}` }, { status: 500 });
     }
 

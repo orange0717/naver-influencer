@@ -18,15 +18,20 @@ export default function StoryWritePage() {
   const [submitting, setSubmitting] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; onConfirm?: () => void } | null>(null);
 
   const MAX_IMAGES = 6;
+
+  function showToast(message: string, onConfirm?: () => void) {
+    setToast({ message, onConfirm });
+  }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (files.length === 0) return;
     if (images.length + files.length > MAX_IMAGES) {
-      alert(`이미지는 최대 ${MAX_IMAGES}장까지 첨부할 수 있습니다.`);
+      showToast(`이미지는 최대 ${MAX_IMAGES}장까지 첨부할 수 있습니다.`);
       return;
     }
 
@@ -43,7 +48,7 @@ export default function StoryWritePage() {
       }
       setImages((prev) => [...prev, ...uploaded].slice(0, MAX_IMAGES));
     } catch (err) {
-      alert(err instanceof Error ? err.message : '이미지 업로드 중 오류가 발생했습니다.');
+      showToast(err instanceof Error ? err.message : '이미지 업로드 중 오류가 발생했습니다.');
     } finally {
       setUploading(false);
     }
@@ -64,8 +69,8 @@ export default function StoryWritePage() {
     e.preventDefault();
     if (submitting) return;
 
-    if (title.trim().length < 2) return alert('제목은 2자 이상 입력해주세요.');
-    if (content.trim().length < 10) return alert('내용은 10자 이상 입력해주세요.');
+    if (title.trim().length < 2) return showToast('제목은 2자 이상 입력해주세요.');
+    if (content.trim().length < 10) return showToast('내용은 10자 이상 입력해주세요.');
 
     setSubmitting(true);
     try {
@@ -86,10 +91,9 @@ export default function StoryWritePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '작성 실패');
 
-      alert('후기가 등록되었습니다. 관리자 승인 후 게시됩니다.');
-      router.push('/stories');
+      showToast('후기가 등록되었습니다. 관리자 승인 후 게시됩니다.', () => router.push('/stories'));
     } catch (err) {
-      alert(err instanceof Error ? err.message : '작성에 실패했습니다.');
+      showToast(err instanceof Error ? err.message : '작성에 실패했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -252,6 +256,25 @@ export default function StoryWritePage() {
           </button>
         </div>
       </form>
+
+      {toast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-surface border border-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4 text-center">
+            <p className="text-sm whitespace-pre-wrap leading-relaxed">{toast.message}</p>
+            <button
+              type="button"
+              onClick={() => {
+                const cb = toast.onConfirm;
+                setToast(null);
+                cb?.();
+              }}
+              className="w-full py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent-hover transition"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
