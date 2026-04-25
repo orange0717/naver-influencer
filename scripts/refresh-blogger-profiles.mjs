@@ -168,6 +168,17 @@ const onlyBlogId = getArg('--blog-id');
 //   기본 = 'stale'  → crawled_at ASC NULLS FIRST (로테이션. 오래된 것부터 →  매일 N명 꾸준히 갱신하면 전체 커버)
 //   'rank'         → global_rank ASC (상위 랭커 우선)
 const orderMode = (getArg('--order') === 'rank') ? 'rank' : 'stale';
+const shardNum = getArg('--shard') ? parseInt(getArg('--shard')) : 0;
+const shardCount = getArg('--shards') ? parseInt(getArg('--shards')) : 1;
+
+if (shardCount > 1) {
+  if (shardNum < 0 || shardNum >= shardCount) {
+    console.error(`--shard 값은 0 <= N < ${shardCount} 이어야 합니다.`);
+    process.exit(1);
+  }
+  // shard 별 progress 파일 분리
+  CONFIG.PROGRESS_FILE = resolve(__dirname, `.refresh-blogger-profiles-progress-shard${shardNum}of${shardCount}.json`);
+}
 
 function loadProgress() {
   if (isResume && existsSync(CONFIG.PROGRESS_FILE)) {
@@ -209,6 +220,13 @@ async function main() {
       offset += data.length;
       if (data.length < chunk) break;
     }
+  }
+
+  // shard 적용 (index % shardCount === shardNum 인 것만)
+  if (shardCount > 1 && !onlyBlogId) {
+    const before = bloggers.length;
+    bloggers = bloggers.filter((_, i) => i % shardCount === shardNum);
+    console.log(`shard ${shardNum}/${shardCount} 적용: ${before}명 → ${bloggers.length}명`);
   }
 
   const total = bloggers.length;

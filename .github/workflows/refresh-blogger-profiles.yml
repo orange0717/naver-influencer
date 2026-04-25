@@ -1,29 +1,43 @@
 name: 블로거 프로필(포스트 수/최근 포스트일) 매일 갱신
 
 # 매일 KST 02:00 (전날 17:00 UTC) 에 실행
+# 8-way matrix 로 전체 약 83,933명을 8등분 병렬 처리
+# 각 shard 약 10,492명 × 1초 ≒ 2.9시간 → 하루 안에 전체 1바퀴 완료
 on:
   schedule:
     - cron: '0 17 * * *'
   workflow_dispatch:
     inputs:
-      limit:
-        description: '하루 처리량 (기본 10000, 로테이션)'
-        required: false
-        default: '10000'
       stale_days:
         description: 'N일 이상 stale 만 (기본 0 = 전일 이후 갱신 안 된 것)'
         required: false
         default: '0'
       order:
-        description: '정렬 (stale=오래된 순 로테이션 / rank=상위 우선)'
+        description: '정렬 (stale=오래된 순 / rank=상위 우선)'
         required: false
         default: 'stale'
+      reset_progress:
+        description: '진행 상태 초기화 (처음부터 다시)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+concurrency:
+  group: refresh-blogger-profiles-${{ github.event_name }}
+  cancel-in-progress: false
 
 jobs:
   refresh:
-    name: PostTitleListAsync.naver 기반 프로필 갱신
+    name: shard ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
 
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +47,18 @@ jobs:
 
       - name: 의존성 설치
         run: npm install @supabase/supabase-js --no-save --no-audit --no-fund
+
+      - name: 진행 상태 캐시 복원
+        uses: actions/cache@v4
+        with:
+          path: scripts/.refresh-blogger-profiles-progress-shard${{ matrix.shard }}of8.json
+          key: refresh-blogger-profiles-v2-shard${{ matrix.shard }}-${{ github.run_id }}
+          restore-keys: |
+            refresh-blogger-profiles-v2-shard${{ matrix.shard }}-
+
+      - name: 진행 상태 초기화 (옵션)
+        if: ${{ inputs.reset_progress == 'true' }}
+        run: rm -f scripts/.refresh-blogger-profiles-progress-shard${{ matrix.shard }}of8.json
 
       - name: 환경변수 구성
         env:
@@ -46,13 +72,13 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
 
-      - name: 실행
+      - name: 갱신 실행 (shard ${{ matrix.shard }}/8)
         run: |
-          LIMIT=${{ inputs.limit || '10000' }}
           STALE=${{ inputs.stale_days || '0' }}
           ORDER=${{ inputs.order || 'stale' }}
-          node scripts/refresh-blogger-profiles.mjs --apply --limit "$LIMIT" --stale-days "$STALE" --order "$ORDER"
+          # limit 200000 으로 전체 로드 (현재 약 83,933명) 후 shard 필터 적용
+          node scripts/refresh-blogger-profiles.mjs --apply --limit 200000 --stale-days "$STALE" --order "$ORDER" --resume --shard ${{ matrix.shard }} --shards 8
 
-      - name: 정리
+      - name: 환경변수 정리
         if: always()
-        run: rm -f scripts/.refresh-blogger-profiles-progress.json .env.local
+        run: rm -f .env.local
