@@ -1,9 +1,9 @@
 import { FAQ_DATA, FAQ_CATEGORIES } from '@/data/faq-data';
 
-// 모든 카테고리 다크핑크 통일
+// 모든 카테고리 다크핑크(#BF8C80) 통일
 const PINK = {
-  accent: 'text-rose-700',
-  chip: 'bg-rose-100 text-rose-700 border-rose-300',
+  accent: 'text-[#BF8C80]',
+  chip: 'bg-[#BF8C80]/10 text-[#BF8C80] border-[#BF8C80]/40',
 };
 const CATEGORY_COLORS: Record<string, { accent: string; chip: string }> = {
   '서비스 이용': PINK,
