@@ -28,6 +28,7 @@
     "@tosspayments/tosspayments-sdk": "^2.6.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
+    "@vercel/speed-insights": "^2.0.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "firebase-admin": "^13.7.0",
