@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
   let naverId: string | undefined;
+  let internalUserId: string | undefined;
 
   // 1. Supabase Auth 세션 체크 (우선)
   try {
@@ -21,9 +22,10 @@ export async function GET(request: NextRequest) {
       }
       const { data: profile } = await supabase
         .from('users')
-        .select('linked_influencer_id')
+        .select('id, linked_influencer_id')
         .eq('auth_id', authUser.id)
         .single();
+      internalUserId = profile?.id;
       if (profile?.linked_influencer_id) {
         const { data: linkedInf } = await supabase
           .from('influencers')
@@ -62,6 +64,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ keywords: [] });
   }
 
+  // 저장된 키워드 목록 조회 (있을 때만 필터 적용)
+  let savedKeywordNames: string[] | null = null;
+  if (internalUserId) {
+    const { data: saved } = await supabase
+      .from('saved_search_keywords')
+      .select('keyword')
+      .eq('user_id', internalUserId);
+    savedKeywordNames = (saved || []).map((s) => s.keyword);
+    // 저장된 키워드가 하나도 없으면 빈 결과 반환
+    if (savedKeywordNames.length === 0) {
+      return NextResponse.json({ keywords: [], avgHistory: [] });
+    }
+  }
+
   const sinceDate = new Date();
   sinceDate.setDate(sinceDate.getDate() - days);
 
@@ -69,11 +85,15 @@ export async function GET(request: NextRequest) {
     .from('keyword_rankings')
     .select(`
       keyword_id, rank_position, snapshot_date,
-      keyword_challenges(keyword)
+      keyword_challenges!inner(keyword)
     `)
     .eq('influencer_id', influencer.id)
     .gte('snapshot_date', sinceDate.toISOString().slice(0, 10))
     .order('snapshot_date', { ascending: true });
+
+  if (savedKeywordNames) {
+    query = query.in('keyword_challenges.keyword', savedKeywordNames);
+  }
 
   if (keywordId) {
     query = query.eq('keyword_id', keywordId);

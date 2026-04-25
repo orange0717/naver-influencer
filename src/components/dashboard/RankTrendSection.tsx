@@ -132,7 +132,7 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-bold text-[15px]">순위 추이</h3>
-          <p className="text-[11px] text-dim mt-0.5">키워드 순위 변화를 한눈에 확인하세요</p>
+          <p className="text-[11px] text-dim mt-0.5">저장한 키워드의 순위 변화를 확인하세요</p>
         </div>
         {/* 기간 선택 */}
         <div className="flex gap-1 bg-bg rounded-lg p-0.5">
@@ -257,7 +257,8 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
         <div className="h-[260px] flex items-center justify-center text-dim text-sm">
           <div className="text-center">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-dim/40 mx-auto mb-2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
-            <p>순위 데이터가 쌓이면 차트가 표시됩니다.</p>
+            <p>저장한 키워드의 순위 데이터가 쌓이면 차트가 표시됩니다.</p>
+            <p className="text-[11px] mt-1 text-dim/70">키워드 리스트에서 키워드를 저장하세요.</p>
           </div>
         </div>
       )}
