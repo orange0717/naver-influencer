@@ -44,11 +44,12 @@ export async function POST(req: NextRequest) {
     const path = `stories/${safeUserId}/${today}-${randomUUID()}.${ext}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const contentType = file.type;
 
     async function tryUpload() {
       return supabase.storage
         .from('public-assets')
-        .upload(path, buffer, { upsert: false, contentType: file.type });
+        .upload(path, buffer, { upsert: false, contentType });
     }
 
     let { error: uploadErr } = await tryUpload();
