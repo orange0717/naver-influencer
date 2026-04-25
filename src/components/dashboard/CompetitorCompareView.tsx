@@ -35,30 +35,16 @@ function CompareBar({ label, myValue, theirValue, unit, lowerIsBetter = false }:
 }) {
   const iWin = lowerIsBetter ? myValue < theirValue : myValue > theirValue;
   const tie = myValue === theirValue;
-  const total = myValue + theirValue || 1;
-  const myPct = Math.round((myValue / total) * 100);
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className={`font-bold font-rank ${iWin && !tie ? 'text-pink-500' : 'text-dim'}`}>
-          {lowerIsBetter ? myValue.toFixed(1) : myValue.toLocaleString()}{unit}
-        </span>
-        <span className="text-dim font-semibold">{label}</span>
-        <span className={`font-bold font-rank ${!iWin && !tie ? 'text-pink-500' : 'text-dim'}`}>
-          {lowerIsBetter ? theirValue.toFixed(1) : theirValue.toLocaleString()}{unit}
-        </span>
-      </div>
-      <div className="flex h-2.5 rounded-full overflow-hidden bg-pink-100">
-        <div
-          className={`transition-all ${iWin ? 'bg-pink-500' : tie ? 'bg-pink-300' : 'bg-pink-300'}`}
-          style={{ width: `${myPct}%` }}
-        />
-        <div
-          className={`transition-all ${!iWin ? 'bg-pink-500' : tie ? 'bg-pink-300' : 'bg-pink-300'}`}
-          style={{ width: `${100 - myPct}%` }}
-        />
-      </div>
+    <div className="flex items-center justify-between text-xs py-1">
+      <span className={`font-bold font-rank ${iWin && !tie ? 'text-pink-500' : 'text-dim'}`}>
+        {lowerIsBetter ? myValue.toFixed(1) : myValue.toLocaleString()}{unit}
+      </span>
+      <span className="text-dim font-semibold">{label}</span>
+      <span className={`font-bold font-rank ${!iWin && !tie ? 'text-pink-500' : 'text-dim'}`}>
+        {lowerIsBetter ? theirValue.toFixed(1) : theirValue.toLocaleString()}{unit}
+      </span>
     </div>
   );
 }
