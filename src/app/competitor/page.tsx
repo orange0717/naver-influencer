@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
 import { extractBlogId, isValidBlogId } from '@/lib/blog-utils';
 
@@ -31,6 +31,15 @@ interface BlogCompareData {
   };
 }
 
+interface AiAnalysisResult {
+  aiProbability: number;
+  aiReasoning: string;
+  keywords: { keyword: string; relevance: 'high' | 'medium' | 'low'; searchable: boolean }[];
+  keySentences: { sentence: string; type: 'topic' | 'evidence' | 'conclusion' | 'appeal'; importance: number }[];
+  writingStyle: { tone: string; readability: string; originality: number };
+  textLength: number;
+}
+
 interface CompetitorPost {
   id: string;
   title: string;
@@ -39,7 +48,20 @@ interface CompetitorPost {
   commentCount: number;
   blogTab?: { exposed: boolean; rank: number | null };
   viewTab?: { exposed: boolean; rank: number | null };
+  ai?: AiAnalysisResult;
+  aiError?: string;
 }
+
+// AI 의심도 임계값: 50% 이상 = AI 추정 (사용자 결정)
+const AI_THRESHOLD = 50;
+function getAiBadgeStyle(score: number) {
+  if (score < 30) return { bg: 'bg-up/10', text: 'text-up', label: '사람' };
+  if (score < AI_THRESHOLD) return { bg: 'bg-dim/15', text: 'text-dim', label: '불확실' };
+  return { bg: 'bg-down/15', text: 'text-down', label: 'AI 의심' };
+}
+const sentenceTypeLabel: Record<string, string> = {
+  topic: '주제', evidence: '근거', conclusion: '결론', appeal: '어필',
+};
 
 interface QuotaInfo {
   plan: 'free' | 'blogger' | 'influencer';
@@ -66,6 +88,9 @@ export default function CompetitorPage() {
   const [competitorPosts, setCompetitorPosts] = useState<CompetitorPost[]>([]);
   const [postLoading, setPostLoading] = useState(false);
   const [checkingPostId, setCheckingPostId] = useState('');
+  const [aiAnalyzingId, setAiAnalyzingId] = useState('');
+  const [aiBatchRunning, setAiBatchRunning] = useState(false);
+  const [aiExpandedId, setAiExpandedId] = useState('');
 
   useEffect(() => {
     loadAuth();
@@ -234,6 +259,78 @@ export default function CompetitorPage() {
     }
     finally { setCheckingPostId(''); }
   };
+
+  // ─── AI 의심도 분석 (포스팅 분석과 동일 SSE) ───
+  const runAiAnalysis = useCallback(async (post: CompetitorPost): Promise<void> => {
+    const blogId = extractBlogId(postCompetitorId);
+    if (!blogId || !post.id) return;
+    setAiAnalyzingId(post.id);
+    try {
+      const res = await fetch('/api/blog/ai-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId, logNo: post.id }),
+      });
+      if (!res.ok || !res.body) {
+        setCompetitorPosts(prev => prev.map(p =>
+          p.id === post.id ? { ...p, aiError: '분석 실패' } : p
+        ));
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'result') {
+              setCompetitorPosts(prev => prev.map(p =>
+                p.id === post.id ? { ...p, ai: event.data, aiError: undefined } : p
+              ));
+            } else if (event.type === 'error') {
+              setCompetitorPosts(prev => prev.map(p =>
+                p.id === post.id ? { ...p, aiError: typeof event.data === 'string' ? event.data : '분석 실패' } : p
+              ));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    } catch (err) {
+      console.error('[competitor] runAiAnalysis error:', err);
+      setCompetitorPosts(prev => prev.map(p =>
+        p.id === post.id ? { ...p, aiError: '네트워크 오류' } : p
+      ));
+    } finally {
+      setAiAnalyzingId('');
+    }
+  }, [postCompetitorId]);
+
+  // ─── 전체 AI 검사 (순차) ───
+  const runAllAiAnalysis = useCallback(async () => {
+    if (aiBatchRunning) return;
+    setAiBatchRunning(true);
+    try {
+      const targets = competitorPosts.filter(p => !p.ai && !p.aiError);
+      for (const post of targets) {
+        await runAiAnalysis(post);
+      }
+    } finally {
+      setAiBatchRunning(false);
+    }
+  }, [competitorPosts, aiBatchRunning, runAiAnalysis]);
+
+  // 새로 조회할 때 AI 결과 초기화는 loadCompetitorPosts 가 이미 setCompetitorPosts([]) 로 처리
+
+  // 포스팅 AI 통계
+  const aiCheckedCount = competitorPosts.filter(p => p.ai).length;
+  const aiSuspiciousCount = competitorPosts.filter(p => p.ai && p.ai.aiProbability >= AI_THRESHOLD).length;
 
   if (loading) {
     return <div className="max-w-4xl mx-auto py-20 text-center text-dim">로딩 중...</div>;
@@ -467,8 +564,35 @@ export default function CompetitorPage() {
 
           {competitorPosts.length > 0 && (
             <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <div className="px-5 py-3 border-b border-border bg-bg/30">
-                <h3 className="font-bold text-sm">{extractBlogId(postCompetitorId)}의 최근 포스팅</h3>
+              <div className="px-5 py-3 border-b border-border bg-bg/30 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-sm">{extractBlogId(postCompetitorId)}의 최근 포스팅</h3>
+                  <p className="text-[11px] text-dim mt-0.5">
+                    AI 검사 {aiCheckedCount}/{competitorPosts.length}
+                    {aiCheckedCount > 0 && (
+                      <>
+                        {' · '}
+                        <span className={aiSuspiciousCount > 0 ? 'text-down font-bold' : 'text-up font-bold'}>
+                          AI 추정 {aiSuspiciousCount}개
+                        </span>
+                        {' / 전체 '}{competitorPosts.length}개
+                      </>
+                    )}
+                    <span className="ml-1 text-dim/70">(임계값 {AI_THRESHOLD}%)</span>
+                  </p>
+                </div>
+                <button
+                  onClick={runAllAiAnalysis}
+                  disabled={aiBatchRunning || aiAnalyzingId !== '' || competitorPosts.every(p => p.ai)}
+                  className="px-3 py-1.5 text-[11px] font-bold rounded-lg bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-default whitespace-nowrap"
+                >
+                  {aiBatchRunning ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                      검사 중 ({aiCheckedCount}/{competitorPosts.length})
+                    </span>
+                  ) : '전체 AI 검사'}
+                </button>
               </div>
 
               {/* 데스크톱 */}
@@ -480,17 +604,23 @@ export default function CompetitorPage() {
                       <th className="text-left px-3 py-3 font-semibold">제목</th>
                       <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
                       <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
+                      <th className="text-center px-3 py-3 font-semibold w-24">AI 의심도</th>
                       <th className="text-right px-3 py-3 font-semibold w-24">작성일</th>
-                      <th className="text-center px-5 py-3 font-semibold w-16">확인</th>
+                      <th className="text-center px-5 py-3 font-semibold w-28">확인</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/20">
-                    {competitorPosts.map((post, i) => (
-                      <tr key={post.id} className="hover:bg-surface-hover transition">
+                    {competitorPosts.map((post, i) => {
+                      const aiBadge = post.ai ? getAiBadgeStyle(post.ai.aiProbability) : null;
+                      const isAiAnalyzing = aiAnalyzingId === post.id;
+                      const isAiExpanded = aiExpandedId === post.id;
+                      return (
+                      <Fragment key={post.id}>
+                      <tr className="hover:bg-surface-hover transition">
                         <td className="px-5 py-3.5 text-dim text-xs">{i + 1}</td>
                         <td className="px-3 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
-                            className="font-semibold hover:text-accent transition truncate block max-w-[400px]" title={post.title}>
+                            className="font-semibold hover:text-accent transition truncate block max-w-[380px]" title={post.title}>
                             {post.title}
                           </a>
                         </td>
@@ -508,33 +638,151 @@ export default function CompetitorPage() {
                             ) : <span className="text-xs text-dim">-</span>
                           ) : <span className="text-[10px] text-dim/50">&mdash;</span>}
                         </td>
+                        <td className="text-center px-3 py-3.5">
+                          {post.ai && aiBadge ? (
+                            <button
+                              onClick={() => setAiExpandedId(isAiExpanded ? '' : post.id)}
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded-full cursor-pointer ${aiBadge.bg} ${aiBadge.text} hover:opacity-80`}
+                              title={`${aiBadge.label} · 클릭하여 상세 보기`}
+                            >
+                              {post.ai.aiProbability}%
+                            </button>
+                          ) : post.aiError ? (
+                            <span className="text-[10px] text-down" title={post.aiError}>오류</span>
+                          ) : isAiAnalyzing ? (
+                            <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                          ) : <span className="text-[10px] text-dim/50">&mdash;</span>}
+                        </td>
                         <td className="text-right px-3 py-3.5 text-xs text-dim">{post.date}</td>
                         <td className="text-center px-5 py-3.5">
-                          <button
-                            onClick={() => checkPostRank(post)}
-                            disabled={checkingPostId === post.id}
-                            className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
-                          >
-                            {checkingPostId === post.id ? (
-                              <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                            ) : post.blogTab ? '재확인' : '확인'}
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => checkPostRank(post)}
+                              disabled={checkingPostId === post.id}
+                              className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                            >
+                              {checkingPostId === post.id ? (
+                                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                              ) : post.blogTab ? '재확인' : '순위'}
+                            </button>
+                            {!post.ai && !isAiAnalyzing && (
+                              <button
+                                onClick={() => runAiAnalysis(post)}
+                                disabled={aiBatchRunning || aiAnalyzingId !== ''}
+                                className="text-[11px] text-down hover:underline cursor-pointer disabled:opacity-50"
+                              >
+                                AI
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                      {isAiExpanded && post.ai && (
+                        <tr>
+                          <td colSpan={7} className="p-0">
+                            <div className="px-5 pb-4 pt-3 space-y-3 bg-bg/30 border-t border-border/30">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold">AI 확률</span>
+                                <span className={`text-base font-black font-rank ${
+                                  post.ai.aiProbability < 30 ? 'text-up' : post.ai.aiProbability < AI_THRESHOLD ? 'text-dim' : 'text-down'
+                                }`}>
+                                  {post.ai.aiProbability}%
+                                </span>
+                                <div className="flex-1 max-w-md h-2 bg-border/30 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      post.ai.aiProbability < 30 ? 'bg-up' : post.ai.aiProbability < AI_THRESHOLD ? 'bg-dim' : 'bg-down'
+                                    }`}
+                                    style={{ width: `${post.ai.aiProbability}%` }}
+                                  />
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${aiBadge!.bg} ${aiBadge!.text}`}>
+                                  {aiBadge!.label}
+                                </span>
+                              </div>
+                              <div className="bg-bg rounded-xl p-3">
+                                <p className="text-[11px] text-dim font-semibold mb-1">판단 근거</p>
+                                <p className="text-xs leading-relaxed">{post.ai.aiReasoning}</p>
+                              </div>
+                              {post.ai.keywords?.length > 0 && (
+                                <div>
+                                  <p className="text-[11px] text-dim font-semibold mb-1.5">핵심 키워드</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {post.ai.keywords.map((kw, k) => (
+                                      <span key={k} className={`text-[11px] px-2 py-0.5 rounded-lg border ${
+                                        kw.relevance === 'high' ? 'bg-accent/10 text-accent border-accent/20 font-bold'
+                                        : kw.relevance === 'medium' ? 'bg-border/30 text-text border-border/40'
+                                        : 'bg-border/20 text-dim border-border/30'
+                                      }`}>{kw.keyword}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {post.ai.keySentences?.length > 0 && (
+                                <div>
+                                  <p className="text-[11px] text-dim font-semibold mb-1.5">핵심 문장</p>
+                                  <div className="space-y-1.5">
+                                    {post.ai.keySentences.map((s, k) => (
+                                      <div key={k} className="flex items-start gap-2 text-xs">
+                                        <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                          s.type === 'topic' ? 'bg-accent/10 text-accent'
+                                          : s.type === 'evidence' ? 'bg-text/10 text-text'
+                                          : s.type === 'conclusion' ? 'bg-down/10 text-down'
+                                          : 'bg-text/15 text-text'
+                                        }`}>{sentenceTypeLabel[s.type] || s.type}</span>
+                                        <span className="leading-relaxed">{s.sentence}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {post.ai.writingStyle && (
+                                <div className="flex flex-wrap gap-2 text-[11px]">
+                                  <span className="px-2 py-0.5 rounded-lg bg-border/20 text-dim">
+                                    스타일 <strong className="text-text">{post.ai.writingStyle.tone}</strong>
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-lg bg-border/20 text-dim">
+                                    가독성 <strong className="text-text">{post.ai.writingStyle.readability === 'easy' ? '쉬움' : post.ai.writingStyle.readability === 'medium' ? '보통' : '어려움'}</strong>
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-lg bg-border/20 text-dim">
+                                    독창성 <strong className="text-text">{post.ai.writingStyle.originality}/10</strong>
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
 
               {/* 모바일 */}
               <div className="md:hidden divide-y divide-border/20">
-                {competitorPosts.map((post, i) => (
+                {competitorPosts.map((post, i) => {
+                  const aiBadge = post.ai ? getAiBadgeStyle(post.ai.aiProbability) : null;
+                  const isAiAnalyzing = aiAnalyzingId === post.id;
+                  const isAiExpanded = aiExpandedId === post.id;
+                  return (
                   <div key={post.id} className="px-4 py-3.5">
                     <div className="flex items-start gap-2">
                       <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{i + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <a href={post.url} target="_blank" rel="noopener noreferrer"
-                          className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
+                        <div className="flex items-start gap-2">
+                          <a href={post.url} target="_blank" rel="noopener noreferrer"
+                            className="font-semibold text-sm hover:text-accent transition line-clamp-2 flex-1">{post.title}</a>
+                          {post.ai && aiBadge && (
+                            <button
+                              onClick={() => setAiExpandedId(isAiExpanded ? '' : post.id)}
+                              className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-lg ${aiBadge.bg} ${aiBadge.text} cursor-pointer`}
+                            >
+                              AI {post.ai.aiProbability}%
+                            </button>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           {post.blogTab && (
                             <>
@@ -560,11 +808,40 @@ export default function CompetitorPage() {
                               <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
                             ) : post.blogTab ? '재확인' : '순위확인'}
                           </button>
+                          {!post.ai && (
+                            <button
+                              onClick={() => runAiAnalysis(post)}
+                              disabled={aiBatchRunning || aiAnalyzingId !== ''}
+                              className="text-[10px] text-down cursor-pointer disabled:opacity-50"
+                            >
+                              {isAiAnalyzing ? (
+                                <span className="w-3 h-3 border-2 border-down/30 border-t-down rounded-full animate-spin inline-block" />
+                              ) : 'AI 검사'}
+                            </button>
+                          )}
+                          {post.aiError && (
+                            <span className="text-[10px] text-down" title={post.aiError}>AI 오류</span>
+                          )}
                         </div>
+                        {isAiExpanded && post.ai && (
+                          <div className="mt-2.5 space-y-2 pt-2 border-t border-border/30">
+                            <p className="text-[11px] leading-relaxed bg-bg rounded-lg p-2">{post.ai.aiReasoning}</p>
+                            {post.ai.keywords?.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {post.ai.keywords.map((kw, k) => (
+                                  <span key={k} className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                    kw.relevance === 'high' ? 'bg-accent/10 text-accent font-bold' : 'bg-border/30 text-dim'
+                                  }`}>{kw.keyword}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
