@@ -210,6 +210,7 @@ interface BlogVisitorData {
 /**
  * 네이버 블로그 방문자수를 크롤링한다.
  * NVisitorgp4Ajax 엔드포인트에서 일별 방문자 데이터를 가져온다.
+ * 2026-04 시점 네이버가 NVisitorgp4Ajax 를 막아 204 만 반환 → 모바일 프로필의 오늘값을 폴백으로 사용.
  */
 export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData[]> {
   const results: BlogVisitorData[] = [];
@@ -225,9 +226,8 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
       },
     });
 
-    if (!res.ok) return results;
-
-    const text = await res.text();
+    // 200 + 본문 있음일 때만 파싱 시도. 204 면 바로 모바일 폴백으로.
+    const text = res.ok && res.status !== 204 ? await res.text() : '';
 
     // 1. XML 형식: <visitorcnt id="20260407" cnt="706" />
     const xmlMatches = text.matchAll(/visitorcnt\s+id="(\d{8})"\s+cnt="(\d+)"/g);
@@ -270,7 +270,8 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
       }
     }
 
-    // 폴백: 모바일 블로그 페이지에서 todayVisitor JSON 추출
+    // 폴백: 모바일 블로그 페이지에서 todayVisitor / dayVisitorCount JSON 추출
+    // (NVisitorgp4Ajax 가 막힌 이후로는 사실상 이 폴백이 주 경로)
     if (results.length === 0) {
       try {
         const mobileRes = await fetch(`https://m.blog.naver.com/${blogId}`, {
@@ -281,11 +282,16 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
         });
         if (mobileRes.ok) {
           const html = await mobileRes.text();
-          const todayMatch = html.match(/"todayVisitor"\s*:\s*(\d+)/);
+          const todayMatch =
+            html.match(/"dayVisitorCount"\s*:\s*(\d+)/) ||
+            html.match(/"todayVisitor"\s*:\s*(\d+)/);
           if (todayMatch) {
-            const today = new Date().toISOString().slice(0, 10);
+            // KST 기준 오늘 날짜
+            const today = new Date(Date.now() + 9 * 60 * 60 * 1000)
+              .toISOString()
+              .slice(0, 10);
             const visitors = parseInt(todayMatch[1]);
-            if (visitors > 0) {
+            if (visitors >= 0) {
               results.push({ date: today, visitors });
             }
           }

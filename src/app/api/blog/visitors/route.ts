@@ -31,12 +31,22 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
-    // DB에 데이터가 없으면 네이버에서 직접 크롤링
-    if (!visitors || visitors.length === 0) {
+    // KST 기준 오늘 날짜
+    const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    // DB가 비었거나 최신 행이 오늘 미만이면(stale) 다시 크롤링
+    const latestDbDate = visitors && visitors.length > 0
+      ? visitors[visitors.length - 1].visit_date
+      : null;
+    const isStale = !latestDbDate || latestDbDate < todayStr;
+
+    if (isStale) {
       const crawled = await fetchBlogVisitors(blogId);
 
       if (crawled.length > 0) {
-        // DB에 저장
+        // DB에 저장 (오늘 행 포함)
         const rows = crawled.map(v => ({
           blog_id: blogId,
           visit_date: v.date,
@@ -47,10 +57,21 @@ export async function GET(req: NextRequest) {
           .from('blog_visitor_history')
           .upsert(rows, { onConflict: 'blog_id,visit_date' });
 
-        // blog_scores에도 최신 방문자수 업데이트
+        // blog_scores에 최신 방문자수 업데이트
         const latest = crawled[crawled.length - 1];
-        const avg7d = crawled.slice(-7).reduce((s, v) => s + v.visitors, 0) / Math.min(crawled.length, 7);
-        const avg30d = crawled.reduce((s, v) => s + v.visitors, 0) / crawled.length;
+
+        // 다시 30일치 조회해서 추세 계산용으로 사용
+        const { data: refreshed } = await supabase
+          .from('blog_visitor_history')
+          .select('visit_date, visitor_count')
+          .eq('blog_id', blogId)
+          .gte('visit_date', since.toISOString().slice(0, 10))
+          .order('visit_date', { ascending: true });
+
+        const refreshedRows = refreshed || [];
+        const counts = refreshedRows.map(r => r.visitor_count);
+        const avg7d = counts.slice(-7).reduce((s, v) => s + v, 0) / Math.max(1, Math.min(counts.length, 7));
+        const avg30d = counts.length > 0 ? counts.reduce((s, v) => s + v, 0) / counts.length : 0;
         const crawlTrend = avg30d > 0 ? ((avg7d - avg30d) / avg30d) * 100 : 0;
 
         await supabase
@@ -62,11 +83,7 @@ export async function GET(req: NextRequest) {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'blog_id' });
 
-        // 크롤링 결과를 바로 반환
-        visitors = crawled.map(v => ({
-          visit_date: v.date,
-          visitor_count: v.visitors,
-        }));
+        visitors = refreshedRows;
       }
     }
 
@@ -74,8 +91,6 @@ export async function GET(req: NextRequest) {
       date: v.visit_date,
       count: v.visitor_count,
     }));
-
-    const todayStr = new Date().toISOString().slice(0, 10);
     const todayVisitors = items.find(v => v.date === todayStr)?.count || 0;
     const avgVisitors = items.length > 0
       ? Math.round(items.reduce((s, v) => s + v.count, 0) / items.length)
