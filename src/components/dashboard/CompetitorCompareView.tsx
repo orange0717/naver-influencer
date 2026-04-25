@@ -36,13 +36,14 @@ function CompareBar({ label, myValue, theirValue, unit, lowerIsBetter = false }:
   const iWin = lowerIsBetter ? myValue < theirValue : myValue > theirValue;
   const tie = myValue === theirValue;
 
+  void iWin; void tie;
   return (
-    <div className="flex items-center justify-between text-xs py-1">
-      <span className={`font-bold font-rank ${iWin && !tie ? 'text-pink-500' : 'text-dim'}`}>
+    <div className="flex items-center justify-between text-base py-1.5">
+      <span className="font-bold font-rank text-black">
         {lowerIsBetter ? myValue.toFixed(1) : myValue.toLocaleString()}{unit}
       </span>
-      <span className="text-dim font-semibold">{label}</span>
-      <span className={`font-bold font-rank ${!iWin && !tie ? 'text-pink-500' : 'text-dim'}`}>
+      <span className="text-black font-semibold">{label}</span>
+      <span className="font-bold font-rank text-black">
         {lowerIsBetter ? theirValue.toFixed(1) : theirValue.toLocaleString()}{unit}
       </span>
     </div>
