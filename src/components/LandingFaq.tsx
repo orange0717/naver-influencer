@@ -1,27 +1,16 @@
 import { FAQ_DATA, FAQ_CATEGORIES } from '@/data/faq-data';
 
-// 카테고리별 강조 색상 (칩 + Q번호 + 아이콘)
+// 모든 카테고리 다크핑크 통일
+const PINK = {
+  accent: 'text-rose-700',
+  chip: 'bg-rose-100 text-rose-700 border-rose-300',
+};
 const CATEGORY_COLORS: Record<string, { accent: string; chip: string }> = {
-  '서비스 이용': {
-    accent: 'text-rose-500',
-    chip: 'bg-rose-50 text-rose-600 border-rose-200',
-  },
-  '키워드 분석': {
-    accent: 'text-sky-500',
-    chip: 'bg-sky-50 text-sky-600 border-sky-200',
-  },
-  '경쟁자 분석': {
-    accent: 'text-amber-600',
-    chip: 'bg-amber-50 text-amber-700 border-amber-200',
-  },
-  '결제·플랜': {
-    accent: 'text-emerald-600',
-    chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  },
-  '계정': {
-    accent: 'text-violet-500',
-    chip: 'bg-violet-50 text-violet-600 border-violet-200',
-  },
+  '서비스 이용': PINK,
+  '키워드 분석': PINK,
+  '경쟁자 분석': PINK,
+  '결제·플랜': PINK,
+  '계정': PINK,
 };
 
 export default function LandingFaq() {
