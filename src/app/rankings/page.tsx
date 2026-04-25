@@ -1,13 +1,13 @@
 export const metadata = {
   title: '랭킹 — N인플',
-  description: '네이버 예비 인플루언서 순위 · 인플루언서 순위 · 블로그 품질지수 종합 허브',
+  description: '네이버 블로그 순위 · 인플루언서 순위 · 블로그 품질지수 종합 허브',
 };
 
 const ITEMS = [
   {
     href: '/rankings/blogger',
-    title: '예비 인플루언서 순위',
-    desc: '네이버 예비 인플루언서 활동 점수 기반 종합 순위 Top 50 + 내 블로그 순위 조회',
+    title: '블로그 순위',
+    desc: '네이버 블로그 활동 점수 기반 종합 순위 Top 50 + 내 블로그 순위 조회',
     badge: '개발 중',
   },
   {
@@ -30,7 +30,7 @@ export default function RankingsHubPage() {
       <div>
         <h1 className="text-2xl font-extrabold">랭킹</h1>
         <p className="text-sm text-dim mt-1">
-          네이버 예비 인플루언서·인플루언서 순위와 블로그 품질지수를 한 곳에서 확인하세요.
+          네이버 블로그·인플루언서 순위와 블로그 품질지수를 한 곳에서 확인하세요.
         </p>
       </div>
 

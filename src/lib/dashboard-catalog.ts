@@ -172,8 +172,8 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'rankings-blogger',
     category: 'ranking',
-    title: '예비 인플루언서 순위',
-    description: '네이버 예비 인플루언서 실시간 랭킹 (개발 중)',
+    title: '블로그 순위',
+    description: '네이버 블로그 실시간 랭킹 (개발 중)',
     href: '/rankings/blogger',
     requiredPlan: 'blogger',
     devPreview: true,
@@ -263,6 +263,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '경쟁자 분석',
     description: '경쟁 블로그 지표 비교·변화 추이',
     href: '/competitor',
+    ctaLabel: '일일 1회 무료',
   },
 
   // ── 글쓰기 ──

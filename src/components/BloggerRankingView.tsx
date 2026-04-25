@@ -246,8 +246,8 @@ export default function BloggerRankingView() {
       </div>
 
       <div className="bg-surface rounded-xl border border-border p-5 text-sm text-dim leading-relaxed">
-        <p className="font-semibold text-text mb-1">Top 50 예비 인플루언서 순위 — 준비 중</p>
-        전체 예비 인플루언서 순위는 포스팅 수 · 구독자 수 · 카테고리 정보가 충분히 수집된 뒤 공개합니다.
+        <p className="font-semibold text-text mb-1">Top 50 블로그 순위 — 준비 중</p>
+        전체 블로그 순위는 포스팅 수 · 구독자 수 · 카테고리 정보가 충분히 수집된 뒤 공개합니다.
         현재는 위의 <span className="font-semibold">내 블로그 순위 확인</span> 기능만 사용 가능합니다.
         <span className="block mt-1 text-[11px]">데이터 수집 진행률은 <a href="/bot-info" className="underline">봇 정보</a>에서 확인하세요.</span>
       </div>
