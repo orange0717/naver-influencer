@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  typecheck-test:
+    runs-on: ubuntu-latest
+    name: Type check · Lint · Test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: TypeScript 타입 검사
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: ESLint
+        run: npm run lint
+        continue-on-error: true   # 기존 규칙 정착 전이라 차단은 하지 않고 경고만
+
+      - name: Vitest
+        run: npm test
