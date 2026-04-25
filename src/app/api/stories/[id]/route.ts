@@ -45,7 +45,28 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       await supabase.rpc('increment_story_view_count', { p_story_id: id });
     }
 
-    return NextResponse.json({ story });
+    // 댓글 조회
+    const { data: comments } = await supabase
+      .from('story_comments')
+      .select('id, author_id, author_name, content, created_at')
+      .eq('story_id', id)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: true });
+
+    // 현재 사용자의 좋아요 여부
+    let liked = false;
+    const authUserForLike = await getAuthUser(req);
+    if (authUserForLike) {
+      const { data: like } = await supabase
+        .from('story_likes')
+        .select('id')
+        .eq('story_id', id)
+        .eq('user_id', authUserForLike.userId)
+        .maybeSingle();
+      liked = !!like;
+    }
+
+    return NextResponse.json({ story, comments: comments || [], liked });
   } catch (err) {
     console.error('[stories/:id] GET error:', err);
     return NextResponse.json({ error: '후기를 불러올 수 없습니다.' }, { status: 500 });

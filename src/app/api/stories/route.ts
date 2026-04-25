@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '너무 빠르게 글을 작성하고 있습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
     }
 
-    const { title, content, short_excerpt, is_anonymous, metric_before, metric_after, period, author_name } = v.data;
+    const { title, content, short_excerpt, is_anonymous, metric_before, metric_after, period, author_name, images } = v.data;
     const displayName = is_anonymous ? '익명' : (author_name || authUser.user.nickname || '회원');
 
     const { data, error } = await supabase
@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
         metric_after: metric_after || null,
         period: period || null,
         status: 'pending',
+        images: Array.isArray(images) ? images.slice(0, 6) : [],
       })
       .select('id')
       .single();

@@ -16,6 +16,42 @@ export default function StoryWritePage() {
   const [metricAfter, setMetricAfter] = useState('');
   const [period, setPeriod] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const MAX_IMAGES = 6;
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    if (images.length + files.length > MAX_IMAGES) {
+      alert(`이미지는 최대 ${MAX_IMAGES}장까지 첨부할 수 있습니다.`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch('/api/stories/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '이미지 업로드 실패');
+        uploaded.push(data.url);
+      }
+      setImages((prev) => [...prev, ...uploaded].slice(0, MAX_IMAGES));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removeImage(idx: number) {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   useEffect(() => {
     if (!loading && !user.id) {
@@ -44,6 +80,7 @@ export default function StoryWritePage() {
           metric_before: metricBefore || undefined,
           metric_after: metricAfter || undefined,
           period: period || undefined,
+          images: images.length > 0 ? images : undefined,
         }),
       });
       const data = await res.json();
@@ -110,6 +147,46 @@ export default function StoryWritePage() {
             className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:border-accent outline-none resize-y"
           />
           <p className="text-xs text-dim mt-1">{content.length} / 5000</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold mb-2">
+            사진 첨부 (선택, 최대 {MAX_IMAGES}장)
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {images.map((url, idx) => (
+              <div key={idx} className="relative w-20 h-20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={`첨부 이미지 ${idx + 1}`}
+                  className="w-20 h-20 object-cover rounded border border-border"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(idx)}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs leading-none flex items-center justify-center hover:bg-black"
+                  aria-label="삭제"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {images.length < MAX_IMAGES && (
+              <label className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-border rounded cursor-pointer hover:border-accent text-dim text-xs text-center">
+                {uploading ? '업로드 중...' : '+ 사진'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  multiple
+                  onChange={handleImageSelect}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+          <p className="text-xs text-dim mt-1">JPG/PNG/GIF/WEBP · 최대 5MB</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

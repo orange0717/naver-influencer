@@ -22,6 +22,20 @@ export const createStorySchema = z.object({
   metric_after: z.string().max(50).optional(),
   period: z.string().max(30).optional(),
   author_name: z.string().max(50).optional(),
+  images: z
+    .array(z.string().url('유효한 이미지 URL이 아닙니다.').max(500))
+    .max(6, '이미지는 최대 6장까지 첨부할 수 있습니다.')
+    .optional(),
+});
+
+/** POST /api/stories/[id]/comments — 후기 댓글 작성 */
+export const createStoryCommentSchema = z.object({
+  content: z
+    .string()
+    .min(1, '댓글 내용을 입력해주세요.')
+    .max(1000, '댓글은 1000자 이하로 입력해주세요.')
+    .transform((v) => v.trim()),
+  author_name: z.string().max(50).optional(),
 });
 
 /** PATCH /api/stories/[id] — 관리자 승인/거절/노출 조정 */
