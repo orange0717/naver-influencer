@@ -18,18 +18,19 @@ type BillingPeriod = 'monthly' | '3m' | '6m' | '9m' | 'annual';
 
 const PERIOD_OPTIONS: { value: BillingPeriod; label: string; badge?: string }[] = [
   { value: 'monthly', label: '1개월' },
-  { value: '3m', label: '3개월' },
-  { value: '6m', label: '6개월' },
-  { value: '9m', label: '9개월' },
-  { value: 'annual', label: '12개월', badge: '1개월 무료' },
+  { value: '3m', label: '3개월', badge: '5% 할인' },
+  { value: '6m', label: '6개월', badge: '10% 할인' },
+  { value: '9m', label: '9개월', badge: '15% 할인' },
+  { value: 'annual', label: '12개월', badge: '2개월 무료' },
 ];
 
-const PRICE_TABLE: Record<BillingPeriod, { blogger: number; influencer: number; suffix: string }> = {
-  monthly: { blogger: 5500, influencer: 9900, suffix: '/월' },
-  '3m':    { blogger: 16500, influencer: 29700, suffix: '/3개월' },
-  '6m':    { blogger: 33000, influencer: 59400, suffix: '/6개월' },
-  '9m':    { blogger: 49500, influencer: 89100, suffix: '/9개월' },
-  annual:  { blogger: 60500, influencer: 108900, suffix: '/년' },
+// 할인 정책: 3m -5%, 6m -10%, 9m -15%, 12m 2개월 무료(=10개월치)
+const PRICE_TABLE: Record<BillingPeriod, { blogger: number; influencer: number; suffix: string; months: number }> = {
+  monthly: { blogger: 5500,  influencer: 9900,   suffix: '/월',     months: 1  },
+  '3m':    { blogger: 15700, influencer: 28200,  suffix: '/3개월',  months: 3  },
+  '6m':    { blogger: 29700, influencer: 53500,  suffix: '/6개월',  months: 6  },
+  '9m':    { blogger: 42100, influencer: 75700,  suffix: '/9개월',  months: 9  },
+  annual:  { blogger: 55000, influencer: 99000,  suffix: '/년',     months: 12 },
 };
 
 const PLAN_KEY: Record<BillingPeriod, { blogger: string; influencer: string }> = {
@@ -66,9 +67,10 @@ export default function SubscribeClient() {
   const price = PRICE_TABLE[period];
   const bloggerPlanKey = PLAN_KEY[period].blogger;
   const influencerPlanKey = PLAN_KEY[period].influencer;
-  // 12개월 월 환산 (1개월 무료 가정)
-  const bloggerMonthly = period === 'annual' ? Math.round(price.blogger / 12) : null;
-  const influencerMonthly = period === 'annual' ? Math.round(price.influencer / 12) : null;
+  // 월 환산 (1개월 제외)
+  const bloggerMonthly = period === 'monthly' ? null : Math.round(price.blogger / price.months);
+  const influencerMonthly = period === 'monthly' ? null : Math.round(price.influencer / price.months);
+  const periodBadge = PERIOD_OPTIONS.find((o) => o.value === period)?.badge;
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
@@ -171,7 +173,7 @@ export default function SubscribeClient() {
               <span className="text-sm text-dim">원{price.suffix}</span>
             </div>
             {bloggerMonthly && (
-              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(bloggerMonthly)}원 (1개월 무료)</p>
+              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(bloggerMonthly)}원{periodBadge ? ` (${periodBadge})` : ''}</p>
             )}
           </div>
           <p className="text-sm text-dim leading-relaxed">
@@ -219,7 +221,7 @@ export default function SubscribeClient() {
               <span className="text-sm text-dim">원{price.suffix}</span>
             </div>
             {influencerMonthly && (
-              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(influencerMonthly)}원 (1개월 무료)</p>
+              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(influencerMonthly)}원{periodBadge ? ` (${periodBadge})` : ''}</p>
             )}
           </div>
           <p className="text-sm text-dim leading-relaxed">
@@ -434,7 +436,7 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 주기</p>
-              <p className="font-semibold">1 / 3 / 6 / 9 / 12개월 (12개월 1개월 무료)</p>
+              <p className="font-semibold">1 / 3(-5%) / 6(-10%) / 9(-15%) / 12개월(2개월 무료)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">고객 지원</p>
