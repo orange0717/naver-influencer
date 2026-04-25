@@ -111,15 +111,18 @@ export async function GET(request: NextRequest) {
 
     // 나의 순위도 가져와서 겹치는 키워드 비교
     let sharedKeywords: { keyword: string; keyword_id: string; myRank: number | null; competitorRank: number }[] = [];
+    let myStats: { totalKeywords: number; top3Count: number; top10Count: number; avgRank: number } | null = null;
+    let mySubscribers = 0;
 
     if (myNaverId) {
       const { data: myInfluencer } = await supabase
         .from('influencers')
-        .select('id')
+        .select('id, total_keywords, subscriber_count, total_follower_count')
         .eq('naver_id', myNaverId)
         .single();
 
       if (myInfluencer) {
+        mySubscribers = myInfluencer.subscriber_count || myInfluencer.total_follower_count || 0;
         // 내 최신 스냅샷 날짜 조회
         const { data: myLatest } = await supabase
           .from('keyword_rankings')
@@ -157,6 +160,20 @@ export async function GET(request: NextRequest) {
         for (const r of myRankingsList) {
           myRankMap.set(r.keyword_id, r.rank_position);
         }
+
+        // 내 통계 계산 (DB 집계가 비어 있어도 키워드 순위로 즉시 산출)
+        const myTotalKeywords = myInfluencer.total_keywords || myRankingsList.length;
+        const myTop3Count = myRankingsList.filter(r => r.rank_position <= 3).length;
+        const myTop10Count = myRankingsList.filter(r => r.rank_position <= 10).length;
+        const myAvgRank = myTotalKeywords > 0
+          ? myRankingsList.reduce((s, r) => s + r.rank_position, 0) / myTotalKeywords
+          : 0;
+        myStats = {
+          totalKeywords: myTotalKeywords,
+          top3Count: myTop3Count,
+          top10Count: myTop10Count,
+          avgRank: Math.round(myAvgRank * 10) / 10,
+        };
 
         // 겹치는 키워드 찾기
         const sharedKeywordIds: string[] = [];
@@ -217,6 +234,8 @@ export async function GET(request: NextRequest) {
       top5: competitorRankings.slice(0, 5),
       sharedKeywords,
       sharedCount: sharedKeywords.length,
+      myStats,
+      mySubscribers,
     });
   } catch {
     return NextResponse.json({ error: '경쟁자 데이터 조회 중 오류가 발생했습니다.' }, { status: 500 });

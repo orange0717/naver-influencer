@@ -27,6 +27,8 @@ interface CompareData {
   stats: { totalKeywords: number; top3Count: number; top10Count: number; avgRank: number };
   sharedKeywords: { keyword: string; keyword_id: string; myRank: number | null; competitorRank: number }[];
   sharedCount: number;
+  myStats?: { totalKeywords: number; top3Count: number; top10Count: number; avgRank: number } | null;
+  mySubscribers?: number;
 }
 
 export default function CompetitorDashboard({
@@ -307,9 +309,9 @@ export default function CompetitorDashboard({
                         <CompetitorCompareView
                           myName={myDisplayName}
                           competitorName={data.competitor.displayName}
-                          myStats={myStats}
+                          myStats={data.myStats ?? myStats}
                           competitorStats={data.stats}
-                          mySubscribers={mySubscribers}
+                          mySubscribers={(data.mySubscribers ?? 0) > 0 ? data.mySubscribers! : mySubscribers}
                           competitorSubscribers={data.competitor.subscriberCount}
                           sharedKeywords={data.sharedKeywords}
                         />
