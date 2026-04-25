@@ -120,6 +120,9 @@ export default function InfluencersPage() {
 
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
+    setSearch('');
+    setSortBy('first_seen_at');
+    setOrder('desc');
     setPage(1);
   };
 
@@ -159,7 +162,22 @@ export default function InfluencersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold">인플루언서 리스트 <span className="text-sm font-normal text-dim">(구. 파워블로거 2016년도 폐지)</span></h1>
+          <h1 className="text-xl font-extrabold">
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setCategory('전체');
+                setSortBy('first_seen_at');
+                setOrder('desc');
+                setPage(1);
+              }}
+              className="hover:text-accent transition-colors cursor-pointer"
+            >
+              인플루언서 리스트
+            </button>
+            <span className="text-sm font-normal text-dim"> (구. 파워블로거 2016년도 폐지)</span>
+          </h1>
         </div>
         <div className="text-right">
           <span className="text-xs text-dim font-rank">

@@ -27,6 +27,12 @@
 <div class="canvas-wrap"><canvas id="tile" width="440" height="280"></canvas></div><br>
 <button class="download-btn" onclick="download('tile','ninfl-promo-440x280.png')">다운로드</button>
 
+<!-- 1-2. 대형 프로모션 타일 1400x560 -->
+<h2>1-2. 대형 프로모션 타일 (1400 x 560)</h2>
+<div class="info">Marquee promotional tile</div>
+<div class="canvas-wrap"><canvas id="bigTile" width="1400" height="560"></canvas></div><br>
+<button class="download-btn" onclick="download('bigTile','ninfl-promo-1400x560.png')">다운로드</button>
+
 <!-- 2. 스크린샷 1 - 슬림바 (1280x800) -->
 <h2>2. 스크린샷 1 - 슬림바 (1280 x 800)</h2>
 <div class="info">검색 결과 상단 슬림바</div>
@@ -124,6 +130,167 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.textAlign = 'center';
   ctx.fillText('네이버 검색 페이지에서 자동으로 키워드를 분석합니다', 220, 260);
+})();
+
+// ─── 1-2. 대형 프로모션 타일 1400x560 ───
+(function() {
+  var c = document.getElementById('bigTile');
+  var ctx = c.getContext('2d');
+  var W = 1400, H = 560;
+
+  // 배경 그라디언트
+  var g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, ORANGE);
+  g.addColorStop(1, ORANGE_LIGHT);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // 데코 원
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.beginPath(); ctx.arc(1200, 100, 250, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(200, 480, 180, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(1000, 450, 120, 0, Math.PI*2); ctx.fill();
+
+  // 왼쪽: 텍스트 영역
+  // 로고
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  roundRect(ctx, 80, 80, 64, 64, 14); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 38px -apple-system, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', 112, 114);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+  // 타이틀
+  ctx.font = '900 42px -apple-system, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('N인플 키워드 분석', 160, 122);
+
+  // 서브타이틀
+  ctx.font = '600 18px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillText('네이버 검색 페이지에서 키워드를 자동으로 분석합니다', 80, 180);
+
+  // 기능 3개
+  var features = [
+    ['키워드 검색량', '월간 검색량 / PC / 모바일\n경쟁도 분석'],
+    ['연관검색어', '관련 키워드 최대 10개\n클릭 시 바로 검색'],
+    ['글자수세기', '타자수 / 글자수 / 공백제외\n한글 타자수 정확 계산']
+  ];
+  features.forEach(function(f, i) {
+    var fx = 80 + i * 220;
+    var fy = 230;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    roundRect(ctx, fx, fy, 200, 100, 10); ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '800 16px -apple-system, sans-serif';
+    ctx.fillText(f[0], fx + 16, fy + 30);
+
+    ctx.font = '500 12px -apple-system, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    var lines = f[1].split('\n');
+    lines.forEach(function(line, li) {
+      ctx.fillText(line, fx + 16, fy + 54 + li * 18);
+    });
+  });
+
+  // 오른쪽: 슬림바 + 상세패널 미리보기
+  var previewX = 760, previewY = 60;
+
+  // 네이버 검색 배경
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,0.15)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 4;
+  roundRect(ctx, previewX, previewY, 580, 440, 12); ctx.fill();
+  ctx.shadowColor = 'transparent';
+
+  // 네이버 검색바
+  ctx.strokeStyle = '#03c75a';
+  ctx.lineWidth = 2;
+  roundRect(ctx, previewX+20, previewY+16, 400, 32, 6); ctx.stroke();
+  ctx.fillStyle = '#333';
+  ctx.font = '400 13px -apple-system, sans-serif';
+  ctx.fillText('맛집추천', previewX+34, previewY+37);
+  ctx.fillStyle = '#03c75a';
+  roundRect(ctx, previewX+430, previewY+16, 44, 32, 6); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '700 12px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('검색', previewX+452, previewY+36);
+  ctx.textAlign = 'left';
+
+  // 슬림바
+  var sbY = previewY + 66;
+  ctx.fillStyle = ORANGE;
+  roundRect(ctx, previewX+20, sbY, 540, 32, [6,6,0,0]); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '700 11px -apple-system, sans-serif';
+  ctx.fillText('N', previewX+38, sbY+20);
+  ctx.font = '800 11px -apple-system, sans-serif';
+  ctx.fillText('맛집추천', previewX+56, sbY+20);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(previewX+110, sbY+8, 1, 16);
+  ctx.fillStyle = '#fff'; ctx.font = '800 11px -apple-system, sans-serif';
+  ctx.fillText('5.1만', previewX+120, sbY+20);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(previewX+162, sbY+8, 1, 16);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '600 10px -apple-system, sans-serif';
+  ctx.fillText('PC 25% / 모바일 75%', previewX+172, sbY+20);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(previewX+308, sbY+8, 1, 16);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText('경쟁도', previewX+318, sbY+20);
+  ctx.fillStyle = '#FECACA'; ctx.fillText('높음', previewX+352, sbY+20);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '600 10px -apple-system, sans-serif';
+  ctx.fillText('접기 ▲', previewX+510, sbY+20);
+
+  // 상세패널
+  var dpY = sbY + 32;
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = ORANGE;
+  ctx.lineWidth = 1;
+  roundRect(ctx, previewX+20, dpY, 540, 280, [0,0,8,8]); ctx.fill(); ctx.stroke();
+
+  // 검색량 카드 3개
+  var statLabels = [['5.1만','월간 검색량',ORANGE],['1.2만','PC','#3B82F6'],['3.8만','모바일','#8B5CF6']];
+  statLabels.forEach(function(s,i) {
+    var sx = previewX+36 + i*174;
+    ctx.fillStyle = BG;
+    roundRect(ctx, sx, dpY+14, 160, 50, 6); ctx.fill();
+    ctx.fillStyle = s[2]; ctx.font = '900 18px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(s[0], sx+80, dpY+38);
+    ctx.fillStyle = '#9B8A82'; ctx.font = '600 9px -apple-system, sans-serif';
+    ctx.fillText(s[1], sx+80, dpY+54);
+  });
+  ctx.textAlign = 'left';
+
+  // 비율바
+  ctx.fillStyle = '#eee'; roundRect(ctx, previewX+36, dpY+78, 520, 5, 2); ctx.fill();
+  ctx.fillStyle = '#3B82F6'; roundRect(ctx, previewX+36, dpY+78, 130, 5, [2,0,0,2]); ctx.fill();
+  ctx.fillStyle = '#8B5CF6'; roundRect(ctx, previewX+166, dpY+78, 390, 5, [0,2,2,0]); ctx.fill();
+
+  // 연관검색어
+  ctx.fillStyle = '#F0E6E0'; ctx.fillRect(previewX+36, dpY+96, 520, 1);
+  ctx.fillStyle = '#6B5B54'; ctx.font = '700 10px -apple-system, sans-serif';
+  ctx.fillText('연관검색어', previewX+36, dpY+116);
+
+  var relKws = ['서울맛집 3.6만','강남맛집 2.2만','홍대맛집 1.7만','이태원맛집 1.2만','데이트맛집 1.5만','혼밥맛집 9.7K','점심맛집 7K'];
+  var rx2 = previewX+36, ry2 = dpY+130;
+  relKws.forEach(function(w) {
+    ctx.font = '500 10px -apple-system, sans-serif';
+    var tw2 = ctx.measureText(w).width + 16;
+    if (rx2 + tw2 > previewX+540) { rx2 = previewX+36; ry2 += 26; }
+    ctx.fillStyle = BG; ctx.strokeStyle = '#F0E6E0'; ctx.lineWidth = 1;
+    roundRect(ctx, rx2, ry2, tw2, 22, 11); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#4B3B36';
+    ctx.fillText(w, rx2+8, ry2+15);
+    rx2 += tw2 + 6;
+  });
+
+  // 하단 v2.0.0
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '600 13px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('v2.0.0  |  네이버 검색 페이지 전용 키워드 분석 확장앱', W/2, H-30);
+  ctx.textAlign = 'left';
 })();
 
 // ─── 공통: 네이버 검색 배경 그리기 ───

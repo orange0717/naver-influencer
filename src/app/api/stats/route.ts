@@ -1,88 +1,57 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { fetchCategories } from '@/lib/naver-api';
 
+// 런타임 실행 + Vercel CDN 5분 캐시 (빌드 시 prerender 방지)
 export const dynamic = 'force-dynamic';
-
-/** 한국 시간(KST) 기준 가장 최근 일요일 00:00을 UTC ISO 문자열로 반환 */
-function lastSundayKstIso(): string {
-  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-  const nowKst = new Date(Date.now() + KST_OFFSET_MS);
-  const dow = nowKst.getUTCDay(); // 0=Sun..6=Sat
-  const sundayKst = new Date(nowKst);
-  sundayKst.setUTCDate(sundayKst.getUTCDate() - dow);
-  sundayKst.setUTCHours(0, 0, 0, 0);
-  return new Date(sundayKst.getTime() - KST_OFFSET_MS).toISOString();
-}
 
 export async function GET() {
   const supabase = createServiceClient();
 
   try {
-    // 활동 인플루언서: 1년 내 챌린지 OR TOP3 진입 이력 있음
-    // (last_challenged_at은 API 갱신 지연 가능 → integrated_top3_count 와 OR 조합)
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const { count: activeCount } = await supabase
-      .from('influencers')
-      .select('*', { count: 'exact', head: true })
-      .or(`last_challenged_at.gte.${oneYearAgo.toISOString()},integrated_top3_count.gt.0`);
+    // 사전 집계된 stats_cache 테이블에서 1행만 SELECT (cron 으로 5분마다 갱신)
+    const { data, error } = await supabase
+      .from('stats_cache')
+      .select('total_count, active_count, inactive_count, new_count, total_users, updated_at')
+      .eq('key', 'landing')
+      .maybeSingle();
 
-    // 미활동 인플루언서: 1년 이상 챌린지 이력 없음 or 챌린지 한 번도 안 함
-    const { count: totalCount } = await supabase
-      .from('influencers')
-      .select('*', { count: 'exact', head: true });
-    const inactiveCount = (totalCount || 0) - (activeCount || 0);
-
-    // 신규 인플루언서 (이번 주 — 지난 일요일 00:00 KST 이후)
-    const { count: newCount } = await supabase
-      .from('influencers')
-      .select('*', { count: 'exact', head: true })
-      .gte('naver_created_at', lastSundayKstIso());
-
-    // 키워드 총 수
-    const { count: keywordCount } = await supabase
-      .from('keyword_challenges')
-      .select('*', { count: 'exact', head: true });
-
-    // 카테고리 수: Naver API에서 실제 카테고리 목록 조회
-    let categoryCount = 20; // 기본값
-    try {
-      const categories = await fetchCategories();
-      if (categories.length > 0) {
-        categoryCount = categories.length;
-      }
-    } catch {
-      // DB 폴백: keyword_challenges 테이블에서 고유 카테고리 추출
-      const { data: catData } = await supabase
-        .from('keyword_challenges')
-        .select('category')
-        .not('category', 'is', null)
-        .order('category')
-        .limit(10000);
-
-      const categorySet = new Set<string>();
-      catData?.forEach(r => {
-        if (r.category && r.category.trim()) categorySet.add(r.category);
-      });
-      if (categorySet.size > 1) categoryCount = categorySet.size;
+    if (error || !data) {
+      return NextResponse.json(
+        {
+          influencer_count: 0,
+          active_count: 0,
+          inactive_count: 0,
+          new_count: 0,
+          category_count: 20,
+          keyword_count: 0,
+          total_users: 0,
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+          },
+        },
+      );
     }
 
-    // 총 가입자 수
-    const { count: totalUsers } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-
-    return NextResponse.json({
-      influencer_count: totalCount || 0,
-      active_count: activeCount || 0,
-      inactive_count: inactiveCount,
-      new_count: newCount || 0,
-      category_count: categoryCount,
-      keyword_count: keywordCount || 0,
-      total_users: totalUsers || 0,
-    });
-  } catch (err) {
+    return NextResponse.json(
+      {
+        influencer_count: data.total_count,
+        active_count: data.active_count,
+        inactive_count: data.inactive_count,
+        new_count: data.new_count,
+        category_count: 20,
+        keyword_count: 0,
+        total_users: data.total_users,
+        updated_at: data.updated_at,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+        },
+      },
+    );
+  } catch {
     return NextResponse.json(
       { error: '통계 정보를 불러오지 못했습니다.' },
       { status: 500 },

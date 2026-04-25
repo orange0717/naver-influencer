@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>네이버 로그인 검수용 캡처</title>
+<style>
+body{margin:40px;font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;background:#f5f5f5;}
+h2{font-size:16px;margin:30px 0 10px;color:#333;}
+.frame{border:2px solid #ddd;border-radius:12px;overflow:hidden;max-width:400px;background:#fff;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+.frame img{width:100%;display:block;}
+.mock{padding:30px;text-align:center;}
+.mock-header{background:#F5EBE6;padding:12px;display:flex;align-items:center;gap:8px;}
+.mock-header .logo{width:28px;height:28px;background:#BF877A;border-radius:6px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.mock-header span{font-size:13px;font-weight:600;color:#666;}
+.naver-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#03C75A;color:#fff;font-weight:700;font-size:14px;padding:14px;border-radius:12px;margin:20px 30px;cursor:pointer;}
+.profile-card{background:#fff;border:1px solid #e8e0dc;border-radius:16px;padding:24px;margin:0 30px 20px;text-align:left;}
+.profile-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.avatar{width:48px;height:48px;border-radius:50%;background:#F0D5C8;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#BF877A;}
+.avatar img{width:48px;height:48px;border-radius:50%;object-fit:cover;}
+.info .name{font-weight:700;font-size:15px;color:#333;}
+.info .email{font-size:13px;color:#999;margin-top:2px;}
+.info .date{font-size:11px;color:#ccc;margin-top:2px;}
+.highlight{border:2px solid #E74C3C;border-radius:4px;padding:2px 4px;background:rgba(231,76,60,0.05);}
+.label{font-size:11px;color:#E74C3C;font-weight:700;margin-top:4px;}
+button.dl{margin:8px;padding:8px 20px;background:#BF877A;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;}
+</style>
+</head>
+<body>
+
+<h1 style="font-size:20px;">네이버 로그인 검수용 캡처 이미지</h1>
+<p style="color:#999;font-size:13px;">각 이미지를 우클릭 → "이미지를 다른 이름으로 저장"하여 검수에 첨부하세요.</p>
+
+<!-- 1단계: 로그인 페이지 -->
+<h2>1단계: 로그인 페이지 (네이버 로그인 버튼)</h2>
+<div class="frame">
+<div class="mock-header">
+<div class="logo">N</div>
+<span>naver-influencer.vercel.app</span>
+</div>
+<div class="mock" style="padding-top:20px;">
+<div style="width:50px;height:50px;background:#BF877A;border-radius:12px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:22px;">N</div>
+<div style="font-size:20px;font-weight:800;margin-bottom:4px;">N인플 로그인</div>
+<div style="font-size:12px;color:#999;margin-bottom:20px;">이메일과 비밀번호를 입력해주세요</div>
+<div style="text-align:left;margin:0 30px;">
+<div style="font-size:11px;color:#999;font-weight:600;margin-bottom:4px;">이메일</div>
+<div style="background:#f9f6f4;border:1px solid #e8e0dc;border-radius:10px;padding:12px;font-size:13px;color:#ccc;margin-bottom:12px;">example@email.com</div>
+<div style="font-size:11px;color:#999;font-weight:600;margin-bottom:4px;">비밀번호</div>
+<div style="background:#f9f6f4;border:1px solid #e8e0dc;border-radius:10px;padding:12px;font-size:13px;color:#ccc;margin-bottom:16px;">비밀번호를 입력해주세요</div>
+<div style="background:#BF877A;color:#fff;text-align:center;padding:12px;border-radius:10px;font-weight:700;font-size:14px;margin-bottom:16px;">로그인</div>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><div style="flex:1;height:1px;background:#e8e0dc;"></div><span style="font-size:10px;color:#ccc;">또는</span><div style="flex:1;height:1px;background:#e8e0dc;"></div></div>
+</div>
+<div class="naver-btn" style="border:3px solid #E74C3C;">N 네이버로 로그인</div>
+<div class="label" style="text-align:center;">네이버 로그인 버튼</div>
+<div style="font-size:10px;color:#ccc;margin:10px 0 20px;">아직 계정이 없으신가요? <span style="color:#BF877A;text-decoration:underline;">회원가입</span></div>
+</div>
+</div>
+
+<!-- 2단계: 네이버 인증 -->
+<h2>2단계: 네이버 로그인 인증 화면</h2>
+<div class="frame">
+<div class="mock-header" style="background:#03C75A;">
+<div style="color:#fff;font-weight:700;font-size:16px;">NAVER</div>
+<span style="color:rgba(255,255,255,0.7);">nid.naver.com</span>
+</div>
+<div class="mock" style="padding:30px;">
+<div style="font-size:18px;font-weight:700;margin-bottom:20px;">N인플에 로그인</div>
+<div style="font-size:13px;color:#666;margin-bottom:20px;">N인플에서 다음 정보를 제공받습니다:</div>
+<div style="text-align:left;background:#f5f5f5;border-radius:10px;padding:16px;margin-bottom:20px;">
+<div style="font-size:13px;margin-bottom:6px;"><span class="highlight">이메일 주소</span> <span class="label">제공</span></div>
+<div style="font-size:13px;margin-bottom:6px;"><span class="highlight">별명(닉네임)</span> <span class="label">제공</span></div>
+<div style="font-size:13px;"><span class="highlight">프로필 사진</span> <span class="label">제공</span></div>
+</div>
+<div style="background:#03C75A;color:#fff;text-align:center;padding:14px;border-radius:8px;font-weight:700;font-size:15px;margin-bottom:10px;">동의하고 계속하기</div>
+<div style="font-size:11px;color:#999;">네이버 계정으로 안전하게 로그인합니다</div>
+</div>
+</div>
+
+<!-- 3단계: 로그인 완료 후 프로필 -->
+<h2>3단계: 로그인 완료 - 프로필 페이지 (정보 활용)</h2>
+<div class="frame">
+<div class="mock-header">
+<div class="logo">N</div>
+<span>naver-influencer.vercel.app/profile</span>
+</div>
+<div class="mock" style="padding:20px 0;">
+<div style="font-size:16px;font-weight:800;margin-bottom:16px;">마이페이지</div>
+<div class="profile-card">
+<div class="profile-row">
+<div class="avatar"><img src="https://ssl.pstatic.net/static/pwe/address/img_profile.png" alt="프로필"></div>
+<div class="info">
+<div class="name">오렌지도서관 <span style="font-size:10px;color:#999;border:1px solid #ddd;padding:1px 6px;border-radius:3px;">편집</span></div>
+<div><span class="highlight email">orange0717@naver.com</span></div>
+<div class="date">가입일: 2026. 4. 16.</div>
+</div>
+</div>
+<div style="margin-top:12px;font-size:11px;">
+<div class="label" style="margin-bottom:6px;">네이버 로그인으로 제공받은 정보 활용:</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<span class="highlight" style="font-size:11px;">이메일: orange0717@naver.com</span>
+<span class="highlight" style="font-size:11px;">닉네임: 오렌지도서관</span>
+<span class="highlight" style="font-size:11px;">프로필 사진: 표시됨</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 4단계: 회원가입 페이지 -->
+<h2>4단계: 회원가입 페이지 (네이버로 시작하기)</h2>
+<div class="frame">
+<div class="mock-header">
+<div class="logo">N</div>
+<span>naver-influencer.vercel.app/auth/signup</span>
+</div>
+<div class="mock" style="padding-top:20px;">
+<div style="width:50px;height:50px;background:#BF877A;border-radius:12px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:22px;">N</div>
+<div style="font-size:20px;font-weight:800;margin-bottom:4px;">N인플 회원가입</div>
+<div style="font-size:12px;color:#999;margin-bottom:20px;">정보를 입력하고 가입하세요</div>
+<div style="text-align:left;margin:0 30px;">
+<div style="font-size:11px;color:#999;font-weight:600;margin-bottom:4px;">이메일</div>
+<div style="background:#f9f6f4;border:1px solid #e8e0dc;border-radius:10px;padding:12px;font-size:13px;color:#ccc;margin-bottom:12px;">example@email.com</div>
+<div style="font-size:11px;color:#999;font-weight:600;margin-bottom:4px;">닉네임</div>
+<div style="background:#f9f6f4;border:1px solid #e8e0dc;border-radius:10px;padding:12px;font-size:13px;color:#ccc;margin-bottom:12px;">닉네임을 입력해주세요</div>
+<div style="font-size:11px;color:#999;font-weight:600;margin-bottom:4px;">비밀번호</div>
+<div style="background:#f9f6f4;border:1px solid #e8e0dc;border-radius:10px;padding:12px;font-size:13px;color:#ccc;margin-bottom:16px;">비밀번호를 입력해주세요</div>
+<div style="background:#BF877A;color:#fff;text-align:center;padding:12px;border-radius:10px;font-weight:700;font-size:14px;margin-bottom:16px;">가입하기</div>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><div style="flex:1;height:1px;background:#e8e0dc;"></div><span style="font-size:10px;color:#ccc;">또는</span><div style="flex:1;height:1px;background:#e8e0dc;"></div></div>
+</div>
+<div class="naver-btn" style="border:3px solid #E74C3C;">N 네이버로 시작하기</div>
+<div class="label" style="text-align:center;">네이버 회원가입 버튼</div>
+<div style="font-size:10px;color:#ccc;margin:10px 0 20px;">이미 계정이 있으신가요? <span style="color:#BF877A;text-decoration:underline;">로그인</span></div>
+</div>
+</div>
+
+<!-- 5단계: 커뮤니티 게시글 -->
+<h2>5단계: 커뮤니티 게시글 (닉네임 표시)</h2>
+<div class="frame">
+<div class="mock-header">
+<div class="logo">N</div>
+<span>naver-influencer.vercel.app/community</span>
+</div>
+<div class="mock" style="padding:20px 16px;text-align:left;">
+<div style="font-size:18px;font-weight:800;margin-bottom:16px;">커뮤니티</div>
+<div style="background:#f9f6f4;border-radius:12px;padding:14px;margin-bottom:10px;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+<span style="font-size:11px;background:#BF877A;color:#fff;padding:2px 8px;border-radius:10px;font-weight:600;">자유</span>
+<span style="font-size:10px;color:#ccc;">2026.04.16</span>
+</div>
+<div style="font-size:14px;font-weight:700;margin-bottom:4px;">인플루언서 키워드 분석 팁 공유합니다</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+<div style="width:20px;height:20px;background:#F0D5C8;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#BF877A;">오</div>
+<span class="highlight" style="font-size:12px;font-weight:600;">오렌지도서관</span>
+<span class="label">닉네임</span>
+</div>
+</div>
+<div style="background:#f9f6f4;border-radius:12px;padding:14px;margin-bottom:10px;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+<span style="font-size:11px;background:#03C75A;color:#fff;padding:2px 8px;border-radius:10px;font-weight:600;">질문</span>
+<span style="font-size:10px;color:#ccc;">2026.04.16</span>
+</div>
+<div style="font-size:14px;font-weight:700;margin-bottom:4px;">키워드챌린지 순위 올리는 방법?</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+<div style="width:20px;height:20px;background:#D5E8F0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5B8CA7;">블</div>
+<span style="font-size:12px;font-weight:600;">블로거123</span>
+</div>
+</div>
+</div>
+</div>
+
+<p style="color:#999;font-size:12px;margin-top:30px;">위 이미지를 네이버 개발자센터 검수 페이지에 업로드하세요.</p>
+
+<script>
+// SVG 기반 다운로드 (외부 라이브러리 불필요)
+document.querySelectorAll('.frame').forEach(function(frame, i) {
+  var btn = document.createElement('button');
+  btn.className = 'dl';
+  btn.textContent = (i+1) + '단계 PNG 다운로드';
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var el = frame;
+    var w = el.offsetWidth * 2;
+    var h = el.offsetHeight * 2;
+    var data = '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'">'
+      + '<foreignObject width="100%" height="100%">'
+      + '<div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale(2);transform-origin:0 0;">'
+      + el.outerHTML
+      + '</div></foreignObject></svg>';
+    var svg = new Blob([data], {type:'image/svg+xml;charset=utf-8'});
+    var url = URL.createObjectURL(svg);
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      var a = document.createElement('a');
+      a.download = 'naver-login-step' + (i+1) + '.png';
+      a.href = canvas.toDataURL('image/png');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    img.src = url;
+  });
+  frame.after(btn);
+});
+</script>
+
+</body>
+</html>

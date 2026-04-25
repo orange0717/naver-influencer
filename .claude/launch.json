@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "ninfl-ext-dev",
+      "runtimeExecutable": "/Users/orange/.nvm/versions/node/v24.14.0/bin/npx",
+      "runtimeArgs": ["http-server", "/Users/orange/개발/naver-influencer/chrome-extension", "-p", "8082", "-c-1"],
+      "port": 8082
     }
   ]
 }

@@ -31,14 +31,6 @@ export default function Footer() {
           </nav>
         </div>
 
-        {/* 자매 서비스 */}
-        <div className="border-t border-white/10 pt-4 pb-4 flex items-center gap-4">
-          <a href="https://orangerefine.kr" target="_blank" rel="noopener noreferrer"
-            className="text-xs text-footer-dim hover:text-white transition-colors">
-            글쓰기 실력을 키우고 싶다면? OrangeRefine
-          </a>
-        </div>
-
         {/* 사업자정보 + 저작권 */}
         <div className="border-t border-white/10 pt-4 text-[11px] text-footer-dim/70 leading-relaxed">
           <p>오렌지도서관 · 대표 한미선 · 사업자등록번호 702-62-00986 · 통신판매 2025-충남천안-1491 · 전화 0507-1394-5091 · 이메일 orange@orangelibrary.co.kr</p>
