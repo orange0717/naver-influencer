@@ -1,8 +1,8 @@
 import BloggerRankingView from '@/components/BloggerRankingView';
 
 export const metadata = {
-  title: '블로거 순위 — N인플',
-  description: '네이버 블로거 종합 순위 Top 50 · 내 블로그 순위 조회',
+  title: '예비 인플루언서 순위 — N인플',
+  description: '네이버 예비 인플루언서 종합 순위 Top 50 · 내 블로그 순위 조회',
 };
 
 export default function BloggerRankingPage() {
@@ -10,11 +10,11 @@ export default function BloggerRankingPage() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div>
         <nav className="text-[11px] text-dim mb-2">
-          <a href="/rankings" className="underline">랭킹</a> · 블로거 순위
+          <a href="/rankings" className="underline">랭킹</a> · 예비 인플루언서 순위
         </nav>
-        <h1 className="text-2xl font-extrabold">블로거 순위</h1>
+        <h1 className="text-2xl font-extrabold">예비 인플루언서 순위</h1>
         <p className="text-sm text-dim mt-1">
-          네이버 블로거 활동 점수 기반 종합 순위. 내 블로그 순위도 입력해서 확인할 수 있습니다.
+          네이버 예비 인플루언서 활동 점수 기반 종합 순위. 내 블로그 순위도 입력해서 확인할 수 있습니다.
         </p>
       </div>
 

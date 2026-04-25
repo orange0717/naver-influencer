@@ -172,8 +172,8 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'rankings-blogger',
     category: 'ranking',
-    title: '블로거 순위',
-    description: '네이버 블로거 실시간 랭킹 (개발 중)',
+    title: '예비 인플루언서 순위',
+    description: '네이버 예비 인플루언서 실시간 랭킹 (개발 중)',
     href: '/rankings/blogger',
     requiredPlan: 'blogger',
     devPreview: true,

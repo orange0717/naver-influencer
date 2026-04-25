@@ -18,7 +18,7 @@ function canAccess(required: PlanTier | undefined, current: PlanTier): boolean {
 }
 
 function planBadge(plan: PlanTier): string {
-  if (plan === 'blogger') return '블로거+';
+  if (plan === 'blogger') return '예비 인플루언서';
   if (plan === 'influencer') return '인플루언서';
   return '';
 }

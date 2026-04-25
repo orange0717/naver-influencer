@@ -532,7 +532,7 @@ export default function LandingPage() {
               {
                 url: 'ninfl.co.kr/rankings',
                 title: '랭킹',
-                desc: '인플루언서·블로거 순위와 키워드별 블로그 순위 추적',
+                desc: '인플루언서·예비 인플루언서 순위와 키워드별 블로그 순위 추적',
                 link: '/rankings',
                 mockup: (
                   <div className="space-y-1.5">

@@ -14,7 +14,33 @@ const DASH = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim/30 shrink-0"><line x1="5" y1="12" x2="19" y2="12"/></svg>
 );
 
-type BillingPeriod = 'monthly' | 'annual';
+type BillingPeriod = 'monthly' | '3m' | '6m' | '9m' | 'annual';
+
+const PERIOD_OPTIONS: { value: BillingPeriod; label: string; badge?: string }[] = [
+  { value: 'monthly', label: '1개월' },
+  { value: '3m', label: '3개월' },
+  { value: '6m', label: '6개월' },
+  { value: '9m', label: '9개월' },
+  { value: 'annual', label: '12개월', badge: '1개월 무료' },
+];
+
+const PRICE_TABLE: Record<BillingPeriod, { blogger: number; influencer: number; suffix: string }> = {
+  monthly: { blogger: 5500, influencer: 9900, suffix: '/월' },
+  '3m':    { blogger: 16500, influencer: 29700, suffix: '/3개월' },
+  '6m':    { blogger: 33000, influencer: 59400, suffix: '/6개월' },
+  '9m':    { blogger: 49500, influencer: 89100, suffix: '/9개월' },
+  annual:  { blogger: 60500, influencer: 108900, suffix: '/년' },
+};
+
+const PLAN_KEY: Record<BillingPeriod, { blogger: string; influencer: string }> = {
+  monthly: { blogger: 'BLOGGER_MONTHLY', influencer: 'INFLUENCER_MONTHLY' },
+  '3m':    { blogger: 'BLOGGER_3M',      influencer: 'INFLUENCER_3M' },
+  '6m':    { blogger: 'BLOGGER_6M',      influencer: 'INFLUENCER_6M' },
+  '9m':    { blogger: 'BLOGGER_9M',      influencer: 'INFLUENCER_9M' },
+  annual:  { blogger: 'BLOGGER_ANNUAL',  influencer: 'INFLUENCER_ANNUAL' },
+};
+
+const formatKRW = (v: number) => v.toLocaleString('ko-KR');
 
 export default function SubscribeClient() {
   const searchParams = useSearchParams();
@@ -37,8 +63,12 @@ export default function SubscribeClient() {
     }
   }, [searchParams]);
 
-  const bloggerPlanKey = period === 'monthly' ? 'BLOGGER_MONTHLY' : 'BLOGGER_ANNUAL';
-  const influencerPlanKey = period === 'monthly' ? 'INFLUENCER_MONTHLY' : 'INFLUENCER_ANNUAL';
+  const price = PRICE_TABLE[period];
+  const bloggerPlanKey = PLAN_KEY[period].blogger;
+  const influencerPlanKey = PLAN_KEY[period].influencer;
+  // 12개월 월 환산 (1개월 무료 가정)
+  const bloggerMonthly = period === 'annual' ? Math.round(price.blogger / 12) : null;
+  const influencerMonthly = period === 'annual' ? Math.round(price.influencer / 12) : null;
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
@@ -68,25 +98,25 @@ export default function SubscribeClient() {
         <p className="text-sm text-dim">나에게 맞는 플랜을 선택하세요</p>
       </div>
 
-      {/* 월간/연간 토글 */}
+      {/* 결제 주기 토글 (5개) */}
       <div className="flex justify-center">
-        <div className="inline-flex bg-surface border border-border rounded-xl p-1">
-          <button
-            onClick={() => setPeriod('monthly')}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
-              period === 'monthly' ? 'bg-accent text-white' : 'text-dim hover:text-text'
-            }`}
-          >
-            월간
-          </button>
-          <button
-            onClick={() => setPeriod('annual')}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
-              period === 'annual' ? 'bg-accent text-white' : 'text-dim hover:text-text'
-            }`}
-          >
-            연간 <span className="text-[10px] ml-1">(1개월 할인)</span>
-          </button>
+        <div className="inline-flex flex-wrap gap-1 bg-surface border border-border rounded-xl p-1">
+          {PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriod(opt.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
+                period === opt.value ? 'bg-accent text-white' : 'text-dim hover:text-text'
+              }`}
+            >
+              {opt.label}
+              {opt.badge && (
+                <span className={`text-[10px] ml-1 ${period === opt.value ? 'text-white/80' : 'text-accent'}`}>
+                  ({opt.badge})
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -124,33 +154,24 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 검색순위</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">실시간 상승 키워드</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 리스트</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">랭킹 (블로거 / 인플루언서 / 품질지수)</span></li>
+            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">랭킹 (예비 인플루언서 / 인플루언서 / 품질지수)</span></li>
             <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">커뮤니티</span></li>
           </ul>
         </div>
 
-        {/* 블로거 */}
+        {/* 예비 인플루언서 */}
         <div className="bg-surface rounded-2xl border-2 border-accent p-6 space-y-5 relative">
           <div className="absolute -top-3 left-6 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full">
             추천
           </div>
           <div>
-            <p className="text-xs text-accent font-semibold">예비 인플루언서 +</p>
+            <p className="text-xs text-accent font-semibold">예비 인플루언서</p>
             <div className="flex items-baseline gap-1 mt-1">
-              {period === 'monthly' ? (
-                <>
-                  <span className="text-3xl font-black">5,500</span>
-                  <span className="text-sm text-dim">원/월</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-3xl font-black">60,500</span>
-                  <span className="text-sm text-dim">원/년</span>
-                </>
-              )}
+              <span className="text-3xl font-black">{formatKRW(price.blogger)}</span>
+              <span className="text-sm text-dim">원{price.suffix}</span>
             </div>
-            {period === 'annual' && (
-              <p className="text-[11px] text-accent font-semibold">월 5,042원 (1개월 할인)</p>
+            {bloggerMonthly && (
+              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(bloggerMonthly)}원 (1개월 무료)</p>
             )}
           </div>
           <p className="text-sm text-dim leading-relaxed">
@@ -160,7 +181,7 @@ export default function SubscribeClient() {
           {isLoggedIn ? (
             <PaymentButton
               planKey={bloggerPlanKey}
-              label={period === 'monthly' ? '5,500원 결제하기' : '60,500원 결제하기'}
+              label={`${formatKRW(price.blogger)}원 결제하기`}
             />
           ) : (
             <Link
@@ -178,7 +199,7 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 캠페인 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>실시간 상승 키워드</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 블로거 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 예비 인플루언서 순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 블로그 품질지수 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 5회)</span></li>
@@ -194,20 +215,11 @@ export default function SubscribeClient() {
           <div>
             <p className="text-xs text-accent font-semibold">INFLUENCER</p>
             <div className="flex items-baseline gap-1 mt-1">
-              {period === 'monthly' ? (
-                <>
-                  <span className="text-3xl font-black">9,900</span>
-                  <span className="text-sm text-dim">원/월</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-3xl font-black">108,900</span>
-                  <span className="text-sm text-dim">원/년</span>
-                </>
-              )}
+              <span className="text-3xl font-black">{formatKRW(price.influencer)}</span>
+              <span className="text-sm text-dim">원{price.suffix}</span>
             </div>
-            {period === 'annual' && (
-              <p className="text-[11px] text-accent font-semibold">월 9,075원 (1개월 할인)</p>
+            {influencerMonthly && (
+              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(influencerMonthly)}원 (1개월 무료)</p>
             )}
           </div>
           <p className="text-sm text-dim leading-relaxed">
@@ -217,7 +229,7 @@ export default function SubscribeClient() {
           {isLoggedIn ? (
             <PaymentButton
               planKey={influencerPlanKey}
-              label={period === 'monthly' ? '9,900원 결제하기' : '108,900원 결제하기'}
+              label={`${formatKRW(price.influencer)}원 결제하기`}
               className="!bg-accent/10 !text-accent hover:!bg-accent/20"
             />
           ) : (
@@ -230,7 +242,7 @@ export default function SubscribeClient() {
           )}
 
           <ul className="space-y-2.5 text-sm">
-            <li className="flex items-center gap-2.5">{CHECK}<span>블로거 플랜 전체 포함</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>예비 인플루언서 플랜 전체 포함</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 정산내역 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드 챌린지</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 리스트</span></li>
@@ -259,7 +271,7 @@ export default function SubscribeClient() {
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-2 font-semibold text-dim w-2/5">기능</th>
                 <th className="text-center py-3 px-2 font-semibold">무료</th>
-                <th className="text-center py-3 px-2 font-semibold text-accent">블로거</th>
+                <th className="text-center py-3 px-2 font-semibold text-accent">예비 인플루언서</th>
                 <th className="text-center py-3 px-2 font-semibold text-accent">인플루언서</th>
               </tr>
             </thead>
@@ -362,7 +374,7 @@ export default function SubscribeClient() {
                 <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>랭킹</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">블로거 순위</td>
+                <td className="py-2.5 px-2">예비 인플루언서 순위</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
@@ -422,7 +434,7 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 주기</p>
-              <p className="font-semibold">월간 / 연간 (1개월 할인)</p>
+              <p className="font-semibold">1 / 3 / 6 / 9 / 12개월 (12개월 1개월 무료)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">고객 지원</p>
@@ -437,7 +449,7 @@ export default function SubscribeClient() {
         <h2 className="text-sm font-bold">환불 정책</h2>
         <ul className="space-y-1.5 text-xs text-dim leading-relaxed">
           <li>- 구매일로부터 7일 이내 미이용 시 전액 환불</li>
-          <li>- 이용한 경우: 월간 이용권 일할 계산, 연간 이용권 월할 계산으로 잔여 금액 환불</li>
+          <li>- 이용한 경우: 잔여 일수 기준 일할 계산으로 환불</li>
           <li>- 환불 신청: 마이페이지 또는 orange@orangelibrary.co.kr</li>
           <li>- 처리 기간: 영업일 기준 3~5일 이내</li>
         </ul>
