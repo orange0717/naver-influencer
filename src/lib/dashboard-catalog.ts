@@ -82,7 +82,7 @@ export const APP_CATEGORIES: AppCategoryMeta[] = [
   },
   {
     key: 'partner',
-    label: '관련 서비스',
+    label: '추천 서비스',
     description: '함께 쓰면 좋은 외부 도구',
     tag: '파트너',
     badgeClass: BADGE,
@@ -306,13 +306,22 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/guide',
   },
 
-  // ── 관련 서비스 ──
+  // ── 추천 서비스 ──
   {
     id: 'orangerefine',
     category: 'partner',
     title: 'OrangeRefine',
     description: '글쓰기 실력을 키우고 싶다면 오렌지리파인 — AI 교정·교열·윤문, 글쓰기 학습',
     href: 'https://orangerefine.kr',
+    external: true,
+    ctaLabel: '바로가기',
+  },
+  {
+    id: 'claude',
+    category: 'partner',
+    title: '클로드',
+    description: '글쓰기·아이디어·코딩까지 — Anthropic의 AI 어시스턴트 Claude',
+    href: 'https://claude.ai',
     external: true,
     ctaLabel: '바로가기',
   },
