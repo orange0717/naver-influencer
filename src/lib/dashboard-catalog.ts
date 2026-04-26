@@ -165,18 +165,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     authOnly: true,
     devPreview: true,
   },
-  {
-    id: 'chatbook',
-    category: 'my',
-    title: '캐릭터챗북',
-    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (개발 중)',
-    href: '/chatbook',
-    requiredPlan: 'blogger',
-    authOnly: true,
-    ctaLabel: '대화하기',
-    devPreview: true,
-  },
-
   // ── 랭킹 ──
   {
     id: 'rankings-blogger',
@@ -295,6 +283,17 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/dashboard/writing/feedback',
     requiredPlan: 'influencer',
     authOnly: true,
+  },
+  {
+    id: 'chatbook',
+    category: 'writing',
+    title: '캐릭터챗북',
+    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (개발 중)',
+    href: '/chatbook',
+    requiredPlan: 'blogger',
+    authOnly: true,
+    ctaLabel: '대화하기',
+    devPreview: true,
   },
   {
     id: 'claude-feature',
