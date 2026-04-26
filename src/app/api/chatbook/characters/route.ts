@@ -256,5 +256,5 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: '캐릭터 삭제에 실패했습니다.' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ success: true });
 }
