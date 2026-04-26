@@ -209,14 +209,14 @@ export default function InfluencersPage() {
         size="sm"
       />
 
-      {/* 정렬 옵션 */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-dim font-semibold">정렬</span>
+      {/* 정렬 옵션 (모바일은 가로 스크롤, 데스크톱은 wrap) */}
+      <div className="flex flex-nowrap md:flex-wrap items-center gap-2 overflow-x-auto md:overflow-x-visible pb-1 md:pb-0 -mx-1 px-1">
+        <span className="text-xs text-dim font-semibold shrink-0">정렬</span>
         {SORT_OPTIONS.map(opt => (
           <button
             key={opt.key}
             onClick={() => handleSortChange(opt.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               sortBy === opt.key
                 ? 'bg-accent/20 text-accent border border-accent/40'
                 : 'bg-surface border border-border/50 text-dim hover:border-accent/30'

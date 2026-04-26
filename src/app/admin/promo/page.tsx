@@ -154,7 +154,7 @@ export default function AdminPromoPage() {
       />
 
       {/* 회원 목록 */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-[11px] text-dim">

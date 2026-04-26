@@ -91,7 +91,7 @@ export default function AdminPaymentsPage() {
       </form>
 
       {/* 결제 내역 테이블 */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />

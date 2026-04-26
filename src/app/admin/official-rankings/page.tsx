@@ -251,7 +251,7 @@ export default function AdminOfficialRankingsPage() {
       )}
 
       {preview.length > 0 && (
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <p className="text-sm font-bold">미리보기 — {preview.length}행 (유효 {validCount} / 오류 {errorCount})</p>
           </div>
@@ -289,7 +289,7 @@ export default function AdminOfficialRankingsPage() {
         </div>
       )}
 
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
         <div className="px-4 py-3 border-b border-border">
           <p className="text-sm font-bold">최근 스냅샷</p>
         </div>

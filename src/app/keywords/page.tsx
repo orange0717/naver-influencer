@@ -447,8 +447,8 @@ export default function KeywordsPage() {
               <span className="text-xs text-accent font-rank">{displayKeywords.length}개</span>
             )}
           </div>
-          {/* 버튼 바로가기 */}
-          <div className="flex flex-wrap gap-2">
+          {/* 버튼 바로가기 (데스크톱 전용 — 모바일은 위 select 사용) */}
+          <div className="hidden md:flex flex-wrap gap-2">
             {subCategories.map(sub => (
               <button key={sub} onClick={() => setSubFilter(sub)}
                 className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${

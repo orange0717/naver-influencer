@@ -114,7 +114,7 @@ export default function AdminRestrictedPage() {
       </form>
 
       {/* 목록 */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-bold">제한 사용자 목록</h2>
           <span className="text-xs text-dim">{users.length}명</span>
