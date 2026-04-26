@@ -6,6 +6,7 @@ import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
+import SavedKeywords from '@/components/dashboard/SavedKeywords';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 
 interface BloggerProfile {
@@ -741,6 +742,9 @@ export default function BloggerDashboard() {
 
       {/* ─── 5. 블로그 방문자수 차트 ─── */}
       {profile && <BlogVisitorChart blogId={profile.blogId} />}
+
+      {/* ─── 5-1. 저장된 키워드 (키워드챌린지에서 저장한 키워드 모음) ─── */}
+      <SavedKeywords />
 
       {/* ─── 6. 포스팅 목록 + 순위 확인 ─── */}
       <GlassCard padding="none">

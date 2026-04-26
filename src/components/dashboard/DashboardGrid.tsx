@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppCard, { useFavorites } from './AppCard';
-import SavedKeywords from './SavedKeywords';
 import {
   APP_CATEGORIES,
   DASHBOARD_APPS,
@@ -159,9 +158,6 @@ export default function DashboardGrid({
           </div>
         </div>
       </section>
-
-      {/* ── 저장된 키워드 (로그인 시) ── */}
-      {isLoggedIn && <SavedKeywords />}
 
       {/* ── 대시보드 스티키 내비 (카테고리 칩 바) ── */}
       <nav
