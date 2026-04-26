@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic';
  * 네이버 로그인 페이지로 리다이렉트
  */
 export async function GET(req: NextRequest) {
-  const clientId = process.env.NAVER_LOGIN_CLIENT_ID;
+  // 환경변수 등록 시 끝에 개행/공백이 섞여 들어가면 네이버가 invalid_client 처리하므로 방어
+  const clientId = process.env.NAVER_LOGIN_CLIENT_ID?.trim();
   if (!clientId) {
     return NextResponse.json({ error: '네이버 로그인이 설정되지 않았습니다.' }, { status: 503 });
   }

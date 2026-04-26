@@ -35,8 +35,9 @@ export async function GET(req: NextRequest) {
   }
   cookieStore.delete('naver_oauth_state');
 
-  const clientId = process.env.NAVER_LOGIN_CLIENT_ID;
-  const clientSecret = process.env.NAVER_LOGIN_CLIENT_SECRET;
+  // 환경변수 등록 시 끝에 개행/공백이 섞여 들어가면 토큰 교환이 실패하므로 방어
+  const clientId = process.env.NAVER_LOGIN_CLIENT_ID?.trim();
+  const clientSecret = process.env.NAVER_LOGIN_CLIENT_SECRET?.trim();
   if (!clientId || !clientSecret) {
     return NextResponse.redirect(`${baseUrl}/auth/login?error=naver_config`);
   }
