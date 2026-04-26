@@ -284,6 +284,15 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     authOnly: true,
   },
   {
+    id: 'claude-feature',
+    category: 'writing',
+    title: '블로그 글 피드백(클로드 AI)',
+    description: 'Claude와 채팅하며 블로그 글의 방향과 흐름에 대한 가벼운 피드백 받기',
+    href: '/dashboard/claude',
+    requiredPlan: 'influencer',
+    authOnly: true,
+  },
+  {
     id: 'writing-feedback',
     category: 'writing',
     title: 'AI 심층 피드백',
@@ -302,15 +311,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     authOnly: true,
     ctaLabel: '대화하기',
     devPreview: true,
-  },
-  {
-    id: 'claude-feature',
-    category: 'writing',
-    title: '블로그 글 피드백(클로드 AI)',
-    description: 'Claude와 채팅하며 블로그 글의 방향과 흐름에 대한 가벼운 피드백 받기',
-    href: '/dashboard/claude',
-    requiredPlan: 'influencer',
-    authOnly: true,
   },
 
   // ── 서비스 가이드 ──
