@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { unstable_cache } from 'next/cache';
 import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
-import { isRestricted, getPaywallContext } from '@/lib/admin';
+import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import type { PlanTier } from '@/lib/dashboard-catalog';
 
@@ -89,12 +89,13 @@ export default async function DashboardPage() {
   const supabase = createServiceClient();
 
   // 프로필 먼저 조회 (id 가 키워드 카운트에 필요)
+  // ※ users 실제 컬럼: nickname, blog_id, linked_influencer_id (name/naver_id 컬럼 없음)
   const fetchProfile = async () => {
     if (!authUser) return null;
     try {
       const { data } = await supabase
         .from('users')
-        .select('id, name, naver_id, subscription_plan, subscription_expires_at')
+        .select('id, nickname, blog_id, linked_influencer_id, subscription_plan, subscription_expires_at')
         .eq('auth_id', authUser.id)
         .maybeSingle();
       return data;
@@ -123,9 +124,13 @@ export default async function DashboardPage() {
   ]);
 
   if (authUser) {
-    userName = profileResult?.name || profileResult?.naver_id || authUser.email?.split('@')[0] || null;
+    userName = profileResult?.nickname || profileResult?.blog_id || authUser.email?.split('@')[0] || null;
     subscriptionExpiresAt = profileResult?.subscription_expires_at || null;
     currentPlan = resolvePlan(profileResult?.subscription_plan || null, subscriptionExpiresAt);
+    // 관리자는 모든 유료 기능을 무제한으로 — 가상 인플루언서 플랜 부여 (잠금 카드 우회)
+    if (profileResult?.id && isAdmin(profileResult.id)) {
+      currentPlan = 'influencer';
+    }
     myKeywordCount = keywordCountResult;
   } else if (demoNaverId) {
     userName = demoNaverId;
