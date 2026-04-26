@@ -658,7 +658,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       )}
 
       {/* ─── 2. 통계 카드 4개 ─── */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <AnimatedStatCard
           label="참여 키워드"
           value={participatedCount}

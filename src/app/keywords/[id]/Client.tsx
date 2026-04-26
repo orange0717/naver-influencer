@@ -309,22 +309,22 @@ export default function KeywordDetailPage() {
           </div>
         ) : monthlyVolume ? (
           <>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
               <div>
                 <div className="text-[11px] font-semibold text-dim mb-1">PC</div>
-                <div className="text-2xl font-extrabold font-rank">
+                <div className="text-lg sm:text-2xl font-extrabold font-rank">
                   {typeof monthlyVolume.pc === 'number' ? monthlyVolume.pc.toLocaleString() : monthlyVolume.pc}
                 </div>
               </div>
               <div>
                 <div className="text-[11px] font-semibold text-dim mb-1">Mobile</div>
-                <div className="text-2xl font-extrabold font-rank">
+                <div className="text-lg sm:text-2xl font-extrabold font-rank">
                   {typeof monthlyVolume.mobile === 'number' ? monthlyVolume.mobile.toLocaleString() : monthlyVolume.mobile}
                 </div>
               </div>
               <div>
                 <div className="text-[11px] font-semibold text-dim mb-1">합계</div>
-                <div className="text-2xl font-extrabold text-accent font-rank">
+                <div className="text-lg sm:text-2xl font-extrabold text-accent font-rank">
                   {typeof monthlyVolume.total === 'number' ? monthlyVolume.total.toLocaleString() : monthlyVolume.total}
                 </div>
               </div>

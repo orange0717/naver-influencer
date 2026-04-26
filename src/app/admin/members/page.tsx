@@ -174,7 +174,7 @@ export default function AdminMembersPage() {
       </div>
 
       {/* 활성 사용자 카드 (DAU/WAU/MAU) */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
           type="button"
           onClick={() => setTodayModalOpen(true)}
@@ -220,14 +220,16 @@ export default function AdminMembersPage() {
         </button>
       </form>
 
-      {/* 테이블 */}
+      {/* 테이블/카드 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <>
+          <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm min-w-[920px]">
             <thead>
               <tr className="border-b border-border text-[11px] text-dim">
                 <th className="text-left px-3 py-2.5 font-semibold">닉네임</th>
@@ -319,6 +321,63 @@ export default function AdminMembersPage() {
               )}
             </tbody>
           </table>
+          </div>
+
+          {/* 카드 (모바일) */}
+          <div className="md:hidden divide-y divide-border/20">
+            {members.map(m => {
+              const remainDays = m.subscription_plan && m.subscription_expires_at
+                ? Math.max(0, Math.ceil((new Date(m.subscription_expires_at).getTime() - Date.now()) / 86400000))
+                : null;
+              const lastVisit = m.last_visited_at ? (() => {
+                const last = new Date(m.last_visited_at);
+                const sameDay = last.toDateString() === new Date().toDateString();
+                return sameDay
+                  ? `오늘 ${last.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+                  : last.toLocaleDateString('ko-KR');
+              })() : null;
+              const repeat = Math.max(0, (m.session_count ?? 0) - 1);
+              return (
+                <button
+                  type="button"
+                  key={m.id}
+                  onClick={() => openDetail(m.id)}
+                  className="w-full text-left px-4 py-3 hover:bg-surface-hover transition cursor-pointer"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="font-semibold text-sm truncate">{m.nickname || '-'}</span>
+                      {m.is_admin && (
+                        <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded-full leading-none shrink-0">관리자</span>
+                      )}
+                    </div>
+                    {m.subscription_plan ? (
+                      <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full shrink-0">
+                        {m.subscription_plan}{remainDays !== null ? ` · ${remainDays}일` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-dim shrink-0">무료</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-dim truncate">{m.email}</div>
+                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-dim">
+                    <span>방문 <span className="font-rank font-bold text-text">{(m.session_count ?? 0).toLocaleString()}</span></span>
+                    {repeat > 0 && (
+                      <span>반복 <span className="font-rank font-bold text-accent">{repeat.toLocaleString()}</span></span>
+                    )}
+                    <span>PV <span className="font-rank font-bold text-text">{(m.pageview_count ?? 0).toLocaleString()}</span></span>
+                  </div>
+                  {lastVisit && (
+                    <div className="text-[10px] text-dim mt-0.5">최근 방문 · {lastVisit}</div>
+                  )}
+                </button>
+              );
+            })}
+            {members.length === 0 && (
+              <div className="px-4 py-8 text-center text-dim text-sm">결과 없음</div>
+            )}
+          </div>
+          </>
         )}
 
         {/* 페이지네이션 */}
