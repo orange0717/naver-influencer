@@ -4,6 +4,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import GlassCard from './GlassCard';
 import KeywordSyncButton from './KeywordSyncButton';
+import BookmarkButton from '@/components/keywords/BookmarkButton';
+import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { formatCount } from '@/lib/format';
 
 interface RankingInfo {
@@ -80,6 +82,15 @@ export default function MyKeywordList({
   // 검색 노출 데이터
   const [exposureCache, setExposureCache] = useState<Record<string, { blog: { naver_id: string; rank: number }[]; view: { naver_id: string; rank: number }[] }>>({});
   const [exposureLoading, setExposureLoading] = useState<string | null>(null);
+
+  // 저장된 키워드 토글
+  const { savedSet, toggle: toggleSaved } = useSavedKeywords();
+  const handleToggleSave = (kw: KeywordItem) => {
+    toggleSaved(kw.keyword, {
+      monthly_total: kw.search_volume || 0,
+      competition: getCompLevel(kw.participant_count) === 'low' ? '낮음' : getCompLevel(kw.participant_count) === 'mid' ? '보통' : '높음',
+    });
+  };
 
   const toggleRankings = async (kwId: string) => {
     if (expandedId === kwId) { setExpandedId(null); return; }
@@ -365,6 +376,7 @@ export default function MyKeywordList({
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('volume')}>월 검색량<SortArrow col="volume" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('comp')}>경쟁도<SortArrow col="comp" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold">상태</th>
+                  <th className="text-center px-2 py-2.5 font-semibold w-10">저장</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
@@ -461,10 +473,16 @@ export default function MyKeywordList({
                           <span className="text-xs font-bold text-down bg-down/10 px-1.5 py-0.5 rounded">미노출</span>
                         )}
                       </td>
+                      <td className="text-center px-2 py-3">
+                        <BookmarkButton
+                          isSaved={savedSet.has(kw.keyword)}
+                          onClick={() => handleToggleSave(kw)}
+                        />
+                      </td>
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={9} className="px-5 py-3 bg-bg/60">
+                        <td colSpan={10} className="px-5 py-3 bg-bg/60">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-4">
                             {/* 챌린지 TOP3 */}
                             <div>
@@ -591,6 +609,10 @@ export default function MyKeywordList({
                     ) : (
                       <span className="text-[10px] font-bold text-down bg-down/10 px-1.5 py-0.5 rounded">미노출</span>
                     )}
+                    <BookmarkButton
+                      isSaved={savedSet.has(kw.keyword)}
+                      onClick={() => handleToggleSave(kw)}
+                    />
                   </div>
                   </div>
                   {top3Map[kw.keyword_id] && top3Map[kw.keyword_id].length > 0 && (

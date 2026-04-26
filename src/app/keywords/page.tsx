@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { Keyword } from '@/lib/types';
 import { getSubcategory, getSubcategoryList } from '@/data/subcategory-map';
 import CategoryFilter from '@/components/CategoryFilter';
+import BookmarkButton from '@/components/keywords/BookmarkButton';
+import { useSavedKeywords } from '@/hooks/useSavedKeywords';
+
+const compTextMap: Record<string, string> = { low: '낮음', medium: '보통', high: '높음' };
 
 interface CategoryGroup {
   category: string;
@@ -102,6 +106,17 @@ export default function KeywordsPage() {
 
   // 관련키워드 캐시
   const [relatedCache, setRelatedCache] = useState<Record<string, RelatedKeyword[]>>({});
+
+  // 저장된 키워드 토글
+  const { savedSet, toggle: toggleSaved } = useSavedKeywords();
+  const handleToggleSave = (kw: Keyword) => {
+    toggleSaved(kw.keyword, {
+      monthly_pc: kw.search_volume_pc || 0,
+      monthly_mobile: kw.search_volume_mobile || 0,
+      monthly_total: kw.search_volume_monthly || 0,
+      competition: compTextMap[kw.competition_level] || '낮음',
+    });
+  };
 
   // 키워드 목록 로드 시 배치로 TOP3 가져오기 (점진적 로딩)
   useEffect(() => {
@@ -467,6 +482,12 @@ export default function KeywordsPage() {
                             {sub && <td className="py-3 px-2 text-sm text-accent font-semibold">{sub}</td>}
                             <td className="py-3 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
                             <td className="py-3 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
+                            <td className="py-3 px-2 text-center w-10">
+                              <BookmarkButton
+                                isSaved={savedSet.has(kw.keyword)}
+                                onClick={() => handleToggleSave(kw)}
+                              />
+                            </td>
                           </tr>
                           );
                         })}
@@ -489,6 +510,10 @@ export default function KeywordsPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
                               {compBadge(kw.competition_level)}
+                              <BookmarkButton
+                                isSaved={savedSet.has(kw.keyword)}
+                                onClick={() => handleToggleSave(kw)}
+                              />
                       </div>
                     </div>
                     {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
@@ -549,6 +574,7 @@ export default function KeywordsPage() {
                   <th className="text-center py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('competition_level')}>
                     경쟁도{sortArrow('competition_level')}
                   </th>
+                  <th className="text-center py-3 px-2 font-semibold text-dim text-sm w-10">저장</th>
                 </tr>
               </thead>
               <tbody>
@@ -599,10 +625,16 @@ export default function KeywordsPage() {
                       {kw.first_seen_at ? new Date(kw.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '—'}
                     </td>
                     <td className="py-3.5 px-3 text-center">{compBadge(kw.competition_level)}</td>
+                    <td className="py-3.5 px-2 text-center">
+                      <BookmarkButton
+                        isSaved={savedSet.has(kw.keyword)}
+                        onClick={() => handleToggleSave(kw)}
+                      />
+                    </td>
                   </tr>
                   {isExpanded && (
                     <tr>
-                      <td colSpan={10} className="px-4 py-3 bg-bg/60 border-b border-border/50">
+                      <td colSpan={11} className="px-4 py-3 bg-bg/60 border-b border-border/50">
                         {isLoadingRank ? (
                           <div className="flex items-center gap-2 py-2 pl-8">
                             <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
@@ -655,7 +687,13 @@ export default function KeywordsPage() {
                     <span className="text-dim text-sm shrink-0">{kw.category}</span>
                     {sub && <span className="text-sm text-accent font-semibold shrink-0">{sub}</span>}
                   </div>
-                  {compBadge(kw.competition_level)}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {compBadge(kw.competition_level)}
+                    <BookmarkButton
+                      isSaved={savedSet.has(kw.keyword)}
+                      onClick={() => handleToggleSave(kw)}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-dim">
                   <span>참여자 {kw.participant_count.toLocaleString()}명</span>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { DashboardApp, AppCategoryMeta, PlanTier } from '@/lib/dashboard-catalog';
 
@@ -73,27 +74,40 @@ export default function AppCard({
   onToggleFavorite,
 }: AppCardProps) {
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
+  // devPreview 카드도 잠금 뱃지로 유료 등급은 그대로 표시 (정식 출시 시 가격 정보 미리 노출)
   const locked =
-    !app.devPreview &&
     !!app.requiredPlan && PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan];
   const needsLogin = !!app.authOnly && !isLoggedIn;
 
   // 잠금 시 이용권 페이지로 유도, 로그인 필요 시 로그인 페이지로 유도
+  // devPreview 는 결제 후 컴플레인 방지를 위해 클릭 무력화
   let targetHref = app.href;
-  if (locked && app.requiredPlan) {
+  if (app.devPreview) {
+    targetHref = '#';
+  } else if (locked && app.requiredPlan) {
     targetHref = `/subscribe?highlight=${app.requiredPlan === 'influencer' ? 'influencer' : 'blogger'}`;
   } else if (needsLogin) {
     targetHref = `/auth/login?redirect=${encodeURIComponent(app.href)}`;
   }
 
-  const buttonLabel = locked
-    ? `${planLabel(app.requiredPlan!)} 플랜`
-    : needsLogin
-      ? '무료'
-      : (app.ctaLabel || '무료플랜');
+  const buttonLabel = app.devPreview
+    ? '준비 중'
+    : locked
+      ? `${planLabel(app.requiredPlan!)} 플랜`
+      : needsLogin
+        ? '무료'
+        : (app.ctaLabel || '무료플랜');
 
   // 외부 링크는 새 탭으로 열기 (Next Link 대신 일반 a)
-  const isExternal = !!app.external && !locked && !needsLogin;
+  const isExternal = !!app.external && !locked && !needsLogin && !app.devPreview;
+
+  // devPreview 카드는 클릭 비활성 (결제 후 못 쓰는 컴플레인 방지)
+  const handleDevPreviewClick = app.devPreview
+    ? (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    : undefined;
 
   return (
     <div className="group relative flex flex-col aspect-square bg-surface rounded-2xl border border-border p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40">
@@ -159,14 +173,17 @@ export default function AppCard({
           href={targetHref}
           target="_blank"
           rel="noopener noreferrer"
-          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass} ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}
+          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass}`}
         >
           {buttonLabel}
         </a>
       ) : (
         <Link
           href={targetHref}
-          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass} ${locked ? 'opacity-90' : ''} ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}
+          onClick={handleDevPreviewClick}
+          aria-disabled={app.devPreview ? true : undefined}
+          tabIndex={app.devPreview ? -1 : undefined}
+          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass} ${app.devPreview ? 'opacity-50 group-hover:opacity-100 cursor-not-allowed' : locked ? 'opacity-90' : ''}`}
         >
           {buttonLabel}
         </Link>

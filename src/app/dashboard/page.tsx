@@ -85,13 +85,13 @@ export default async function DashboardPage() {
 
   const supabase = createServiceClient();
 
-  // 프로필 + 키워드 카운트 + 공지 카운트(60초 캐시)를 병렬 실행
+  // 프로필 먼저 조회 (id 가 키워드 카운트에 필요)
   const fetchProfile = async () => {
     if (!authUser) return null;
     try {
       const { data } = await supabase
         .from('users')
-        .select('name, naver_id, subscription_plan, subscription_expires_at')
+        .select('id, name, naver_id, subscription_plan, subscription_expires_at')
         .eq('auth_id', authUser.id)
         .maybeSingle();
       return data;
@@ -100,22 +100,22 @@ export default async function DashboardPage() {
     }
   };
 
-  const fetchKeywordCount = async () => {
-    if (!authUser) return 0;
+  const fetchKeywordCount = async (userId: string | null) => {
+    if (!userId) return 0;
     try {
       const { count } = await supabase
-        .from('user_saved_keywords')
+        .from('saved_search_keywords')
         .select('id', { count: 'exact', head: true })
-        .eq('auth_id', authUser.id);
+        .eq('user_id', userId);
       return count || 0;
     } catch {
       return 0;
     }
   };
 
-  const [profileResult, keywordCountResult, unreadNotices] = await Promise.all([
-    fetchProfile(),
-    fetchKeywordCount(),
+  const profileResult = await fetchProfile();
+  const [keywordCountResult, unreadNotices] = await Promise.all([
+    fetchKeywordCount(profileResult?.id || null),
     getRecentNoticesCount(),
   ]);
 
