@@ -40,7 +40,6 @@ export default function SavedKeywords() {
   };
 
   if (loading) return null;
-  if (keywords.length === 0) return null;
 
   return (
     <div className="bg-surface rounded-xl border border-border overflow-hidden">
@@ -52,10 +51,22 @@ export default function SavedKeywords() {
           <span className="text-sm font-bold">저장된 키워드</span>
           <span className="text-xs text-accent font-rank">{keywords.length}</span>
         </div>
-        <Link href="/keywords/blogger" className="text-xs text-accent hover:underline">
-          키워드 검색 →
+        <Link href="/keywords" className="text-xs text-accent hover:underline">
+          키워드챌린지 →
         </Link>
       </div>
+
+      {keywords.length === 0 && (
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm text-dim mb-2">아직 저장한 키워드가 없습니다.</p>
+          <p className="text-xs text-dim">
+            <Link href="/keywords" className="text-accent hover:underline font-semibold">키워드챌린지</Link>
+            {' 또는 '}
+            <Link href="/my" className="text-accent hover:underline font-semibold">내 키워드</Link>
+            {' 페이지의 북마크를 클릭해 저장하면 여기에 모입니다.'}
+          </p>
+        </div>
+      )}
 
       {/* Desktop */}
       <table className="w-full hidden md:table">
