@@ -306,7 +306,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'claude-feature',
     category: 'writing',
-    title: '클로드기능',
+    title: '블로그 글 피드백(클로드)',
     description: 'Claude와 채팅하며 블로그 글의 방향과 흐름에 대한 가벼운 피드백 받기',
     href: '/dashboard/claude',
     requiredPlan: 'influencer',

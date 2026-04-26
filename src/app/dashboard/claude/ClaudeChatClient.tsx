@@ -441,7 +441,7 @@ export default function ClaudeChatClient() {
             <h1 className="text-sm font-extrabold truncate">
               {activeId
                 ? conversations.find((c) => c.id === activeId)?.title || '대화'
-                : '클로드기능 — 블로그 글 피드백'}
+                : '블로그 글 피드백(클로드)'}
             </h1>
             <p className="text-[11px] text-dim truncate">
               방향성 위주 가벼운 조언 · 맞춤법은 별도 도구 사용
@@ -501,7 +501,7 @@ export default function ClaudeChatClient() {
                   무료 체험 {freeTrialLimit}회를 모두 사용했어요
                 </p>
                 <p className="text-[12px] text-dim mb-3 leading-relaxed">
-                  인플루언서 플랜으로 업그레이드하면 클로드기능을 무제한으로 사용할 수 있어요.
+                  인플루언서 플랜으로 업그레이드하면 블로그 글 피드백을 무제한으로 사용할 수 있어요.
                 </p>
                 <a
                   href="/subscribe?highlight=influencer"
