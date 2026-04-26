@@ -14,6 +14,7 @@ type UserInfo = {
   isAdmin?: boolean;
   restricted?: boolean;
   subscriptionPlan?: string | null;
+  subscriptionExpiresAt?: string | null;
   subscriptionActive?: boolean;
   trialDaysLeft?: number;
   isDemo?: boolean;
