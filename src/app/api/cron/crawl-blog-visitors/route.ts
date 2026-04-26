@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
 
     let totalProcessed = 0;
     let totalFailed = 0;
+    const failedSamples: string[] = [];
 
     // 한 블로거 처리 (병렬 실행 단위)
     const processOne = async (blogId: string) => {
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
         const visitors = await fetchBlogVisitors(blogId);
         if (visitors.length === 0) {
           totalFailed++;
+          if (failedSamples.length < 20) failedSamples.push(blogId);
           return;
         }
 
@@ -79,6 +81,7 @@ export async function GET(request: NextRequest) {
       } catch (err) {
         console.error(`[crawl-blog-visitors] Error for ${blogId}:`, err);
         totalFailed++;
+        if (failedSamples.length < 20) failedSamples.push(blogId);
       }
     };
 
@@ -100,6 +103,7 @@ export async function GET(request: NextRequest) {
       bloggers: blogIds.length,
       processed: totalProcessed,
       failed: totalFailed,
+      failedSamples,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

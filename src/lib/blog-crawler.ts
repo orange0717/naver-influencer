@@ -270,8 +270,9 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
       }
     }
 
-    // 폴백: 모바일 블로그 페이지에서 todayVisitor / dayVisitorCount JSON 추출
+    // 폴백: 모바일 블로그 페이지에서 오늘치 방문자 JSON 추출
     // (NVisitorgp4Ajax 가 막힌 이후로는 사실상 이 폴백이 주 경로)
+    // 네이버가 키 이름을 종종 바꾸므로 여러 패턴을 순서대로 시도
     if (results.length === 0) {
       try {
         const mobileRes = await fetch(`https://m.blog.naver.com/${blogId}`, {
@@ -282,18 +283,35 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
         });
         if (mobileRes.ok) {
           const html = await mobileRes.text();
-          const todayMatch =
-            html.match(/"dayVisitorCount"\s*:\s*(\d+)/) ||
-            html.match(/"todayVisitor"\s*:\s*(\d+)/);
-          if (todayMatch) {
+          const patterns = [
+            /"dayVisitorCount"\s*:\s*(\d+)/,
+            /"todayVisitor"\s*:\s*(\d+)/,
+            /"todayVisitorCount"\s*:\s*(\d+)/,
+            /"todayCnt"\s*:\s*(\d+)/,
+            /"dayVisitor"\s*:\s*(\d+)/,
+            /"visitorCount"\s*:\s*(\d+)/,
+            /dayVisitorCount["'\s:=]+(\d+)/,
+            /todayVisitor["'\s:=]+(\d+)/,
+          ];
+          let visitors: number | null = null;
+          for (const re of patterns) {
+            const m = html.match(re);
+            if (m) {
+              const n = parseInt(m[1]);
+              if (Number.isFinite(n) && n >= 0) {
+                visitors = n;
+                break;
+              }
+            }
+          }
+          if (visitors !== null) {
             // KST 기준 오늘 날짜
             const today = new Date(Date.now() + 9 * 60 * 60 * 1000)
               .toISOString()
               .slice(0, 10);
-            const visitors = parseInt(todayMatch[1]);
-            if (visitors >= 0) {
-              results.push({ date: today, visitors });
-            }
+            results.push({ date: today, visitors });
+          } else if (process.env.NODE_ENV !== 'production') {
+            console.warn(`[blog-crawler] mobile fallback: no visitor pattern matched for ${blogId}`);
           }
         }
       } catch {

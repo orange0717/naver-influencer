@@ -92,20 +92,25 @@ export async function GET(req: NextRequest) {
       count: v.visitor_count,
     }));
     const todayVisitors = items.find(v => v.date === todayStr)?.count || 0;
-    const avgVisitors = items.length > 0
-      ? Math.round(items.reduce((s, v) => s + v.count, 0) / items.length)
-      : 0;
+    const totalVisitors = items.reduce((s, v) => s + v.count, 0);
+    const avgVisitors = items.length > 0 ? Math.round(totalVisitors / items.length) : 0;
 
     // 트렌드: 최근 7일 평균 vs 전체 평균
     const recent7 = items.slice(-7);
     const avg7 = recent7.length > 0 ? recent7.reduce((s, v) => s + v.count, 0) / recent7.length : 0;
     const trend = avgVisitors > 0 ? Math.round(((avg7 - avgVisitors) / avgVisitors) * 100) : 0;
 
+    // 가장 최근 수집 날짜(차트가 어디서 끊겼는지 진단용)
+    const lastCollectedDate = items.length > 0 ? items[items.length - 1].date : null;
+
     return NextResponse.json({
       visitors: items,
       todayVisitors,
       avgVisitors,
+      totalVisitors,
       trend,
+      collectedDays: items.length,
+      lastCollectedDate,
     });
   } catch (err) {
     console.error('[blog/visitors] error:', err);
