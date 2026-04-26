@@ -148,6 +148,63 @@ export async function requirePaidAccess(request: NextRequest): Promise<
 }
 
 /**
+ * Server Component 페이월 진입 차단용 통합 헬퍼
+ *
+ * 활성 구독자와 관리자가 어떤 경우에도 페이월/구독 페이지로 튕기지 않도록
+ * 한 번의 호출로 권한 컨텍스트를 반환한다.
+ *
+ * 데이터 정합성 fallback:
+ *  - 1차: users.auth_id 매칭
+ *  - 2차: users.email 매칭 (auth.users 와 public.users 의 email 동기화 누락 대비)
+ *
+ * @param authUserId Supabase Auth UUID (auth.users.id)
+ * @param email      auth.users.email — auth_id 매칭 실패 시 fallback
+ */
+export async function getPaywallContext(
+  authUserId: string,
+  email?: string | null
+): Promise<{
+  isAdminUser: boolean;
+  hasActivePaidPlan: boolean;
+  plan: string | null;
+  expiresAt: string | null;
+  userId: string | null;
+}> {
+  try {
+    const supabase = createServiceClient();
+    let { data } = await supabase
+      .from('users')
+      .select('id, subscription_plan, subscription_expires_at')
+      .eq('auth_id', authUserId)
+      .maybeSingle();
+
+    if (!data && email) {
+      const { data: byEmail } = await supabase
+        .from('users')
+        .select('id, subscription_plan, subscription_expires_at')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+      data = byEmail;
+    }
+
+    if (!data) {
+      return { isAdminUser: false, hasActivePaidPlan: false, plan: null, expiresAt: null, userId: null };
+    }
+
+    return {
+      isAdminUser: isAdmin(data.id),
+      hasActivePaidPlan: hasActiveSubscription(data.subscription_plan, data.subscription_expires_at),
+      plan: data.subscription_plan ?? null,
+      expiresAt: data.subscription_expires_at ?? null,
+      userId: data.id,
+    };
+  } catch (err) {
+    console.error('[getPaywallContext] unexpected error:', err);
+    return { isAdminUser: false, hasActivePaidPlan: false, plan: null, expiresAt: null, userId: null };
+  }
+}
+
+/**
  * 인플루언서 플랜 이상 접근 권한 확인 (블로거 플랜 차단)
  * - 비로그인 → 401
  * - 활성 INFLUENCER 플랜이 아니면 → 403 (블로거 플랜 또는 무료/만료 모두 차단)

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
-import { isRestricted, isAdmin } from '@/lib/admin';
+import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { getPaywallContext } from '@/lib/admin';
 import SpellcheckClient from './SpellcheckClient';
 
 export const dynamic = 'force-dynamic';
@@ -17,21 +17,11 @@ export default async function SpellcheckPage() {
   } = await supabaseAuth.auth.getUser();
 
   if (!authUser) redirect('/auth/login?redirect=/dashboard/writing/spellcheck');
-  if (await isRestricted(authUser.email)) redirect('/subscribe');
 
-  const supabase = createServiceClient();
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, subscription_plan, subscription_expires_at')
-    .eq('auth_id', authUser.id)
-    .maybeSingle();
-
-  const plan = profile?.subscription_plan;
-  const expires = profile?.subscription_expires_at ? new Date(profile.subscription_expires_at).getTime() : 0;
-  const isPaid = (plan === 'BLOGGER' || plan === 'INFLUENCER') && expires > Date.now();
-  const adminBypass = profile?.id ? isAdmin(profile.id) : false;
-
-  if (!isPaid && !adminBypass) redirect('/subscribe?highlight=blogger');
+  // 관리자 또는 활성 유료 구독자(BLOGGER/INFLUENCER)면 무조건 통과
+  const ctx = await getPaywallContext(authUser.id, authUser.email);
+  const allowed = ctx.isAdminUser || ctx.hasActivePaidPlan;
+  if (!allowed) redirect('/subscribe?highlight=blogger');
 
   return <SpellcheckClient />;
 }
