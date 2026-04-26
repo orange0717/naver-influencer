@@ -26,7 +26,7 @@ export function useSavedKeywords(enabled: boolean = true) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/my/saved-keywords');
+        const res = await fetch('/api/my/saved-keywords', { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
@@ -45,45 +45,55 @@ export function useSavedKeywords(enabled: boolean = true) {
   const toggle = useCallback(
     async (keyword: string, meta?: SavedKeywordMeta) => {
       const isSaved = savedSet.has(keyword);
-      const redirectToLogin = () => {
-        const back = encodeURIComponent(window.location.pathname + window.location.search);
-        alert('로그인이 필요한 기능입니다.');
-        window.location.href = `/auth/login?redirect=${back}`;
+      // 401/403 시 페이지를 자동 이동하지 않고 알림만 표시 (튕김 방지)
+      const handleAuthError = (status: number) => {
+        if (status === 401) {
+          alert('로그인이 필요한 기능입니다. 우측 상단의 로그인 버튼으로 로그인해주세요.');
+        } else if (status === 403) {
+          alert('이 계정은 키워드 저장 기능을 이용할 수 없습니다.');
+        }
       };
-      if (isSaved) {
-        const res = await fetch(`/api/my/saved-keywords?keyword=${encodeURIComponent(keyword)}`, {
-          method: 'DELETE',
-        });
-        if (res.ok) {
-          setSavedSet((prev) => {
-            const next = new Set(prev);
-            next.delete(keyword);
-            return next;
+      try {
+        if (isSaved) {
+          const res = await fetch(`/api/my/saved-keywords?keyword=${encodeURIComponent(keyword)}`, {
+            method: 'DELETE',
+            credentials: 'include',
           });
-        } else if (res.status === 401) {
-          redirectToLogin();
+          if (res.ok) {
+            setSavedSet((prev) => {
+              const next = new Set(prev);
+              next.delete(keyword);
+              return next;
+            });
+          } else if (res.status === 401 || res.status === 403) {
+            handleAuthError(res.status);
+          } else {
+            const j = await res.json().catch(() => ({}));
+            alert(`(${res.status}) ${j.error || '삭제에 실패했습니다.'}`);
+          }
         } else {
-          const j = await res.json().catch(() => ({}));
-          alert(j.error || '삭제에 실패했습니다.');
-        }
-      } else {
-        const res = await fetch('/api/my/saved-keywords', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ keyword, ...(meta || {}) }),
-        });
-        if (res.ok) {
-          setSavedSet((prev) => {
-            const next = new Set(prev);
-            next.add(keyword);
-            return next;
+          const res = await fetch('/api/my/saved-keywords', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keyword, ...(meta || {}) }),
           });
-        } else if (res.status === 401) {
-          redirectToLogin();
-        } else {
-          const j = await res.json().catch(() => ({}));
-          alert(j.error || '저장에 실패했습니다.');
+          if (res.ok) {
+            setSavedSet((prev) => {
+              const next = new Set(prev);
+              next.add(keyword);
+              return next;
+            });
+          } else if (res.status === 401 || res.status === 403) {
+            handleAuthError(res.status);
+          } else {
+            const j = await res.json().catch(() => ({}));
+            alert(`(${res.status}) ${j.error || '저장에 실패했습니다.'}`);
+          }
         }
+      } catch (err) {
+        console.error('[useSavedKeywords] toggle error:', err);
+        alert('네트워크 오류로 저장에 실패했습니다.');
       }
     },
     [savedSet]
