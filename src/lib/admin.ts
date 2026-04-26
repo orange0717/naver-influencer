@@ -13,16 +13,51 @@ export function isAdmin(userId: string): boolean {
 }
 
 /**
+ * 활성 유료 구독 여부 (subscription_plan + 만료 시각)
+ * - plan 이 비어 있거나 expires_at 이 null/과거면 false
+ */
+function hasActiveSubscription(
+  plan: string | null | undefined,
+  expiresAt: string | null | undefined
+): boolean {
+  if (!plan) return false;
+  if (!expiresAt) return false;
+  const t = new Date(expiresAt).getTime();
+  if (Number.isNaN(t)) return false;
+  return t > Date.now();
+}
+
+/**
  * 주어진 이메일이 제한된 사용자인지 확인 (DB + 환경변수 폴백)
+ *
+ * 권한 우선순위:
+ * 1) users.subscription_plan + subscription_expires_at 가 활성이면 제한 해제(false)
+ * 2) 환경변수 RESTRICTED_USER_EMAILS 에 포함되면 제한(true)
+ * 3) restricted_users 테이블에 등록되어 있으면 제한(true)
  */
 export async function isRestricted(email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
   const lower = email.toLowerCase();
 
-  // 환경변수 폴백
+  // 1) 활성 유료 구독 우선 — 365일 권한 등 부여된 회원은 제한 우회
+  try {
+    const supabase = createServiceClient();
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('subscription_plan, subscription_expires_at')
+      .eq('email', lower)
+      .maybeSingle();
+    if (userRow && hasActiveSubscription(userRow.subscription_plan, userRow.subscription_expires_at)) {
+      return false;
+    }
+  } catch {
+    // users 조회 실패는 무시하고 기존 제한 로직으로 폴백
+  }
+
+  // 2) 환경변수 폴백
   if (RESTRICTED_EMAILS.includes(lower)) return true;
 
-  // DB 조회
+  // 3) DB 조회
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
@@ -67,7 +102,7 @@ export async function isRestrictedByUserId(userId: string): Promise<boolean> {
     const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('users')
-      .select('email')
+      .select('email, subscription_plan, subscription_expires_at')
       .eq('id', userId)
       .single();
 
@@ -79,6 +114,12 @@ export async function isRestrictedByUserId(userId: string): Promise<boolean> {
       // 이메일 없는 사용자 계정 — 유료 기능 열지 않음
       return true;
     }
+
+    // 활성 유료 구독 우선 — 365일 권한 등 부여된 회원은 제한 우회
+    if (hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) {
+      return false;
+    }
+
     return await isRestricted(data.email);
   } catch (err) {
     console.error('[isRestrictedByUserId] unexpected error:', err);
