@@ -45,6 +45,11 @@ export function useSavedKeywords(enabled: boolean = true) {
   const toggle = useCallback(
     async (keyword: string, meta?: SavedKeywordMeta) => {
       const isSaved = savedSet.has(keyword);
+      const redirectToLogin = () => {
+        const back = encodeURIComponent(window.location.pathname + window.location.search);
+        alert('로그인이 필요한 기능입니다.');
+        window.location.href = `/auth/login?redirect=${back}`;
+      };
       if (isSaved) {
         const res = await fetch(`/api/my/saved-keywords?keyword=${encodeURIComponent(keyword)}`, {
           method: 'DELETE',
@@ -56,7 +61,10 @@ export function useSavedKeywords(enabled: boolean = true) {
             return next;
           });
         } else if (res.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
+        } else {
+          const j = await res.json().catch(() => ({}));
+          alert(j.error || '삭제에 실패했습니다.');
         }
       } else {
         const res = await fetch('/api/my/saved-keywords', {
@@ -71,7 +79,7 @@ export function useSavedKeywords(enabled: boolean = true) {
             return next;
           });
         } else if (res.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
         } else {
           const j = await res.json().catch(() => ({}));
           alert(j.error || '저장에 실패했습니다.');
