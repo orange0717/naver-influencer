@@ -836,7 +836,8 @@ export default function BloggerDashboard() {
                             className="font-semibold hover:text-accent transition truncate block max-w-[400px]" title={post.title}>
                             {post.title}
                           </a>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            <span className="text-[10px] text-dim font-semibold mr-1">키워드 저장:</span>
                             {extractKeywords(post.title, profile.blogId, profile.displayName).map((kw, ki) => {
                               const isSaved = savedSet.has(kw);
                               return (
@@ -844,11 +845,11 @@ export default function BloggerDashboard() {
                                   key={ki}
                                   type="button"
                                   onClick={() => toggleSaved(kw)}
-                                  title={isSaved ? '저장됨 - 클릭하여 해제' : '키워드 저장'}
+                                  title={isSaved ? '저장됨 - 클릭하여 해제' : `'${kw}' 저장하기`}
                                   className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer inline-flex items-center gap-1 ${
                                     isSaved
-                                      ? 'bg-accent/20 text-accent border-accent/40 font-semibold'
-                                      : 'text-dim bg-bg border-border hover:bg-accent/10 hover:text-accent hover:border-accent/30'
+                                      ? 'bg-accent text-white border-accent font-semibold'
+                                      : 'text-text bg-bg border-accent/30 hover:bg-accent/10 hover:border-accent/60'
                                   }`}
                                 >
                                   <svg width="11" height="11" viewBox="0 0 24 24"
@@ -926,7 +927,8 @@ export default function BloggerDashboard() {
                       <div className="flex-1 min-w-0">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                          <span className="text-[10px] text-dim font-semibold mr-1">키워드 저장:</span>
                           {extractKeywords(post.title, profile.blogId, profile.displayName).map((kw, ki) => {
                             const isSaved = savedSet.has(kw);
                             return (
@@ -934,16 +936,16 @@ export default function BloggerDashboard() {
                                 key={ki}
                                 type="button"
                                 onClick={() => toggleSaved(kw)}
-                                title={isSaved ? '저장됨 - 클릭하여 해제' : '키워드 저장'}
-                                className={`text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer inline-flex items-center gap-1 ${
+                                title={isSaved ? '저장됨 - 클릭하여 해제' : `'${kw}' 저장하기`}
+                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer inline-flex items-center gap-1 ${
                                   isSaved
-                                    ? 'bg-accent/15 text-accent font-semibold'
-                                    : 'text-dim bg-bg hover:bg-accent/10 hover:text-accent'
+                                    ? 'bg-accent text-white border-accent font-semibold'
+                                    : 'text-text bg-bg border-accent/30 hover:bg-accent/10 hover:border-accent/60'
                                 }`}
                               >
-                                <svg width="9" height="9" viewBox="0 0 24 24"
+                                <svg width="11" height="11" viewBox="0 0 24 24"
                                   fill={isSaved ? 'currentColor' : 'none'}
-                                  stroke="currentColor" strokeWidth="2.5">
+                                  stroke="currentColor" strokeWidth="2.2">
                                   <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                                 </svg>
                                 {kw}
