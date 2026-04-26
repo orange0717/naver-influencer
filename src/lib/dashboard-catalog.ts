@@ -341,4 +341,13 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     external: true,
     ctaLabel: '바로가기',
   },
+  {
+    id: 'pixkit',
+    category: 'partner',
+    title: 'Pixkit',
+    description: '이미지 리사이즈·누끼·PDF/HEIC 변환까지 — 설치·로그인 없이 브라우저에서 바로 쓰는 무료 이미지 편집 도구',
+    href: 'https://pixkit.app',
+    external: true,
+    ctaLabel: '바로가기',
+  },
 ];
