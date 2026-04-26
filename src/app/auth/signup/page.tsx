@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { signUp as gaSignUp } from '@/lib/gtag';
 
 export default function SignupPage() {
 
@@ -112,6 +113,9 @@ export default function SignupPage() {
 
       // 레거시 쿠키 동기화 (헤더 닉네임 표시용)
       await fetch('/api/auth/sync-cookies', { method: 'POST' }).catch(() => {});
+
+      // GA4 회원가입 이벤트
+      gaSignUp('email');
 
       // 성공 → 블로그 대시보드로 이동
       router.push('/my/blogger');

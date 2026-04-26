@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { login as gaLogin } from '@/lib/gtag';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -107,6 +108,9 @@ export default function LoginPage() {
         getDeviceId(); // 쿠키 set
         await fetch('/api/session/register', { method: 'POST' });
       } catch { /* 등록 실패해도 로그인 흐름은 계속 */ }
+
+      // GA4 로그인 이벤트
+      gaLogin('email');
 
       // 로그인 후 메인 화면으로 이동
       router.push('/');

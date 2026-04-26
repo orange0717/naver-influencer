@@ -12,6 +12,7 @@ import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 import SentryUserIdentity from "@/components/SentryUserIdentity";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const viewport: Viewport = {
@@ -52,6 +53,7 @@ export default function RootLayout({
           <NicknameRequiredModal />
         </Providers>
         <Script src="https://cdn.portone.io/v2/browser-sdk.js" strategy="lazyOnload" />
+        <Suspense fallback={null}><GoogleAnalytics /></Suspense>
         <SpeedInsights />
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { PAYMENT_PLANS } from '@/lib/payment-config';
+import { purchase as gaPurchase } from '@/lib/gtag';
 
 declare global {
   interface Window {
@@ -99,7 +100,15 @@ export default function PaymentButton({
         return;
       }
 
-      await completePayment(paymentId);
+      const verified = await completePayment(paymentId);
+      if (verified) {
+        gaPurchase({
+          transactionId: paymentId,
+          value: amount,
+          planKey,
+          planName: plan?.name,
+        });
+      }
     } catch (err) {
       console.error('[Payment] error:', err);
       setMessage({ type: 'error', text: '결제 중 오류가 발생했습니다.' });
@@ -124,6 +133,12 @@ export default function PaymentButton({
       const data = await res.json();
       if (res.ok && data.verified) {
         setTestStep('complete');
+        gaPurchase({
+          transactionId: data.paymentId || `test_${Date.now()}`,
+          value: plan?.amount || 0,
+          planKey,
+          planName: plan?.name,
+        });
       } else {
         setTestStep('card-info');
         setMessage({ type: 'error', text: data.error || '구독 반영에 실패했습니다.' });
