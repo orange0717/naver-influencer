@@ -174,8 +174,8 @@ export async function GET(req: NextRequest) {
     cookieStore.set('user_type', 'influencer', cookieOptions);
     cookieStore.set('naver_id', naverId, cookieOptions);
 
-    // 5. 리다이렉트 — 인플루언서/블로그 미연결 신규 사용자도 환영할 수 있도록 메인 페이지로 이동
-    return NextResponse.redirect(`${baseUrl}/`);
+    // 5. 리다이렉트 — /my 에서 신규 OAuth 사용자는 메인으로 fallback 처리됨
+    return NextResponse.redirect(`${baseUrl}/my`);
   } catch (err) {
     console.error('[naver-callback] Error:', err instanceof Error ? err.message : err);
     return NextResponse.redirect(`${baseUrl}/auth/login?error=naver_error`);

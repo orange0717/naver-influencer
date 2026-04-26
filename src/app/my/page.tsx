@@ -147,6 +147,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     if (isLoggedIn) {
       redirect('/profile');
     }
+    // 네이버 간편로그인 사용자: 인플루언서/블로그 미연결 시 메인으로 안내
+    const naverLoginId = cookieStore.get('naver_login_id')?.value;
+    if (naverLoginId) {
+      redirect('/');
+    }
     redirect('/auth/login');
   }
 
