@@ -3,7 +3,20 @@ export const metadata = {
   description: '네이버 블로그 순위 · 인플루언서 순위 · 블로그 품질지수 종합 허브',
 };
 
-const ITEMS = [
+const ITEMS: {
+  href: string;
+  title: string;
+  desc: string;
+  badge: string;
+  badgeClass?: string;
+}[] = [
+  {
+    href: '/rankings/official',
+    title: '네이버 공식 인플루언서 순위',
+    desc: '네이버가 발표하는 공식 카테고리별 인플루언서 순위 (주 1회 업데이트)',
+    badge: '인플루언서 이상',
+    badgeClass: 'text-emerald-600 bg-emerald-500/10',
+  },
   {
     href: '/rankings/blogger',
     title: '블로그 순위',
@@ -45,7 +58,11 @@ export default function RankingsHubPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-base font-extrabold">{it.title}</h2>
-                  <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      it.badgeClass || 'text-accent bg-accent/10'
+                    }`}
+                  >
                     {it.badge}
                   </span>
                 </div>

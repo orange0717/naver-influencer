@@ -146,3 +146,54 @@ export async function requirePaidAccess(request: NextRequest): Promise<
   }
   return { authUser };
 }
+
+/**
+ * 인플루언서 플랜 이상 접근 권한 확인 (블로거 플랜 차단)
+ * - 비로그인 → 401
+ * - 활성 INFLUENCER 플랜이 아니면 → 403 (블로거 플랜 또는 무료/만료 모두 차단)
+ * - 관리자(ADMIN_USER_IDS)는 항상 통과
+ */
+export async function requireInfluencerPlan(request: NextRequest): Promise<
+  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null } }; error?: never }
+  | { error: NextResponse; authUser?: never }
+> {
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
+  }
+  // 관리자는 항상 통과
+  if (isAdmin(authUser.userId)) {
+    return { authUser };
+  }
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from('users')
+      .select('subscription_plan, subscription_expires_at')
+      .eq('id', authUser.userId)
+      .single();
+    if (error || !data) {
+      return { error: NextResponse.json({ error: '구독 정보를 확인할 수 없습니다.' }, { status: 403 }) };
+    }
+    if (!hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) {
+      return {
+        error: NextResponse.json(
+          { error: '인플루언서 플랜 이상에서 이용 가능합니다.', code: 'PLAN_REQUIRED', requiredPlan: 'INFLUENCER' },
+          { status: 403 }
+        ),
+      };
+    }
+    if (data.subscription_plan !== 'INFLUENCER') {
+      return {
+        error: NextResponse.json(
+          { error: '인플루언서 플랜 이상에서 이용 가능합니다.', code: 'PLAN_REQUIRED', requiredPlan: 'INFLUENCER', currentPlan: data.subscription_plan },
+          { status: 403 }
+        ),
+      };
+    }
+    return { authUser };
+  } catch (err) {
+    console.error('[requireInfluencerPlan] unexpected error:', err);
+    return { error: NextResponse.json({ error: '구독 정보를 확인할 수 없습니다.' }, { status: 500 }) };
+  }
+}

@@ -13,6 +13,7 @@ const MENU_ITEMS = [
   { href: '/admin/community', label: '커뮤니티 관리', icon: '?' },
   { href: '/admin/bulk-grant', label: '플랜 일괄 부여', icon: '+' },
   { href: '/admin/influencers', label: '인플루언서 관리', icon: 'I' },
+  { href: '/admin/official-rankings', label: '공식 순위 업로드', icon: 'N' },
   { href: '/admin/crawler', label: '크롤러 상태', icon: 'C' },
 ];
 
