@@ -740,13 +740,13 @@ export default function BloggerDashboard() {
       </div>
 
 
-      {/* ─── 5. 블로그 방문자수 차트 ─── */}
-      {profile && <BlogVisitorChart blogId={profile.blogId} />}
-
-      {/* ─── 5-1. 저장된 키워드 (키워드챌린지에서 저장한 키워드 모음) ─── */}
+      {/* ─── 5. 저장된 키워드 (키워드챌린지에서 저장한 키워드 모음) ─── */}
       <SavedKeywords />
 
-      {/* ─── 6. 포스팅 목록 + 순위 확인 ─── */}
+      {/* ─── 6. 블로그 방문자수 차트 ─── */}
+      {profile && <BlogVisitorChart blogId={profile.blogId} />}
+
+      {/* ─── 7. 포스팅 목록 + 순위 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div className="flex items-center gap-3">
