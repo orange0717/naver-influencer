@@ -6,6 +6,7 @@ import { getSubcategory, getSubcategoryList } from '@/data/subcategory-map';
 import CategoryFilter from '@/components/CategoryFilter';
 import BookmarkButton from '@/components/keywords/BookmarkButton';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
+import { useAuth } from '@/hooks/useAuth';
 
 const compTextMap: Record<string, string> = { low: '낮음', medium: '보통', high: '높음' };
 
@@ -63,6 +64,43 @@ interface RelatedKeyword {
 }
 
 export default function KeywordsPage() {
+  const { user } = useAuth();
+  const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!canDownload || downloading) return;
+    setDownloading(true);
+    try {
+      const params = new URLSearchParams();
+      if (category && category !== '전체') params.set('category', category);
+      if (search.trim()) params.set('search', search.trim());
+      const res = await fetch(`/api/downloads/keywords?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || '다운로드에 실패했습니다.');
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename="?([^";]+)"?/);
+      const filename = m ? decodeURIComponent(m[1]) : `keywords_${Date.now()}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error(err);
+      alert('다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [grouped, setGrouped] = useState<CategoryGroup[]>([]);
   const [categories, setCategories] = useState<string[]>(['전체']);
@@ -357,9 +395,21 @@ export default function KeywordsPage() {
             키워드를 누르면 검색어 트렌드와 전체 인플루언서 순위를 볼 수 있어요.
           </p>
         </div>
-        <span className="text-xs text-dim font-rank">
-          {loading ? '로딩 중...' : `총 ${total.toLocaleString()}개`}
-        </span>
+        <div className="flex items-center gap-3">
+          {canDownload && (
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer disabled:opacity-50"
+              title="현재 필터 기준 최대 500건 CSV 다운로드"
+            >
+              {downloading ? '다운로드 중...' : 'CSV 다운로드'}
+            </button>
+          )}
+          <span className="text-xs text-dim font-rank">
+            {loading ? '로딩 중...' : `총 ${total.toLocaleString()}개`}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
+import { useAuth } from '@/hooks/useAuth';
+import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 
 interface BloggerProfile {
   blogId: string;
@@ -214,6 +216,39 @@ export default function KeywordRankingPage() {
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const abortRef = useRef(false);
 
+  const { user } = useAuth();
+  const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+
+  const handleDownload = () => {
+    if (!canDownload) return;
+    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '키워드', '통합검색 순위', '블로그탭 순위', '검색량'];
+    const rows: unknown[][] = [];
+    for (const post of blogPosts) {
+      const kws = postKeywords[post.id] || [];
+      if (kws.length === 0) continue;
+      for (const kw of kws) {
+        if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
+        const result = rankingResults[rankKey(post.id, kw)];
+        rows.push([
+          post.title,
+          post.url,
+          post.date,
+          kw,
+          result?.viewTab?.rank ?? '',
+          result?.blogTab?.rank ?? '',
+          result?.searchVolume ?? '',
+        ]);
+      }
+      if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
+    }
+    if (rows.length === 0) {
+      alert('다운로드할 키워드 데이터가 없습니다. 먼저 키워드를 등록하고 순위를 확인해주세요.');
+      return;
+    }
+    const csv = rowsToCsv(headers, rows);
+    downloadCsvInBrowser(`my_keyword_ranking_${todayStamp()}.csv`, csv);
+  };
+
   const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
     setPostsLoading(true);
     try {
@@ -394,6 +429,16 @@ export default function KeywordRankingPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {canDownload && (
+            <button
+              onClick={handleDownload}
+              disabled={blogPosts.length === 0}
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
+              title="현재 페이지 포스팅의 키워드 순위 결과를 CSV 다운로드 (최대 500건)"
+            >
+              CSV 다운로드
+            </button>
+          )}
           {checkingAll ? (
             <button
               onClick={stopChecking}

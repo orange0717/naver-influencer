@@ -306,7 +306,7 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">포스팅 데이터 다운로드 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="py-2.5 px-2">포스팅 데이터 다운로드</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center text-[11px] text-accent font-semibold">1회 500건</td>
@@ -388,7 +388,7 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">키워드 데이터 다운로드 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="py-2.5 px-2">키워드 데이터 다운로드</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center text-[11px] text-accent font-semibold">1회 500건</td>

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
+import { useAuth } from '@/hooks/useAuth';
+import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 
 interface BloggerProfile {
   blogId: string;
@@ -132,6 +134,44 @@ export default function PostAnalysisPage() {
   const [textResults, setTextResults] = useState<Map<string, TextAnalysisResult>>(new Map());
   const [analyzingText, setAnalyzingText] = useState<string | null>(null);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+
+  const handleDownload = () => {
+    if (!canDownload) return;
+    if (posts.length === 0) {
+      alert('다운로드할 포스팅이 없습니다.');
+      return;
+    }
+    const headers = ['제목', 'URL', '작성일', '댓글수', '글자수', '단어수', '단락수', '이미지수', '원본이미지수', '동영상수', '링크수', '헤딩수', '지도수', '리스트수', '인용구수', '표수', '평균이미지(KB)'];
+    const rows: unknown[][] = [];
+    for (const post of posts) {
+      if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
+      const a = analyses.get(post.id);
+      rows.push([
+        post.title,
+        post.url,
+        post.date,
+        post.commentCount,
+        a?.charCount ?? '',
+        a?.wordCount ?? '',
+        a?.paragraphCount ?? '',
+        a?.imageCount ?? '',
+        a?.originalImageCount ?? '',
+        a?.videoCount ?? '',
+        a?.linkCount ?? '',
+        a?.headingCount ?? '',
+        a?.mapCount ?? '',
+        a?.listItemCount ?? '',
+        a?.quotationCount ?? '',
+        a?.tableCount ?? '',
+        a?.avgImageSizeKB ?? '',
+      ]);
+    }
+    const csv = rowsToCsv(headers, rows);
+    downloadCsvInBrowser(`post_analysis_${todayStamp()}.csv`, csv);
+  };
   const [page, setPage] = useState(1);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -364,9 +404,21 @@ export default function PostAnalysisPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-2xl font-title font-bold">포스팅 분석</h1>
-        <p className="text-sm text-dim mt-1">AI 작성 여부 판별, 키워드 추출, 핵심 문장 분석</p>
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-title font-bold">포스팅 분석</h1>
+          <p className="text-sm text-dim mt-1">AI 작성 여부 판별, 키워드 추출, 핵심 문장 분석</p>
+        </div>
+        {canDownload && (
+          <button
+            onClick={handleDownload}
+            disabled={posts.length === 0}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
+            title="포스팅 + 분석 결과 CSV 다운로드 (최대 500건)"
+          >
+            CSV 다운로드
+          </button>
+        )}
       </div>
 
       {/* 요약 통계 */}
