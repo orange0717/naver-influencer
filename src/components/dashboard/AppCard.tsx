@@ -13,6 +13,13 @@ function planLabel(plan: PlanTier): string {
   return '';
 }
 
+/** 카드의 requiredPlan 기준 CTA 버튼 라벨 (잠금 해제 여부와 무관하게 항상 동일) */
+function ctaForRequiredPlan(plan?: PlanTier): string {
+  if (plan === 'influencer') return '인플루언서 플랜';
+  if (plan === 'blogger') return '예비 인플루언서 + 플랜';
+  return '무료플랜';
+}
+
 function loadFavorites(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
@@ -90,13 +97,11 @@ export default function AppCard({
     targetHref = `/auth/login?redirect=${encodeURIComponent(app.href)}`;
   }
 
+  // 카드의 필요 플랜 기준 라벨로 통일 (잠금 해제된 사용자도 카드 등급이 보이도록)
+  // ctaLabel 이 명시된 카드(외부 링크 '바로가기' 등)는 그것을 우선
   const buttonLabel = app.devPreview
     ? '준비 중'
-    : locked
-      ? `${planLabel(app.requiredPlan!)} 플랜`
-      : needsLogin
-        ? '무료'
-        : (app.ctaLabel || '무료플랜');
+    : (app.ctaLabel || ctaForRequiredPlan(app.requiredPlan));
 
   // 외부 링크는 새 탭으로 열기 (Next Link 대신 일반 a)
   const isExternal = !!app.external && !locked && !needsLogin && !app.devPreview;
