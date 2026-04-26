@@ -46,6 +46,18 @@ export const dynamic = 'force-dynamic';
 
 const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|vercel|uptime|facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Telegram|Yandex|Baidu|DuckDuckBot|Sogou|Bytespider|PetalBot|GPTBot|ChatGPT|ClaudeBot|Applebot|Amazonbot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Rogerbot|DataForSeoBot|archive\.org|Mediapartners|AdsBot|Screaming Frog|CCBot|Barkrowler|Go-http-client|python-requests|curl|wget|axios|node-fetch|undici|httpx/i;
 
+/** localhost / 사설망 / mDNS 도메인 여부 (본인 dev 트래픽 허수 차단) */
+function isLocalDomain(domain: string | null | undefined): boolean {
+  if (!domain) return false;
+  const d = domain.toLowerCase();
+  if (d === 'localhost' || d === '127.0.0.1' || d === '0.0.0.0' || d === '::1') return true;
+  if (/^10\./.test(d)) return true;
+  if (/^192\.168\./.test(d)) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(d)) return true;
+  if (d.endsWith('.local')) return true;
+  return false;
+}
+
 /** 페이지 방문 추적 (VisitTracker에서 호출) */
 export async function POST(req: NextRequest) {
   try {
@@ -61,6 +73,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, skipped: 'bot' });
     }
 
+    // localhost / 사설망에서 보낸 요청(host 헤더 기준)도 dev 트래픽으로 판단
+    const hostHeader = (req.headers.get('host') || '').split(':')[0];
+    if (isLocalDomain(hostHeader)) {
+      return NextResponse.json({ ok: true, skipped: 'local_host' });
+    }
+
     // Supabase Auth 우선, 실패 시 쿠키 세션(데모/블로거)으로 폴백
     const supabase = createServiceClient();
     const authUser = await getAuthUser(req).catch(() => null);
@@ -73,6 +91,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
+
+    // referrer 가 localhost / 사설망 → 본인 dev 환경 트래픽으로 판단, 카운트·로그 모두 제외
+    if (
+      isLocalDomain(typeof body.referrer_domain === 'string' ? body.referrer_domain : null)
+    ) {
+      return NextResponse.json({ ok: true, skipped: 'local_referrer' });
+    }
+
     const now = new Date();
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const today = kst.toISOString().slice(0, 10);

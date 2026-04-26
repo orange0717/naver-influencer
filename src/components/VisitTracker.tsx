@@ -23,6 +23,18 @@ function extractDomain(url: string): string | null {
   }
 }
 
+/** localhost / 사설망 / mDNS 도메인 여부 — 본인 dev 트래픽 허수 차단용 */
+function isLocalDomain(domain: string | null | undefined): boolean {
+  if (!domain) return false;
+  const d = domain.toLowerCase();
+  if (d === 'localhost' || d === '127.0.0.1' || d === '0.0.0.0' || d === '::1') return true;
+  if (/^10\./.test(d)) return true;
+  if (/^192\.168\./.test(d)) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(d)) return true;
+  if (d.endsWith('.local')) return true;
+  return false;
+}
+
 /** 쿠키 세션(데모/블로거 로그인)이 있는지 브라우저에서 확인 */
 function hasCookieSession(): boolean {
   if (typeof document === 'undefined') return false;
@@ -72,6 +84,11 @@ export default function VisitTracker() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // 로컬/사설망 호스트에서의 접속은 dev 환경 → 운영 분석 집계에서 제외
+    if (typeof window !== 'undefined' && isLocalDomain(window.location.hostname)) {
+      return;
+    }
+
     // KST 기준 오늘 날짜
     const now = new Date();
     const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -104,6 +121,11 @@ export default function VisitTracker() {
 
     // 같은 도메인에서의 내부 이동은 referrer로 기록하지 않음
     const isSameSite = referrerDomain === window.location.hostname.replace(/^www\./, '');
+
+    // referrer 가 localhost / 사설망 → 본인 dev 트래픽으로 판단, 집계 자체에서 제외
+    if (isLocalDomain(referrerDomain)) {
+      return;
+    }
 
     // 모든 페이지뷰(PV)마다 track 호출.
     // 서버에서 PV는 항상 집계하고, UV(순방문자)는 first_visit=true일 때만 카운트한다.
