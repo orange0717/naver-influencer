@@ -271,9 +271,20 @@ export default function SubscribeClient() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
+              {/* 계정 카테고리 */}
+              <tr>
+                <td className="py-2.5 px-2 font-semibold text-dim" colSpan={4}>계정</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">동시 로그인 기기</td>
+                <td className="text-center text-[11px] text-dim">무제한</td>
+                <td className="text-center text-[11px] text-accent font-semibold">1대</td>
+                <td className="text-center text-[11px] text-accent font-semibold">2대</td>
+              </tr>
+
               {/* MY 카테고리 */}
               <tr>
-                <td className="py-2.5 px-2 font-semibold text-dim" colSpan={4}>MY</td>
+                <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>MY</td>
               </tr>
               <tr>
                 <td className="py-2.5 px-2">MY 블로그</td>
