@@ -262,7 +262,13 @@ async function main() {
   if (influencers.length === 0) return;
 
   const progress = loadProgress();
-  const startIdx = isResume ? progress.lastIndex : 0;
+  let startIdx = isResume ? progress.lastIndex : 0;
+  // 자동 리셋: 이전 회차가 끝까지 완료된 경우 (lastIndex >= influencers.length) 0으로 되돌려 처음부터 다시 시작
+  if (startIdx >= influencers.length) {
+    console.log(`이전 회차 완료 상태 감지 (lastIndex=${startIdx}, total=${influencers.length}) → 처음부터 다시 시작`);
+    startIdx = 0;
+    progress.lastIndex = 0;
+  }
   const total = Math.min(influencers.length, startIdx + limitCount);
 
   let totalOk = 0, totalMiss = 0, totalSkip = 0, processed = 0;

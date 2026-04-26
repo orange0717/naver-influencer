@@ -234,7 +234,13 @@ async function main() {
   if (total === 0) { console.log('갱신할 대상이 없습니다.'); return; }
 
   const progress = isResume ? loadProgress() : { lastIndex: 0 };
-  const startIdx = isResume ? (progress.lastIndex || 0) : 0;
+  let startIdx = isResume ? (progress.lastIndex || 0) : 0;
+  // 자동 리셋: 이전 회차가 끝까지 완료된 경우 (lastIndex >= total) 0으로 되돌려 처음부터 다시 시작
+  if (startIdx >= total) {
+    console.log(`이전 회차 완료 상태 감지 (lastIndex=${startIdx}, total=${total}) → 처음부터 다시 시작`);
+    startIdx = 0;
+    progress.lastIndex = 0;
+  }
 
   let updated = 0, noChange = 0, skipped = 0, failed = 0;
   let cancelled = false;

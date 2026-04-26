@@ -45,21 +45,35 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
+async function callStep(name, label) {
+  const t = Date.now();
+  const { data, error } = await supabase.rpc(name);
+  const elapsed = ((Date.now() - t) / 1000).toFixed(1);
+  if (error) {
+    console.error(`  [${label}] 실패 (${elapsed}s):`, error.message);
+    return false;
+  }
+  console.log(`  [${label}] 완료 (${elapsed}s) — ${data ?? '?'}건`);
+  return true;
+}
+
 async function main() {
-  console.log('=== 블로거 순위 갱신 ===');
+  console.log('=== 블로거 순위 갱신 (4단계 분할) ===');
   const startedAt = Date.now();
 
-  const { data, error } = await supabase.rpc('refresh_blogger_rankings');
-  if (error) {
-    console.error('RPC 오류:', error.message);
-    process.exit(1);
-  }
+  // migration-073 의 분할 RPC 4개 순차 호출
+  const ok1 = await callStep('refresh_blogger_rankings_step1_score',    '1/4 점수 재계산');
+  const ok2 = ok1 && await callStep('refresh_blogger_rankings_step2_global',   '2/4 전체 순위');
+  const ok3 = ok2 && await callStep('refresh_blogger_rankings_step3_inactive', '3/4 비활성 NULL');
+  const ok4 = ok3 && await callStep('refresh_blogger_rankings_step4_category', '4/4 카테고리 순위');
 
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-  const row = Array.isArray(data) ? data[0] : data;
-  console.log(`완료 (${elapsed}s)`);
-  console.log(`  총 블로거: ${row?.total_ranked ?? '?'}명`);
-  console.log(`  활성 블로거: ${row?.active_count ?? '?'}명`);
+  if (ok1 && ok2 && ok3 && ok4) {
+    console.log(`\n완료 (총 ${elapsed}s)`);
+  } else {
+    console.error(`\n일부 단계 실패 (총 ${elapsed}s)`);
+    process.exit(1);
+  }
 }
 
 main().catch(err => {
