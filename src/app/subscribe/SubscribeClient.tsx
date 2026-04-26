@@ -146,18 +146,9 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 블로그</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 리스트</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>연도별 선정 현황</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 구글 트렌드</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 구글 트렌드</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 1회)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 키워드순위</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 포스팅 분석</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 캠페인 (개발 중)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 정산내역 (개발 중)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 검색순위</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">실시간 상승 키워드</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 리스트</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">랭킹 (예비 인플루언서 / 인플루언서 / 품질지수)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">커뮤니티</span></li>
           </ul>
         </div>
 
@@ -201,14 +192,12 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 캠페인 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>실시간 상승 키워드</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 블로그 순위</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 블로그 품질지수 (개발 중)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>블로그 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>블로그 품질지수 (개발 중)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>맞춤법 검사</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>캐릭터챗북 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 5회)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">MY 정산내역 (개발 중)</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">키워드 챌린지 리스트</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">랭킹 &gt; 인플루언서 순위</span></li>
-            <li className="flex items-center gap-2.5">{DASH}<span className="text-dim">경쟁자 분석 (무제한)</span></li>
           </ul>
         </div>
 
@@ -248,7 +237,9 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 정산내역 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드 챌린지</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 리스트</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>랭킹 &gt; 인플루언서 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>AI 심층 피드백</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>블로그 글 피드백 (Claude AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
           </ul>
         </div>
@@ -389,6 +380,35 @@ export default function SubscribeClient() {
               </tr>
               <tr>
                 <td className="py-2.5 px-2">인플루언서 순위</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+
+              {/* 글쓰기 카테고리 */}
+              <tr>
+                <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>글쓰기</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">맞춤법 검사</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">캐릭터챗북 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">AI 심층 피드백</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">블로그 글 피드백 (Claude AI)</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
