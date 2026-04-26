@@ -6,6 +6,7 @@ import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
+import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 
 interface BloggerProfile {
   blogId: string;
@@ -228,6 +229,9 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
 }
 
 export default function BloggerDashboard() {
+  // 저장된 키워드 토글
+  const { savedSet, toggle: toggleSaved } = useSavedKeywords();
+
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   const [customProfile, setCustomProfile] = useState<{ displayName?: string; imageUrl?: string }>({});
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -833,11 +837,29 @@ export default function BloggerDashboard() {
                             {post.title}
                           </a>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {extractKeywords(post.title, profile.blogId, profile.displayName).map((kw, ki) => (
-                              <span key={ki} className="text-[10px] text-dim bg-bg px-1.5 py-0.5 rounded">
-                                {kw}
-                              </span>
-                            ))}
+                            {extractKeywords(post.title, profile.blogId, profile.displayName).map((kw, ki) => {
+                              const isSaved = savedSet.has(kw);
+                              return (
+                                <button
+                                  key={ki}
+                                  type="button"
+                                  onClick={() => toggleSaved(kw)}
+                                  title={isSaved ? '저장됨 - 클릭하여 해제' : '키워드 저장'}
+                                  className={`text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer inline-flex items-center gap-1 ${
+                                    isSaved
+                                      ? 'bg-accent/15 text-accent font-semibold'
+                                      : 'text-dim bg-bg hover:bg-accent/10 hover:text-accent'
+                                  }`}
+                                >
+                                  <svg width="9" height="9" viewBox="0 0 24 24"
+                                    fill={isSaved ? 'currentColor' : 'none'}
+                                    stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                  </svg>
+                                  {kw}
+                                </button>
+                              );
+                            })}
                           </div>
                         </td>
                         <td className="text-center px-3 py-3.5">
@@ -905,11 +927,29 @@ export default function BloggerDashboard() {
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold text-sm hover:text-accent transition line-clamp-2">{post.title}</a>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {extractKeywords(post.title, profile.blogId, profile.displayName).map((kw, ki) => (
-                            <span key={ki} className="text-[10px] text-dim bg-bg px-1.5 py-0.5 rounded">
-                              {kw}
-                            </span>
-                          ))}
+                          {extractKeywords(post.title, profile.blogId, profile.displayName).map((kw, ki) => {
+                            const isSaved = savedSet.has(kw);
+                            return (
+                              <button
+                                key={ki}
+                                type="button"
+                                onClick={() => toggleSaved(kw)}
+                                title={isSaved ? '저장됨 - 클릭하여 해제' : '키워드 저장'}
+                                className={`text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer inline-flex items-center gap-1 ${
+                                  isSaved
+                                    ? 'bg-accent/15 text-accent font-semibold'
+                                    : 'text-dim bg-bg hover:bg-accent/10 hover:text-accent'
+                                }`}
+                              >
+                                <svg width="9" height="9" viewBox="0 0 24 24"
+                                  fill={isSaved ? 'currentColor' : 'none'}
+                                  stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                </svg>
+                                {kw}
+                              </button>
+                            );
+                          })}
                         </div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           {mr ? (
