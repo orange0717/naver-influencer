@@ -296,6 +296,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
     authOnly: true,
   },
+  {
+    id: 'claude-feature',
+    category: 'writing',
+    title: '클로드기능',
+    description: 'Claude 기반 신규 기능 (구체적 기능 기획 중)',
+    href: '/dashboard/claude',
+    devPreview: true,
+  },
 
   // ── 서비스 가이드 ──
   {
