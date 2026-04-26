@@ -167,6 +167,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   },
   // ── 랭킹 ──
   {
+    id: 'rankings-official',
+    category: 'ranking',
+    title: '인플루언서 공식순위',
+    description: '네이버가 발표하는 공식 카테고리별 인플루언서 순위 (주 1회 업데이트)',
+    href: '/rankings/official',
+    requiredPlan: 'influencer',
+  },
+  {
     id: 'rankings-blogger',
     category: 'ranking',
     title: '블로그 순위',
