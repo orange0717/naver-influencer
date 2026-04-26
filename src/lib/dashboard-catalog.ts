@@ -299,9 +299,10 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'claude-feature',
     category: 'writing',
     title: '클로드기능',
-    description: 'Claude 기반 신규 기능 (구체적 기능 기획 중)',
+    description: 'Claude와 채팅하며 블로그 글의 방향과 흐름에 대한 가벼운 피드백 받기',
     href: '/dashboard/claude',
-    devPreview: true,
+    requiredPlan: 'influencer',
+    authOnly: true,
   },
 
   // ── 서비스 가이드 ──
