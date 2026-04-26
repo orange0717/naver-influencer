@@ -35,15 +35,27 @@ export const CLAUDE_FEEDBACK_SYSTEM_PROMPT = `당신은 네이버 블로그 글�
 - 자해·자살·폭력·성적 묘사·혐오·범죄 조장 요청은 정중히 거절하세요. 위기 신호 감지 시 "한국 자살예방상담전화 1393 (24시간 무료)"을 안내하세요.
 - 실존 인물 비방, 개인 사생활 추측 요청은 거절하세요.`;
 
+/** 무료 체험 메시지 한도 (회원가입한 회원 한정) */
+export const CLAUDE_FREE_TRIAL_LIMIT = 3;
+
+export type ClaudeFeedbackPlan = 'admin' | 'influencer' | 'free_trial';
+
 export type ClaudeFeedbackUser = {
-  id: string;          // 'auth:' + userId (현재 INFLUENCER 게이팅상 Supabase Auth 만 허용)
+  id: string;          // 'auth:' + userId (Supabase Auth 회원만 허용)
   userId: string;      // users.id
   displayLabel: string;
+  plan: ClaudeFeedbackPlan;
+  /** free_trial 일 때만 의미 있음 — 지금까지 보낸 메시지 수 */
+  freeTrialUsed: number;
+  /** free_trial 일 때 한도 (CLAUDE_FREE_TRIAL_LIMIT) */
+  freeTrialLimit: number;
 };
 
 /**
- * 인증된 INFLUENCER (또는 관리자) 사용자만 통과.
- * 그 외는 null 반환.
+ * 인증된 회원을 반환한다. 비회원·제한 사용자는 null.
+ * - 관리자 → plan='admin' (무제한)
+ * - INFLUENCER 활성 구독자 → plan='influencer' (무제한)
+ * - 그 외 회원 → plan='free_trial' (CLAUDE_FREE_TRIAL_LIMIT 메시지)
  */
 export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFeedbackUser | null> {
   let authUser;
@@ -56,34 +68,63 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
 
   if (await isRestrictedByUserId(authUser.userId)) return null;
 
+  const supabase = createServiceClient();
+  const { data: profile } = await supabase
+    .from('users')
+    .select('subscription_plan, subscription_expires_at, name, naver_id, claude_free_trial_used')
+    .eq('id', authUser.userId)
+    .maybeSingle();
+
+  const displayLabel =
+    profile?.name || profile?.naver_id || authUser.user?.nickname || authUser.userId;
+  const freeTrialUsed = profile?.claude_free_trial_used ?? 0;
+
   // 관리자 우회
   if (isAdmin(authUser.userId)) {
     return {
       id: 'auth:' + authUser.userId,
       userId: authUser.userId,
-      displayLabel: authUser.user?.nickname || authUser.userId,
+      displayLabel,
+      plan: 'admin',
+      freeTrialUsed,
+      freeTrialLimit: CLAUDE_FREE_TRIAL_LIMIT,
     };
   }
 
-  // INFLUENCER 플랜 + 만료일 체크
-  const supabase = createServiceClient();
-  const { data: profile } = await supabase
-    .from('users')
-    .select('subscription_plan, subscription_expires_at, name, naver_id')
-    .eq('id', authUser.userId)
-    .maybeSingle();
-
+  // INFLUENCER 플랜 + 만료일
   const plan = profile?.subscription_plan;
   const expires = profile?.subscription_expires_at
     ? new Date(profile.subscription_expires_at).getTime()
     : 0;
-  if (plan !== 'INFLUENCER' || expires <= Date.now()) return null;
+  const isInfluencer = plan === 'INFLUENCER' && expires > Date.now();
 
   return {
     id: 'auth:' + authUser.userId,
     userId: authUser.userId,
-    displayLabel: profile?.name || profile?.naver_id || authUser.userId,
+    displayLabel,
+    plan: isInfluencer ? 'influencer' : 'free_trial',
+    freeTrialUsed,
+    freeTrialLimit: CLAUDE_FREE_TRIAL_LIMIT,
   };
+}
+
+/**
+ * 무료 체험 사용량을 +1 증가시킨다. (Claude 응답 성공 후 호출)
+ * 반환: 갱신된 사용량
+ */
+export async function incrementClaudeFreeTrial(userId: string): Promise<number> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('users')
+    .select('claude_free_trial_used')
+    .eq('id', userId)
+    .maybeSingle();
+  const next = (data?.claude_free_trial_used ?? 0) + 1;
+  await supabase
+    .from('users')
+    .update({ claude_free_trial_used: next })
+    .eq('id', userId);
+  return next;
 }
 
 /**

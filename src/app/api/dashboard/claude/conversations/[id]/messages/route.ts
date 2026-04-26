@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import {
   getClaudeFeedbackUser,
+  incrementClaudeFreeTrial,
   trimClaudeContext,
   deriveConversationTitle,
   CLAUDE_FEEDBACK_SYSTEM_PROMPT,
@@ -24,7 +25,7 @@ export async function GET(
 ) {
   const user = await getClaudeFeedbackUser(request);
   if (!user) {
-    return NextResponse.json({ error: 'INFLUENCER 플랜이 필요합니다.' }, { status: 401 });
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
   const { id } = await params;
@@ -67,7 +68,20 @@ export async function POST(
 ) {
   const user = await getClaudeFeedbackUser(request);
   if (!user) {
-    return NextResponse.json({ error: 'INFLUENCER 플랜이 필요합니다.' }, { status: 401 });
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
+  // 무료 체험 한도 초과 차단 (admin/influencer 는 무제한)
+  if (user.plan === 'free_trial' && user.freeTrialUsed >= user.freeTrialLimit) {
+    return NextResponse.json(
+      {
+        error: `무료 체험 ${user.freeTrialLimit}회를 모두 사용했어요. 인플루언서 플랜에서 계속 이용할 수 있습니다.`,
+        plan: user.plan,
+        freeTrialUsed: user.freeTrialUsed,
+        freeTrialLimit: user.freeTrialLimit,
+      },
+      { status: 402 }, // Payment Required
+    );
   }
 
   // Rate limit (챗북과 동일 한도 — 1분 20회)
@@ -185,6 +199,19 @@ export async function POST(
     .select('id, role, content, created_at')
     .single();
 
+  // 무료 체험 사용량 +1 (성공 응답 후)
+  let freeTrialUsedNext = user.freeTrialUsed;
+  if (user.plan === 'free_trial') {
+    try {
+      freeTrialUsedNext = await incrementClaudeFreeTrial(user.userId);
+    } catch (err) {
+      console.error(
+        '[claude-feedback] increment free trial failed:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   return NextResponse.json({
     userMessage: userMsg,
     reply: saved || {
@@ -192,5 +219,8 @@ export async function POST(
       content: replyText,
       created_at: new Date().toISOString(),
     },
+    plan: user.plan,
+    freeTrialUsed: freeTrialUsedNext,
+    freeTrialLimit: user.freeTrialLimit,
   });
 }

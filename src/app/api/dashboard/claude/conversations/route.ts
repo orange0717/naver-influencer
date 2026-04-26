@@ -6,12 +6,12 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/dashboard/claude/conversations
- * 사이드바용 대화 목록 (최근 30개)
+ * 사이드바용 대화 목록 (최근 30개) + 회원 상태 정보
  */
 export async function GET(request: NextRequest) {
   const user = await getClaudeFeedbackUser(request);
   if (!user) {
-    return NextResponse.json({ error: 'INFLUENCER 플랜이 필요합니다.' }, { status: 401 });
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
   const supabase = createServiceClient();
@@ -28,7 +28,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '대화 목록을 불러오지 못했습니다.' }, { status: 500 });
   }
 
-  return NextResponse.json({ conversations: data || [] });
+  return NextResponse.json({
+    conversations: data || [],
+    plan: user.plan,
+    freeTrialUsed: user.freeTrialUsed,
+    freeTrialLimit: user.freeTrialLimit,
+  });
 }
 
 /**
@@ -38,7 +43,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getClaudeFeedbackUser(request);
   if (!user) {
-    return NextResponse.json({ error: 'INFLUENCER 플랜이 필요합니다.' }, { status: 401 });
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
   const supabase = createServiceClient();
