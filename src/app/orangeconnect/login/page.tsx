@@ -47,6 +47,13 @@ export default function AdLoginPage() {
         return;
       }
 
+      // 동시 로그인 기기 제한 — 디바이스 등록
+      try {
+        const { getDeviceId } = await import('@/lib/device-id');
+        getDeviceId();
+        await fetch('/api/session/register', { method: 'POST' });
+      } catch { /* ignore */ }
+
       router.push('/orangeconnect/dashboard');
       router.refresh();
     } catch {

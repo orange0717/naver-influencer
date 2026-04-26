@@ -277,9 +277,9 @@ export default function SubscribeClient() {
               </tr>
               <tr>
                 <td className="py-2.5 px-2">동시 로그인 기기</td>
-                <td className="text-center text-[11px] text-dim">무제한</td>
-                <td className="text-center text-[11px] text-accent font-semibold">1대</td>
-                <td className="text-center text-[11px] text-accent font-semibold">2대</td>
+                <td className="text-center text-[11px] text-dim">1대</td>
+                <td className="text-center text-[11px] text-dim">1대</td>
+                <td className="text-center text-[11px] text-dim">1대</td>
               </tr>
 
               {/* MY 카테고리 */}

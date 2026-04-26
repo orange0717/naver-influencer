@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
@@ -13,6 +13,14 @@ export default function LoginPage() {
   const [authChecked, setAuthChecked] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 다른 기기에서 로그인되어 강제 로그아웃된 경우 안내
+  useEffect(() => {
+    if (searchParams.get('reason') === 'session_taken') {
+      setError('다른 기기에서 로그인되어 자동 로그아웃되었습니다. 다시 로그인해 주세요.');
+    }
+  }, [searchParams]);
 
   // 이미 로그인된 사용자는 적절한 페이지로 리다이렉트
   useEffect(() => {
@@ -92,6 +100,13 @@ export default function LoginPage() {
 
       // 레거시 쿠키 동기화 (헤더 닉네임 표시용)
       await fetch('/api/auth/sync-cookies', { method: 'POST' }).catch(() => {});
+
+      // 동시 로그인 기기 제한 — 현재 디바이스 등록 (다른 기기 자동 로그아웃)
+      try {
+        const { getDeviceId } = await import('@/lib/device-id');
+        getDeviceId(); // 쿠키 set
+        await fetch('/api/session/register', { method: 'POST' });
+      } catch { /* 등록 실패해도 로그인 흐름은 계속 */ }
 
       // 로그인 후 메인 화면으로 이동
       router.push('/');
