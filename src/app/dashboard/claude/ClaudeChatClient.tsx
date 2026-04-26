@@ -441,7 +441,7 @@ export default function ClaudeChatClient() {
             <h1 className="text-sm font-extrabold truncate">
               {activeId
                 ? conversations.find((c) => c.id === activeId)?.title || '대화'
-                : '블로그 글 피드백(클로드)'}
+                : '블로그 글 피드백(클로드 AI)'}
             </h1>
             <p className="text-[11px] text-dim truncate">
               방향성 위주 가벼운 조언 · 맞춤법은 별도 도구 사용
