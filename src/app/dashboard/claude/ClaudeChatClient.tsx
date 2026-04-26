@@ -68,9 +68,32 @@ export default function ClaudeChatClient() {
   const [plan, setPlan] = useState<Plan>('free_trial');
   const [freeTrialUsed, setFreeTrialUsed] = useState(0);
   const [freeTrialLimit, setFreeTrialLimit] = useState(3);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // 모바일/터치 디바이스 감지: Enter 키 동작 분기에 사용
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsTouchDevice(window.matchMedia('(pointer: coarse)').matches);
+  }, []);
+
+  // textarea 자동 높이 조절: 입력 길이에 따라 1줄~10줄, 그 이상은 내부 스크롤
+  useEffect(() => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const next = Math.min(ta.scrollHeight, 240); // 약 10줄
+    ta.style.height = next + 'px';
+  }, [input]);
+
+  // 페이지 진입 시 자동 포커스 (모바일에서는 키보드 자동 노출 방지하려 데스크톱만)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    inputRef.current?.focus();
+  }, []);
 
   const fetchConversations = useCallback(async () => {
     setLoadingList(true);
@@ -266,6 +289,9 @@ export default function ClaudeChatClient() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 모바일/터치 디바이스에서는 Enter = 줄바꿈 (전송은 우측 버튼만)
+    // 데스크톱에서는 Enter = 전송, Shift+Enter = 줄바꿈
+    if (isTouchDevice) return;
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
@@ -512,31 +538,33 @@ export default function ClaudeChatClient() {
               </div>
             ) : (
               <>
-                <div className="relative bg-bg border border-border rounded-2xl focus-within:border-accent/50 transition-colors">
+                <div className="relative bg-bg border border-border rounded-2xl focus-within:border-accent/50 transition-colors shadow-sm">
                   <textarea
                     ref={inputRef}
-                    rows={3}
+                    rows={1}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="블로그 글이나 고민을 붙여 넣어 주세요. (Enter 전송, Shift+Enter 줄바꿈)"
-                    className="block w-full bg-transparent rounded-2xl px-4 py-3 pr-14 text-sm leading-relaxed resize-none outline-none placeholder:text-dim"
+                    placeholder="블로그 글이나 고민을 자유롭게 적어 주세요"
+                    className="block w-full bg-transparent rounded-2xl pl-4 pr-24 py-3 text-sm leading-relaxed resize-none outline-none placeholder:text-dim min-h-[52px] max-h-[240px] overflow-y-auto"
                     disabled={sending}
                     maxLength={INPUT_LIMIT + 200}
+                    autoComplete="off"
                   />
                   <button
                     type="button"
                     onClick={handleSend}
                     disabled={!input.trim() || sending}
-                    className="absolute bottom-2 right-2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-accent hover:bg-accent-hover text-white disabled:bg-dim/40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-3 h-9 rounded-full bg-accent hover:bg-accent-hover text-white text-xs font-bold disabled:bg-dim/40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     aria-label="전송"
-                    title="전송"
+                    title={isTouchDevice ? '전송' : '전송 (Enter)'}
                   >
-                    ↑
+                    <span>전송</span>
+                    <span aria-hidden>↑</span>
                   </button>
                 </div>
-                <div className="mt-1.5 flex items-center justify-between text-[10px] text-dim">
-                  <span>
+                <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-dim">
+                  <span className="truncate">
                     {isFreeTrial
                       ? 'Claude Sonnet 4.6 · 가벼운 피드백 모드'
                       : 'Claude Opus 4.6 · 깊이 있는 피드백 모드'}
@@ -546,8 +574,15 @@ export default function ClaudeChatClient() {
                       </span>
                     )}
                   </span>
-                  <span className={remaining < 0 ? 'text-down' : ''}>
-                    {input.length.toLocaleString()} / {INPUT_LIMIT.toLocaleString()}
+                  <span className="shrink-0 flex items-center gap-2">
+                    <span className="hidden sm:inline">
+                      {isTouchDevice ? '전송 버튼으로 보내세요' : 'Enter 전송 · Shift+Enter 줄바꿈'}
+                    </span>
+                    {input.length >= INPUT_LIMIT * 0.5 && (
+                      <span className={remaining < 0 ? 'text-down' : ''}>
+                        {input.length.toLocaleString()} / {INPUT_LIMIT.toLocaleString()}
+                      </span>
+                    )}
                   </span>
                 </div>
               </>
