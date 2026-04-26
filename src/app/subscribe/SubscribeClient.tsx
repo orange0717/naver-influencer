@@ -251,7 +251,7 @@ export default function SubscribeClient() {
 
       {/* 안내 */}
       <div className="text-center space-y-2">
-        <p className="text-sm text-dim">사용처 — 서버비, 네이버 API, 클로드 API 비용에 사용됩니다</p>
+        <p className="text-sm text-dim">사용처 — 서버비, 네이버 API, 클로드 API 비용에 사용됩니다.</p>
       </div>
 
       {/* 기능과 스펙 비교표 */}
