@@ -70,27 +70,54 @@ export async function GET(req: NextRequest) {
     }
 
     const naverProfile = profileData.response;
+    const hasRealEmail = !!naverProfile.email;
     const naverEmail = naverProfile.email || `${naverProfile.id}@naver.auto`;
     const naverNickname = naverProfile.nickname || naverProfile.name || 'N사용자';
     const naverProfileImage = naverProfile.profile_image || null;
-    const naverId = naverProfile.id;
+    const naverId: string = naverProfile.id;
 
     // 3. Supabase users 테이블 조회/생성
     const supabase = createServiceClient();
 
-    // 네이버 ID로 기존 사용자 검색
-    const { data: existingUser } = await supabase
+    // 1순위: naver_id 로 기존 사용자 검색 (가장 정확한 식별자)
+    let userId: string | null = null;
+    let needsNaverIdUpdate = false;
+
+    const { data: byNaverId } = await supabase
       .from('users')
-      .select('id, nickname, blog_id, linked_influencer_id')
-      .eq('email', naverEmail)
-      .single();
+      .select('id')
+      .eq('naver_id', naverId)
+      .maybeSingle();
 
-    let userId: string;
+    if (byNaverId) {
+      userId = byNaverId.id;
+    } else if (hasRealEmail) {
+      // 2순위: 실제 네이버 이메일로 검색 (이메일 가입 사용자와 자동 연결)
+      const { data: byEmail } = await supabase
+        .from('users')
+        .select('id, naver_id')
+        .eq('email', naverEmail)
+        .maybeSingle();
 
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      // 새 사용자 생성
+      if (byEmail) {
+        userId = byEmail.id;
+        if (!byEmail.naver_id) needsNaverIdUpdate = true;
+      }
+    }
+
+    if (userId && needsNaverIdUpdate) {
+      // 기존 이메일 가입 사용자에 naver_id 동기화
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ naver_id: naverId })
+        .eq('id', userId);
+      if (updateError) {
+        console.error('[naver-callback] User update error:', updateError.code, updateError.message);
+      }
+    }
+
+    if (!userId) {
+      // 신규 사용자 생성
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert({
@@ -102,10 +129,24 @@ export async function GET(req: NextRequest) {
         .single();
 
       if (insertError || !newUser) {
-        console.error('[naver-callback] User insert error:', insertError);
-        return NextResponse.redirect(`${baseUrl}/auth/login?error=naver_user`);
+        // 동시 요청으로 인한 unique violation(23505) 시 다시 SELECT 로 복구
+        if (insertError?.code === '23505') {
+          const { data: retried } = await supabase
+            .from('users')
+            .select('id')
+            .eq('naver_id', naverId)
+            .maybeSingle();
+          if (retried) {
+            userId = retried.id;
+          }
+        }
+        if (!userId) {
+          console.error('[naver-callback] User insert error:', insertError?.code, insertError?.message);
+          return NextResponse.redirect(`${baseUrl}/auth/login?error=naver_user`);
+        }
+      } else {
+        userId = newUser.id;
       }
-      userId = newUser.id;
     }
 
     // 4. 쿠키 설정
