@@ -54,10 +54,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     if (authUser) {
       isLoggedIn = true;
 
-      // 제한 사용자 체크
-      const { isRestricted } = await import('@/lib/admin');
-      if (await isRestricted(authUser.email)) {
-        redirect('/subscribe');
+      // 관리자/활성 유료 구독자는 무조건 통과. 그 외에만 제한 체크.
+      const { isRestricted, getPaywallContext } = await import('@/lib/admin');
+      const ctx = await getPaywallContext(authUser.id, authUser.email);
+      if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
+        if (await isRestricted(authUser.email)) {
+          redirect('/subscribe');
+        }
       }
 
       const { data: profile } = await supabase
@@ -97,7 +100,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     redirect('/auth/login');
   }
 
-  // 체험/데모 만료 체크
+  // 체험/데모 만료 체크 — 활성 유료 구독자에게는 적용 안 됨
   const trialStarted = cookieStore.get('trial_started')?.value;
   const isTrial = !!trialStarted;
   const durationMs = 3 * 24 * 60 * 60 * 1000;
@@ -106,7 +109,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     const elapsed = Date.now() - Number(trialStarted);
     trialExpired = elapsed > durationMs;
   }
-  if (trialExpired) {
+  const hasActivePlan = !!(
+    subscriptionPlan &&
+    subscriptionExpiresAt &&
+    new Date(subscriptionExpiresAt).getTime() > Date.now()
+  );
+  if (trialExpired && !hasActivePlan) {
     redirect('/subscribe');
   }
 

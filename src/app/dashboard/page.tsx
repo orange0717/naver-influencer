@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { unstable_cache } from 'next/cache';
 import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
-import { isRestricted } from '@/lib/admin';
+import { isRestricted, getPaywallContext } from '@/lib/admin';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import type { PlanTier } from '@/lib/dashboard-catalog';
 
@@ -59,10 +59,13 @@ export default async function DashboardPage() {
     redirect('/auth/login');
   }
 
-  // 제한 사용자 → /subscribe 리다이렉트 (Supabase + 데모 양쪽)
+  // 관리자/활성 유료 구독자는 무조건 통과. 그 외에만 제한 체크.
   if (authUser) {
-    if (await isRestricted(authUser.email)) {
-      redirect('/subscribe');
+    const ctx = await getPaywallContext(authUser.id, authUser.email);
+    if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
+      if (await isRestricted(authUser.email)) {
+        redirect('/subscribe');
+      }
     }
   } else if (demoNaverId) {
     const supabase = createServiceClient();
