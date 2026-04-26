@@ -12,9 +12,10 @@ import {
 import { chatbookMessageLimiter, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 90; // Opus 응답이 더 느리므로 여유
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL_FREE = 'claude-sonnet-4-6';
+const MODEL_PAID = 'claude-opus-4-6';
 
 /**
  * GET /api/dashboard/claude/conversations/[id]/messages
@@ -160,13 +161,17 @@ export async function POST(
       .eq('id', id);
   }
 
+  // plan 별 모델 분기:
+  // free_trial → Sonnet (비용 절감), influencer/admin → Opus (깊이 있는 피드백)
+  const model = user.plan === 'free_trial' ? MODEL_FREE : MODEL_PAID;
+
   let replyText = '';
   let usageIn: number | null = null;
   let usageOut: number | null = null;
   try {
     const anthropic = new Anthropic({ apiKey });
     const result = await anthropic.messages.create({
-      model: MODEL,
+      model,
       max_tokens: 1024,
       system: CLAUDE_FEEDBACK_SYSTEM_PROMPT,
       messages: contextMessages,
