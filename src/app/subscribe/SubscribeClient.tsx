@@ -190,9 +190,11 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>무료 플랜 전체 포함</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 포스팅 분석</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 캠페인 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>실시간 상승 키워드</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 데이터 다운로드 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>블로그 순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>블로그 품질지수 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>맞춤법 검사</span></li>
@@ -238,8 +240,8 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 정산내역 (개발 중)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드 챌린지</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 리스트</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 공식순위</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 순위 — 공식</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 순위 — 자체</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>AI 심층 피드백</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>블로그 글 피드백 (Claude AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
@@ -251,6 +253,7 @@ export default function SubscribeClient() {
       <div className="text-center space-y-2">
         <p className="text-xs text-dim">신용카드 / 체크카드 / 간편결제 지원</p>
         <p className="text-xs text-dim">결제는 PortOne 안전결제로 처리됩니다</p>
+        <p className="text-xs text-dim">사용처 — 서버비, 네이버 API, 클로드 API 비용에 사용됩니다</p>
       </div>
 
       {/* 기능과 스펙 비교표 */}
@@ -300,6 +303,12 @@ export default function SubscribeClient() {
               </tr>
               <tr>
                 <td className="py-2.5 px-2">MY 포스팅 분석</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">포스팅 데이터 다운로드 <span className="text-[10px] text-dim">(개발 중)</span></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
@@ -380,6 +389,12 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
+              <tr>
+                <td className="py-2.5 px-2">키워드 데이터 다운로드 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
 
               {/* 랭킹 카테고리 */}
               <tr>
@@ -398,13 +413,13 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">인플루언서 공식순위</td>
+                <td className="py-2.5 px-2">인플루언서 순위 — 공식</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">인플루언서 순위 <span className="text-[10px] text-dim">(개발 중)</span></td>
+                <td className="py-2.5 px-2">인플루언서 순위 — 자체</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
