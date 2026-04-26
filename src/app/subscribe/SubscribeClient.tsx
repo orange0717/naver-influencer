@@ -43,12 +43,77 @@ const PLAN_KEY: Record<BillingPeriod, { blogger: string; influencer: string }> =
 
 const formatKRW = (v: number) => v.toLocaleString('ko-KR');
 
+// ─────────── FAQ 데이터 ───────────
+type FaqItem = { q: string; a: string };
+
+const HIGHLIGHT_FAQ: FaqItem[] = [
+  { q: '무료 체험 기간이 있나요?', a: '회원가입 시 3일 무료 체험이 자동으로 적용됩니다. 인플루언서 플랜 기능을 모두 사용해보실 수 있습니다.' },
+  { q: '환불은 어떻게 받나요?', a: '구매일로부터 7일 이내 미이용 시 전액 환불, 이용한 경우 잔여 일수 기준 일할 계산으로 환불해 드립니다. 마이페이지 또는 orange@orangelibrary.co.kr 로 신청해 주세요.' },
+  { q: '여러 기기에서 동시 로그인 가능한가요?', a: '전 플랜 공통 1대만 가능합니다. 다른 기기에서 로그인하면 기존 기기는 자동 로그아웃됩니다. 계정 공유는 사실상 불가능합니다.' },
+  { q: '인플루언서·키워드 데이터는 얼마나 자주 갱신되나요?', a: '키워드 데이터는 일 1회, 인플루언서 데이터는 주 1회 갱신됩니다. 현재 인플루언서 19,980명 / 블로거 83,933명 데이터를 보유 중입니다.' },
+  { q: '예비 인플루언서와 인플루언서 플랜 차이는?', a: '예비 인플루언서는 블로거 단계에 필요한 도구(키워드 순위·포스팅 분석·블로그 순위 등)를 제공합니다. 인플루언서 플랜은 여기에 키워드 챌린지 리스트, 인플루언서 공식·자체 순위, AI 심층 피드백, 블로그 글 피드백(Claude AI)까지 포함됩니다.' },
+];
+
+const ALL_FAQ_GROUPS: { category: string; items: FaqItem[] }[] = [
+  {
+    category: '결제·환불',
+    items: [
+      { q: '유료 결제는 언제부터 가능한가요?', a: '카드사·PG(PortOne) 승인 완료 후 순차 오픈 예정입니다. 오픈 일정은 공지사항에서 안내드립니다.' },
+      { q: '무료 체험 기간이 있나요?', a: '회원가입 시 3일 무료 체험이 자동으로 적용됩니다.' },
+      { q: '환불은 어떻게 받나요?', a: '구매일로부터 7일 이내 미이용 시 전액 환불, 이용한 경우 잔여 일수 기준 일할 계산으로 환불됩니다.' },
+      { q: '결제 주기를 길게 하면 얼마나 할인되나요?', a: '3개월 5%, 6개월 10%, 9개월 15%, 12개월은 2개월 무료(=10개월치) 가격으로 결제됩니다.' },
+    ],
+  },
+  {
+    category: '계정·보안',
+    items: [
+      { q: '여러 기기에서 동시 로그인 가능한가요?', a: '전 플랜 공통 1대만 가능합니다. 다른 기기에서 로그인하면 기존 기기는 자동 로그아웃됩니다.' },
+      { q: '계정을 가족·동료와 공유해도 되나요?', a: '동시 로그인 1대 제한으로 사실상 공유가 불가능합니다. 1인 1계정 원칙을 따라주세요.' },
+      { q: '회원 탈퇴는 어떻게 하나요?', a: '마이페이지에서 탈퇴 가능하며, 결제 내역은 환불 정책에 따라 처리됩니다.' },
+    ],
+  },
+  {
+    category: '데이터·기능',
+    items: [
+      { q: '인플루언서·키워드 데이터는 얼마나 자주 갱신되나요?', a: '키워드 일 1회, 인플루언서 주 1회 갱신됩니다. 현재 인플루언서 19,980명, 블로거 83,933명 데이터를 보유 중입니다.' },
+      { q: '블로거 순위 데이터는 어디서 가져오나요?', a: 'Naver Open API 기반 자체 크롤러로 수집합니다. 크롤러 정보는 /bot-info 페이지에서 투명하게 공개하고 있습니다.' },
+      { q: 'AI 심층 피드백은 어떤 모델을 쓰나요?', a: 'Anthropic의 Claude Opus 4.6 모델을 사용합니다. 4영역(기능·구조·언어·가독성) 품질 평가와 강점·개선점을 제공합니다.' },
+      { q: '데이터 다운로드는 어떤 형식인가요?', a: 'CSV 형식으로 제공됩니다. 포스팅 데이터는 예비 1회 500건 / 인플 무제한, 키워드 데이터는 인플 1회 500건입니다.' },
+    ],
+  },
+  {
+    category: '플랜·기능',
+    items: [
+      { q: '예비 인플루언서와 인플루언서 차이는?', a: '예비 인플루언서는 블로거 단계 도구(키워드 순위·포스팅 분석·블로그 순위 등)를, 인플루언서 플랜은 추가로 키워드 챌린지 리스트·공식 및 자체 인플루언서 순위·AI 심층 피드백·Claude AI 피드백까지 포함합니다.' },
+      { q: '무료로도 충분히 쓸 수 있나요?', a: '인플루언서 검색·키워드 검색·검색량 조회·구글 트렌드 등 기본 기능은 무료로 무제한 이용 가능합니다.' },
+      { q: '"개발 중" 표시는 언제 풀리나요?', a: 'MY 캠페인·MY 정산내역·블로그 품질지수·캐릭터챗북은 순차적으로 출시될 예정입니다. 출시 시 공지사항으로 안내드립니다.' },
+    ],
+  },
+];
+
 export default function SubscribeClient() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const isLoggedIn = !!user;
   const [callbackStatus, setCallbackStatus] = useState<'processing' | 'success' | 'error' | null>(null);
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
+  const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
+  const [faqModalOpen, setFaqModalOpen] = useState(false);
+  const [openModalKey, setOpenModalKey] = useState<string | null>(null);
+
+  // 모달 열림 시 ESC 키로 닫기 + body 스크롤 잠금
+  useEffect(() => {
+    if (!faqModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFaqModalOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [faqModalOpen]);
 
   // 모바일 리다이렉트 콜백 처리
   useEffect(() => {
@@ -504,6 +569,96 @@ export default function SubscribeClient() {
           </div>
         </div>
       </div>
+
+      {/* 자주 묻는 질문 (핵심 5개 아코디언) */}
+      <div className="bg-surface rounded-2xl border border-border p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold">자주 묻는 질문</h2>
+          <button
+            onClick={() => setFaqModalOpen(true)}
+            className="text-xs text-accent font-semibold hover:underline cursor-pointer"
+          >
+            전체 FAQ 보기
+          </button>
+        </div>
+        <ul className="divide-y divide-border">
+          {HIGHLIGHT_FAQ.map((item, idx) => {
+            const open = openFaqIdx === idx;
+            return (
+              <li key={idx} className="py-3">
+                <button
+                  onClick={() => setOpenFaqIdx(open ? null : idx)}
+                  className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
+                >
+                  <span className="text-sm font-semibold">{item.q}</span>
+                  <span className={`text-dim transition-transform ${open ? 'rotate-180' : ''}`}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </button>
+                {open && (
+                  <p className="mt-2 text-xs text-dim leading-relaxed whitespace-pre-line">{item.a}</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {/* 전체 FAQ 모달 */}
+      {faqModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setFaqModalOpen(false)}
+        >
+          <div
+            className="bg-surface w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[80vh] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-bold">전체 FAQ</h3>
+              <button
+                onClick={() => setFaqModalOpen(false)}
+                className="text-dim hover:text-text cursor-pointer"
+                aria-label="닫기"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto px-5 py-4 space-y-6">
+              {ALL_FAQ_GROUPS.map((group) => (
+                <section key={group.category} className="space-y-2">
+                  <h4 className="text-xs font-bold text-accent">{group.category}</h4>
+                  <ul className="divide-y divide-border">
+                    {group.items.map((item, idx) => {
+                      const key = `${group.category}-${idx}`;
+                      const open = openModalKey === key;
+                      return (
+                        <li key={key} className="py-3">
+                          <button
+                            onClick={() => setOpenModalKey(open ? null : key)}
+                            className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
+                          >
+                            <span className="text-sm font-semibold">{item.q}</span>
+                            <span className={`text-dim transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </span>
+                          </button>
+                          {open && (
+                            <p className="mt-2 text-xs text-dim leading-relaxed whitespace-pre-line">{item.a}</p>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </div>
+            <div className="px-5 py-3 border-t border-border text-center">
+              <p className="text-[11px] text-dim">추가 문의는 네이버 톡톡 또는 orange@orangelibrary.co.kr</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 환불 정책 */}
       <div className="bg-surface rounded-2xl border border-border p-6 space-y-3">
