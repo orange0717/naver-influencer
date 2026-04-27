@@ -565,9 +565,7 @@ export default function ClaudeChatClient() {
                 </div>
                 <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-dim">
                   <span className="truncate">
-                    {isFreeTrial
-                      ? 'Claude Sonnet 4.6 · 가벼운 피드백 모드'
-                      : 'Claude Opus 4.6 · 깊이 있는 피드백 모드'}
+                    Claude Haiku 4.5 · 빠른 피드백 모드
                     {isFreeTrial && (
                       <span className="ml-2 text-accent font-semibold">
                         체험 {freeTrialRemaining}/{freeTrialLimit}회
