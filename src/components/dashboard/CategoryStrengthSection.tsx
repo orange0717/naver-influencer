@@ -17,11 +17,13 @@ function getRankColor(avgRank: number): string {
   return 'text-dim';
 }
 
-function getBarColor(rate: number): string {
-  if (rate >= 80) return 'bg-pink-500';
-  if (rate >= 50) return 'bg-pink-400';
-  if (rate >= 30) return 'bg-pink-300';
-  return 'bg-pink-200';
+const BAR_COLOR = '#D9B7B0';
+
+function getBarOpacity(rate: number): number {
+  if (rate >= 80) return 1;
+  if (rate >= 50) return 0.8;
+  if (rate >= 30) return 0.6;
+  return 0.4;
 }
 
 export default function CategoryStrengthSection({ categoryStats }: Props) {
@@ -48,8 +50,12 @@ export default function CategoryStrengthSection({ categoryStats }: Props) {
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${getBarColor(cat.top10Rate)}`}
-                    style={{ width: `${cat.top10Rate}%` }}
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${cat.top10Rate}%`,
+                      backgroundColor: BAR_COLOR,
+                      opacity: getBarOpacity(cat.top10Rate),
+                    }}
                   />
                 </div>
               </div>
