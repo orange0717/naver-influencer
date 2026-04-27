@@ -47,6 +47,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ keywords: [] });
   }
 
+  // 저장한 키워드는 user_id 단위 데이터이므로, 인증된 사용자가 아니면 빈 결과 반환
+  if (!internalUserId) {
+    return NextResponse.json({ keywords: [], avgHistory: [] });
+  }
+
   // naver_id 로만 들어온 쿠키 기반 세션도 제한 사용자 차단.
   // 제한 이메일이 {naver_id}@naver.com 형식이면 동일인으로 간주.
   if (await isRestricted(`${naverId}@naver.com`)) {
