@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import * as cheerio from 'cheerio';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -65,6 +66,7 @@ async function extractPostText(blogId: string, logNo: string): Promise<{ title: 
  * SSE 스트리밍 응답
  */
 export async function POST(request: NextRequest) {
+  if (AI_DISABLED) return aiDisabledResponse();
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 

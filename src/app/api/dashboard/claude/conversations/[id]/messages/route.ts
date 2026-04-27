@@ -10,6 +10,7 @@ import {
   CLAUDE_FEEDBACK_MESSAGE_LIMIT,
 } from '@/lib/claude-feedback';
 import { chatbookMessageLimiter, getClientIp } from '@/lib/rate-limit';
+import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 90; // Opus 응답이 더 느리므로 여유
@@ -67,6 +68,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (AI_DISABLED) return aiDisabledResponse();
   const user = await getClaudeFeedbackUser(request);
   if (!user) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });

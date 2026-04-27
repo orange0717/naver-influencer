@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { parseQueryToFilters, matchPowerContentKeyword } from '@/lib/ai-search';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -14,6 +15,7 @@ export const maxDuration = 30;
  * response: SSE 스트리밍 (type: influencers | text | done)
  */
 export async function POST(request: NextRequest) {
+  if (AI_DISABLED) return aiDisabledResponse();
   const ip = getClientIp(request);
   if (await searchLimiter.check(ip)) return rateLimitResponse();
 

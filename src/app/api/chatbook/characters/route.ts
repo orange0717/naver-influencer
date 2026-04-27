@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getChatbookUser } from '@/lib/chatbook';
 import { chatbookCreateLimiter, getClientIp } from '@/lib/rate-limit';
+import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
  * - 저작권/실존인물/위험 컨셉은 Claude 가 거절하면 400 으로 반환
  */
 export async function POST(request: NextRequest) {
+  if (AI_DISABLED) return aiDisabledResponse();
   const user = await getChatbookUser(request);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
