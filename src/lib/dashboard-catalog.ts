@@ -139,7 +139,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'my-challenge',
     category: 'my',
-    title: '키워드 챌린지',
+    title: '인플루언서',
     description: '인플루언서 키워드 챌린지 참여·TOP3 현황',
     href: '/my',
     requiredPlan: 'influencer',
