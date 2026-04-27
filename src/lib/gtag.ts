@@ -15,11 +15,14 @@ declare global {
   }
 }
 
-/** SPA 라우팅 시 page_view 전송 */
+/** SPA 라우팅 시 page_view 전송 (event 형태로 명시 호출) */
 export function pageview(url: string) {
   if (!isGaEnabled() || !window.gtag) return;
-  window.gtag('config', GA_MEASUREMENT_ID, {
+  window.gtag('event', 'page_view', {
     page_path: url,
+    page_location: typeof window !== 'undefined' ? window.location.href : url,
+    page_title: typeof document !== 'undefined' ? document.title : undefined,
+    send_to: GA_MEASUREMENT_ID,
   });
 }
 
