@@ -17,7 +17,6 @@ import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
-import KeywordPlanner from '@/components/dashboard/KeywordPlanner';
 import SavedKeywords from '@/components/dashboard/SavedKeywords';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
@@ -612,38 +611,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
       <div className="space-y-6">
 
-      {/* ─── 카테고리 순위 + 전체 평균순위 ─── */}
-      {categoryRank > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <GlassCard padding="none">
-            <div className="flex items-center justify-center py-6 px-4">
-              <div className="text-center">
-                <p className="text-[11px] text-dim font-semibold mb-1">
-                  {myCategory || '카테고리'} 순위
-                </p>
-                <p className="text-3xl font-black font-rank text-accent">
-                  {categoryRank.toLocaleString()}<span className="text-lg font-bold">위</span>
-                </p>
-                <p className="text-xs text-dim mt-1">{categoryTotal.toLocaleString()}명 중</p>
-              </div>
-            </div>
-          </GlassCard>
-          <GlassCard padding="none">
-            <div className="flex items-center justify-center py-6 px-4">
-              <div className="text-center">
-                <p className="text-[11px] text-dim font-semibold mb-1">
-                  전체 키챌 평균순위
-                </p>
-                <p className="text-3xl font-black font-rank text-accent">
-                  {avgRank > 0 ? avgRank.toFixed(1) : '—'}<span className="text-lg font-bold">{avgRank > 0 ? '위' : ''}</span>
-                </p>
-                <p className="text-xs text-dim mt-1">{participatedCount}개 키워드 평균</p>
-              </div>
-            </div>
-          </GlassCard>
-        </div>
-      )}
-
       {/* 상세 통계 바 */}
       {categoryRank > 0 && (
         <div className="bg-surface border border-border rounded-2xl px-5 py-3">
@@ -727,14 +694,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
-
-      {/* ─── 2-3. 포스팅 키워드 플래너 ─── */}
-      <KeywordPlanner
-        existingKeywords={participatedKeywords.map(kw => ({
-          id: kw.keyword_id,
-          keyword: kw.keyword,
-        }))}
-      />
 
       {/* ─── 2-4. 저장된 키워드 ─── */}
       <SavedKeywords />
