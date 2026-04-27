@@ -8,7 +8,7 @@ import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_USER_CHARACTERS = 20; // 사용자당 최대 보유 수
 const MAX_INPUT_LENGTH = 400;   // 한 줄 설정 최대 길이
 

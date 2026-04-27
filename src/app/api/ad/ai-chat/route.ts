@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     const anthropic = new Anthropic({ apiKey });
 
     const stream = await anthropic.messages.stream({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 800,
       system: `당신은 N인플(네이버 인플루언서 분석 플랫폼)의 AI 어시스턴트입니다.
 광고주가 인플루언서를 찾으면 검색된 데이터를 기반으로 추천합니다.

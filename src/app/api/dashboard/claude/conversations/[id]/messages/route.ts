@@ -15,8 +15,9 @@ import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 90; // Opus 응답이 더 느리므로 여유
 
-const MODEL_FREE = 'claude-sonnet-4-6';
-const MODEL_PAID = 'claude-opus-4-6';
+// 비용 절감 정책: N인플은 모든 plan 에서 Haiku 사용 (Opus 미사용)
+const MODEL_FREE = 'claude-haiku-4-5-20251001';
+const MODEL_PAID = 'claude-haiku-4-5-20251001';
 
 /**
  * GET /api/dashboard/claude/conversations/[id]/messages

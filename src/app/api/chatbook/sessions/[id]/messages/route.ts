@@ -8,7 +8,7 @@ import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-haiku-4-5-20251001';
 
 /**
  * GET /api/chatbook/sessions/[id]/messages

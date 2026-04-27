@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
         const anthropic = new Anthropic({ apiKey });
         const message = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-haiku-4-5-20251001',
           max_tokens: 1500,
           system: `당신은 AI 생성 텍스트 탐지 전문가입니다. 네이버 블로그 글을 분석하여 AI 작성 여부를 판별합니다.
 
