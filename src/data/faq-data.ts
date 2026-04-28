@@ -49,13 +49,13 @@ export const FAQ_DATA: FaqItem[] = [
     category: '서비스 이용',
     question: 'AI 심층 피드백은 어떤 모델을 쓰나요?',
     answer:
-      '인플루언서 플랜 전용 기능으로, OrangeRefine Worker 를 경유해 Anthropic Claude Opus 4.6 으로 분석합니다. 4영역(기능적·구조적·언어·가독성) 100점 만점 진단 + 강점·개선점·독자 반응을 종합 리포트로 제공하며, 분석에는 30초~1분이 걸립니다.',
+      '인플루언서 플랜 전용 기능으로, OrangeRefine Worker 를 경유해 Anthropic Claude Haiku 4.5 로 분석합니다. 4영역(기능적·구조적·언어·가독성) 100점 만점 진단 + 강점·개선점·독자 반응을 종합 리포트로 제공하며, 분석에는 30초~1분이 걸립니다.',
   },
   {
     category: '서비스 이용',
-    question: '캐릭터챗북·블로그 AI 분석은 어떤 모델인가요?',
+    question: 'N인플의 AI 기능은 어떤 모델로 동작하나요?',
     answer:
-      '캐릭터챗북, 블로그 AI 분석, 광고주 AI 챗, 대시보드 Claude 챗은 모두 Claude Haiku 4.5 로 동작합니다. 빠른 응답과 합리적인 비용을 위해 일반 AI 기능에는 Haiku 를 쓰고, AI 심층 피드백 같이 깊이 있는 분석이 필요한 곳에서만 Opus 4.6 을 사용합니다.',
+      'AI 심층 피드백, 캐릭터챗북, 블로그 AI 분석, 광고주 AI 챗, 대시보드 Claude 챗 — N인플의 모든 AI 기능은 Anthropic Claude Haiku 4.5 로 통일되어 빠르고 합리적인 비용으로 동작합니다.',
   },
 
   // ─── 키워드 분석 ───

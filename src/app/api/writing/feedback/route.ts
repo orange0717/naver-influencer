@@ -64,17 +64,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 인플루언서 플랜은 위에서 검증 완료 → 워커에 사전 공유 시크릿 전달해 항상 Opus 호출
-    const ninflServiceToken = process.env.NINFL_SERVICE_TOKEN || '';
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Origin: 'https://naver-influencer.vercel.app',
-    };
-    if (ninflServiceToken) headers['X-Service-Token'] = ninflServiceToken;
-
+    // N인플은 전체 AI 기능을 Claude Haiku 4.5 로 통일 (Opus 미사용 정책).
+    // X-Service-Token 헤더를 보내지 않으면 워커가 무료 사용자 경로로 처리하여 Haiku 호출.
     const res = await fetch(`${WORKER_URL}/api/feedback`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://naver-influencer.vercel.app',
+      },
       body: JSON.stringify({ text: text.slice(0, MAX_TEXT_LENGTH) }),
     });
 

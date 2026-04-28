@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'AI 심층 피드백 — N인플',
-  description: 'Claude Opus 기반 4영역 품질 평가와 강점·개선점 분석',
+  description: 'Claude Haiku 4.5 기반 4영역 품질 평가와 강점·개선점 분석',
 };
 
 export default async function FeedbackPage() {

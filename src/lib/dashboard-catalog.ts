@@ -296,7 +296,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'writing-feedback',
     category: 'writing',
     title: 'AI 심층 피드백',
-    description: '4영역(기능·구조·언어·가독성) 품질 평가 + 강점·개선점 (Claude Opus)',
+    description: '4영역(기능·구조·언어·가독성) 품질 평가 + 강점·개선점 (Claude Haiku 4.5)',
     href: '/dashboard/writing/feedback',
     requiredPlan: 'influencer',
     authOnly: true,
