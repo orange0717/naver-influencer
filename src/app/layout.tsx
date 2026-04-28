@@ -10,7 +10,6 @@ import FeedbackButton from "@/components/FeedbackButton";
 import Providers from "@/components/Providers";
 import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
-import ApiDownBanner from "@/components/ApiDownBanner";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 import SentryUserIdentity from "@/components/SentryUserIdentity";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
@@ -41,7 +40,6 @@ export default function RootLayout({
       <body className="antialiased flex flex-col min-h-screen">
         <Providers>
           <SentryUserIdentity />
-          <ApiDownBanner />
           <HeaderWrapper />
           <UpdateBanner />
           <Suspense fallback={null}><VisitTracker /></Suspense>

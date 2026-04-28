@@ -254,7 +254,10 @@ async function main() {
   }
 
   const progress = loadProgress();
-  const startIdx = IS_RESUME ? progress.lastIndex : 0;
+  // fetchTargets() 는 항상 "현재 매핑 누락" 만 반환하므로 resume 시에도 처음부터 처리해야 함.
+  // 과거 lastIndex 가 현재 targets.length 를 초과하면 의미 없음 — 무조건 0 부터 시작.
+  let startIdx = IS_RESUME ? progress.lastIndex : 0;
+  if (startIdx >= targets.length) startIdx = 0;
   const endIdx = Math.min(targets.length, startIdx + LIMIT);
   console.log(`\n처리 범위: [${startIdx} → ${endIdx}) / 전체 ${targets.length}명\n`);
 
