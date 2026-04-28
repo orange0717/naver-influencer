@@ -64,12 +64,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // 인플루언서 플랜은 위에서 검증 완료 → 워커에 사전 공유 시크릿 전달해 항상 Opus 호출
+    const ninflServiceToken = process.env.NINFL_SERVICE_TOKEN || '';
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Origin: 'https://naver-influencer.vercel.app',
+    };
+    if (ninflServiceToken) headers['X-Service-Token'] = ninflServiceToken;
+
     const res = await fetch(`${WORKER_URL}/api/feedback`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Origin: 'https://naver-influencer.vercel.app',
-      },
+      headers,
       body: JSON.stringify({ text: text.slice(0, MAX_TEXT_LENGTH) }),
     });
 
