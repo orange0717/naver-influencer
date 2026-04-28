@@ -44,15 +44,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     naverId = params.demo;
   }
 
-  // ─── 1.5. 네이버 간편로그인(OAuth) 쿠키 체크 ───
-  // callback 에서 설정한 naver_login_id 가 있으면 정식 로그인 사용자로 인정
-  if (!naverId) {
-    const naverLoginId = cookieStore.get('naver_login_id')?.value;
-    if (naverLoginId) {
-      naverId = naverLoginId;
-    }
-  }
-
   // ─── 2. Supabase Auth 세션 체크 ───
   let isLoggedIn = false;
   if (!naverId) {
@@ -145,11 +136,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     }
     if (isLoggedIn) {
       redirect('/profile');
-    }
-    // 네이버 간편로그인 사용자: 인플루언서/블로그 미연결 시 메인으로 안내
-    const naverLoginId = cookieStore.get('naver_login_id')?.value;
-    if (naverLoginId) {
-      redirect('/');
     }
     redirect('/auth/login');
   }

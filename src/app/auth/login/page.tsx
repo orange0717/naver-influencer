@@ -183,22 +183,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* ─── 구분선 ─── */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-[10px] text-dim">또는</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          {/* ─── 네이버 로그인 ─── */}
-          <a
-            href="/api/auth/naver/login"
-            className="w-full py-3 flex items-center justify-center gap-2 bg-[#03C75A] hover:bg-[#02b351] text-white font-bold rounded-xl transition text-sm"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845Z"/></svg>
-            네이버로 로그인
-          </a>
-
           <p className="text-[10px] text-dim text-center leading-relaxed">
             아직 계정이 없으신가요?{' '}
             <Link href="/auth/signup" className="text-accent underline hover:text-accent-hover">

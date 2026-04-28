@@ -65,7 +65,7 @@ export async function getCookieUser(): Promise<{ id: string; type: 'influencer' 
   const naverId = cookieStore.get('naver_id')?.value;
   const blogId = cookieStore.get('blog_id')?.value;
 
-  // unified 타입 처리 (네이버 로그인 + 블로그 연동 사용자)
+  // unified 타입 처리 (인플루언서 핸들 + 블로그 ID 동시 등록 데모 사용자)
   if (userType === 'unified' && naverId) {
     return { id: naverId, type: 'influencer' };
   }
