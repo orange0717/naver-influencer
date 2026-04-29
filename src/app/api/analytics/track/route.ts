@@ -85,6 +85,16 @@ export async function POST(req: NextRequest) {
     const cookieUserId = authUser?.userId ? null : await resolveCookieUserId(supabase).catch(() => null);
     const trackedUserId = authUser?.userId ?? cookieUserId;
 
+    // 데모 체험자(쿠키 user_type=influencer) 식별 — users 매핑이 없는 케이스도 포함.
+    // 유입분석에서 익명이 아니라 "데모 회원"으로 노출시키기 위해 쿠키의 naver_id 를 따로 저장.
+    let demoNaverId: string | null = null;
+    if (!trackedUserId) {
+      const cookieUser = await getCookieUser().catch(() => null);
+      if (cookieUser?.type === 'influencer') {
+        demoNaverId = cookieUser.id;
+      }
+    }
+
     // 관리자는 집계 제외 (본인 유입 자료 왜곡 방지)
     if (trackedUserId && isAdmin(trackedUserId)) {
       return NextResponse.json({ ok: true, skipped: 'admin' });
@@ -162,20 +172,25 @@ export async function POST(req: NextRequest) {
     const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
     const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
 
-    await supabase.from('visit_logs').insert({
-      page_path: pagePath,
-      referrer: referrer || null,
-      referrer_domain: referrerDomain,
-      utm_source: utmSource,
-      utm_medium: utmMedium,
-      utm_campaign: utmCampaign,
-      device_type: deviceType,
-      user_agent: ua.slice(0, 500) || null,
-      user_id: trackedUserId || null,
-      is_first_visit: isFirstVisit,
-    });
+    const { data: inserted } = await supabase
+      .from('visit_logs')
+      .insert({
+        page_path: pagePath,
+        referrer: referrer || null,
+        referrer_domain: referrerDomain,
+        utm_source: utmSource,
+        utm_medium: utmMedium,
+        utm_campaign: utmCampaign,
+        device_type: deviceType,
+        user_agent: ua.slice(0, 500) || null,
+        user_id: trackedUserId || null,
+        demo_naver_id: trackedUserId ? null : demoNaverId,
+        is_first_visit: isFirstVisit,
+      })
+      .select('id')
+      .single();
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, id: inserted?.id ?? null });
   } catch {
     return NextResponse.json({ ok: false });
   }

@@ -22,12 +22,28 @@ interface TodayLog {
   id: string;
   visited_at: string;
   user_id: string | null;
+  visitor_type: 'member' | 'demo' | 'anonymous';
   nickname: string | null;
   email: string | null;
+  demo_naver_id: string | null;
   page_path: string;
   referrer_domain: string;
   browser: string;
   os: string;
+  duration_seconds: number | null;
+}
+
+/** 체류시간(초) → 한국어 라벨 (예: 45초, 2분 30초, 5분, 1시간 12분) */
+function formatDuration(seconds: number | null): string {
+  if (seconds == null) return '-';
+  if (seconds < 1) return '<1초';
+  if (seconds < 60) return `${seconds}초`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (seconds < 3600) return s === 0 ? `${m}분` : `${m}분 ${s}초`;
+  const h = Math.floor(seconds / 3600);
+  const remM = Math.floor((seconds % 3600) / 60);
+  return remM === 0 ? `${h}시간` : `${h}시간 ${remM}분`;
 }
 
 interface TodayLogsData {
@@ -252,21 +268,26 @@ export default function AdminAnalyticsPage() {
                   <th className="text-left py-2 px-2 font-semibold">사용자</th>
                   <th className="text-left py-2 px-2 font-semibold">페이지</th>
                   <th className="text-left py-2 px-2 font-semibold">유입</th>
+                  <th className="text-left py-2 px-2 font-semibold w-20">체류</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
                 {todayLogs.logs.map(log => {
                   const t = new Date(log.visited_at);
                   const timeLabel = t.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                  const isLoggedIn = !!log.user_id;
                   return (
                     <tr key={log.id} className="hover:bg-bg transition">
                       <td className="py-2 px-2 text-dim font-rank">{timeLabel}</td>
                       <td className="py-2 px-2">
-                        {isLoggedIn ? (
+                        {log.visitor_type === 'member' ? (
                           <span className="inline-flex items-center gap-1.5">
                             <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded-full leading-none">회원</span>
                             <span className="font-semibold">{log.nickname || '(닉네임 없음)'}</span>
+                          </span>
+                        ) : log.visitor_type === 'demo' ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-white bg-emerald-500 px-1.5 py-0.5 rounded-full leading-none">데모</span>
+                            <span className="font-semibold">{log.nickname || log.demo_naver_id || '(데모)'}</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5">
@@ -277,6 +298,7 @@ export default function AdminAnalyticsPage() {
                       </td>
                       <td className="py-2 px-2 font-mono text-[11px] truncate max-w-xs">{log.page_path}</td>
                       <td className="py-2 px-2 text-dim truncate max-w-[140px]">{log.referrer_domain}</td>
+                      <td className="py-2 px-2 text-dim font-rank tabular-nums">{formatDuration(log.duration_seconds)}</td>
                     </tr>
                   );
                 })}

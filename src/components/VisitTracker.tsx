@@ -64,18 +64,30 @@ function isAdminByLocalFlag(): boolean {
   }
 }
 
-/** 관리자 여부 + 로그인 여부를 한 번에 확인 (Supabase Auth + 쿠키 세션 모두 인식) */
-async function getVisitorStatus(): Promise<{ isAdmin: boolean; isLoggedIn: boolean }> {
+/**
+ * 관리자 여부 + 로그인 여부 + 액세스 토큰까지 한 번에 확인.
+ * 토큰을 직접 Authorization 헤더로 보내야 fetch 호출에서 회원이 안전하게 식별된다.
+ * (쿠키 인증만 의존하면 일부 환경에서 supabase 쿠키가 제대로 읽히지 않아 익명으로 잡힘)
+ */
+async function getVisitorStatus(): Promise<{
+  isAdmin: boolean;
+  isLoggedIn: boolean;
+  accessToken: string | null;
+}> {
   try {
     const supabase = createSupabaseBrowserClient();
-    const { data } = await supabase.auth.getUser();
-    const email = data?.user?.email?.toLowerCase();
+    const [{ data: userData }, { data: sessionData }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.auth.getSession(),
+    ]);
+    const email = userData?.user?.email?.toLowerCase();
     return {
       isAdmin: email ? ADMIN_EMAILS.includes(email) : false,
-      isLoggedIn: !!data?.user || hasCookieSession(),
+      isLoggedIn: !!userData?.user || hasCookieSession(),
+      accessToken: sessionData?.session?.access_token ?? null,
     };
   } catch {
-    return { isAdmin: false, isLoggedIn: hasCookieSession() };
+    return { isAdmin: false, isLoggedIn: hasCookieSession(), accessToken: null };
   }
 }
 
@@ -133,13 +145,21 @@ export default function VisitTracker() {
     // 1차: localStorage 플래그(로그아웃·시크릿창에서도 동작)로 즉시 차단
     if (isAdminByLocalFlag()) return;
 
-    // 2차: Supabase Auth 이메일 기반 차단
-    getVisitorStatus().then(({ isAdmin }) => {
+    // 2차: Supabase Auth 이메일 기반 차단 + 액세스 토큰 첨부로 회원 식별 보장
+    let visitLogId: number | null = null;
+    const startedAt = Date.now();
+    let sentDuration = false;
+
+    getVisitorStatus().then(({ isAdmin, accessToken }) => {
       if (isAdmin) return;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
       fetch('/api/analytics/track', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers,
         body: JSON.stringify({
           path: pathname,
           referrer: isSameSite ? '' : referrer,
@@ -150,8 +170,45 @@ export default function VisitTracker() {
           device_type: getDeviceType(),
           first_visit: isFirstVisit,
         }),
-      }).catch(() => {});
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          if (data && typeof data.id === 'number') visitLogId = data.id;
+        })
+        .catch(() => {});
     });
+
+    /** 페이지를 떠날 때 체류시간을 sendBeacon 으로 보고 (관리자 분석 표시용) */
+    const reportDuration = () => {
+      if (sentDuration || visitLogId == null) return;
+      sentDuration = true;
+      const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      // 비정상 장기 체류는 1시간으로 캡
+      const capped = Math.min(elapsed, 3600);
+      try {
+        const blob = new Blob(
+          [JSON.stringify({ id: visitLogId, duration: capped })],
+          { type: 'application/json' },
+        );
+        navigator.sendBeacon('/api/analytics/duration', blob);
+      } catch {
+        /* sendBeacon 미지원 환경은 무시 */
+      }
+    };
+
+    const onPageHide = () => reportDuration();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') reportDuration();
+    };
+    window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      // pathname 이 바뀌어 effect 가 정리될 때도 체류시간 보고
+      reportDuration();
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [pathname, searchParams]);
 
   return null;

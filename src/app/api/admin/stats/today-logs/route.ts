@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   const { data: logs, error } = await supabase
     .from('visit_logs')
-    .select('id, user_id, page_path, referrer, user_agent, visited_at')
+    .select('id, user_id, demo_naver_id, page_path, referrer, user_agent, visited_at, duration_seconds')
     .gte('visited_at', todayKstMid.toISOString())
     .order('visited_at', { ascending: false })
     .limit(500);
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: '조회 실패' }, { status: 500 });
   }
 
-  // 로그인 유저 닉네임 맵
+  // 정식 회원 닉네임 맵
   const userIds = Array.from(new Set((logs || []).map(l => l.user_id).filter(Boolean))) as string[];
   const userMap = new Map<string, { nickname: string; email: string }>();
   if (userIds.length > 0) {
@@ -46,11 +46,35 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 고유 방문자 집계 (user_id 있으면 user_id, 없으면 UA+IP 해시 대신 UA 기반)
+  // 데모 체험자 라벨 맵 (naver_id → display_name + email, verified 세션 우선)
+  const demoNaverIds = Array.from(
+    new Set((logs || []).map(l => l.demo_naver_id).filter(Boolean)),
+  ) as string[];
+  const demoMap = new Map<string, { displayName: string; email: string | null }>();
+  if (demoNaverIds.length > 0) {
+    const { data: demos } = await supabase
+      .from('demo_sessions')
+      .select('naver_id, display_name, email, verified_at')
+      .in('naver_id', demoNaverIds)
+      .not('verified_at', 'is', null)
+      .order('verified_at', { ascending: false });
+    for (const d of demos || []) {
+      if (!demoMap.has(d.naver_id)) {
+        demoMap.set(d.naver_id, {
+          displayName: d.display_name || d.naver_id,
+          email: d.email || null,
+        });
+      }
+    }
+  }
+
+  // 고유 방문자 집계 — 정식 회원/데모 회원/익명 별도 키로 카운트
   const uniqueVisitors = new Set<string>();
   for (const log of logs || []) {
     if (log.user_id) {
       uniqueVisitors.add(`u:${log.user_id}`);
+    } else if (log.demo_naver_id) {
+      uniqueVisitors.add(`d:${log.demo_naver_id}`);
     } else {
       uniqueVisitors.add(`a:${log.user_agent || 'unknown'}`);
     }
@@ -82,17 +106,28 @@ export async function GET(req: NextRequest) {
     }
 
     const userInfo = log.user_id ? userMap.get(log.user_id) : null;
+    const demoInfo = !log.user_id && log.demo_naver_id ? demoMap.get(log.demo_naver_id) : null;
+
+    // visitor_type: member(정식 회원) / demo(데모 체험자) / anonymous(비로그인)
+    const visitorType: 'member' | 'demo' | 'anonymous' = log.user_id
+      ? 'member'
+      : log.demo_naver_id
+        ? 'demo'
+        : 'anonymous';
 
     return {
       id: log.id,
       visited_at: log.visited_at,
       user_id: log.user_id,
-      nickname: userInfo?.nickname || null,
-      email: userInfo?.email || null,
+      visitor_type: visitorType,
+      nickname: userInfo?.nickname || demoInfo?.displayName || null,
+      email: userInfo?.email || demoInfo?.email || null,
+      demo_naver_id: log.demo_naver_id ?? null,
       page_path: log.page_path,
       referrer_domain: referrerDomain,
       browser,
       os,
+      duration_seconds: log.duration_seconds ?? null,
     };
   });
 
