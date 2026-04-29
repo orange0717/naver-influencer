@@ -1,0 +1,67 @@
+# N인플 (엔인플)
+
+> 네이버 인플루언서·블로거를 위한 키워드 분석·랭킹·커뮤니티 SaaS. 수만 개 키워드의 검색량·경쟁도·순위를 분석하여 블루오션 키워드를 추천하고, 인플루언서·블로거 데이터를 기반으로 랭킹과 블로그 품질지수를 제공합니다.
+
+N인플(엔인플)은 네이버 인플루언서를 준비하는 블로거와 현재 인플루언서를 위한 종합 도구입니다. 19,980명의 인플루언서와 83,933명+의 블로거 데이터를 기반으로 키워드별 검색량·참여자수·TOP3 점유율을 실시간 분석하고, 점수 공식 기반 랭킹·블로그 품질지수·쇼핑 인사이트·커뮤니티를 제공합니다.
+
+## 주요 기능
+
+- [인플루언서 리스트](https://ninfle.kr/influencers): 19,980명, 활동/미활동 자동 판정, 무료
+- [키워드 리스트](https://ninfle.kr/keywords): 검색량·경쟁도·TOP3 점유율 분석, 무료
+- [블로거 랭킹](https://ninfle.kr/rankings): 83,933명+ Naver Open API 기반 순위
+- [인플루언서 랭킹](https://ninfle.kr/rankings): (참여자수 − 순위) × 본인 게시글 수 점수 공식
+- [블로그 품질지수](https://ninfle.kr/blog-quality): 블로그 품질 정량화 분석
+- [쇼핑 인사이트](https://ninfle.kr/search-volume): 월간 검색수·연령·성별 분포
+- [커뮤니티](https://ninfle.kr/community): 비회원 투표 가능한 공지사항/Q&A
+- [챗북](https://ninfle.kr/chatbook): Claude 캐릭터와 대화 (1메시지 50文)
+- [광고/캠페인](https://ninfle.kr/campaigns): 광고 매칭 + AI 채팅
+- [블로그 분석](https://ninfle.kr/blog-quality): Claude AI 기반 블로그 콘텐츠 진단
+
+## 가격 (2026-04 기준)
+
+- 인플루언서 리스트·키워드 리스트·커뮤니티: 무료
+- 7일 무료 체험: 인플루언서홈 또는 블로그 주소만 입력
+- 블로거 플랜: 5,500원/월
+- 인플루언서 플랜: 9,900원/월
+- 광고주 플랫폼은 별도 분리 (UTM 파라미터 추적 포함)
+
+## 데이터 정확도·갱신
+
+- 인플루언서 점수 공식 v3: (참여자수 − 순위) × 본인 게시글 수, TOP3·본인카테고리만 합산
+- 활동/미활동 판정: 1년 내 챌린지 OR integrated_top3_count > 0
+- 블로거 랭킹: 주 1회 RPC 갱신 (refresh_blogger_rankings)
+- Naver Open API 폴라이트 크롤러: 하루 20,000 쿼리 한도, 투명 UA
+- 데이터 보정 스크립트: fix-500-keywords, refresh-influencer-profiles, fix-missing-owner-ids
+
+## AI 모델 정책
+
+- 모든 AI 기능 = Claude Haiku 4.5 (Anthropic) 통일
+- 인플루언서 플랜이라도 Opus 비활성 (NINFL_SERVICE_TOKEN 미전송, 정책 확정)
+- AI 사용처: 챗북·캐릭터챗·광고 AI 채팅·블로그 AI 분석·대시보드·글쓰기 피드백
+
+## 기술 스택
+
+- Next.js 16 + Supabase + Tailwind CSS 4 + Vercel
+- 결제: PortOne V2 / 토스페이먼츠 (예정)
+- 실시간 데이터 현황: 활동 13,104 / 미활동 6,876 / 전체 19,980 (2026-04-21 기준)
+
+## 주요 페이지
+
+- [Home](https://ninfle.kr/): 서비스 개요·실시간 데이터 현황
+- [Pricing](https://ninfle.kr/subscribe): 블로거·인플루언서 플랜 가격
+- [Privacy](https://ninfle.kr/privacy): 개인정보처리방침 (§ 11 제3자 블로그 공개정보 수집)
+- [Bot Info](https://ninfle.kr/bot-info): 크롤러 투명성 공개
+
+## 회사 정보
+
+- 운영: N인플 (엔인플)
+- 도메인: ninfle.kr
+- GitHub: https://github.com/orange0717/naver-influencer
+
+## 차별점
+
+1. 네이버 인플루언서 데이터 19,980명 + 블로거 83,933명+ 통합 랭킹
+2. 키워드별 점수 공식 v3 — 검색량 의존 제거, TOP3·본인카테고리만 반영
+3. 쇼핑 인사이트 연동 — DataLab Shopping API 연령·성별 분포
+4. 비회원 투표 가능 커뮤니티 — IP+localStorage UUID 중복 방지
+5. 폴라이트 크롤러 — Naver Open API 합법 범위 내, 투명 UA, 하루 한도 20,000
