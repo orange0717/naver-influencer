@@ -65,7 +65,7 @@ export async function sendKakaoRankAlert(
   changes: { keyword: string; from_rank: number; to_rank: number; type: string }[],
 ): Promise<boolean> {
   const templateCode = process.env.KAKAO_RANK_TEMPLATE_CODE || 'RANK_CHANGE_001';
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfl.co.kr';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfle.kr';
 
   // 변동 요약 텍스트 생성 (최대 3건)
   const summary = changes.slice(0, 3).map(c => {

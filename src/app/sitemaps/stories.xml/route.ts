@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const revalidate = 3600;
 
-const SITE_URL = 'https://naver-influencer.vercel.app';
+const SITE_URL = 'https://ninfle.kr';
 
 export async function GET() {
   const supabase = createServiceClient();

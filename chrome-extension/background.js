@@ -1,5 +1,5 @@
 // N인플 키워드 분석 - Background Service Worker v2.1
-var API_BASE = 'https://naver-influencer.vercel.app';
+var API_BASE = 'https://ninfle.kr';
 var CACHE_TTL = 5 * 60 * 1000; // 5분
 
 chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {

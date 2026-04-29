@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const SITE_URL = 'https://naver-influencer.vercel.app';
+const SITE_URL = 'https://ninfle.kr';
 
 export default function robots(): MetadataRoute.Robots {
   return {

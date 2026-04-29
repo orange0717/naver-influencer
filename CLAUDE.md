@@ -8,7 +8,7 @@
 - **백엔드**: Supabase (PostgreSQL + Auth + RLS)
 - **결제**: 토스페이먼츠 (예정)
 - **차트**: Recharts (LineChart, AreaChart, BarChart)
-- **배포**: Vercel (https://naver-influencer.vercel.app)
+- **배포**: Vercel (https://ninfle.kr)
 - **Vercel 조직**: orangelibrary
 
 ## 배포

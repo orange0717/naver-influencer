@@ -55,7 +55,7 @@ export default function ProfileHeader({
 
   // TOP3 위젯 코드 모달
   const [showWidgetCode, setShowWidgetCode] = useState(false);
-  const widgetDomain = process.env.NEXT_PUBLIC_SITE_URL || 'https://ninfl.co.kr';
+  const widgetDomain = process.env.NEXT_PUBLIC_SITE_URL || 'https://ninfle.kr';
 
   // 프로필 사진 업로드
   const fileInputRef = useRef<HTMLInputElement>(null);

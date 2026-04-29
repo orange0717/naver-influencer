@@ -455,7 +455,7 @@
         html += '</div>';
       }
 
-      html += '<div class="ninfl-d-footer"><a href="https://naver-influencer.vercel.app" target="_blank">N인플 대시보드에서 더 보기 &rarr;</a></div>';
+      html += '<div class="ninfl-d-footer"><a href="https://ninfle.kr" target="_blank">N인플 대시보드에서 더 보기 &rarr;</a></div>';
 
       detail.innerHTML = html;
     });

@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 
 export const revalidate = 86400; // 1일 캐싱
 
-const SITE_URL = 'https://naver-influencer.vercel.app';
+const SITE_URL = 'https://ninfle.kr';
 
 export async function GET() {
   const today = new Date().toISOString().slice(0, 10);

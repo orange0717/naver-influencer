@@ -11,7 +11,7 @@ interface WidgetSectionProps {
 
 export default function WidgetSection({ naverId, displayName }: WidgetSectionProps) {
   const [showHtml, setShowHtml] = useState(false);
-  const baseUrl = 'https://naver-influencer.vercel.app';
+  const baseUrl = 'https://ninfle.kr';
   const top3WidgetUrl = `${baseUrl}/api/widget/top3/${naverId}`;
   const profileUrl = `${baseUrl}/influencers/${naverId}`;
 

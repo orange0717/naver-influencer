@@ -466,7 +466,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
             {[
               {
-                url: 'ninfl.co.kr/my',
+                url: 'ninfle.kr/my',
                 title: '대시보드',
                 desc: '내 키워드 순위·포스트 성과·알림을 한눈에 확인',
                 link: '/my',
@@ -487,7 +487,7 @@ export default function LandingPage() {
                 ),
               },
               {
-                url: 'ninfl.co.kr/keywords',
+                url: 'ninfle.kr/keywords',
                 title: '키워드',
                 desc: '카테고리·검색량·참여자 기준 키워드 탐색',
                 link: '/keywords',
@@ -509,7 +509,7 @@ export default function LandingPage() {
                 ),
               },
               {
-                url: 'ninfl.co.kr/influencers',
+                url: 'ninfle.kr/influencers',
                 title: '인플루언서 리스트',
                 desc: '2만명 DB에서 카테고리·키워드·점수별 인플루언서 탐색',
                 link: '/influencers',
@@ -531,7 +531,7 @@ export default function LandingPage() {
                 ),
               },
               {
-                url: 'ninfl.co.kr/rankings',
+                url: 'ninfle.kr/rankings',
                 title: '랭킹',
                 desc: '인플루언서·블로그 순위와 키워드별 블로그 순위 추적',
                 link: '/rankings',

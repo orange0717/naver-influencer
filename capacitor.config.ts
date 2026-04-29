@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
 
   server: {
-    url: 'https://naver-influencer.vercel.app',
+    url: 'https://ninfle.kr',
     cleartext: false,
   },
 

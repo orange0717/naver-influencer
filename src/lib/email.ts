@@ -65,7 +65,7 @@ export async function sendDemoExpiredEmail(to: string, displayName: string) {
             회원가입 후 내 인플루언서 데이터로 대시보드를 이용해보세요.
           </p>
           <div style="text-align:center;margin:24px 0">
-            <a href="https://ninfl.co.kr/auth/signup"
+            <a href="https://ninfle.kr/auth/signup"
                style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
               무료 회원가입
             </a>
@@ -144,7 +144,7 @@ export async function sendRankChangeEmail(
     body += tableHeader + otherItems.map(renderItem).join('') + '</tbody></table>';
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfl.co.kr';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfle.kr';
 
   const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
@@ -198,7 +198,7 @@ export async function sendDemoReminderEmail(to: string, displayName: string, day
             회원가입하시면 내 인플루언서 데이터로 계속 이용할 수 있습니다.
           </p>
           <div style="text-align:center;margin:24px 0">
-            <a href="https://ninfl.co.kr/auth/signup"
+            <a href="https://ninfle.kr/auth/signup"
                style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
               무료 회원가입
             </a>

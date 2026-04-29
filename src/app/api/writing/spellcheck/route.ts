@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Origin: 'https://naver-influencer.vercel.app',
+          Origin: 'https://ninfle.kr',
         },
         body: JSON.stringify({ text, stage }),
       });

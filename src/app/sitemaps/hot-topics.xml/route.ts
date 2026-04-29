@@ -7,7 +7,7 @@ import { TOPIC_TO_SLUG } from '@/lib/influencer-topics';
 
 export const revalidate = 86400;
 
-const SITE_URL = 'https://naver-influencer.vercel.app';
+const SITE_URL = 'https://ninfle.kr';
 
 export async function GET() {
   const today = new Date().toISOString().slice(0, 10);

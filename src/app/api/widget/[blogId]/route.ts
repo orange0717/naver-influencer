@@ -101,7 +101,7 @@ function generateWidgetSVG(data: {
   <!-- 하단 구분선 + 날짜 -->
   <line x1="14" y1="118" x2="266" y2="118" stroke="#F3F4F6" stroke-width="1"/>
   <text x="14" y="134" font-family="Arial,sans-serif" font-size="8" fill="#D1D5DB">${dateStr} 기준</text>
-  <text x="266" y="134" font-family="Arial,sans-serif" font-size="8" fill="#D1D5DB" text-anchor="end">naver-influencer.vercel.app</text>
+  <text x="266" y="134" font-family="Arial,sans-serif" font-size="8" fill="#D1D5DB" text-anchor="end">ninfle.kr</text>
 
   <!-- 하단 오렌지 악센트 -->
   <rect y="147" width="280" height="8" rx="0" fill="url(#headerGrad)" opacity="0.15"/>

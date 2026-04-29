@@ -38,7 +38,7 @@ const CONFIG = {
   DELAY_ON_ERROR: 5000,
   MAX_RETRIES: 3,
   DB_BATCH_SIZE: 500,
-  BOT_UA: 'NinflBot/1.0 (+https://naver-influencer.vercel.app/bot-info)',
+  BOT_UA: 'NinflBot/1.0 (+https://ninfle.kr/bot-info)',
   PROGRESS_FILE: resolve(__dirname, '.polite-crawler-progress.json'),
   KEYWORDS_FILE: resolve(__dirname, 'keywords-all.json'),
 };

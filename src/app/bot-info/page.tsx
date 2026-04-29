@@ -17,7 +17,7 @@ export default function BotInfoPage() {
       <section className="bg-surface rounded-xl border border-border p-5 space-y-3">
         <h2 className="text-lg font-bold">크롤러 식별 정보</h2>
         <div className="text-sm space-y-1">
-          <p><span className="text-dim">User-Agent</span>: <code className="font-mono bg-bg px-2 py-0.5 rounded">NinflBot/1.0 (+https://naver-influencer.vercel.app/bot-info)</code></p>
+          <p><span className="text-dim">User-Agent</span>: <code className="font-mono bg-bg px-2 py-0.5 rounded">NinflBot/1.0 (+https://ninfle.kr/bot-info)</code></p>
           <p><span className="text-dim">데이터 소스</span>: 네이버 공식 Open API (openapi.naver.com)</p>
           <p><span className="text-dim">수집 항목</span>: 공개된 블로그 ID · 닉네임 · 최근 포스팅 날짜</p>
           <p><span className="text-dim">수집 목적</span>: 블로거 순위·카테고리 통계 서비스 제공</p>

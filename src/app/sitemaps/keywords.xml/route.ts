@@ -7,7 +7,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const revalidate = 86400;
 
-const SITE_URL = 'https://naver-influencer.vercel.app';
+const SITE_URL = 'https://ninfle.kr';
 const MAX_URLS = 49000;
 
 export async function GET() {

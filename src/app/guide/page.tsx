@@ -18,7 +18,7 @@ function BrowserFrame({ url, children }: { url: string; children: React.ReactNod
 /* ── 기능 카드 데이터 ── */
 const FEATURES = [
   {
-    url: 'ninfl.co.kr/my',
+    url: 'ninfle.kr/my',
     title: '키워드 순위 추적',
     description: '내가 참여한 키워드챌린지 순위를 매일 자동으로 수집합니다. 순위 변동을 한눈에 파악하세요.',
     link: '/my',
@@ -26,7 +26,7 @@ const FEATURES = [
     mockup: 'ranking',
   },
   {
-    url: 'ninfl.co.kr/my#alerts',
+    url: 'ninfle.kr/my#alerts',
     title: '스마트 알림',
     description: '하락 위험 키워드와 TOP 3 진입 기회 키워드를 자동으로 감지하여 알려드립니다.',
     link: '/my',
@@ -34,7 +34,7 @@ const FEATURES = [
     mockup: 'alerts',
   },
   {
-    url: 'ninfl.co.kr/keywords',
+    url: 'ninfle.kr/keywords',
     title: '키워드 분석',
     description: '11만 개 이상의 키워드에서 참여자 수, 검색량, 경쟁도를 분석합니다. 블루오션을 발굴하세요.',
     link: '/keywords',
@@ -42,7 +42,7 @@ const FEATURES = [
     mockup: 'keywords',
   },
   {
-    url: 'ninfl.co.kr/my#competitors',
+    url: 'ninfle.kr/my#competitors',
     title: '경쟁자 비교',
     description: '경쟁 인플루언서를 등록하면 겹치는 키워드에서 누가 앞서는지 실시간으로 비교합니다.',
     link: '/my',
@@ -50,7 +50,7 @@ const FEATURES = [
     mockup: 'competitors',
   },
   {
-    url: 'ninfl.co.kr/my#score',
+    url: 'ninfle.kr/my#score',
     title: '종합 점수 분석',
     description: '영향력, 전문성, 노출도, 성장성, 활동성, 경쟁력 6가지 차원으로 역량을 분석합니다.',
     link: '/my',

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 /** CORS 헤더 (크롬 확장앱 + 자체 도메인만 허용) */
 const ALLOWED_ORIGINS = [
-  'https://naver-influencer.vercel.app',
+  'https://ninfle.kr',
   'chrome-extension://',
 ];
 
