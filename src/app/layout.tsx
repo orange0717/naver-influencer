@@ -24,6 +24,19 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://ninfle.kr"),
   title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
   description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다",
+  openGraph: {
+    title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
+    description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다",
+    url: "https://ninfle.kr",
+    siteName: "N인플",
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
+    description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다",
+  },
 };
 
 export default function RootLayout({
