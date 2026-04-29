@@ -1,99 +1,102 @@
+'use client';
+
+import { useState } from 'react';
 import { FAQ_DATA, FAQ_CATEGORIES } from '@/data/faq-data';
 
-// 모든 카테고리 다크핑크(#BF8C80) 통일
-const PINK = {
-  accent: 'text-[#BF8C80]',
-  chip: 'bg-[#BF8C80]/10 text-[#BF8C80] border-[#BF8C80]/40',
-};
-const CATEGORY_COLORS: Record<string, { accent: string; chip: string }> = {
-  '서비스 이용': PINK,
-  '키워드 분석': PINK,
-  '경쟁자 분석': PINK,
-  '결제·플랜': PINK,
-  '계정': PINK,
-};
+const PINK = '#BF8C80';
 
 export default function LandingFaq() {
   const categories = FAQ_CATEGORIES.filter(c => c !== '전체');
+  const [activeTab, setActiveTab] = useState<string>(categories[0] ?? '');
+
+  const items = FAQ_DATA.filter(item => item.category === activeTab);
 
   return (
-    <div className="max-w-3xl mx-auto px-4">
-      {/* 상단 헤더 */}
-      <div className="text-center pb-12">
-        <p className="text-xs font-bold tracking-[0.3em] text-accent mb-4">FAQ</p>
-        <h2 className="font-title text-3xl md:text-5xl font-extrabold text-text mb-4">
-          자주 묻는 질문
-        </h2>
-        <p className="text-sm md:text-base text-dim">
-          궁금하신 점을 확인해 보세요.
-        </p>
-      </div>
-
-      {/* 카테고리별 그룹 (배경색 없이) */}
-      <div className="space-y-12">
-        {categories.map(category => {
-          const items = FAQ_DATA.filter(item => item.category === category);
-          if (items.length === 0) return null;
-          const colors = CATEGORY_COLORS[category] ?? CATEGORY_COLORS['서비스 이용'];
-
-          return (
-            <section key={category}>
-              <div className="flex items-center justify-center mb-6">
-                <span
-                  className={`text-[11px] font-bold tracking-wider px-3 py-1 rounded-full border ${colors.chip}`}
-                >
-                  {category}
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {items.map((item, idx) => (
-                  <details
-                    key={`${category}-${idx}`}
-                    className="group bg-surface border border-border rounded-2xl overflow-hidden transition-all hover:border-accent/30"
-                  >
-                    <summary className="flex items-center gap-4 px-5 md:px-7 py-4 md:py-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                      <span
-                        className={`shrink-0 text-sm md:text-base font-extrabold font-rank ${colors.accent}`}
-                      >
-                        Q{idx + 1}.
-                      </span>
-                      <span className="text-sm md:text-base font-semibold text-text flex-1">
-                        {item.question}
-                      </span>
-                      <span
-                        className={`shrink-0 text-xl md:text-2xl font-light ${colors.accent} transition-transform group-open:rotate-45 leading-none`}
-                      >
-                        +
-                      </span>
-                    </summary>
-                    <div className="px-5 md:px-7 pb-5 md:pb-6 text-sm md:text-[15px] text-dim leading-relaxed">
-                      <div className="pl-7 md:pl-9">
-                        <p>{item.answer}</p>
-                      </div>
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      {/* 하단 안내 */}
-      <div className="text-center pt-12 pb-4">
-        <p className="text-sm text-dim">
-          더 궁금하신 점은{' '}
+    <div className="max-w-6xl mx-auto px-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-10 lg:gap-16 items-start">
+        {/* 좌측 헤더 */}
+        <div className="lg:sticky lg:top-24">
+          <span
+            className="inline-block text-[11px] font-bold tracking-[0.2em] px-3 py-1.5 rounded-full mb-5"
+            style={{ background: '#F8ECE6', color: PINK }}
+          >
+            FAQ
+          </span>
+          <h2 className="font-title text-3xl md:text-4xl font-extrabold text-text leading-[1.2] mb-4">
+            자주 묻는
+            <br />
+            질문
+          </h2>
+          <p className="text-sm text-dim leading-relaxed mb-6">
+            원하는 답변을 찾지 못하셨나요?
+            <br />
+            고객지원팀에 문의하세요.
+          </p>
           <a
             href="https://talk.naver.com/w4bz2x"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-accent font-semibold underline"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-text text-white text-sm font-semibold hover:opacity-90 active:translate-y-px transition"
           >
-            네이버 톡톡 고객센터
+            고객지원팀 문의
+            <span aria-hidden>→</span>
           </a>
-          로 문의해 주세요.
-        </p>
+        </div>
+
+        {/* 우측: 카테고리 탭 + 아코디언 */}
+        <div>
+          <div
+            className="flex gap-6 overflow-x-auto border-b border-border mb-2"
+            style={{ scrollbarWidth: 'none' }}
+            role="tablist"
+          >
+            {categories.map(cat => {
+              const active = cat === activeTab;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(cat)}
+                  className="shrink-0 py-3.5 -mb-px text-sm font-semibold whitespace-nowrap border-b-2 transition-colors"
+                  style={{
+                    color: active ? PINK : '#B0A099',
+                    borderBottomColor: active ? PINK : 'transparent',
+                  }}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          <div role="tabpanel">
+            {items.map((item, idx) => (
+              <details
+                key={`${activeTab}-${idx}`}
+                className="group border-b border-border [&:first-of-type]:border-t"
+              >
+                <summary className="flex items-center gap-4 py-4 md:py-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                  <span className="text-sm md:text-[15px] font-semibold text-text flex-1">
+                    {item.question}
+                  </span>
+                  <span
+                    className="shrink-0 inline-block w-2.5 h-2.5 rotate-45 group-open:rotate-[225deg] transition-transform duration-200"
+                    style={{
+                      borderRight: `2px solid ${PINK}`,
+                      borderBottom: `2px solid ${PINK}`,
+                    }}
+                    aria-hidden
+                  />
+                </summary>
+                <div className="pb-5 text-sm md:text-[14.5px] text-dim leading-relaxed whitespace-pre-line">
+                  {item.answer}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
