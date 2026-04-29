@@ -37,6 +37,9 @@ export const metadata: Metadata = {
     title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
     description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다",
   },
+  verification: {
+    google: "bBurzozbqzFkS2WMPTSc1jbkhU0nGrslOS90g4UH8Ug",
+  },
 };
 
 export default function RootLayout({
