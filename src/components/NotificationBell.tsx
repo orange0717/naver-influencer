@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useUnreadCount, useNotifications, useMarkAsRead, type NotificationItem } from '@/hooks/useNotifications';
 
 const typeConfig: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -28,19 +29,39 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
-function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id: string) => void }) {
+function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id: string) => Promise<void> }) {
+  const router = useRouter();
   const config = typeConfig[item.notification_type] || { label: '알림', color: 'text-dim', bgColor: 'bg-dim/10' };
   const keywordId = item.metadata?.keyword_id as string | undefined;
+  const noticeId = item.metadata?.notice_id as string | undefined;
+  const postId = item.metadata?.post_id as string | undefined;
 
-  const handleClick = () => {
-    if (!item.is_read) onRead(item.id);
+  // 알림 타입에 따른 링크 결정
+  const targetHref = keywordId
+    ? `/keywords/${keywordId}`
+    : noticeId
+      ? `/notice/${noticeId}`
+      : postId
+        ? `/community/${postId}`
+        : null;
+
+  const handleClick = async (e: React.MouseEvent) => {
+    if (targetHref) {
+      // race condition 방지: mutate 완료 후 라우팅
+      e.preventDefault();
+      if (!item.is_read) {
+        try {
+          await onRead(item.id);
+        } catch { /* ignore */ }
+      }
+      router.push(targetHref);
+    } else if (!item.is_read) {
+      onRead(item.id).catch(() => {});
+    }
   };
 
-  const content = (
-    <div
-      className={`flex items-start gap-2.5 px-4 py-3 hover:bg-bg/80 transition cursor-pointer ${!item.is_read ? 'bg-accent/5' : ''}`}
-      onClick={handleClick}
-    >
+  const innerContent = (
+    <>
       {/* 읽지 않음 표시 */}
       <div className="pt-1.5 shrink-0">
         {!item.is_read ? (
@@ -60,23 +81,23 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
         <p className="text-sm font-semibold text-text truncate">{item.title}</p>
         <p className="text-xs text-dim truncate">{item.body}</p>
       </div>
-    </div>
+    </>
   );
 
-  // 알림 타입에 따른 링크 결정
-  const noticeId = item.metadata?.notice_id as string | undefined;
-  const postId = item.metadata?.post_id as string | undefined;
+  const rowClass = `flex items-start gap-2.5 px-4 py-3 hover:bg-bg/80 transition cursor-pointer ${!item.is_read ? 'bg-accent/5' : ''}`;
 
-  if (keywordId) {
-    return <Link href={`/keywords/${keywordId}`}>{content}</Link>;
+  if (targetHref) {
+    return (
+      <Link href={targetHref} onClick={handleClick} className={rowClass}>
+        {innerContent}
+      </Link>
+    );
   }
-  if (noticeId) {
-    return <Link href={`/notice/${noticeId}`}>{content}</Link>;
-  }
-  if (postId) {
-    return <Link href={`/community/${postId}`}>{content}</Link>;
-  }
-  return content;
+  return (
+    <div className={rowClass} onClick={handleClick}>
+      {innerContent}
+    </div>
+  );
 }
 
 export default function NotificationBell() {
@@ -152,7 +173,7 @@ export default function NotificationBell() {
                 <NotificationRow
                   key={item.id}
                   item={item}
-                  onRead={(id) => markAsRead.mutate(id)}
+                  onRead={async (id) => { await markAsRead.mutateAsync(id); }}
                 />
               ))
             )}

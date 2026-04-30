@@ -40,7 +40,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { id } = body as { id?: string };
+  const { id, notice_id } = body as { id?: string; notice_id?: string };
   const now = new Date().toISOString();
 
   if (id) {
@@ -50,6 +50,15 @@ export async function PUT(request: NextRequest) {
       .update({ is_read: true, read_at: now })
       .eq('id', id)
       .eq(recipientCol, recipientId);
+  } else if (notice_id) {
+    // 특정 공지사항 알림만 읽음 처리 (notice 상세 페이지 진입 시)
+    await supabase
+      .from('notifications')
+      .update({ is_read: true, read_at: now })
+      .eq(recipientCol, recipientId)
+      .eq('notification_type', 'new_notice')
+      .eq('metadata->>notice_id', notice_id)
+      .eq('is_read', false);
   } else {
     // 전체 읽음 처리
     await supabase

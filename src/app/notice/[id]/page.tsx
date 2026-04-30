@@ -165,6 +165,21 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       .catch(() => {});
   }, [noticeId, user.id]);
 
+  // 진입 시 해당 공지의 미확인 new_notice 알림 자동 읽음 처리
+  useEffect(() => {
+    if (!noticeId) return;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        await fetch('/api/notifications/read', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ notice_id: noticeId }),
+        });
+      } catch { /* ignore */ }
+    })();
+  }, [noticeId, getAuthHeaders]);
+
   const handleLike = async () => {
     if (!user.id || likeLoading) return;
     setLikeLoading(true);
