@@ -47,6 +47,8 @@ const TRACKING_TABLE: Record<string, string> = {
   cafe: '카페 검색',
   influencer: '인플루언서 검색',
   nx_others: '검색 기타 영역',
+  external: '외부 도메인 유입 (네이버가 외부로 분류)',
+  internal: '네이버 내부 영역',
 };
 
 const WHERE_TABLE: Record<string, string> = {
@@ -73,17 +75,38 @@ interface DecodedNaverUrl {
   surface?: string;
   blogId?: string;
   query?: string;
+  queryParam?: 'query' | 'keyword' | 'q';
   smCode?: string;
   trackingCode?: string;
   where?: string;
   directAccess?: boolean;
   ackey?: string;
+  pageNo?: string;
+  logNo?: string;
+  range?: string;
+  orderBy?: string;
   topReferer?: string;
   topRefererDecoded?: DecodedNaverUrl;
   rawParams: Array<{ key: string; value: string }>;
 }
 
 function classifySurface(host: string, path: string): string {
+  // 네이버 사내 시스템 (navercorp.com) — 직원/관리자용
+  if (/(^|\.)navercorp\.com$/.test(host)) {
+    if (/admin.*influencer|influencer.*admin/.test(host)) return '네이버 인플루언서팀 어드민';
+    if (/influencer/.test(host)) return '네이버 인플루언서팀 사내 시스템';
+    if (/admin/.test(host)) return '네이버 사내 어드민';
+    return '네이버 사내 시스템 (navercorp.com)';
+  }
+  // 검색 섹션은 blog.naver.com 정규식보다 먼저 분기
+  if (/^section\.blog\.naver\.com$/.test(host)) {
+    if (path.includes('NickAndId')) return '블로그 검색 (닉네임·아이디)';
+    if (path.includes('Search/Post')) return '블로그 검색 (포스트)';
+    if (path.includes('Search/Influencer')) return '블로그 검색 (인플루언서)';
+    if (path.includes('Search')) return '블로그 검색';
+    return '블로그 섹션';
+  }
+  if (/^section\.cafe\.naver\.com$/.test(host)) return '카페 검색';
   if (/blog\.naver\.com$/.test(host)) {
     if (path.includes('PrologueList')) return '블로그 프롤로그 (전체글 목록)';
     if (path.includes('PostView')) return '블로그 포스트';
@@ -97,9 +120,21 @@ function classifySurface(host: string, path: string): string {
   if (/in\.naver\.com$/.test(host)) return '네이버 인플루언서';
   if (/cafe\.naver\.com$/.test(host)) return '네이버 카페';
   if (/post\.naver\.com$/.test(host)) return '네이버 포스트';
+  if (/shopping\.naver\.com$/.test(host)) return '네이버 쇼핑';
+  if (/map\.naver\.com$/.test(host) || /place\.naver\.com$/.test(host)) return '네이버 지도/장소';
   if (host === 'naver.com' || host === 'www.naver.com' || host === 'm.naver.com') return '네이버 메인';
   if (host.endsWith('naver.com')) return '네이버 내부';
   return `외부 사이트 (${host})`;
+}
+
+// 검색 결과 페이지 (자체에 검색어 파라미터를 담는 페이지) 판별
+function isSearchPage(host: string): boolean {
+  return (
+    /search\.naver\.com$/.test(host) ||
+    /^section\.blog\.naver\.com$/.test(host) ||
+    /^section\.cafe\.naver\.com$/.test(host) ||
+    /shopping\.naver\.com$/.test(host)
+  );
 }
 
 function decode(rawUrl: string, depth = 0): DecodedNaverUrl {
@@ -120,12 +155,31 @@ function decode(rawUrl: string, depth = 0): DecodedNaverUrl {
     }
 
     result.blogId = params.get('blogId') || undefined;
-    result.query = params.get('query') || undefined;
+
+    // query 파라미터: query → keyword → q 순으로 fallback (네이버 페이지마다 다름)
+    const q = params.get('query');
+    const k = params.get('keyword');
+    const qShort = params.get('q');
+    if (q) {
+      result.query = q;
+      result.queryParam = 'query';
+    } else if (k) {
+      result.query = k;
+      result.queryParam = 'keyword';
+    } else if (qShort) {
+      result.query = qShort;
+      result.queryParam = 'q';
+    }
+
     result.smCode = params.get('sm') || undefined;
     result.trackingCode = params.get('trackingCode') || undefined;
     result.where = params.get('where') || undefined;
     result.directAccess = params.get('directAccess') === 'true';
     result.ackey = params.get('ackey') || undefined;
+    result.pageNo = params.get('pageNo') || params.get('page') || params.get('start') || undefined;
+    result.logNo = params.get('logNo') || undefined;
+    result.range = params.get('range') || params.get('period') || undefined;
+    result.orderBy = params.get('orderBy') || params.get('sort') || undefined;
 
     const tr = params.get('topReferer');
     if (tr) {
@@ -162,6 +216,22 @@ function summarize(d: DecodedNaverUrl): Intent {
   const target = d.blogId ? `@${d.blogId.replace(/_$/, '')} ${surface}` : surface;
   const refHost = ref?.hostname || '';
   const isNaverHost = (h: string) => /(^|\.)naver\.com$/.test(h);
+  const isNaverCorpHost = (h: string) => /(^|\.)navercorp\.com$/.test(h);
+
+  // 네이버 사내 시스템 (navercorp.com)에서 유입 — 직원·어드민 클릭
+  if (ref && refHost && isNaverCorpHost(refHost)) {
+    const refSurface = ref.surface || '네이버 사내 시스템';
+    const isInfluencerTeam = /influencer/.test(refHost);
+    const teamNote = isInfluencerTeam
+      ? '네이버 인플루언서팀이 모니터링·확인한 트래픽'
+      : '네이버 직원/관리자가 클릭한 트래픽';
+    return {
+      label: isInfluencerTeam ? '인플루언서팀 유입' : '사내 어드민 유입',
+      icon: '🏢',
+      sentence: `${refSurface}(${refHost})에서 ${target} 로 진입 — ${teamNote}`,
+      cls: 'bg-slate-100 text-slate-700 border-slate-200',
+    };
+  }
 
   if (ref && refHost && !isNaverHost(refHost)) {
     return {
@@ -183,13 +253,15 @@ function summarize(d: DecodedNaverUrl): Intent {
     };
   }
 
-  if (/search\.naver\.com$/.test(d.hostname || '') && d.query) {
+  if (isSearchPage(d.hostname || '') && d.query) {
     const smInfo = d.smCode ? SM_TABLE[d.smCode] : undefined;
     const action = smInfo ? smInfo.label : '검색';
+    const sectionName = d.surface || '네이버 검색';
+    const pageNote = d.pageNo && d.pageNo !== '1' ? ` · ${d.pageNo}페이지` : '';
     return {
       label: '검색 결과',
       icon: '🔍',
-      sentence: `"${d.query}" ${action} 결과 페이지`,
+      sentence: `${sectionName}에서 "${d.query}"${smInfo ? ` ${action}` : ''} 결과 페이지${pageNote}`,
       cls: 'bg-accent/15 text-accent border-accent/30',
     };
   }
@@ -510,6 +582,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
                       <Field label="도메인" value={decoded.hostname} mono />
                       <Field label="경로" value={decoded.pathname} mono />
                       {decoded.blogId && <Field label="블로그 ID" value={decoded.blogId} mono />}
+                      {decoded.logNo && <Field label="포스트 번호 (logNo)" value={decoded.logNo} mono />}
                       {decoded.directAccess && (
                         <Field label="directAccess" value="true (검색 결과 블로그 영역에서 직접 클릭)" />
                       )}
@@ -523,7 +596,11 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
 
                     {(ref?.query || decoded.query) && (
                       <Section title="검색 정보">
-                        <Field label="검색어" value={ref?.query || decoded.query} highlight />
+                        <Field
+                          label={`검색어${(ref?.queryParam || decoded.queryParam) && (ref?.queryParam || decoded.queryParam) !== 'query' ? ` (${ref?.queryParam || decoded.queryParam} 파라미터)` : ''}`}
+                          value={ref?.query || decoded.query}
+                          highlight
+                        />
                         {(ref?.where || decoded.where) && (
                           <Field
                             label="where"
@@ -535,6 +612,15 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
                             label="sm 코드"
                             value={`${smCode} ${smInfo ? `· ${smInfo.label}` : '· 알 수 없음'}`}
                           />
+                        )}
+                        {(ref?.pageNo || decoded.pageNo) && (
+                          <Field label="페이지" value={`${ref?.pageNo || decoded.pageNo}페이지`} />
+                        )}
+                        {(ref?.orderBy || decoded.orderBy) && (
+                          <Field label="정렬" value={ref?.orderBy || decoded.orderBy} />
+                        )}
+                        {(ref?.range || decoded.range) && (
+                          <Field label="기간" value={ref?.range || decoded.range} />
                         )}
                         {(ref?.ackey || decoded.ackey) && (
                           <Field label="ackey" value={`${ref?.ackey || decoded.ackey} (검색 세션 식별자)`} mono />
