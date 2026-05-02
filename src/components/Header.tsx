@@ -45,7 +45,14 @@ interface NavItem {
 // 대시보드(/dashboard)가 기능 허브 역할을 하므로 상단 네비는 최소화
 const NAV_ITEMS: NavItem[] = [
   { href: '/notice', label: '공지사항' },
-  { href: '/dashboard', label: '대시보드' },
+  {
+    label: '대시보드',
+    children: [
+      { href: '/dashboard', label: '대시보드 홈' },
+      { href: '/decoder', label: 'URL 분석' },
+      { href: '/tools', label: '도구 모음' },
+    ],
+  },
   { href: '/community', label: '커뮤니티' },
   { href: '/stories', label: '성장후기' },
   { href: '/subscribe', label: '이용권' },
