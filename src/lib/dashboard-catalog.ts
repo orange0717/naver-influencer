@@ -225,6 +225,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/competitor',
     ctaLabel: '일일 1회 무료',
   },
+  {
+    id: 'decoder',
+    category: 'research',
+    title: 'URL 분석',
+    description: '블로그 통계의 referer URL을 한 줄로 해석 — 검색기록·자동완성·직접입력 구분, 일괄 분포 리포트',
+    href: '/decoder',
+    ctaLabel: '무료',
+  },
 
   // ── 키워드 ──
   {
