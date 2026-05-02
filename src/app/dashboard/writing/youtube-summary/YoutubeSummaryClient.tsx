@@ -100,9 +100,9 @@ export default function YoutubeSummaryClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <header className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-text">유튜브 영상 정리</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-text">유튜브 자막추출</h1>
         <p className="text-sm text-dim mt-1">
-          유튜브 영상의 자막을 블로그 작성에 참고할 수 있도록 정리합니다. 블로거+·인플루언서 플랜 무제한 이용.
+          유튜브 영상의 자막을 추출해 블로그 작성에 참고할 수 있도록 정리합니다. 블로거+·인플루언서 플랜 무제한 이용.
         </p>
       </header>
 

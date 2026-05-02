@@ -306,8 +306,8 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'writing-youtube-summary',
     category: 'writing',
-    title: '유튜브 영상 정리',
-    description: '유튜브 자막을 블로그 작성용으로 깔끔하게 정리 (출처 자동 표기)',
+    title: '유튜브 자막추출',
+    description: '유튜브 영상의 자막을 추출해 블로그 참고용으로 깔끔하게 정리 (출처 자동 표기)',
     href: '/dashboard/writing/youtube-summary',
     requiredPlan: 'blogger',
     authOnly: true,

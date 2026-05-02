@@ -6,8 +6,8 @@ import YoutubeSummaryClient from './YoutubeSummaryClient';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '유튜브 영상 정리 — N인플',
-  description: '유튜브 영상의 자막을 블로그 작성용으로 깔끔하게 정리합니다. 출처는 자동 표기됩니다.',
+  title: '유튜브 자막추출 — N인플',
+  description: '유튜브 영상의 자막을 추출해 블로그 작성에 참고할 수 있도록 정리합니다. 출처는 자동 표기됩니다.',
 };
 
 export default async function YoutubeSummaryPage() {
