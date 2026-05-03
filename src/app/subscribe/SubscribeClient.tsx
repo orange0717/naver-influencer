@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import PaymentButton, { completePayment } from '@/components/PaymentButton';
 import { useAuth } from '@/hooks/useAuth';
 
 const CHECK = (
@@ -50,18 +49,9 @@ export default function SubscribeClient() {
   const [callbackStatus, setCallbackStatus] = useState<'processing' | 'success' | 'error' | null>(null);
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
 
-  // 모바일 리다이렉트 콜백 처리
+  // 모바일 리다이렉트 콜백 처리 — Stage 6 빌링키 구현 후 재작성 예정
   useEffect(() => {
-    const payment = searchParams.get('payment');
-    const paymentId = searchParams.get('paymentId');
-
-    if (payment === 'portone' && paymentId) {
-      setCallbackStatus('processing');
-      completePayment(paymentId).then((success) => {
-        setCallbackStatus(success ? 'success' : 'error');
-        window.history.replaceState({}, '', '/subscribe');
-      });
-    }
+    // 결제 모듈 재구성 중 (2026-05-03)
   }, [searchParams]);
 
   const price = PRICE_TABLE[period];
@@ -173,10 +163,9 @@ export default function SubscribeClient() {
           </p>
 
           {isLoggedIn ? (
-            <PaymentButton
-              planKey={bloggerPlanKey}
-              label={`${formatKRW(price.blogger)}원 결제하기`}
-            />
+            <div className="block text-center py-3 bg-dim/10 text-dim font-bold text-sm rounded-xl cursor-not-allowed">
+              결제 시스템 준비 중
+            </div>
           ) : (
             <Link
               href="/auth/signup"
@@ -221,11 +210,9 @@ export default function SubscribeClient() {
           </p>
 
           {isLoggedIn ? (
-            <PaymentButton
-              planKey={influencerPlanKey}
-              label={`${formatKRW(price.influencer)}원 결제하기`}
-              className="!bg-accent/10 !text-accent hover:!bg-accent/20"
-            />
+            <div className="block text-center py-3 bg-dim/10 text-dim font-bold text-sm rounded-xl cursor-not-allowed">
+              결제 시스템 준비 중
+            </div>
           ) : (
             <Link
               href="/auth/signup"
@@ -487,7 +474,7 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 방식</p>
-              <p className="font-semibold">신용/체크카드, 간편결제 (PortOne)</p>
+              <p className="font-semibold">신용/체크카드 정기결제</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">무료 체험</p>

@@ -66,10 +66,6 @@
       "schedule": "30 23 * * *"
     },
     {
-      "path": "/api/cron/cleanup-intents",
-      "schedule": "0 17 * * *"
-    },
-    {
       "path": "/api/cron/refresh-stats",
       "schedule": "45 * * * *"
     }
