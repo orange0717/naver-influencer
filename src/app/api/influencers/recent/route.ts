@@ -3,13 +3,19 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-/** 한국 시간(KST) 기준 가장 최근 일요일 00:00을 UTC ISO 문자열로 반환 */
-function lastSundayKstIso(): string {
+/**
+ * 한국 시간(KST) 기준 신규 인플루언서 노출 시작 시점 반환 (UTC ISO).
+ * - 평일/토: 이번 주 일요일 00:00 KST (해당 주 신규)
+ * - 일요일 당일: 지난 주 일요일 00:00 KST (자정 초기화 직후 빈 화면 방지,
+ *   지난 한 주 신규를 하루 더 노출)
+ */
+function recentSinceKstIso(): string {
   const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
   const nowKst = new Date(Date.now() + KST_OFFSET_MS);
   const dow = nowKst.getUTCDay(); // 0=Sun..6=Sat
+  const offset = dow === 0 ? 7 : dow; // 일요일이면 7일 전, 아니면 dow일 전
   const sundayKst = new Date(nowKst);
-  sundayKst.setUTCDate(sundayKst.getUTCDate() - dow);
+  sundayKst.setUTCDate(sundayKst.getUTCDate() - offset);
   sundayKst.setUTCHours(0, 0, 0, 0);
   return new Date(sundayKst.getTime() - KST_OFFSET_MS).toISOString();
 }
@@ -24,7 +30,7 @@ export async function GET() {
   try {
     const supabase = createServiceClient();
 
-    const sinceStr = lastSundayKstIso();
+    const sinceStr = recentSinceKstIso();
 
     // naver_created_at(네이버가 인플루언서로 선정한 날짜)이
     // 가장 최근 일요일 00:00 KST 이후인 사람만 (이번 주 신규 선정분)
