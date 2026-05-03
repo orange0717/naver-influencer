@@ -89,12 +89,12 @@ function NavDropdown({
   return (
     <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
-        className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+        className={`px-4 py-2 rounded-lg text-base font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
           anyActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
         }`}
       >
         {label}
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 w-60 bg-surface rounded-xl border border-border shadow-lg py-1.5 z-50">
@@ -204,59 +204,57 @@ export default function Header({ serverUser }: HeaderProps) {
   return (
     <>
       <header className="font-title sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            {/* ── 로고 ── */}
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
-              <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
-            </Link>
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-6">
+          {/* ── 로고 ── */}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
+            <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
+          </Link>
 
-            {/* ── 데스크탑 네비게이션 ── */}
-            <nav aria-label="메인 네비게이션" className="hidden lg:flex items-center gap-1">
-              {visibleItems.map(item => {
-                if (item.children) {
-                  return (
-                    <NavDropdown
-                      key={item.label}
-                      label={item.label}
-                      items={item.children}
-                      isActive={isActive}
-                      currentPlan={currentPlan}
-                      onLockedClick={goToSubscribe}
-                    />
-                  );
-                }
-                const locked = !canAccess(item.requiredPlan, currentPlan);
-                if (locked) {
-                  return (
-                    <button
-                      key={item.href}
-                      onClick={() => goToSubscribe(item.requiredPlan!)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <span>{item.label}</span>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                        <rect x="5" y="11" width="14" height="10" rx="2" ry="2"/>
-                        <path d="M8 11V7a4 4 0 018 0v4"/>
-                      </svg>
-                    </button>
-                  );
-                }
+          {/* ── 데스크탑 네비게이션 (양 옆으로 펼침) ── */}
+          <nav aria-label="메인 네비게이션" className="hidden lg:flex flex-1 items-center justify-around">
+            {visibleItems.map(item => {
+              if (item.children) {
                 return (
-                  <Link key={item.href} href={item.href!}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                      isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
-                    }`}>
-                    {item.label}
-                  </Link>
+                  <NavDropdown
+                    key={item.label}
+                    label={item.label}
+                    items={item.children}
+                    isActive={isActive}
+                    currentPlan={currentPlan}
+                    onLockedClick={goToSubscribe}
+                  />
                 );
-              })}
-            </nav>
-          </div>
+              }
+              const locked = !canAccess(item.requiredPlan, currentPlan);
+              if (locked) {
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => goToSubscribe(item.requiredPlan!)}
+                    className="px-4 py-2 rounded-lg text-base font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{item.label}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                      <rect x="5" y="11" width="14" height="10" rx="2" ry="2"/>
+                      <path d="M8 11V7a4 4 0 018 0v4"/>
+                    </svg>
+                  </button>
+                );
+              }
+              return (
+                <Link key={item.href} href={item.href!}
+                  className={`px-4 py-2 rounded-lg text-base font-semibold transition-colors ${
+                    isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
 
           {/* ── 우측: 로그인/프로필 ── */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0 ml-auto lg:ml-0">
             <MessageBell />
             <NotificationBell />
             {authLoading ? (
@@ -321,7 +319,7 @@ export default function Header({ serverUser }: HeaderProps) {
 
       {/* ── 모바일 메뉴 ── */}
       {mobileOpen && (
-        <div id="mobile-menu" className="lg:hidden fixed inset-0 top-14 z-40 bg-bg border-t border-border overflow-y-auto">
+        <div id="mobile-menu" className="lg:hidden fixed inset-0 top-16 z-40 bg-bg border-t border-border overflow-y-auto">
           <nav aria-label="모바일 네비게이션" className="flex flex-col p-4 gap-0.5">
             {visibleItems.map(item => {
               if (item.children) {
