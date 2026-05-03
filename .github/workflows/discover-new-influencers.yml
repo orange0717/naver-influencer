@@ -1,9 +1,9 @@
-name: 신규 인플루언서 주간 발굴
+name: 신규 인플루언서 매일 발굴
 
-# 매주 수요일 KST 04:00 (화요일 19:00 UTC) 에 실행
+# 매일 KST 04:00 (전날 19:00 UTC) 에 실행
 on:
   schedule:
-    - cron: '0 19 * * 2'
+    - cron: '0 19 * * *'
   workflow_dispatch:
     inputs:
       top:

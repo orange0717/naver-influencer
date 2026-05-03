@@ -25,7 +25,6 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tanstack/react-query": "^5.90.21",
-    "@tosspayments/tosspayments-sdk": "^2.6.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
     "@vercel/speed-insights": "^2.0.0",
@@ -39,6 +38,7 @@
     "recharts": "^3.7.0",
     "resend": "^6.9.4",
     "xlsx": "^0.18.5",
+    "youtube-transcript": "^1.3.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {

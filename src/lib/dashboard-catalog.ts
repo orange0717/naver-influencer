@@ -225,6 +225,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/competitor',
     ctaLabel: '일일 1회 무료',
   },
+  {
+    id: 'decoder',
+    category: 'research',
+    title: 'URL 분석',
+    description: '블로그 통계의 referer URL을 한 줄로 해석 — 검색기록·자동완성·직접입력 구분, 일괄 분포 리포트',
+    href: '/decoder',
+    ctaLabel: '무료',
+  },
 
   // ── 키워드 ──
   {
@@ -302,6 +310,15 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     authOnly: true,
     ctaLabel: '대화하기',
     devPreview: true,
+  },
+  {
+    id: 'writing-youtube-summary',
+    category: 'writing',
+    title: '유튜브 자막추출',
+    description: '유튜브 영상의 자막을 추출해 블로그 참고용으로 깔끔하게 정리 (출처 자동 표기)',
+    href: '/dashboard/writing/youtube-summary',
+    requiredPlan: 'blogger',
+    authOnly: true,
   },
 
   // ── 서비스 가이드 ──

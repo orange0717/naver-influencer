@@ -6,7 +6,7 @@
 ## 기술 스택
 - **프레임워크**: Next.js 16 (App Router) + TypeScript + Tailwind CSS v4
 - **백엔드**: Supabase (PostgreSQL + Auth + RLS)
-- **결제**: 토스페이먼츠 (예정)
+- **결제**: PortOne V2 (PG: 한국결제네트웍스 KPN)
 - **차트**: Recharts (LineChart, AreaChart, BarChart)
 - **배포**: Vercel (https://ninfle.kr)
 - **Vercel 조직**: orangelibrary
@@ -77,7 +77,7 @@ src/
 - **기간 옵션**: 1/3/6/10/12개월 (할인율 0%/5%/7%/9%/11%)
 - **무료 체험**: 3일 (예정)
 - **비구독자(무료)**: 키워드 목록 + 일일 추천 3개만
-- **결제**: 토스페이먼츠 (예정)
+- **결제**: PortOne V2 + 한국결제네트웍스(KPN) — 카드 단건 결제, prepare/complete/webhook 3단계 검증
 - **환불**: 7일 이내 미이용 시 전액 환불
 - **상세**: src/lib/plans.ts (PlanInfo, PeriodOption, calculatePrice)
 
@@ -104,7 +104,7 @@ src/
 - API: DB 전환 완료
 - DB: supabase/schema.sql (최신, Feed API 컬럼 포함)
 - 인증: getAuthUser 공통 유틸 + Supabase Auth
-- 구독: 백엔드 로직 완료, 결제 연동 예정 (토스페이먼츠)
+- 구독: 백엔드 로직 완료, PortOne V2 + KPN 코드 연동 완료 (콘솔에서 채널 등록 후 환경변수만 추가하면 활성화)
 - 크롤러: 9개 크론잡 구현 완료 + run 엔드포인트, 코드리뷰 + 보안감사 완료 (2026-03-16)
 - 보안: timingSafeEqual 인증, SSRF 방지, naverId 포맷 검증, 레이트 리밋 추가
 - 성능: N+1 → 배치 upsert 최적화 (crawl-rankings, generate-recommendations)
@@ -114,8 +114,10 @@ src/
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-TOSS_CLIENT_KEY=
-TOSS_SECRET_KEY=
+NEXT_PUBLIC_PORTONE_STORE_ID=
+NEXT_PUBLIC_PORTONE_CHANNEL_KEY=
+PORTONE_API_SECRET=
+PORTONE_WEBHOOK_SECRET=
 CRON_SECRET=
 # update-volumes용 (선택)
 NAVER_API_KEY=

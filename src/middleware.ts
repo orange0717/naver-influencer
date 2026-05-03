@@ -84,10 +84,17 @@ export async function middleware(request: NextRequest) {
     "'self'",
     "https://*.supabase.co",
     "https://*.naver.com",
-    "https://*.tosspayments.com",
+    "https://*.portone.io",
+    "https://*.iamport.kr",
+    "https://*.kpn.co.kr",
     "https://*.sentry.io",
   ];
-  const frameSrc = ["'self'", "https://*.tosspayments.com"];
+  const frameSrc = [
+    "'self'",
+    "https://*.portone.io",
+    "https://*.iamport.kr",
+    "https://*.kpn.co.kr",
+  ];
   if (isCapacitor) {
     connectSrc.push("capacitor://localhost", "https://localhost");
     frameSrc.push("capacitor://localhost", "https://localhost");
@@ -97,7 +104,7 @@ export async function middleware(request: NextRequest) {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://*.naver.com https://*.pstatic.net https://*.tosspayments.com",
+      "script-src 'self' 'unsafe-inline' https://*.naver.com https://*.pstatic.net https://*.portone.io https://cdn.portone.io",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https://*.naver.com https://*.pstatic.net",
