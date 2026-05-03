@@ -63,8 +63,26 @@ export default function SubscribeClient() {
   const influencerMonthly = period === 'monthly' ? null : Math.round(price.influencer / price.months);
   const periodBadge = PERIOD_OPTIONS.find((o) => o.value === period)?.badge;
 
+  // 테스트 모드 — /subscribe?test=1 일 때만 100원 테스트 결제 버튼 노출
+  const isTestMode = searchParams.get('test') === '1';
+
   return (
     <div className="max-w-5xl mx-auto space-y-10">
+      {/* 100원 테스트 결제 (개발용 — ?test=1 파라미터로만 표시) */}
+      {isTestMode && isLoggedIn && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-bold text-yellow-900">개발자 모드 — 100원 결제 테스트</p>
+            <p className="text-xs text-yellow-700">결제 흐름 검증용. 결제 후 PortOne 콘솔에서 즉시 환불하세요.</p>
+          </div>
+          <BillingButton
+            planKey="TEST_PAYMENT_100"
+            label="100원 결제"
+            className="px-4 py-2 bg-yellow-600 text-white text-xs font-bold rounded-lg hover:bg-yellow-700 transition disabled:opacity-50"
+          />
+        </div>
+      )}
+
       {/* 콜백 상태 */}
       {callbackStatus === 'processing' && (
         <div className="bg-surface rounded-2xl border border-border p-8 text-center">

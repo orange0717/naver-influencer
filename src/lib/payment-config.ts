@@ -10,7 +10,8 @@ export type BillingPeriod = 'monthly' | '3m' | '6m' | '9m' | 'annual';
 
 export type PlanKey =
   | 'BLOGGER_MONTHLY' | 'BLOGGER_3M' | 'BLOGGER_6M' | 'BLOGGER_9M' | 'BLOGGER_ANNUAL'
-  | 'INFLUENCER_MONTHLY' | 'INFLUENCER_3M' | 'INFLUENCER_6M' | 'INFLUENCER_9M' | 'INFLUENCER_ANNUAL';
+  | 'INFLUENCER_MONTHLY' | 'INFLUENCER_3M' | 'INFLUENCER_6M' | 'INFLUENCER_9M' | 'INFLUENCER_ANNUAL'
+  | 'TEST_PAYMENT_100';
 
 export interface PlanDef {
   key: PlanKey;
@@ -32,6 +33,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
   INFLUENCER_6M:      { key: 'INFLUENCER_6M',      tier: 'influencer', period: '6m',      amount: 53500,  months: 6,  name: '인플루언서 6개월' },
   INFLUENCER_9M:      { key: 'INFLUENCER_9M',      tier: 'influencer', period: '9m',      amount: 75700,  months: 9,  name: '인플루언서 9개월' },
   INFLUENCER_ANNUAL:  { key: 'INFLUENCER_ANNUAL',  tier: 'influencer', period: 'annual',  amount: 99000,  months: 12, name: '인플루언서 12개월' },
+  // 임시 테스트 패키지 (UI 비공개, /subscribe?test=1 에서만 노출, 결제 흐름 검증용)
+  TEST_PAYMENT_100:   { key: 'TEST_PAYMENT_100',   tier: 'blogger',    period: 'monthly', amount: 100,    months: 1,  name: '결제 테스트 (100원)' },
 };
 
 export function getPlan(key: string): PlanDef | null {
