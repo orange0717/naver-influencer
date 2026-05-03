@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import BillingButton from '@/components/BillingButton';
 import { useAuth } from '@/hooks/useAuth';
 
 const CHECK = (
@@ -163,9 +164,10 @@ export default function SubscribeClient() {
           </p>
 
           {isLoggedIn ? (
-            <div className="block text-center py-3 bg-dim/10 text-dim font-bold text-sm rounded-xl cursor-not-allowed">
-              결제 시스템 준비 중
-            </div>
+            <BillingButton
+              planKey={bloggerPlanKey}
+              label={`${formatKRW(price.blogger)}원 결제하기`}
+            />
           ) : (
             <Link
               href="/auth/signup"
@@ -210,9 +212,11 @@ export default function SubscribeClient() {
           </p>
 
           {isLoggedIn ? (
-            <div className="block text-center py-3 bg-dim/10 text-dim font-bold text-sm rounded-xl cursor-not-allowed">
-              결제 시스템 준비 중
-            </div>
+            <BillingButton
+              planKey={influencerPlanKey}
+              label={`${formatKRW(price.influencer)}원 결제하기`}
+              className="w-full block text-center py-3 bg-accent/10 text-accent font-bold text-sm rounded-xl hover:bg-accent/20 transition disabled:opacity-50"
+            />
           ) : (
             <Link
               href="/auth/signup"

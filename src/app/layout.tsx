@@ -186,6 +186,7 @@ export default function RootLayout({
           <InstallBanner />
           <NicknameRequiredModal />
         </Providers>
+        <Script src="https://cdn.portone.io/v2/browser-sdk.js" strategy="lazyOnload" />
         <Suspense fallback={null}><GoogleAnalytics /></Suspense>
         <SpeedInsights />
       </body>
