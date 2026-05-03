@@ -182,17 +182,24 @@ async function main() {
   }
   console.log(`기존 DB: ${existing.size}명`);
 
-  // 키워드 풀
-  let keywords;
+  // 키워드 풀 (Supabase 1000 row 제한 우회 — range 페이지네이션)
+  let keywords = [];
   if (onlyKeyword) {
     keywords = [onlyKeyword];
   } else {
-    const { data } = await supabase
-      .from('keyword_challenges')
-      .select('keyword, participant_count')
-      .order('participant_count', { ascending: false })
-      .limit(topKeywords);
-    keywords = (data || []).map(r => r.keyword);
+    let off = 0;
+    while (keywords.length < topKeywords) {
+      const fetchSize = Math.min(topKeywords - keywords.length, 1000);
+      const { data } = await supabase
+        .from('keyword_challenges')
+        .select('keyword, participant_count')
+        .order('participant_count', { ascending: false })
+        .range(off, off + fetchSize - 1);
+      if (!data || data.length === 0) break;
+      keywords.push(...data.map(r => r.keyword));
+      off += data.length;
+      if (data.length < fetchSize) break;
+    }
   }
   console.log(`대상 키워드: ${keywords.length}개\n`);
 
