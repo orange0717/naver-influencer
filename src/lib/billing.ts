@@ -102,10 +102,20 @@ export async function completeBillingKeyIssue(opts: {
   });
 
   if (!firstCharge.ok) {
-    // 첫 결제 실패 → 구독 cancelled, 빌링키도 정리
+    // [C-1 review fix] 첫 결제 실패 시 PortOne 측 빌링키도 삭제 (orphan 방지)
+    // PortOne 에 ISSUED 상태로 남으면 사용자가 재시도할 때 quasi-duplicate 누적된다.
+    if (opts.billingKey) {
+      await portoneDeleteBillingKey(opts.billingKey).catch((e) => {
+        console.warn('[Billing] orphan billing key delete failed:', e);
+      });
+    }
     await supa
       .from('subscriptions')
-      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .update({
+        status: 'cancelled',
+        billing_key: null,                       // 명시적 NULL
+        cancelled_at: new Date().toISOString(),
+      })
       .eq('id', sub.id);
     return { ok: true, subscriptionId: sub.id, firstChargeOk: false, error: firstCharge.error };
   }
@@ -127,17 +137,26 @@ export async function chargePlan(opts: {
 
   const paymentId = 'pay-' + crypto.randomUUID();
 
-  // 1. 사전등록 (금액 잠금)
-  const pre = await preRegisterPayment(paymentId, plan.amount);
-  if (!pre.ok) return { ok: false, error: '결제 사전등록에 실패했습니다.' };
-
-  await supa.from('payment_intents').insert({
+  // [H-3 review fix] payment_intents 먼저 INSERT — DB 실패 시 PortOne pre-register 안 함.
+  // 이렇게 하면 PortOne 측 orphan paymentId 가 생기지 않는다.
+  const { error: intentErr } = await supa.from('payment_intents').insert({
     payment_id: paymentId,
     user_id: opts.userId,
     plan_key: opts.planKey,
     amount: plan.amount,
     type: 'charge',
   });
+  if (intentErr) {
+    console.error('[Billing] payment_intents insert failed:', intentErr);
+    return { ok: false, error: '결제 준비 중 오류가 발생했습니다.' };
+  }
+
+  // PortOne pre-register (금액 잠금)
+  const pre = await preRegisterPayment(paymentId, plan.amount);
+  if (!pre.ok) {
+    // intent 는 30분 후 cleanup_expired_payment_intents() 가 자동 정리.
+    return { ok: false, error: '결제 게이트웨이 오류. 잠시 후 다시 시도해주세요.' };
+  }
 
   // 2. PortOne 빌링키 결제
   const result: BillingChargeResult = await chargeWithBillingKey({
@@ -254,40 +273,67 @@ export async function cancelSubscription(opts: {
 }
 
 /* ── 자동청구 cron 진입점: 만료 임박 active 구독 batch 청구 ──────────── */
+const CRON_LOCK_KEY = 'cron:charge-recurring';
+const CRON_LOCK_TTL_SECONDS = 600; // 10분 (Pro maxDuration 5분 + 여유)
+
 export async function runRecurringCharges(limit: number = 100): Promise<{
   processed: number;
   succeeded: number;
   failed: number;
   results: Array<{ subscriptionId: string; ok: boolean; error?: string }>;
+  lockSkipped?: boolean;
 }> {
   const supa = adminClient();
-  const { data: due, error } = await supa.rpc('get_subscriptions_due_for_charge', { p_limit: limit });
-  if (error) {
-    console.error('[Billing] cron rpc failed:', error);
+
+  // [H-1 review fix] cron 동시 실행 방지 — cron_locks 테이블 mutex
+  const { data: lockAcquired, error: lockErr } = await supa.rpc('try_acquire_cron_lock', {
+    p_key: CRON_LOCK_KEY,
+    p_ttl_seconds: CRON_LOCK_TTL_SECONDS,
+  });
+  if (lockErr) {
+    console.error('[Billing] cron lock acquire failed:', lockErr);
     return { processed: 0, succeeded: 0, failed: 0, results: [] };
   }
-  if (!due || due.length === 0) return { processed: 0, succeeded: 0, failed: 0, results: [] };
-
-  const results: Array<{ subscriptionId: string; ok: boolean; error?: string }> = [];
-  let succeeded = 0;
-  let failed = 0;
-
-  for (const row of due as Array<{ id: string; user_id: string; plan_key: PlanKey; billing_key: string }>) {
-    const r = await chargePlan({
-      subscriptionId: row.id,
-      userId: row.user_id,
-      planKey: row.plan_key,
-      billingKey: row.billing_key,
-      chargeType: 'recurring',
-    });
-    if (r.ok) {
-      succeeded++;
-      results.push({ subscriptionId: row.id, ok: true });
-    } else {
-      failed++;
-      results.push({ subscriptionId: row.id, ok: false, error: r.error });
-    }
+  if (!lockAcquired) {
+    console.log('[Billing] cron lock already held — skipping this run');
+    return { processed: 0, succeeded: 0, failed: 0, results: [], lockSkipped: true };
   }
 
-  return { processed: due.length, succeeded, failed, results };
+  try {
+    const { data: due, error } = await supa.rpc('get_subscriptions_due_for_charge', { p_limit: limit });
+    if (error) {
+      console.error('[Billing] cron rpc failed:', error);
+      return { processed: 0, succeeded: 0, failed: 0, results: [] };
+    }
+    if (!due || due.length === 0) return { processed: 0, succeeded: 0, failed: 0, results: [] };
+
+    const results: Array<{ subscriptionId: string; ok: boolean; error?: string }> = [];
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const row of due as Array<{ id: string; user_id: string; plan_key: PlanKey; billing_key: string }>) {
+      const r = await chargePlan({
+        subscriptionId: row.id,
+        userId: row.user_id,
+        planKey: row.plan_key,
+        billingKey: row.billing_key,
+        chargeType: 'recurring',
+      });
+      if (r.ok) {
+        succeeded++;
+        results.push({ subscriptionId: row.id, ok: true });
+      } else {
+        failed++;
+        results.push({ subscriptionId: row.id, ok: false, error: r.error });
+      }
+    }
+
+    return { processed: due.length, succeeded, failed, results };
+  } finally {
+    try {
+      await supa.rpc('release_cron_lock', { p_key: CRON_LOCK_KEY });
+    } catch (e) {
+      console.error('[Billing] cron lock release failed:', e);
+    }
+  }
 }
