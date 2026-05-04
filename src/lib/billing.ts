@@ -17,6 +17,14 @@ import {
 
 const MAX_FAILED_CHARGES = 3;
 
+/**
+ * KPN PG 규칙: 영숫자만 + 32바이트 이하.
+ * 우리는 'b'(빌링키 발급) 또는 'p'(청구) + UUID 24자 = 25자로 발급한다.
+ * 외부에서 paymentId 를 인입받는 곳(웹훅 등)에서 형식을 미리 검증해
+ * 잘못된 식별자가 SQL 쿼리·로깅에 도달하는 걸 차단한다.
+ */
+export const PAYMENT_ID_REGEX = /^[a-z0-9]{25}$/;
+
 function adminClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

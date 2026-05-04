@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/portone';
 import { createServiceClient } from '@/lib/supabase-server';
+import { PAYMENT_ID_REGEX } from '@/lib/billing';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,15 +51,19 @@ export async function POST(req: NextRequest) {
       case 'Transaction.Cancelled': {
         // 환불/취소 → payment_transactions.status 갱신
         const pid = payload.data?.paymentId;
-        if (pid) {
+        if (pid && PAYMENT_ID_REGEX.test(pid)) {
           await supa.from('payment_transactions').update({ status: 'CANCELLED' }).eq('payment_id', pid);
+        } else if (pid) {
+          console.warn('[PortOne webhook] Cancelled: 잘못된 paymentId 형식 무시', pid);
         }
         break;
       }
       case 'Transaction.Failed': {
         const pid = payload.data?.paymentId;
-        if (pid) {
+        if (pid && PAYMENT_ID_REGEX.test(pid)) {
           await supa.from('payment_transactions').update({ status: 'FAILED' }).eq('payment_id', pid);
+        } else if (pid) {
+          console.warn('[PortOne webhook] Failed: 잘못된 paymentId 형식 무시', pid);
         }
         break;
       }
