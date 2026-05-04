@@ -204,8 +204,8 @@ export default function Header({ serverUser }: HeaderProps) {
   return (
     <>
       <header className="font-title sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-6">
-          {/* ── 로고 (좌측) ── */}
+        <div className="w-full px-4 h-16 flex items-center gap-6">
+          {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
