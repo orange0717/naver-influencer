@@ -204,15 +204,15 @@ export default function Header({ serverUser }: HeaderProps) {
   return (
     <>
       <header className="font-title sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-6">
-          {/* ── 로고 ── */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-6">
+          {/* ── 로고 (우측 그룹, 메뉴 앞) ── */}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 order-2">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
           </Link>
 
-          {/* ── 데스크탑 네비게이션 (양 옆으로 펼침) ── */}
-          <nav aria-label="메인 네비게이션" className="hidden lg:flex flex-1 items-center justify-around">
+          {/* ── 데스크탑 네비게이션 (우측 끝) ── */}
+          <nav aria-label="메인 네비게이션" className="hidden lg:flex items-center gap-1 order-3">
             {visibleItems.map(item => {
               if (item.children) {
                 return (
@@ -253,8 +253,8 @@ export default function Header({ serverUser }: HeaderProps) {
             })}
           </nav>
 
-          {/* ── 우측: 로그인/프로필 ── */}
-          <div className="flex items-center gap-3 shrink-0 ml-auto lg:ml-0">
+          {/* ── 좌측: 쪽지/알림/프로필 ── */}
+          <div className="flex items-center gap-3 shrink-0 order-1">
             <MessageBell />
             <NotificationBell />
             {authLoading ? (
@@ -273,7 +273,7 @@ export default function Header({ serverUser }: HeaderProps) {
                         {displayChar}
                       </div>
                     )}
-                    <span className="text-xs text-white font-semibold hidden sm:block">@{user.name || user.id}</span>
+                    <span className="text-sm text-white font-semibold hidden sm:block">@{user.name || user.id}</span>
                   </button>
                   {profileOpen && (
                     <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-xl border border-border shadow-lg py-2 z-50">
