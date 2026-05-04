@@ -33,7 +33,8 @@ export async function preparePortoneIssue(
   const plan = getPlan(planKey);
   if (!plan) return { error: '유효하지 않은 플랜입니다.' };
 
-  const paymentId = 'biz' + crypto.randomUUID().replace(/-/g, '');
+  // KPN PG 제약: 영숫자만 + 32바이트 이하 → 'b' (1) + UUID 24자 = 25자
+  const paymentId = 'b' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
   // pre-register 는 amount=0 도 허용. PortOne 빌링키 발급은 별도 API 라 pre-register 생략 가능.
   // 단, payment_intents 에 발급용 레코드는 남겨 추적 가능하게.
   const supa = adminClient();
@@ -135,7 +136,8 @@ export async function chargePlan(opts: {
   if (!plan) return { ok: false, error: '유효하지 않은 플랜입니다.' };
   const supa = adminClient();
 
-  const paymentId = 'pay' + crypto.randomUUID().replace(/-/g, '');
+  // KPN PG 제약: 영숫자만 + 32바이트 이하 → 'p' (1) + UUID 24자 = 25자
+  const paymentId = 'p' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
 
   // [H-3 review fix] payment_intents 먼저 INSERT — DB 실패 시 PortOne pre-register 안 함.
   // 이렇게 하면 PortOne 측 orphan paymentId 가 생기지 않는다.
