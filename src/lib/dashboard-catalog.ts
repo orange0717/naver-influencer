@@ -146,6 +146,15 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     authOnly: true,
   },
   {
+    id: 'my-fans',
+    category: 'my',
+    title: '내 팬 관리',
+    description: '서로 맞팬·일방팬 분석 — 나를 팬한 사람과 내가 팬한 사람의 교집합을 한눈에',
+    href: '/my/fans',
+    requiredPlan: 'influencer',
+    authOnly: true,
+  },
+  {
     id: 'my-campaigns',
     category: 'my',
     title: '캠페인',
