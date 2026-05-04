@@ -86,6 +86,7 @@ export async function middleware(request: NextRequest) {
     "https://*.naver.com",
     "https://*.portone.io",
     "https://*.iamport.kr",
+    "https://*.iamport.co",
     "https://*.kpn.co.kr",
     "https://*.sentry.io",
   ];
@@ -93,6 +94,7 @@ export async function middleware(request: NextRequest) {
     "'self'",
     "https://*.portone.io",
     "https://*.iamport.kr",
+    "https://*.iamport.co",
     "https://*.kpn.co.kr",
   ];
   if (isCapacitor) {
