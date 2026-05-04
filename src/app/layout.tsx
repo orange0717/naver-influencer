@@ -39,6 +39,9 @@ export const metadata: Metadata = {
   },
   verification: {
     google: "bBurzozbqzFkS2WMPTSc1jbkhU0nGrslOS90g4UH8Ug",
+    other: {
+      "naver-site-verification": "naverb9dc1edfb00cc566c64817966e7128c7",
+    },
   },
 };
 
@@ -144,6 +147,61 @@ const WEBSITE_JSONLD = {
   },
 };
 
+const FAQ_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'N인플은 무엇인가요?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'N인플(엔인플)은 네이버 인플루언서·블로거를 위한 키워드 분석·랭킹·커뮤니티 SaaS입니다. 19,980명의 인플루언서와 83,933명+의 블로거 데이터를 기반으로 키워드별 검색량·경쟁도·TOP3 점유율을 분석하여 블루오션 키워드를 추천합니다.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '무료로 사용할 수 있나요?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: '인플루언서 리스트, 키워드 리스트, 커뮤니티는 회원가입 없이 무료로 이용 가능합니다. 인플루언서홈 또는 블로그 주소만 입력하면 7일 무료 체험도 시작할 수 있습니다.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '가격은 얼마인가요?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: '블로거 플랜 월 5,500원, 인플루언서 플랜 월 9,900원, 대행사 플랜 월 99,000원입니다. 1·3·6·10·12개월 단위로 결제 가능하며, 장기 결제 시 최대 11% 할인됩니다.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '키워드챌린지 순위는 어떻게 분석하나요?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: '네이버 인플루언서 키워드챌린지의 공식 순위를 매 3시간마다 크롤링하여 추적합니다. 키워드별 검색량(네이버 검색광고 API)·참여자수·TOP3 점유율을 함께 제공하여 블루오션 키워드를 찾을 수 있습니다.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '인플루언서 랭킹 점수 공식은 어떻게 되나요?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: '점수 공식 v3은 (참여자수 − 순위) × 본인 게시글 수로 계산하며, TOP3·본인 카테고리만 합산합니다. 단순 노출이 아니라 실제 참여 성과를 반영하여 진짜 영향력 있는 인플루언서를 식별합니다.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '환불 가능한가요?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: '결제 후 7일 이내 미이용 시 전액 환불됩니다. 결제 수단은 PortOne V2와 한국결제네트웍스(KPN) 카드 결제를 지원합니다.',
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -169,6 +227,11 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSONLD) }}
+        />
+        {/* JSON-LD: FAQPage (AI 브리핑 노출용) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSONLD) }}
         />
       </head>
       <body className="antialiased flex flex-col min-h-screen">
