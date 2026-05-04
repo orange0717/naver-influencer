@@ -43,12 +43,12 @@ const TAB_INFO: Record<TabKey, { label: string; description: string }> = {
     description: '나도 팬, 상대도 나를 팬한 인플루언서',
   },
   onlyIFollow: {
-    label: '내가만 팬',
-    description: '내가 팬했지만 상대는 나를 팬하지 않음 (일방적)',
+    label: '내가 팬 한',
+    description: '내가 팬했지만 상대는 나를 팬하지 않은 인플루언서 (일방)',
   },
   onlyFollowsMe: {
-    label: '나를만 팬',
-    description: '상대가 나를 팬했지만 나는 팬하지 않음',
+    label: '나를 팬 한',
+    description: '상대가 나를 팬했지만 내가 팬하지 않은 인플루언서 (일방)',
   },
 };
 
@@ -166,17 +166,17 @@ export default function MyFansPage() {
               onClick={() => setTab('onlyIFollow')}
               className={`p-4 rounded-xl border text-left transition ${tab === 'onlyIFollow' ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-accent/50'}`}
             >
-              <p className="text-xs font-semibold text-dim">내가만 팬</p>
+              <p className="text-xs font-semibold text-dim">내가 팬 한</p>
               <p className="text-2xl font-bold text-text mt-1">{data.counts.onlyIFollow.toLocaleString()}</p>
-              <p className="text-[11px] text-dim mt-1">전체 내가 팬한 사람 {data.counts.totalIFollow.toLocaleString()}명 중</p>
+              <p className="text-[11px] text-dim mt-1">전체 {data.counts.totalIFollow.toLocaleString()}명 중 일방</p>
             </button>
             <button
               onClick={() => setTab('onlyFollowsMe')}
               className={`p-4 rounded-xl border text-left transition ${tab === 'onlyFollowsMe' ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-accent/50'}`}
             >
-              <p className="text-xs font-semibold text-dim">나를만 팬</p>
+              <p className="text-xs font-semibold text-dim">나를 팬 한</p>
               <p className="text-2xl font-bold text-text mt-1">{data.counts.onlyFollowsMe.toLocaleString()}</p>
-              <p className="text-[11px] text-dim mt-1">전체 나를 팬한 사람 {data.counts.totalFollowsMe.toLocaleString()}명 중</p>
+              <p className="text-[11px] text-dim mt-1">전체 {data.counts.totalFollowsMe.toLocaleString()}명 중 일방</p>
             </button>
           </div>
         )}
