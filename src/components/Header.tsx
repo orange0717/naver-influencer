@@ -42,13 +42,13 @@ interface NavItem {
   requiredPlan?: PlanTier;
 }
 
-// 대시보드(/dashboard)가 기능 허브 역할을 하므로 상단 네비는 최소화
+// 대시보드(/)가 기능 허브 역할을 하므로 상단 네비는 최소화
 const NAV_ITEMS: NavItem[] = [
   { href: '/notice', label: '공지사항' },
-  { href: '/dashboard', label: '대시보드' },
   { href: '/community', label: '커뮤니티' },
   { href: '/stories', label: '성장후기' },
   { href: '/subscribe', label: '이용권' },
+  { href: '/intro', label: '소개' },
 ];
 
 
