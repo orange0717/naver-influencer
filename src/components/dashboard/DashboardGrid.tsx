@@ -164,7 +164,7 @@ export default function DashboardGrid({
         aria-label="대시보드 카테고리 내비게이션"
         className="sticky top-14 z-30 -mx-4 px-4 py-2.5 bg-bg/90 backdrop-blur-md border-y border-border"
       >
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+        <div className="flex flex-wrap items-center gap-1.5 lg:gap-2 lg:overflow-x-auto lg:flex-nowrap scrollbar-hide">
           <button
             type="button"
             onClick={() => document.getElementById('section-favorites')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
