@@ -227,7 +227,7 @@ export default function DashboardGrid({
           <span className="text-sm text-dim">({visibleFavorites.length})</span>
         </div>
         {visibleFavorites.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {visibleFavorites.map(app => (
               <AppCard
                 key={app.id}
@@ -266,7 +266,7 @@ export default function DashboardGrid({
               <span className="text-sm text-dim">{cat.description}</span>
               <span className="ml-auto text-sm text-dim">({catApps.length})</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {catApps.map(app => (
                 <AppCard
                   key={app.id}
