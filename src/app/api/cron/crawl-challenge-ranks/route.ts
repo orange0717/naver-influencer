@@ -369,12 +369,12 @@ export async function GET(request: NextRequest) {
         top3_ratio: totalKw > 0 ? +((top1 + top2 + top3) / totalKw).toFixed(4) : 0,
       };
 
+      // last_crawled_at은 항상 현재 크롤링 시각 (순환 크롤 우선순위 산정용).
+      // 이전 코드는 lastChallengedAt을 last_crawled_at에 덮어써서, 챌린지 활동이 활발한
+      // 인플루언서일수록 last_crawled_at이 미래 날짜처럼 갱신되어 재크롤 큐에서 밀려나는 버그가 있었음.
+      updateData.last_crawled_at = new Date().toISOString();
       if (lastChallengedAt) {
-        updateData.last_crawled_at = lastChallengedAt;
         updateData.last_challenged_at = lastChallengedAt;
-      } else {
-        // 참여일이 없어도 크롤된 시점은 기록 (순환 크롤용)
-        updateData.last_crawled_at = new Date().toISOString();
       }
 
       await supabase.from('influencers').update(updateData).eq('id', inf.id);
