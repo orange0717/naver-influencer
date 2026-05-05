@@ -85,6 +85,8 @@ interface DecodedNaverUrl {
   logNo?: string;
   range?: string;
   orderBy?: string;
+  directoryNo?: string;
+  groupId?: string;
   topReferer?: string;
   topRefererDecoded?: DecodedNaverUrl;
   rawParams: Array<{ key: string; value: string }>;
@@ -104,6 +106,10 @@ function classifySurface(host: string, path: string): string {
     if (path.includes('Search/Post')) return '블로그 검색 (포스트)';
     if (path.includes('Search/Influencer')) return '블로그 검색 (인플루언서)';
     if (path.includes('Search')) return '블로그 검색';
+    if (path.includes('BlogHome')) return '블로그 섹션 홈 (카테고리·그룹 둘러보기)';
+    if (path.includes('TopList')) return '블로그 인기글 (TopList)';
+    if (path.includes('ChannelList')) return '블로그 채널 목록';
+    if (path.includes('ThemePost')) return '블로그 주제별 글';
     return '블로그 섹션';
   }
   if (/^section\.cafe\.naver\.com$/.test(host)) return '카페 검색';
@@ -176,10 +182,17 @@ function decode(rawUrl: string, depth = 0): DecodedNaverUrl {
     result.where = params.get('where') || undefined;
     result.directAccess = params.get('directAccess') === 'true';
     result.ackey = params.get('ackey') || undefined;
-    result.pageNo = params.get('pageNo') || params.get('page') || params.get('start') || undefined;
+    result.pageNo =
+      params.get('pageNo') ||
+      params.get('page') ||
+      params.get('start') ||
+      params.get('currentPage') ||
+      undefined;
     result.logNo = params.get('logNo') || undefined;
     result.range = params.get('range') || params.get('period') || undefined;
     result.orderBy = params.get('orderBy') || params.get('sort') || undefined;
+    result.directoryNo = params.get('directoryNo') || undefined;
+    result.groupId = params.get('groupId') || undefined;
 
     const tr = params.get('topReferer');
     if (tr) {
@@ -583,6 +596,21 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
                       <Field label="경로" value={decoded.pathname} mono />
                       {decoded.blogId && <Field label="블로그 ID" value={decoded.blogId} mono />}
                       {decoded.logNo && <Field label="포스트 번호 (logNo)" value={decoded.logNo} mono />}
+                      {decoded.directoryNo !== undefined && (
+                        <Field
+                          label="카테고리 (directoryNo)"
+                          value={`${decoded.directoryNo}${decoded.directoryNo === '0' ? ' · 전체' : ''}`}
+                        />
+                      )}
+                      {decoded.groupId !== undefined && (
+                        <Field
+                          label="그룹 (groupId)"
+                          value={`${decoded.groupId}${decoded.groupId === '0' ? ' · 전체' : ''}`}
+                        />
+                      )}
+                      {decoded.pageNo && !ref?.query && !decoded.query && (
+                        <Field label="페이지" value={`${decoded.pageNo}페이지`} />
+                      )}
                       {decoded.directAccess && (
                         <Field label="directAccess" value="true (검색 결과 블로그 영역에서 직접 클릭)" />
                       )}

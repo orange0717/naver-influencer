@@ -45,7 +45,11 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
 
   const displayName = influencer?.display_name || effectiveNaverId;
 
-  // 데모 세션 생성
+  // 데모 세션 생성 — 본인 인증을 거치지 않은 "체험(trial) 세션".
+  //   여기서는 verified_at 을 채우지 않는다. (이전엔 verified_at: now() 로 자동 통과시켜
+  //   /api/auth/demo/verify 의 OTP 검증을 우회하는 버그가 있었음.)
+  // 본인 인증이 필요한 작업(/api/my/link 등)은 demo_sessions.verified_at IS NOT NULL 을
+  // 이메일+naver_id 단위로 별도 확인하므로, 여기서는 trial 쿠키만 발급한다.
   const now = new Date();
   const expiresAt = new Date(now.getTime() + DEMO_DAYS * 24 * 60 * 60 * 1000);
 
@@ -57,7 +61,7 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
     email: `demo-${effectiveNaverId}-${Date.now()}@demo.local`,
     verification_code: '000000',
     code_expires_at: now.toISOString(),
-    verified_at: now.toISOString(),
+    // verified_at 은 의도적으로 비워둔다 — 이 세션은 trial(체험)이며, 소유권 검증을 통과한 게 아니다.
     started_at: now.toISOString(),
     expires_at: expiresAt.toISOString(),
   });

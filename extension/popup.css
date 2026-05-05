@@ -1,0 +1,127 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 340px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', system-ui, sans-serif;
+  background: #FDF6F3;
+  color: #3A2D27;
+}
+
+body { padding: 14px; }
+
+header { margin-bottom: 12px; }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #BF877A;
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+h1 {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.sub {
+  font-size: 11px;
+  color: #8C7A6E;
+  margin-top: 2px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #F2E2DC;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.label { color: #8C7A6E; }
+
+.value { font-weight: 600; }
+.value.muted { color: #B5A096; font-weight: 500; }
+
+.actions { margin-top: 10px; }
+
+.btn {
+  display: inline-block;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.05s;
+}
+
+.btn.primary {
+  background: #BF877A;
+  color: #fff;
+}
+
+.btn.primary:hover:not(:disabled) { opacity: 0.92; }
+.btn.primary:active:not(:disabled) { transform: scale(0.99); }
+
+.btn:disabled {
+  background: #E5D6CF;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.hint {
+  font-size: 11px;
+  color: #B5A096;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toggle input { accent-color: #BF877A; }
+
+footer {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+footer a {
+  color: #BF877A;
+  text-decoration: none;
+}
+
+footer a:hover { text-decoration: underline; }
+
+.status-ok { color: #2E8B57; }
+.status-warn { color: #D94848; }

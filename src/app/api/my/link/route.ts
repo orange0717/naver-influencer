@@ -46,6 +46,36 @@ export async function POST(request: NextRequest) {
     .insert({ auth_id: authUser.id })
     .then(() => {}, () => {});
 
+  // 본인 인증 검증 — 임의 naverId 점유를 차단한다.
+  //   demo_sessions 에 (email = auth user 이메일, naver_id = 요청 naverId,
+  //   page_verified_at IS NOT NULL) 인 행이 있어야 한다.
+  //   page_verified_at 은 /api/auth/demo/verify-page 가 in.naver.com/{naverId}
+  //   소개글에서 발급된 page_code 를 직접 크롤로 확인한 뒤에만 채워진다 →
+  //   진정한 페이지 소유권 증명. 이메일 OTP(verified_at) 만으로는 통과 불가.
+  const authEmail = authUser.email?.toLowerCase();
+  if (!authEmail) {
+    return NextResponse.json({ error: '이메일이 등록되지 않은 계정입니다.' }, { status: 403 });
+  }
+  const { data: verifiedSession } = await supabase
+    .from('demo_sessions')
+    .select('id')
+    .eq('email', authEmail)
+    .eq('naver_id', naverId)
+    .not('page_verified_at', 'is', null)
+    .order('page_verified_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!verifiedSession) {
+    return NextResponse.json(
+      {
+        error: '본인 인증이 필요합니다. /auth/demo/request-page-code 로 발급된 코드를 네이버 인플루언서 소개글에 붙여 넣은 뒤 /auth/demo/verify-page 로 검증을 완료해 주세요.',
+        code: 'PAGE_VERIFICATION_REQUIRED',
+      },
+      { status: 403 },
+    );
+  }
+
   // 인플루언서 조회
   const { data: influencer } = await supabase
     .from('influencers')

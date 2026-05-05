@@ -212,6 +212,23 @@ export async function chargePlan(opts: {
     })
     .eq('id', opts.subscriptionId);
 
+  // 5. users 테이블 페이월 컬럼 동기화.
+  //    admin.ts 의 hasActiveSubscription / getPaywallContext / requireInfluencerPlan 가
+  //    users.subscription_plan + subscription_expires_at 를 source of truth 로 읽으므로,
+  //    여기서 함께 갱신하지 않으면 결제한 사용자가 계속 비구독자로 취급된다.
+  const planTier = plan.tier.toUpperCase(); // 'BLOGGER' | 'INFLUENCER'
+  const { error: userUpdErr } = await supa
+    .from('users')
+    .update({
+      subscription_plan: planTier,
+      subscription_expires_at: nextEnd.toISOString(),
+    })
+    .eq('auth_id', opts.userId);
+  if (userUpdErr) {
+    console.error('[Billing] users paywall sync failed:', userUpdErr, { userId: opts.userId, paymentId });
+    // 결제 자체는 성공했으므로 200 흐름은 유지 — 운영자가 알림으로 수동 보정 권장.
+  }
+
   return { ok: true, paymentId };
 }
 

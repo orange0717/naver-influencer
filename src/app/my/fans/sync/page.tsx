@@ -72,6 +72,32 @@ export default function FansSyncPage() {
           </p>
         </div>
 
+        {/* 추천: 크롬 확장 프로그램 */}
+        <div className="mb-6 p-5 bg-accent/5 rounded-xl border-2 border-accent/40">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-xs font-bold text-accent">⭐ 추천 — 크롬 확장 프로그램</p>
+              <h2 className="text-base font-bold text-text mt-1">한 번 설치, 평생 자동 동기화</h2>
+              <p className="text-xs text-dim mt-2 leading-relaxed">
+                북마클릿이 어렵다면 크롬 확장 프로그램을 사용하세요. 한 번 설치 후 본인 인플루언서 홈을 방문하기만 하면
+                백그라운드에서 자동 동기화됩니다. 30분 쿨다운으로 과도한 요청도 방지합니다.
+              </p>
+            </div>
+            <a
+              href="https://github.com/orange0717/naver-influencer/tree/main/extension#설치"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs px-3 py-2 rounded-lg bg-accent text-white font-semibold hover:opacity-90 transition whitespace-nowrap"
+            >
+              설치 방법 →
+            </a>
+          </div>
+        </div>
+
+        <div className="mb-4 text-center">
+          <span className="text-xs text-dim">또는 기존 북마클릿 방식</span>
+        </div>
+
         {/* 단계 1 */}
         <div className="mb-5 p-5 bg-surface rounded-xl border border-border">
           <p className="text-xs font-bold text-accent">STEP 1</p>

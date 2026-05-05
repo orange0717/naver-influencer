@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "N인플 자동 동기화",
+  "short_name": "N인플",
+  "version": "0.1.0",
+  "description": "네이버 인플루언서 팔로워/팔로잉 데이터를 ninfle.kr로 자동 동기화합니다.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "N인플 동기화",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://in.naver.com/*",
+    "https://gw.in.naver.com/*",
+    "https://ninfle.kr/*",
+    "https://www.ninfle.kr/*",
+    "https://naver-influencer.vercel.app/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://in.naver.com/*"],
+      "js": ["content-naver.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://ninfle.kr/*",
+        "https://www.ninfle.kr/*",
+        "https://naver-influencer.vercel.app/*"
+      ],
+      "js": ["content-ninfle.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

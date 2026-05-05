@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>N인플 동기화</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <span class="logo">N</span>
+        <div>
+          <h1>N인플 동기화</h1>
+          <p class="sub">네이버 인플루언서 팬 자동 동기화</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="card" id="auth-card">
+      <div class="row">
+        <span class="label">로그인 상태</span>
+        <span id="auth-status" class="value muted">확인 중...</span>
+      </div>
+      <div class="row" id="email-row" hidden>
+        <span class="label">계정</span>
+        <span id="auth-email" class="value"></span>
+      </div>
+      <div class="actions" id="auth-actions">
+        <a id="open-ninfle" class="btn primary" href="https://ninfle.kr/auth/login" target="_blank">
+          ninfle.kr 로그인
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <span class="label">현재 페이지</span>
+        <span id="page-status" class="value muted">확인 중...</span>
+      </div>
+      <div class="row">
+        <span class="label">마지막 동기화</span>
+        <span id="last-sync" class="value muted">없음</span>
+      </div>
+      <div class="actions">
+        <button id="sync-now" class="btn primary" disabled>지금 동기화</button>
+      </div>
+      <p id="sync-help" class="hint"></p>
+    </section>
+
+    <section class="card">
+      <label class="toggle">
+        <input type="checkbox" id="auto-sync" />
+        <span>본인 인플루언서 페이지 방문 시 자동 동기화</span>
+      </label>
+      <p class="hint">30분 이내 재동기화는 건너뜁니다.</p>
+    </section>
+
+    <footer>
+      <a href="https://ninfle.kr/my/fans" target="_blank">내 팬 대시보드 열기 →</a>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

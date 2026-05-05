@@ -6,10 +6,35 @@ const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim(
 const RESTRICTED_EMAILS = (process.env.RESTRICTED_USER_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
 /**
- * 주어진 userId가 관리자인지 확인
+ * 주어진 userId가 관리자인지 환경변수 부트스트랩 목록으로 동기 확인.
+ *
+ * 실제 권한 source of truth 는 users.is_admin 컬럼이며, 가능한 곳에선
+ * isAdminAsync 또는 user 행의 is_admin 필드를 직접 사용해야 한다.
+ * 이 함수는 user 행이 아직 없는 부트스트랩 시점/sync 호출 경로에서만 사용.
  */
 export function isAdmin(userId: string): boolean {
   return ADMIN_IDS.includes(userId);
+}
+
+/**
+ * users.is_admin 컬럼 + ADMIN_USER_IDS 환경변수(부트스트랩 폴백) 조합으로
+ * 비동기 관리자 확인. 새 권한 검사는 가능한 이 함수 또는 미리 로드된
+ * user 행의 is_admin 필드를 사용할 것.
+ */
+export async function isAdminAsync(userId: string): Promise<boolean> {
+  if (ADMIN_IDS.includes(userId)) return true; // 부트스트랩 폴백 (DB 미설정 시)
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', userId)
+      .maybeSingle();
+    return data?.is_admin === true;
+  } catch (err) {
+    console.error('[isAdminAsync] DB error:', err);
+    return false;
+  }
 }
 
 /**
@@ -77,14 +102,16 @@ export async function isRestricted(email: string | null | undefined): Promise<bo
  * @returns { authUser } 또는 에러 Response
  */
 export async function requireAdmin(request: NextRequest): Promise<
-  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null } }; error?: never }
+  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null; is_admin?: boolean } }; error?: never }
   | { error: NextResponse; authUser?: never }
 > {
   const authUser = await getAuthUser(request);
   if (!authUser) {
     return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
   }
-  if (!isAdmin(authUser.userId)) {
+  // users.is_admin 우선, ADMIN_USER_IDS 환경변수는 부트스트랩 폴백.
+  const allowed = authUser.user.is_admin === true || isAdmin(authUser.userId);
+  if (!allowed) {
     return { error: NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 }) };
   }
   return { authUser };
@@ -134,12 +161,16 @@ export async function isRestrictedByUserId(userId: string): Promise<boolean> {
  * 관리자(requireAdmin)처럼 API 라우트 진입부에서 단일 호출로 사용
  */
 export async function requirePaidAccess(request: NextRequest): Promise<
-  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null } }; error?: never }
+  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null; is_admin?: boolean } }; error?: never }
   | { error: NextResponse; authUser?: never }
 > {
   const authUser = await getAuthUser(request);
   if (!authUser) {
     return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
+  }
+  // 관리자는 페이월/제한 우회
+  if (authUser.user.is_admin === true || isAdmin(authUser.userId)) {
+    return { authUser };
   }
   if (await isRestrictedByUserId(authUser.userId)) {
     return { error: NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 }) };
@@ -174,14 +205,14 @@ export async function getPaywallContext(
     const supabase = createServiceClient();
     let { data } = await supabase
       .from('users')
-      .select('id, subscription_plan, subscription_expires_at')
+      .select('id, subscription_plan, subscription_expires_at, is_admin')
       .eq('auth_id', authUserId)
       .maybeSingle();
 
     if (!data && email) {
       const { data: byEmail } = await supabase
         .from('users')
-        .select('id, subscription_plan, subscription_expires_at')
+        .select('id, subscription_plan, subscription_expires_at, is_admin')
         .eq('email', email.toLowerCase())
         .maybeSingle();
       data = byEmail;
@@ -192,7 +223,8 @@ export async function getPaywallContext(
     }
 
     return {
-      isAdminUser: isAdmin(data.id),
+      // users.is_admin 우선, env 변수는 부트스트랩 폴백.
+      isAdminUser: data.is_admin === true || isAdmin(data.id),
       hasActivePaidPlan: hasActiveSubscription(data.subscription_plan, data.subscription_expires_at),
       plan: data.subscription_plan ?? null,
       expiresAt: data.subscription_expires_at ?? null,
@@ -208,18 +240,18 @@ export async function getPaywallContext(
  * 인플루언서 플랜 이상 접근 권한 확인 (블로거 플랜 차단)
  * - 비로그인 → 401
  * - 활성 INFLUENCER 플랜이 아니면 → 403 (블로거 플랜 또는 무료/만료 모두 차단)
- * - 관리자(ADMIN_USER_IDS)는 항상 통과
+ * - 관리자(users.is_admin 또는 ADMIN_USER_IDS 폴백)는 항상 통과
  */
 export async function requireInfluencerPlan(request: NextRequest): Promise<
-  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null } }; error?: never }
+  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null; is_admin?: boolean } }; error?: never }
   | { error: NextResponse; authUser?: never }
 > {
   const authUser = await getAuthUser(request);
   if (!authUser) {
     return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
   }
-  // 관리자는 항상 통과
-  if (isAdmin(authUser.userId)) {
+  // 관리자는 항상 통과 — users.is_admin 우선, env 폴백
+  if (authUser.user.is_admin === true || isAdmin(authUser.userId)) {
     return { authUser };
   }
   try {

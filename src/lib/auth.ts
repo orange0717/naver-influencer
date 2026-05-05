@@ -37,7 +37,7 @@ export async function getAuthUser(request: Request) {
   const supabase = createServiceClient();
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('id, nickname, linked_influencer_id')
+    .select('id, nickname, linked_influencer_id, is_admin')
     .eq('auth_id', authUser.id)
     .single();
 

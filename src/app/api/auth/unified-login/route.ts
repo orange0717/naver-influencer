@@ -80,32 +80,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── 유저 조회 또는 자동 생성 ───
-    let isNewUser = false;
-
-    if (influencer) {
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('linked_influencer_id', influencer.id)
-        .single();
-
-      if (!existingUser) {
-        isNewUser = true;
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            email: `${cleanNaverId}@ninfl.auto`,
-            nickname: influencer.display_name || cleanNaverId,
-            linked_influencer_id: influencer.id,
-          });
-
-        if (userError) {
-          console.error('[unified-login] user create error:', userError.message);
-          return NextResponse.json({ error: '회원가입 처리 중 오류가 발생했습니다.' }, { status: 500 });
-        }
-      }
-    }
+    // ─── users 행 자동 생성 제거 (보안 수정) ───
+    //   이전엔 임의 naverId 가 들어오면 auth_id 없이 users 행을 만들고 linked_influencer_id 까지
+    //   세팅해, 누구나 임의 인플루언서를 자기 계정에 점유시킬 수 있었다.
+    //   users 행은 /api/auth/signup (Supabase Auth 통과) 에서만 생성되고,
+    //   linked_influencer_id 부여는 /api/my/link 의 본인 인증(demo_sessions.verified) 단계에서만 일어난다.
+    //   이 라우트는 trial(체험) 쿠키만 설정하고 끝낸다.
+    const isNewUser = false;
 
     // ─── 쿠키 설정 ───
     if (cleanNaverId) {

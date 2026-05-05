@@ -35,6 +35,23 @@ interface FansResponse {
   } | null;
 }
 
+interface CrossMatchUser {
+  user_id: string;
+  naver_url_id: string;
+  email?: string | null;
+  target_nickname?: string | null;
+  target_image_url?: string | null;
+  direction: 'I_FOLLOW' | 'FOLLOWS_ME' | 'BOTH';
+}
+
+interface CrossMatchResponse {
+  ok: boolean;
+  me: { user_id: string; naver_url_id: string | null };
+  inMyFans: CrossMatchUser[];
+  othersListedMe: CrossMatchUser[];
+  counts: { inMyFans: number; othersListedMe: number };
+}
+
 type TabKey = 'mutual' | 'onlyIFollow' | 'onlyFollowsMe';
 
 const TAB_INFO: Record<TabKey, { label: string; description: string }> = {
@@ -66,6 +83,7 @@ function formatCount(n: number): string {
 
 export default function MyFansPage() {
   const [data, setData] = useState<FansResponse | null>(null);
+  const [crossMatch, setCrossMatch] = useState<CrossMatchResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>('mutual');
@@ -81,15 +99,20 @@ export default function MyFansPage() {
           setLoading(false);
           return;
         }
-        const res = await fetch('/api/my/fans', {
-          headers: { authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${res.status}`);
+        const headers = { authorization: `Bearer ${session.access_token}` };
+        const [fansRes, crossRes] = await Promise.all([
+          fetch('/api/my/fans', { headers }),
+          fetch('/api/my/fans/cross-match', { headers }),
+        ]);
+        if (!fansRes.ok) {
+          const j = await fansRes.json().catch(() => ({}));
+          throw new Error(j.error || `HTTP ${fansRes.status}`);
         }
-        const json: FansResponse = await res.json();
+        const json: FansResponse = await fansRes.json();
         setData(json);
+        if (crossRes.ok) {
+          setCrossMatch(await crossRes.json());
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : '데이터를 불러오지 못했습니다.');
       } finally {
@@ -150,6 +173,70 @@ export default function MyFansPage() {
             </Link>
           </div>
         </div>
+
+        {/* 교차 매칭 — N인플 가입자 자동 발견 */}
+        {crossMatch && (crossMatch.counts.inMyFans > 0 || crossMatch.counts.othersListedMe > 0) && (
+          <div className="mb-6 p-4 bg-surface rounded-xl border border-accent/40">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-bold text-text">N인플 사용자 교차 매칭</p>
+                <p className="text-xs text-dim mt-0.5">
+                  내 명단에 있는 N인플 사용자: <span className="font-semibold text-accent">{crossMatch.counts.inMyFans}명</span>
+                  <span className="mx-2">·</span>
+                  나를 등록한 N인플 사용자: <span className="font-semibold text-accent">{crossMatch.counts.othersListedMe}명</span>
+                </p>
+              </div>
+            </div>
+
+            {crossMatch.inMyFans.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-dim mb-2">내 명단에서 발견 (내가 동기화한 데이터 기준)</p>
+                <ul className="flex flex-wrap gap-2">
+                  {crossMatch.inMyFans.slice(0, 24).map(u => (
+                    <li key={u.user_id} className="px-2.5 py-1 rounded-full bg-accent/10 border border-accent/30 text-xs">
+                      <a href={`https://in.naver.com/${u.naver_url_id}`} target="_blank" rel="noopener noreferrer" className="text-text font-semibold hover:text-accent">
+                        {u.target_nickname || `@${u.naver_url_id}`}
+                      </a>
+                      <span className="ml-1 text-dim">
+                        {u.direction === 'BOTH' ? '맞팬' : u.direction === 'I_FOLLOW' ? '내가팬' : '나를팬'}
+                      </span>
+                    </li>
+                  ))}
+                  {crossMatch.inMyFans.length > 24 && (
+                    <li className="px-2.5 py-1 text-xs text-dim">+{crossMatch.inMyFans.length - 24}명 더</li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {crossMatch.othersListedMe.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-dim mb-2">다른 N인플 사용자가 나를 등록함 (자동 감지, 동기화 불필요)</p>
+                <ul className="flex flex-wrap gap-2">
+                  {crossMatch.othersListedMe.slice(0, 24).map(u => (
+                    <li key={u.user_id} className="px-2.5 py-1 rounded-full bg-up/10 border border-up/30 text-xs">
+                      <a href={`https://in.naver.com/${u.naver_url_id}`} target="_blank" rel="noopener noreferrer" className="text-text font-semibold hover:text-up">
+                        @{u.naver_url_id}
+                      </a>
+                      <span className="ml-1 text-dim">
+                        {u.direction === 'BOTH' ? '맞팬' : u.direction === 'I_FOLLOW' ? '나를팬' : '내가팬'}
+                      </span>
+                    </li>
+                  ))}
+                  {crossMatch.othersListedMe.length > 24 && (
+                    <li className="px-2.5 py-1 text-xs text-dim">+{crossMatch.othersListedMe.length - 24}명 더</li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {!crossMatch.me.naver_url_id && (
+              <p className="text-[11px] text-dim mt-3">
+                💡 한 번이라도 동기화하면 본인 네이버 ID 가 등록되어 다른 사용자가 나를 자동으로 발견할 수 있습니다.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 통계 카드 */}
         {data && (
