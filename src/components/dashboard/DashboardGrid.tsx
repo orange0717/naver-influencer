@@ -116,7 +116,7 @@ export default function DashboardGrid({
               정직하고 투명한 데이터, N인플에서 확인하세요.
             </h1>
           </div>
-          <div className="flex items-center gap-2 lg:gap-3">
+          <div className="flex items-center gap-2 lg:gap-3 justify-end">
             <div className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white/15 border border-white/25">
               <p className="text-[10px] lg:text-[11px] text-white/80 font-semibold">현재 플랜</p>
               <p className="text-xs lg:text-sm font-bold text-white">{planName(currentPlan)}</p>
