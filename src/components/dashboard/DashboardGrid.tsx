@@ -96,7 +96,7 @@ export default function DashboardGrid({
   return (
     <div className="flex flex-col gap-8">
       {/* ── 베타 안내 배너 ── */}
-      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-semibold">
+      <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs lg:text-sm font-semibold">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="8" x2="12" y2="12" />
@@ -106,30 +106,30 @@ export default function DashboardGrid({
       </div>
 
       {/* ── 상단 인사 + 구독 + 지표 ── */}
-      <section className="bg-header rounded-2xl p-6 lg:p-8">
+      <section className="bg-header rounded-2xl p-4 lg:p-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
-            <p className="text-sm text-white/80 font-semibold mb-2">N인플 대시보드</p>
-            <h1 className="font-title font-black text-lg lg:text-2xl text-white leading-relaxed">
+            <p className="text-xs lg:text-sm text-white/80 font-semibold mb-1.5 lg:mb-2">N인플 대시보드</p>
+            <h1 className="font-title font-black text-sm lg:text-2xl text-white leading-relaxed">
               네이버 크리에이터의 꿈이 실현되는 곳,
               <br />
               정직하고 투명한 데이터, N인플에서 확인하세요.
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="px-4 py-2 rounded-xl bg-white/15 border border-white/25">
-              <p className="text-[11px] text-white/80 font-semibold">현재 플랜</p>
-              <p className="text-sm font-bold text-white">{planName(currentPlan)}</p>
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white/15 border border-white/25">
+              <p className="text-[10px] lg:text-[11px] text-white/80 font-semibold">현재 플랜</p>
+              <p className="text-xs lg:text-sm font-bold text-white">{planName(currentPlan)}</p>
             </div>
             {subscriptionExpiresAt && (
-              <div className="px-4 py-2 rounded-xl bg-white/15 border border-white/25">
-                <p className="text-[11px] text-white/80 font-semibold">만료일</p>
-                <p className="text-sm font-bold text-white">{formatDate(subscriptionExpiresAt)}</p>
+              <div className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white/15 border border-white/25">
+                <p className="text-[10px] lg:text-[11px] text-white/80 font-semibold">만료일</p>
+                <p className="text-xs lg:text-sm font-bold text-white">{formatDate(subscriptionExpiresAt)}</p>
               </div>
             )}
             <Link
               href="/subscribe"
-              className="px-4 py-2 rounded-xl bg-white text-accent-hover text-sm font-bold hover:bg-white/90 transition-colors"
+              className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white text-accent-hover text-xs lg:text-sm font-bold hover:bg-white/90 transition-colors"
             >
               이용권
             </Link>
@@ -137,24 +137,24 @@ export default function DashboardGrid({
         </div>
 
         {/* 빠른 지표 4개 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-          <div className="bg-white/15 border border-white/25 rounded-xl p-4">
-            <p className="text-xs text-white/80 font-semibold mb-1">내 블로그 순위</p>
-            <p className="text-xl font-black text-white">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 mt-4 lg:mt-6">
+          <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
+            <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">내 블로그 순위</p>
+            <p className="text-sm lg:text-xl font-black text-white">
               {stats.myBlogRank !== null ? `${stats.myBlogRank.toLocaleString()}위` : '-'}
             </p>
           </div>
-          <div className="bg-white/15 border border-white/25 rounded-xl p-4">
-            <p className="text-xs text-white/80 font-semibold mb-1">관심 키워드</p>
-            <p className="text-xl font-black text-white">{stats.myKeywordCount.toLocaleString()}개</p>
+          <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
+            <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">관심 키워드</p>
+            <p className="text-sm lg:text-xl font-black text-white">{stats.myKeywordCount.toLocaleString()}개</p>
           </div>
-          <div className="bg-white/15 border border-white/25 rounded-xl p-4">
-            <p className="text-xs text-white/80 font-semibold mb-1">읽지 않은 공지</p>
-            <p className="text-xl font-black text-white">{stats.unreadNotices.toLocaleString()}건</p>
+          <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
+            <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">읽지 않은 공지</p>
+            <p className="text-sm lg:text-xl font-black text-white">{stats.unreadNotices.toLocaleString()}건</p>
           </div>
-          <div className="bg-white/15 border border-white/25 rounded-xl p-4">
-            <p className="text-xs text-white/80 font-semibold mb-1">즐겨찾는 기능</p>
-            <p className="text-xl font-black text-white">{favorites.size.toLocaleString()}개</p>
+          <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
+            <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">즐겨찾는 기능</p>
+            <p className="text-sm lg:text-xl font-black text-white">{favorites.size.toLocaleString()}개</p>
           </div>
         </div>
       </section>
@@ -169,13 +169,13 @@ export default function DashboardGrid({
             type="button"
             onClick={() => document.getElementById('section-favorites')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             aria-label="즐겨찾기 섹션으로 이동"
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-sm font-bold hover:bg-accent/20 transition-colors cursor-pointer"
+            className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-xs lg:text-sm font-bold hover:bg-accent/20 transition-colors cursor-pointer"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={visibleFavorites.length > 0 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill={visibleFavorites.length > 0 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true" className="lg:w-[14px] lg:h-[14px]">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
             즐겨찾기
-            <span className="text-[11px] font-bold opacity-80">{visibleFavorites.length}</span>
+            <span className="text-[10px] lg:text-[11px] font-bold opacity-80">{visibleFavorites.length}</span>
           </button>
           {APP_CATEGORIES.map(cat => {
             const count = filterApps(DASHBOARD_APPS.filter(a => a.category === cat.key)).length;
@@ -185,10 +185,10 @@ export default function DashboardGrid({
                 key={cat.key}
                 type="button"
                 onClick={() => document.getElementById(`section-${cat.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-surface text-text text-sm font-semibold hover:border-accent hover:text-accent transition-colors cursor-pointer"
+                className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-border bg-surface text-text text-xs lg:text-sm font-semibold hover:border-accent hover:text-accent transition-colors cursor-pointer"
               >
                 {cat.label}
-                <span className="text-[11px] font-bold text-dim">{count}</span>
+                <span className="text-[10px] lg:text-[11px] font-bold text-dim">{count}</span>
               </button>
             );
           })}
@@ -211,7 +211,7 @@ export default function DashboardGrid({
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="기능 검색"
-              className="w-40 sm:w-56 pl-8 pr-3 py-1.5 rounded-full border border-border bg-surface text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+              className="w-32 sm:w-56 pl-7 lg:pl-8 pr-3 py-1 lg:py-1.5 rounded-full border border-border bg-surface text-xs lg:text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
             />
           </div>
         </div>
@@ -220,11 +220,11 @@ export default function DashboardGrid({
       {/* ── 즐겨찾기 섹션 ── */}
       <section id="section-favorites" className="scroll-mt-28 pt-6 border-t border-border">
         <div className="flex items-center gap-2 mb-3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-accent" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-accent lg:w-[18px] lg:h-[18px]" aria-hidden="true">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
-          <h2 className="font-title font-bold text-lg text-text">즐겨찾기</h2>
-          <span className="text-sm text-dim">({visibleFavorites.length})</span>
+          <h2 className="font-title font-bold text-base lg:text-lg text-text">즐겨찾기</h2>
+          <span className="text-xs lg:text-sm text-dim">({visibleFavorites.length})</span>
         </div>
         {visibleFavorites.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -241,8 +241,8 @@ export default function DashboardGrid({
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-surface/50 p-8 text-center">
-            <p className="text-sm text-dim">
+          <div className="rounded-2xl border border-dashed border-border bg-surface/50 p-6 lg:p-8 text-center">
+            <p className="text-xs lg:text-sm text-dim leading-relaxed">
               아직 즐겨찾기한 기능이 없습니다. 각 카드 우상단의{' '}
               <span className="inline-flex items-center align-middle mx-0.5">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent" aria-hidden="true">
@@ -261,10 +261,13 @@ export default function DashboardGrid({
         if (catApps.length === 0) return null;
         return (
           <section key={cat.key} id={`section-${cat.key}`} className="scroll-mt-28 pt-6 border-t border-border">
-            <div className="flex items-baseline gap-3 mb-3">
-              <h2 className="font-title font-bold text-lg text-text">{cat.label}</h2>
-              <span className="text-sm text-dim">{cat.description}</span>
-              <span className="ml-auto text-sm text-dim">({catApps.length})</span>
+            <div className="mb-3">
+              <div className="flex items-baseline gap-2 lg:gap-3">
+                <h2 className="font-title font-bold text-base lg:text-lg text-text">{cat.label}</h2>
+                <span className="hidden sm:inline text-sm text-dim">{cat.description}</span>
+                <span className="ml-auto text-xs lg:text-sm text-dim">({catApps.length})</span>
+              </div>
+              <p className="sm:hidden mt-0.5 text-[11px] text-dim leading-snug">{cat.description}</p>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {catApps.map(app => (

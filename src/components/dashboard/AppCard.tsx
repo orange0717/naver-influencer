@@ -115,7 +115,7 @@ export default function AppCard({
     : undefined;
 
   return (
-    <div className="group relative flex flex-col aspect-square bg-surface rounded-2xl border border-border p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40">
+    <div className="group relative flex flex-col aspect-square bg-surface rounded-2xl border border-border p-3 lg:p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40">
       {/* 상단: 카테고리 태그 + 상태 뱃지 + 즐겨찾기 */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-1 flex-wrap">
@@ -163,11 +163,11 @@ export default function AppCard({
       </div>
 
       {/* 제목 + 설명 */}
-      <div className={`flex-1 min-h-0 mb-3 transition-opacity ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}>
-        <h3 className="font-title font-bold text-base text-text mb-1 leading-snug line-clamp-2">
+      <div className={`flex-1 min-h-0 mb-2 lg:mb-3 transition-opacity ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}>
+        <h3 className="font-title font-bold text-sm lg:text-base text-text mb-1 leading-snug line-clamp-2">
           {app.title}
         </h3>
-        <p className="text-xs text-dim leading-relaxed line-clamp-3">
+        <p className="text-[11px] lg:text-xs text-dim leading-relaxed line-clamp-3">
           {app.description}
         </p>
       </div>
@@ -178,7 +178,7 @@ export default function AppCard({
           href={targetHref}
           target="_blank"
           rel="noopener noreferrer"
-          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass}`}
+          className={`w-full inline-flex items-center justify-center py-1.5 lg:py-2 rounded-xl text-[11px] lg:text-xs font-bold transition-all ${category.buttonClass}`}
         >
           {buttonLabel}
         </a>
@@ -188,7 +188,7 @@ export default function AppCard({
           onClick={handleDevPreviewClick}
           aria-disabled={app.devPreview ? true : undefined}
           tabIndex={app.devPreview ? -1 : undefined}
-          className={`w-full inline-flex items-center justify-center py-2 rounded-xl text-xs font-bold transition-all ${category.buttonClass} ${app.devPreview ? 'opacity-50 group-hover:opacity-100 cursor-not-allowed' : locked ? 'opacity-90' : ''}`}
+          className={`w-full inline-flex items-center justify-center py-1.5 lg:py-2 rounded-xl text-[11px] lg:text-xs font-bold transition-all ${category.buttonClass} ${app.devPreview ? 'opacity-50 group-hover:opacity-100 cursor-not-allowed' : locked ? 'opacity-90' : ''}`}
         >
           {buttonLabel}
         </Link>
