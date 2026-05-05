@@ -110,7 +110,7 @@ export default function DashboardGrid({
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
             <p className="text-sm text-white/80 font-semibold mb-2">N인플 대시보드</p>
-            <h1 className="font-title font-black text-2xl lg:text-3xl text-white leading-relaxed">
+            <h1 className="font-title font-black text-lg lg:text-2xl text-white leading-relaxed">
               네이버 크리에이터의 꿈이 실현되는 곳,
               <br />
               정직하고 투명한 데이터, N인플에서 확인하세요.
