@@ -29,11 +29,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         const supabase = createServiceClient();
         const { data: profile } = await supabase
           .from('users')
-          .select('id')
+          .select('id, is_admin')
           .eq('auth_id', authUser.id)
           .single();
 
-        if (profile && isAdmin(profile.id)) {
+        // users.is_admin 우선, ADMIN_USER_IDS 환경변수는 부트스트랩 폴백
+        if (profile && (profile.is_admin === true || isAdmin(profile.id))) {
           authorized = true;
         }
       }
