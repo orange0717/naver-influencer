@@ -5,6 +5,7 @@ import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-se
 import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import HomeGuestExtras from './_HomeGuestExtras';
+import DemoFloatingButton from '@/components/DemoFloatingButton';
 import type { PlanTier } from '@/lib/dashboard-catalog';
 
 export const dynamic = 'force-dynamic';
@@ -141,6 +142,7 @@ export default async function HomePage() {
         }}
       />
       {!isLoggedIn && <HomeGuestExtras />}
+      {currentPlan === 'free' && <DemoFloatingButton />}
     </>
   );
 }
