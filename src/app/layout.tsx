@@ -18,12 +18,20 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: '#BF877A',
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ninfle.kr"),
-  title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
-  description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다",
+  title: {
+    default: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
+    template: "%s | N인플",
+  },
+  description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다. 인플루언서 19,980명 + 블로거 83,933명+ 데이터.",
+  keywords: ["네이버 인플루언서", "키워드 분석", "블로그 SEO", "키워드 경쟁도", "검색량 조회", "인플루언서 랭킹", "블로그 품질지수", "키워드챌린지"],
+  alternates: {
+    canonical: "https://ninfle.kr",
+  },
   openGraph: {
     title: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
     description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다",
