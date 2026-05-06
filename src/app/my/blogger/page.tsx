@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
@@ -445,32 +445,6 @@ export default function BloggerDashboard() {
     });
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis, fetchBlogStats]);
 
-  // 전체 포스트 자동 순위확인 (로드 완료 시, 최대 20개씩)
-  useEffect(() => {
-    if (!profile || checkingAll) return;
-    const posts = blogPosts.length > 0 ? blogPosts : [];
-    if (posts.length === 0) return;
-    const unchecked = posts.filter(p => !missingResults[p.id]);
-    if (unchecked.length === 0) return;
-    const batch = unchecked.slice(0, 20);
-    const autoCheck = async () => {
-      setCheckingAll(true);
-      setCheckProgress({ current: 0, total: batch.length });
-      for (let i = 0; i < batch.length; i++) {
-        setCheckProgress({ current: i + 1, total: batch.length });
-        await checkMissing(batch[i]);
-        if (i < batch.length - 1) await new Promise(r => setTimeout(r, 1000));
-      }
-      setCheckingAll(false);
-      setCheckProgress({ current: 0, total: 0 });
-      saveScoreToServer();
-    };
-    const timer = setTimeout(autoCheck, 2000);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, blogPosts.length]);
-
-
   const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
     setCustomProfile(prev => {
       const updated = { ...prev, ...data };
@@ -531,7 +505,7 @@ export default function BloggerDashboard() {
   // 평균순위 = 모든 키워드의 순위 합산 / 노출된 키워드 수
   // 키워드순위 페이지의 개별 키워드 결과를 직접 사용
   // ══════════════════════════════════════════════════════════
-  const blogScoreCalc = (() => {
+  const blogScoreCalc = useMemo(() => {
     const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     const publicPosts = posts.filter(p => p.isPublic !== false);
 
@@ -604,13 +578,16 @@ export default function BloggerDashboard() {
       totalKeywords,
       hasData: true,
     };
-  })();
+  }, [profile?.blogId, allBlogPosts, blogPosts, missingResults]);
 
   const totalScore = blogScoreCalc.hasData ? blogScoreCalc.score : (scoreData?.total_score || 0);
-  latestScoresRef.current = { total: totalScore, scores: [0, 0, 0, 0, 0, 0], grade: '' };
+
+  useEffect(() => {
+    latestScoresRef.current = { total: totalScore, scores: [0, 0, 0, 0, 0, 0], grade: '' };
+  }, [totalScore]);
 
   // 발행량 통계 (allBlogPosts 기반 — 최대 30개)
-  const publishingStats = (() => {
+  const publishingStats = useMemo(() => {
     const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     if (posts.length === 0) return { daily: 0, weeklyTotal: 0, weeklyAvg: 0, monthlyTotal: 0 };
     const now = new Date();
@@ -631,7 +608,7 @@ export default function BloggerDashboard() {
       weeklyAvg: Math.round(monthCount / 4 * 10) / 10,
       monthlyTotal: monthCount,
     };
-  })();
+  }, [allBlogPosts, blogPosts]);
 
   if (!profile) return null;
 
