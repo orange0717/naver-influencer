@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import googleTrends from 'google-trends-api';
+import { checkToolAnonQuota } from '@/lib/anon-quota';
 
 export const runtime = 'nodejs';
 export const revalidate = 3600;
+
+const ANON_DAILY_LIMIT = 30;
 
 interface TimelineEntry {
   time: string;
@@ -15,6 +18,18 @@ export async function GET(request: NextRequest) {
 
   if (!keyword || keyword.length > 64) {
     return NextResponse.json({ error: '키워드를 입력하세요.' }, { status: 400 });
+  }
+
+  // 비회원 IP+UA 일일 캡 (구글 비공식 엔드포인트 IP 차단 위험 보호)
+  const quota = await checkToolAnonQuota(request, 'google-trends', ANON_DAILY_LIMIT);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: `오늘 조회 한도(${ANON_DAILY_LIMIT}회)를 모두 사용했습니다. 가입하시면 더 많은 조회가 가능합니다.`,
+        limitExceeded: true,
+      },
+      { status: 429 },
+    );
   }
 
   const endTime = new Date();

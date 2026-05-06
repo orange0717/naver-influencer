@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
+import { checkToolAnonQuota } from '@/lib/anon-quota';
 
 export const dynamic = 'force-dynamic';
+
+const ANON_DAILY_LIMIT = 30;
 
 /** CORS 헤더 (크롬 확장앱 + 자체 도메인만 허용) */
 const ALLOWED_ORIGINS = [
@@ -37,6 +40,18 @@ export async function GET(request: NextRequest) {
 
   if (!keyword) {
     return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400, headers: getCorsHeaders(request) });
+  }
+
+  // 비회원 IP+UA 일일 캡 (네이버 검색광고 API 한도 보호)
+  const quota = await checkToolAnonQuota(request, 'search-volume', ANON_DAILY_LIMIT);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: `오늘 검색 한도(${ANON_DAILY_LIMIT}회)를 모두 사용했습니다. 가입하시면 더 많은 검색이 가능합니다.`,
+        limitExceeded: true,
+      },
+      { status: 429, headers: getCorsHeaders(request) },
+    );
   }
 
   const apiKey = process.env.NAVER_API_KEY?.trim();
