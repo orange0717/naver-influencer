@@ -336,13 +336,32 @@ export async function GET(request: NextRequest) {
       }
 
       const validRows = upsertRows.filter(r => r.rank_position != null && r.rank_position > 0);
-      for (let i = 0; i < validRows.length; i += 100) {
-        const batch = validRows.slice(i, i + 100);
-        const { error } = await supabase
-          .from('keyword_rankings')
-          .upsert(batch, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
-        if (error) console.error(`[crawl-challenge-ranks] Upsert error:`, error.message);
-        else batchCount += batch.length;
+
+      if (validRows.length > 0) {
+        // 1차: atomic RPC — 단일 트랜잭션, 도중 실패 시 전체 rollback
+        // (migration-085-atomic-ranking-upsert.sql)
+        const { error: rpcError } = await supabase.rpc(
+          'upsert_keyword_rankings_atomic',
+          { p_rows: validRows }
+        );
+        if (!rpcError) {
+          batchCount += validRows.length;
+        } else {
+          // RPC 미배포 또는 호출 실패 → 기존 batch upsert 로 폴백
+          // (이 경로는 부분 적재 가능, 마이그레이션 적용 후엔 거의 타지 않음)
+          console.warn(
+            `[crawl-challenge-ranks] atomic RPC failed for ${inf.naver_id}, ` +
+            `falling back to batch upsert: ${rpcError.message}`
+          );
+          for (let i = 0; i < validRows.length; i += 100) {
+            const batch = validRows.slice(i, i + 100);
+            const { error } = await supabase
+              .from('keyword_rankings')
+              .upsert(batch, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
+            if (error) console.error(`[crawl-challenge-ranks] Upsert error:`, error.message);
+            else batchCount += batch.length;
+          }
+        }
       }
 
       // 6. influencers 테이블 집계 업데이트
