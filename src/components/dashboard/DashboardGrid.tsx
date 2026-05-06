@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppCard, { useFavorites } from './AppCard';
+import DemoModal from '@/components/DemoModal';
 import {
   APP_CATEGORIES,
   DASHBOARD_APPS,
@@ -60,6 +61,7 @@ export default function DashboardGrid({
 }: Props) {
   const { favorites, toggle } = useFavorites();
   const [query, setQuery] = useState('');
+  const [demoOpen, setDemoOpen] = useState(false);
   const { user } = useAuth();
 
   // 클라이언트에서 /api/auth/me 로 로드된 최신 플랜으로 덮어쓰기 (서버 초기값 폴백)
@@ -111,9 +113,9 @@ export default function DashboardGrid({
           <div>
             <p className="text-xs lg:text-sm text-white/80 font-semibold mb-1.5 lg:mb-2">N인플 대시보드</p>
             <h1 className="font-title font-black text-sm lg:text-2xl text-white leading-relaxed">
-              블로그 분석부터 키워드챌린지,
+              블로그 분석부터 키워드챌린지, 글 피드백까지
               <br />
-              글 피드백까지 All in one 플랫폼.
+              네이버 블로그 All in one 플랫폼.
             </h1>
           </div>
           <div className="flex items-center gap-2 lg:gap-3 justify-end">
@@ -127,6 +129,15 @@ export default function DashboardGrid({
                 <p className="text-xs lg:text-sm font-bold text-white">{formatDate(subscriptionExpiresAt)}</p>
               </div>
             )}
+            {currentPlan === 'free' && (
+              <button
+                type="button"
+                onClick={() => setDemoOpen(true)}
+                className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white/20 border border-white/40 text-white text-xs lg:text-sm font-bold hover:bg-white/30 transition-colors"
+              >
+                3일 데모체험
+              </button>
+            )}
             <Link
               href="/subscribe"
               className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white text-accent-hover text-xs lg:text-sm font-bold hover:bg-white/90 transition-colors"
@@ -135,6 +146,7 @@ export default function DashboardGrid({
             </Link>
           </div>
         </div>
+        <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
 
         {/* 빠른 지표 4개 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 mt-4 lg:mt-6">
