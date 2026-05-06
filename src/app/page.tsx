@@ -77,6 +77,7 @@ export default async function HomePage() {
   let currentPlan: PlanTier = 'free';
   let subscriptionExpiresAt: string | null = null;
   let myKeywordCount = 0;
+  let isAdminUser = false;
   const myBlogRank: number | null = null;
 
   const supabase = createServiceClient();
@@ -119,6 +120,7 @@ export default async function HomePage() {
     subscriptionExpiresAt = profileResult?.subscription_expires_at || null;
     currentPlan = resolvePlan(profileResult?.subscription_plan || null, subscriptionExpiresAt);
     if (profileResult?.id && isAdmin(profileResult.id)) {
+      isAdminUser = true;
       currentPlan = 'influencer';
     }
     myKeywordCount = keywordCountResult;
@@ -141,8 +143,8 @@ export default async function HomePage() {
           unreadNotices,
         }}
       />
-      {!isLoggedIn && <HomeGuestExtras />}
-      {currentPlan === 'free' && <DemoFloatingButton />}
+      <HomeGuestExtras />
+      {(!isLoggedIn || isAdminUser || currentPlan === 'free') && <DemoFloatingButton />}
     </>
   );
 }
