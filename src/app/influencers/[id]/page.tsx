@@ -34,11 +34,11 @@ export async function generateMetadata({
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id);
     const { data } = await supabase
       .from('influencers')
-      .select('name, naver_id, my_keyword_category, total_keywords, integrated_top3_count, subscriber_count')
+      .select('display_name, naver_id, my_keyword_category, total_keywords, integrated_top3_count, subscriber_count')
       .eq(isUuid ? 'id' : 'naver_id', decodeURIComponent(id))
       .single();
 
-    if (!data?.name) return fallback;
+    if (!data?.display_name) return fallback;
 
     const parts: string[] = [];
     if (data.my_keyword_category) parts.push(data.my_keyword_category);
@@ -46,8 +46,8 @@ export async function generateMetadata({
     if (data.integrated_top3_count) parts.push(`TOP3 ${Number(data.integrated_top3_count).toLocaleString()}회`);
     if (data.subscriber_count) parts.push(`팬 ${Number(data.subscriber_count).toLocaleString()}명`);
 
-    const title = `${data.name} 인플루언서 포트폴리오`;
-    const description = `네이버 인플루언서 ${data.name}${data.naver_id ? `(@${data.naver_id})` : ''} 분석${parts.length ? ` — ${parts.join(', ')}` : ''}.`;
+    const title = `${data.display_name} 인플루언서 포트폴리오`;
+    const description = `네이버 인플루언서 ${data.display_name}${data.naver_id ? `(@${data.naver_id})` : ''} 분석${parts.length ? ` — ${parts.join(', ')}` : ''}.`;
 
     return {
       title,

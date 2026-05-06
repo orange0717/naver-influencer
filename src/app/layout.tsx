@@ -133,10 +133,10 @@ const SOFTWARE_JSONLD = {
     '@type': 'AggregateOffer',
     priceCurrency: 'KRW',
     lowPrice: '0',
-    highPrice: '9900',
+    highPrice: '99000',
     offerCount: 3,
     description:
-      '인플루언서 리스트·키워드 리스트·커뮤니티는 무료. 7일 무료 체험. 블로거 플랜 5,500원/월, 인플루언서 플랜 9,900원/월.',
+      '인플루언서 리스트·키워드 리스트·커뮤니티는 무료. 7일 무료 체험. 블로거 플랜 5,500원/월, 인플루언서 플랜 9,900원/월, 인플루언서 12개월 99,000원.',
   },
 };
 
