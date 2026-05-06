@@ -1,9 +1,9 @@
 /**
  * POST /api/portone/billing/complete
- * 빌링키 발급 완료 콜백 — 클라이언트가 PortOne.requestIssueBillingKey 결과를 받은 직후 호출.
- * Body: { billingKey: string, planKey: string }
+ * 일회성 결제 완료 콜백 — 클라이언트가 PortOne.requestPayment 결과를 받은 직후 호출.
+ * Body: { paymentId: string, planKey: string }
  *
- * 동작: 빌링키 검증 → 구독 생성 → 즉시 첫 결제 → 라이센스 활성화.
+ * 동작: PortOne 결제 검증 → 구독 활성화. (KPN 채널 미지원으로 빌링키 X)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@/lib/supabase-server';
@@ -14,8 +14,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { billingKey, planKey } = (await req.json()) as { billingKey?: string; planKey?: string };
-    if (!billingKey || !planKey) {
+    const { paymentId, planKey } = (await req.json()) as { paymentId?: string; planKey?: string };
+    if (!paymentId || !planKey) {
       return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });
     }
     if (!getPlan(planKey)) {
@@ -30,18 +30,12 @@ export async function POST(req: NextRequest) {
 
     const result = await completeBillingKeyIssue({
       userId: user.id,
-      billingKey,
+      paymentId,
       planKey,
     });
 
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
-    }
-    if (!result.firstChargeOk) {
-      return NextResponse.json(
-        { ok: true, subscriptionId: result.subscriptionId, firstChargeFailed: true, error: result.error },
-        { status: 402 } // 402 Payment Required: 빌링키는 발급됐지만 첫 결제 실패
-      );
     }
     return NextResponse.json({ ok: true, subscriptionId: result.subscriptionId });
   } catch (e) {

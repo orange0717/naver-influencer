@@ -13,16 +13,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface PortOneSDK {
-  requestIssueBillingKey: (params: {
+  // ORF 와 동일한 일회성 카드 결제 — KPN 채널은 빌링키 미지원이라 일회성으로 단순화.
+  // 정기결제는 빌링키 지원 PG 채널 추가 후 재활성화 예정.
+  requestPayment: (params: {
     storeId: string;
     channelKey: string;
-    billingKeyMethod: 'CARD';
-    issueId: string;
-    issueName: string;
-    customer?: { customerId?: string; email?: string };
+    paymentId: string;
+    orderName: string;
+    totalAmount: number;
+    currency: 'CURRENCY_KRW';
+    payMethod: 'CARD';
     redirectUrl?: string;
-    noticeUrls?: string[];
-  }) => Promise<{ billingKey?: string; code?: string; message?: string } | undefined>;
+    customer?: { email?: string };
+  }) => Promise<{ code?: string; message?: string; paymentId?: string } | undefined>;
 }
 
 declare global {
@@ -74,43 +77,37 @@ export default function BillingButton({ planKey, label, className }: Props) {
         return;
       }
 
-      // 2. PortOne 빌링키 발급창
-      const result = await window.PortOne.requestIssueBillingKey({
+      // 2. PortOne 일회성 결제창 (ORF 와 동일 흐름)
+      const result = await window.PortOne.requestPayment({
         storeId: STORE_ID,
         channelKey: CHANNEL_KEY,
-        billingKeyMethod: 'CARD',
-        issueId: issueData.paymentId,
-        issueName: issueData.planName || '정기결제 등록',
+        paymentId: issueData.paymentId,
+        orderName: issueData.planName || '구독 결제',
+        totalAmount: issueData.amount,
+        currency: 'CURRENCY_KRW',
+        payMethod: 'CARD',
         redirectUrl: typeof window !== 'undefined'
           ? `${window.location.origin}/subscribe?payment=portone`
           : undefined,
       });
 
-      if (!result || result.code) {
-        if (result?.code === 'USER_CANCEL') {
+      if (result && result.code) {
+        if (result.code === 'USER_CANCEL' || result.code === 'FAILURE_TYPE_PG') {
           setMessage({ type: 'info', text: '결제가 취소되었습니다.' });
         } else {
-          setMessage({ type: 'error', text: result?.message || '빌링키 발급에 실패했습니다.' });
+          setMessage({ type: 'error', text: result.message || '결제에 실패했습니다.' });
         }
         return;
       }
-      if (!result.billingKey) {
-        setMessage({ type: 'error', text: '빌링키를 받지 못했습니다.' });
-        return;
-      }
 
-      // 3. 발급 완료 + 첫 결제
+      // 3. 결제 검증 + 구독 활성화
       const completeRes = await fetch('/api/portone/billing/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ billingKey: result.billingKey, planKey }),
+        body: JSON.stringify({ paymentId: issueData.paymentId, planKey }),
       });
       const completeData = await completeRes.json().catch(() => ({}));
 
-      if (completeRes.status === 402) {
-        setMessage({ type: 'error', text: '카드는 등록되었지만 첫 결제가 실패했습니다. 다른 카드로 다시 시도해주세요.' });
-        return;
-      }
       if (!completeRes.ok) {
         setMessage({ type: 'error', text: completeData.error || '결제 검증에 실패했습니다.' });
         return;

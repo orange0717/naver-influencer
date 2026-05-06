@@ -32,67 +32,111 @@ function adminClient(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-/* ── 빌링키 발급용 사전등록 (amount=0, type='issue') ───────────────────
-   클라이언트가 PortOne.requestIssueBillingKey 호출 직전에 받는 paymentId. */
+/* ── 일회성 결제 사전등록 (KPN 채널은 빌링키 미지원이라 ORF 와 동일 흐름) ──
+   클라이언트가 PortOne.requestPayment 호출 직전에 받는 paymentId·금액. */
 export async function preparePortoneIssue(
   userId: string,
   planKey: string
-): Promise<{ paymentId: string; planName: string } | { error: string }> {
+): Promise<{ paymentId: string; planName: string; amount: number } | { error: string }> {
   const plan = getPlan(planKey);
   if (!plan) return { error: '유효하지 않은 플랜입니다.' };
 
-  // KPN PG 제약: 영숫자만 + 32바이트 이하 → 'b' (1) + UUID 24자 = 25자
-  const paymentId = 'b' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
-  // pre-register 는 amount=0 도 허용. PortOne 빌링키 발급은 별도 API 라 pre-register 생략 가능.
-  // 단, payment_intents 에 발급용 레코드는 남겨 추적 가능하게.
+  // KPN PG 제약: 영숫자만 + 32바이트 이하 → 'p' (1) + UUID 24자 = 25자
+  const paymentId = 'p' + crypto.randomUUID().replace(/-/g, '').slice(0, 24);
+
   const supa = adminClient();
-  const { error } = await supa.from('payment_intents').insert({
+  const { error: intentErr } = await supa.from('payment_intents').insert({
     payment_id: paymentId,
     user_id: userId,
     plan_key: planKey,
-    amount: 0,
-    type: 'issue',
+    amount: plan.amount,
+    type: 'charge',
   });
-  if (error) {
-    console.error('[Billing] intent insert failed:', error);
+  if (intentErr) {
+    console.error('[Billing] intent insert failed:', intentErr);
     return { error: '결제 준비 중 오류가 발생했습니다.' };
   }
-  return { paymentId, planName: plan.name };
+
+  // PortOne pre-register (금액 잠금)
+  const pre = await preRegisterPayment(paymentId, plan.amount);
+  if (!pre.ok) {
+    return { error: '결제 게이트웨이 오류. 잠시 후 다시 시도해주세요.' };
+  }
+
+  return { paymentId, planName: plan.name, amount: plan.amount };
 }
 
-/* ── 빌링키 발급 완료 → 구독 생성 + 첫 결제 ──────────────────────────── */
+/* ── 일회성 결제 검증 + 구독 활성화 (ORF 와 동일 흐름) ───────────────── */
 export async function completeBillingKeyIssue(opts: {
   userId: string;
-  billingKey: string;
+  paymentId: string;
   planKey: string;
-}): Promise<{ ok: true; subscriptionId: string; firstChargeOk: boolean; error?: string } | { ok: false; error: string }> {
+}): Promise<{ ok: true; subscriptionId: string } | { ok: false; error: string }> {
   const plan = getPlan(opts.planKey);
   if (!plan) return { ok: false, error: '유효하지 않은 플랜입니다.' };
 
-  // 1. PortOne 측 빌링키 검증
-  const bk = await getBillingKey(opts.billingKey);
-  if (!bk || bk.status !== 'ISSUED') {
-    return { ok: false, error: '빌링키 검증에 실패했습니다.' };
+  // 1. PortOne API 결제 상태 조회
+  const { getPayment } = await import('@/lib/portone');
+  const payData = await getPayment(opts.paymentId);
+  if (!payData) return { ok: false, error: '결제 정보를 조회할 수 없습니다.' };
+  if (payData.status !== 'PAID') {
+    return { ok: false, error: `결제가 완료되지 않았습니다. (status=${payData.status})` };
   }
 
   const supa = adminClient();
 
-  // 2. 기존 active/pending 구독 정리 (한 user 한 active 정책)
+  // 2. payment_intents 검증 (사용자 + 금액 일치)
+  const { data: intent } = await supa
+    .from('payment_intents')
+    .select('*')
+    .eq('payment_id', opts.paymentId)
+    .single();
+  if (!intent || intent.user_id !== opts.userId) {
+    return { ok: false, error: '결제 사전등록을 찾을 수 없습니다.' };
+  }
+  if (Number(payData.amount?.total) !== Number(intent.amount)) {
+    console.error('[Billing] amount mismatch:', payData.amount, intent.amount);
+    return { ok: false, error: '결제 금액이 일치하지 않습니다.' };
+  }
+
+  // 3. 트랜잭션 INSERT (멱등성 — payment_id UNIQUE)
+  const { error: txErr } = await supa.from('payment_transactions').insert({
+    user_id: opts.userId,
+    payment_id: opts.paymentId,
+    transaction_id: payData.transactionId || null,
+    plan_key: opts.planKey,
+    amount: intent.amount,
+    status: 'PAID',
+    pay_method: payData.method?.type || 'CARD',
+    charge_type: 'initial',
+    raw_response: payData as object,
+  });
+  if (txErr && !txErr.message?.includes('duplicate')) {
+    console.error('[Billing] tx insert failed:', txErr);
+    // duplicate 가 아닌 다른 에러는 무시하고 진행 (이미 처리됐을 수도)
+  }
+
+  // 4. 기존 active/pending 구독 정리
   await supa
     .from('subscriptions')
     .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
     .eq('user_id', opts.userId)
     .in('status', ['pending', 'active', 'past_due']);
 
-  // 3. 새 구독 생성 (status='pending')
+  // 5. 새 구독 생성 + 즉시 active
+  const now = new Date();
+  const periodEnd = calculateNextChargeAt(now, plan.months);
   const { data: sub, error: insErr } = await supa
     .from('subscriptions')
     .insert({
       user_id: opts.userId,
       plan_key: opts.planKey,
-      billing_key: opts.billingKey,
-      billing_key_issued_at: new Date().toISOString(),
-      status: 'pending',
+      billing_key: null,                        // 빌링키 미사용 (KPN 채널 미지원)
+      status: 'active',
+      current_period_start: now.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      next_charge_at: null,                     // 자동결제 X — 사용자가 만료 시 수동 갱신
+      last_payment_id: opts.paymentId,
     })
     .select('id')
     .single();
@@ -101,35 +145,7 @@ export async function completeBillingKeyIssue(opts: {
     return { ok: false, error: '구독 생성에 실패했습니다.' };
   }
 
-  // 4. 즉시 첫 결제 시도
-  const firstCharge = await chargePlan({
-    subscriptionId: sub.id,
-    userId: opts.userId,
-    planKey: opts.planKey,
-    billingKey: opts.billingKey,
-    chargeType: 'initial',
-  });
-
-  if (!firstCharge.ok) {
-    // [C-1 review fix] 첫 결제 실패 시 PortOne 측 빌링키도 삭제 (orphan 방지)
-    // PortOne 에 ISSUED 상태로 남으면 사용자가 재시도할 때 quasi-duplicate 누적된다.
-    if (opts.billingKey) {
-      await portoneDeleteBillingKey(opts.billingKey).catch((e) => {
-        console.warn('[Billing] orphan billing key delete failed:', e);
-      });
-    }
-    await supa
-      .from('subscriptions')
-      .update({
-        status: 'cancelled',
-        billing_key: null,                       // 명시적 NULL
-        cancelled_at: new Date().toISOString(),
-      })
-      .eq('id', sub.id);
-    return { ok: true, subscriptionId: sub.id, firstChargeOk: false, error: firstCharge.error };
-  }
-
-  return { ok: true, subscriptionId: sub.id, firstChargeOk: true };
+  return { ok: true, subscriptionId: sub.id };
 }
 
 /* ── 빌링키로 1회 자동청구 + 구독 상태 갱신 ──────────────────────────── */
