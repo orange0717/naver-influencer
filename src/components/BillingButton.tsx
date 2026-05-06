@@ -35,6 +35,73 @@ declare global {
 const STORE_ID    = process.env.NEXT_PUBLIC_PORTONE_STORE_ID    || '';
 const CHANNEL_KEY = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY || '';
 
+/**
+ * PortOne 결제창 강제 닫기 — SDK 내부 X 버튼이 안 먹힐 때 사용.
+ * V2 는 외부 close API 가 없어, DOM 컨테이너/iframe 을 직접 제거한다.
+ */
+function forceClosePortonePopup(): boolean {
+  const selectors = [
+    '#portone-ui-container',
+    'div[id^="portone-"]',
+    'div[class^="portone-"]',
+    'iframe[src*="portone"]',
+    'iframe[src*="kpn"]',
+    'iframe[src*="paymentwall"]',
+  ];
+  let removed = false;
+  selectors.forEach((sel) => {
+    document.querySelectorAll(sel).forEach((el) => {
+      try { el.remove(); removed = true; } catch {}
+    });
+  });
+  document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
+  return removed;
+}
+
+let _payCloseBtn: HTMLButtonElement | null = null;
+let _payEscHandler: ((e: KeyboardEvent) => void) | null = null;
+
+function showPaymentCloseButton(onClose: () => void) {
+  if (_payCloseBtn) return;
+  const btn = document.createElement('button');
+  btn.id = 'ninflPayCloseBtn';
+  btn.type = 'button';
+  btn.setAttribute('aria-label', '결제창 닫기');
+  btn.innerHTML = '✕ 결제창 닫기';
+  btn.style.cssText = [
+    'position:fixed', 'top:16px', 'right:16px',
+    'z-index:2147483647',
+    'background:#BF877A', 'color:#fff', 'border:none',
+    'padding:10px 16px', 'border-radius:24px',
+    'font-size:13px', 'font-weight:700', 'cursor:pointer',
+    'box-shadow:0 4px 16px rgba(0,0,0,0.3)',
+    'font-family:inherit',
+  ].join(';');
+  btn.onmouseover = () => { btn.style.background = '#A0705F'; };
+  btn.onmouseout  = () => { btn.style.background = '#BF877A'; };
+  btn.onclick = () => {
+    forceClosePortonePopup();
+    hidePaymentCloseButton();
+    onClose();
+  };
+  document.body.appendChild(btn);
+  _payCloseBtn = btn;
+
+  _payEscHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') { btn.click(); }
+  };
+  document.addEventListener('keydown', _payEscHandler);
+}
+
+function hidePaymentCloseButton() {
+  if (_payCloseBtn) { try { _payCloseBtn.remove(); } catch {} _payCloseBtn = null; }
+  if (_payEscHandler) {
+    document.removeEventListener('keydown', _payEscHandler);
+    _payEscHandler = null;
+  }
+}
+
 interface Props {
   planKey: string;
   label: string;
@@ -77,19 +144,27 @@ export default function BillingButton({ planKey, label, className }: Props) {
         return;
       }
 
-      // 2. PortOne 일회성 결제창 (ORF 와 동일 흐름)
-      const result = await window.PortOne.requestPayment({
-        storeId: STORE_ID,
-        channelKey: CHANNEL_KEY,
-        paymentId: issueData.paymentId,
-        orderName: issueData.planName || '구독 결제',
-        totalAmount: issueData.amount,
-        currency: 'CURRENCY_KRW',
-        payMethod: 'CARD',
-        redirectUrl: typeof window !== 'undefined'
-          ? `${window.location.origin}/subscribe?payment=portone`
-          : undefined,
+      // 2. PortOne 일회성 결제창 (외부 닫기 버튼 + ESC 핸들러 등록)
+      showPaymentCloseButton(() => {
+        setMessage({ type: 'info', text: '결제가 취소되었습니다.' });
       });
+      let result;
+      try {
+        result = await window.PortOne.requestPayment({
+          storeId: STORE_ID,
+          channelKey: CHANNEL_KEY,
+          paymentId: issueData.paymentId,
+          orderName: issueData.planName || '구독 결제',
+          totalAmount: issueData.amount,
+          currency: 'CURRENCY_KRW',
+          payMethod: 'CARD',
+          redirectUrl: typeof window !== 'undefined'
+            ? `${window.location.origin}/subscribe?payment=portone`
+            : undefined,
+        });
+      } finally {
+        hidePaymentCloseButton();
+      }
 
       if (result && result.code) {
         if (result.code === 'USER_CANCEL' || result.code === 'FAILURE_TYPE_PG') {
@@ -117,6 +192,7 @@ export default function BillingButton({ planKey, label, className }: Props) {
       setMessage({ type: 'info', text: '결제가 완료되었습니다. 이용권이 활성화되었습니다.' });
       setTimeout(() => router.push('/my'), 1200);
     } catch (e) {
+      hidePaymentCloseButton();
       console.error('[BillingButton] error:', e);
       setMessage({ type: 'error', text: '네트워크 오류. 잠시 후 다시 시도해주세요.' });
     } finally {
