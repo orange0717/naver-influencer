@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppCard, { useFavorites } from './AppCard';
+import AppDetailModal from './AppDetailModal';
 import {
   APP_CATEGORIES,
   DASHBOARD_APPS,
   type AppCategoryKey,
+  type DashboardApp,
   type PlanTier,
 } from '@/lib/dashboard-catalog';
 import { useAuth } from '@/hooks/useAuth';
@@ -60,6 +62,7 @@ export default function DashboardGrid({
 }: Props) {
   const { favorites, toggle } = useFavorites();
   const [query, setQuery] = useState('');
+  const [selectedApp, setSelectedApp] = useState<DashboardApp | null>(null);
   const { user } = useAuth();
 
   // 클라이언트에서 /api/auth/me 로 로드된 최신 플랜으로 덮어쓰기 (서버 초기값 폴백)
@@ -234,9 +237,9 @@ export default function DashboardGrid({
                 app={app}
                 category={categoryMap[app.category]}
                 currentPlan={currentPlan}
-                isLoggedIn={isLoggedIn}
                 isFavorite
                 onToggleFavorite={toggle}
+                onSelect={setSelectedApp}
               />
             ))}
           </div>
@@ -276,9 +279,9 @@ export default function DashboardGrid({
                   app={app}
                   category={cat}
                   currentPlan={currentPlan}
-                  isLoggedIn={isLoggedIn}
                   isFavorite={favorites.has(app.id)}
                   onToggleFavorite={toggle}
+                  onSelect={setSelectedApp}
                 />
               ))}
             </div>
@@ -293,6 +296,17 @@ export default function DashboardGrid({
             <p className="text-sm">&ldquo;{query}&rdquo;에 해당하는 기능이 없습니다.</p>
           </div>
         )}
+
+      {/* ── 앱 상세 모달 ── */}
+      {selectedApp && (
+        <AppDetailModal
+          app={selectedApp}
+          category={categoryMap[selectedApp.category]}
+          currentPlan={currentPlan}
+          isLoggedIn={isLoggedIn}
+          onClose={() => setSelectedApp(null)}
+        />
+      )}
     </div>
   );
 }

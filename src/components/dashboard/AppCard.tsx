@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { DashboardApp, AppCategoryMeta, PlanTier } from '@/lib/dashboard-catalog';
 
@@ -13,7 +11,6 @@ function planLabel(plan: PlanTier): string {
   return '';
 }
 
-/** 카드의 requiredPlan 기준 CTA 버튼 라벨 (잠금 해제 여부와 무관하게 항상 동일) */
 function ctaForRequiredPlan(plan?: PlanTier): string {
   if (plan === 'influencer') return '인플루언서 플랜';
   if (plan === 'blogger') return '예비 인플루언서 + 플랜';
@@ -66,56 +63,34 @@ interface AppCardProps {
   category: AppCategoryMeta;
   /** 현재 사용자 플랜 (잠금 판정) */
   currentPlan: PlanTier;
-  /** 로그인 여부 (authOnly 처리) */
-  isLoggedIn: boolean;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
+  onSelect: (app: DashboardApp) => void;
 }
 
 export default function AppCard({
   app,
   category,
   currentPlan,
-  isLoggedIn,
   isFavorite,
   onToggleFavorite,
+  onSelect,
 }: AppCardProps) {
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
-  // devPreview 카드도 잠금 뱃지로 유료 등급은 그대로 표시 (정식 출시 시 가격 정보 미리 노출)
   const locked =
     !!app.requiredPlan && PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan];
-  const needsLogin = !!app.authOnly && !isLoggedIn;
 
-  // 잠금 시 이용권 페이지로 유도, 로그인 필요 시 로그인 페이지로 유도
-  // devPreview 는 결제 후 컴플레인 방지를 위해 클릭 무력화
-  let targetHref = app.href;
-  if (app.devPreview) {
-    targetHref = '#';
-  } else if (locked && app.requiredPlan) {
-    targetHref = `/subscribe?highlight=${app.requiredPlan === 'influencer' ? 'influencer' : 'blogger'}`;
-  } else if (needsLogin) {
-    targetHref = `/auth/login?redirect=${encodeURIComponent(app.href)}`;
-  }
-
-  // 카드의 필요 플랜 기준 라벨로 통일 (잠금 해제된 사용자도 카드 등급이 보이도록)
-  // ctaLabel 이 명시된 카드(외부 링크 '바로가기' 등)는 그것을 우선
-  const buttonLabel = app.devPreview
+  // 카드 하단 풀폭 라벨 (시각용, 클릭은 카드 전체에서 처리)
+  const planTagLabel = app.devPreview
     ? '준비 중'
     : (app.ctaLabel || ctaForRequiredPlan(app.requiredPlan));
 
-  // 외부 링크는 새 탭으로 열기 (Next Link 대신 일반 a)
-  const isExternal = !!app.external && !locked && !needsLogin && !app.devPreview;
-
-  // devPreview 카드는 클릭 비활성 (결제 후 못 쓰는 컴플레인 방지)
-  const handleDevPreviewClick = app.devPreview
-    ? (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    : undefined;
-
   return (
-    <div className="group relative flex flex-col aspect-square bg-surface rounded-2xl border border-border p-3 lg:p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40">
+    <button
+      type="button"
+      onClick={() => onSelect(app)}
+      className="group relative flex flex-col text-left bg-surface rounded-2xl border border-border p-3 lg:p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40 cursor-pointer"
+    >
       {/* 상단: 카테고리 태그 + 상태 뱃지 + 즐겨찾기 */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-1 flex-wrap">
@@ -137,12 +112,20 @@ export default function AppCard({
             </span>
           )}
         </div>
-        <button
-          type="button"
+        <span
+          role="button"
+          tabIndex={0}
           onClick={e => {
             e.preventDefault();
             e.stopPropagation();
             onToggleFavorite(app.id);
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite(app.id);
+            }
           }}
           aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
           className="p-1 -mr-1 -mt-1 rounded-full text-dim hover:text-accent hover:bg-accent/5 transition-colors cursor-pointer shrink-0"
@@ -159,40 +142,22 @@ export default function AppCard({
           >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
-        </button>
+        </span>
       </div>
 
-      {/* 제목 + 설명 */}
-      <div className={`flex-1 min-h-0 mb-2 lg:mb-3 transition-opacity ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}>
-        <h3 className="font-title font-bold text-sm lg:text-base text-text mb-1 leading-snug line-clamp-2">
+      {/* 제목 (설명은 모달로 이전) */}
+      <div className={`mb-3 transition-opacity ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : ''}`}>
+        <h3 className="font-title font-bold text-sm lg:text-base text-text leading-snug line-clamp-2">
           {app.title}
         </h3>
-        <p className="text-[11px] lg:text-xs text-dim leading-relaxed line-clamp-3">
-          {app.description}
-        </p>
       </div>
 
-      {/* 풀폭 CTA */}
-      {isExternal ? (
-        <a
-          href={targetHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`w-full inline-flex items-center justify-center py-1.5 lg:py-2 rounded-xl text-[11px] lg:text-xs font-bold transition-all ${category.buttonClass}`}
-        >
-          {buttonLabel}
-        </a>
-      ) : (
-        <Link
-          href={targetHref}
-          onClick={handleDevPreviewClick}
-          aria-disabled={app.devPreview ? true : undefined}
-          tabIndex={app.devPreview ? -1 : undefined}
-          className={`w-full inline-flex items-center justify-center py-1.5 lg:py-2 rounded-xl text-[11px] lg:text-xs font-bold transition-all ${category.buttonClass} ${app.devPreview ? 'opacity-50 group-hover:opacity-100 cursor-not-allowed' : locked ? 'opacity-90' : ''}`}
-        >
-          {buttonLabel}
-        </Link>
-      )}
-    </div>
+      {/* 풀폭 플랜 라벨 (시각용) */}
+      <span
+        className={`mt-auto w-full inline-flex items-center justify-center py-1.5 lg:py-2 rounded-xl text-[11px] lg:text-xs font-bold transition-all ${category.buttonClass} ${app.devPreview ? 'opacity-50 group-hover:opacity-100' : locked ? 'opacity-90' : ''}`}
+      >
+        {planTagLabel}
+      </span>
+    </button>
   );
 }
