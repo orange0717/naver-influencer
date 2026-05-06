@@ -583,8 +583,31 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     }))
     .sort((a, b) => b.top10Rate - a.top10Rate || a.avgRank - b.avgRank);
 
-  // ─── 3. 활동 이벤트 생성 ───
-  const activityEvents = generateActivityEvents(rankings);
+  // ─── 3. 활동 이벤트 생성 (7일 누적 변동 기준) ───
+  // 키워드별 가장 오래된 record를 baseline으로 잡아 latest와의 단계차를 cumulativeChange로 사용.
+  const oldestByKw = new Map<string, RankingRow>();
+  for (const row of recentRows) {
+    const ex = oldestByKw.get(row.keyword_id);
+    if (!ex || row.snapshot_date < ex.snapshot_date) oldestByKw.set(row.keyword_id, row);
+  }
+  const weeklyEventInputs = currentRankings.map(latest => {
+    const oldest = oldestByKw.get(latest.keyword_id);
+    const sameRecord = !oldest || oldest.snapshot_date === latest.snapshot_date;
+    const baseline = sameRecord
+      ? (latest.previous_rank ?? latest.rank_position + latest.rank_change)
+      : oldest!.rank_position;
+    const cumulativeChange = baseline - latest.rank_position;
+    const kw = latest.keyword_challenges as unknown as KeywordChallengeJoin;
+    return {
+      keyword_id: latest.keyword_id,
+      keyword: kw?.keyword || '',
+      rank_position: latest.rank_position,
+      rank_change: cumulativeChange,
+      is_integrated_top3: latest.is_integrated_top3,
+      participant_count: kw?.participant_count || 0,
+    };
+  });
+  const activityEvents = generateActivityEvents(weeklyEventInputs);
 
   // ─── 5. 스마트 알림 (순위 트렌드 분석) ───
   const rankAlerts = analyzeRankAlerts(latestRankings || []);
