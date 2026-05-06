@@ -103,8 +103,8 @@ export const authLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60 * 10
 /** 커뮤니티 쓰기: 10분에 5회 */
 export const communityLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 1000 });
 
-/** 블로그 분석: 5분에 10회 */
-export const blogAnalyzeLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
+/** 블로그 분석: 5분에 60회 (키워드순위 "전체 확인" 다중 호출 대응) */
+export const blogAnalyzeLimiter = createRateLimiter({ limit: 60, windowMs: 5 * 60 * 1000 });
 
 /** 검색 볼륨: 5분에 20회 */
 export const searchVolumeLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });

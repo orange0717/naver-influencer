@@ -214,7 +214,19 @@ export default function KeywordRankingPage() {
   const [checkingKey, setCheckingKey] = useState('');
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  const [errorMessage, setErrorMessage] = useState('');
   const abortRef = useRef(false);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showError = useCallback((msg: string, ms = 5000) => {
+    setErrorMessage(msg);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setErrorMessage(''), ms);
+  }, []);
+
+  useEffect(() => () => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+  }, []);
 
   const { user } = useAuth();
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
@@ -329,8 +341,8 @@ export default function KeywordRankingPage() {
     setTimeout(() => handleKeywordSave(postId), 0);
   };
 
-  const checkSingleKeyword = async (post: BlogPost, keyword: string) => {
-    if (!profile || !keyword.trim()) return;
+  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number }> => {
+    if (!profile || !keyword.trim()) return { ok: false, status: 0 };
     const key = rankKey(post.id, keyword.trim());
     setCheckingKey(key);
     try {
@@ -351,9 +363,18 @@ export default function KeywordRankingPage() {
           if (profile) saveRankingResults(profile.blogId, updated);
           return updated;
         });
+        return { ok: true, status: res.status };
       }
-    } catch { /* ignore */ }
-    finally { setCheckingKey(''); }
+      if (res.status === 429) {
+        showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
+      } else {
+        showError(`순위 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`);
+      }
+      return { ok: false, status: res.status };
+    } catch {
+      showError('네트워크 오류로 순위를 확인하지 못했습니다.');
+      return { ok: false, status: 0 };
+    } finally { setCheckingKey(''); }
   };
 
   const checkAllRankings = async () => {
@@ -375,9 +396,13 @@ export default function KeywordRankingPage() {
     for (let i = 0; i < pairs.length; i++) {
       if (abortRef.current) break;
       setCheckProgress({ current: i + 1, total: pairs.length });
-      await checkSingleKeyword(pairs[i].post, pairs[i].keyword);
+      const r = await checkSingleKeyword(pairs[i].post, pairs[i].keyword);
+      if (r.status === 429) {
+        showError(`요청 한도 초과로 ${i + 1}/${pairs.length}에서 중단했습니다. 5분 후 다시 시도해주세요.`, 8000);
+        break;
+      }
       if (i < pairs.length - 1) {
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 7000));
       }
     }
 
@@ -420,6 +445,19 @@ export default function KeywordRankingPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      {errorMessage && (
+        <div className="px-4 py-3 rounded-xl bg-down/10 border border-down/30 text-down text-sm flex items-start gap-2">
+          <span className="font-bold shrink-0">!</span>
+          <span className="flex-1">{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage('')}
+            className="text-down/70 hover:text-down cursor-pointer text-xs shrink-0"
+            aria-label="닫기"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {/* 헤더 */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
