@@ -102,16 +102,18 @@ export async function middleware(request: NextRequest) {
     frameSrc.push("capacitor://localhost", "https://localhost");
   }
 
+  // [결제 호환] PortOne SDK + KPN PG 가 호출하는 다양한 도메인 모두 허용 위해
+  // ORF 와 동일하게 https: 와일드카드 사용. HTTP/data 는 여전히 차단.
   supabaseResponse.headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://*.naver.com https://*.pstatic.net https://*.portone.io https://cdn.portone.io",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://*.naver.com https://*.pstatic.net",
-      `connect-src ${connectSrc.join(' ')}`,
-      `frame-src ${frameSrc.join(' ')}`,
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+      "style-src 'self' 'unsafe-inline' https:",
+      "font-src 'self' data: https:",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self' https: wss:",
+      "frame-src 'self' https:",
     ].join('; '),
   );
 
