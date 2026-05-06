@@ -48,7 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/community', label: '커뮤니티' },
   { href: '/stories', label: '성장후기' },
   { href: '/subscribe', label: '이용권' },
-  { href: '/intro', label: '소개' },
+  { href: '/intro', label: '서비스소개' },
 ];
 
 
