@@ -181,20 +181,35 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   // ─── 1. 최신 순위 데이터 (keyword_rankings) ───
-  // 먼저 이 인플루언서의 최신 스냅샷 날짜를 조회
-  const { data: myLatestDate } = await supabase
-    .from('keyword_rankings')
-    .select('snapshot_date')
-    .eq('influencer_id', influencerId)
-    .order('snapshot_date', { ascending: false })
-    .limit(1)
-    .single();
+  // crawl-challenge-ranks가 부분 적재로 끊기면 오늘 snapshot_date에 일부만 들어가,
+  // 기존 "최신 snapshot 1일치만" 로직이 어제 풀 데이터를 통째로 가려버린다.
+  // 최근 7일을 가져와 keyword_id별 가장 최신 record만 남긴다.
+  type RankingRow = {
+    rank_position: number;
+    previous_rank: number | null;
+    rank_change: number;
+    is_integrated_top3: boolean;
+    keyword_id: string;
+    latest_post_title: string | null;
+    latest_post_url: string | null;
+    snapshot_date: string;
+    blog_search_rank: number | null;
+    view_tab_rank: number | null;
+    keyword_challenges: unknown;
+  };
 
-  const mySnapshotDate = myLatestDate?.snapshot_date;
+  const sinceDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
+  })();
 
-  // 최신 날짜의 랭킹만 가져오기 (limit 5000 -> 정확한 최신 데이터만)
-  const { data: latestRankings } = mySnapshotDate
-    ? await supabase
+  const recentRows: RankingRow[] = [];
+  {
+    const PAGE = 1000;
+    let from = 0;
+    while (true) {
+      const { data: batch } = await supabase
         .from('keyword_rankings')
         .select(`
           rank_position, previous_rank, rank_change, is_integrated_top3,
@@ -203,10 +218,24 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           keyword_challenges(keyword, category, participant_count, search_volume_monthly)
         `)
         .eq('influencer_id', influencerId)
-        .eq('snapshot_date', mySnapshotDate)
-    : { data: null };
+        .gte('snapshot_date', sinceDate)
+        .order('snapshot_date', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (!batch || batch.length === 0) break;
+      recentRows.push(...(batch as unknown as RankingRow[]));
+      if (batch.length < PAGE) break;
+      from += PAGE;
+    }
+  }
 
-  const currentRankings = latestRankings || [];
+  const seenKw = new Set<string>();
+  const latestRankings = recentRows.filter(r => {
+    if (seenKw.has(r.keyword_id)) return false;
+    seenKw.add(r.keyword_id);
+    return true;
+  });
+
+  const currentRankings = latestRankings;
 
   interface KeywordChallengeJoin {
     keyword: string;
