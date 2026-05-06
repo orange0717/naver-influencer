@@ -248,15 +248,8 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'keywords-blogger',
     category: 'keyword',
     title: '키워드 검색',
-    description: '블로그·검색량·경쟁도 기반 키워드 조사',
+    description: '블로그·검색량·경쟁도 기반 키워드 조사 (정렬·저장 키워드 지원)',
     href: '/keywords/blogger',
-  },
-  {
-    id: 'search-volume',
-    category: 'keyword',
-    title: '검색량 조회',
-    description: '네이버 월간 검색량 조회',
-    href: '/search-volume',
   },
   {
     id: 'keywords-google-trends',
@@ -285,9 +278,8 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'keywords-list',
     category: 'keyword',
     title: '키워드 챌린지 리스트',
-    description: '인플루언서 키워드 챌린지 전체 목록',
+    description: '인플루언서 키워드 챌린지 전체 목록 (CSV 다운로드는 인플루언서 플랜)',
     href: '/keywords',
-    requiredPlan: 'influencer',
   },
 
   // ── 글쓰기 ──
