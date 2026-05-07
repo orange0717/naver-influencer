@@ -111,9 +111,9 @@ export default function SavedKeywords() {
           {keywords.map(sk => (
             <tr key={sk.id} className="border-b border-border/30 hover:bg-surface-hover transition-colors">
               <td className="py-2.5 px-4 text-sm font-bold truncate" title={sk.keyword}>{sk.keyword}</td>
-              <td className="py-2.5 px-2 text-right font-rank text-sm font-bold">{sk.monthly_total.toLocaleString()}</td>
-              <td className="py-2.5 px-2 text-right font-rank text-sm">{sk.monthly_pc.toLocaleString()}</td>
-              <td className="py-2.5 px-2 text-right font-rank text-sm">{sk.monthly_mobile.toLocaleString()}</td>
+              <td className="py-2.5 px-2 text-right font-rank text-xs font-bold">{sk.monthly_total.toLocaleString()}</td>
+              <td className="py-2.5 px-2 text-right font-rank text-xs">{sk.monthly_pc.toLocaleString()}</td>
+              <td className="py-2.5 px-2 text-right font-rank text-xs">{sk.monthly_mobile.toLocaleString()}</td>
               <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                 {renderRank(sk.last_view_rank, sk.last_view_exposed)}
               </td>
