@@ -163,7 +163,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '경쟁자 분석',
     description: '경쟁 블로그 지표 비교·변화 추이',
     href: '/competitor',
-    ctaLabel: '무료',
+    ctaLabel: '무료플랜',
     freeNote: '무료 회원은 1일 1회 이용할 수 있습니다.',
     paidNote: '블로거 플랜은 1일 5회, 인플루언서 플랜은 무제한 이용 가능합니다.',
   },
@@ -173,7 +173,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: 'URL 분석',
     description: '블로그 통계의 referer URL을 한 줄로 해석 — 검색기록·자동완성·직접입력 구분, 일괄 분포 리포트',
     href: '/decoder',
-    ctaLabel: '무료',
+    ctaLabel: '무료플랜',
   },
 
   // ── 키워드 ──
