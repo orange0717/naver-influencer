@@ -9,7 +9,6 @@ export type PlanTier = 'free' | 'blogger' | 'influencer';
 
 export type AppCategoryKey =
   | 'my'
-  | 'ranking'
   | 'research'
   | 'keyword'
   | 'writing'
@@ -37,14 +36,6 @@ export const APP_CATEGORIES: AppCategoryMeta[] = [
     label: 'MY',
     description: '내 블로그 · 키워드 · 정산 등 개인 데이터',
     tag: 'MY',
-    badgeClass: BADGE,
-    buttonClass: BUTTON,
-  },
-  {
-    key: 'ranking',
-    label: '랭킹',
-    description: '인플루언서 · 블로거 · 품질지수 순위',
-    tag: '랭킹',
     badgeClass: BADGE,
     buttonClass: BUTTON,
   },
@@ -154,71 +145,16 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
     authOnly: true,
   },
-  {
-    id: 'my-campaigns',
-    category: 'my',
-    title: '캠페인',
-    description: '내 캠페인 제안·진행 현황 (개발 중)',
-    href: '/my/campaigns',
-    requiredPlan: 'blogger',
-    authOnly: true,
-    devPreview: true,
-  },
-  {
-    id: 'my-settlements',
-    category: 'my',
-    title: '정산내역',
-    description: '캠페인 정산·세금계산서 (개발 중)',
-    href: '/my/settlements',
-    requiredPlan: 'influencer',
-    authOnly: true,
-    devPreview: true,
-  },
   // ── 랭킹 ──
-  {
-    id: 'rankings-official',
-    category: 'ranking',
-    title: '인플루언서 공식순위',
-    description: '네이버가 발표하는 공식 카테고리별 인플루언서 순위 (주 1회 업데이트)',
-    href: '/rankings/official',
-    requiredPlan: 'influencer',
-  },
-  {
-    id: 'rankings-blogger',
-    category: 'ranking',
-    title: '블로그 순위',
-    description: '네이버 블로그 실시간 랭킹 (개발 중)',
-    href: '/rankings/blogger',
-    requiredPlan: 'blogger',
-    devPreview: true,
-  },
-  {
-    id: 'rankings-influencer',
-    category: 'ranking',
-    title: '인플루언서 순위',
-    description: '카테고리별 인플루언서 실력 순위 (개발 중)',
-    href: '/rankings/influencer',
-    requiredPlan: 'influencer',
-    devPreview: true,
-  },
-  {
-    id: 'blog-quality',
-    category: 'ranking',
-    title: '블로그 품질지수',
-    description: '내 블로그와 경쟁 블로그의 품질 점수 (개발 중)',
-    href: '/blog-quality',
-    requiredPlan: 'blogger',
-    devPreview: true,
-  },
+
+  // ── 정보 ──
   {
     id: 'stats',
-    category: 'ranking',
-    title: '연도별 선정 현황',
+    category: 'research',
+    title: '연도별 인플루언서 선정 현황',
     description: '연도별 인플루언서 선정 통계',
     href: '/stats',
   },
-
-  // ── 정보 ──
   {
     id: 'influencers',
     category: 'research',
@@ -300,17 +236,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/dashboard/claude',
     requiredPlan: 'influencer',
     authOnly: true,
-  },
-  {
-    id: 'chatbook',
-    category: 'writing',
-    title: '캐릭터챗북',
-    description: '셜록 홈즈·홍길동 같은 고전 캐릭터와 대화하며 블로그 콘텐츠 아이디어 발굴 (개발 중)',
-    href: '/chatbook',
-    requiredPlan: 'blogger',
-    authOnly: true,
-    ctaLabel: '대화하기',
-    devPreview: true,
   },
   {
     id: 'writing-youtube-summary',
