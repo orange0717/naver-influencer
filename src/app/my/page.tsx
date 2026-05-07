@@ -19,7 +19,6 @@ import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
-import WelcomeDashboard from '@/components/dashboard/WelcomeDashboard';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export const dynamic = 'force-dynamic';
@@ -29,10 +28,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   let naverId: string | undefined;
   let subscriptionPlan: string | null = null;
   let subscriptionExpiresAt: string | null = null;
-  let authUserId: string | null = null;
-  let authUserEmail: string | null = null;
-  let profileNickname: string | null = null;
-  let profileCreatedAt: string | null = null;
   const params = await searchParams;
 
   const cookieStore = await cookies();
@@ -56,8 +51,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
     if (authUser) {
       isLoggedIn = true;
-      authUserId = authUser.id;
-      authUserEmail = authUser.email || null;
 
       // 관리자/활성 유료 구독자는 무조건 통과. 그 외에만 제한 체크.
       const { isRestricted, getPaywallContext } = await import('@/lib/admin');
@@ -70,14 +63,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       const { data: profile } = await supabase
         .from('users')
-        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at, nickname, created_at')
+        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at')
         .eq('auth_id', authUser.id)
         .single();
 
       subscriptionPlan = profile?.subscription_plan || null;
       subscriptionExpiresAt = profile?.subscription_expires_at || null;
-      profileNickname = profile?.nickname || null;
-      profileCreatedAt = profile?.created_at || null;
 
       if (profile?.linked_influencer_id) {
         const { data: linkedInf } = await supabase
@@ -101,16 +92,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   if (!naverId) {
-    if (isLoggedIn && authUserId) {
-      return await renderWelcomeDashboard({
-        userId: authUserId,
-        email: authUserEmail,
-        nickname: profileNickname,
-        createdAt: profileCreatedAt,
-        subscriptionPlan,
-        subscriptionExpiresAt,
-        trialStartedAt: cookieStore.get('trial_started')?.value || null,
-      });
+    if (isLoggedIn) {
+      redirect('/profile');
     }
     redirect('/auth/login');
   }
@@ -150,16 +133,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     if (isLoggedIn && naverId) {
       redirect(`/my/blogger?blogId=${naverId}`);
     }
-    if (isLoggedIn && authUserId) {
-      return await renderWelcomeDashboard({
-        userId: authUserId,
-        email: authUserEmail,
-        nickname: profileNickname,
-        createdAt: profileCreatedAt,
-        subscriptionPlan,
-        subscriptionExpiresAt,
-        trialStartedAt: cookieStore.get('trial_started')?.value || null,
-      });
+    if (isLoggedIn) {
+      redirect('/profile');
     }
     redirect('/auth/login');
   }
@@ -788,52 +763,5 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       </div>
     </div>
-  );
-}
-
-interface WelcomeRenderArgs {
-  userId: string;
-  email: string | null;
-  nickname: string | null;
-  createdAt: string | null;
-  subscriptionPlan: string | null;
-  subscriptionExpiresAt: string | null;
-  trialStartedAt: string | null;
-}
-
-async function renderWelcomeDashboard(args: WelcomeRenderArgs) {
-  const supabase = createServiceClient();
-
-  const [{ count: savedCount }, { data: noticeRows }] = await Promise.all([
-    supabase
-      .from('saved_search_keywords')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', args.userId),
-    supabase
-      .from('notices')
-      .select('id, title, tag, is_pinned, created_at')
-      .eq('is_deleted', false)
-      .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(5),
-  ]);
-
-  const displayName = args.nickname
-    || (args.email ? args.email.split('@')[0] : '오렌지');
-
-  const trialMs = args.trialStartedAt ? Number(args.trialStartedAt) : null;
-  const trialStartedAt = trialMs && !Number.isNaN(trialMs) ? trialMs : null;
-
-  return (
-    <WelcomeDashboard
-      displayName={displayName}
-      email={args.email}
-      joinedAt={args.createdAt}
-      subscriptionPlan={args.subscriptionPlan}
-      subscriptionExpiresAt={args.subscriptionExpiresAt}
-      trialStartedAt={trialStartedAt}
-      savedKeywordCount={savedCount || 0}
-      recentNotices={(noticeRows || []) as { id: string; title: string; tag: string; is_pinned: boolean; created_at: string }[]}
-    />
   );
 }
