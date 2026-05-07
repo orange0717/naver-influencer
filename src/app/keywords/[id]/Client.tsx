@@ -293,15 +293,6 @@ export default function KeywordDetailPage() {
             월간 검색수
             <span className="ml-2 text-[11px] font-normal text-dim">네이버 광고 키워드 도구 기준</span>
           </div>
-          {monthlyVolume?.competition && (
-            <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-              monthlyVolume.competition === '낮음' ? 'text-up bg-up/12' :
-              monthlyVolume.competition === '중간' ? 'text-gold bg-gold/12' :
-              'text-down bg-down/12'
-            }`}>
-              광고 경쟁도 {monthlyVolume.competition}
-            </span>
-          )}
         </div>
         {monthlyVolumeLoading ? (
           <div className="flex items-center justify-center py-10">
