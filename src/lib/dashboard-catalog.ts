@@ -104,7 +104,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'my-blogger',
     category: 'my',
-    title: '블로그',
+    title: '블로그 분석',
     description: '내 블로그 방문자·상위 키워드·품질 지수 요약',
     href: '/my/blogger',
     authOnly: true,
@@ -130,7 +130,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'my-challenge',
     category: 'my',
-    title: '인플루언서',
+    title: '인플루언서 키워드챌린지',
     description: '인플루언서 키워드 챌린지 참여·TOP3 현황',
     href: '/my',
     requiredPlan: 'influencer',
