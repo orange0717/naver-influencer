@@ -10,6 +10,13 @@ const MAIN_CATEGORIES = [
   '게임', '자동차', '프로스포츠', '영화', '방송/연예', '대중음악',
 ];
 
+function pickRawCategory(row: { category: string | null; my_keyword_category: string | null }): string | null {
+  const raw = row.category || row.my_keyword_category;
+  if (!raw) return null;
+  // 일부 my_keyword_category 값이 '동물/펫'처럼 escape 문자열로 저장되어 있어 정규화
+  return raw.replace(/\\u002[Ff]/g, '/');
+}
+
 function toMainCategory(cat: string | null): string {
   if (!cat) return '기타';
   if (MAIN_CATEGORIES.includes(cat)) return cat;
@@ -54,13 +61,13 @@ export async function GET() {
     const years = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
     // 전체 인플루언서 조회 (total_keywords로 챌린지 참여 여부 판단)
-    let all: { category: string | null; naver_created_at: string | null; total_keywords: number | null }[] = [];
+    let all: { category: string | null; my_keyword_category: string | null; naver_created_at: string | null; total_keywords: number | null }[] = [];
     let from = 0;
     const PAGE = 1000;
     while (true) {
       const { data, error } = await supabase
         .from('influencers')
-        .select('category, naver_created_at, total_keywords')
+        .select('category, my_keyword_category, naver_created_at, total_keywords')
         .range(from, from + PAGE - 1);
       if (error) break;
       all = all.concat(data);
@@ -73,7 +80,7 @@ export async function GET() {
     const noChallenge: Record<string, number> = {};
 
     for (const row of all) {
-      const cat = toMainCategory(row.category);
+      const cat = toMainCategory(pickRawCategory(row));
       catTotals[cat] = (catTotals[cat] || 0) + 1;
 
       // 키워드챌린지 미참여 집계 (total_keywords가 0이거나 null)
