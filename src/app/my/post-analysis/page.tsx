@@ -531,26 +531,26 @@ export default function PostAnalysisPage() {
                         <td className="text-right px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1.5">
                             {isAnalyzing ? (
-                              <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                              <span className="w-4 h-4 border-2 border-down/30 border-t-down rounded-full animate-spin inline-block" />
                             ) : !aiResult ? (
                               <button onClick={e => { e.stopPropagation(); runAiAnalysis(post.id); }}
-                                className="text-[11px] px-2.5 py-1 rounded-lg bg-accent/10 text-accent font-bold hover:bg-accent/20 transition cursor-pointer">
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-down/10 text-down font-bold hover:bg-down/20 transition cursor-pointer whitespace-nowrap">
                                 AI 분석
                               </button>
                             ) : null}
                             {isCheckingPlag ? (
-                              <span className="w-3.5 h-3.5 border-2 border-text/30 border-t-text rounded-full animate-spin inline-block" />
+                              <span className="w-3.5 h-3.5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin inline-block" />
                             ) : !plagResult ? (
                               <button onClick={e => { e.stopPropagation(); runPlagiarismCheck(post.id); }}
-                                className="text-[11px] px-2.5 py-1 rounded-lg bg-text/10 text-text font-bold hover:bg-text/20 transition cursor-pointer">
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 font-bold hover:bg-emerald-500/20 transition cursor-pointer whitespace-nowrap">
                                 표절검사
                               </button>
                             ) : null}
                             {isAnalyzingText ? (
-                              <span className="w-3.5 h-3.5 border-2 border-down/30 border-t-down rounded-full animate-spin inline-block" />
+                              <span className="w-3.5 h-3.5 border-2 border-up/30 border-t-up rounded-full animate-spin inline-block" />
                             ) : !textResult ? (
                               <button onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
-                                className="text-[11px] px-2.5 py-1 rounded-lg bg-down/10 text-down font-bold hover:bg-down/20 transition cursor-pointer">
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-up/10 text-up font-bold hover:bg-up/20 transition cursor-pointer whitespace-nowrap">
                                 형태소분석
                               </button>
                             ) : null}
