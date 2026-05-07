@@ -547,10 +547,10 @@ export default function PostAnalysisPage() {
                               </button>
                             ) : null}
                             {isAnalyzingText ? (
-                              <span className="w-3.5 h-3.5 border-2 border-up/30 border-t-up rounded-full animate-spin inline-block" />
+                              <span className="w-3.5 h-3.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin inline-block" />
                             ) : !textResult ? (
                               <button onClick={e => { e.stopPropagation(); runTextAnalysis(post.id); }}
-                                className="text-[11px] px-2.5 py-1 rounded-lg bg-up/10 text-up font-bold hover:bg-up/20 transition cursor-pointer whitespace-nowrap">
+                                className="text-[11px] px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 font-bold hover:bg-blue-500/20 transition cursor-pointer whitespace-nowrap">
                                 형태소분석
                               </button>
                             ) : null}
