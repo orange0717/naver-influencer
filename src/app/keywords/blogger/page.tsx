@@ -35,7 +35,7 @@ export default function BloggerKeywordsPage() {
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
   const [savingKeyword, setSavingKeyword] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-  const [showSaved, setShowSaved] = useState(false);
+  const [showSaved, setShowSaved] = useState(true);
 
   // 로그인 상태 확인 + 저장된 키워드 로드
   useEffect(() => {
@@ -191,10 +191,10 @@ export default function BloggerKeywordsPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-xl font-extrabold">키워드 검색</h1>
-        <p className="text-sm text-dim mt-1">네이버 검색 키워드의 검색량을 분석합니다</p>
+        <p className="text-xs text-dim">네이버 검색 키워드의 검색량을 분석합니다</p>
       </div>
 
       {/* 검색창 */}
@@ -212,13 +212,13 @@ export default function BloggerKeywordsPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full pl-11 pr-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full pl-11 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
           />
         </div>
         <button
           onClick={search}
           disabled={loading || !query.trim()}
-          className="shrink-0 px-6 py-3 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default"
+          className="shrink-0 px-6 py-2.5 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default"
         >
           {loading ? '분석 중...' : '검색'}
         </button>
@@ -321,10 +321,10 @@ export default function BloggerKeywordsPage() {
 
       {/* 로딩 */}
       {loading && (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex items-center justify-center py-10">
           <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
-            <p className="text-sm text-dim">네이버 검색광고 API에서 데이터를 가져오는 중...</p>
+            <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
+            <p className="text-xs text-dim">네이버 검색광고 API에서 데이터를 가져오는 중...</p>
           </div>
         </div>
       )}
@@ -344,15 +344,15 @@ export default function BloggerKeywordsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
-                  <th className="text-left py-3 px-4 font-semibold text-dim text-sm w-8">#</th>
-                  <th className="text-left py-3 px-4 font-semibold text-dim text-sm">키워드</th>
-                  <th className="text-right py-3 px-4 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyTotal')}>
+                  <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs w-8">#</th>
+                  <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">키워드</th>
+                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyTotal')}>
                     월간 검색량{sortArrow('monthlyTotal')}
                   </th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyPc')}>
+                  <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyPc')}>
                     PC{sortArrow('monthlyPc')}
                   </th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyMobile')}>
+                  <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyMobile')}>
                     모바일{sortArrow('monthlyMobile')}
                   </th>
                   <th className="w-10"></th>
@@ -361,14 +361,14 @@ export default function BloggerKeywordsPage() {
               <tbody>
                 {sorted.map((kw, i) => (
                   <tr key={kw.keyword} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-dim font-rank text-sm">{i + 1}</td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-4 font-bold text-dim font-rank text-sm">{i + 1}</td>
+                    <td className="py-2.5 px-4">
                       <span className={`text-[15px] font-bold ${i === 0 ? 'text-accent' : ''}`}>{kw.keyword}</span>
                     </td>
-                    <td className="py-3.5 px-4 text-right font-bold font-rank text-sm">{formatNum(kw.monthlyTotal)}</td>
-                    <td className="py-3.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyPc)}</td>
-                    <td className="py-3.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyMobile)}</td>
-                    <td className="py-3.5 px-2">
+                    <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{formatNum(kw.monthlyTotal)}</td>
+                    <td className="py-2.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyPc)}</td>
+                    <td className="py-2.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyMobile)}</td>
+                    <td className="py-2.5 px-2">
                       <button
                         onClick={() => toggleSave(kw)}
                         disabled={savingKeyword === kw.keyword}
@@ -416,27 +416,26 @@ export default function BloggerKeywordsPage() {
 
       {/* 결과 없음 */}
       {!loading && searched && results.length === 0 && !error && (
-        <div className="text-center py-16 bg-surface border border-border rounded-2xl">
+        <div className="text-center py-10 bg-surface border border-border rounded-2xl">
           <p className="text-sm text-dim">검색 결과가 없습니다.</p>
           <p className="text-xs text-dim/60 mt-1">다른 키워드로 시도해보세요.</p>
         </div>
       )}
 
-      {/* 초기 상태 */}
-      {!loading && !searched && (
-        <div className="text-center py-16 bg-surface border border-border rounded-2xl">
-          <div className="w-14 h-14 mx-auto rounded-xl bg-accent/10 flex items-center justify-center mb-4">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+      {/* 초기 상태 — 저장된 키워드가 없을 때만 안내 카드 노출 (저장된 키워드가 있으면 자동 노출되어 빈 공간 최소화) */}
+      {!loading && !searched && (!isLoggedIn || savedKeywords.length === 0) && (
+        <div className="text-center py-10 bg-surface border border-border rounded-2xl">
+          <div className="w-12 h-12 mx-auto rounded-xl bg-accent/10 flex items-center justify-center mb-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
           </div>
-          <p className="text-lg font-bold text-text mb-2">키워드를 검색해보세요</p>
-          <p className="text-sm text-dim leading-relaxed">
-            키워드를 입력하면 월간 검색량,<br />
-            PC/모바일 검색 비율을 분석합니다.
+          <p className="text-base font-bold text-text mb-1.5">키워드를 검색해보세요</p>
+          <p className="text-xs text-dim leading-relaxed">
+            키워드를 입력하면 월간 검색량과 PC/모바일 검색 비율을 분석합니다.
           </p>
-          <p className="text-xs text-dim/60 mt-4">무료 기능</p>
+          <p className="text-[11px] text-dim/60 mt-3">무료 기능</p>
         </div>
       )}
     </div>
