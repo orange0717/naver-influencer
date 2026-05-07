@@ -25,6 +25,23 @@ interface FeedItem {
   creator: FeedCreator;
 }
 
+/** Feed API에 myKeywordCategory가 없을 때 in.naver.com HTML 페이지에서 카테고리 추출 (fallback) */
+async function fetchHtmlCategory(naverId: string): Promise<{ myKeywordCategory: string; categoryMyType: string }> {
+  try {
+    const res = await fetchWithRetry(
+      `https://in.naver.com/${encodeURIComponent(naverId)}`,
+      { headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } },
+      0, // 재시도 0 (시간 절약)
+    );
+    const html = await res.text();
+    const mk = html.match(/"myKeywordCategory"\s*:\s*"([^"]+)"/);
+    const cmt = html.match(/"categoryMyType"\s*:\s*"([^"]+)"/);
+    return { myKeywordCategory: mk?.[1] || '', categoryMyType: cmt?.[1] || '' };
+  } catch {
+    return { myKeywordCategory: '', categoryMyType: '' };
+  }
+}
+
 /** Feed Discover API로 키워드별 인플루언서 수집 (최대 100명) */
 async function fetchInfluencersByKeywordId(
   keywordId: number,
@@ -167,7 +184,19 @@ export async function GET(request: NextRequest) {
           // Naver API가 JSON에서 / → \u002F 이스케이프 시 이중 인코딩 방지
           const fix = (s: string) => s.replace(/\\u002F/g, '/');
 
-          const rows = batch.map(c => ({
+          // Feed API의 myKeywordCategory가 비고 키워드 카테고리도 비면 HTML 페이지에서 추출
+          const enriched = await Promise.all(batch.map(async (c) => {
+            let mk = c.myKeywordCategory || '';
+            let cmt = c.categoryMyType || '';
+            if (!mk && !kw.category && c.urlId) {
+              const h = await fetchHtmlCategory(c.urlId);
+              mk = h.myKeywordCategory;
+              if (h.categoryMyType) cmt = h.categoryMyType;
+            }
+            return { c, mk, cmt };
+          }));
+
+          const rows = enriched.map(({ c, mk, cmt }) => ({
             naver_id: c.urlId!,
             display_name: c.nickname || '',
             profile_url: `https://in.naver.com/${c.urlId}`,
@@ -175,10 +204,10 @@ export async function GET(request: NextRequest) {
             introduction: c.introduction || '',
             subscriber_count: c.subscriberCount || 0,
             total_follower_count: c.totalFollowerCount || 0,
-            my_keyword_category: fix(c.myKeywordCategory || ''),
+            my_keyword_category: fix(mk),
             my_keyword: c.myKeyword || '',
-            category_my_type: fix(c.categoryMyType || ''),
-            category: fix(c.myKeywordCategory || kw.category),
+            category_my_type: fix(cmt),
+            category: fix(mk || kw.category),
             // last_crawled_at은 갱신하지 않음 — crawl-challenge-ranks에서 실제 참여일로 설정
           }));
 
