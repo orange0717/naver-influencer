@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { signUp as gaSignUp } from '@/lib/gtag';
+import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
 import LegalModal from '@/components/legal/LegalModal';
 import TermsContent from '@/components/legal/TermsContent';
 import PrivacyContent from '@/components/legal/PrivacyContent';
@@ -73,8 +74,9 @@ export default function SignupPage() {
       setError('닉네임은 20자 이하로 입력해주세요.');
       return;
     }
-    if (password.length < 6) {
-      setError('비밀번호는 6자 이상이어야 합니다.');
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.ok) {
+      setError(pwCheck.error);
       return;
     }
     if (password !== passwordConfirm) {
@@ -202,7 +204,7 @@ export default function SignupPage() {
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호<RequiredMark /></label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="6자 이상 입력해주세요"
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_PLACEHOLDER}
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 

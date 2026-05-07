@@ -1,6 +1,19 @@
 import { z } from 'zod';
 import { naverIdSchema, blogIdSchema } from './index';
 
+/**
+ * 비밀번호 정책: 8자 이상 + 영문 + 숫자 포함.
+ * /auth/signup, /auth/reset, /orangeconnect/signup 클라이언트 검증 공용.
+ */
+export function validatePassword(password: string): { ok: true } | { ok: false; error: string } {
+  if (password.length < 8) return { ok: false, error: '비밀번호는 8자 이상이어야 합니다.' };
+  if (!/[a-zA-Z]/.test(password)) return { ok: false, error: '비밀번호에 영문을 포함해주세요.' };
+  if (!/[0-9]/.test(password)) return { ok: false, error: '비밀번호에 숫자를 포함해주세요.' };
+  return { ok: true };
+}
+
+export const PASSWORD_PLACEHOLDER = '영문+숫자 포함 8자 이상';
+
 /** POST /api/auth/signup
  *  보안: naverId/blogId 는 의도적으로 제외. 가입 시점에 임의 인플루언서/블로그
  *  점유를 막기 위함. 가입 후 /api/my/link (인플루언서, demo OTP 검증)

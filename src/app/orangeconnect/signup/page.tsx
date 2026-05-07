@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
 
 const INDUSTRIES = [
   '음식/외식', '뷰티/화장품', '패션/의류', '여행/숙박', '건강/의료',
@@ -50,7 +51,10 @@ export default function AdSignupPage() {
     if (!contactName.trim()) return setError('담당자명을 입력해주세요.');
     if (!email.trim()) return setError('이메일을 입력해주세요.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('올바른 이메일 형식을 입력해주세요.');
-    if (password.length < 6) return setError('비밀번호는 6자 이상이어야 합니다.');
+    {
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.ok) return setError(pwCheck.error);
+    }
     if (password !== passwordConfirm) return setError('비밀번호가 일치하지 않습니다.');
     if (!companyName.trim()) return setError('회사명/상호를 입력해주세요.');
     if (businessNumber) {
@@ -145,7 +149,7 @@ export default function AdSignupPage() {
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="6자 이상 입력해주세요"
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_PLACEHOLDER}
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
