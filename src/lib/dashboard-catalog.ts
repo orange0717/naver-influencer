@@ -114,6 +114,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     authOnly: true,
   },
   {
+    id: 'my-saved-keywords',
+    category: 'my',
+    title: '저장 키워드',
+    description: '키워드챌린지·키워드 검색·내 키워드에서 저장한 키워드 모아 보기',
+    href: '/my/saved-keywords',
+    authOnly: true,
+  },
+  {
     id: 'my-post-analysis',
     category: 'my',
     title: '포스팅 분석',
@@ -229,16 +237,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
     authOnly: true,
   },
-  {
-    id: 'writing-youtube-summary',
-    category: 'writing',
-    title: '유튜브 자막추출',
-    description: '유튜브 영상의 자막을 추출해 블로그 참고용으로 깔끔하게 정리 (출처 자동 표기)',
-    href: '/dashboard/writing/youtube-summary',
-    requiredPlan: 'influencer',
-    authOnly: true,
-  },
-
   // ── 추천 서비스 ──
   {
     id: 'orangerefine',
