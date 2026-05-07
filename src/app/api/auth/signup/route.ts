@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
 import { validateBody } from '@/lib/validations';
 import { signupSchema } from '@/lib/validations/auth';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -8,11 +8,28 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await authLimiter.check(ip)) return rateLimitResponse();
 
+  // 신원 검증: 쿠키 세션의 user.id 만 신뢰. body 의 authId/email 은 위장 가능하므로
+  // 직접 INSERT 에 사용하지 않고, 세션 값과 일치하는지 대조 후 세션 값으로 저장한다.
+  const supabaseAuth = await createRouteHandlerClient();
+  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+  if (!authUser) {
+    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+  }
+
   const body = await request.json();
   const v = validateBody(signupSchema, body);
   if (!v.success) return v.response;
 
   const { authId, email, nickname, blogId } = v.data;
+
+  if (authId !== authUser.id) {
+    return NextResponse.json({ error: '인증 정보가 일치하지 않습니다.' }, { status: 403 });
+  }
+  if (authUser.email && email && email.toLowerCase() !== authUser.email.toLowerCase()) {
+    return NextResponse.json({ error: '인증 이메일과 입력 이메일이 일치하지 않습니다.' }, { status: 403 });
+  }
+
+  const verifiedEmail = authUser.email ?? email;
 
   const supabase = createServiceClient();
 
@@ -24,15 +41,19 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await supabase
     .from('users')
     .select('id')
-    .eq('auth_id', authId)
+    .eq('auth_id', authUser.id)
     .single();
 
   if (existing) {
     return NextResponse.json({ success: true, userId: existing.id });
   }
 
-  // service_role로 INSERT (RLS 우회)
-  const insertPayload: Record<string, unknown> = { auth_id: authId, email, nickname };
+  // service_role로 INSERT (RLS 우회). auth_id/email 은 세션 검증값으로 강제.
+  const insertPayload: Record<string, unknown> = {
+    auth_id: authUser.id,
+    email: verifiedEmail,
+    nickname,
+  };
   if (blogId) insertPayload.blog_id = blogId;
 
   const { data, error } = await supabase
