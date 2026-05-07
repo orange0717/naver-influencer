@@ -114,9 +114,9 @@ export default function DashboardGrid({
           <div>
             <p className="text-xs lg:text-sm text-white/80 font-semibold mb-1.5 lg:mb-2">N인플 대시보드</p>
             <h1 className="font-title font-black text-sm lg:text-2xl text-white leading-relaxed">
-              블로그 분석부터 키워드챌린지, 글 피드백까지
+              블로거에서 인플루언서로,
               <br />
-              네이버 블로그 All in one 플랫폼.
+              데이터로 증명하는 네이버 블로그 성장 플랫폼.
             </h1>
           </div>
           <div className="flex items-center gap-2 lg:gap-3 justify-end">
