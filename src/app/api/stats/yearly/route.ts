@@ -21,6 +21,10 @@ function toMainCategory(cat: string | null): string {
   if (!cat) return '기타';
   if (MAIN_CATEGORIES.includes(cat)) return cat;
 
+  // ' · ' 앞이 메인 카테고리이면 채택 (예: "영화 · 판타지 장르 전문" → 영화)
+  const head = cat.split(' · ')[0].trim();
+  if (MAIN_CATEGORIES.includes(head)) return head;
+
   if (cat.startsWith('리빙') || cat.startsWith('홈 스타일리스트')) return '리빙';
   if (cat.startsWith('뷰티') || cat.startsWith('메이크업')) return '뷰티';
   if (cat.startsWith('생활건강')) return '생활건강';
