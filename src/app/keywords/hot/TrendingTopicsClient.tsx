@@ -84,18 +84,20 @@ export default function TrendingTopicsClient() {
                 <p className="text-xs text-dim">수집된 키워드가 없어요.</p>
               ) : (
                 <ul className="space-y-1">
-                  {t.topKeywords.slice(0, 3).map((k, i) => (
-                    <li key={k.keyword} className="flex items-center gap-2 text-xs">
-                      <span className="w-4 text-dim font-rank">{i + 1}</span>
+                  {t.topKeywords.slice(0, 20).map((k, i) => (
+                    <li
+                      key={k.keyword}
+                      className={`flex items-center gap-2 text-xs ${
+                        i > 0 && i % 5 === 0 ? 'mt-3' : ''
+                      }`}
+                    >
+                      <span className="w-5 text-dim font-rank">{i + 1}</span>
                       <span className="font-semibold truncate flex-1">{k.keyword}</span>
                       {k.isNew && (
                         <span className="text-[9px] font-bold px-1 py-0.5 rounded text-up bg-up/12">
                           NEW
                         </span>
                       )}
-                      <span className="text-[10px] text-dim font-rank">
-                        {k.participantCount.toLocaleString()}
-                      </span>
                     </li>
                   ))}
                 </ul>
@@ -109,7 +111,7 @@ export default function TrendingTopicsClient() {
       )}
 
       <p className="text-[11px] text-dim">
-        * 네이버 인플루언서 키워드챌린지 기준. 숫자는 참여자 수(도전 중인 인플루언서 수)입니다.
+        * 네이버 인플루언서 키워드챌린지 기준. 3시간마다 자동 갱신됩니다.
       </p>
     </div>
   );

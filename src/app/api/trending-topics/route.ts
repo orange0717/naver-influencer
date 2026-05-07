@@ -53,7 +53,7 @@ export async function GET() {
         slug: topicToSlug(topic) || topic,
         totalKeywords: all.length,
         newCount: all.filter(k => k.isNew).length,
-        topKeywords: all.slice(0, 5),
+        topKeywords: all.slice(0, 20),
       };
     });
 
