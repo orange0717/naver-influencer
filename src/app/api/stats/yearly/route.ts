@@ -12,15 +12,39 @@ const MAIN_CATEGORIES = [
 
 function toMainCategory(cat: string | null): string {
   if (!cat) return '기타';
+  if (MAIN_CATEGORIES.includes(cat)) return cat;
+
   if (cat.startsWith('리빙') || cat.startsWith('홈 스타일리스트')) return '리빙';
   if (cat.startsWith('뷰티') || cat.startsWith('메이크업')) return '뷰티';
   if (cat.startsWith('생활건강')) return '생활건강';
   if (cat.startsWith('여행') || cat.startsWith('스냅샷')) return '여행';
-  if (cat.startsWith('운동') || cat === '운동/레저') return '운동/레저';
+  if (cat.startsWith('운동') || cat.startsWith('트레이너')) return '운동/레저';
   if (cat.startsWith('육아') || cat.startsWith('아동발달')) return '육아';
   if (cat.startsWith('패션')) return '패션';
   if (cat.startsWith('푸드') || cat.startsWith('요리')) return '푸드';
-  if (MAIN_CATEGORIES.includes(cat)) return cat;
+  if (cat.startsWith('IT테크') || cat.startsWith('프로그래머')) return 'IT테크';
+  if (cat.startsWith('자동차')) return '자동차';
+  if (cat.startsWith('어학') || cat.startsWith('교육 전문가') || cat.startsWith('학원') || cat.startsWith('취업')) return '어학/교육';
+  if (cat.startsWith('스포츠')) return '프로스포츠';
+  if (
+    cat.startsWith('경제') ||
+    cat.startsWith('투자') ||
+    cat.startsWith('자산운용') ||
+    cat.startsWith('비즈니스') ||
+    cat.startsWith('공인중개사')
+  ) return '경제/비즈니스';
+
+  // 세부 분야 fallback (' · ' 뒤 토큰으로 추론)
+  const sub = cat.split(' · ')[1] || '';
+  if (sub) {
+    if (/(주식\/펀드|부동산|예\/저축|정책|세금|경제동향|비즈니스 정보)/.test(sub)) return '경제/비즈니스';
+    if (/(노트북\/PC|가전제품|오디오\/사운드|주변기기|휴대용 제품)/.test(sub)) return 'IT테크';
+    if (/(자격증|영어|국어|수학|취업컨설팅)/.test(sub)) return '어학/교육';
+    if (/필라테스/.test(sub)) return '운동/레저';
+    if (/(축구|야구|격투기|농구|배구)/.test(sub)) return '프로스포츠';
+    if (/자동차/.test(sub)) return '자동차';
+  }
+
   return '기타';
 }
 
