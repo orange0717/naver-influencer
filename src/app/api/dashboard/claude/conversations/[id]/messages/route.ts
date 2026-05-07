@@ -15,9 +15,13 @@ import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 90; // Opus 응답이 더 느리므로 여유
 
-// 비용 절감 정책: N인플은 모든 plan 에서 Haiku 사용 (Opus 미사용)
-const MODEL_FREE = 'claude-haiku-4-5-20251001';
-const MODEL_PAID = 'claude-haiku-4-5-20251001';
+// 모델 분기 (2026-05-07~):
+//   결제 이력 보유자(users.first_paid_at IS NOT NULL) → Opus 4.6 (정확도 우선)
+//   그 외(무료 체험·admin 부여 INFLUENCER 포함) → Haiku 4.5 (비용 절감)
+//   admin(관리자) 는 결제 여부와 무관 — 결제했으면 Opus, 아니면 Haiku.
+//   원가 차이: Opus ≈ 640원/회, Haiku ≈ 80원/회.
+const MODEL_HAIKU = 'claude-haiku-4-5-20251001';
+const MODEL_OPUS = 'claude-opus-4-6';
 
 /**
  * GET /api/dashboard/claude/conversations/[id]/messages
@@ -164,9 +168,8 @@ export async function POST(
       .eq('id', id);
   }
 
-  // plan 별 모델 분기:
-  // free_trial → Sonnet (비용 절감), influencer/admin → Opus (깊이 있는 피드백)
-  const model = user.plan === 'free_trial' ? MODEL_FREE : MODEL_PAID;
+  // 결제 이력 보유자만 Opus, 그 외는 Haiku (admin 수동 부여 INFLUENCER 도 Haiku).
+  const model = user.isPaid ? MODEL_OPUS : MODEL_HAIKU;
 
   let replyText = '';
   let usageIn: number | null = null;

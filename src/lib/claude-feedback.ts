@@ -59,6 +59,8 @@ export type ClaudeFeedbackUser = {
   freeTrialUsed: number;
   /** free_trial 일 때 한도 (CLAUDE_FREE_TRIAL_LIMIT) */
   freeTrialLimit: number;
+  /** PortOne 결제 이력 보유 여부. true → 모델 분기에서 Opus 사용 가능. admin 수동 부여 INFLUENCER 는 false. */
+  isPaid: boolean;
 };
 
 /**
@@ -81,13 +83,14 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
   const supabase = createServiceClient();
   const { data: profile } = await supabase
     .from('users')
-    .select('subscription_plan, subscription_expires_at, name, naver_id, claude_free_trial_used')
+    .select('subscription_plan, subscription_expires_at, name, naver_id, claude_free_trial_used, first_paid_at')
     .eq('id', authUser.userId)
     .maybeSingle();
 
   const displayLabel =
     profile?.name || profile?.naver_id || authUser.user?.nickname || authUser.userId;
   const freeTrialUsed = profile?.claude_free_trial_used ?? 0;
+  const isPaid = !!profile?.first_paid_at;
 
   // 관리자 우회
   if (isAdmin(authUser.userId)) {
@@ -98,6 +101,7 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
       plan: 'admin',
       freeTrialUsed,
       freeTrialLimit: CLAUDE_FREE_TRIAL_LIMIT,
+      isPaid,
     };
   }
 
@@ -115,6 +119,7 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
     plan: isInfluencer ? 'influencer' : 'free_trial',
     freeTrialUsed,
     freeTrialLimit: CLAUDE_FREE_TRIAL_LIMIT,
+    isPaid,
   };
 }
 
