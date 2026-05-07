@@ -113,7 +113,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'my-post-analysis',
     category: 'my',
     title: '포스팅 분석',
-    description: '내 포스트의 상세 지표·개선 포인트 분석',
+    description: 'AI글 여부, 형태소 문장 분석',
     href: '/my/post-analysis',
     requiredPlan: 'blogger',
     authOnly: true,
