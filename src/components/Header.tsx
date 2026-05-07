@@ -285,6 +285,10 @@ export default function Header({ serverUser }: HeaderProps) {
                         className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
                         마이페이지
                       </Link>
+                      <Link href="/my/saved-keywords" onClick={() => setProfileOpen(false)}
+                        className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
+                        저장 키워드
+                      </Link>
                       {user.isAdmin && (
                         <Link href="/admin" onClick={() => setProfileOpen(false)}
                           className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
