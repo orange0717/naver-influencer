@@ -69,25 +69,25 @@ export default function SavedKeywords() {
       )}
 
       {/* Desktop */}
-      <table className="w-full hidden md:table">
+      <table className="w-full hidden md:table table-fixed">
         <thead>
           <tr className="border-b border-border/50 bg-bg/30">
             <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">키워드</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">월간 검색량</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">PC</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">모바일</th>
-            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-16">저장일</th>
+            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-32">월간 검색량</th>
+            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-24">PC</th>
+            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-24">모바일</th>
+            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-24 whitespace-nowrap">저장일</th>
             <th className="w-10"></th>
           </tr>
         </thead>
         <tbody>
           {keywords.map(sk => (
             <tr key={sk.id} className="border-b border-border/30 hover:bg-surface-hover transition-colors">
-              <td className="py-2.5 px-4 text-sm font-bold">{sk.keyword}</td>
+              <td className="py-2.5 px-4 text-sm font-bold truncate" title={sk.keyword}>{sk.keyword}</td>
               <td className="py-2.5 px-3 text-right font-rank text-sm font-bold">{sk.monthly_total.toLocaleString()}</td>
               <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_pc.toLocaleString()}</td>
               <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_mobile.toLocaleString()}</td>
-              <td className="py-2.5 px-3 text-center text-xs text-dim">
+              <td className="py-2.5 px-3 text-center text-xs text-dim whitespace-nowrap">
                 {new Date(sk.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
               </td>
               <td className="py-2.5 px-2">
