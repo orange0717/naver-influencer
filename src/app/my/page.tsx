@@ -17,7 +17,6 @@ import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
-import SavedKeywords from '@/components/dashboard/SavedKeywords';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
@@ -732,9 +731,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
-
-      {/* ─── 2-4. 저장된 키워드 ─── */}
-      <SavedKeywords />
 
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />

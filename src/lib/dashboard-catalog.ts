@@ -186,13 +186,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/keywords/blogger',
   },
   {
-    id: 'keywords-google-trends',
-    category: 'keyword',
-    title: '구글 트렌드',
-    description: '구글 트렌드 기반 키워드 인사이트',
-    href: '/keywords/google-trends',
-  },
-  {
     id: 'keywords-blog-ranking',
     category: 'keyword',
     title: '키워드 검색순위',

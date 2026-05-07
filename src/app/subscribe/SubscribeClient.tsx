@@ -157,7 +157,6 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>연도별 인플루언서 선정 현황</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>검색량 조회</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 구글 트렌드</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 1회)</span></li>
           </ul>
         </div>
@@ -352,12 +351,6 @@ export default function SubscribeClient() {
               </tr>
               <tr>
                 <td className="py-2.5 px-2">검색량 조회</td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-              </tr>
-              <tr>
-                <td className="py-2.5 px-2">키워드 구글 트렌드</td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
