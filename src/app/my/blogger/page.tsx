@@ -1004,14 +1004,6 @@ export default function BloggerDashboard() {
         )}
       </GlassCard>
 
-      {/* ─── 평균순위 계산 방식 ─── */}
-      <div className="bg-surface/50 rounded-xl border border-border/50 p-5 space-y-2">
-        <h4 className="text-xs font-bold text-dim">평균순위 계산 방식</h4>
-        <p className="text-[11px] text-dim leading-relaxed">
-          통합검색 / 블로그탭 현재 평균순위는 키워드순위 페이지에서 확인한 키워드들의 순위를 합산하여 재계산합니다. 키워드순위에서 "전체 확인"을 누르면 모든 포스팅의 키워드가 체크되고, 그 결과가 MY 블로그 평균순위에 반영됩니다.
-        </p>
-      </div>
-
     </div>
   );
 }
