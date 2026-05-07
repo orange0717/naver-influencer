@@ -40,9 +40,9 @@ export const APP_CATEGORIES: AppCategoryMeta[] = [
   },
   {
     key: 'research',
-    label: '정보',
+    label: '정보 · 분석',
     description: '인플루언서 · 경쟁자 정보 검색',
-    tag: '정보',
+    tag: '정보 · 분석',
     badgeClass: BADGE,
     buttonClass: BUTTON,
   },
@@ -211,8 +211,9 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'keywords-list',
     category: 'keyword',
     title: '키워드 챌린지 리스트',
-    description: '인플루언서 키워드 챌린지 전체 목록 (CSV 다운로드는 인플루언서 플랜)',
+    description: '인플루언서 키워드 챌린지 전체 목록',
     href: '/keywords',
+    requiredPlan: 'influencer',
   },
 
   // ── 글쓰기 ──
