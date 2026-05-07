@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useState, useEffect, useCallback } from 'react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
 import { extractBlogId, isValidBlogId } from '@/lib/blog-utils';
 
@@ -24,6 +25,7 @@ interface BlogCompareData {
     subscriberCount: number;
     postCount: number;
     weeklyAvgVisitor: number | null;
+    weeklyVisitors: { date: string; count: number }[];
     blogName: string;
     isInfluencer: boolean;
     influencerCategory: string | null;
@@ -62,6 +64,21 @@ function getAiBadgeStyle(score: number) {
 const sentenceTypeLabel: Record<string, string> = {
   topic: '주제', evidence: '근거', conclusion: '결론', appeal: '어필',
 };
+
+// 포스팅 입력값에서 blogId + logNo 추출 (URL이면 둘 다, ID만이면 logNo=null)
+function extractPostInfo(input: string): { blogId: string; logNo: string | null } {
+  const trimmed = input.trim();
+  const queryBlog = trimmed.match(/[?&]blogId=([a-zA-Z0-9_-]+)/);
+  const queryLog = trimmed.match(/[?&]logNo=(\d+)/);
+  if (queryBlog && queryLog) {
+    return { blogId: queryBlog[1], logNo: queryLog[1] };
+  }
+  const pathMatch = trimmed.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+  if (pathMatch) {
+    return { blogId: pathMatch[1], logNo: pathMatch[2] };
+  }
+  return { blogId: extractBlogId(trimmed), logNo: null };
+}
 
 interface QuotaInfo {
   plan: 'free' | 'blogger' | 'influencer';
@@ -179,14 +196,17 @@ export default function CompetitorPage() {
       const myData = await myRes.json();
       const compData = await compRes.json();
 
-      // 일주일 평균 방문자수 (DB에 데이터가 없으면 null)
+      // 일주일 평균 방문자수 + 일별 추이 (DB에 데이터가 없으면 빈 배열)
       let weeklyAvgVisitor: number | null = null;
+      let weeklyVisitors: { date: string; count: number }[] = [];
       if (compVisitorsRes.ok) {
         const v = await compVisitorsRes.json();
         const items: { date: string; count: number }[] = v.visitors || [];
         if (items.length > 0) {
           const sum = items.reduce((s, it) => s + (it.count || 0), 0);
           weeklyAvgVisitor = Math.round(sum / items.length);
+          // 날짜 오름차순으로 정렬 (차트용)
+          weeklyVisitors = [...items].sort((a, b) => a.date.localeCompare(b.date));
         }
       }
 
@@ -203,6 +223,7 @@ export default function CompetitorPage() {
           subscriberCount: compData.subscriberCount || 0,
           postCount: compData.postCount || 0,
           weeklyAvgVisitor,
+          weeklyVisitors,
           blogName: compData.blogName || compId,
           isInfluencer: !!compData.isInfluencer,
           influencerCategory: compData.influencerCategory || null,
@@ -216,20 +237,39 @@ export default function CompetitorPage() {
     finally { setBlogLoading(false); }
   }, [blogCompetitorId, authInfo, myBlogId, myBlogIdValid]);
 
-  // ─── 포스팅 비교 ───
+  // ─── 포스팅 분석 (목록 또는 단일 URL) ───
   const loadCompetitorPosts = useCallback(async () => {
     if (!postCompetitorId.trim()) return;
+    const { blogId, logNo } = extractPostInfo(postCompetitorId);
     setPostLoading(true);
     setCompetitorPosts([]);
-    const postCompId = extractBlogId(postCompetitorId);
+
+    // 단일 포스트 URL 모드: 자동 순위 + AI 분석
+    if (logNo) {
+      const tempPost: CompetitorPost = {
+        id: logNo,
+        title: `포스팅 #${logNo}`,
+        url: `https://blog.naver.com/${blogId}/${logNo}`,
+        date: '',
+        commentCount: 0,
+      };
+      setCompetitorPosts([tempPost]);
+      setPostLoading(false);
+      // 자동 분석 (병렬)
+      void checkPostRank(tempPost);
+      void runAiAnalysis(tempPost);
+      return;
+    }
+
+    // 블로그 ID 모드: 최근 포스팅 10개
     try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(postCompId)}&page=1&count=10`);
+      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=10`);
       if (res.ok) {
         const data = await res.json();
         setCompetitorPosts((data.posts || []).map((p: { logNo?: string; id?: string; title: string; url?: string; date: string; commentCount?: number }) => ({
           id: p.logNo || p.id || '',
           title: p.title,
-          url: p.url || `https://blog.naver.com/${postCompId}/${p.logNo || p.id}`,
+          url: p.url || `https://blog.naver.com/${blogId}/${p.logNo || p.id}`,
           date: p.date,
           commentCount: p.commentCount || 0,
         })));
@@ -238,15 +278,19 @@ export default function CompetitorPage() {
       console.error('[competitor] loadCompetitorPosts error:', err);
     }
     finally { setPostLoading(false); }
+    // checkPostRank, runAiAnalysis는 useCallback 내부에서 참조하지만
+    // 이 함수가 그들보다 먼저 정의되어 호이스팅으로 처리됨
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postCompetitorId]);
 
   const checkPostRank = async (post: CompetitorPost) => {
     setCheckingPostId(post.id);
     try {
+      const { blogId } = extractPostInfo(postCompetitorId);
       const res = await fetch('/api/blog/check-missing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blogId: extractBlogId(postCompetitorId), postTitle: post.title, postId: post.id }),
+        body: JSON.stringify({ blogId, postTitle: post.title, postId: post.id }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -262,7 +306,7 @@ export default function CompetitorPage() {
 
   // ─── AI 의심도 분석 (포스팅 분석과 동일 SSE) ───
   const runAiAnalysis = useCallback(async (post: CompetitorPost): Promise<void> => {
-    const blogId = extractBlogId(postCompetitorId);
+    const { blogId } = extractPostInfo(postCompetitorId);
     if (!blogId || !post.id) return;
     setAiAnalyzingId(post.id);
     try {
@@ -489,7 +533,7 @@ export default function CompetitorPage() {
                   })()}
                 </div>
                 <div className="space-y-3 max-w-sm mx-auto">
-                  <StatRow label="TODAY 방문자" value={blogCompareData.competitor.todayVisitor} />
+                  <StatRow label="TODAY 방문자" value={blogCompareData.competitor.todayVisitor} suffix="명" />
                   {blogCompareData.competitor.weeklyAvgVisitor !== null ? (
                     <StatRow
                       label="일주일 평균 방문자"
@@ -513,6 +557,50 @@ export default function CompetitorPage() {
                     />
                   )}
                 </div>
+
+                {blogCompareData.competitor.weeklyVisitors.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-dim font-semibold mb-2">최근 7일 방문자 추이</p>
+                    <div className="bg-bg/50 rounded-lg p-3 h-44">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={blogCompareData.competitor.weeklyVisitors} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="visitorFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#BF877A" stopOpacity={0.4} />
+                              <stop offset="100%" stopColor="#BF877A" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fill: '#8C7A6E', fontSize: 11 }}
+                            tickFormatter={(d: string) => d.slice(5).replace('-', '/')}
+                            axisLine={{ stroke: '#F2E2DC' }}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tick={{ fill: '#8C7A6E', fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={36}
+                            tickFormatter={(v: number) => v.toLocaleString()}
+                          />
+                          <Tooltip
+                            contentStyle={{ background: '#FFFFFF', border: '1px solid #F2E2DC', borderRadius: 8, fontSize: 12 }}
+                            labelFormatter={(d) => String(d)}
+                            formatter={(v) => [`${Number(v ?? 0).toLocaleString()}명`, '방문자']}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="count"
+                            stroke="#BF877A"
+                            strokeWidth={2}
+                            fill="url(#visitorFill)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -523,14 +611,18 @@ export default function CompetitorPage() {
       {tab === 'posting' && (
         <div className="space-y-4">
           <div className="bg-surface rounded-xl border border-border p-5">
-            <h3 className="font-bold text-sm mb-3">경쟁자 블로그 ID 입력</h3>
+            <h3 className="font-bold text-sm mb-3">블로그 ID 또는 포스팅 URL 입력</h3>
+            <p className="text-[11px] text-dim mb-2">
+              · 블로그 ID(예: <code>akzkfltm2</code>) → 최근 포스팅 10개<br />
+              · 포스팅 URL(예: <code>https://blog.naver.com/akzkfltm2/12345</code>) → 해당 포스팅 자동 분석
+            </p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={postCompetitorId}
                 onChange={e => setPostCompetitorId(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && loadCompetitorPosts()}
-                placeholder="네이버 블로그 ID 또는 URL"
+                placeholder="블로그 ID 또는 포스팅 URL"
                 className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
               />
               <button
@@ -538,7 +630,7 @@ export default function CompetitorPage() {
                 disabled={postLoading || !postCompetitorId.trim()}
                 className="px-5 py-2.5 bg-accent text-white font-bold rounded-xl text-sm hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
               >
-                {postLoading ? '조회 중...' : '조회'}
+                {postLoading ? '조회 중...' : '분석'}
               </button>
             </div>
           </div>
