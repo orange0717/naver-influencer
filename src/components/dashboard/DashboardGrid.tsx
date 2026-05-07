@@ -112,11 +112,11 @@ export default function DashboardGrid({
       <section className="bg-header rounded-2xl p-4 lg:p-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
-            <p className="text-xs lg:text-sm text-white/80 font-semibold mb-1.5 lg:mb-2">N인플 대시보드</p>
+            <p className="text-xs lg:text-sm text-white/80 font-semibold mb-1.5 lg:mb-2">블로거에서 인플루언서로</p>
             <h1 className="font-title font-black text-sm lg:text-2xl text-white leading-relaxed">
-              블로거에서 인플루언서로,
+              감으로 쓰던 블로그를,
               <br />
-              데이터로 증명하는 네이버 블로그 성장 플랫폼.
+              블로그 분석 · 키워드 · 글 피드백 데이터로 다시 씁니다.
             </h1>
           </div>
           <div className="flex items-center gap-2 lg:gap-3 justify-end">
