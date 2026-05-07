@@ -84,7 +84,11 @@ export default function SignupPage() {
 
     const blogId = extractBlogId(blogInput);
     const naverId = extractNaverId(naverInput);
-    if (blogId && !/^[a-zA-Z0-9_-]{2,30}$/.test(blogId)) {
+    if (!blogId) {
+      setError('네이버 블로그 주소를 입력해주세요.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]{2,30}$/.test(blogId)) {
       setError('네이버 블로그 주소를 다시 확인해주세요.');
       return;
     }
@@ -210,7 +214,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-dim block mb-1.5">네이버 블로그 주소 <span className="text-dim/60 font-normal">(선택)</span></label>
+              <label className="text-xs font-semibold text-dim block mb-1.5">네이버 블로그 주소<RequiredMark /></label>
               <input type="text" value={blogInput} onChange={e => setBlogInput(e.target.value)} placeholder="blog.naver.com/blogid 또는 blogid"
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
