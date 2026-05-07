@@ -40,10 +40,13 @@ export default function LoginPage() {
     }
   };
 
-  // 다른 기기에서 로그인되어 강제 로그아웃된 경우 안내
+  // 안내 메시지
   useEffect(() => {
-    if (searchParams.get('reason') === 'session_taken') {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_taken') {
       setError('다른 기기에서 로그인되어 자동 로그아웃되었습니다. 다시 로그인해 주세요.');
+    } else if (reason === 'oauth_no_account') {
+      setError('가입되지 않은 구글 계정입니다. 먼저 회원가입을 완료해주세요.');
     }
   }, [searchParams]);
 

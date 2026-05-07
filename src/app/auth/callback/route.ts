@@ -36,40 +36,25 @@ export async function GET(request: NextRequest) {
       // 동시 로그인 기기 제한 — 세션 등록 (device_id 쿠키 없으면 신규 발급)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // OAuth (Google 등) 신규 가입자 — users 테이블 레코드 자동 생성
-        try {
-          const admin = createServiceClient();
-          const { data: existingUser } = await admin
-            .from('users')
-            .select('id')
-            .eq('auth_id', user.id)
-            .single();
+        // 정책: 구글 등 OAuth 는 "이미 회원가입한 계정만" 로그인 허용.
+        //   public.users 레코드가 없으면 = 신규 OAuth 가입 시도이므로
+        //   세션을 폐기하고 로그인 페이지로 안내한다. auth.users 레코드도
+        //   삭제해 같은 이메일로 추후 정상 가입할 수 있게 한다.
+        const admin = createServiceClient();
+        const { data: existingUser } = await admin
+          .from('users')
+          .select('id')
+          .eq('auth_id', user.id)
+          .maybeSingle();
 
-          if (!existingUser) {
-            const meta = (user.user_metadata || {}) as Record<string, unknown>;
-            const rawName = (meta.full_name || meta.name || meta.user_name) as string | undefined;
-            const emailPrefix = (user.email || '').split('@')[0] || 'user';
-            let nickname = (rawName || emailPrefix).toString().trim().slice(0, 18) || 'user';
-
-            // 닉네임 중복 시 _xxxx 4자리 suffix
-            const { data: dup } = await admin
-              .from('users')
-              .select('id')
-              .eq('nickname', nickname)
-              .maybeSingle();
-            if (dup) {
-              const suffix = Math.floor(1000 + Math.random() * 9000);
-              nickname = `${nickname.slice(0, 15)}_${suffix}`;
-            }
-
-            await admin.from('users').insert({
-              auth_id: user.id,
-              email: user.email,
-              nickname,
-            });
+        if (!existingUser) {
+          await supabase.auth.signOut();
+          try {
+            await admin.auth.admin.deleteUser(user.id);
+          } catch (e) {
+            console.error('[oauth-callback] cleanup deleteUser failed:', e);
           }
-        } catch (e) {
-          console.error('[oauth-callback] user record bootstrap failed:', e);
+          return NextResponse.redirect(`${origin}/auth/login?reason=oauth_no_account`);
         }
 
         let deviceId = cookieStore.get(DEVICE_ID_COOKIE)?.value;
