@@ -64,6 +64,13 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('[signup] DB error:', error.message);
+    // Auth-DB 불일치 방지: public.users INSERT 가 실패하면 같은 이메일로 재가입할 수
+    // 있도록 auth.users 의 고아 레코드도 함께 정리한다. OAuth 콜백의 cleanup 과 동일 패턴.
+    try {
+      await supabase.auth.admin.deleteUser(authUser.id);
+    } catch (cleanupErr) {
+      console.error('[signup] cleanup deleteUser failed:', cleanupErr);
+    }
     return NextResponse.json({ error: '회원가입 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
 
