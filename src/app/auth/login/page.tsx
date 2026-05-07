@@ -208,6 +208,10 @@ export default function LoginPage() {
                 '로그인'
               )}
             </button>
+
+            <p className="text-xs text-dim text-center">
+              <Link href="/auth/forgot" className="underline hover:text-accent">아이디·비밀번호 찾기</Link>
+            </p>
           </form>
 
           <div className="relative">

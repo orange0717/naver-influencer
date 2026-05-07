@@ -185,7 +185,6 @@ export default function SignupPage() {
               N
             </div>
             <h1 className="text-2xl font-extrabold">N인플 회원가입</h1>
-            <p className="text-sm text-dim mt-1">블로거 & 인플루언서 대시보드</p>
           </div>
 
           <div className="space-y-4 animate-fade-in-up">
