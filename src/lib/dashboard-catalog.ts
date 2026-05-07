@@ -103,7 +103,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'my-keyword-ranking',
     category: 'my',
-    title: '키워드 순위',
+    title: '현 내 포스팅 통합검색/블로그탭 키워드 순위',
     description: '내 블로그가 상위 노출 중인 키워드와 순위 변화',
     href: '/my/keyword-ranking',
     requiredPlan: 'blogger',
