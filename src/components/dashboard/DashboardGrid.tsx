@@ -116,7 +116,7 @@ export default function DashboardGrid({
             <h1 className="font-title font-black text-sm lg:text-2xl text-white leading-relaxed">
               감으로 쓰던 블로그를,
               <br />
-              블로그 분석 · 키워드 · 글 피드백 데이터로 다시 씁니다.
+              블로그 분석 · 키워드 · 글 피드백 · 데이터로 다시 씁니다.
             </h1>
           </div>
           <div className="flex items-center gap-2 lg:gap-3 justify-end">
