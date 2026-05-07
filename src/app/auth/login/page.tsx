@@ -150,7 +150,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center -mt-6">
+    <div className="min-h-[75vh] flex items-start sm:items-center justify-center pt-10 pb-10">
       <div className="w-full max-w-sm mx-auto px-4">
         <div className="bg-surface rounded-2xl border border-border p-8 space-y-6">
           {/* ─── 헤더 ─── */}
