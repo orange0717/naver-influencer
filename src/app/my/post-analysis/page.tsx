@@ -716,14 +716,14 @@ export default function PostAnalysisPage() {
                                   <div className="flex items-center gap-3">
                                     <span className="text-sm font-bold">원본율:</span>
                                     <span className={`text-lg font-black font-rank ${
-                                      plagResult.originalRate >= 80 ? 'text-text' : plagResult.originalRate >= 50 ? 'text-accent' : 'text-down'
+                                      plagResult.originalRate >= 80 ? 'text-rose-700' : plagResult.originalRate >= 50 ? 'text-accent' : 'text-down'
                                     }`}>
                                       {plagResult.originalRate}%
                                     </span>
                                     <div className="flex-1 h-2 bg-border/30 rounded-full overflow-hidden">
                                       <div
                                         className={`h-full rounded-full ${
-                                          plagResult.originalRate >= 80 ? 'bg-text' : plagResult.originalRate >= 50 ? 'bg-accent' : 'bg-down'
+                                          plagResult.originalRate >= 80 ? 'bg-rose-700' : plagResult.originalRate >= 50 ? 'bg-accent' : 'bg-down'
                                         }`}
                                         style={{ width: `${plagResult.originalRate}%` }}
                                       />
@@ -739,11 +739,11 @@ export default function PostAnalysisPage() {
                                   <div className="space-y-2">
                                     {plagResult.sentences.map((s, i) => (
                                       <div key={i} className={`text-sm rounded-xl p-3 border ${
-                                        s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-text/5 border-text/15'
+                                        s.isDuplicate ? 'bg-down/5 border-down/20' : 'bg-rose-700/5 border-rose-700/15'
                                       }`}>
                                         <div className="flex items-start gap-2">
                                           <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                            s.isDuplicate ? 'bg-down/10 text-down' : 'bg-text/10 text-text'
+                                            s.isDuplicate ? 'bg-down/10 text-down' : 'bg-rose-700/10 text-rose-700'
                                           }`}>
                                             {s.isDuplicate ? '유사' : '원본'}
                                           </span>
