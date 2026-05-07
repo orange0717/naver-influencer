@@ -210,7 +210,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'keywords-list',
     category: 'keyword',
-    title: '키워드 챌린지 리스트',
+    title: '인플루언서 키워드 챌린지 리스트',
     description: '인플루언서 키워드 챌린지 전체 목록',
     href: '/keywords',
     requiredPlan: 'influencer',
