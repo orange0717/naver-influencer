@@ -89,7 +89,7 @@ export default function AppCard({
     <button
       type="button"
       onClick={() => onSelect(app)}
-      className="group relative flex flex-col text-left bg-surface rounded-2xl border border-border p-3 lg:p-4 lg:aspect-square transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40 cursor-pointer"
+      className="group relative flex flex-col text-left bg-surface rounded-2xl border border-border p-3 lg:p-4 aspect-square transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40 cursor-pointer"
     >
       {/* 상단: 카테고리 태그 + 상태 뱃지 + 즐겨찾기 */}
       <div className="flex items-start justify-between gap-2 mb-3">

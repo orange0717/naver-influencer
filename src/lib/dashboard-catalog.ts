@@ -12,7 +12,6 @@ export type AppCategoryKey =
   | 'research'
   | 'keyword'
   | 'writing'
-  | 'info'
   | 'partner';
 
 export interface AppCategoryMeta {
@@ -60,14 +59,6 @@ export const APP_CATEGORIES: AppCategoryMeta[] = [
     label: '글쓰기',
     description: 'AI 맞춤법 검사와 블로그 글 피드백으로 글 품질 점검',
     tag: '글쓰기',
-    badgeClass: BADGE,
-    buttonClass: BUTTON,
-  },
-  {
-    key: 'info',
-    label: '서비스 가이드',
-    description: 'N인플 사용 방법·FAQ',
-    tag: '가이드',
     badgeClass: BADGE,
     buttonClass: BUTTON,
   },
@@ -245,15 +236,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/dashboard/writing/youtube-summary',
     requiredPlan: 'blogger',
     authOnly: true,
-  },
-
-  // ── 서비스 가이드 ──
-  {
-    id: 'guide',
-    category: 'info',
-    title: '서비스 가이드',
-    description: 'N인플 사용 방법·FAQ',
-    href: '/guide',
   },
 
   // ── 추천 서비스 ──

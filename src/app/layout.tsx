@@ -12,6 +12,7 @@ import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 import FirstVisitModal from "@/components/FirstVisitModal";
+import ScrollToTop from "@/components/ScrollToTop";
 import SentryUserIdentity from "@/components/SentryUserIdentity";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -258,6 +259,7 @@ export default function RootLayout({
           <InstallBanner />
           <NicknameRequiredModal />
           <FirstVisitModal />
+          <ScrollToTop />
         </Providers>
         <Script src="https://cdn.portone.io/v2/browser-sdk.js" strategy="lazyOnload" />
         <Suspense fallback={null}><GoogleAnalytics /></Suspense>
