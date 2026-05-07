@@ -129,9 +129,39 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  let reason = '';
+  try {
+    const body = await request.json();
+    if (typeof body?.reason === 'string') reason = body.reason.trim().slice(0, 500);
+  } catch {
+    // body 없는 호출도 허용 (기존 호환)
+  }
+  if (!reason) {
+    return NextResponse.json({ error: '탈퇴 사유를 입력해주세요.' }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
 
   try {
+    // 0. 탈퇴 사유 기록 (users 행 삭제 전에 닉네임/이메일 스냅샷 확보)
+    const { data: snapshot } = await supabase
+      .from('users')
+      .select('email, nickname')
+      .eq('id', auth.userId)
+      .single();
+
+    const { error: reasonError } = await supabase
+      .from('withdrawal_reasons')
+      .insert({
+        user_id: auth.userId,
+        email: snapshot?.email ?? null,
+        nickname: snapshot?.nickname ?? null,
+        reason,
+      });
+    if (reasonError) {
+      logger.error('profile', 'withdrawal reason insert error', { error: reasonError.message });
+    }
+
     // 1. users 테이블 삭제
     const { error: deleteError } = await supabase
       .from('users')
