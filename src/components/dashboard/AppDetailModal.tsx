@@ -66,6 +66,7 @@ export default function AppDetailModal({ app, category, currentPlan, isLoggedIn,
 
   const isExternal = !!app.external && !locked && !needsLogin && !app.devPreview;
   const planTagLabel = app.requiredPlan ? planLabel(app.requiredPlan) : '무료';
+  const showPaidTag = !app.requiredPlan && !!app.paidNote;
 
   return (
     <div
@@ -101,6 +102,11 @@ export default function AppDetailModal({ app, category, currentPlan, isLoggedIn,
           <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-bold text-dim bg-surface border border-border rounded-full">
             {planTagLabel}
           </span>
+          {showPaidTag && (
+            <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-bold text-accent bg-accent/10 border border-accent/20 rounded-full">
+              유료
+            </span>
+          )}
           {app.devPreview && (
             <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-bold text-dim bg-bg border border-border rounded-full">
               개발 중
