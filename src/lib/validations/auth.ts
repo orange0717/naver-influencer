@@ -9,7 +9,7 @@ import { naverIdSchema, blogIdSchema } from './index';
 export const signupSchema = z.object({
   authId: z.string().min(1, 'authId는 필수입니다.'),
   email: z.string().email('이메일 형식이 올바르지 않습니다.'),
-  nickname: z.string().min(1, '닉네임은 필수입니다.').max(50).transform((v) => v.trim()),
+  nickname: z.string().min(1, '닉네임은 필수입니다.').max(20, '닉네임은 20자 이하로 입력해주세요.').transform((v) => v.trim()),
   // 블로그 ID 는 점유 위험이 없어 가입 시점에 저장 허용 (영문/숫자/밑줄/하이픈)
   blogId: z
     .string()

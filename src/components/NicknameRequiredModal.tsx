@@ -60,8 +60,8 @@ export default function NicknameRequiredModal() {
       setError('닉네임을 입력해주세요.');
       return;
     }
-    if (trimmed.length > 50) {
-      setError('닉네임은 50자 이하로 입력해주세요.');
+    if (trimmed.length > 20) {
+      setError('닉네임은 20자 이하로 입력해주세요.');
       return;
     }
     if (DEFAULT_FALLBACKS.includes(trimmed)) {
@@ -120,19 +120,19 @@ export default function NicknameRequiredModal() {
           type="text"
           value={value}
           onChange={e => {
-            setValue(e.target.value.slice(0, 50));
+            setValue(e.target.value.slice(0, 20));
             if (error) setError(null);
           }}
           onKeyDown={e => {
             if (e.key === 'Enter' && !saving) handleSave();
           }}
           placeholder="예: 오렌지도서관"
-          maxLength={50}
+          maxLength={20}
           autoFocus
           className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
         />
         <div className="flex items-center justify-between mt-1 mb-4 min-h-[16px]">
-          <span className="text-[11px] text-dim">{value.length} / 50</span>
+          <span className="text-[11px] text-dim">{value.length} / 20</span>
           {error && <span className="text-xs font-semibold text-down">{error}</span>}
         </div>
 
