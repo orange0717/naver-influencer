@@ -240,7 +240,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '유튜브 자막추출',
     description: '유튜브 영상의 자막을 추출해 블로그 참고용으로 깔끔하게 정리 (출처 자동 표기)',
     href: '/dashboard/writing/youtube-summary',
-    requiredPlan: 'blogger',
+    requiredPlan: 'influencer',
     authOnly: true,
   },
 
