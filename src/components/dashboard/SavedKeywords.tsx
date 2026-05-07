@@ -14,6 +14,8 @@ interface SavedKeyword {
   last_view_exposed: boolean | null;
   last_blog_exposed: boolean | null;
   last_checked_at: string | null;
+  challenge_rank: number | null;
+  challenge_checked_at: string | null;
 }
 
 function renderRank(rank: number | null, exposed: boolean | null) {
@@ -22,6 +24,13 @@ function renderRank(rank: number | null, exposed: boolean | null) {
   }
   if (exposed === false) {
     return <span className="text-down font-semibold">누락</span>;
+  }
+  return <span className="text-dim/50">—</span>;
+}
+
+function renderChallenge(rank: number | null) {
+  if (rank != null) {
+    return <span className="text-accent font-rank font-bold">{rank}위</span>;
   }
   return <span className="text-dim/50">—</span>;
 }
@@ -87,13 +96,14 @@ export default function SavedKeywords() {
       <table className="w-full hidden md:table table-fixed">
         <thead>
           <tr className="border-b border-border/50 bg-bg/30">
-            <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">키워드</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-28">월간 검색량</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-20">PC</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-20">모바일</th>
-            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-20 whitespace-nowrap">통합검색</th>
-            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-20 whitespace-nowrap">블로그탭</th>
-            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-20 whitespace-nowrap">저장일</th>
+            <th className="text-left py-2.5 px-4 font-semibold text-dim text-[10px]">키워드</th>
+            <th className="text-right py-2.5 px-2 font-semibold text-dim text-[10px] w-24 whitespace-nowrap">월간 검색량</th>
+            <th className="text-right py-2.5 px-2 font-semibold text-dim text-[10px] w-16">PC</th>
+            <th className="text-right py-2.5 px-2 font-semibold text-dim text-[10px] w-20">모바일</th>
+            <th className="text-center py-2.5 px-2 font-semibold text-dim text-[10px] w-20 whitespace-nowrap">통합검색</th>
+            <th className="text-center py-2.5 px-2 font-semibold text-dim text-[10px] w-20 whitespace-nowrap">블로그탭</th>
+            <th className="text-center py-2.5 px-2 font-semibold text-dim text-[10px] w-20 whitespace-nowrap">챌린지</th>
+            <th className="text-center py-2.5 px-2 font-semibold text-dim text-[10px] w-20 whitespace-nowrap">저장일</th>
             <th className="w-10"></th>
           </tr>
         </thead>
@@ -101,16 +111,19 @@ export default function SavedKeywords() {
           {keywords.map(sk => (
             <tr key={sk.id} className="border-b border-border/30 hover:bg-surface-hover transition-colors">
               <td className="py-2.5 px-4 text-sm font-bold truncate" title={sk.keyword}>{sk.keyword}</td>
-              <td className="py-2.5 px-3 text-right font-rank text-sm font-bold">{sk.monthly_total.toLocaleString()}</td>
-              <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_pc.toLocaleString()}</td>
-              <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_mobile.toLocaleString()}</td>
-              <td className="py-2.5 px-3 text-center text-xs whitespace-nowrap">
+              <td className="py-2.5 px-2 text-right font-rank text-sm font-bold">{sk.monthly_total.toLocaleString()}</td>
+              <td className="py-2.5 px-2 text-right font-rank text-sm">{sk.monthly_pc.toLocaleString()}</td>
+              <td className="py-2.5 px-2 text-right font-rank text-sm">{sk.monthly_mobile.toLocaleString()}</td>
+              <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                 {renderRank(sk.last_view_rank, sk.last_view_exposed)}
               </td>
-              <td className="py-2.5 px-3 text-center text-xs whitespace-nowrap">
+              <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                 {renderRank(sk.last_blog_rank, sk.last_blog_exposed)}
               </td>
-              <td className="py-2.5 px-3 text-center text-xs text-dim whitespace-nowrap">
+              <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
+                {renderChallenge(sk.challenge_rank)}
+              </td>
+              <td className="py-2.5 px-2 text-center text-xs text-dim whitespace-nowrap">
                 {new Date(sk.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
               </td>
               <td className="py-2.5 px-2">
@@ -141,10 +154,11 @@ export default function SavedKeywords() {
                 <span>PC {sk.monthly_pc.toLocaleString()}</span>
                 <span>모바일 {sk.monthly_mobile.toLocaleString()}</span>
               </div>
-              {(sk.last_view_rank != null || sk.last_blog_rank != null || sk.last_view_exposed === false || sk.last_blog_exposed === false) && (
-                <div className="flex items-center gap-3 text-[11px] mt-1">
+              {(sk.last_view_rank != null || sk.last_blog_rank != null || sk.last_view_exposed === false || sk.last_blog_exposed === false || sk.challenge_rank != null) && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] mt-1">
                   <span>통합 {renderRank(sk.last_view_rank, sk.last_view_exposed)}</span>
                   <span>블로그 {renderRank(sk.last_blog_rank, sk.last_blog_exposed)}</span>
+                  {sk.challenge_rank != null && <span>챌린지 {renderChallenge(sk.challenge_rank)}</span>}
                 </div>
               )}
             </div>

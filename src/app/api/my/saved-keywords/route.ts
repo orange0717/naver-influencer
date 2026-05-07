@@ -27,7 +27,82 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
   }
 
-  return NextResponse.json({ keywords: data || [] });
+  type SavedKeywordRow = {
+    id: string;
+    keyword: string;
+    monthly_pc: number;
+    monthly_mobile: number;
+    monthly_total: number;
+    competition: string | null;
+    created_at: string;
+    last_view_rank: number | null;
+    last_blog_rank: number | null;
+    last_view_exposed: boolean | null;
+    last_blog_exposed: boolean | null;
+    last_checked_at: string | null;
+  };
+  const rows = (data || []) as SavedKeywordRow[];
+  type SavedKeywordOut = SavedKeywordRow & {
+    challenge_rank: number | null;
+    challenge_checked_at: string | null;
+  };
+  let enriched: SavedKeywordOut[] = rows.map(r => ({
+    ...r,
+    challenge_rank: null,
+    challenge_checked_at: null,
+  }));
+
+  // 챌린지 공식 순위 join — 인플루언서 연결된 사용자만 채워짐
+  if (rows.length > 0) {
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('linked_influencer_id')
+      .eq('id', auth.userId)
+      .maybeSingle();
+
+    const influencerId = (userRow as { linked_influencer_id: string | null } | null)?.linked_influencer_id;
+    if (influencerId) {
+      const cleans = rows.map(r => r.keyword.trim().toLowerCase().replace(/\s+/g, ''));
+      const { data: kcRows } = await supabase
+        .from('keyword_challenges')
+        .select('id, keyword_clean')
+        .in('keyword_clean', cleans);
+
+      const kcMap = new Map<string, string>();
+      (kcRows || []).forEach((kc: { id: string; keyword_clean: string }) => {
+        kcMap.set(kc.keyword_clean, kc.id);
+      });
+
+      const keywordIds = Array.from(new Set(kcMap.values()));
+      if (keywordIds.length > 0) {
+        const { data: rankRows } = await supabase
+          .from('keyword_rankings')
+          .select('keyword_id, rank_position, snapshot_date')
+          .eq('influencer_id', influencerId)
+          .in('keyword_id', keywordIds)
+          .order('snapshot_date', { ascending: false });
+
+        // 키워드별 최신 1건만 유지
+        const latestByKeyword = new Map<string, { rank: number; date: string }>();
+        (rankRows || []).forEach((r: { keyword_id: string; rank_position: number; snapshot_date: string }) => {
+          if (!latestByKeyword.has(r.keyword_id)) {
+            latestByKeyword.set(r.keyword_id, { rank: r.rank_position, date: r.snapshot_date });
+          }
+        });
+
+        enriched = enriched.map(r => {
+          const clean = r.keyword.trim().toLowerCase().replace(/\s+/g, '');
+          const kid = kcMap.get(clean);
+          if (!kid) return r;
+          const latest = latestByKeyword.get(kid);
+          if (!latest) return r;
+          return { ...r, challenge_rank: latest.rank, challenge_checked_at: latest.date };
+        });
+      }
+    }
+  }
+
+  return NextResponse.json({ keywords: enriched });
 }
 
 /** PATCH: 저장된 키워드의 최신 순위 갱신 (keyword-ranking 페이지에서 호출) */
