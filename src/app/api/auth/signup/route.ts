@@ -12,15 +12,13 @@ export async function POST(request: NextRequest) {
   const v = validateBody(signupSchema, body);
   if (!v.success) return v.response;
 
-  const { authId, email, nickname } = v.data;
+  const { authId, email, nickname, blogId } = v.data;
 
   const supabase = createServiceClient();
 
-  // 보안: 가입 시 linked_influencer_id / blog_id 자동 설정 금지.
-  //   이전엔 naverId 만 보내면 검증 없이 linked_influencer_id 가 세팅되어
-  //   /api/my/link 의 본인 인증 로직(demo OTP)을 우회할 수 있었음.
-  //   가입 후 사용자는 /api/my/link (인플루언서) 또는 /api/profile (블로그) 로
-  //   별도 연결한다.
+  // 보안: 가입 시 linked_influencer_id 자동 설정 금지.
+  //   naverId 는 검증 없이 점유될 수 있어 /api/my/link 의 본인 인증(demo OTP)
+  //   을 통과해야만 연결한다. blog_id 는 점유 위험이 없어 입력값을 그대로 저장.
 
   // 이미 존재하는지 확인 (멱등성: signUp 재시도 등)
   const { data: existing } = await supabase
@@ -34,13 +32,12 @@ export async function POST(request: NextRequest) {
   }
 
   // service_role로 INSERT (RLS 우회)
+  const insertPayload: Record<string, unknown> = { auth_id: authId, email, nickname };
+  if (blogId) insertPayload.blog_id = blogId;
+
   const { data, error } = await supabase
     .from('users')
-    .insert({
-      auth_id: authId,
-      email,
-      nickname,
-    })
+    .insert(insertPayload)
     .select('id')
     .single();
 

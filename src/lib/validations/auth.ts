@@ -10,6 +10,13 @@ export const signupSchema = z.object({
   authId: z.string().min(1, 'authId는 필수입니다.'),
   email: z.string().email('이메일 형식이 올바르지 않습니다.'),
   nickname: z.string().min(1, '닉네임은 필수입니다.').max(50).transform((v) => v.trim()),
+  // 블로그 ID 는 점유 위험이 없어 가입 시점에 저장 허용 (영문/숫자/밑줄/하이픈)
+  blogId: z
+    .string()
+    .max(30)
+    .regex(/^[a-zA-Z0-9_-]+$/, '블로그 ID 는 영문/숫자/밑줄/하이픈만 가능합니다.')
+    .transform((v) => v.trim().toLowerCase())
+    .optional(),
 });
 
 /** POST /api/auth/blogger-login */

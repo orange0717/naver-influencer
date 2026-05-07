@@ -240,7 +240,7 @@ export default function LoginPage() {
             )}
           </button>
 
-          <p className="text-[10px] text-dim text-center leading-relaxed">
+          <p className="text-sm text-dim text-center leading-relaxed">
             아직 계정이 없으신가요?{' '}
             <Link href="/auth/signup" className="text-accent underline hover:text-accent-hover">
               회원가입
