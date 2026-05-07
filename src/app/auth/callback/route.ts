@@ -5,10 +5,20 @@ import { registerSession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { createServiceClient } from '@/lib/supabase-server';
 
+// next 파라미터를 같은 origin 의 내부 경로로만 허용 (open redirect 방지).
+// '//evil.com', '/\\evil.com', 외부 절대 URL 등은 모두 기본값으로 폴백.
+function sanitizeNext(raw: string | null): string {
+  const fallback = '/my';
+  if (!raw) return fallback;
+  if (!raw.startsWith('/')) return fallback;
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return fallback;
+  return raw;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/my';
+  const next = sanitizeNext(searchParams.get('next'));
 
   if (code) {
     const cookieStore = await cookies();
