@@ -96,7 +96,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'my-blogger',
     category: 'my',
     title: '블로그 분석',
-    description: '내 블로그 방문자·상위 키워드·품질 지수 요약',
+    description: '내 블로그 방문자수, 포스팅 누락여부 확인',
     href: '/my/blogger',
     authOnly: true,
   },
