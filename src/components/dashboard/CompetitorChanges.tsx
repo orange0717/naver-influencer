@@ -14,17 +14,14 @@ export interface CompetitorChangeEvent {
 interface CompetitorChangesProps {
   competitorNaverId: string;
   competitorName: string;
-  myNaverId: string;
 }
 
 const changeConfig = {
   entered: { label: '진입', color: 'text-down', bg: 'bg-down/10', icon: '>' },
   exited: { label: '이탈', color: 'text-up', bg: 'bg-up/10', icon: '<' },
-  overtook_me: { label: '추월당함', color: 'text-down', bg: 'bg-down/10', icon: '!' },
-  i_overtook: { label: '추월함', color: 'text-up', bg: 'bg-up/10', icon: '^' },
 };
 
-export default function CompetitorChanges({ competitorNaverId, competitorName, myNaverId }: CompetitorChangesProps) {
+export default function CompetitorChanges({ competitorNaverId, competitorName }: CompetitorChangesProps) {
   const [changes, setChanges] = useState<CompetitorChangeEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,17 +29,20 @@ export default function CompetitorChanges({ competitorNaverId, competitorName, m
     async function fetchChanges() {
       try {
         const res = await fetch(
-          `/api/competitors/changes?naverId=${encodeURIComponent(competitorNaverId)}&myNaverId=${encodeURIComponent(myNaverId)}`
+          `/api/competitors/changes?naverId=${encodeURIComponent(competitorNaverId)}`
         );
         if (res.ok) {
           const data = await res.json();
-          setChanges(data.changes || []);
+          const filtered = (data.changes || []).filter(
+            (c: CompetitorChangeEvent) => c.changeType === 'entered' || c.changeType === 'exited'
+          );
+          setChanges(filtered);
         }
       } catch { /* ignore */ }
       setLoading(false);
     }
     fetchChanges();
-  }, [competitorNaverId, myNaverId]);
+  }, [competitorNaverId]);
 
   if (loading) {
     return (
@@ -57,16 +57,16 @@ export default function CompetitorChanges({ competitorNaverId, competitorName, m
   if (changes.length === 0) {
     return (
       <div className="text-center py-8 text-dim text-xs">
-        최근 7일간 겹치는 키워드에서 변동이 없습니다
+        최근 7일간 키워드 진입·이탈 활동이 없습니다
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-dim font-semibold mb-2">최근 7일 경쟁 변동</p>
+      <p className="text-[11px] text-dim font-semibold mb-2">최근 7일 활동</p>
       {changes.slice(0, 10).map((event, i) => {
-        const config = changeConfig[event.changeType];
+        const config = changeConfig[event.changeType as 'entered' | 'exited'];
         return (
           <div key={`${event.keyword_id}-${event.date}-${i}`} className={`flex items-center gap-3 p-2.5 rounded-lg ${config.bg}`}>
             <div className={`w-6 h-6 rounded-full ${config.bg} flex items-center justify-center text-xs font-bold ${config.color}`}>
@@ -82,8 +82,7 @@ export default function CompetitorChanges({ competitorNaverId, competitorName, m
               </p>
               <div className="flex items-center gap-2 mt-0.5 text-[10px] text-dim">
                 <span>{event.date.slice(5)}</span>
-                {event.competitorRank && <span>경쟁자 {event.competitorRank}위</span>}
-                {event.myRank && <span>나 {event.myRank}위</span>}
+                {event.competitorRank && <span>{event.competitorRank}위</span>}
               </div>
             </div>
           </div>

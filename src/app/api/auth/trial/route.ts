@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createHash } from 'crypto';
 import { createServiceClient } from '@/lib/supabase-server';
 import { validateBody } from '@/lib/validations';
 import { z } from 'zod';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { naverIdSchema } from '@/lib/validations';
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +75,29 @@ export async function POST(request: NextRequest) {
     cookieStore.set('user_type', 'influencer', cookieOptions);
     cookieStore.set('trial_started', String(Date.now()), cookieOptions);
     if (blogId) cookieStore.set('blog_id', blogId, cookieOptions);
+
+    // 데모 체험자 추적 (관리자 페이지 노출용)
+    try {
+      const ua = request.headers.get('user-agent') || '';
+      const ipHash = ip ? sha256Hex(ip) : null;
+      const uaHash = ua ? sha256Hex(ua) : null;
+      await supabase
+        .from('trial_users')
+        .upsert(
+          {
+            naver_id: naverId,
+            blog_id: blogId || null,
+            display_name: influencer?.display_name || null,
+            ip_hash: ipHash,
+            ua_hash: uaHash,
+            source: 'influencer',
+            last_started_at: new Date().toISOString(),
+          },
+          { onConflict: 'naver_id', ignoreDuplicates: false }
+        );
+    } catch {
+      // 추적 실패는 trial 시작 자체를 막지 않음
+    }
 
     return NextResponse.json({
       success: true,

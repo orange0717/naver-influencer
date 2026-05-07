@@ -88,6 +88,10 @@ export interface DashboardApp {
   external?: boolean;
   /** CTA 버튼 라벨 커스텀 (기본 '무료플랜') */
   ctaLabel?: string;
+  /** 모달 내 무료 사용 제한 안내 (예: '무료 회원은 1회만 이용할 수 있습니다.') */
+  freeNote?: string;
+  /** 모달 내 유료 구독자 혜택 안내 (예: '유료 구독자는 무제한으로 이용할 수 있습니다.') */
+  paidNote?: string;
 }
 
 export const DASHBOARD_APPS: DashboardApp[] = [
@@ -159,7 +163,9 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '경쟁자 분석',
     description: '경쟁 블로그 지표 비교·변화 추이',
     href: '/competitor',
-    ctaLabel: '일일 1회 무료',
+    ctaLabel: '무료',
+    freeNote: '무료 회원은 1일 1회 이용할 수 있습니다.',
+    paidNote: '블로거 플랜은 1일 5회, 인플루언서 플랜은 무제한 이용 가능합니다.',
   },
   {
     id: 'decoder',

@@ -121,9 +121,19 @@ export default function AppDetailModal({ app, category, currentPlan, isLoggedIn,
         <h2 id="app-detail-title" className="font-title font-bold text-lg lg:text-xl text-text mb-2">
           {app.title}
         </h2>
-        <p className="text-sm text-dim leading-relaxed mb-6">
+        <p className={`text-sm text-dim leading-relaxed ${app.freeNote || app.paidNote ? 'mb-3' : 'mb-6'}`}>
           {app.description}
         </p>
+        {(app.freeNote || app.paidNote) && (
+          <div className="mb-6 space-y-1 text-xs">
+            {app.freeNote && (
+              <p className="text-accent font-semibold">{app.freeNote}</p>
+            )}
+            {app.paidNote && (
+              <p className="text-text font-semibold">{app.paidNote}</p>
+            )}
+          </div>
+        )}
 
         {/* CTA */}
         {app.devPreview ? (

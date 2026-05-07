@@ -352,29 +352,19 @@ export default function CompetitorPage() {
       {/* ─── 일일 사용 현황 배너 ─── */}
       {quota && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs flex items-center justify-between gap-3 ${
-            quota.unlimited
-              ? 'bg-up/5 border-up/20 text-up'
-              : quota.remaining === 0
+          className={`rounded-xl border px-4 py-3 text-xs flex items-center justify-between gap-3 flex-wrap ${
+            quota.remaining === 0 && !quota.unlimited
               ? 'bg-down/10 border-down/30 text-down'
               : 'bg-surface border-border text-text'
           }`}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold">
-              {quota.unlimited
-                ? '경쟁자 분석: 무제한 이용 가능'
-                : `오늘 경쟁자 분석 ${quota.used} / ${quota.limit}회 사용`}
+              경쟁자 분석 : 무료 일일 1회, 예비 인플루언서 일일 5회, 인플루언서 일일 무제한
             </span>
             {!quota.unlimited && (
               <span className="text-dim">
-                (플랜:
-                {quota.plan === 'blogger'
-                  ? ' 블로거 · 1일 5회'
-                  : quota.plan === 'free'
-                  ? ' 무료 · 1일 1회'
-                  : ' 인플루언서'}
-                )
+                (오늘 {quota.used} / {quota.limit}회 사용)
               </span>
             )}
           </div>
@@ -412,16 +402,7 @@ export default function CompetitorPage() {
 
       {/* ─── 키워드챌린지 탭 ─── */}
       {tab === 'challenge' && (
-        <CompetitorDashboard
-          naverId={authInfo.naverId}
-          myStats={{
-            avgRank: authInfo.avgRank > 0 ? Math.round(authInfo.avgRank * 10) / 10 : 0,
-            totalKeywords: authInfo.totalKeywords,
-            top3Count: authInfo.top3Count,
-          }}
-          mySubscribers={authInfo.subscriberCount}
-          myDisplayName={authInfo.displayName}
-        />
+        <CompetitorDashboard naverId={authInfo.naverId} />
       )}
 
       {/* ─── 블로그 탭 ─── */}

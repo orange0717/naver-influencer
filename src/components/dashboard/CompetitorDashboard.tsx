@@ -27,20 +27,12 @@ interface CompareData {
   stats: { totalKeywords: number; top3Count: number; top10Count: number; avgRank: number };
   sharedKeywords: { keyword: string; keyword_id: string; myRank: number | null; competitorRank: number }[];
   sharedCount: number;
-  myStats?: { totalKeywords: number; top3Count: number; top10Count: number; avgRank: number } | null;
-  mySubscribers?: number;
 }
 
 export default function CompetitorDashboard({
   naverId,
-  myStats,
-  mySubscribers,
-  myDisplayName,
 }: {
   naverId: string;
-  myStats: { avgRank: number; totalKeywords: number; top3Count: number };
-  mySubscribers: number;
-  myDisplayName: string;
 }) {
   const [competitors, setCompetitors] = useState<WatchedCompetitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,13 +138,13 @@ export default function CompetitorDashboard({
     }
   };
 
-  // 비교 데이터 로드
+  // 경쟁자 정보 로드 (단독)
   const loadCompare = async (competitorNaverId: string) => {
     if (compareData[competitorNaverId]) return;
     setLoadingCompare(competitorNaverId);
     try {
       const res = await fetch(
-        `/api/competitors?naverId=${encodeURIComponent(competitorNaverId)}&myNaverId=${encodeURIComponent(naverId)}`
+        `/api/competitors?naverId=${encodeURIComponent(competitorNaverId)}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -275,7 +267,7 @@ export default function CompetitorDashboard({
                     <p className="text-sm font-semibold truncate">{comp.display_name || comp.naver_id}</p>
                     <p className="text-[10px] text-dim">
                       {comp.category} / 팬 {formatCount(comp.subscriber_count)}
-                      {data && ` / 겹치는 키워드 ${data.sharedCount}개`}
+                      {data && ` / 키워드 ${data.stats.totalKeywords}개`}
                     </p>
                   </div>
 
@@ -305,23 +297,23 @@ export default function CompetitorDashboard({
                       </div>
                     ) : data ? (
                       <>
-                        {/* 비교 뷰 (기존 컴포넌트) */}
+                        {/* 단독 정보 뷰 */}
                         <CompetitorCompareView
-                          myName={myDisplayName}
                           competitorName={data.competitor.displayName}
-                          myStats={data.myStats ?? myStats}
                           competitorStats={data.stats}
-                          mySubscribers={(data.mySubscribers ?? 0) > 0 ? data.mySubscribers! : mySubscribers}
                           competitorSubscribers={data.competitor.subscriberCount}
-                          sharedKeywords={data.sharedKeywords}
+                          keywords={data.sharedKeywords.map(sk => ({
+                            keyword: sk.keyword,
+                            keyword_id: sk.keyword_id,
+                            competitorRank: sk.competitorRank,
+                          }))}
                         />
 
-                        {/* 최근 변동 (기존 컴포넌트) */}
+                        {/* 최근 7일 활동 */}
                         <div className="border-t border-border/30 pt-4">
                           <CompetitorChanges
                             competitorNaverId={comp.naver_id}
                             competitorName={comp.display_name || comp.naver_id}
-                            myNaverId={naverId}
                           />
                         </div>
 

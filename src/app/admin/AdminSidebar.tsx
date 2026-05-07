@@ -10,6 +10,7 @@ const MENU_ITEMS = [
   { href: '/admin/analytics', label: '유입 분석', icon: 'R' },
   { href: '/admin/restricted', label: '접근 제한', icon: '!' },
   { href: '/admin/members', label: '회원 관리', icon: 'U' },
+  { href: '/admin/trials', label: '데모 체험', icon: 'T' },
   { href: '/admin/community', label: '커뮤니티 관리', icon: '?' },
   { href: '/admin/bulk-grant', label: '플랜 일괄 부여', icon: '+' },
   { href: '/admin/influencers', label: '인플루언서 관리', icon: 'I' },
