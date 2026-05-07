@@ -8,6 +8,7 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import SavedKeywords from '@/components/dashboard/SavedKeywords';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
+import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 
 interface BloggerProfile {
   blogId: string;
@@ -487,6 +488,38 @@ export default function BloggerDashboard() {
     saveScoreToServer();
   };
 
+  const downloadPostsCsv = () => {
+    if (!profile) return;
+    let posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    if (postFilter === 'missing') {
+      posts = posts.filter(p => {
+        const mr = missingResults[p.id];
+        return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
+      });
+    }
+    if (posts.length === 0) return;
+    const headers = ['번호', '제목', 'URL', '작성일', '댓글수', '통합검색 노출', '통합검색 순위', '블로그탭 노출', '블로그탭 순위'];
+    const rows = posts.map((p, i) => {
+      const mr = missingResults[p.id];
+      const view = mr?.viewTab;
+      const blog = mr?.blogTab;
+      return [
+        i + 1,
+        p.title,
+        p.url,
+        p.date,
+        p.commentCount,
+        view ? (view.exposed ? '노출' : '누락') : '',
+        view?.rank ?? '',
+        blog ? (blog.exposed ? '노출' : '누락') : '',
+        blog?.rank ?? '',
+      ];
+    });
+    const csv = rowsToCsv(headers, rows);
+    const filterTag = postFilter === 'missing' ? '_누락' : '';
+    downloadCsvInBrowser(`내블로그포스팅_${profile.blogId}${filterTag}_${todayStamp()}.csv`, csv);
+  };
+
   const saveCategory = async (cat: string) => {
     if (!profile) return;
     setCategory(cat);
@@ -766,6 +799,15 @@ export default function BloggerDashboard() {
                 ) : '전체 누락율 확인'}
               </button>
             )}
+            <button onClick={downloadPostsCsv}
+              disabled={(allBlogPosts.length || blogPosts.length) === 0}
+              title="현재 필터가 적용된 포스팅 목록을 CSV로 저장"
+              className="px-3 py-2 border border-border text-text font-semibold rounded-xl hover:bg-surface-hover transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs shrink-0 flex items-center gap-1.5">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              CSV 저장
+            </button>
             <a href={`https://blog.naver.com/${profile.blogId}`} target="_blank" rel="noopener noreferrer"
               className="text-[11px] text-accent hover:underline font-semibold">블로그 방문 →</a>
           </div>
