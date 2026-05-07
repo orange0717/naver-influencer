@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
@@ -29,6 +30,7 @@ export default function AdSignupPage() {
   const [error, setError] = useState('');
 
   const router = useRouter();
+  const queryClient = useQueryClient();
   const allAgreed = agreeTerms && agreePrivacy;
 
   const handleAgreeAll = () => {
@@ -110,6 +112,9 @@ export default function AdSignupPage() {
         setError(data.error || '프로필 생성에 실패했습니다.');
         return;
       }
+
+      // useAuth 캐시 무효화 — Header/모달 등이 새 사용자 정보를 즉시 반영
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
 
       router.push('/orangeconnect/dashboard');
       router.refresh();

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { signUp as gaSignUp } from '@/lib/gtag';
@@ -47,6 +48,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
 
   const router = useRouter();
+  const queryClient = useQueryClient();
   const allAgreed = agreeTerms && agreePrivacy;
 
   const handleAgreeAll = () => {
@@ -161,6 +163,9 @@ export default function SignupPage() {
 
       // GA4 회원가입 이벤트
       gaSignUp('email');
+
+      // useAuth 캐시 무효화 — Header/모달 등이 새 사용자 정보를 즉시 반영
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
 
       // 인플루언서홈을 입력했으면 본인 인증 페이지로, 아니면 블로그 대시보드로
       if (naverId) {

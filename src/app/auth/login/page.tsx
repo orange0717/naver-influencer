@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
@@ -17,6 +18,7 @@ export default function LoginPage() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   const handleGoogleLogin = async () => {
     setError('');
@@ -138,6 +140,9 @@ export default function LoginPage() {
 
       // GA4 로그인 이벤트
       gaLogin('email');
+
+      // useAuth 캐시 무효화 — Header/모달 등이 새 사용자 정보를 즉시 반영
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
 
       // 로그인 후 메인 화면으로 이동
       router.push('/');
