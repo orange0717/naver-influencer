@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    console.error('[signup] DB error:', error.message);
+    console.error('[signup] DB error:', error.message, error.code);
     // Auth-DB 불일치 방지: public.users INSERT 가 실패하면 같은 이메일로 재가입할 수
     // 있도록 auth.users 의 고아 레코드도 함께 정리한다. OAuth 콜백의 cleanup 과 동일 패턴.
     try {
@@ -94,6 +94,19 @@ export async function POST(request: NextRequest) {
     } catch (cleanupErr) {
       console.error('[signup] cleanup deleteUser failed:', cleanupErr);
     }
+
+    // Postgres unique violation — race condition (migration-091 적용 후): 깔끔한 409 응답.
+    if (error.code === '23505') {
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('nickname')) {
+        return NextResponse.json({ error: '이미 사용 중인 닉네임입니다.' }, { status: 409 });
+      }
+      if (msg.includes('blog_id') || msg.includes('blog')) {
+        return NextResponse.json({ error: '이미 등록된 네이버 블로그입니다.' }, { status: 409 });
+      }
+      return NextResponse.json({ error: '이미 사용 중인 정보입니다.' }, { status: 409 });
+    }
+
     return NextResponse.json({ error: '회원가입 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
 

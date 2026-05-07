@@ -73,7 +73,20 @@ export async function PATCH(request: NextRequest) {
       .eq('id', auth.userId);
 
     if (error) {
-      logger.error('profile', 'DB update error', { error: error.message });
+      logger.error('profile', 'DB update error', { error: error.message, code: error.code });
+
+      // Postgres unique violation (migration-091 적용 후 race condition).
+      if (error.code === '23505') {
+        const msg = (error.message || '').toLowerCase();
+        if (msg.includes('nickname')) {
+          return NextResponse.json({ error: '이미 사용 중인 닉네임입니다.' }, { status: 409 });
+        }
+        if (msg.includes('blog_id') || msg.includes('blog')) {
+          return NextResponse.json({ error: '이미 등록된 네이버 블로그입니다.' }, { status: 409 });
+        }
+        return NextResponse.json({ error: '이미 사용 중인 정보입니다.' }, { status: 409 });
+      }
+
       return NextResponse.json({ error: '프로필 업데이트에 실패했습니다.' }, { status: 500 });
     }
   }
