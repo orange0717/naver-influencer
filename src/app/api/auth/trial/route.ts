@@ -5,7 +5,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { validateBody } from '@/lib/validations';
 import { z } from 'zod';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
-import { naverIdSchema } from '@/lib/validations';
+import { naverIdSchema, blogIdSchema } from '@/lib/validations';
 
 function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -18,7 +18,8 @@ const TRIAL_MAX_AGE = 60 * 60 * 24 * TRIAL_DAYS;
 
 const trialSchema = z.object({
   naverId: naverIdSchema,
-  blogId: z.string().max(50).optional(),
+  // signup 과 동일 정책: 영문/숫자/밑줄/하이픈, 2-30자. 임의 문자열 쿠키 주입 차단.
+  blogId: blogIdSchema.optional(),
 });
 
 /**
