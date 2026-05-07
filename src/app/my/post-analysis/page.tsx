@@ -407,7 +407,7 @@ export default function PostAnalysisPage() {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-title font-bold">포스팅 분석</h1>
-          <p className="text-sm text-dim mt-1">AI 작성 여부 판별, 키워드 추출, 핵심 문장 분석</p>
+          <p className="text-sm text-dim mt-1">AI 작성 여부 판별, 표절검사, 형태소, 핵심 문장 분석</p>
         </div>
         {canDownload && (
           <button
@@ -690,7 +690,7 @@ export default function PostAnalysisPage() {
                               {!plagResult && !isCheckingPlag && (
                                 <button
                                   onClick={e => { e.stopPropagation(); e.preventDefault(); runPlagiarismCheck(post.id); }}
-                                  className="text-sm px-4 py-2 rounded-xl bg-text text-white font-bold hover:bg-text/90 transition cursor-pointer"
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition cursor-pointer"
                                 >
                                   표절검사 실행
                                 </button>
@@ -699,7 +699,7 @@ export default function PostAnalysisPage() {
                               {/* 표절검사 진행 중 */}
                               {isCheckingPlag && (
                                 <div className="flex items-center gap-2 text-sm text-dim py-2">
-                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-text/30 border-t-text rounded-full" />
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full" />
                                   표절검사 중...
                                   {plagProgress && (
                                     <span className="text-xs">({plagProgress.current}/{plagProgress.total})</span>
@@ -769,7 +769,7 @@ export default function PostAnalysisPage() {
                               {!textResult && !isAnalyzingText && (
                                 <button
                                   onClick={e => { e.stopPropagation(); e.preventDefault(); runTextAnalysis(post.id); }}
-                                  className="text-sm px-4 py-2 rounded-xl bg-down text-white font-bold hover:bg-down/90 transition cursor-pointer"
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 transition cursor-pointer"
                                 >
                                   형태소/문장 분석
                                 </button>
@@ -777,7 +777,7 @@ export default function PostAnalysisPage() {
 
                               {isAnalyzingText && (
                                 <div className="flex items-center gap-2 text-sm text-dim py-2">
-                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-down/30 border-t-down rounded-full" />
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full" />
                                   형태소/문장 분석 중...
                                 </div>
                               )}
