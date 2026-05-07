@@ -70,6 +70,8 @@ export async function GET() {
       .filter(c => (catTotals[c] || 0) > 0)
       .sort((a, b) => (catTotals[b] || 0) - (catTotals[a] || 0));
 
+    if ((catTotals['기타'] || 0) > 0) sorted.push('기타');
+
     const rows = sorted.map(cat => ({
       category: cat,
       years: years.map(y => stats[`${cat}|${y}`] || 0),
