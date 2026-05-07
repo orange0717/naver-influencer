@@ -9,6 +9,21 @@ interface SavedKeyword {
   monthly_mobile: number;
   monthly_total: number;
   created_at: string;
+  last_view_rank: number | null;
+  last_blog_rank: number | null;
+  last_view_exposed: boolean | null;
+  last_blog_exposed: boolean | null;
+  last_checked_at: string | null;
+}
+
+function renderRank(rank: number | null, exposed: boolean | null) {
+  if (rank != null) {
+    return <span className="text-accent font-rank font-bold">{rank}위</span>;
+  }
+  if (exposed === false) {
+    return <span className="text-down font-semibold">누락</span>;
+  }
+  return <span className="text-dim/50">—</span>;
 }
 
 export default function SavedKeywords() {
@@ -73,10 +88,12 @@ export default function SavedKeywords() {
         <thead>
           <tr className="border-b border-border/50 bg-bg/30">
             <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">키워드</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-32">월간 검색량</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-24">PC</th>
-            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-24">모바일</th>
-            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-24 whitespace-nowrap">저장일</th>
+            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-28">월간 검색량</th>
+            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-20">PC</th>
+            <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs w-20">모바일</th>
+            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-20 whitespace-nowrap">통합검색</th>
+            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-20 whitespace-nowrap">블로그탭</th>
+            <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs w-20 whitespace-nowrap">저장일</th>
             <th className="w-10"></th>
           </tr>
         </thead>
@@ -87,6 +104,12 @@ export default function SavedKeywords() {
               <td className="py-2.5 px-3 text-right font-rank text-sm font-bold">{sk.monthly_total.toLocaleString()}</td>
               <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_pc.toLocaleString()}</td>
               <td className="py-2.5 px-3 text-right font-rank text-sm">{sk.monthly_mobile.toLocaleString()}</td>
+              <td className="py-2.5 px-3 text-center text-xs whitespace-nowrap">
+                {renderRank(sk.last_view_rank, sk.last_view_exposed)}
+              </td>
+              <td className="py-2.5 px-3 text-center text-xs whitespace-nowrap">
+                {renderRank(sk.last_blog_rank, sk.last_blog_exposed)}
+              </td>
               <td className="py-2.5 px-3 text-center text-xs text-dim whitespace-nowrap">
                 {new Date(sk.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
               </td>
@@ -113,11 +136,17 @@ export default function SavedKeywords() {
           <div key={sk.id} className="flex items-center justify-between px-4 py-3">
             <div className="min-w-0 flex-1">
               <span className="text-sm font-bold truncate block">{sk.keyword}</span>
-              <div className="flex items-center gap-2 text-xs text-dim mt-0.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-dim mt-0.5">
                 <span>월 {sk.monthly_total.toLocaleString()}</span>
                 <span>PC {sk.monthly_pc.toLocaleString()}</span>
                 <span>모바일 {sk.monthly_mobile.toLocaleString()}</span>
               </div>
+              {(sk.last_view_rank != null || sk.last_blog_rank != null || sk.last_view_exposed === false || sk.last_blog_exposed === false) && (
+                <div className="flex items-center gap-3 text-[11px] mt-1">
+                  <span>통합 {renderRank(sk.last_view_rank, sk.last_view_exposed)}</span>
+                  <span>블로그 {renderRank(sk.last_blog_rank, sk.last_blog_exposed)}</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => remove(sk.keyword)}

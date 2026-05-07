@@ -363,6 +363,19 @@ export default function KeywordRankingPage() {
           if (profile) saveRankingResults(profile.blogId, updated);
           return updated;
         });
+        // 저장된 키워드라면 최신 순위 캐시도 갱신 (실패 무시)
+        fetch('/api/my/saved-keywords', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            keyword: keyword.trim(),
+            view_rank: data?.viewTab?.rank ?? null,
+            blog_rank: data?.blogTab?.rank ?? null,
+            view_exposed: data?.viewTab?.exposed ?? null,
+            blog_exposed: data?.blogTab?.exposed ?? null,
+            post_id: post.id,
+          }),
+        }).catch(() => { /* ignore */ });
         return { ok: true, status: res.status };
       }
       if (res.status === 429) {
