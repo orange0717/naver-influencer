@@ -154,7 +154,7 @@ export default function SubscribeClient() {
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 블로그</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 리스트</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>연도별 선정 현황</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>연도별 인플루언서 선정 현황</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>검색량 조회</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 구글 트렌드</span></li>
@@ -334,7 +334,7 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">연도별 선정 현황</td>
+                <td className="py-2.5 px-2">연도별 인플루언서 선정 현황</td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>

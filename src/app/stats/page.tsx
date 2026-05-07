@@ -48,7 +48,7 @@ export default function StatsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">연도별 인플루언서 현황</h1>
+        <h1 className="text-xl font-bold">연도별 인플루언서 선정 현황</h1>
         <p className="text-sm text-dim">전체 {data.grandTotal.toLocaleString()}명</p>
       </div>
 
