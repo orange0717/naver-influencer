@@ -48,6 +48,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, userId: existing.id });
   }
 
+  // 중복 검증 (case-insensitive). DB UNIQUE 제약이 없어 race condition 까지는 못 막지만
+  // 일반적인 동시 가입자 수 기준으로는 충분. 추후 DB UNIQUE 마이그레이션 권장.
+  const nicknameTrimmed = nickname.trim();
+  const { data: dupNickname } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('nickname', nicknameTrimmed)
+    .limit(1);
+  if (dupNickname && dupNickname.length > 0) {
+    return NextResponse.json({ error: '이미 사용 중인 닉네임입니다.' }, { status: 409 });
+  }
+
+  if (blogId) {
+    const { data: dupBlog } = await supabase
+      .from('users')
+      .select('id')
+      .ilike('blog_id', blogId)
+      .limit(1);
+    if (dupBlog && dupBlog.length > 0) {
+      return NextResponse.json({ error: '이미 등록된 네이버 블로그입니다.' }, { status: 409 });
+    }
+  }
+
   // service_role로 INSERT (RLS 우회). auth_id/email 은 세션 검증값으로 강제.
   const insertPayload: Record<string, unknown> = {
     auth_id: authUser.id,
