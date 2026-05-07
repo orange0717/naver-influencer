@@ -6,6 +6,7 @@ import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
+import SavedKeywords from '@/components/dashboard/SavedKeywords';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 
@@ -748,6 +749,9 @@ export default function BloggerDashboard() {
         <AnimatedStatCard label={`${category} 순위`} value={0} placeholder="개발중" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>} color="dim" delay={450} />
       </div>
 
+
+      {/* ─── 5. 저장된 키워드 (키워드챌린지에서 저장한 키워드 모음) ─── */}
+      <SavedKeywords />
 
       {/* ─── 6. 블로그 방문자수 차트 ─── */}
       {profile && <BlogVisitorChart blogId={profile.blogId} />}
