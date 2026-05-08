@@ -4,7 +4,6 @@ import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
 import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import RankDistribution from '@/components/dashboard/RankDistribution';
-import WidgetSection from '@/components/dashboard/WidgetSection';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
@@ -749,10 +748,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           .slice(0, 20)}
         totalNotParticipated={notParticipatedKeywords.length}
       />
-
-      {/* ─── 6. 위젯 (순위 + TOP3 달성률) ─── */}
-      <WidgetSection naverId={naverId} displayName={influencer.display_name || naverId} />
-
 
       {/* ─── 7. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
       <MyKeywordList
