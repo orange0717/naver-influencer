@@ -19,6 +19,7 @@ import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
+import SubscriptionExpiryBanner from '@/components/SubscriptionExpiryBanner';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export const dynamic = 'force-dynamic';
@@ -611,6 +612,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 체험/데모 배너 ─── */}
       {isTrial && <TrialBanner isDemo={isDemo} />}
+
+      {/* ─── 구독 만료 임박/만료 배너 ─── */}
+      <SubscriptionExpiryBanner
+        subscriptionPlan={subscriptionPlan}
+        subscriptionExpiresAt={subscriptionExpiresAt}
+      />
+
 
       {/* ─── 1. 프로필 헤더 ─── */}
       <ProfileHeader

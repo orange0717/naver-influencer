@@ -10,6 +10,7 @@ import FeedbackButton from "@/components/FeedbackButton";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import Providers from "@/components/Providers";
 import UpdateBanner from "@/components/UpdateBanner";
+import SubscriptionExpiryStrip from "@/components/SubscriptionExpiryStrip";
 import InstallBanner from "@/components/InstallBanner";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 import FirstVisitModal from "@/components/FirstVisitModal";
@@ -249,6 +250,7 @@ export default function RootLayout({
         <Providers>
           <SentryUserIdentity />
           <HeaderWrapper />
+          <SubscriptionExpiryStrip />
           <UpdateBanner />
           <Suspense fallback={null}><VisitTracker /></Suspense>
           <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">

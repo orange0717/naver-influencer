@@ -58,6 +58,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/subscription-expiry",
+      "schedule": "30 9 * * *"
+    },
+    {
       "path": "/api/cron/send-rank-notifications",
       "schedule": "0 21 * * *"
     },
