@@ -179,6 +179,31 @@ export async function requirePaidAccess(request: NextRequest): Promise<
 }
 
 /**
+ * 유료 플랜(BLOGGER+) 보유자 또는 관리자만 통과시키는 API 가드.
+ * 커뮤니티 등 plan 게이팅 필요한 라우트에서 사용.
+ */
+export async function requirePaidPlan(request: NextRequest): Promise<
+  | { authUser: { authId: string; userId: string; user: { id: string; nickname: string; linked_influencer_id: string | null; is_admin?: boolean } }; error?: never }
+  | { error: NextResponse; authUser?: never }
+> {
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
+  }
+  if (authUser.user.is_admin === true || isAdmin(authUser.userId)) {
+    return { authUser };
+  }
+  if (await isRestrictedByUserId(authUser.userId)) {
+    return { error: NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 }) };
+  }
+  const ctx = await getPaywallContext(authUser.userId);
+  if (!ctx.hasActivePaidPlan) {
+    return { error: NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 }) };
+  }
+  return { authUser };
+}
+
+/**
  * Server Component 페이월 진입 차단용 통합 헬퍼
  *
  * 활성 구독자와 관리자가 어떤 경우에도 페이월/구독 페이지로 튕기지 않도록

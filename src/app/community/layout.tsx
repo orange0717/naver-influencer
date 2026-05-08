@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { getPaywallContext } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,9 +40,20 @@ export default async function CommunityLayout({
   const isDemo = cookieStore.get('demo_mode')?.value === 'true';
   const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
 
-  // 무료플랜 포함 모든 페이지는 회원가입/로그인(또는 데모 세션) 필수
+  // 비로그인+비데모 차단
   if (!authUser && !demoNaverId) {
     redirect('/auth/login');
+  }
+
+  // 커뮤니티 = 예비 인플루언서+ 플랜 전용 (관리자 우회 허용, 데모 세션은 차단)
+  if (authUser) {
+    const ctx = await getPaywallContext(authUser.id, authUser.email);
+    if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
+      redirect('/subscribe?highlight=blogger');
+    }
+  } else {
+    // 데모 세션은 plan 없으니 가입 유도
+    redirect('/subscribe?highlight=blogger');
   }
 
   return <>{children}</>;
