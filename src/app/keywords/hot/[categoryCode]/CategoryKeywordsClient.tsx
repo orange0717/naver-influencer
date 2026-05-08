@@ -144,7 +144,7 @@ export default function CategoryKeywordsClient({ categoryCode }: { categoryCode:
                         fontSize: 12,
                       }}
                       labelFormatter={formatTick}
-                      formatter={(value: number) => [value, '클릭 비율']}
+                      formatter={(value: number | undefined) => [value ?? 0, '클릭 비율'] as [number, string]}
                     />
                     <Line
                       type="monotone"
