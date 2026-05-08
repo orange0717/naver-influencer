@@ -1,4 +1,9 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@/lib/supabase-server';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: '공지사항 — 업데이트·뉴스레터',
@@ -19,6 +24,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function NoticeLayout({ children }: { children: React.ReactNode }) {
+export default async function NoticeLayout({ children }: { children: React.ReactNode }) {
+  const supabaseAuth = await createRouteHandlerClient();
+  const {
+    data: { user: authUser },
+  } = await supabaseAuth.auth.getUser();
+
+  const cookieStore = await cookies();
+  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
+  const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
+
+  if (!authUser && !demoNaverId) {
+    redirect('/auth/login');
+  }
+
   return <>{children}</>;
 }
