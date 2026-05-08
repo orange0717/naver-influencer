@@ -67,8 +67,28 @@ export default function SubscribeClient() {
   const isTestMode = searchParams.get('test') === '1';
   const showTestPayment = (isTestMode || !!user?.isAdmin) && isLoggedIn;
 
+  // 데모 재시작 차단 — /subscribe?demo_used=1 로 리다이렉트되었을 때 안내
+  const isDemoUsed = searchParams.get('demo_used') === '1';
+
   return (
     <div className="max-w-5xl mx-auto space-y-10">
+      {/* 무료 체험 종료 안내 */}
+      {isDemoUsed && (
+        <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 flex items-start gap-3">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent shrink-0 mt-0.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div>
+            <p className="text-sm font-bold text-accent">무료 체험 기간이 종료되었습니다</p>
+            <p className="text-xs text-text/80 mt-1 leading-relaxed">
+              이미 3일 무료 체험을 사용하셨습니다. 계속 이용하시려면 아래에서 이용권을 구독해주세요.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 100원 테스트 결제 (관리자만 노출 — 일반 사용자에게는 숨김) */}
       {showTestPayment && (
         <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-center gap-3">

@@ -45,6 +45,18 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
 
   const displayName = influencer?.display_name || effectiveNaverId;
 
+  // 1회만 허용: 같은 naver_id 로 이미 데모 세션이 있으면 차단
+  // (만료된 세션이라도 재시작 불가 — 결제 유도)
+  const { data: existingSession } = await supabase
+    .from('demo_sessions')
+    .select('started_at, expires_at')
+    .eq('naver_id', effectiveNaverId)
+    .maybeSingle();
+
+  if (existingSession) {
+    return { error: 'already-used' };
+  }
+
   // 데모 세션 생성 — 본인 인증을 거치지 않은 "체험(trial) 세션".
   //   여기서는 verified_at 을 채우지 않는다. (이전엔 verified_at: now() 로 자동 통과시켜
   //   /api/auth/demo/verify 의 OTP 검증을 우회하는 버그가 있었음.)
@@ -53,8 +65,6 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + DEMO_DAYS * 24 * 60 * 60 * 1000);
 
-  // 기존 세션 삭제 후 새로 생성 (중복 방지)
-  await supabase.from('demo_sessions').delete().eq('naver_id', effectiveNaverId);
   await supabase.from('demo_sessions').insert({
     naver_id: effectiveNaverId,
     display_name: displayName,
@@ -101,6 +111,12 @@ export async function GET(request: NextRequest) {
 
     if ('error' in result) {
       if (result.error === 'rate-limit') return rateLimitResponse();
+      // 이미 사용한 적이 있으면 결제 페이지로 유도
+      if (result.error === 'already-used') {
+        const subUrl = new URL('/subscribe', request.url);
+        subUrl.searchParams.set('demo_used', '1');
+        return NextResponse.redirect(subUrl);
+      }
       // 에러 시 메인으로 리다이렉트
       const errorUrl = new URL('/', request.url);
       errorUrl.searchParams.set('demo_error', result.error || '오류');
@@ -134,6 +150,12 @@ export async function POST(request: NextRequest) {
 
     if ('error' in result) {
       if (result.error === 'rate-limit') return rateLimitResponse();
+      if (result.error === 'already-used') {
+        return NextResponse.json(
+          { error: '이미 무료 체험을 사용하셨습니다. 이용권을 결제해주세요.', alreadyUsed: true },
+          { status: 403 },
+        );
+      }
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 

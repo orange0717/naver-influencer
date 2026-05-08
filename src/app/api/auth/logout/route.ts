@@ -24,6 +24,8 @@ export async function POST() {
   cookieStore.delete('blog_id');
   cookieStore.delete('blog_name');
   cookieStore.delete('user_type');
+  cookieStore.delete('demo_mode');
+  cookieStore.delete('trial_started');
 
   return NextResponse.json({ success: true });
 }

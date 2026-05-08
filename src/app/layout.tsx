@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import VisitTracker from "@/components/VisitTracker";
 import ChatBot from "@/components/ChatBot";
 import FeedbackButton from "@/components/FeedbackButton";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 import Providers from "@/components/Providers";
 import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
@@ -256,6 +257,7 @@ export default function RootLayout({
           <Footer />
           <FeedbackButton />
           <ChatBot />
+          <ScrollToTopButton />
           <InstallBanner />
           <NicknameRequiredModal />
           <FirstVisitModal />

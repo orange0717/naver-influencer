@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
+import { isTrialExpired } from '@/lib/trial';
 import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import RankDistribution from '@/components/dashboard/RankDistribution';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
@@ -100,12 +101,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // 체험/데모 만료 체크 — 활성 유료 구독자에게는 적용 안 됨
   const trialStarted = cookieStore.get('trial_started')?.value;
   const isTrial = !!trialStarted;
-  const durationMs = 3 * 24 * 60 * 60 * 1000;
-  let trialExpired = false;
-  if (trialStarted) {
-    const elapsed = Date.now() - Number(trialStarted);
-    trialExpired = elapsed > durationMs;
-  }
+  const trialExpired = isTrialExpired(trialStarted);
   const hasActivePlan = !!(
     subscriptionPlan &&
     subscriptionExpiresAt &&
