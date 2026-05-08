@@ -38,10 +38,11 @@ interface TrendResponse {
   error?: string;
 }
 
-function formatTick(date: string) {
+function formatTick(date: unknown): string {
   // YYYY-MM-DD → MM/DD
-  const m = date.match(/^\d{4}-(\d{2})-(\d{2})$/);
-  return m ? `${Number(m[1])}/${Number(m[2])}` : date;
+  const s = String(date);
+  const m = s.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return m ? `${Number(m[1])}/${Number(m[2])}` : s;
 }
 
 export default function CategoryKeywordsClient({ categoryCode }: { categoryCode: string }) {
