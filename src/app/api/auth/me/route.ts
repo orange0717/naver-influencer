@@ -153,7 +153,8 @@ export async function GET(request: NextRequest) {
 
       const trialStarted = cookieStore.get('trial_started')?.value;
       const isDemo = cookieStore.get('demo_mode')?.value === 'true';
-      const durationDays = isDemo ? 7 : 3;
+      // 데모/체험 모두 3일 통일 (TRIAL_DAYS·DEMO_DAYS 와 일치)
+      const durationDays = 3;
       let trialDaysLeft: number | undefined;
       if (trialStarted) {
         const elapsed = Date.now() - Number(trialStarted);
