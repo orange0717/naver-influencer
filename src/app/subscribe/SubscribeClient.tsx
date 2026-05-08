@@ -143,10 +143,10 @@ export default function SubscribeClient() {
             </div>
           </div>
           <p className="text-sm text-dim leading-relaxed">
-            회원가입 없이 기본 기능을 자유롭게 이용하세요.
+            회원가입(무료)으로 기본 기능을 자유롭게 이용하세요.
           </p>
           <Link
-            href="/influencers"
+            href="/auth/signup"
             className="block text-center py-3 bg-bg border border-border text-text font-bold text-sm rounded-xl hover:border-accent/40 transition"
           >
             무료로 시작하기
@@ -155,8 +155,7 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 블로그</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 리스트</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>연도별 인플루언서 선정 현황</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>검색량 조회</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색 (검색량 포함)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 1회)</span></li>
           </ul>
         </div>
@@ -243,7 +242,6 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>예비 인플루언서 플랜 전체 포함</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드 챌린지</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 리스트</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 순위 — 자체</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>블로그 글 피드백 (Claude AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (무제한)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 데이터 다운로드 (1회 500건)</span></li>
@@ -343,13 +341,7 @@ export default function SubscribeClient() {
                 <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>키워드</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">키워드 검색</td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-              </tr>
-              <tr>
-                <td className="py-2.5 px-2">검색량 조회</td>
+                <td className="py-2.5 px-2">키워드 검색 <span className="text-[10px] text-dim">(검색량 포함)</span></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
@@ -379,35 +371,18 @@ export default function SubscribeClient() {
                 <td className="text-center text-[11px] text-accent font-semibold">1회 500건</td>
               </tr>
 
-              {/* 랭킹 카테고리 */}
-              <tr>
-                <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>랭킹</td>
-              </tr>
-              <tr>
-                <td className="py-2.5 px-2">블로그 순위</td>
-                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-              </tr>
-              <tr>
-                <td className="py-2.5 px-2">인플루언서 순위 — 자체</td>
-                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
-                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
-                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
-              </tr>
-
               {/* 글쓰기 카테고리 */}
               <tr>
                 <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>글쓰기</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">맞춤법 검사</td>
+                <td className="py-2.5 px-2">맞춤법 검사 <span className="text-[10px] text-dim">(데모 제외)</span></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">블로그 글 피드백 (Claude AI)</td>
+                <td className="py-2.5 px-2">블로그 글 피드백 (Claude AI) <span className="text-[10px] text-dim">(데모 제외)</span></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
@@ -447,11 +422,11 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 방식</p>
-              <p className="font-semibold">신용/체크카드 정기결제</p>
+              <p className="font-semibold">신용/체크카드 단건 결제 (PortOne)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">무료 체험</p>
-              <p className="font-semibold">3일 (회원가입 시 자동 적용)</p>
+              <p className="font-semibold">3일 (가입 전 인플루언서/블로그 주소 입력)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 주기</p>
