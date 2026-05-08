@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
     cookieStore.set('naver_id', naverId, cookieOptions);
     cookieStore.set('user_type', 'influencer', cookieOptions);
     cookieStore.set('trial_started', String(Date.now()), cookieOptions);
+    cookieStore.set('demo_mode', 'true', cookieOptions);
     if (blogId) cookieStore.set('blog_id', blogId, cookieOptions);
 
     // 데모 체험자 추적 (관리자 페이지 노출용)

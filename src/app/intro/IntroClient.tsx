@@ -158,7 +158,10 @@ export default function IntroClient() {
         </button>
 
         <p className="text-xs text-dim mt-5">
-          인플루언서홈 또는 블로그 주소 입력 후 3일간 모든 기능을 무료로 이용할 수 있습니다.
+          인플루언서홈 또는 블로그 주소 입력 후 3일간 핵심 기능을 무료로 이용할 수 있습니다.
+        </p>
+        <p className="text-[11px] text-dim/70 mt-2">
+          ※ Claude AI 기능(맞춤법 검사·블로그 글 피드백)은 가입 후 이용 가능
         </p>
 
         <p className="text-[11px] text-dim/70 mt-3">

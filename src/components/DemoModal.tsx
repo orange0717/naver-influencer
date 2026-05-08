@@ -82,9 +82,13 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
           <h2 className="text-lg font-bold text-text text-center mb-2">
             3일 데모체험을 시작하시겠습니까?
           </h2>
-          <p className="text-sm text-dim text-center mb-8 leading-relaxed">
+          <p className="text-sm text-dim text-center mb-6 leading-relaxed">
             인플루언서홈 또는 블로그 주소를 입력하면<br />
-            3일간 모든 기능을 무료로 이용할 수 있습니다.
+            3일간 핵심 기능을 무료로 이용할 수 있습니다.
+          </p>
+          <p className="text-xs text-dim/80 text-center mb-8 leading-relaxed">
+            ※ 맞춤법 검사·블로그 글 피드백 등 Claude AI 기능은<br />
+            데모 체험에서 제외되며 가입 후 이용 가능합니다.
           </p>
 
           <div className="space-y-4 mb-6">

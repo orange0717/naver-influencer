@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@/lib/supabase-server';
 import { getPaywallContext } from '@/lib/admin';
 import BlogRankingClient from './BlogRankingClient';
@@ -11,17 +12,21 @@ export const metadata = {
 };
 
 export default async function BlogRankingPage() {
+  const cookieStore = await cookies();
+  const isDemo = cookieStore.get('demo_mode')?.value === 'true' && !!cookieStore.get('naver_id')?.value;
+
   const supabaseAuth = await createRouteHandlerClient();
   const {
     data: { user: authUser },
   } = await supabaseAuth.auth.getUser();
 
-  if (!authUser) redirect('/auth/login?redirect=/keywords/blog-ranking');
+  if (!authUser && !isDemo) redirect('/auth/login?redirect=/keywords/blog-ranking');
 
-  // 관리자 또는 활성 유료 구독자(BLOGGER/INFLUENCER)면 무조건 통과
-  const ctx = await getPaywallContext(authUser.id, authUser.email);
-  const allowed = ctx.isAdminUser || ctx.hasActivePaidPlan;
-  if (!allowed) redirect('/subscribe?highlight=blogger');
+  if (authUser) {
+    const ctx = await getPaywallContext(authUser.id, authUser.email);
+    const allowed = ctx.isAdminUser || ctx.hasActivePaidPlan;
+    if (!allowed) redirect('/subscribe?highlight=blogger');
+  }
 
   return <BlogRankingClient />;
 }

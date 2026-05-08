@@ -60,9 +60,12 @@ export default function FirstVisitModal() {
             <h2 id="first-visit-title" className="text-lg font-bold text-text text-center mb-2">
               N인플에 처음 방문하셨습니까?
             </h2>
-            <p className="text-sm text-dim text-center mb-8 leading-relaxed">
+            <p className="text-sm text-dim text-center mb-3 leading-relaxed">
               회원가입 없이 인플루언서홈 또는 블로그 주소만 입력하면<br />
-              <span className="text-accent font-semibold">3일간 모든 기능을 무료</span>로 체험할 수 있습니다.
+              <span className="text-accent font-semibold">3일간 핵심 기능을 무료</span>로 체험할 수 있습니다.
+            </p>
+            <p className="text-[11px] text-dim/80 text-center mb-8 leading-relaxed">
+              ※ Claude AI 기능(맞춤법 검사·블로그 글 피드백)은 가입 후 이용 가능
             </p>
             <div className="flex gap-3">
               <button

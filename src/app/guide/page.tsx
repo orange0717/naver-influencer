@@ -301,7 +301,7 @@ export default function GuidePage() {
       {/* ─── 하단 CTA ─── */}
       <div className="text-center space-y-4">
         <h2 className="text-xl font-extrabold">지금 시작하세요</h2>
-        <p className="text-sm text-dim">모든 기능을 무료로 이용할 수 있습니다.</p>
+        <p className="text-sm text-dim">무료 도구는 가입 후 자유롭게, 심층 기능은 블로거 5,500원·인플루언서 9,900원 플랜에서 이용 가능합니다.</p>
         <Link href="/auth/signup" className="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
           무료 회원가입
         </Link>
