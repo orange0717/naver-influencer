@@ -30,7 +30,7 @@ export default function TermsContent() {
         <h2 className="text-base font-bold text-text">제4조 (회원가입 및 이용계약)</h2>
         <ol className="list-decimal list-inside space-y-1 pl-2">
           <li>서비스 이용을 원하는 자는 본 약관에 동의하고 회원가입 절차를 완료하여야 합니다.</li>
-          <li>회원가입 시 네이버 인플루언서홈 주소를 입력해야 하며, 본인의 인플루언서 계정만 등록할 수 있습니다.</li>
+          <li>회원가입 시 네이버 블로그 주소는 필수 입력이며, 인플루언서홈 주소는 선택 입력입니다. 인플루언서홈 주소를 입력한 경우 가입 후 본인 인증을 통과해야 본인 계정으로 등록되며, 타인의 인플루언서 계정은 등록할 수 없습니다.</li>
           <li>타인의 정보를 도용하여 가입한 경우 서비스 이용이 제한될 수 있습니다.</li>
         </ol>
       </section>
