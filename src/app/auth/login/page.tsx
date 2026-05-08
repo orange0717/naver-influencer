@@ -180,6 +180,7 @@ export default function LoginPage() {
             <Link href="/" className="inline-flex items-center gap-2 text-white/90 hover:text-white transition">
               <span className="w-9 h-9 rounded-lg bg-white text-accent flex items-center justify-center font-extrabold">N</span>
               <span className="font-bold tracking-tight">N인플</span>
+              <span className="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-sm text-[10px] font-bold tracking-wider text-white">BETA</span>
             </Link>
             <p className="mt-6 inline-block px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-tight text-white/95">
               블로거에서 인플루언서로
@@ -206,6 +207,7 @@ export default function LoginPage() {
                 N
               </span>
               <span className="text-lg font-bold tracking-tight">N인플</span>
+              <span className="ml-1 px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-sm border border-white/30 text-[10px] font-bold tracking-wider">BETA</span>
             </Link>
 
             <div className="space-y-6 max-w-xl">
@@ -246,8 +248,13 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="text-xs text-white/70">
-              © {new Date().getFullYear()} N인플 — ninfle.kr
+            <div className="text-xs text-white/70 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                현재 베타 프로그램 운영 중
+              </span>
+              <span className="text-white/40">·</span>
+              <span>© {new Date().getFullYear()} N인플</span>
             </div>
           </div>
         </aside>
