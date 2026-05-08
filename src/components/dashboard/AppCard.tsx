@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import type { DashboardApp, AppCategoryMeta, PlanTier } from '@/lib/dashboard-catalog';
 
 const FAV_KEY = 'ninfl:dashboard:favorites:v1';
+const FAV_MIGRATED_PREFIX = 'ninfl:dashboard:favorites:migrated:v1:';
 
 function planLabel(plan: PlanTier): string {
   if (plan === 'influencer') return '인플루언서';
@@ -38,22 +40,76 @@ function saveFavorites(next: Set<string>) {
   }
 }
 
+/**
+ * 즐겨찾기 — 로그인=DB(GET/POST/DELETE) + localStorage 캐시 / 비로그인=localStorage만.
+ * 로그인 첫 진입 시 localStorage → DB 1회 마이그레이션 (PUT, 계정 단위 once).
+ */
 export function useFavorites() {
+  const { user } = useAuth();
+  const userId = user?.id || null;
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const lastSyncedUserRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setFavorites(loadFavorites());
-  }, []);
+    if (!userId) {
+      setFavorites(loadFavorites());
+      lastSyncedUserRef.current = null;
+      return;
+    }
+    if (lastSyncedUserRef.current === userId) return;
+    lastSyncedUserRef.current = userId;
+
+    let cancelled = false;
+    (async () => {
+      const migratedKey = `${FAV_MIGRATED_PREFIX}${userId}`;
+      const alreadyMigrated = window.localStorage.getItem(migratedKey) === '1';
+      if (!alreadyMigrated) {
+        const local = Array.from(loadFavorites());
+        if (local.length > 0) {
+          await fetch('/api/favorites', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appIds: local }),
+            credentials: 'include',
+          }).catch(() => {});
+        }
+        window.localStorage.setItem(migratedKey, '1');
+      }
+
+      try {
+        const r = await fetch('/api/favorites', { credentials: 'include' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (cancelled) return;
+        const next = new Set<string>(Array.isArray(j?.favorites) ? j.favorites : []);
+        setFavorites(next);
+        saveFavorites(next);
+      } catch {
+        if (!cancelled) setFavorites(loadFavorites());
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const toggle = useCallback((id: string) => {
     setFavorites(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const adding = !next.has(id);
+      if (adding) next.add(id);
+      else next.delete(id);
       saveFavorites(next);
+
+      if (userId) {
+        fetch('/api/favorites', {
+          method: adding ? 'POST' : 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appId: id }),
+          credentials: 'include',
+        }).catch(() => {});
+      }
       return next;
     });
-  }, []);
+  }, [userId]);
 
   return { favorites, toggle };
 }
