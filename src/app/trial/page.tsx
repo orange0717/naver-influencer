@@ -47,7 +47,8 @@ export default function TrialPage() {
       const data = await res.json();
 
       if (res.ok) {
-        router.push('/my');
+        // 데모 시작 → 메인 대시보드 (오렌지 정책: 카테고리 카드 그리드)
+        router.push('/');
       } else {
         setError(data.error || '체험 시작에 실패했습니다.');
       }

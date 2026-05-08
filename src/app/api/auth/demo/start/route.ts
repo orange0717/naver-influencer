@@ -107,8 +107,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl);
     }
 
-    // 성공: 쿠키 설정 + /my로 리다이렉트 (URL 파라미터도 함께 전달)
-    const redirectUrl = new URL('/my', request.url);
+    // 성공: 쿠키 설정 + 메인 대시보드로 리다이렉트 (오렌지 정책: 데모 시작 → 카테고리 카드 그리드)
+    const redirectUrl = new URL('/', request.url);
     redirectUrl.searchParams.set('demo', result.effectiveNaverId);
     const res = NextResponse.redirect(redirectUrl);
     setDemoCookies(res, result.effectiveNaverId, result.naverId, result.blogId);
