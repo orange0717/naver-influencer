@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Keyword } from '@/lib/types';
 import { getSubcategory, getSubcategoryList } from '@/data/subcategory-map';
 import CategoryFilter from '@/components/CategoryFilter';
@@ -64,9 +65,23 @@ interface RelatedKeyword {
 }
 
 export default function KeywordsPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  // 키워드 챌린지 리스트 = 인플루언서 플랜 + 관리자 전용
+  const planAllowed = user.isAdmin || (user.subscriptionActive && user.subscriptionPlan === 'INFLUENCER');
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
   const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user.id) {
+      router.replace('/auth/login?redirect=/keywords');
+      return;
+    }
+    if (!planAllowed) {
+      router.replace('/subscribe?highlight=influencer');
+    }
+  }, [authLoading, user.id, planAllowed, router]);
 
   const handleDownload = async () => {
     if (!canDownload || downloading) return;
@@ -385,6 +400,15 @@ export default function KeywordsPage() {
     }
     return list;
   }, [keywords, subFilter, sortKey, sortOrder, search]);
+
+  if (authLoading || !user.id || !planAllowed) {
+    return (
+      <div className="max-w-2xl mx-auto py-20 text-center">
+        <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-dim">권한을 확인하는 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
