@@ -63,16 +63,17 @@ export default function SubscribeClient() {
   const influencerMonthly = period === 'monthly' ? null : Math.round(price.influencer / price.months);
   const periodBadge = PERIOD_OPTIONS.find((o) => o.value === period)?.badge;
 
-  // 테스트 모드 — /subscribe?test=1 일 때만 100원 테스트 결제 버튼 노출
+  // 테스트 모드 — /subscribe?test=1 또는 관리자 로그인 시 100원 결제 버튼 노출
   const isTestMode = searchParams.get('test') === '1';
+  const showTestPayment = (isTestMode || !!user?.isAdmin) && isLoggedIn;
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
-      {/* 100원 테스트 결제 (개발용 — ?test=1 파라미터로만 표시) */}
-      {isTestMode && isLoggedIn && (
+      {/* 100원 테스트 결제 (관리자만 노출 — 일반 사용자에게는 숨김) */}
+      {showTestPayment && (
         <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-center gap-3">
           <div className="flex-1">
-            <p className="text-sm font-bold text-yellow-900">개발자 모드 — 100원 결제 테스트</p>
+            <p className="text-sm font-bold text-yellow-900">관리자 전용 — 100원 결제 테스트</p>
             <p className="text-xs text-yellow-700">결제 흐름 검증용. 결제 후 PortOne 콘솔에서 즉시 환불하세요.</p>
           </div>
           <BillingButton
