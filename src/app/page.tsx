@@ -6,6 +6,7 @@ import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import HomeGuestExtras from './_HomeGuestExtras';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
+import TrialBanner from '@/components/TrialBanner';
 import type { PlanTier } from '@/lib/dashboard-catalog';
 
 export const dynamic = 'force-dynamic';
@@ -132,6 +133,12 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* 데모 사용자에게 잔여일 안내 (CTA 없이 안내만) */}
+      {isDemo && (
+        <div className="max-w-7xl mx-auto px-4 pt-4">
+          <TrialBanner isDemo />
+        </div>
+      )}
       <DashboardGrid
         currentPlan={currentPlan}
         isLoggedIn={isLoggedIn}
