@@ -13,6 +13,13 @@ const SESSION_CHECK_BYPASS = [
 ];
 
 export async function middleware(request: NextRequest) {
+  // Vercel 기본 도메인 차단 — ninfle.kr 외 vercel.app 호스트는 모두 308 리다이렉트
+  const host = request.headers.get('host') || '';
+  if (host.endsWith('.vercel.app')) {
+    const url = new URL(request.nextUrl.pathname + request.nextUrl.search, 'https://ninfle.kr');
+    return NextResponse.redirect(url, 308);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
