@@ -1,6 +1,6 @@
 /**
  * 쇼핑 핫 키워드 카테고리 sitemap
- * SHOPPING_CATEGORIES 정적 매핑 기반 (11개)
+ * SHOPPING_CATEGORIES 정적 매핑 기반 (12개)
  */
 import { NextResponse } from 'next/server';
 import { SHOPPING_CATEGORIES } from '@/lib/shopping-categories';

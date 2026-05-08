@@ -1,5 +1,5 @@
 /**
- * Sitemap Index — 정적 sitemap.xml + 6개 동적 sub-sitemap 통합
+ * Sitemap Index — 정적 sitemap.xml + 5개 동적 sub-sitemap 통합
  * 네이버 서치어드바이저·구글 서치콘솔에 이 URL 한 개만 제출하면 모두 색인됨
  */
 import { NextResponse } from 'next/server';
@@ -17,7 +17,6 @@ export async function GET() {
     { loc: `${SITE_URL}/sitemaps/notices.xml`, lastmod: today },
     { loc: `${SITE_URL}/sitemaps/stories.xml`, lastmod: today },
     { loc: `${SITE_URL}/sitemaps/hot-categories.xml`, lastmod: today },
-    { loc: `${SITE_URL}/sitemaps/hot-topics.xml`, lastmod: today },
   ];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

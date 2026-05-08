@@ -7,8 +7,8 @@ import TrendingTopicsClient from './TrendingTopicsClient';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '실시간 상승 키워드 — N인플',
-  description: '네이버 인플루언서 키워드챌린지 주제별 급상승 키워드 모니터링',
+  title: '실시간 상승 카테고리 — N인플',
+  description: '네이버 쇼핑인사이트 12개 카테고리 검색량 추이 모니터링',
 };
 
 export default async function TrendingTopicsPage() {
