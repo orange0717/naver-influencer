@@ -1,13 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import DemoModal from './DemoModal';
 
 const STORAGE_KEY = 'ninfle_first_visit_dismissed';
 
+// funnel/auth 페이지엔 자체 데모 진입점이 있으므로 모달 중복 방지
+const SKIP_PATHS = ['/auth', '/trial', '/intro'];
+
 export default function FirstVisitModal() {
   const { user, isLoading } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
 
@@ -15,13 +20,14 @@ export default function FirstVisitModal() {
     if (isLoading) return;
     if (user.id || user.isDemo) return;
     if (typeof window === 'undefined') return;
+    if (SKIP_PATHS.some(p => pathname?.startsWith(p))) return;
     try {
       if (window.localStorage.getItem(STORAGE_KEY) === '1') return;
     } catch {
       return;
     }
     setOpen(true);
-  }, [user.id, user.isDemo, isLoading]);
+  }, [user.id, user.isDemo, isLoading, pathname]);
 
   function dismiss() {
     try {

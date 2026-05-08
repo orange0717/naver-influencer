@@ -144,7 +144,8 @@ export default async function HomePage() {
         }}
       />
       <HomeGuestExtras />
-      {(!isLoggedIn || isAdminUser || currentPlan === 'free') && <DemoFloatingButton />}
+      {/* 데모 = 비로그인 사용자만 노출 (가입한 회원은 데모 필요 없음) */}
+      {!isLoggedIn && <DemoFloatingButton />}
     </>
   );
 }
