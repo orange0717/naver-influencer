@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
+import DemoModal from '@/components/DemoModal';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
   const [stats, setStats] = useState<{ new_count: number | null; active_count: number | null }>({
     new_count: null,
     active_count: null,
@@ -188,6 +190,13 @@ export default function LoginPage() {
             <p className="mt-3 text-sm text-white/85 leading-relaxed">
               키워드 분석부터 글 피드백까지,<br/>네이버 블로그 성장에 필요한 모든 것
             </p>
+            <button
+              type="button"
+              onClick={() => setDemoOpen(true)}
+              className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-xs font-bold text-white transition cursor-pointer"
+            >
+              가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
+            </button>
           </div>
 
           {/* 데스크탑 — 풀 사이즈 카피 */}
@@ -227,6 +236,14 @@ export default function LoginPage() {
                   <div className="mt-1 text-[11px] text-white/75">실시간 집계</div>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setDemoOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-sm font-bold text-white transition cursor-pointer w-fit"
+              >
+                가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
+              </button>
             </div>
 
             <div className="text-xs text-white/70">
@@ -355,6 +372,8 @@ export default function LoginPage() {
           </div>
         </section>
       </div>
+
+      <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );
 }
