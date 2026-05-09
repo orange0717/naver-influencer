@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@/lib/supabase-server';
 import { getPaywallContext } from '@/lib/admin';
+import { isTrialExpired } from '@/lib/trial';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,11 @@ export default async function CommunityLayout({
   const cookieStore = await cookies();
   const isDemo = cookieStore.get('demo_mode')?.value === 'true';
   const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
+
+  // 데모 세션 만료 시 결제 페이지로 — 쿠키 만료 시각이 변조됐을 때 안전장치
+  if (isDemo && isTrialExpired(cookieStore.get('trial_started')?.value)) {
+    redirect('/subscribe');
+  }
 
   // 비로그인+비데모 차단
   if (!authUser && !demoNaverId) {

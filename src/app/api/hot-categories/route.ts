@@ -19,7 +19,7 @@ async function fetchBatch(
   endDate: string,
   clientId: string,
   clientSecret: string,
-): Promise<DatalabResult[]> {
+): Promise<(DatalabResult & { code: string })[]> {
   const res = await fetch(SHOPPING_INSIGHTS_URL, {
     method: 'POST',
     headers: {
@@ -45,7 +45,9 @@ async function fetchBatch(
   }
 
   const data = await res.json();
-  return data?.results ?? [];
+  const results: DatalabResult[] = data?.results ?? [];
+  // DataLab 결과는 원본 batch와 같은 순서로 돌아옴 → code를 매핑해 부착
+  return results.map((r, i) => ({ ...r, code: batch[i]?.code ?? '' }));
 }
 
 export async function GET() {
@@ -92,6 +94,7 @@ export async function GET() {
         const peak = Math.max(...points.map(p => p.ratio), 0);
         return {
           name: r.title,
+          code: r.code,
           change_percent: changePercent,
           recent_avg: Math.round(recentAvg * 10) / 10,
           peak: Math.round(peak * 10) / 10,
@@ -101,7 +104,14 @@ export async function GET() {
           })),
         };
       })
-      .sort((a, b) => b.change_percent - a.change_percent);
+      .sort((a, b) => {
+        // 데이터 없는 카테고리는 끝으로
+        const aEmpty = a.peak === 0;
+        const bEmpty = b.peak === 0;
+        if (aEmpty && !bEmpty) return 1;
+        if (!aEmpty && bEmpty) return -1;
+        return b.change_percent - a.change_percent;
+      });
 
     return NextResponse.json({
       period: { startDate, endDate },

@@ -1,68 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findCategoryByCode } from '@/lib/shopping-categories';
+import { fetchCategoryKeywordRank, getRecentWindows } from '@/lib/shopping-insight';
 
 export const runtime = 'nodejs';
 export const revalidate = 1800; // 30분 캐시
-
-const RANK_URL = 'https://datalab.naver.com/shoppingInsight/getCategoryKeywordRank.naver';
-const REFERER = 'https://datalab.naver.com/shoppingInsight/sCategory.naver';
-const USER_AGENT =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-
-interface RankItem {
-  rank: number;
-  keyword: string;
-  linkId?: string;
-}
-
-/**
- * 네이버 쇼핑인사이트 카테고리별 인기검색어 랭크
- * 해당 엔드포인트는 공식 Open API에 없으므로 데이터랩 웹 내부 엔드포인트 이용
- */
-async function fetchCategoryKeywordRank(
-  cid: string,
-  startDate: string,
-  endDate: string,
-  count = 20,
-): Promise<RankItem[]> {
-  const form = new URLSearchParams({
-    cid,
-    timeUnit: 'date',
-    startDate,
-    endDate,
-    age: '',
-    gender: '',
-    device: '',
-    page: '1',
-    count: String(count),
-  });
-
-  const res = await fetch(RANK_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Referer': REFERER,
-      'User-Agent': USER_AGENT,
-      'Accept': 'application/json, text/plain, */*',
-    },
-    body: form.toString(),
-  });
-
-  if (!res.ok) {
-    console.error(`[shopping-keywords] rank fetch ${res.status}`);
-    return [];
-  }
-
-  const data = await res.json().catch(() => null);
-  const ranks = data?.ranks;
-  if (!Array.isArray(ranks)) return [];
-
-  return ranks.map((r: { rank: number; keyword: string; linkId?: string }) => ({
-    rank: r.rank,
-    keyword: r.keyword,
-    linkId: r.linkId,
-  }));
-}
 
 export async function GET(
   _request: NextRequest,

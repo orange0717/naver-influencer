@@ -25,6 +25,8 @@ interface Props {
   };
 }
 
+const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
+
 function planName(plan: PlanTier): string {
   if (plan === 'influencer') return '인플루언서';
   if (plan === 'blogger') return '예비 인플루언서 +';
@@ -84,11 +86,19 @@ export default function DashboardGrid({
   const normalizedQuery = query.trim().toLowerCase();
 
   const filterApps = (apps: typeof DASHBOARD_APPS) => {
-    if (!normalizedQuery) return apps;
-    return apps.filter(app =>
-      app.title.toLowerCase().includes(normalizedQuery) ||
-      app.description.toLowerCase().includes(normalizedQuery),
-    );
+    let result = apps;
+    if (isLoggedIn) {
+      result = result.filter(app =>
+        !app.requiredPlan || PLAN_RANK[currentPlan] >= PLAN_RANK[app.requiredPlan],
+      );
+    }
+    if (normalizedQuery) {
+      result = result.filter(app =>
+        app.title.toLowerCase().includes(normalizedQuery) ||
+        app.description.toLowerCase().includes(normalizedQuery),
+      );
+    }
+    return result;
   };
 
   const favoriteApps = DASHBOARD_APPS.filter(app => favorites.has(app.id));

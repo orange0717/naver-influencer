@@ -216,3 +216,86 @@ export async function sendDemoReminderEmail(to: string, displayName: string, day
     throw new Error(error.message || '이메일 발송 실패');
   }
 }
+
+/** 구독 만료 7일 전 리마인더 */
+export async function sendSubscriptionReminderEmail(
+  to: string,
+  displayName: string,
+  daysLeft: number,
+  expiresAt: string,
+) {
+  const safeName = escapeHtml(displayName);
+  const expiresDate = new Date(expiresAt).toLocaleDateString('ko-KR');
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `[N인플] 구독이 ${daysLeft}일 후 만료됩니다`,
+    html: `
+      <div style="max-width:520px;margin:0 auto;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#333">
+        <div style="background:#c8816b;padding:24px 20px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
+        </div>
+        <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
+          <p style="font-size:16px;font-weight:bold;margin:0 0 16px">${safeName}님, 안녕하세요.</p>
+          <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
+            구독 만료까지 <strong>${daysLeft}일</strong> 남았습니다.<br>
+            만료일: <strong>${expiresDate}</strong><br><br>
+            지금 미리 갱신하시면 끊김 없이 키워드 챌린지 분석을 계속 이용할 수 있습니다.
+          </p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="https://ninfle.kr/subscribe"
+               style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
+              구독 갱신하기
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:12px;color:#999;text-align:center;margin:0">
+            본 메일은 N인플 가입 시 입력하신 이메일로 발송되었습니다.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('[email] 구독 리마인더 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
+}
+
+/** 구독 만료 당일 알림 */
+export async function sendSubscriptionExpiredEmail(to: string, displayName: string) {
+  const safeName = escapeHtml(displayName);
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `[N인플] 구독이 만료되었습니다`,
+    html: `
+      <div style="max-width:520px;margin:0 auto;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#333">
+        <div style="background:#c8816b;padding:24px 20px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
+        </div>
+        <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
+          <p style="font-size:16px;font-weight:bold;margin:0 0 16px">${safeName}님, 안녕하세요.</p>
+          <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
+            구독 기간이 만료되어 무료 플랜으로 전환되었습니다.<br>
+            계속해서 키워드 챌린지 순위·경쟁자 분석·실시간 알림을 이용하시려면 갱신해주세요.
+          </p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="https://ninfle.kr/subscribe"
+               style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
+              구독 갱신하기
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:12px;color:#999;text-align:center;margin:0">
+            본 메일은 N인플 가입 시 입력하신 이메일로 발송되었습니다.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('[email] 구독 만료 알림 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
+}
