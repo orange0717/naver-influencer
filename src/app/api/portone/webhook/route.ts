@@ -50,24 +50,35 @@ export async function POST(req: NextRequest) {
     switch (type) {
       case 'Transaction.Cancelled': {
         // 환불/취소 → payment_transactions.status 갱신
+        // 멱등성: 이미 CANCELLED 인 행은 다시 갱신하지 않음 (재전송 중복 차단)
         const pid = payload.data?.paymentId;
         if (pid && PAYMENT_ID_REGEX.test(pid)) {
-          await supa.from('payment_transactions').update({ status: 'CANCELLED' }).eq('payment_id', pid);
+          await supa
+            .from('payment_transactions')
+            .update({ status: 'CANCELLED' })
+            .eq('payment_id', pid)
+            .neq('status', 'CANCELLED');
         } else if (pid) {
           console.warn('[PortOne webhook] Cancelled: 잘못된 paymentId 형식 무시', pid);
         }
         break;
       }
       case 'Transaction.Failed': {
+        // 멱등성: 이미 FAILED 인 행은 무시
         const pid = payload.data?.paymentId;
         if (pid && PAYMENT_ID_REGEX.test(pid)) {
-          await supa.from('payment_transactions').update({ status: 'FAILED' }).eq('payment_id', pid);
+          await supa
+            .from('payment_transactions')
+            .update({ status: 'FAILED' })
+            .eq('payment_id', pid)
+            .neq('status', 'FAILED');
         } else if (pid) {
           console.warn('[PortOne webhook] Failed: 잘못된 paymentId 형식 무시', pid);
         }
         break;
       }
       case 'BillingKey.Deleted': {
+        // 멱등성: 이미 cancelled 상태인 구독은 다시 갱신하지 않음 (cancelled_at 덮어쓰기 방지)
         const bk = payload.data?.billingKey;
         if (bk) {
           await supa
@@ -78,7 +89,8 @@ export async function POST(req: NextRequest) {
               cancelled_at: new Date().toISOString(),
               next_charge_at: null,
             })
-            .eq('billing_key', bk);
+            .eq('billing_key', bk)
+            .neq('status', 'cancelled');
         }
         break;
       }
