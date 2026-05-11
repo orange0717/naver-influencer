@@ -1,31 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getCookieUser } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { validateBody } from '@/lib/validations';
 import { blogKeywordSchema, deleteBlogKeywordSchema } from '@/lib/validations/blog';
 
 export const dynamic = 'force-dynamic';
+
+async function requireOwnBlog(request: NextRequest, blogId: string) {
+  const auth = await getAuthUser(request);
+  if (!auth) {
+    return {
+      error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }),
+    };
+  }
+
+  if (auth.user.blog_id !== blogId) {
+    return {
+      error: NextResponse.json({ error: '본인 블로그의 키워드만 관리할 수 있습니다.' }, { status: 403 }),
+    };
+  }
+
+  return { auth };
+}
 
 /**
  * POST /api/blog/keywords — 블로거 키워드를 DB에 저장
  */
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCookieUser();
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-    }
-
     const body = await req.json();
     const v = validateBody(blogKeywordSchema, body);
     if (!v.success) return v.response;
 
     const { blog_id, keyword, is_auto } = v.data;
 
-    // 본인 블로그만 키워드 저장 가능
-    if (user.type === 'blogger' && user.id !== blog_id) {
-      return NextResponse.json({ error: '본인 블로그의 키워드만 저장할 수 있습니다.' }, { status: 403 });
-    }
+    const ownBlog = await requireOwnBlog(req, blog_id);
+    if (ownBlog.error) return ownBlog.error;
 
     const supabase = createServiceClient();
 
@@ -55,15 +65,13 @@ export async function POST(req: NextRequest) {
  * GET /api/blog/keywords?blogId=xxx — 블로거의 활성 키워드 목록 조회
  */
 export async function GET(req: NextRequest) {
-  const user = await getCookieUser();
-  if (!user) {
-    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-  }
-
   const blogId = new URL(req.url).searchParams.get('blogId');
   if (!blogId) {
     return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
   }
+
+  const ownBlog = await requireOwnBlog(req, blogId);
+  if (ownBlog.error) return ownBlog.error;
 
   try {
     const supabase = createServiceClient();
@@ -88,16 +96,14 @@ export async function GET(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const user = await getCookieUser();
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-    }
-
     const body = await req.json();
     const v = validateBody(deleteBlogKeywordSchema, body);
     if (!v.success) return v.response;
 
     const { blog_id, keyword } = v.data;
+
+    const ownBlog = await requireOwnBlog(req, blog_id);
+    if (ownBlog.error) return ownBlog.error;
 
     const supabase = createServiceClient();
 

@@ -12,6 +12,16 @@ const SESSION_CHECK_BYPASS = [
   '/favicon',
 ];
 
+const DEVICE_ID_BYPASS = [
+  '/manifest.webmanifest',
+  '/opengraph-image',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/sitemap-index.xml',
+  '/sitemaps/',
+  '/api/',
+];
+
 export async function middleware(request: NextRequest) {
   // Vercel 기본 도메인 차단 — ninfle.kr 외 vercel.app 호스트는 404 응답
   const host = request.headers.get('host') || '';
@@ -48,11 +58,13 @@ export async function middleware(request: NextRequest) {
   // 동시 로그인 기기 제한 검증 (전 플랜 1대 공통)
   const pathname = request.nextUrl.pathname;
   const isBypass = SESSION_CHECK_BYPASS.some(p => pathname.startsWith(p));
+  const acceptsHtml = request.headers.get('accept')?.includes('text/html') ?? false;
+  const shouldIssueDeviceId = acceptsHtml && !DEVICE_ID_BYPASS.some(p => pathname.startsWith(p));
 
-  // device-id 쿠키가 없으면 자동 발급 (응답에 set)
+  // device-id 쿠키가 없으면 HTML 페이지 요청에서만 자동 발급 (응답에 set)
   let deviceId = request.cookies.get(DEVICE_ID_COOKIE)?.value ?? null;
   const isNewDevice = !deviceId;
-  if (!deviceId) {
+  if (!deviceId && shouldIssueDeviceId) {
     deviceId = crypto.randomUUID();
     supabaseResponse.cookies.set(DEVICE_ID_COOKIE, deviceId, {
       path: '/',
@@ -63,7 +75,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 검증: 로그인됨 + 우회 경로 아님 + 기존 device (새로 발급한 첫 요청은 통과)
-  if (user && !isBypass && !isNewDevice) {
+  if (user && deviceId && !isBypass && !isNewDevice) {
     const ok = await verifySession(user.id, deviceId);
     if (!ok) {
       await supabase.auth.signOut();
@@ -86,6 +98,36 @@ export async function middleware(request: NextRequest) {
   supabaseResponse.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   supabaseResponse.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
 
+  const scriptSrc = [
+    "'self'",
+    "'unsafe-inline'",
+    "https://www.googletagmanager.com",
+    "https://www.google-analytics.com",
+    "https://cdn.portone.io",
+    "https://*.portone.io",
+    "https://*.iamport.kr",
+    "https://*.iamport.co",
+    "https://*.kpn.co.kr",
+  ];
+  const styleSrc = [
+    "'self'",
+    "'unsafe-inline'",
+    "https://fonts.googleapis.com",
+  ];
+  const fontSrc = [
+    "'self'",
+    "data:",
+    "https://fonts.gstatic.com",
+  ];
+  const imgSrc = [
+    "'self'",
+    "data:",
+    "blob:",
+    "https://*.naver.com",
+    "https://*.pstatic.net",
+    "https://www.google-analytics.com",
+    "https://www.googletagmanager.com",
+  ];
   const connectSrc = [
     "'self'",
     "https://*.supabase.co",
@@ -95,6 +137,9 @@ export async function middleware(request: NextRequest) {
     "https://*.iamport.co",
     "https://*.kpn.co.kr",
     "https://*.sentry.io",
+    "https://www.google-analytics.com",
+    "https://www.googletagmanager.com",
+    "wss://*.supabase.co",
   ];
   const frameSrc = [
     "'self'",
@@ -108,18 +153,19 @@ export async function middleware(request: NextRequest) {
     frameSrc.push("capacitor://localhost", "https://localhost");
   }
 
-  // [결제 호환] PortOne SDK + KPN PG 가 호출하는 다양한 도메인 모두 허용 위해
-  // ORF 와 동일하게 https: 와일드카드 사용. HTTP/data 는 여전히 차단.
   supabaseResponse.headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-      "style-src 'self' 'unsafe-inline' https:",
-      "font-src 'self' data: https:",
-      "img-src 'self' data: blob: https:",
-      "connect-src 'self' https: wss:",
-      "frame-src 'self' https:",
+      `script-src ${scriptSrc.join(' ')}`,
+      `style-src ${styleSrc.join(' ')}`,
+      `font-src ${fontSrc.join(' ')}`,
+      `img-src ${imgSrc.join(' ')}`,
+      `connect-src ${connectSrc.join(' ')}`,
+      `frame-src ${frameSrc.join(' ')}`,
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
     ].join('; '),
   );
 

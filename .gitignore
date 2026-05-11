@@ -29,6 +29,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+
+# local exports / packaged artifacts / private documents
+*.zip
+*.xlsx
+*.docx
+데이터랩툴즈(datalab.tools)-exports-*/
+ziKjEvIt
 
 # env files (can opt-in for committing if needed)
 .env*
