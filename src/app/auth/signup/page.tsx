@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
@@ -13,6 +13,13 @@ import PrivacyContent from '@/components/legal/PrivacyContent';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 
 const RequiredMark = () => <span className="text-down ml-0.5">*</span>;
+
+function sanitizeRedirect(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith('/')) return null;
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return null;
+  return raw;
+}
 
 // 입력값에서 ID 만 뽑아낸다.
 //   blog.naver.com/foo, https://blog.naver.com/foo?bar 등에서 'foo' 만 추출
@@ -31,7 +38,7 @@ const extractNaverId = (input: string): string => {
   return (m ? m[1] : trimmed).toLowerCase();
 };
 
-export default function SignupPage() {
+function SignupPageContent() {
 
   const [email, setEmail] = useState('');
   const [nickname, setNickname] = useState('');
@@ -50,8 +57,11 @@ export default function SignupPage() {
   const [error, setError] = useState('');
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const allAgreed = agreeTerms && agreePrivacy;
+  const redirectTo = sanitizeRedirect(searchParams.get('redirect') || searchParams.get('next'));
+  const encodedRedirectTo = encodeURIComponent(redirectTo || '');
 
   const handleAgreeAll = () => {
     const next = !allAgreed;
@@ -174,8 +184,9 @@ export default function SignupPage() {
       // useAuth 캐시 무효화 — Header/모달 등이 새 사용자 정보를 즉시 반영
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
 
-      // 인플루언서홈을 입력했으면 본인 인증 페이지로, 아니면 블로그 대시보드로
-      if (naverId) {
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else if (naverId) {
         router.push(`/my/link?naverId=${encodeURIComponent(naverId)}`);
       } else {
         router.push('/my/blogger');
@@ -308,7 +319,7 @@ export default function SignupPage() {
 
             <p className="text-sm text-dim text-center">
               이미 계정이 있으신가요?{' '}
-              <Link href="/auth/login" className="text-accent underline hover:text-accent-hover">로그인</Link>
+              <Link href={redirectTo ? `/auth/login?redirect=${encodedRedirectTo}` : '/auth/login'} className="text-accent underline hover:text-accent-hover">로그인</Link>
             </p>
           </div>
         </div>
@@ -321,5 +332,17 @@ export default function SignupPage() {
         <PrivacyContent />
       </LegalModal>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[75vh] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    }>
+      <SignupPageContent />
+    </Suspense>
   );
 }

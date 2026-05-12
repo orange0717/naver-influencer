@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { fanBookmarkletCode } from '@/lib/fan-bookmarklet';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export default function FansSyncPage() {
+  const router = useRouter();
   const [pasted, setPasted] = useState('');
   const [status, setStatus] = useState<{ type: 'idle' | 'loading' | 'ok' | 'err'; message: string }>({ type: 'idle', message: '' });
   const [authReady, setAuthReady] = useState(false);
@@ -14,10 +16,14 @@ export default function FansSyncPage() {
     const check = async () => {
       const supabase = createSupabaseBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace(`/auth/login?redirect=${encodeURIComponent('/my/fans/sync')}`);
+        return;
+      }
       setAuthReady(!!session);
     };
     check();
-  }, []);
+  }, [router]);
 
   const handleUpload = async () => {
     setStatus({ type: 'loading', message: '업로드 중…' });

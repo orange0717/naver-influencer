@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -8,7 +8,14 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
 import DemoModal from '@/components/DemoModal';
 
-export default function LoginPage() {
+function sanitizeRedirect(raw: string | null): string {
+  if (!raw) return '/';
+  if (!raw.startsWith('/')) return '/';
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return '/';
+  return raw;
+}
+
+function LoginPageContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,6 +32,8 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const redirectTo = sanitizeRedirect(searchParams.get('redirect') || searchParams.get('next'));
+  const encodedRedirectTo = encodeURIComponent(redirectTo);
 
   const handleGoogleLogin = async () => {
     setError('');
@@ -34,7 +43,7 @@ export default function LoginPage() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodedRedirectTo}`,
         },
       });
       if (oauthError) {
@@ -81,12 +90,12 @@ export default function LoginPage() {
           .eq('auth_id', authUser.id)
           .single();
 
-        router.replace('/');
+        router.replace(redirectTo);
       } else {
         setAuthChecked(true);
       }
     });
-  }, [router]);
+  }, [redirectTo, router]);
 
   if (!authChecked) {
     return (
@@ -156,7 +165,7 @@ export default function LoginPage() {
 
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
 
-      router.push('/');
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError('로그인 중 오류가 발생했습니다.');
@@ -328,7 +337,7 @@ export default function LoginPage() {
                   </button>
 
                   <div className="flex items-center justify-center gap-3 text-xs text-dim">
-                    <Link href="/auth/signup" className="hover:text-accent transition">회원가입</Link>
+                    <Link href={`/auth/signup?redirect=${encodedRedirectTo}`} className="hover:text-accent transition">회원가입</Link>
                     <span className="text-border">|</span>
                     <Link href="/auth/forgot" className="hover:text-accent transition">ID/PW 찾기</Link>
                   </div>
@@ -382,5 +391,17 @@ export default function LoginPage() {
 
       <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="fixed inset-0 z-50 bg-bg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

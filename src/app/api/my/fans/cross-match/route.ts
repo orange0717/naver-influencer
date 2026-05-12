@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     new Set((myRelations || []).map((r) => r.target_url_id).filter(Boolean) as string[]),
   );
 
-  let usersByUrlId = new Map<string, { id: string; email: string | null; naver_url_id: string }>();
+  const usersByUrlId = new Map<string, { id: string; email: string | null; naver_url_id: string }>();
   if (myTargetUrlIds.length > 0) {
     const { data: matchedUsers, error: usersErr } = await supabase
       .from('users')
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
         new Set(othersRows.map((r) => r.owner_user_id).filter((x) => x && x !== auth.userId)),
       ) as string[];
 
-      let ownerMap = new Map<string, { id: string; email: string | null; naver_url_id: string | null }>();
+      const ownerMap = new Map<string, { id: string; email: string | null; naver_url_id: string | null }>();
       if (ownerIds.length > 0) {
         const { data: owners } = await supabase
           .from('users')

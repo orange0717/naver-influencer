@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 interface FanItem {
@@ -82,6 +83,7 @@ function formatCount(n: number): string {
 }
 
 export default function MyFansPage() {
+  const router = useRouter();
   const [data, setData] = useState<FansResponse | null>(null);
   const [crossMatch, setCrossMatch] = useState<CrossMatchResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,8 +97,7 @@ export default function MyFansPage() {
         const supabase = createSupabaseBrowserClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          setError('로그인이 필요합니다.');
-          setLoading(false);
+          router.replace(`/auth/login?redirect=${encodeURIComponent('/my/fans')}`);
           return;
         }
         const headers = { authorization: `Bearer ${session.access_token}` };
@@ -120,7 +121,7 @@ export default function MyFansPage() {
       }
     };
     load();
-  }, []);
+  }, [router]);
 
   const list = useMemo<FanItem[]>(() => {
     if (!data) return [];
