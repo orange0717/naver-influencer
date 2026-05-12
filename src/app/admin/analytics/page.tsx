@@ -160,17 +160,24 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/analytics/stats?days=${days}`).then(r => r.json()),
-      fetch(`/api/analytics/referrers?days=${days}`).then(r => r.json()),
+      fetch(`/api/analytics/stats?days=${days}`, { credentials: 'include' }).then(r =>
+        r.ok ? r.json() : Promise.reject(new Error(`stats ${r.status}`))
+      ),
+      fetch(`/api/analytics/referrers?days=${days}`, { credentials: 'include' }).then(r =>
+        r.ok ? r.json() : Promise.reject(new Error(`referrers ${r.status}`))
+      ),
     ]).then(([s, ref]) => {
       setStats(s);
       setReferrers(ref);
+    }).catch(() => {
+      setStats(null);
+      setReferrers(null);
     }).finally(() => setLoading(false));
   }, [days]);
 
   // 오늘 방문 로그 (기간 변경과 무관, 항상 오늘)
   useEffect(() => {
-    fetch('/api/admin/stats/today-logs')
+    fetch('/api/admin/stats/today-logs', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setTodayLogs(d); })
       .catch(() => {});
@@ -246,7 +253,7 @@ export default function AdminAnalyticsPage() {
           <button
             onClick={() => {
               setTodayLogs(null);
-              fetch('/api/admin/stats/today-logs').then(r => r.ok ? r.json() : null).then(d => d && setTodayLogs(d));
+              fetch('/api/admin/stats/today-logs', { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(d => d && setTodayLogs(d));
             }}
             className="px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-border text-dim hover:text-accent hover:border-accent/40 cursor-pointer"
           >

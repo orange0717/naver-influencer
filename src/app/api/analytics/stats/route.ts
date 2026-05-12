@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const supabase = createServiceClient();
     const now = new Date();

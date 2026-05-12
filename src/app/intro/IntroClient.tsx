@@ -34,17 +34,6 @@ function useStats() {
   return stats;
 }
 
-/* ── 방문자/가입자 통계 + 방문 추적 ── */
-function useSiteStats() {
-  const [s, setS] = useState({ totalVisits: 0, todayVisits: 0, totalSignups: 0, todaySignups: 0 });
-  useEffect(() => {
-    fetch('/api/analytics/stats').then(r => r.json()).then(setS).catch(err => {
-      console.warn('[intro] analytics 로드 실패', err instanceof Error ? err.message : err);
-    });
-  }, []);
-  return s;
-}
-
 /* ── 신규 인플루언서 ── */
 interface NewInfluencer {
   id: string;
@@ -108,7 +97,6 @@ function SectionDivider() {
 
 export default function IntroClient() {
   const stats = useStats();
-  const siteStats = useSiteStats();
   const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
   const featuredStories = useFeaturedStories();
   const weekRange = useCurrentWeekRangeKst();
@@ -614,25 +602,6 @@ export default function IntroClient() {
         >
           3일 데모체험 →
         </button>
-
-        <div className="flex items-center justify-center gap-4 md:gap-6 max-w-md mx-auto mt-10">
-          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
-            <p className="text-[11px] text-dim mb-0.5">오늘 방문</p>
-            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.todayVisits.toLocaleString()}</p>
-          </div>
-          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
-            <p className="text-[11px] text-dim mb-0.5">누적 방문</p>
-            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.totalVisits.toLocaleString()}</p>
-          </div>
-          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
-            <p className="text-[11px] text-dim mb-0.5">신규 가입</p>
-            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.todaySignups.toLocaleString()}</p>
-          </div>
-          <div className="flex-1 bg-bg rounded-xl border border-border py-3 px-2 text-center">
-            <p className="text-[11px] text-dim mb-0.5">누적 가입</p>
-            <p className="text-xl font-extrabold text-accent font-rank">{siteStats.totalSignups.toLocaleString()}</p>
-          </div>
-        </div>
       </section>
     </div>
   );

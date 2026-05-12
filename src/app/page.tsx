@@ -4,7 +4,6 @@ import { unstable_cache } from 'next/cache';
 import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
 import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
-import HomeGuestExtras from './_HomeGuestExtras';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
 import type { PlanTier } from '@/lib/dashboard-catalog';
@@ -150,7 +149,6 @@ export default async function HomePage() {
           unreadNotices,
         }}
       />
-      <HomeGuestExtras />
       {/* 데모 = 비로그인 사용자만 노출 (가입한 회원은 데모 필요 없음) */}
       {!isLoggedIn && <DemoFloatingButton />}
     </>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,9 @@ function parseBrowser(ua: string | null | undefined): string {
  * GET /api/analytics/referrers?days=7
  */
 export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (auth.error) return auth.error;
+
   try {
     const days = Math.min(Number(req.nextUrl.searchParams.get('days')) || 7, 90);
     // KST 자정 기준 (UTC 서버에서도 정확하게 동작)
