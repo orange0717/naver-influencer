@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { isDesktop } from '@/lib/desktop';
 import AppCard, { useFavorites } from './AppCard';
 import AppDetailModal from './AppDetailModal';
 import {
@@ -65,7 +66,12 @@ export default function DashboardGrid({
   const { favorites, toggle } = useFavorites();
   const [query, setQuery] = useState('');
   const [selectedApp, setSelectedApp] = useState<DashboardApp | null>(null);
+  const [inDesktopApp, setInDesktopApp] = useState(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    setInDesktopApp(isDesktop());
+  }, []);
 
   // 클라이언트에서 /api/auth/me 로 로드된 최신 플랜으로 덮어쓰기 (서버 초기값 폴백)
   // 주의: /api/auth/me 의 쿠키 폴백 경로는 subscriptionPlan 을 응답에 포함하지 않음 (undefined).
@@ -117,6 +123,23 @@ export default function DashboardGrid({
         </svg>
         <span>현재 베타버전 프로그램입니다.</span>
       </div>
+
+      {!inDesktopApp && (
+        <Link
+          href="/download"
+          className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 lg:px-4 lg:py-3 rounded-xl bg-surface border border-border hover:border-accent/40 transition-colors group"
+        >
+          <span className="text-xs lg:text-sm font-semibold text-text group-hover:text-accent transition-colors">
+            Mac·Windows·Linux용 <strong className="font-extrabold">데스크탑 앱</strong> — OS 알림·트레이에서 바로 실행
+          </span>
+          <span className="text-xs font-bold text-accent shrink-0 flex items-center gap-1">
+            다운로드
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </span>
+        </Link>
+      )}
 
       {/* ── 상단 인사 + 구독 + 지표 ── */}
       <section className="bg-header rounded-2xl p-4 lg:p-8">
