@@ -46,6 +46,18 @@ export const dynamic = 'force-dynamic';
 
 const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|vercel|uptime|facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Telegram|Yandex|Baidu|DuckDuckBot|Sogou|Bytespider|PetalBot|GPTBot|ChatGPT|ClaudeBot|Applebot|Amazonbot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Rogerbot|DataForSeoBot|archive\.org|Mediapartners|AdsBot|Screaming Frog|CCBot|Barkrowler|Go-http-client|python-requests|curl|wget|axios|node-fetch|undici|httpx/i;
 
+const OPTIONAL_VISIT_LOG_COLUMNS = ['demo_naver_id', 'is_first_visit', 'user_agent', 'user_id'] as const;
+
+function getMissingColumn(error: { code?: string; message?: string } | null) {
+  if (!error) return null;
+  const message = error.message || '';
+  const quoted = message.match(/'([^']+)' column/)?.[1] || message.match(/column "([^"]+)"/)?.[1];
+  if (quoted && OPTIONAL_VISIT_LOG_COLUMNS.includes(quoted as typeof OPTIONAL_VISIT_LOG_COLUMNS[number])) {
+    return quoted;
+  }
+  return null;
+}
+
 /** localhost / 사설망 / mDNS 도메인 여부 (본인 dev 트래픽 허수 차단) */
 function isLocalDomain(domain: string | null | undefined): boolean {
   if (!domain) return false;
@@ -118,7 +130,52 @@ export async function POST(req: NextRequest) {
       ? body.device_type
       : 'desktop';
 
-    // 1) 로그인 회원 집계 — DAU 방식 세션 + PV
+    // 1) visit_logs — 모든 페이지뷰 기록 (is_first_visit 플래그로 세션 첫 방문 구분)
+    //    운영 DB 스키마 캐시/마이그레이션 지연으로 선택 컬럼이 없을 때도 기본 로그는 남긴다.
+    const pagePath = typeof body.path === 'string' ? body.path.slice(0, 500) : '/';
+    const referrer = typeof body.referrer === 'string' ? body.referrer.slice(0, 1000) : '';
+    const referrerDomain = typeof body.referrer_domain === 'string' ? body.referrer_domain.slice(0, 200) : null;
+    const utmSource = typeof body.utm_source === 'string' ? body.utm_source.slice(0, 100) : null;
+    const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
+    const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
+    const visitLogPayload: Record<string, string | boolean | null> = {
+      page_path: pagePath,
+      referrer: referrer || null,
+      referrer_domain: referrerDomain,
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      device_type: deviceType,
+      user_agent: ua.slice(0, 500) || null,
+      user_id: trackedUserId || null,
+      demo_naver_id: trackedUserId ? null : demoNaverId,
+      is_first_visit: isFirstVisit,
+    };
+
+    let insertedId: number | null = null;
+    for (let attempt = 0; attempt <= OPTIONAL_VISIT_LOG_COLUMNS.length; attempt += 1) {
+      const { data: inserted, error: insertError } = await supabase
+        .from('visit_logs')
+        .insert(visitLogPayload)
+        .select('id')
+        .single();
+
+      if (!insertError) {
+        insertedId = typeof inserted?.id === 'number' ? inserted.id : null;
+        break;
+      }
+
+      const missingColumn = getMissingColumn(insertError);
+      if (!missingColumn || !(missingColumn in visitLogPayload)) {
+        console.error('[analytics/track] visit_logs insert failed', insertError);
+        return NextResponse.json({ ok: false, error: 'visit_log_insert_failed' }, { status: 500 });
+      }
+
+      console.warn('[analytics/track] retrying visit_logs insert without missing column', missingColumn);
+      delete visitLogPayload[missingColumn];
+    }
+
+    // 2) 로그인 회원 집계 — DAU 방식 세션 + PV
     //    세션 RPC가 먼저 실행되어 옛 last_visited_at 을 읽고 오늘 KST 날짜와 비교,
     //    다른 날이면 total_session_count +1. 그 다음 PV RPC 가 last_visited_at을 NOW()로 갱신.
     if (trackedUserId) {
@@ -126,10 +183,10 @@ export async function POST(req: NextRequest) {
       await supabase.rpc('increment_user_total_visit', { p_user_id: trackedUserId });
     }
 
-    // 2) 사이트 전체 PV — 모든 페이지뷰마다
+    // 3) 사이트 전체 PV — 모든 페이지뷰마다
     await supabase.rpc('increment_pageview', { p_date: today, p_device: deviceType });
 
-    // 3) UV (순방문자) — 브라우저 세션 첫 방문일 때만 site_visits.visit_count / 디바이스 UV
+    // 4) UV (순방문자) — 브라우저 세션 첫 방문일 때만 site_visits.visit_count / 디바이스 UV
     if (isFirstVisit) {
       const { error } = await supabase.rpc('increment_visit', { p_date: today, p_device: deviceType });
 
@@ -164,33 +221,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3) visit_logs — 모든 페이지뷰 기록 (is_first_visit 플래그로 세션 첫 방문 구분)
-    const pagePath = typeof body.path === 'string' ? body.path.slice(0, 500) : '/';
-    const referrer = typeof body.referrer === 'string' ? body.referrer.slice(0, 1000) : '';
-    const referrerDomain = typeof body.referrer_domain === 'string' ? body.referrer_domain.slice(0, 200) : null;
-    const utmSource = typeof body.utm_source === 'string' ? body.utm_source.slice(0, 100) : null;
-    const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
-    const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
-
-    const { data: inserted } = await supabase
-      .from('visit_logs')
-      .insert({
-        page_path: pagePath,
-        referrer: referrer || null,
-        referrer_domain: referrerDomain,
-        utm_source: utmSource,
-        utm_medium: utmMedium,
-        utm_campaign: utmCampaign,
-        device_type: deviceType,
-        user_agent: ua.slice(0, 500) || null,
-        user_id: trackedUserId || null,
-        demo_naver_id: trackedUserId ? null : demoNaverId,
-        is_first_visit: isFirstVisit,
-      })
-      .select('id')
-      .single();
-
-    return NextResponse.json({ ok: true, id: inserted?.id ?? null });
+    return NextResponse.json({ ok: true, id: insertedId });
   } catch {
     return NextResponse.json({ ok: false });
   }

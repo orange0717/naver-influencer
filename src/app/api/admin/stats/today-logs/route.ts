@@ -4,6 +4,29 @@ import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
+const OPTIONAL_SELECT_COLUMNS = ['demo_naver_id', 'duration_seconds', 'user_agent', 'user_id'] as const;
+
+type VisitLogRow = {
+  id?: string | number | null;
+  user_id?: string | null;
+  demo_naver_id?: string | null;
+  page_path?: string | null;
+  referrer?: string | null;
+  user_agent?: string | null;
+  visited_at?: string | null;
+  duration_seconds?: number | null;
+};
+
+function getMissingColumn(error: { message?: string } | null) {
+  if (!error) return null;
+  const message = error.message || '';
+  const quoted = message.match(/'([^']+)' column/)?.[1] || message.match(/column "([^"]+)"/)?.[1];
+  if (quoted && OPTIONAL_SELECT_COLUMNS.includes(quoted as typeof OPTIONAL_SELECT_COLUMNS[number])) {
+    return quoted;
+  }
+  return null;
+}
+
 /**
  * 오늘(KST) visit_logs 전체 — 로그인/익명 모두 포함
  * - page_path, referrer, user_agent, visited_at
@@ -21,12 +44,28 @@ export async function GET(req: NextRequest) {
   const kstMs = now.getTime() + 9 * 60 * 60 * 1000;
   const todayKstMid = new Date(Math.floor(kstMs / 86400000) * 86400000 - 9 * 60 * 60 * 1000);
 
-  const { data: logs, error } = await supabase
-    .from('visit_logs')
-    .select('id, user_id, demo_naver_id, page_path, referrer, user_agent, visited_at, duration_seconds')
-    .gte('visited_at', todayKstMid.toISOString())
-    .order('visited_at', { ascending: false })
-    .limit(500);
+  const selectColumns = ['id', 'user_id', 'demo_naver_id', 'page_path', 'referrer', 'user_agent', 'visited_at', 'duration_seconds'];
+  let logs: VisitLogRow[] = [];
+  let error: { message?: string } | null = null;
+
+  for (let attempt = 0; attempt <= OPTIONAL_SELECT_COLUMNS.length; attempt += 1) {
+    const res = await supabase
+      .from('visit_logs')
+      .select(selectColumns.join(', '))
+      .gte('visited_at', todayKstMid.toISOString())
+      .order('visited_at', { ascending: false })
+      .limit(500);
+
+    logs = (res.data || []) as VisitLogRow[];
+    error = res.error;
+    if (!error) break;
+
+    const missingColumn = getMissingColumn(error);
+    if (!missingColumn || !selectColumns.includes(missingColumn)) break;
+
+    console.warn('[today-logs] retrying select without missing column', missingColumn);
+    selectColumns.splice(selectColumns.indexOf(missingColumn), 1);
+  }
 
   if (error) {
     console.error('[today-logs] error', error);
@@ -81,7 +120,7 @@ export async function GET(req: NextRequest) {
   }
 
   const result = (logs || []).map(log => {
-    const ua = log.user_agent || '';
+    const ua = String(log.user_agent || '');
     const browser = /Edg\//.test(ua) ? 'Edge'
       : /Chrome\//.test(ua) ? 'Chrome'
       : /Safari\//.test(ua) ? 'Safari'
@@ -94,7 +133,7 @@ export async function GET(req: NextRequest) {
       : /Linux/.test(ua) ? 'Linux'
       : 'Unknown';
 
-    const refer = log.referrer || '';
+    const refer = String(log.referrer || '');
     let referrerDomain = '직접 방문';
     if (refer) {
       try {
