@@ -119,6 +119,40 @@ export async function notify(title: string, body: string) {
 강력한 장벽이지만, 작정한 사용자의 `.asar` 추출이나 프록시 가로채기를
 완전히 막지는 않습니다. 진짜 보안은 백엔드(Supabase RLS, API 검증)에서 확보하세요.
 
+## 자동 배포 (GitHub Actions)
+
+이 저장소에는 `.github/workflows/desktop-release.yml`이 설정되어 있어,
+**태그를 푸시하면 macOS / Windows / Linux 빌드가 자동으로 만들어지고 GitHub Releases에 업로드**됩니다.
+
+### 새 버전 배포 방법
+
+```bash
+# 1) desktop/package.json 의 version 을 올림
+#    예: "0.1.0" -> "0.1.1"
+
+# 2) 커밋
+git add desktop/package.json
+git commit -m "chore(desktop): bump version to 0.1.1"
+git push
+
+# 3) 태그 푸시 (← 빌드 트리거)
+git tag desktop-v0.1.1
+git push --tags
+```
+
+GitHub Actions가 30분 안에 모든 OS 빌드를 끝내고,
+`https://github.com/orange0717/naver-influencer/releases` 에
+다음 파일을 자동 업로드합니다.
+
+- `N인플-0.1.1-arm64.dmg` — macOS Apple Silicon
+- `N인플-0.1.1.dmg` — macOS Intel
+- `N인플 Setup 0.1.1.exe` — Windows 인스톨러
+- `N인플 0.1.1.exe` — Windows 포터블
+- `N인플-0.1.1.AppImage` — Linux
+- `ninfl_0.1.1_amd64.deb` — Debian/Ubuntu
+
+수동 실행도 가능: Actions 탭 → "Desktop Release" → Run workflow
+
 ## 코드 서명 (선택)
 
 코드 서명이 없으면 macOS Gatekeeper와 Windows SmartScreen이 경고를 띄웁니다.
@@ -126,4 +160,6 @@ export async function notify(title: string, body: string) {
 
 향후 인증서 구매 시
 - macOS: Apple Developer Program ($99/년) → `notarize` 추가
+  - GitHub Actions secrets에 `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `CSC_LINK`, `CSC_KEY_PASSWORD` 추가하면 자동 서명
 - Windows: 코드사인 인증서 (Sectigo/DigiCert, 연 $200~) → `electron-builder` win.certificateFile 옵션
+  - GitHub Actions secrets에 `WINDOWS_CERT_BASE64`, `WINDOWS_CERT_PASSWORD` 추가

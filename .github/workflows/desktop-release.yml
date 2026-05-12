@@ -1,0 +1,170 @@
+name: Desktop Release
+
+# 사용법:
+#   1) desktop/package.json의 version을 올리고 커밋 후 push
+#   2) git tag v0.1.0 && git push --tags
+#   → 30분 안에 GitHub Releases에 macOS .dmg, Windows .exe, Linux .AppImage 자동 업로드
+
+on:
+  push:
+    tags:
+      - 'desktop-v*'   # 권장 형식: desktop-v0.1.0
+  workflow_dispatch:    # Actions 탭에서 수동 실행도 가능
+
+permissions:
+  contents: write       # GitHub Releases 생성/업로드 권한
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: desktop/package-lock.json
+
+      # ── macOS 아이콘 생성 (icon.icns) ─────────────────────
+      - name: Generate macOS icon (.icns)
+        if: runner.os == 'macOS'
+        working-directory: desktop/icons
+        run: |
+          mkdir -p icon.iconset
+          sips -z 16 16     icon.png --out icon.iconset/icon_16x16.png
+          sips -z 32 32     icon.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32     icon.png --out icon.iconset/icon_32x32.png
+          sips -z 64 64     icon.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128   icon.png --out icon.iconset/icon_128x128.png
+          sips -z 256 256   icon.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256   icon.png --out icon.iconset/icon_256x256.png
+          sips -z 512 512   icon.png --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512   icon.png --out icon.iconset/icon_512x512.png
+          cp icon.png       icon.iconset/icon_512x512@2x.png
+          iconutil -c icns icon.iconset -o icon.icns
+          rm -rf icon.iconset
+          ls -la
+
+      # ── Windows 아이콘 생성 (icon.ico) ─────────────────────
+      - name: Generate Windows icon (.ico)
+        if: runner.os == 'Windows'
+        shell: bash
+        working-directory: desktop/icons
+        run: |
+          # GitHub Windows runner has ImageMagick preinstalled
+          magick icon.png -define icon:auto-resize=256,128,96,64,48,32,16 icon.ico
+          ls -la
+
+      # ── Linux 아이콘은 PNG 그대로 사용 ─────────────────────
+      # (electron-builder가 자동 처리)
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci || npm install
+
+      - name: Build for macOS (.dmg + .zip, Intel + Apple Silicon)
+        if: runner.os == 'macOS'
+        working-directory: desktop
+        run: npx electron-builder --mac --x64 --arm64 --publish never
+        env:
+          # 코드 서명 없음 (인증서 구매 후 secrets 추가하면 자동 적용)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Build for Windows (.exe NSIS + portable)
+        if: runner.os == 'Windows'
+        working-directory: desktop
+        run: npx electron-builder --win --x64 --publish never
+
+      - name: Build for Linux (.AppImage + .deb)
+        if: runner.os == 'Linux'
+        working-directory: desktop
+        run: npx electron-builder --linux --x64 --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+            desktop/dist/*.blockmap
+            desktop/dist/latest*.yml
+          if-no-files-found: warn
+          retention-days: 14
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifact tree
+        run: |
+          mkdir -p release
+          find artifacts -type f \( \
+            -name "*.dmg" -o \
+            -name "*.zip" -o \
+            -name "*.exe" -o \
+            -name "*.AppImage" -o \
+            -name "*.deb" -o \
+            -name "*.blockmap" -o \
+            -name "latest*.yml" \
+          \) -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#desktop-v}"
+          {
+            echo "## N인플 데스크탑 ${VERSION}"
+            echo ""
+            echo "ninfle.kr 데스크탑 앱입니다."
+            echo ""
+            echo "### 다운로드"
+            echo ""
+            echo "- **macOS Apple Silicon**: \`N인플-${VERSION}-arm64.dmg\`"
+            echo "- **macOS Intel**: \`N인플-${VERSION}.dmg\`"
+            echo "- **Windows**: \`N인플 Setup ${VERSION}.exe\` (인스톨러) 또는 \`N인플 ${VERSION}.exe\` (포터블)"
+            echo "- **Linux**: \`N인플-${VERSION}.AppImage\` 또는 \`ninfl_${VERSION}_amd64.deb\`"
+            echo ""
+            echo "### 설치 시 경고가 뜬다면"
+            echo ""
+            echo "- **macOS**: \"확인되지 않은 개발자\" 안내 → 시스템 설정 > 개인정보 보호 및 보안 > '그대로 열기'"
+            echo "- **Windows**: SmartScreen \"PC 보호\" → '추가 정보' → '실행'"
+            echo ""
+            echo "코드 서명 인증서가 적용되면 위 경고는 사라집니다."
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Create / Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "N인플 데스크탑 ${{ github.ref_name }}"
+          body_path: release-notes.md
+          files: release/*
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
