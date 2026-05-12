@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ninfl-v1';
+const CACHE_NAME = 'ninfl-v2';
 const OFFLINE_URL = '/offline.html';
 
 // 설치 시 오프라인 페이지만 캐싱
