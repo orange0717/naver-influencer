@@ -13,7 +13,6 @@ const SESSION_CHECK_BYPASS = [
 ];
 
 const DEVICE_ID_BYPASS = [
-  '/manifest.webmanifest',
   '/opengraph-image',
   '/robots.txt',
   '/sitemap.xml',
@@ -21,6 +20,24 @@ const DEVICE_ID_BYPASS = [
   '/sitemaps/',
   '/api/',
 ];
+
+const AUTH_REQUIRED_PAGE_PREFIXES = [
+  '/my',
+  '/keywords',
+  '/influencers',
+  '/competitor',
+  '/community',
+  '/rankings',
+  '/notice',
+  '/subscribe',
+  '/messages',
+  '/dashboard',
+  '/profile',
+];
+
+function matchesPathPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
 
 export async function middleware(request: NextRequest) {
   // Vercel 기본 도메인 차단 — ninfle.kr 외 vercel.app 호스트는 404 응답
@@ -60,6 +77,23 @@ export async function middleware(request: NextRequest) {
   const isBypass = SESSION_CHECK_BYPASS.some(p => pathname.startsWith(p));
   const acceptsHtml = request.headers.get('accept')?.includes('text/html') ?? false;
   const shouldIssueDeviceId = acceptsHtml && !DEVICE_ID_BYPASS.some(p => pathname.startsWith(p));
+  const hasDemoSession =
+    request.cookies.get('demo_mode')?.value === 'true' &&
+    !!request.cookies.get('naver_id')?.value;
+  const hasDemoParam = pathname === '/my' && !!request.nextUrl.searchParams.get('demo');
+
+  if (
+    !user &&
+    !hasDemoSession &&
+    !hasDemoParam &&
+    acceptsHtml &&
+    AUTH_REQUIRED_PAGE_PREFIXES.some(p => matchesPathPrefix(pathname, p))
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    return NextResponse.redirect(url);
+  }
 
   // device-id 쿠키가 없으면 HTML 페이지 요청에서만 자동 발급 (응답에 set)
   let deviceId = request.cookies.get(DEVICE_ID_COOKIE)?.value ?? null;

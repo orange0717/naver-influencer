@@ -11,7 +11,6 @@ import ScrollToTopButton from "@/components/ScrollToTopButton";
 import Providers from "@/components/Providers";
 import UpdateBanner from "@/components/UpdateBanner";
 import SubscriptionExpiryStrip from "@/components/SubscriptionExpiryStrip";
-import InstallBanner from "@/components/InstallBanner";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 import FirstVisitModal from "@/components/FirstVisitModal";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -260,11 +259,14 @@ export default function RootLayout({
           <FeedbackButton />
           <ChatBot />
           <ScrollToTopButton />
-          <InstallBanner />
           <NicknameRequiredModal />
           <FirstVisitModal />
           <ScrollToTop />
         </Providers>
+        {/* PWA 폐기: 기존에 설치된 service worker / cache 정리 (1회성) */}
+        <Script id="sw-cleanup" strategy="afterInteractive">
+          {`(function(){try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});}if(typeof caches!=='undefined'&&caches.keys){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}}catch(e){}})();`}
+        </Script>
         <Script src="https://cdn.portone.io/v2/browser-sdk.js" strategy="lazyOnload" />
         <Suspense fallback={null}><GoogleAnalytics /></Suspense>
         <SpeedInsights />
