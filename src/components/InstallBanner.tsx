@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isDesktop } from '@/lib/desktop';
 
 /**
  * PWA 앱 설치 유도 배너
  * - beforeinstallprompt 이벤트 감지 시 표시
  * - iOS Safari는 수동 안내
  * - 이미 설치된 경우 표시하지 않음
+ * - Electron 데스크탑 앱에서는 표시하지 않음
  */
 export default function InstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -15,6 +17,11 @@ export default function InstallBanner() {
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
+    // 데스크탑 앱(Electron) 사용자는 이미 설치한 상태이므로 PWA 설치 유도 불필요
+    if (isDesktop()) {
+      setIsInstalled(true);
+      return;
+    }
     // 이미 설치된 앱이면 표시하지 않음
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);

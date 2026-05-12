@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { isDesktop } from '@/lib/desktop';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -13,6 +14,8 @@ export default function PwaAnnounceBanner() {
   const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
   useEffect(() => {
+    // Electron 데스크탑 앱 사용자는 이미 앱 설치 상태 → PWA 안내 불필요
+    if (isDesktop()) return;
     // 이미 설치된 PWA이면 숨기기
     if (window.matchMedia('(display-mode: standalone)').matches) return;
     // Capacitor 네이티브 앱이면 숨기기

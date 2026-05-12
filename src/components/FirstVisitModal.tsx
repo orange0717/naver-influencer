@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { isDesktop } from '@/lib/desktop';
 import DemoModal from './DemoModal';
 
 const STORAGE_KEY = 'ninfle_first_visit_dismissed';
@@ -20,6 +21,8 @@ export default function FirstVisitModal() {
     if (isLoading) return;
     if (user.id || user.isDemo) return;
     if (typeof window === 'undefined') return;
+    // 데스크탑 앱 사용자는 이미 앱을 설치한 상태이므로 처음 방문 안내 불필요
+    if (isDesktop()) return;
     if (SKIP_PATHS.some(p => pathname?.startsWith(p))) return;
     try {
       if (window.localStorage.getItem(STORAGE_KEY) === '1') return;
