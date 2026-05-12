@@ -202,32 +202,6 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-4 animate-fade-in-up">
-            <div className="rounded-xl border-2 border-accent/25 bg-accent/5 p-4 space-y-2.5">
-              <label className="text-sm font-bold text-text block" htmlFor="signup-keyword-category">
-                활동 주제 (키워드챌린지)<RequiredMark />
-              </label>
-              <p className="text-[11px] text-dim leading-relaxed">
-                대시보드·추천 키워드는 아래에서 고른 분야만 보입니다. 네이버 챌린지 카테고리와 동일한 이름입니다.
-              </p>
-              <select
-                id="signup-keyword-category"
-                value={keywordCategory}
-                onChange={(e) => setKeywordCategory(e.target.value)}
-                style={!keywordCategory ? { color: 'var(--color-dim)' } : undefined}
-                className={`w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition cursor-pointer appearance-auto ${
-                  keywordCategory ? 'text-text' : 'text-dim'
-                }`}
-              >
-                <option value="">주제를 선택하세요</option>
-                {KEYWORD_CHALLENGE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              {!keywordCategory && (
-                <p className="text-[11px] text-dim">미선택 시 위 드롭다운에서 주제를 고르세요.</p>
-              )}
-            </div>
-
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">닉네임<RequiredMark /></label>
               <input type="text" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="닉네임을 입력해주세요" maxLength={20}
@@ -250,6 +224,32 @@ export default function SignupPage() {
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호 확인<RequiredMark /></label>
               <input type="password" value={passwordConfirm} onChange={e => setPasswordConfirm(e.target.value)} placeholder="비밀번호를 다시 입력해주세요"
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+            </div>
+
+            <div className="rounded-xl border-2 border-accent/25 bg-accent/5 p-4 space-y-2.5">
+              <label className="text-xs font-semibold text-dim block mb-1.5" htmlFor="signup-keyword-category">
+                활동 주제 (키워드챌린지)<RequiredMark />
+              </label>
+              <p className="text-[11px] text-dim leading-relaxed">
+                대시보드·추천 키워드는 선택한 분야 기준으로 보입니다. 네이버 챌린지 카테고리와 이름이 같습니다.
+              </p>
+              <select
+                id="signup-keyword-category"
+                value={keywordCategory}
+                onChange={(e) => setKeywordCategory(e.target.value)}
+                style={!keywordCategory ? { color: 'var(--color-dim)' } : undefined}
+                className={`w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition cursor-pointer appearance-auto ${
+                  keywordCategory ? 'text-text' : 'text-dim'
+                }`}
+              >
+                <option value="">주제를 선택하세요</option>
+                {KEYWORD_CHALLENGE_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              {!keywordCategory && (
+                <p className="text-[11px] text-dim">주제를 선택해야 가입을 진행할 수 있습니다.</p>
+              )}
             </div>
 
             <div>
