@@ -7,6 +7,7 @@ const FOOTER_LINKS = [
   { href: '/community', label: '커뮤니티' },
   { href: '/notice', label: '공지사항' },
   { href: '/my', label: '대시보드' },
+  { href: '/download', label: '데스크탑 앱' },
   { href: '/terms', label: '이용약관' },
   { href: '/privacy', label: '개인정보처리방침' },
 ];
