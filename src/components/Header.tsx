@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
+import { isDesktop } from '@/lib/desktop';
 import NotificationBell from './NotificationBell';
 import MessageBell from './MessageBell';
 
@@ -149,6 +150,7 @@ export default function Header({ serverUser }: HeaderProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [inDesktopApp, setInDesktopApp] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const { user: clientUser, isLoading: authLoading, logout: authLogout } = useAuth();
 
@@ -160,6 +162,11 @@ export default function Header({ serverUser }: HeaderProps) {
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Electron 데스크탑 앱 안이면 헤더의 "앱 다운로드" 버튼은 노출하지 않음
+  useEffect(() => {
+    setInDesktopApp(isDesktop());
   }, []);
 
   // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
@@ -253,8 +260,22 @@ export default function Header({ serverUser }: HeaderProps) {
             })}
           </nav>
 
-          {/* ── 우측: 쪽지/알림/프로필 ── */}
+          {/* ── 우측: 데스크탑 앱 다운로드 / 쪽지 / 알림 / 프로필 ── */}
           <div className="flex items-center gap-3 shrink-0 ml-auto">
+            {!inDesktopApp && (
+              <Link
+                href="/download"
+                title="N인플 데스크탑 앱 다운로드"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-white/15 hover:bg-white/25 transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                앱 다운로드
+              </Link>
+            )}
             <MessageBell />
             <NotificationBell />
             {authLoading ? (
@@ -374,6 +395,25 @@ export default function Header({ serverUser }: HeaderProps) {
                 </Link>
               );
             })}
+
+            {/* 데스크탑 앱 다운로드 */}
+            {!inDesktopApp && (
+              <>
+                <div className="border-t border-border/50 my-3 mx-2" />
+                <Link
+                  href="/download"
+                  onClick={() => setMobileOpen(false)}
+                  className="font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-text hover:bg-surface transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  데스크탑 앱 다운로드
+                </Link>
+              </>
+            )}
 
             {/* 로그인/로그아웃 */}
             <div className="border-t border-border/50 my-3 mx-2" />
