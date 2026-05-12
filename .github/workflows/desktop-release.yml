@@ -108,7 +108,9 @@ jobs:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    # 일부 OS 빌드가 실패해도 성공한 플랫폼 산출물은 먼저 Release에 올린다.
+    # 예: macOS/Linux 이슈가 있어도 Windows 설치 파일은 바로 배포 가능해야 함.
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/') }}
 
     steps:
       - name: Download all artifacts
