@@ -10,6 +10,7 @@ import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
 import LegalModal from '@/components/legal/LegalModal';
 import TermsContent from '@/components/legal/TermsContent';
 import PrivacyContent from '@/components/legal/PrivacyContent';
+import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 
 const RequiredMark = () => <span className="text-down ml-0.5">*</span>;
 
@@ -38,6 +39,7 @@ export default function SignupPage() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [blogInput, setBlogInput] = useState('');
   const [naverInput, setNaverInput] = useState('');
+  const [keywordCategory, setKeywordCategory] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -100,6 +102,10 @@ export default function SignupPage() {
       setError('네이버 인플루언서홈 주소를 다시 확인해주세요.');
       return;
     }
+    if (!keywordCategory) {
+      setError('활동 주제(키워드챌린지 분야)를 선택해주세요.');
+      return;
+    }
 
     if (!allAgreed) {
       setError('이용약관과 개인정보처리방침에 동의해주세요.');
@@ -147,6 +153,7 @@ export default function SignupPage() {
           authId: authData.user.id,
           email: email.trim(),
           nickname: nickname.trim(),
+          keywordCategory,
           ...(blogId ? { blogId } : {}),
         }),
       });
@@ -217,6 +224,21 @@ export default function SignupPage() {
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호 확인<RequiredMark /></label>
               <input type="password" value={passwordConfirm} onChange={e => setPasswordConfirm(e.target.value)} placeholder="비밀번호를 다시 입력해주세요"
                 className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-dim block mb-1.5">활동 주제 (키워드챌린지)<RequiredMark /></label>
+              <select
+                value={keywordCategory}
+                onChange={(e) => setKeywordCategory(e.target.value)}
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition cursor-pointer"
+              >
+                <option value="">주제를 선택하세요</option>
+                {KEYWORD_CHALLENGE_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-dim mt-1">내 대시보드·추천 키워드는 이 주제에 맞춰 보입니다.</p>
             </div>
 
             <div>

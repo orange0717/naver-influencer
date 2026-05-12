@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { fetchInfluencersForCategory, fetchAllInfluencersSummary, fetchCategories } from '@/lib/naver-api';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
+import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,19 +47,7 @@ async function getInfluencersFromDB(
   const offset = (page - 1) * limit;
 
   // 카테고리 목록: 키워드 페이지와 동일 순서 (상위 주제별 그룹핑)
-  const INFLUENCER_CATEGORIES = [
-    '여행',
-    '패션', '뷰티',
-    '푸드',
-    'IT테크', '자동차',
-    '리빙', '육아', '생활건강',
-    '게임',
-    '동물/펫',
-    '운동/레저', '프로스포츠',
-    '방송/연예', '대중음악', '영화',
-    '공연/전시/예술', '도서',
-    '경제/비즈니스', '어학/교육',
-  ];
+  const INFLUENCER_CATEGORIES = [...KEYWORD_CHALLENGE_CATEGORIES];
   const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
   // stopped_manual 은 migration-062 적용 전에는 존재하지 않으므로 별도 쿼리로 조회 (fallback 지원)

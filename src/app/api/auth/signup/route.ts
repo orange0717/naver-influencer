@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   const v = validateBody(signupSchema, body);
   if (!v.success) return v.response;
 
-  const { authId, email, nickname, blogId } = v.data;
+  const { authId, email, nickname, blogId, keywordCategory } = v.data;
 
   if (authId !== authUser.id) {
     return NextResponse.json({ error: '인증 정보가 일치하지 않습니다.' }, { status: 403 });
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     auth_id: authUser.id,
     email: verifiedEmail,
     nickname,
+    signup_keyword_category: keywordCategory,
   };
   if (blogId) insertPayload.blog_id = blogId;
 

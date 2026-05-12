@@ -98,6 +98,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '연결에 실패했습니다.' }, { status: 500 });
   }
 
+  const { data: userRow } = await supabase
+    .from('users')
+    .select('signup_keyword_category')
+    .eq('auth_id', authUser.id)
+    .maybeSingle();
+
+  const topicFromSignup = userRow?.signup_keyword_category?.trim();
+  if (topicFromSignup) {
+    const { error: catErr } = await supabase
+      .from('influencers')
+      .update({ my_keyword_category: topicFromSignup })
+      .eq('id', influencer.id);
+    if (catErr) {
+      console.error('[my/link] my_keyword_category update:', catErr.message);
+    }
+  }
+
   // 연결 직후 해당 인플루언서 챌린지 순위 즉시 크롤링 (백그라운드)
   const baseUrl = request.nextUrl.origin;
   const cronSecret = process.env.CRON_SECRET;

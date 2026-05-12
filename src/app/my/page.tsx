@@ -27,6 +27,8 @@ export const dynamic = 'force-dynamic';
 export default async function MyDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const supabase = createServiceClient();
   let naverId: string | undefined;
+  /** 로그인 사용자의 가입 시 선택 주제 — 인플 주력 필드가 비어 있을 때 `/my` 주제 한정에 사용 */
+  let signupKeywordCategoryFromUser: string | null = null;
   let subscriptionPlan: string | null = null;
   let subscriptionExpiresAt: string | null = null;
   const params = await searchParams;
@@ -64,12 +66,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       const { data: profile } = await supabase
         .from('users')
-        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at')
+        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at, signup_keyword_category')
         .eq('auth_id', authUser.id)
         .single();
 
       subscriptionPlan = profile?.subscription_plan || null;
       subscriptionExpiresAt = profile?.subscription_expires_at || null;
+      signupKeywordCategoryFromUser = profile?.signup_keyword_category?.trim() || null;
 
       if (profile?.linked_influencer_id) {
         const { data: linkedInf } = await supabase
@@ -238,7 +241,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   });
 
   /** 프로필 주력(도서/경제 등)이 있으면 순위·키워드·미참여 풀은 그 주제만 사용 */
-  const myCategory = influencer.my_keyword_category || influencer.category || '';
+  const myCategory =
+    signupKeywordCategoryFromUser ||
+    influencer.my_keyword_category ||
+    influencer.category ||
+    '';
   const topicScope = myCategory.trim();
   if (topicScope.length > 0) {
     latestRankings = latestRankings.filter((r) => {
