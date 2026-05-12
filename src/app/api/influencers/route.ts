@@ -92,6 +92,7 @@ async function getInfluencersFromDB(
     subscriber_count: 'subscriber_count',
     first_seen_at: 'naver_created_at',
     last_crawled_at: 'last_crawled_at',
+    last_challenged_at: 'last_challenged_at',
     total_keywords: 'total_keywords',
     integrated_top3_count: 'integrated_top3_count',
     top1_count: 'top1_count',
@@ -103,7 +104,7 @@ async function getInfluencersFromDB(
   const sortColumn = isRatioSort ? 'integrated_top3_count' : (allowedSorts[sortBy] || 'naver_created_at');
   const ascending = order === 'asc';
   // NULL은 항상 맨 뒤로
-  const isDateSort = sortColumn === 'naver_created_at';
+  const isDateSort = sortColumn === 'naver_created_at' || sortColumn === 'last_challenged_at' || sortColumn === 'last_crawled_at';
 
   // N인플 순위: 활성 → 활동중단(관리자 수동 지정)
   // stopped_manual = true 인 인플루언서만 활동중단 그룹으로 이동.
@@ -301,7 +302,11 @@ async function getInfluencersFromDB(
     top1Count: Number(inf.top1_count) || 0,
     top2Count: Number(inf.top2_count) || 0,
     top3Count: Number(inf.top3_count) || 0,
-    integratedTop3Count: (Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0),
+    integratedTop3Count: (() => {
+      const fromCol = Number(inf.integrated_top3_count) || 0;
+      const sum = (Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0);
+      return fromCol > 0 ? fromCol : sum;
+    })(),
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,

@@ -99,7 +99,13 @@ export async function refreshInfluencerProfile(
     if (followerCount && followerCount > 0) updateData.total_follower_count = followerCount;
     if (subscriberCount && subscriberCount > 0) updateData.subscriber_count = subscriberCount;
     if (totalKeywords !== null) updateData.total_keywords = totalKeywords;
-    if (lastChallengedAt) updateData.last_crawled_at = new Date(lastChallengedAt).toISOString();
+    // 참여 시각은 last_challenged_at에만 기록 (last_crawled_at은 crawl-challenge-ranks 전용)
+    if (lastChallengedAt) {
+      updateData.last_challenged_at = new Date(lastChallengedAt).toISOString();
+    }
+    if (ownerId != null && ownerId !== '') {
+      updateData.naver_owner_id = String(ownerId);
+    }
 
     // 갱신할 실제 값이 하나도 없으면 updated_at만 찍지 말고 포기
     if (Object.keys(updateData).length <= 1) return null;

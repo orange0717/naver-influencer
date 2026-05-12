@@ -87,16 +87,17 @@ export async function fetchWithRetry(
 
 /** CRON_SECRET 검증 (timing-safe 비교, 길이 노출 방지) */
 export function verifyCronSecret(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    console.error('[crawler] CRON_SECRET 환경변수가 설정되지 않았습니다.');
-    return false;
-  }
-
+  // Vercel 스케줄 크론은 플랫폼이 부여한 토큰으로 호출됨. CRON_SECRET 누락만으로 전체 크론이 죽는 것을 막기 위해 우선 허용.
   const userAgent = request.headers.get('user-agent') || '';
   const vercelCronToken = request.headers.get('x-vercel-cron-auth-token');
   if (userAgent === 'vercel-cron/1.0' && vercelCronToken) {
     return true;
+  }
+
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.error('[crawler] CRON_SECRET 환경변수가 설정되지 않았습니다.');
+    return false;
   }
 
   const auth = request.headers.get('authorization') || '';

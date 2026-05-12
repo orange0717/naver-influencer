@@ -12,6 +12,13 @@ interface Summary {
   coverage_1h_pct: number;
 }
 
+interface Backlog {
+  last_crawl_null: number;
+  fans_without_challenge_date: number;
+  challenge_rows_missing_owner_id: number;
+  total_influencer_rows: number;
+}
+
 interface Oldest {
   naver_id: string;
   display_name: string;
@@ -43,6 +50,7 @@ function formatRelative(iso: string | null | undefined): string {
 
 export default function AdminCrawlerPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [backlog, setBacklog] = useState<Backlog | null>(null);
   const [oldest, setOldest] = useState<Oldest[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +62,7 @@ export default function AdminCrawlerPage() {
       if (!res.ok) return;
       const data = await res.json();
       setSummary(data.summary);
+      setBacklog(data.backlog ?? null);
       setOldest(data.oldest);
       setJobs(data.recent_jobs);
     } finally {
@@ -104,7 +113,56 @@ export default function AdminCrawlerPage() {
               경고: {summary.stale_over_24h.toLocaleString()}명이 24시간 이상 크롤되지 않았습니다. 크론 스케줄 또는 인증 상태를 점검하세요.
             </div>
           )}
+
+          {backlog && (
+            <section className="space-y-3">
+              <h2 className="text-base font-bold">챌린지·순위 수집 백로그 요약</h2>
+              <p className="text-xs text-dim leading-relaxed -mt-1">
+                공개 인플 목록에서 챌린지 수·TOP3가 비고 날짜만 맞지 않아 보일 때, 아래 숫자로 원인을 빠르게 좁힐 수 있습니다.
+              </p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <StatCard
+                  label="전체 인플 DB 행"
+                  value={backlog.total_influencer_rows.toLocaleString()}
+                  sub="influencers 테이블"
+                />
+                <StatCard
+                  label="순위 수집 전 (last_crawl 없음)"
+                  value={backlog.last_crawl_null.toLocaleString()}
+                  sub="crawl-challenge-ranks 큐 1순위"
+                  tone={backlog.last_crawl_null > 500 ? 'down' : backlog.last_crawl_null > 0 ? 'neutral' : 'up'}
+                />
+                <StatCard
+                  label="팬수 있는데 참여일 없음"
+                  value={backlog.fans_without_challenge_date.toLocaleString()}
+                  sub="last_challenged_at NULL"
+                  tone={backlog.fans_without_challenge_date > 1000 ? 'down' : 'neutral'}
+                />
+                <StatCard
+                  label="키워드 이력인데 ownerId 없음"
+                  value={backlog.challenge_rows_missing_owner_id.toLocaleString()}
+                  sub="participated API 불가"
+                  tone={backlog.challenge_rows_missing_owner_id > 0 ? 'down' : 'up'}
+                />
+              </div>
+              <ul className="text-xs text-dim space-y-1.5 list-disc list-inside bg-bg/50 border border-border/60 rounded-lg px-4 py-3">
+                <li>
+                  <strong className="text-text">순위 수집 전</strong>은 아직 한 번도 챌린지 순위 크롤이 끝까지 반영되지 않은 행입니다. 피드만 타고 들어온 계정이 여기에 많이 쌓일 수 있습니다.
+                </li>
+                <li>
+                  <strong className="text-text">팬수 O · 참여일 없음</strong>은 프로필(팬)은 있으나 네이버 챌린지 참여 시각을 못 받은 상태입니다. 순위 수집이 성공하면 같이 채워집니다.
+                </li>
+                <li>
+                  <strong className="text-text">ownerId 없음</strong>은 참여 키워드 수는 있는데 내부 ownerId가 비어 participated API를 못 부르는 경우입니다. in.naver.com HTML 파싱 실패·차단을 의심합니다.
+                </li>
+              </ul>
+            </section>
+          )}
         </>
+      )}
+
+      {summary && !backlog && (
+        <p className="text-xs text-dim">백로그 요약은 최신 API 배포 후 표시됩니다.</p>
       )}
 
       <section>

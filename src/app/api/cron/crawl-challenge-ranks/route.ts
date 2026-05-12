@@ -185,14 +185,14 @@ async function ensureKeywordsExist(
   }
 }
 
-/** 크롤할 인플루언서 목록 조회 — 활성 인플루언서(total_keywords > 0)를 last_crawled_at 오래된 순으로 전부 동일 주기로 순환
- *  가입 유저도 동일한 우선순위로 취급 (공정한 순위 집계를 위해)
+/** 크롤할 인플루언서 목록 조회 — 챌린지 참여자(total_keywords > 0) + 아직 챌린지 크롤을 한 번도 안 한 행(last_crawled_at IS NULL, 피드 upsert 등).
+ *  미참여 확정 후에는 last_crawled_at만 갱신해 순환에서 제외(processInfluencer).
  */
 async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>, batchSize: number) {
   const { data } = await supabase
     .from('influencers')
     .select('id, naver_id, naver_owner_id, category, my_keyword_category')
-    .gt('total_keywords', 0) // 키워드챌린지 참여 이력 있는 인플루언서만
+    .or('total_keywords.gt.0,last_crawled_at.is.null')
     .order('last_crawled_at', { ascending: true, nullsFirst: true })
     .limit(batchSize);
 
@@ -259,6 +259,10 @@ export async function GET(request: NextRequest) {
         ownerId = await fetchOwnerId(inf.naver_id);
         if (!ownerId) {
           console.log(`[crawl-challenge-ranks] Cannot get ownerId for ${inf.naver_id}`);
+          await supabase
+            .from('influencers')
+            .update({ last_crawled_at: new Date().toISOString() })
+            .eq('id', inf.id);
           return { ok: false, count: 0 };
         }
         await supabase.from('influencers').update({ naver_owner_id: ownerId }).eq('id', inf.id);
@@ -268,6 +272,20 @@ export async function GET(request: NextRequest) {
       const { keywords } = await fetchAllParticipatedKeywords(ownerId);
       if (keywords.length === 0) {
         console.log(`[crawl-challenge-ranks] No keywords for ${inf.naver_id}`);
+        await supabase
+          .from('influencers')
+          .update({
+            total_keywords: 0,
+            best_rank: null,
+            avg_rank: null,
+            integrated_top3_count: 0,
+            top1_count: 0,
+            top2_count: 0,
+            top3_count: 0,
+            top3_ratio: 0,
+            last_crawled_at: new Date().toISOString(),
+          })
+          .eq('id', inf.id);
         return { ok: false, count: 0 };
       }
 

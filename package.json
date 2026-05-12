@@ -17,7 +17,8 @@
     "desktop:build": "cd desktop && npm run build",
     "desktop:build:mac": "cd desktop && npm run build:mac",
     "desktop:build:win": "cd desktop && npm run build:win",
-    "desktop:build:linux": "cd desktop && npm run build:linux"
+    "desktop:build:linux": "cd desktop && npm run build:linux",
+    "cron:smoke": "bash scripts/cron-smoke.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

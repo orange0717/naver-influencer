@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
 
 interface InfluencerRow {
   id: string;
@@ -19,11 +20,6 @@ function formatCount(n: number | null): string {
   if (v >= 10000) return `${(v / 10000).toFixed(1)}만`;
   if (v >= 1000) return v.toLocaleString();
   return String(v);
-}
-
-function formatDate(d: string | null): string {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
 }
 
 export default function AdminInfluencersPage() {
@@ -158,7 +154,15 @@ export default function AdminInfluencersPage() {
                     @{row.naver_id}
                     {row.my_keyword_category && <span className="ml-2">· {row.my_keyword_category}</span>}
                     <span className="ml-2">· 팬 {formatCount(row.subscriber_count)}</span>
-                    <span className="ml-2">· 마지막 참여 {formatDate(row.last_challenged_at || row.last_crawled_at)}</span>
+                    <span className="ml-2 text-dim">
+                      · 마지막 챌린지{' '}
+                      <LastChallengeParticipationCell
+                        inf={{
+                          lastChallengedAt: row.last_challenged_at,
+                          lastCrawledAt: row.last_crawled_at,
+                        }}
+                      />
+                    </span>
                   </div>
                 </div>
                 {row.stopped_manual ? (
@@ -206,7 +210,7 @@ export default function AdminInfluencersPage() {
                 <th className="text-left px-4 py-2.5 font-semibold">인플루언서</th>
                 <th className="text-left px-4 py-2.5 font-semibold">분야</th>
                 <th className="text-right px-4 py-2.5 font-semibold">팬수</th>
-                <th className="text-left px-4 py-2.5 font-semibold">마지막 참여</th>
+                <th className="text-left px-4 py-2.5 font-semibold">마지막 챌린지</th>
                 <th className="text-center px-4 py-2.5 font-semibold">해제</th>
               </tr>
             </thead>
@@ -231,7 +235,11 @@ export default function AdminInfluencersPage() {
                   </td>
                   <td className="px-4 py-2.5 text-xs text-dim">{row.my_keyword_category || '-'}</td>
                   <td className="px-4 py-2.5 text-right text-xs font-semibold">{formatCount(row.subscriber_count)}</td>
-                  <td className="px-4 py-2.5 text-xs text-dim">{formatDate(row.last_challenged_at || row.last_crawled_at)}</td>
+                  <td className="px-4 py-2.5 text-xs text-dim">
+                    <LastChallengeParticipationCell
+                      inf={{ lastChallengedAt: row.last_challenged_at, lastCrawledAt: row.last_crawled_at }}
+                    />
+                  </td>
                   <td className="px-4 py-2.5 text-center">
                     <button
                       onClick={() => setStopped(row, false)}

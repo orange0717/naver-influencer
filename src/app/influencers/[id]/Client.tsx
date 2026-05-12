@@ -35,6 +35,7 @@ interface InfluencerData {
   ad_fee_text?: string | null;
   ad_process?: string | null;
   last_crawled_at?: string | null;
+  last_challenged_at?: string | null;
   keywords: InfluencerKeyword[];
   recent_rankings: unknown[];
   is_member?: boolean;
@@ -176,15 +177,28 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
               >
                 @{influencer.naver_id}
               </a>
-              {formatRelativeTime(influencer.last_crawled_at) && (
-                <span
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full"
-                  title={influencer.last_crawled_at ? new Date(influencer.last_crawled_at).toLocaleString('ko-KR') : ''}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                  {formatRelativeTime(influencer.last_crawled_at)} 업데이트
-                </span>
-              )}
+              {(() => {
+                const primary = influencer.last_challenged_at || influencer.last_crawled_at;
+                const rel = formatRelativeTime(primary);
+                if (!rel) return null;
+                const isChallenge = Boolean(influencer.last_challenged_at);
+                return (
+                  <span
+                    className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      isChallenge ? 'text-accent bg-accent/10' : 'text-dim bg-surface-hover'
+                    }`}
+                    title={
+                      isChallenge
+                        ? `챌린지 참여 기준: ${new Date(influencer.last_challenged_at!).toLocaleString('ko-KR')}`
+                        : `순위 수집 시각만 확인됨: ${influencer.last_crawled_at ? new Date(influencer.last_crawled_at).toLocaleString('ko-KR') : ''}`
+                    }
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isChallenge ? 'bg-accent animate-pulse' : 'bg-dim/50'}`} />
+                    {isChallenge ? '챌린지 ' : '수집 '}
+                    {rel}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         </div>

@@ -38,7 +38,7 @@ src/
 ├── app/
 │   ├── api/                # API 라우트 (23개 모듈, 80+ 엔드포인트)
 │   │   ├── auth/           # 인증 (로그인, 회원가입, 데모 체험)
-│   │   ├── cron/           # 크론잡 13개 (크롤링, 알림 등)
+│   │   ├── cron/           # 크론 라우트 — 스케줄 개수는 vercel.json 참고
 │   │   ├── keywords/       # 키워드 검색, 상세, 순위, 트렌드
 │   │   ├── influencers/    # 인플루언서 목록, 상세
 │   │   ├── my/             # 대시보드, 계정 연동, 순위 히스토리
@@ -74,21 +74,54 @@ chrome-extension/           # 크롬 확장 프로그램
 
 ## 크론잡 (Vercel Cron)
 
-| 크론잡 | 스케줄 (UTC) | 설명 |
-|--------|-------------|------|
-| crawl-keywords | 매일 18:00 | 키워드 목록 크롤링 |
-| crawl-rankings | 매일 19:00 | 키워드별 순위 크롤링 |
-| crawl-influencers | 매일 0/6/12/18:00 | 인플루언서 탐색 |
-| update-volumes | 매일 20:00 | 검색량 업데이트 (DataLab) |
-| aggregate-influencers | 매일 20:30 | 통계 집계 |
-| generate-recommendations | 매일 21:00 | 추천 키워드 생성 |
-| crawl-challenge-ranks | 매일 02:00 | 챌린지 공식 순위 |
-| crawl-blog-ranks | 매일 22:00 | 블로그 검색 순위 |
-| crawl-blog-visitors | 매일 22:30 | 블로그 방문자 |
-| crawl-selection-dates | 매일 23:00 | 챌린지 선정일 |
-| update-followers | 매일 21/03/09:00 | 구독자 수 업데이트 |
-| demo-expiry | 매일 09:00 | 만료 데모 정리 |
-| send-rank-notifications | 매일 21:00 | 순위 변동 알림 발송 |
+스케줄은 **UTC**입니다. 한국 시각(KST)은 **UTC+9**입니다.  
+아래 표는 루트 **`vercel.json`과 동일**합니다(복붙 기준용).
+
+| 경로 | Cron (UTC) | 설명 |
+|------|------------|------|
+| `/api/cron/crawl-keywords` | `0 */3 * * *` | 키워드 챌린지 목록·연동 메타 수집 (3시간마다 정각) |
+| `/api/cron/crawl-rankings` | `0 19 * * *` | 키워드별 순위 |
+| `/api/cron/crawl-influencers` | `0 0,6,12,18 * * *` | 인플루언서 피드 탐색 (하루 4회) |
+| `/api/cron/update-volumes` | `0 20 * * *` | 검색량 등 볼륨 업데이트 |
+| `/api/cron/aggregate-influencers` | `15 * * * *` | 인플루언서 통계 집계 (매시 15분) |
+| `/api/cron/generate-recommendations` | `0 21 * * *` | 일일 추천 키워드 |
+| `/api/cron/crawl-challenge-ranks` | `*/30 * * * *` | 키워드챌린지 공식 순위 (30분마다) |
+| `/api/cron/crawl-challenge-ranks?batch=1000&concurrency=10` | `*/5 17-20 * * *` | 위와 동일 잡의 트래픽 증량(UTC 17–20시 매 5분) |
+| `/api/cron/verify-daily-coverage` | `30 21 * * *` | 일별 커버리지 검증 |
+| `/api/cron/crawl-blog-ranks` | `0 22 * * *` | 블로그 검색 순위 |
+| `/api/cron/crawl-blog-visitors` | `30 22 * * *` | 블로그 방문자 |
+| `/api/cron/crawl-selection-dates` | `0 23 * * *` | 챌린지 선정일 |
+| `/api/cron/update-followers` | `0 */4 * * *` | 구독자/팔로워 수 (4시간마다 정각) |
+| `/api/cron/demo-expiry` | `0 9 * * *` | 데모 만료 정리 |
+| `/api/cron/subscription-expiry` | `30 9 * * *` | 구독 만료 처리 |
+| `/api/cron/send-rank-notifications` | `0 21 * * *` | 순위 변동 알림 |
+| `/api/cron/crawl-search-exposure?size=100` | `30 23 * * *` | 검색 노출 크롤 |
+| `/api/cron/refresh-stats` | `45 * * * *` | 통계 리프레시 (매시 45분) |
+| `/api/cron/charge-recurring` | `0 0 * * *` | 정기 결제 청구 (UTC 자정) |
+
+### 런칭 전 크론 스모크
+
+정식 배포 직후 아래를 순서대로 확인하면 크롤링·챌린지 반영이 멈춘 상태로 공개되는 일을 줄일 수 있습니다.
+
+1. **Vercel Production 환경 변수**에 `CRON_SECRET`이 설정되어 있고, 재배포 후에도 동일한지 확인합니다. (수동 호출·연동 트리거에 필요합니다.)
+2. **Vercel 대시보드 → Cron Jobs**에서 최근 실행이 실패하지 않았는지 확인합니다.
+3. **Supabase `crawl_jobs`** 테이블에서 최근 잡의 `status`가 `success`인지 확인합니다.
+4. 관리자라면 **`/admin/crawler`** 화면에서 크롤러 상태를 확인합니다.
+5. 아래 스크립트로 핵심 엔드포인트가 **HTTP 200**인지 즉시 검증합니다. (`crawl-challenge-ranks`는 `batch=2`로 부하를 줄였습니다.)
+
+```bash
+CRON_BASE_URL=https://your-production-domain.com \
+CRON_SECRET=your-secret \
+npm run cron:smoke
+```
+
+수동으로 확인할 때는 예시와 같이 `Authorization: Bearer` 헤더를 붙입니다.
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" \
+  -H "Authorization: Bearer YOUR_CRON_SECRET" \
+  "https://your-production-domain.com/api/cron/crawl-challenge-ranks?batch=2&concurrency=1"
+```
 
 ## 시작하기
 
@@ -100,7 +133,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NAVER_CLIENT_ID=
 NAVER_CLIENT_SECRET=
-CRON_SECRET=
+CRON_SECRET=   # 프로덕션 권장: 수동 호출·연동 트리거용 Bearer 시크릿
 RESEND_API_KEY=
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatCount } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
+import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
 
 interface InfluencerItem {
   name: string;
@@ -34,7 +35,7 @@ interface InfluencerItem {
   isMember?: boolean;
 }
 
-type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at' | 'keyword_score';
+type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at' | 'last_challenged_at' | 'keyword_score';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'keyword_score', label: '점수' },
@@ -43,7 +44,8 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'total_keywords', label: '챌린지수' },
   { key: 'top3_ratio', label: '비율' },
   { key: 'integrated_top3_count', label: 'TOP3' },
-  { key: 'last_crawled_at', label: '마지막 참여일' },
+  { key: 'last_challenged_at', label: '챌린지 참여' },
+  { key: 'last_crawled_at', label: '순위 수집' },
 ];
 
 function formatDate(d: string | null | undefined): string {
@@ -353,8 +355,8 @@ export default function InfluencerRankingView() {
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('first_seen_at')}>
                     선정일{sortArrow('first_seen_at')}
                   </th>
-                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_crawled_at')}>
-                    마지막 참여일{sortArrow('last_crawled_at')}
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_challenged_at')}>
+                    마지막 챌린지 참여{sortArrow('last_challenged_at')}
                   </th>
                 </tr>
               </thead>
@@ -449,11 +451,13 @@ export default function InfluencerRankingView() {
                       {inf.naverCreatedAt ? formatDate(inf.naverCreatedAt) : '—'}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
-                      {inf.isStopped ? (
-                        <span className="text-down/70">활동하지 않음</span>
-                      ) : (
-                        formatDate(inf.lastChallengedAt || inf.lastCrawledAt)
-                      )}
+                      <LastChallengeParticipationCell
+                        inf={{
+                          lastChallengedAt: inf.lastChallengedAt,
+                          lastCrawledAt: inf.lastCrawledAt,
+                          isInactive: inf.isInactive,
+                        }}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -513,11 +517,16 @@ export default function InfluencerRankingView() {
                   {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
                   {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
                   {inf.naverCreatedAt && <span>선정일 {formatDate(inf.naverCreatedAt)}</span>}
-                  {(inf.lastChallengedAt || inf.lastCrawledAt) && (
-                    inf.isStopped
-                      ? <span className="text-down/70">활동하지 않음</span>
-                      : <span>마지막 참여일 {formatDate(inf.lastChallengedAt || inf.lastCrawledAt)}</span>
-                  )}
+                  <span className="flex items-center gap-1 flex-wrap">
+                    <span className="shrink-0">마지막 챌린지</span>
+                    <LastChallengeParticipationCell
+                      inf={{
+                        lastChallengedAt: inf.lastChallengedAt,
+                        lastCrawledAt: inf.lastCrawledAt,
+                        isInactive: inf.isInactive,
+                      }}
+                    />
+                  </span>
                 </div>
               </div>
             ))}

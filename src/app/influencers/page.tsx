@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatCount } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
+import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
 
 interface InfluencerItem {
   name: string;
@@ -23,12 +24,13 @@ interface InfluencerItem {
   naverCreatedAt?: string;
   firstSeenAt?: string;
   lastCrawledAt?: string;
+  lastChallengedAt?: string;
   isInactive?: boolean;
   isStopped?: boolean;
   isMember?: boolean;
 }
 
-type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at' | 'keyword_score';
+type SortKey = 'first_seen_at' | 'subscriber_count' | 'total_keywords' | 'integrated_top3_count' | 'top3_ratio' | 'top1_count' | 'top2_count' | 'top3_count' | 'last_crawled_at' | 'last_challenged_at' | 'keyword_score';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'first_seen_at', label: '선정일' },
@@ -36,16 +38,9 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'total_keywords', label: '챌린지수' },
   { key: 'top3_ratio', label: '비율' },
   { key: 'integrated_top3_count', label: 'TOP3' },
-  { key: 'last_crawled_at', label: '마지막 참여일' },
+  { key: 'last_challenged_at', label: '챌린지 참여' },
+  { key: 'last_crawled_at', label: '순위 수집' },
 ];
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  // 날짜만 온 경우(YYYY-MM-DD) UTC 파싱으로 하루 밀리는 것을 방지
-  const isDateOnly = typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
-  const date = isDateOnly ? new Date(`${d}T00:00:00+09:00`) : new Date(d);
-  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Seoul' });
-}
 
 // 네이버 선정일 전용: 네이버는 UTC 기준 날짜로 선정일을 표기하므로 UTC 기준으로 출력
 function formatNaverDate(d: string | null | undefined): string {
@@ -59,12 +54,6 @@ function isNew(d: string | null | undefined): boolean {
   if (!d) return false;
   const diff = Date.now() - new Date(d).getTime();
   return diff < 30 * 24 * 60 * 60 * 1000; // 30일 이내
-}
-
-function isInactive(d: string | null | undefined): boolean {
-  if (!d) return false;
-  const diff = Date.now() - new Date(d).getTime();
-  return diff > 365 * 24 * 60 * 60 * 1000; // 1년 이상 미활동
 }
 
 export default function InfluencersPage() {
@@ -227,6 +216,10 @@ export default function InfluencersPage() {
         ))}
       </div>
 
+      <p className="text-[11px] text-dim -mt-1 mb-2 px-0.5 leading-relaxed">
+        챌린지 수·TOP3·비율은 네이버 챌린지 순위를 수집한 뒤에 채워집니다. 팬수만 있고 앞 열이 0이면 순위 수집 대기이거나 참여 이력이 없을 수 있습니다. 마지막 열은 참여일이 없을 때 &quot;수집 + 날짜&quot;로 DB 갱신 시각만 표시됩니다.
+      </p>
+
       {error && (
         <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-center">
           <p className="text-sm text-down font-semibold">{error}</p>
@@ -275,8 +268,8 @@ export default function InfluencersPage() {
                   <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('first_seen_at')}>
                     선정일{sortArrow('first_seen_at')}
                   </th>
-                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_crawled_at')}>
-                    마지막 참여일{sortArrow('last_crawled_at')}
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('last_challenged_at')}>
+                    마지막 챌린지 참여{sortArrow('last_challenged_at')}
                   </th>
                 </tr>
               </thead>
@@ -363,11 +356,7 @@ export default function InfluencersPage() {
                       {inf.naverCreatedAt ? formatNaverDate(inf.naverCreatedAt) : '—'}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">
-                      {isInactive(inf.lastCrawledAt) ? (
-                        <span className="text-down/70">활동하지 않음</span>
-                      ) : (
-                        formatDate(inf.lastCrawledAt)
-                      )}
+                      <LastChallengeParticipationCell inf={inf} />
                     </td>
                   </tr>
                 ))}
@@ -426,11 +415,10 @@ export default function InfluencersPage() {
                   {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
                   {(inf.top3Count || 0) > 0 && <span className="text-green-600 font-bold">3위 {inf.top3Count}</span>}
                   {inf.naverCreatedAt && <span>선정일 {formatNaverDate(inf.naverCreatedAt)}</span>}
-                  {inf.lastCrawledAt && (
-                    isInactive(inf.lastCrawledAt)
-                      ? <span className="text-down/70">활동하지 않음</span>
-                      : <span>마지막 참여일 {formatDate(inf.lastCrawledAt)}</span>
-                  )}
+                  <span className="flex items-center gap-1 flex-wrap">
+                    <span className="shrink-0">마지막 챌린지</span>
+                    <LastChallengeParticipationCell inf={inf} />
+                  </span>
                 </div>
               </div>
             ))}
