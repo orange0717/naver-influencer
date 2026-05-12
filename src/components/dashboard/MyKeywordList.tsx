@@ -417,6 +417,14 @@ export default function MyKeywordList({
               </button>
             </div>
           </div>
+
+          {participationFilter === 'not_participated' && (
+            <div className="rounded-lg border border-accent/25 bg-accent/5 px-3 py-2.5 text-[11px] text-text leading-relaxed">
+              <span className="font-semibold text-accent">미참여 키워드</span>는 챌린지에 참여하기 전까지
+              순위·변동·통합검색(VIEW)·블로그탭 숫자가 비어 있습니다. 월 검색량·경쟁도만 참고용으로 보입니다.
+              지표를 보려면 위에서 <span className="font-semibold">참여 키워드</span> 또는 <span className="font-semibold">전체 키워드</span>를 선택하세요.
+            </div>
+          )}
         </>
       )}
 
@@ -431,8 +439,10 @@ export default function MyKeywordList({
                   <th className="text-left px-5 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('keyword')}>키워드<SortArrow col="keyword" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('rank')}>순위<SortArrow col="rank" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('change')}>변동<SortArrow col="change" /></th>
-                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]">통합검색</th>
-                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]">블로그탭</th>
+                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]" title="네이버 통합검색 VIEW 영역 노출 순위">
+                    통합검색<span className="block font-normal text-[10px] text-dim font-medium">VIEW</span>
+                  </th>
+                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]" title="블로그 탭 검색 노출 순위">블로그탭</th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('participants')}>참여자<SortArrow col="participants" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('volume')}>월 검색량<SortArrow col="volume" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('comp')}>경쟁도<SortArrow col="comp" /></th>
@@ -485,12 +495,14 @@ export default function MyKeywordList({
                         )}
                       </td>
                       <td className="text-center px-3 py-3">
-                        {kw.is_participated && kw.rank_change !== 0 ? (
+                        {!kw.is_participated || kw.rank_position === null ? (
+                          <span className="text-sm text-dim">-</span>
+                        ) : kw.rank_change === 0 ? (
+                          <span className="text-sm text-dim font-medium">유지</span>
+                        ) : (
                           <span className={`text-sm font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
                             {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
                           </span>
-                        ) : (
-                          <span className="text-sm text-dim">-</span>
                         )}
                       </td>
                       <td className="text-center px-2 py-3">
@@ -654,10 +666,13 @@ export default function MyKeywordList({
                       </div>
                     </div>
                   <div className="flex items-center gap-2 shrink-0 ml-3">
-                    {kw.is_participated && kw.rank_change !== 0 && (
+                    {kw.is_participated && kw.rank_position !== null && kw.rank_change !== 0 && (
                       <span className={`text-xs font-bold ${kw.rank_change > 0 ? 'text-up' : 'text-down'}`}>
                         {kw.rank_change > 0 ? '▲' : '▼'}{Math.abs(kw.rank_change)}
                       </span>
+                    )}
+                    {kw.is_participated && kw.rank_position !== null && kw.rank_change === 0 && (
+                      <span className="text-[10px] font-semibold text-dim">유지</span>
                     )}
                     {!kw.is_participated ? (
                       <span className="text-[10px] font-bold text-dim bg-border/30 px-1.5 py-0.5 rounded">미참여</span>

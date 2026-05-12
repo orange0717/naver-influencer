@@ -193,6 +193,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     keyword_challenges: unknown;
   };
 
+  interface KeywordChallengeJoin {
+    keyword: string;
+    category: string;
+    participant_count: number;
+    search_volume_monthly: number;
+  }
+
   const sinceDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
@@ -224,20 +231,23 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   const seenKw = new Set<string>();
-  const latestRankings = recentRows.filter(r => {
+  let latestRankings = recentRows.filter(r => {
     if (seenKw.has(r.keyword_id)) return false;
     seenKw.add(r.keyword_id);
     return true;
   });
 
-  const currentRankings = latestRankings;
-
-  interface KeywordChallengeJoin {
-    keyword: string;
-    category: string;
-    participant_count: number;
-    search_volume_monthly: number;
+  /** 프로필 주력(도서/경제 등)이 있으면 순위·키워드·미참여 풀은 그 주제만 사용 */
+  const myCategory = influencer.my_keyword_category || influencer.category || '';
+  const topicScope = myCategory.trim();
+  if (topicScope.length > 0) {
+    latestRankings = latestRankings.filter((r) => {
+      const kw = r.keyword_challenges as unknown as KeywordChallengeJoin;
+      return (kw?.category || '').trim() === topicScope;
+    });
   }
+
+  const currentRankings = latestRankings;
 
   const rankings = currentRankings.map(r => {
     const kw = r.keyword_challenges as unknown as KeywordChallengeJoin;
@@ -370,9 +380,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const compMid = rankings.filter(r => r.participant_count > 30 && r.participant_count <= 100).length;
   const compHigh = rankings.filter(r => r.participant_count > 100).length;
 
-  // ─── 1-2. 전체 순위 & 카테고리 순위 계산 ───
-  const myCategory = influencer.my_keyword_category || influencer.category || '';
-
+  // ─── 1-2. 전체 순위 & 카테고리 순위 계산 (myCategory / topicScope는 순위 구간 위에서 정의)
   // 카테고리 순위 계산 (인플루언서는 카테고리끼리 경쟁)
   // DB 레벨에서 카테고리 필터링 → 단일 쿼리로 순위/총원 계산
   let categoryRank = 0;
@@ -412,7 +420,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   // influencer_keywords 기반 키워드 (참여 키워드)
-  const participatedKeywords = (myKeywords || []).map(ik => {
+  let participatedKeywords = (myKeywords || []).map(ik => {
     const kw = ik.keyword_challenges as unknown as KeywordChallengeWithId;
     const ranked = rankedMap.get(ik.keyword_id);
     return {
@@ -449,14 +457,24 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     }
   }
 
+  if (topicScope.length > 0) {
+    participatedKeywords = participatedKeywords.filter(
+      (kw) => (kw.category || '').trim() === topicScope
+    );
+  }
+
   // 참여 키워드의 카테고리 목록 추출
   const participatedCategories = [...new Set(participatedKeywords.map(kw => kw.category).filter(Boolean))];
   const participatedKeywordIds = new Set(participatedKeywords.map(kw => kw.keyword_id));
 
+  /** 미참여 챌린지 풀: 프로필 주력이 있으면 그 주제만, 없으면 참여 중인 주제 전부 */
+  const challengePoolCategories =
+    topicScope.length > 0 ? [topicScope] : participatedCategories;
+
   // 해당 카테고리의 전체 키워드 조회 (미참여 키워드 포함)
   // Supabase 기본 1000건 제한 해제
   let categoryAllKeywords: { id: string; keyword: string; category: string; participant_count: number; search_volume_monthly: number }[] = [];
-  if (participatedCategories.length > 0) {
+  if (challengePoolCategories.length > 0) {
     const PAGE_SIZE = 1000;
     let from = 0;
     let hasMore = true;
@@ -464,7 +482,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       const { data: batch } = await supabase
         .from('keyword_challenges')
         .select('id, keyword, category, participant_count, search_volume_monthly')
-        .in('category', participatedCategories)
+        .in('category', challengePoolCategories)
         .eq('is_active', true)
         .order('participant_count', { ascending: false })
         .order('id')
@@ -533,11 +551,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const totalKeywords = allKeywords.length;
   const participatedCount = participatedKeywords.length;
 
-  /** 추천·기본 뷰는 프로필 주력 분야 우선, 없으면 키워드 수가 가장 많은 주제만 사용 */
+  /** 추천·기본 뷰: 프로필 주력이 있으면 항상 그 주제 기준(미참여 풀도 동일 주제로만 채워짐) */
   const recommendationCategory =
-    myCategory && participatedCategories.includes(myCategory)
-      ? myCategory
-      : categoryGroups[0]?.[0] ?? '';
+    topicScope.length > 0 ? topicScope : categoryGroups[0]?.[0] ?? '';
   const notParticipatedForRecommendations = recommendationCategory
     ? notParticipatedKeywords.filter((kw) => kw.category === recommendationCategory)
     : notParticipatedKeywords;
@@ -562,10 +578,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     ['예술/음악', /예술|음악|그림|미술|전시|공연|클래식|피아노|영화|드라마/i],
   ];
   function classifyKeyword(keyword: string, category: string): string {
+    const c = (category || '').trim();
+    // 챌린지 DB 주제가 정해져 있으면 제목 정규식으로 덮어쓰지 않음 (도서 챌린지인데 제목에 '투자' 등이 있어 경제로 분류되는 문제 방지)
+    if (c && c !== '기타') return c;
     for (const [topic, regex] of TOPIC_RULES) {
       if (regex.test(keyword)) return topic;
     }
-    return category || '기타';
+    return c || '기타';
   }
 
   const catStatMap = new Map<string, { total: number; top10: number; sumRank: number }>();
@@ -767,7 +786,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         categoryGroups={categoryGroups.map(([category, keywords]) => ({ category, keywords }))}
         totalKeywords={totalKeywords}
         participatedCount={participatedCount}
-        defaultCategory={myCategory || null}
+        defaultCategory={topicScope.length > 0 ? topicScope : myCategory || null}
       />
 
       </div>
