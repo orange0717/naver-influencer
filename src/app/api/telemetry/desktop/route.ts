@@ -15,7 +15,7 @@ const bodySchema = z.object({
 
 /**
  * 데스크탑 앱 관련 비식별 이벤트 수집 (다운로드 페이지 방문, 에셋 클릭, 앱 실행).
- * 로그인 시 user_id만 연결되며, 서비스 롤로만 DB INSERT.
+ * 로그인 시 user_id 연결. download_* 이벤트는 로그인 필수, app_launch(Electron)만 비로그인 허용.
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -35,8 +35,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  const ua = req.headers.get('user-agent')?.slice(0, 500) || null;
   const auth = await getAuthUser(req);
+  if (parsed.data.event !== 'app_launch' && !auth) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
+  const ua = req.headers.get('user-agent')?.slice(0, 500) || null;
   const userId = auth?.userId ?? null;
 
   const supabase = createServiceClient();

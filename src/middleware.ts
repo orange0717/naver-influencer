@@ -33,6 +33,7 @@ const AUTH_REQUIRED_PAGE_PREFIXES = [
   '/messages',
   '/dashboard',
   '/profile',
+  '/download',
 ];
 
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
@@ -82,17 +83,25 @@ export async function middleware(request: NextRequest) {
     !!request.cookies.get('naver_id')?.value;
   const hasDemoParam = pathname === '/my' && !!request.nextUrl.searchParams.get('demo');
 
-  if (
-    !user &&
-    !hasDemoSession &&
-    !hasDemoParam &&
+  const needsLoginPage =
     acceptsHtml &&
-    AUTH_REQUIRED_PAGE_PREFIXES.some(p => matchesPathPrefix(pathname, p))
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
-    return NextResponse.redirect(url);
+    AUTH_REQUIRED_PAGE_PREFIXES.some(p => matchesPathPrefix(pathname, p));
+
+  if (needsLoginPage) {
+    const isDownload = matchesPathPrefix(pathname, '/download');
+    if (isDownload) {
+      if (!user) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/auth/login';
+        url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+        return NextResponse.redirect(url);
+      }
+    } else if (!user && !hasDemoSession && !hasDemoParam) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/auth/login';
+      url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+      return NextResponse.redirect(url);
+    }
   }
 
   // device-id 쿠키가 없으면 HTML 페이지 요청에서만 자동 발급 (응답에 set)
