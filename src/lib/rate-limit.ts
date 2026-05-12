@@ -153,3 +153,6 @@ export const chatbookMessageLimiter = createRateLimiter({ limit: 20, windowMs: 6
 
 /** 캐릭터챗북 캐릭터 생성: 1시간에 10회 */
 export const chatbookCreateLimiter = createRateLimiter({ limit: 10, windowMs: 60 * 60 * 1000 });
+
+/** 데스크탑 앱 텔레메트리(공개 POST): IP당 1분 90회 */
+export const desktopTelemetryLimiter = createRateLimiter({ limit: 90, windowMs: 60 * 1000 });

@@ -8,6 +8,7 @@ const MENU_ITEMS = [
   { href: '/admin/promo', label: '프로모션', icon: '*' },
   { href: '/admin/payments', label: '결제 관리', icon: '#' },
   { href: '/admin/analytics', label: '유입 분석', icon: 'R' },
+  { href: '/admin/desktop-app', label: '데스크탑 앱', icon: 'D' },
   { href: '/admin/restricted', label: '접근 제한', icon: '!' },
   { href: '/admin/members', label: '회원 관리', icon: 'U' },
   { href: '/admin/trials', label: '데모 체험', icon: 'T' },

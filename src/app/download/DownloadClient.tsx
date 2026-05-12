@@ -1,12 +1,50 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { isDesktop, getDesktopPlatform, getDesktopVersion } from '@/lib/desktop';
 
 const GH_REPO = 'orange0717/naver-influencer';
 const RELEASES_URL = `https://github.com/${GH_REPO}/releases`;
 const LATEST_API = `https://api.github.com/repos/${GH_REPO}/releases/latest`;
+
+type DesktopTelemetryEvent = 'download_page_view' | 'asset_download_click' | 'app_launch';
+
+function getOrCreateTelemetryClientId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const k = 'ninfl_desktop_tid';
+    let id = localStorage.getItem(k);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(k, id);
+    }
+    return id;
+  } catch {
+    return '';
+  }
+}
+
+async function postDesktopTelemetry(
+  event: DesktopTelemetryEvent,
+  opts?: { detail?: string; appVersion?: string },
+) {
+  try {
+    const clientId = getOrCreateTelemetryClientId();
+    await fetch('/api/telemetry/desktop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event,
+        detail: opts?.detail,
+        appVersion: opts?.appVersion,
+        clientId: clientId || undefined,
+      }),
+    });
+  } catch {
+    // ignore
+  }
+}
 
 type OS = 'mac-arm' | 'mac-intel' | 'win' | 'linux' | 'unknown';
 
@@ -95,12 +133,23 @@ export default function DownloadClient() {
   const [inApp, setInApp] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [appPlatform, setAppPlatform] = useState<string | null>(null);
+  const pageViewSent = useRef(false);
+
+  const recordAsset = useCallback((detail: string) => {
+    void postDesktopTelemetry('asset_download_click', { detail });
+  }, []);
 
   useEffect(() => {
+    const desktop = isDesktop();
     setOS(detectOS());
-    setInApp(isDesktop());
+    setInApp(desktop);
     setAppPlatform(getDesktopPlatform());
     getDesktopVersion().then(v => setAppVersion(v));
+
+    if (!desktop && !pageViewSent.current) {
+      pageViewSent.current = true;
+      void postDesktopTelemetry('download_page_view');
+    }
 
     let cancelled = false;
     fetch(LATEST_API, { headers: { Accept: 'application/vnd.github+json' } })
@@ -171,6 +220,7 @@ export default function DownloadClient() {
         loading={loading}
         error={error}
         version={version}
+        onAssetPick={recordAsset}
       />
 
       {/* 전체 플랫폼 목록 */}
@@ -178,36 +228,48 @@ export default function DownloadClient() {
         <h2 className="text-sm font-bold text-text mb-4">전체 플랫폼</h2>
         <div className="grid sm:grid-cols-2 gap-3">
           <PlatformRow
+            detailKey="row_mac_arm"
+            onAssetPick={recordAsset}
             label="macOS Apple Silicon"
             sub="M1/M2/M3/M4 Mac"
             asset={links?.macArm}
             fallback={RELEASES_URL}
           />
           <PlatformRow
+            detailKey="row_mac_intel"
+            onAssetPick={recordAsset}
             label="macOS Intel"
             sub="Intel Mac"
             asset={links?.macIntel}
             fallback={RELEASES_URL}
           />
           <PlatformRow
+            detailKey="row_win_installer"
+            onAssetPick={recordAsset}
             label="Windows 인스톨러"
             sub="설치 후 시작메뉴 등록"
             asset={links?.winInstaller}
             fallback={RELEASES_URL}
           />
           <PlatformRow
+            detailKey="row_win_portable"
+            onAssetPick={recordAsset}
             label="Windows 포터블"
             sub="설치 없이 실행"
             asset={links?.winPortable}
             fallback={RELEASES_URL}
           />
           <PlatformRow
+            detailKey="row_linux_appimage"
+            onAssetPick={recordAsset}
             label="Linux AppImage"
             sub="모든 배포판"
             asset={links?.linuxAppImage}
             fallback={RELEASES_URL}
           />
           <PlatformRow
+            detailKey="row_linux_deb"
+            onAssetPick={recordAsset}
             label="Linux Debian/Ubuntu"
             sub=".deb 패키지"
             asset={links?.linuxDeb}
@@ -266,12 +328,14 @@ function PrimaryDownloadCard({
   loading,
   error,
   version,
+  onAssetPick,
 }: {
   os: OS;
   links: ReturnType<typeof buildLinks>;
   loading: boolean;
   error: string | null;
   version: string;
+  onAssetPick?: (detail: string) => void;
 }) {
   if (loading) {
     return (
@@ -295,6 +359,7 @@ function PrimaryDownloadCard({
           href={RELEASES_URL}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => onAssetPick?.('github_releases_fallback')}
           className="inline-block px-5 py-2.5 bg-accent text-white text-xs font-bold rounded-xl hover:bg-accent/90 transition"
         >
           GitHub Releases 보기
@@ -306,25 +371,31 @@ function PrimaryDownloadCard({
   // 추천 다운로드 결정
   let primary: Asset | null | undefined = null;
   let primaryLabel = '';
+  let primaryDetail = '';
   switch (os) {
     case 'mac-arm':
       primary = links.macArm || links.macIntel;
       primaryLabel = links.macArm ? 'macOS (Apple Silicon)' : 'macOS (Intel)';
+      primaryDetail = primary === links.macArm ? 'primary_mac_arm' : primary ? 'primary_mac_intel' : '';
       break;
     case 'mac-intel':
       primary = links.macIntel || links.macArm;
       primaryLabel = 'macOS (Intel)';
+      primaryDetail = primary === links.macIntel ? 'primary_mac_intel' : primary ? 'primary_mac_arm' : '';
       break;
     case 'win':
       primary = links.winInstaller || links.winPortable;
       primaryLabel = links.winInstaller ? 'Windows 인스톨러' : 'Windows 포터블';
+      primaryDetail = primary === links.winInstaller ? 'primary_win_installer' : primary ? 'primary_win_portable' : '';
       break;
     case 'linux':
       primary = links.linuxAppImage || links.linuxDeb;
       primaryLabel = links.linuxAppImage ? 'Linux AppImage' : 'Linux .deb';
+      primaryDetail = primary === links.linuxAppImage ? 'primary_linux_appimage' : primary ? 'primary_linux_deb' : '';
       break;
     default:
       primary = null;
+      primaryDetail = 'primary_unknown';
   }
 
   return (
@@ -344,6 +415,7 @@ function PrimaryDownloadCard({
       {primary ? (
         <a
           href={primary.browser_download_url}
+          onClick={() => onAssetPick?.(primaryDetail || 'primary_download')}
           className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-white text-base font-bold rounded-xl hover:bg-accent/90 transition shadow-lg"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -358,6 +430,7 @@ function PrimaryDownloadCard({
           href={RELEASES_URL}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => onAssetPick?.('github_releases_primary')}
           className="inline-block px-6 py-3 bg-accent text-white text-sm font-bold rounded-xl hover:bg-accent/90 transition"
         >
           모든 버전 보기
@@ -368,11 +441,15 @@ function PrimaryDownloadCard({
 }
 
 function PlatformRow({
+  detailKey,
+  onAssetPick,
   label,
   sub,
   asset,
   fallback,
 }: {
+  detailKey: string;
+  onAssetPick?: (detail: string) => void;
   label: string;
   sub: string;
   asset?: Asset | null;
@@ -385,6 +462,10 @@ function PlatformRow({
       href={href}
       target={isDirect ? undefined : '_blank'}
       rel={isDirect ? undefined : 'noopener noreferrer'}
+      onClick={() => {
+        if (isDirect) onAssetPick?.(detailKey);
+        else onAssetPick?.(`${detailKey}_releases`);
+      }}
       className="flex items-center justify-between gap-3 px-4 py-3 bg-surface border border-border rounded-xl hover:border-accent/40 hover:bg-bg transition"
     >
       <div className="min-w-0">

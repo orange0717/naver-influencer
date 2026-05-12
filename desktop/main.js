@@ -19,6 +19,13 @@ const path = require('node:path');
 const APP_ORIGIN = process.env.NINFL_URL || 'https://ninfle.kr';
 const APP_URL = `${APP_ORIGIN}/my`;
 const APP_NAME = 'N인플';
+const TELEMETRY_URL = (() => {
+  try {
+    return new URL(APP_URL).origin + '/api/telemetry/desktop';
+  } catch {
+    return 'https://ninfle.kr/api/telemetry/desktop';
+  }
+})();
 const isMac = process.platform === 'darwin';
 const isWin = process.platform === 'win32';
 
@@ -131,6 +138,20 @@ function isSafeExternalUrl(url) {
   } catch (_) {
     return false;
   }
+}
+
+function pingDesktopAppLaunch() {
+  try {
+    fetch(TELEMETRY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'app_launch',
+        detail: process.platform,
+        appVersion: app.getVersion(),
+      }),
+    }).catch(() => {});
+  } catch (_) {}
 }
 
 function createTray() {
@@ -254,6 +275,7 @@ app.whenReady().then(() => {
 
   createMainWindow();
   createTray();
+  pingDesktopAppLaunch();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
