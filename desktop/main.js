@@ -14,7 +14,10 @@ const {
 } = require('electron');
 const path = require('node:path');
 
-const APP_URL = process.env.NINFL_URL || 'https://ninfle.kr';
+// 데스크탑 앱은 마케팅 홈을 거치지 않고 바로 대시보드(/my)로 진입합니다.
+// 미들웨어가 비로그인 사용자는 자동으로 /auth/login으로 보내줍니다.
+const APP_ORIGIN = process.env.NINFL_URL || 'https://ninfle.kr';
+const APP_URL = `${APP_ORIGIN}/my`;
 const APP_NAME = 'N인플';
 const isMac = process.platform === 'darwin';
 const isWin = process.platform === 'win32';
@@ -145,15 +148,15 @@ function createTray() {
     { type: 'separator' },
     {
       label: '대시보드',
-      click: () => loadAndShow(`${APP_URL}/my`),
+      click: () => loadAndShow(`${APP_ORIGIN}/my`),
     },
     {
       label: '키워드 분석',
-      click: () => loadAndShow(`${APP_URL}/keywords`),
+      click: () => loadAndShow(`${APP_ORIGIN}/keywords`),
     },
     {
       label: '구독 관리',
-      click: () => loadAndShow(`${APP_URL}/subscribe`),
+      click: () => loadAndShow(`${APP_ORIGIN}/subscribe`),
     },
     { type: 'separator' },
     {
