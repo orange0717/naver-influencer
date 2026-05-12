@@ -56,13 +56,38 @@ export default function MyKeywordList({
   categoryGroups,
   totalKeywords,
   participatedCount,
+  defaultCategory,
 }: {
   categoryGroups: CategoryGroupData[];
   totalKeywords: number;
   participatedCount: number;
+  /** 인플루언서 주력 분야 — 있으면 해당 주제만 기본 표시 */
+  defaultCategory?: string | null;
 }) {
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('전체');
+
+  /** 탭 순서: 참여 키워드 많은 주제가 앞(부모에서 이미 정렬됨). '전체'는 마지막만. */
+  const topicTabs = useMemo(() => {
+    const names = categoryGroups.map((g) => g.category);
+    if (names.length <= 1) return names;
+    return [...names, '전체'];
+  }, [categoryGroups]);
+
+  const resolvedDefault = useMemo(() => {
+    const names = categoryGroups.map((g) => g.category);
+    if (names.length === 0) return '전체';
+    if (defaultCategory && names.includes(defaultCategory)) return defaultCategory;
+    return names[0];
+  }, [categoryGroups, defaultCategory]);
+
+  const [selectedCategory, setSelectedCategory] = useState(resolvedDefault);
+
+  useEffect(() => {
+    setSelectedCategory((prev) => {
+      if (topicTabs.includes(prev)) return prev;
+      return resolvedDefault;
+    });
+  }, [topicTabs, resolvedDefault]);
   const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>('not_participated');
   const [rankFilter, setRankFilter] = useState<'all' | 'ranked' | 'unranked'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('rank');
@@ -129,10 +154,16 @@ export default function MyKeywordList({
 
   const notParticipatedCount = totalKeywords - participatedCount;
 
-  // 카테고리 목록
-  const categories = useMemo(() => {
-    return ['전체', ...categoryGroups.map(g => g.category)];
-  }, [categoryGroups]);
+  /** 현재 선택 주제 기준 참여/전체 건수 (헤더 요약) */
+  const headerCounts = useMemo(() => {
+    if (selectedCategory === '전체') {
+      return { participated: participatedCount, total: totalKeywords };
+    }
+    const g = categoryGroups.find((x) => x.category === selectedCategory);
+    if (!g) return { participated: participatedCount, total: totalKeywords };
+    const p = g.keywords.filter((kw) => kw.is_participated).length;
+    return { participated: p, total: g.keywords.length };
+  }, [selectedCategory, categoryGroups, participatedCount, totalKeywords]);
 
   // 전체 키워드 flat 리스트
   const allKeywords = useMemo(() => {
@@ -150,7 +181,7 @@ export default function MyKeywordList({
       list = list.filter(kw => !kw.is_participated);
     }
 
-    // 카테고리 필터
+    // 주제(카테고리) 필터 — '전체'일 때만 모든 주제 표시
     if (selectedCategory !== '전체') {
       list = list.filter(kw => kw.category === selectedCategory);
     }
@@ -275,16 +306,46 @@ export default function MyKeywordList({
           <div>
             <h3 className="font-bold text-[15px]">내 키워드</h3>
             <p className="text-[11px] text-dim">
-              참여 {participatedCount} / 전체 {totalKeywords}개
-              {filteredKeywords.length !== totalKeywords && ` (검색결과 ${filteredKeywords.length}개)`}
+              참여 {headerCounts.participated} / 전체 {headerCounts.total}개
+              {selectedCategory !== '전체' && ` · ${selectedCategory}`}
+              {filteredKeywords.length !== headerCounts.total && ` (표시 ${filteredKeywords.length}개)`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-full">참여 {participatedCount}</span>
-          <span className="text-[11px] text-dim font-bold bg-border/30 px-2 py-0.5 rounded-full">미참여 {notParticipatedCount}</span>
+          <span className="text-[11px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-full">참여 {headerCounts.participated}</span>
+          <span className="text-[11px] text-dim font-bold bg-border/30 px-2 py-0.5 rounded-full">미참여 {headerCounts.total - headerCounts.participated}</span>
         </div>
       </div>
+
+      {totalKeywords > 0 && topicTabs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="키워드 주제">
+          {topicTabs.map((tab) => {
+            const count = tab === '전체' ? categoryCounts['전체'] : categoryCounts[tab] ?? 0;
+            const active = selectedCategory === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setSelectedCategory(tab);
+                  setCurrentPage(1);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer border ${
+                  active
+                    ? 'bg-accent text-white border-accent'
+                    : 'bg-surface text-dim border-border hover:border-accent/40 hover:text-text'
+                }`}
+              >
+                {tab}
+                <span className={`ml-1 tabular-nums ${active ? 'text-white/80' : 'text-dim'}`}>({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {totalKeywords > 0 && (
         <>
@@ -306,9 +367,9 @@ export default function MyKeywordList({
               <option value="participated">참여 키워드 ({participatedCount})</option>
               <option value="not_participated">미참여 키워드 ({notParticipatedCount})</option>
             </select>
-            {(search || selectedCategory !== '전체' || participationFilter !== 'not_participated' || compFilter !== 'all' || rankFilter !== 'all' || sortKey !== 'rank') && (
+            {(search || selectedCategory !== resolvedDefault || participationFilter !== 'not_participated' || compFilter !== 'all' || rankFilter !== 'all' || sortKey !== 'rank') && (
               <button
-                onClick={() => { setSearch(''); setSelectedCategory('전체'); setParticipationFilter('not_participated'); setCompFilter('all'); setRankFilter('all'); setSortKey('rank'); setSortDir('desc'); setCurrentPage(1); }}
+                onClick={() => { setSearch(''); setSelectedCategory(resolvedDefault); setParticipationFilter('not_participated'); setCompFilter('all'); setRankFilter('all'); setSortKey('rank'); setSortDir('desc'); setCurrentPage(1); }}
                 className="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
               >
                 초기화

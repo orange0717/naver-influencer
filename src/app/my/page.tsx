@@ -533,6 +533,15 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const totalKeywords = allKeywords.length;
   const participatedCount = participatedKeywords.length;
 
+  /** 추천·기본 뷰는 프로필 주력 분야 우선, 없으면 키워드 수가 가장 많은 주제만 사용 */
+  const recommendationCategory =
+    myCategory && participatedCategories.includes(myCategory)
+      ? myCategory
+      : categoryGroups[0]?.[0] ?? '';
+  const notParticipatedForRecommendations = recommendationCategory
+    ? notParticipatedKeywords.filter((kw) => kw.category === recommendationCategory)
+    : notParticipatedKeywords;
+
   // ─── 주제별 강점 통계 (키워드 텍스트 기반 세부 분류) ───
   const TOPIC_RULES: [string, RegExp][] = [
     ['소설/문학', /소설|문학|시집|에세이|단편|장편|작가|문예|동화|시인|수필/i],
@@ -743,14 +752,14 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 5. 오늘의 추천키워드 (미참여 중 경쟁도 낮고 검색량 높은 키워드) ─── */}
       <Top5Keywords
-        recommendations={notParticipatedKeywords
+        recommendations={notParticipatedForRecommendations
           .map(kw => ({
             ...kw,
             score: (kw.search_volume > 0 ? Math.log10(kw.search_volume) * 10 : 0) + Math.max(0, 50 - kw.participant_count),
           }))
           .sort((a, b) => b.score - a.score)
           .slice(0, 20)}
-        totalNotParticipated={notParticipatedKeywords.length}
+        totalNotParticipated={notParticipatedForRecommendations.length}
       />
 
       {/* ─── 7. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
@@ -758,6 +767,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         categoryGroups={categoryGroups.map(([category, keywords]) => ({ category, keywords }))}
         totalKeywords={totalKeywords}
         participatedCount={participatedCount}
+        defaultCategory={myCategory || null}
       />
 
       </div>
