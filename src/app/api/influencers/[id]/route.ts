@@ -124,7 +124,7 @@ export async function GET(
     });
   }
 
-  // 팬수/팔로워수/참여 키워드수 실시간 갱신 (6시간 캐시, 병렬 실행)
+  // 팬수/팔로워수/참여 키워드수 실시간 갱신 (KST 6시간 창당 최대 1회, 병렬 실행)
   const profileRefresh = refreshInfluencerProfile(supabase, influencer.id, influencer.naver_id);
 
   // 1) influencer_keywords 테이블에서 참여 키워드 조회 (전체)

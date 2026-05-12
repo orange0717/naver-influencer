@@ -147,7 +147,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     .eq('id', influencerId)
     .single();
 
-  // 팬수 갱신 (6시간 캐시)
+  // 팬수 갱신 (KST 6시간 창당 최대 1회, refresh-follower)
   if (influencer) {
     const updated = await refreshFollowerCount(supabase, influencerId, naverId!, influencer.last_crawled_at);
     if (updated !== null) {

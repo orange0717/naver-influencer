@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ linked: false, influencer: null, stats: null, rankings: [], competitors: [], guide: [] });
   }
 
-  // 팔로워수 실시간 갱신 (6시간 캐시, 백그라운드 병렬 실행)
+  // 팔로워수 실시간 갱신 (KST 6시간 창당 최대 1회, 백그라운드 병렬 실행)
   const followerRefresh = refreshFollowerCount(supabase, influencer.id, influencer.naver_id, influencer.last_crawled_at);
 
   // 최신 순위 데이터 (keyword_rankings) - 최근 30일로 제한

@@ -132,7 +132,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" \
 | **챌린지 순위** | 참여 키워드·순위·TOP3·`last_challenged_at` 등 | **`/api/cron/crawl-challenge-ranks`** — 대략 30분마다 + 일부 시간대 증량. 인플이 많으면 **큐 순서**라 특정 계정은 다음 몇 턴 뒤일 수 있음. |
 | **피드 탐색** | 프로필·팬수·키워드와의 조인 등 | **`/api/cron/crawl-influencers`** — 하루 4회(UTC 0·6·12·18). 챌린지 **상세 순위**는 여기서 안 채움. |
 | **연동 직후** | 해당 `naver_id` 한 명 | **`/api/my/link`** 등에서 백그라운드로 `crawl-challenge-ranks?naver_id=` 호출 시 **다른 인플보다 빨리** 붙을 수 있음. |
-| **프로필 보정** | 팬·팔로워·참여 키워드 **개수** 등 | **`refreshInfluencerProfile`** — 상세 API·`/my`·대시보드 요청 시, `updated_at` 기준 **6시간** 캐시. 키워드 **별 순위 전체**와는 역할이 다름. |
+| **프로필 보정** | 팬·팔로워·참여 키워드 **개수** 등 | **`refreshInfluencerProfile`** — 상세 API·`/my`·대시보드 요청 시, **한국시간(KST) 0·6·12·18시를 나누는 6시간 창마다 최대 1회** (마지막 `updated_at`이 속한 창과 같으면 스킵). 키워드 **별 순위 전체**와는 역할이 다름. |
 | **점수·평균 순위** | `keyword_score`, `avg_rank`, `best_rank` 등 | **`/api/cron/aggregate-influencers`** — 매시 15분(UTC). 순위 스냅샷 이후 한 템포 늦게 맞춰질 수 있음. |
 
 **운영에서 막혔는지 보려면:** 관리자 **`/admin/crawler`** 의 **「챌린지·순위 수집 백로그 요약」**과 **최근 crawl_jobs**, 위 **크론 스모크**를 함께 보면 됩니다. (순위 수집 전 행 수·`ownerId` 누락 등으로 원인 좁히기.)
