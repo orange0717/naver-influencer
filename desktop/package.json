@@ -1,0 +1,84 @@
+{
+  "name": "ninfl-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "N인플 데스크탑 앱 (Electron wrapper)",
+  "main": "main.js",
+  "author": {
+    "name": "OrangeLibrary",
+    "email": "orange@orangelibrary.co.kr"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac --universal",
+    "build:win": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux --x64",
+    "build:all": "electron-builder -mwl"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "co.kr.ninfl.desktop",
+    "productName": "N인플",
+    "copyright": "© 2026 OrangeLibrary",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "icons/**"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "icons"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "icons/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "icon": "icons/icon.icns",
+      "window": { "width": 540, "height": 360 },
+      "contents": [
+        { "x": 140, "y": 180, "type": "file" },
+        { "x": 400, "y": 180, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "N인플"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "icon": "icons/icon.png",
+      "category": "Office",
+      "synopsis": "네이버 인플루언서 분석 도구"
+    },
+    "publish": null
+  }
+}

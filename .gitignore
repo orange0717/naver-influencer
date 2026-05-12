@@ -57,3 +57,11 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+
+# Electron desktop build artifacts
+desktop/node_modules/
+desktop/dist/
+desktop/.cache/
+# 빌드 시 생성되는 OS별 아이콘은 커밋하지 않음(원본 PNG만 유지)
+desktop/icons/icon.icns
+desktop/icons/icon.ico
