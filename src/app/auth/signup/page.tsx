@@ -203,33 +203,28 @@ export default function SignupPage() {
 
           <div className="space-y-4 animate-fade-in-up">
             <div className="rounded-xl border-2 border-accent/25 bg-accent/5 p-4 space-y-2.5">
-              <label className="text-sm font-bold text-text block">
+              <label className="text-sm font-bold text-text block" htmlFor="signup-keyword-category">
                 활동 주제 (키워드챌린지)<RequiredMark />
               </label>
               <p className="text-[11px] text-dim leading-relaxed">
                 대시보드·추천 키워드는 아래에서 고른 분야만 보입니다. 네이버 챌린지 카테고리와 동일한 이름입니다.
               </p>
-              <div className="flex flex-wrap gap-1.5 max-h-[220px] overflow-y-auto overscroll-contain pr-1 -mr-1">
-                {KEYWORD_CHALLENGE_CATEGORIES.map((c) => {
-                  const active = keywordCategory === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setKeywordCategory(c)}
-                      className={`px-2.5 py-2 rounded-lg text-[11px] font-semibold border transition cursor-pointer shrink-0 ${
-                        active
-                          ? 'bg-accent text-white border-accent shadow-sm'
-                          : 'bg-surface text-text border-border hover:border-accent/50'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  );
-                })}
-              </div>
+              <select
+                id="signup-keyword-category"
+                value={keywordCategory}
+                onChange={(e) => setKeywordCategory(e.target.value)}
+                style={!keywordCategory ? { color: 'var(--color-dim)' } : undefined}
+                className={`w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition cursor-pointer appearance-auto ${
+                  keywordCategory ? 'text-text' : 'text-dim'
+                }`}
+              >
+                <option value="">주제를 선택하세요</option>
+                {KEYWORD_CHALLENGE_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
               {!keywordCategory && (
-                <p className="text-[11px] text-down font-medium">주제를 하나 선택해 주세요.</p>
+                <p className="text-[11px] text-dim">미선택 시 위 드롭다운에서 주제를 고르세요.</p>
               )}
             </div>
 
