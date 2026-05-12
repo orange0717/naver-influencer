@@ -154,10 +154,6 @@ function createTray() {
       label: '키워드 분석',
       click: () => loadAndShow(`${APP_ORIGIN}/keywords`),
     },
-    {
-      label: '구독 관리',
-      click: () => loadAndShow(`${APP_ORIGIN}/subscribe`),
-    },
     { type: 'separator' },
     {
       label: '테스트 알림 보내기',

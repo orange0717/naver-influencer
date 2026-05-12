@@ -1,4 +1,8 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { isDesktop } from '@/lib/desktop';
 
 const FOOTER_LINKS = [
   { href: '/influencers', label: '리스트' },
@@ -12,7 +16,22 @@ const FOOTER_LINKS = [
   { href: '/privacy', label: '개인정보처리방침' },
 ];
 
+// Electron 데스크탑 앱에서는 노출하지 않을 링크들
+// - /community, /subscribe : 앱은 분석 도구로 집중
+// - /download : 이미 데스크탑 앱을 사용 중이므로 불필요
+const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe', '/download']);
+
 export default function Footer() {
+  const [inDesktopApp, setInDesktopApp] = useState(false);
+
+  useEffect(() => {
+    setInDesktopApp(isDesktop());
+  }, []);
+
+  const visibleLinks = inDesktopApp
+    ? FOOTER_LINKS.filter(l => !DESKTOP_HIDDEN_HREFS.has(l.href))
+    : FOOTER_LINKS;
+
   return (
     <footer className="bg-footer-bg text-footer-text"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
@@ -24,7 +43,7 @@ export default function Footer() {
             <span className="font-title font-extrabold text-white text-sm">N인플</span>
           </div>
           <nav className="flex flex-wrap gap-4">
-            {FOOTER_LINKS.map(link => (
+            {visibleLinks.map(link => (
               <Link key={link.href} href={link.href} className="text-xs text-footer-dim hover:text-white transition-colors">
                 {link.label}
               </Link>

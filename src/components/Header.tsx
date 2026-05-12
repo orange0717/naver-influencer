@@ -52,6 +52,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/intro', label: '서비스소개' },
 ];
 
+// Electron 데스크탑 앱에서는 커뮤니티·이용권을 숨김(키워드 분석 도구로 집중)
+const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
+
 
 function LockBadge({ plan }: { plan: PlanTier }) {
   return (
@@ -202,9 +205,11 @@ export default function Header({ serverUser }: HeaderProps) {
   const badgeColor = user.type === 'blogger' ? 'bg-[#2DB400]/30' : 'bg-white/20';
 
   // 표시 가능한 네비 아이템: 제한 사용자는 이용권만, 나머지는 전체 표시 (잠금은 내부에서)
+  // 데스크탑 앱에서는 커뮤니티/이용권 숨김 (단, 제한 사용자는 이용권 결제 안내 필요하므로 예외)
   const visibleItems = NAV_ITEMS.filter(item => {
     if (isRestricted) return item.href === '/subscribe';
     if (item.authOnly && !user.id) return false;
+    if (inDesktopApp && item.href && DESKTOP_HIDDEN_HREFS.has(item.href)) return false;
     return true;
   });
 
