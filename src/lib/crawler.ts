@@ -92,6 +92,13 @@ export function verifyCronSecret(request: Request): boolean {
     console.error('[crawler] CRON_SECRET 환경변수가 설정되지 않았습니다.');
     return false;
   }
+
+  const userAgent = request.headers.get('user-agent') || '';
+  const vercelCronToken = request.headers.get('x-vercel-cron-auth-token');
+  if (userAgent === 'vercel-cron/1.0' && vercelCronToken) {
+    return true;
+  }
+
   const auth = request.headers.get('authorization') || '';
   const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   if (!provided) return false;
