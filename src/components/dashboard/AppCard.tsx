@@ -40,28 +40,36 @@ function saveFavorites(next: Set<string>) {
   }
 }
 
+/** 서버 목록과 기기 localStorage를 합집합 — 빈 응답(비인증·레이스)이 저장분을 지우지 않게 함 */
+function mergeFavoritesWithLocal(serverIds: string[]): Set<string> {
+  const next = new Set(loadFavorites());
+  for (const id of serverIds) next.add(id);
+  return next;
+}
+
 /**
  * 즐겨찾기 — 로그인=DB(GET/POST/DELETE) + localStorage 캐시 / 비로그인=localStorage만.
  * 로그인 첫 진입 시 localStorage → DB 1회 마이그레이션 (PUT, 계정 단위 once).
  */
 export function useFavorites() {
   const { user } = useAuth();
-  const userId = user?.id || null;
+  /** 세션 단위 동기화 키 (authId 우선 — /api/auth/me 의 id 는 네이버·블로그 식별자일 수 있음) */
+  const syncKey = user?.authId || user?.id || null;
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const lastSyncedUserRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!userId) {
+    if (!syncKey) {
       setFavorites(loadFavorites());
       lastSyncedUserRef.current = null;
       return;
     }
-    if (lastSyncedUserRef.current === userId) return;
-    lastSyncedUserRef.current = userId;
+    if (lastSyncedUserRef.current === syncKey) return;
+    lastSyncedUserRef.current = syncKey;
 
     let cancelled = false;
     (async () => {
-      const migratedKey = `${FAV_MIGRATED_PREFIX}${userId}`;
+      const migratedKey = `${FAV_MIGRATED_PREFIX}${syncKey}`;
       const alreadyMigrated = window.localStorage.getItem(migratedKey) === '1';
       if (!alreadyMigrated) {
         const local = Array.from(loadFavorites());
@@ -81,7 +89,8 @@ export function useFavorites() {
         if (!r.ok) return;
         const j = await r.json();
         if (cancelled) return;
-        const next = new Set<string>(Array.isArray(j?.favorites) ? j.favorites : []);
+        const serverList = Array.isArray(j?.favorites) ? (j.favorites as string[]) : [];
+        const next = mergeFavoritesWithLocal(serverList);
         setFavorites(next);
         saveFavorites(next);
       } catch {
@@ -89,7 +98,7 @@ export function useFavorites() {
       }
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [syncKey]);
 
   const toggle = useCallback((id: string) => {
     setFavorites(prev => {
@@ -99,7 +108,7 @@ export function useFavorites() {
       else next.delete(id);
       saveFavorites(next);
 
-      if (userId) {
+      if (syncKey) {
         fetch('/api/favorites', {
           method: adding ? 'POST' : 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -109,7 +118,7 @@ export function useFavorites() {
       }
       return next;
     });
-  }, [userId]);
+  }, [syncKey]);
 
   return { favorites, toggle };
 }
