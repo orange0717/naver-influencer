@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// 수동 실행 래퍼도 실제 크론과 같은 실행 시간을 가져야 내부 fetch를 기다릴 수 있다.
+export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
+
 const CRON_JOBS: Record<string, string> = {
   'crawl-keywords': '/api/cron/crawl-keywords',
   'crawl-rankings': '/api/cron/crawl-rankings',

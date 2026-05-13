@@ -87,14 +87,22 @@ export async function fetchWithRetry(
 
 /** CRON_SECRET 검증 (timing-safe 비교, 길이 노출 방지) */
 export function verifyCronSecret(request: Request): boolean {
-  // Vercel 스케줄 크론은 플랫폼이 부여한 토큰으로 호출됨. CRON_SECRET 누락만으로 전체 크론이 죽는 것을 막기 위해 우선 허용.
   const userAgent = request.headers.get('user-agent') || '';
+  const isVercelCron = userAgent === 'vercel-cron/1.0';
   const vercelCronToken = request.headers.get('x-vercel-cron-auth-token');
-  if (userAgent === 'vercel-cron/1.0' && vercelCronToken) {
+  const secret = process.env.CRON_SECRET;
+
+  // Vercel Cron은 CRON_SECRET이 설정된 경우 Authorization: Bearer <CRON_SECRET>로 호출한다.
+  // 일부 런타임에서는 플랫폼 내부 토큰 헤더만 들어오는 경우가 있어 Vercel Cron UA와 함께 허용한다.
+  if (isVercelCron && vercelCronToken) return true;
+
+  // CRON_SECRET이 아직 배포 환경에 없으면 수동 호출은 막되, Vercel 스케줄 자체는 살려둔다.
+  // 공개 엔드포인트 보안을 위해 운영 환경에는 CRON_SECRET 설정을 권장한다.
+  if (!secret && isVercelCron) {
+    console.warn('[crawler] CRON_SECRET is missing; allowing Vercel Cron user-agent fallback.');
     return true;
   }
 
-  const secret = process.env.CRON_SECRET;
   if (!secret) {
     console.error('[crawler] CRON_SECRET 환경변수가 설정되지 않았습니다.');
     return false;
@@ -142,4 +150,29 @@ export async function updateCrawlJob(
     .from('crawl_jobs')
     .update({ ...update, completed_at: new Date().toISOString() })
     .eq('id', jobId);
+}
+
+/** cron_locks 테이블 기반 mutex. RPC 미적용 환경에서는 크롤을 막지 않고 경고만 남긴다. */
+export async function tryAcquireCronLock(key: string, ttlSeconds = 600): Promise<boolean> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.rpc('try_acquire_cron_lock', {
+    p_key: key,
+    p_ttl_seconds: ttlSeconds,
+  });
+
+  if (error) {
+    console.error(`[crawler] cron lock acquire failed (${key}):`, error.message);
+    return true;
+  }
+
+  return data === true;
+}
+
+/** cron_locks 해제. 실패해도 TTL로 자동 만료되므로 호출자 흐름은 유지한다. */
+export async function releaseCronLock(key: string) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.rpc('release_cron_lock', { p_key: key });
+  if (error) {
+    console.error(`[crawler] cron lock release failed (${key}):`, error.message);
+  }
 }

@@ -1,14 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
+import {
+  createCrawlJob,
+  releaseCronLock,
+  tryAcquireCronLock,
+  updateCrawlJob,
+  verifyCronSecret,
+} from '@/lib/crawler';
 
-// RPC 집계 + Promise.all(500 개 업데이트) 로 10 초를 초과할 수 있어 확장.
-export const maxDuration = 60;
+// 전체 집계는 DB RPC 안에서 한 번에 처리한다. RPC 미적용 환경은 기존 JS 배치로 폴백.
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
+
+const CRON_LOCK_KEY = 'cron:aggregate-influencers';
+const CRON_LOCK_TTL_SECONDS = 660;
+
+type AggregateRefreshResult = {
+  updated?: number;
+  ranked?: number;
+};
 
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const lockAcquired = await tryAcquireCronLock(CRON_LOCK_KEY, CRON_LOCK_TTL_SECONDS);
+  if (!lockAcquired) {
+    console.log('[aggregate-influencers] Previous run is still active; skipping');
+    return NextResponse.json({ success: true, skipped: true, reason: 'lock_active' });
   }
 
   const jobId = await createCrawlJob('aggregate-influencers');
@@ -17,6 +37,31 @@ export async function GET(request: NextRequest) {
   console.log('[Cron] aggregate-influencers started at', new Date().toISOString());
 
   try {
+    const { data: refreshed, error: refreshErr } = await supabase.rpc('refresh_influencer_aggregate_stats');
+    if (!refreshErr) {
+      const result = (refreshed || {}) as AggregateRefreshResult;
+      const processed = Number(result.updated || 0);
+
+      await updateCrawlJob(jobId, {
+        status: 'success',
+        total_items: processed,
+        processed_items: processed,
+        failed_items: 0,
+      });
+
+      console.log(`[Cron] aggregate-influencers DB refresh done: ${processed} updated, ${result.ranked || 0} ranked`);
+
+      return NextResponse.json({
+        success: true,
+        mode: 'db-refresh',
+        processed,
+        ranked: result.ranked || 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    console.warn('[aggregate-influencers] DB refresh RPC unavailable, falling back to JS batch:', refreshErr.message);
+
     // DB에서 직접 집계 (RPC) — 30일 기준, 키워드당 최신 스냅샷
     const { data: stats, error: rpcErr } = await supabase.rpc('aggregate_influencer_stats');
 
@@ -82,5 +127,7 @@ export async function GET(request: NextRequest) {
     console.error('[aggregate-influencers] Fatal error:', msg);
     await updateCrawlJob(jobId, { status: 'failed', error_message: msg });
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
+  } finally {
+    await releaseCronLock(CRON_LOCK_KEY);
   }
 }

@@ -4,6 +4,23 @@ import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
+type CrawlJob = {
+  id: string;
+  job_type: string;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  total_items: number | null;
+  processed_items: number | null;
+  failed_items: number | null;
+  error_message: string | null;
+};
+
+function minutesSince(iso: string | null | undefined) {
+  if (!iso) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000));
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (auth.error) return auth.error;
@@ -13,7 +30,19 @@ export async function GET(req: NextRequest) {
   const cutoff24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
   const cutoff1h = new Date(now - 60 * 60 * 1000).toISOString();
 
-  const [totalActiveRes, freshRes, stale24hRes, never, oldest, recentJobs, lastCrawlNullRes, fansNoChallengeDateRes, ownerMissingRes, totalInfluencersRes] = await Promise.all([
+  const [
+    totalActiveRes,
+    freshRes,
+    stale24hRes,
+    never,
+    oldest,
+    recentJobs,
+    lastCrawlNullRes,
+    activeLastCrawlNullRes,
+    fansNoChallengeDateRes,
+    ownerMissingRes,
+    totalInfluencersRes,
+  ] = await Promise.all([
     supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0),
     supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).gte('last_crawled_at', cutoff1h),
     supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff24h}`),
@@ -22,6 +51,7 @@ export async function GET(req: NextRequest) {
     supabase.from('crawl_jobs').select('id, job_type, status, started_at, completed_at, total_items, processed_items, failed_items, error_message').order('started_at', { ascending: false }).limit(20),
     // crawl-challenge-ranks 큐: last_crawled_at 미설정(첫 수집 또는 미완)
     supabase.from('influencers').select('*', { count: 'exact', head: true }).is('last_crawled_at', null),
+    supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).is('last_crawled_at', null),
     // 팬/팔로워는 있는데 네이버 챌린지 참여일(last_challenged_at) 미수신 → 공개 리스트와 체감 불일치 가능
     supabase
       .from('influencers')
@@ -46,11 +76,33 @@ export async function GET(req: NextRequest) {
     return res.count ?? 0;
   };
 
+  const jobs = (recentJobs.data || []) as CrawlJob[];
+  const latestByType = jobs.reduce<Record<string, CrawlJob>>((acc, job) => {
+    if (!acc[job.job_type]) acc[job.job_type] = job;
+    return acc;
+  }, {});
+  const challengeJob = latestByType['crawl-challenge-ranks'];
+  const aggregateJob = latestByType['aggregate-influencers'];
+  const challengeLastRunMin = minutesSince(challengeJob?.started_at);
+  const aggregateLastSuccessMin = aggregateJob?.status === 'success'
+    ? minutesSince(aggregateJob.completed_at || aggregateJob.started_at)
+    : null;
+
   const backlog = {
     last_crawl_null: countOrZero('last_crawl_null', lastCrawlNullRes),
+    active_last_crawl_null: countOrZero('active_last_crawl_null', activeLastCrawlNullRes),
     fans_without_challenge_date: countOrZero('fans_without_challenge_date', fansNoChallengeDateRes),
     challenge_rows_missing_owner_id: countOrZero('challenge_rows_missing_owner_id', ownerMissingRes),
     total_influencer_rows: countOrZero('total_influencer_rows', totalInfluencersRes),
+  };
+
+  const health = {
+    crawl_challenge_last_run_minutes: challengeLastRunMin,
+    crawl_challenge_recent: challengeLastRunMin != null && challengeLastRunMin <= 30,
+    aggregate_last_success_minutes: aggregateLastSuccessMin,
+    aggregate_recent_success: aggregateLastSuccessMin != null && aggregateLastSuccessMin <= 90,
+    likely_scheduler_stopped: challengeLastRunMin == null || challengeLastRunMin > 60,
+    likely_backlog: stale24h > 0 && challengeLastRunMin != null && challengeLastRunMin <= 60,
   };
 
   return NextResponse.json({
@@ -64,7 +116,8 @@ export async function GET(req: NextRequest) {
       coverage_1h_pct: coverage1hPct,
     },
     backlog,
+    health,
     oldest: oldest.data || [],
-    recent_jobs: recentJobs.data || [],
+    recent_jobs: jobs,
   });
 }

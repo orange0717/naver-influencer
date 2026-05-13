@@ -14,9 +14,19 @@ interface Summary {
 
 interface Backlog {
   last_crawl_null: number;
+  active_last_crawl_null: number;
   fans_without_challenge_date: number;
   challenge_rows_missing_owner_id: number;
   total_influencer_rows: number;
+}
+
+interface Health {
+  crawl_challenge_last_run_minutes: number | null;
+  crawl_challenge_recent: boolean;
+  aggregate_last_success_minutes: number | null;
+  aggregate_recent_success: boolean;
+  likely_scheduler_stopped: boolean;
+  likely_backlog: boolean;
 }
 
 interface Oldest {
@@ -51,6 +61,7 @@ function formatRelative(iso: string | null | undefined): string {
 export default function AdminCrawlerPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [backlog, setBacklog] = useState<Backlog | null>(null);
+  const [health, setHealth] = useState<Health | null>(null);
   const [oldest, setOldest] = useState<Oldest[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +74,7 @@ export default function AdminCrawlerPage() {
       const data = await res.json();
       setSummary(data.summary);
       setBacklog(data.backlog ?? null);
+      setHealth(data.health ?? null);
       setOldest(data.oldest);
       setJobs(data.recent_jobs);
     } finally {
@@ -108,9 +120,13 @@ export default function AdminCrawlerPage() {
             />
           </div>
 
-          {summary.stale_over_24h > 0 && (
+          {health?.likely_scheduler_stopped ? (
             <div className="bg-down/10 border border-down/30 text-down rounded-lg px-4 py-3 text-sm font-semibold">
-              경고: {summary.stale_over_24h.toLocaleString()}명이 24시간 이상 크롤되지 않았습니다. 크론 스케줄 또는 인증 상태를 점검하세요.
+              경고: crawl-challenge-ranks가 1시간 이상 실행되지 않았습니다. Vercel Cron 활성화, Production 배포, CRON_SECRET 설정을 먼저 확인하세요.
+            </div>
+          ) : summary.stale_over_24h > 0 && (
+            <div className="bg-down/10 border border-down/30 text-down rounded-lg px-4 py-3 text-sm font-semibold">
+              경고: {summary.stale_over_24h.toLocaleString()}명이 24시간 이상 크롤되지 않았습니다. 크론은 최근 실행됐으므로 큐 처리량과 실패율을 점검하세요.
             </div>
           )}
 
@@ -128,9 +144,9 @@ export default function AdminCrawlerPage() {
                 />
                 <StatCard
                   label="순위 수집 전 (last_crawl 없음)"
-                  value={backlog.last_crawl_null.toLocaleString()}
-                  sub="crawl-challenge-ranks 큐 1순위"
-                  tone={backlog.last_crawl_null > 500 ? 'down' : backlog.last_crawl_null > 0 ? 'neutral' : 'up'}
+                  value={backlog.active_last_crawl_null.toLocaleString()}
+                  sub={`활성 기준 · 전체 NULL ${backlog.last_crawl_null.toLocaleString()}`}
+                  tone={backlog.active_last_crawl_null > 500 ? 'down' : backlog.active_last_crawl_null > 0 ? 'neutral' : 'up'}
                 />
                 <StatCard
                   label="팬수 있는데 참여일 없음"

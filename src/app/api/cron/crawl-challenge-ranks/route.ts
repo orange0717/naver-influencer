@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
+import {
+  createCrawlJob,
+  fetchWithRetry,
+  releaseCronLock,
+  sleep,
+  tryAcquireCronLock,
+  updateCrawlJob,
+  verifyCronSecret,
+} from '@/lib/crawler';
 
 export const maxDuration = 300;
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-// 30분마다 실행 → 48회/일. 전체 약 12,700명을 매일 1회 커버 목표
-// 한 크론당 5분 내 ~500명 처리 = 48 × 500 = 24,000건/일 (여유 90%)
-// 새벽 시간대에는 ?batch=1000&concurrency=10 쿼리로 증량 실행 가능
-const DEFAULT_BATCH_SIZE = 300;
-const DEFAULT_CONCURRENCY = 6;
+// 15분마다 실행 → 96회/일. 전체 약 17,000명을 매일 1회 커버 목표.
+// 중복 실행은 cron_locks로 막고, 실행 시간 제한에 닿으면 다음 회차가 이어받는다.
+const DEFAULT_BATCH_SIZE = 500;
+const DEFAULT_CONCURRENCY = 8;
 const MAX_BATCH_SIZE = 1500;
 const MAX_CONCURRENCY = 15;
+const CRON_LOCK_KEY = 'cron:crawl-challenge-ranks';
+const CRON_LOCK_TTL_SECONDS = 330;
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_RUNTIME_MS = 270_000; // 300초 중 안전 마진 30초
 
@@ -189,15 +198,33 @@ async function ensureKeywordsExist(
  *  미참여 확정 후에는 last_crawled_at만 갱신해 순환에서 제외(processInfluencer).
  */
 async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>, batchSize: number) {
-  const { data } = await supabase
+  const activeLimit = Math.max(1, Math.floor(batchSize * 0.8));
+  const { data: active } = await supabase
     .from('influencers')
     .select('id, naver_id, naver_owner_id, category, my_keyword_category')
-    .or('total_keywords.gt.0,last_crawled_at.is.null')
-    .order('last_crawled_at', { ascending: true, nullsFirst: true })
-    .limit(batchSize);
+    .gt('total_keywords', 0)
+    .order('last_crawled_at', { ascending: true, nullsFirst: false })
+    .limit(activeLimit);
 
-  const result = data || [];
-  console.log(`[crawl-challenge-ranks] Target: ${result.length} active influencers (oldest crawled first)`);
+  const result = active || [];
+  const remaining = batchSize - result.length;
+
+  if (remaining > 0) {
+    const seen = new Set(result.map(inf => inf.id));
+    const { data: uncrawled } = await supabase
+      .from('influencers')
+      .select('id, naver_id, naver_owner_id, category, my_keyword_category')
+      .is('last_crawled_at', null)
+      .limit(remaining * 2);
+
+    for (const inf of uncrawled || []) {
+      if (seen.has(inf.id)) continue;
+      result.push(inf);
+      if (result.length >= batchSize) break;
+    }
+  }
+
+  console.log(`[crawl-challenge-ranks] Target: ${result.length} influencers (stale active first, uncrawled fill)`);
   return result;
 }
 
@@ -206,15 +233,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const targetNaverId = request.nextUrl.searchParams.get('naver_id');
+  const lockKey = targetNaverId ? `${CRON_LOCK_KEY}:${targetNaverId}` : CRON_LOCK_KEY;
+  const lockAcquired = await tryAcquireCronLock(lockKey, CRON_LOCK_TTL_SECONDS);
+  if (!lockAcquired) {
+    console.log(`[crawl-challenge-ranks] Previous run is still active; skipping (${lockKey})`);
+    return NextResponse.json({ success: true, skipped: true, reason: 'lock_active' });
+  }
+
   const jobId = await createCrawlJob('crawl-challenge-ranks');
   const supabase = createServiceClient();
   const snapshotDate = TODAY();
   let totalProcessed = 0;
   let totalKeywords = 0;
   let totalFailed = 0;
-
-  // ?naver_id=xxx 파라미터로 특정 인플루언서만 처리 가능
-  const targetNaverId = request.nextUrl.searchParams.get('naver_id');
 
   // ?batch=N&concurrency=N 파라미터로 새벽 증량 실행 가능 (상한 존재)
   const batchParam = Number(request.nextUrl.searchParams.get('batch'));
@@ -475,5 +507,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
+  } finally {
+    await releaseCronLock(lockKey);
   }
 }
