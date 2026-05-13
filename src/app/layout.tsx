@@ -13,7 +13,6 @@ import UpdateBanner from "@/components/UpdateBanner";
 import SubscriptionExpiryStrip from "@/components/SubscriptionExpiryStrip";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 import FirstVisitModal from "@/components/FirstVisitModal";
-import ScrollToTop from "@/components/ScrollToTop";
 import SentryUserIdentity from "@/components/SentryUserIdentity";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -261,7 +260,6 @@ export default function RootLayout({
           <ScrollToTopButton />
           <NicknameRequiredModal />
           <FirstVisitModal />
-          <ScrollToTop />
         </Providers>
         {/* PWA 폐기: 기존에 설치된 service worker / cache 정리 (1회성) */}
         <Script id="sw-cleanup" strategy="afterInteractive">
