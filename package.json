@@ -19,7 +19,8 @@
     "desktop:build:win": "cd desktop && npm run build:win",
     "desktop:build:linux": "cd desktop && npm run build:linux",
     "cron:smoke": "bash scripts/cron-smoke.sh",
-    "vercel:cancel-queued": "node scripts/vercel-cancel-queued-deployments.mjs"
+    "vercel:cancel-queued": "node scripts/vercel-cancel-queued-deployments.mjs",
+    "vercel:cancel-queued-all": "VERCEL_CANCEL_ALL_PROJECT_QUEUED=1 node scripts/vercel-cancel-queued-deployments.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
