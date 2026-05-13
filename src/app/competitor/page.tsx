@@ -65,7 +65,7 @@ const sentenceTypeLabel: Record<string, string> = {
   topic: '주제', evidence: '근거', conclusion: '결론', appeal: '어필',
 };
 
-// 포스팅 입력값에서 blogId + logNo 추출 (URL이면 둘 다, ID만이면 logNo=null)
+// 포스팅 URL에서 blogId + logNo 추출 (경로 또는 blogId/logNo 쿼리)
 function extractPostInfo(input: string): { blogId: string; logNo: string | null } {
   const trimmed = input.trim();
   const queryBlog = trimmed.match(/[?&]blogId=([a-zA-Z0-9_-]+)/);
@@ -102,6 +102,7 @@ export default function CompetitorPage() {
 
   // 포스팅 탭
   const [postCompetitorId, setPostCompetitorId] = useState('');
+  const [postInputError, setPostInputError] = useState('');
   const [competitorPosts, setCompetitorPosts] = useState<CompetitorPost[]>([]);
   const [postLoading, setPostLoading] = useState(false);
   const [checkingPostId, setCheckingPostId] = useState('');
@@ -237,49 +238,39 @@ export default function CompetitorPage() {
     finally { setBlogLoading(false); }
   }, [blogCompetitorId, authInfo, myBlogId, myBlogIdValid]);
 
-  // ─── 포스팅 분석 (목록 또는 단일 URL) ───
+  // ─── 포스팅 분석 (포스팅 URL만) ───
   const loadCompetitorPosts = useCallback(async () => {
     if (!postCompetitorId.trim()) return;
     const { blogId, logNo } = extractPostInfo(postCompetitorId);
     setPostLoading(true);
+    setPostInputError('');
     setCompetitorPosts([]);
 
-    // 단일 포스트 URL 모드: 자동 순위 + AI 분석
-    if (logNo) {
-      const tempPost: CompetitorPost = {
-        id: logNo,
-        title: `포스팅 #${logNo}`,
-        url: `https://blog.naver.com/${blogId}/${logNo}`,
-        date: '',
-        commentCount: 0,
-      };
-      setCompetitorPosts([tempPost]);
+    if (!logNo) {
+      setPostInputError(
+        '블로그 ID만으로는 분석할 수 없습니다. 네이버 포스팅 전체 URL을 입력해 주세요. (예: https://blog.naver.com/orangelibrary/1234567890)',
+      );
       setPostLoading(false);
-      // 자동 분석 (병렬)
-      void checkPostRank(tempPost);
-      void runAiAnalysis(tempPost);
       return;
     }
 
-    // 블로그 ID 모드: 최근 포스팅 10개
-    try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=10`);
-      if (res.ok) {
-        const data = await res.json();
-        setCompetitorPosts((data.posts || []).map((p: { logNo?: string; id?: string; title: string; url?: string; date: string; commentCount?: number }) => ({
-          id: p.logNo || p.id || '',
-          title: p.title,
-          url: p.url || `https://blog.naver.com/${blogId}/${p.logNo || p.id}`,
-          date: p.date,
-          commentCount: p.commentCount || 0,
-        })));
-      }
-    } catch (err) {
-      console.error('[competitor] loadCompetitorPosts error:', err);
+    if (!blogId) {
+      setPostInputError('URL에서 블로그 정보를 찾을 수 없습니다. 주소를 다시 확인해 주세요.');
+      setPostLoading(false);
+      return;
     }
-    finally { setPostLoading(false); }
-    // checkPostRank, runAiAnalysis는 useCallback 내부에서 참조하지만
-    // 이 함수가 그들보다 먼저 정의되어 호이스팅으로 처리됨
+
+    const tempPost: CompetitorPost = {
+      id: logNo,
+      title: `포스팅 #${logNo}`,
+      url: `https://blog.naver.com/${blogId}/${logNo}`,
+      date: '',
+      commentCount: 0,
+    };
+    setCompetitorPosts([tempPost]);
+    setPostLoading(false);
+    void checkPostRank(tempPost);
+    void runAiAnalysis(tempPost);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postCompetitorId]);
 
@@ -462,7 +453,7 @@ export default function CompetitorPage() {
 
           <div className="bg-surface rounded-xl border border-border p-5">
             <h3 className="font-bold text-sm mb-3">경쟁자 블로그 ID 입력</h3>
-            <p className="text-[11px] text-dim mb-2">블로그 ID 또는 URL을 입력하세요 (예: akzkfltm2 또는 https://blog.naver.com/akzkfltm2)</p>
+            <p className="text-[11px] text-dim mb-2">블로그 ID 또는 URL을 입력하세요 (예: orangelibrary 또는 https://blog.naver.com/orangelibrary)</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -611,18 +602,22 @@ export default function CompetitorPage() {
       {tab === 'posting' && (
         <div className="space-y-4">
           <div className="bg-surface rounded-xl border border-border p-5">
-            <h3 className="font-bold text-sm mb-3">블로그 ID 또는 포스팅 URL 입력</h3>
+            <h3 className="font-bold text-sm mb-3">포스팅 분석</h3>
+            <p className="text-[11px] font-semibold text-text mb-1">포스팅 URL 입력</p>
             <p className="text-[11px] text-dim mb-2">
-              · 블로그 ID(예: <code>akzkfltm2</code>) → 최근 포스팅 10개<br />
-              · 포스팅 URL(예: <code>https://blog.naver.com/akzkfltm2/12345</code>) → 해당 포스팅 자동 분석
+              브라우저 주소창에 보이는 네이버 블로그 글 전체 주소를 붙여 넣어 주세요.<br />
+              예: <code className="text-text/90">https://blog.naver.com/orangelibrary/1234567890</code> → 해당 글 노출·AI 분석
             </p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={postCompetitorId}
-                onChange={e => setPostCompetitorId(e.target.value)}
+                onChange={e => {
+                  setPostCompetitorId(e.target.value);
+                  setPostInputError('');
+                }}
                 onKeyDown={e => e.key === 'Enter' && loadCompetitorPosts()}
-                placeholder="블로그 ID 또는 포스팅 URL"
+                placeholder="https://blog.naver.com/orangelibrary/글번호"
                 className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
               />
               <button
@@ -633,13 +628,15 @@ export default function CompetitorPage() {
                 {postLoading ? '조회 중...' : '분석'}
               </button>
             </div>
+            {postInputError && (
+              <p className="text-[11px] text-down mt-2">{postInputError}</p>
+            )}
           </div>
 
           {competitorPosts.length > 0 && (
             <div className="bg-surface rounded-xl border border-border overflow-hidden">
               <div className="px-5 py-3 border-b border-border bg-bg/30 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-sm">{extractBlogId(postCompetitorId)}의 최근 포스팅</h3>
                   <p className="text-[11px] text-dim mt-0.5">
                     AI 검사 {aiCheckedCount}/{competitorPosts.length}
                     {aiCheckedCount > 0 && (
@@ -654,6 +651,7 @@ export default function CompetitorPage() {
                     <span className="ml-1 text-dim/70">(임계값 {AI_THRESHOLD}%)</span>
                   </p>
                 </div>
+                {competitorPosts.length > 1 && (
                 <button
                   onClick={runAllAiAnalysis}
                   disabled={aiBatchRunning || aiAnalyzingId !== '' || competitorPosts.every(p => p.ai)}
@@ -666,6 +664,7 @@ export default function CompetitorPage() {
                     </span>
                   ) : '전체 AI 검사'}
                 </button>
+                )}
               </div>
 
               {/* 데스크톱 */}

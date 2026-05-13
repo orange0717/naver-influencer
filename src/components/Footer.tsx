@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { isDesktop } from '@/lib/desktop';
+import { CONTACT_BLOG_URL, CONTACT_EMAIL, contactBlogLabel } from '@/lib/site-contact';
 
 const FOOTER_LINKS = [
   { href: '/influencers', label: '리스트' },
@@ -51,7 +52,22 @@ export default function Footer() {
 
         {/* 사업자정보 + 저작권 */}
         <div className="border-t border-white/10 pt-4 text-[11px] text-footer-dim/70 leading-relaxed">
-          <p>오렌지도서관 · 대표 한미선 · 사업자등록번호 702-62-00986 · 통신판매 2026-충남아산-0325 · 전화 0507-1394-5091 · 이메일 orange@orangelibrary.co.kr</p>
+          <p>
+            오렌지도서관 · 대표 한미선 · 사업자등록번호 702-62-00986 · 통신판매 2026-충남아산-0325 · 전화 0507-1394-5091 · 이메일{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:text-white transition-colors">
+              {CONTACT_EMAIL}
+            </a>
+            {' · '}
+            블로그{' '}
+            <a
+              href={CONTACT_BLOG_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-white transition-colors"
+            >
+              {contactBlogLabel()}
+            </a>
+          </p>
           <p>충청남도 아산시 탕정면 탕정면로 22번길 15-12 301호 · 개인정보보호책임자 한미선</p>
           <p className="mt-2 text-footer-dim/50">&copy; 2026 오렌지도서관 · Built with Claude by Anthropic</p>
         </div>
