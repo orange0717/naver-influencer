@@ -222,8 +222,8 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
 
   return (
     <>
-      <header className="font-title sticky top-0 z-50 w-full max-w-[100vw] overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-        <div className="flex h-16 min-w-full w-max items-center flex-nowrap gap-3 px-4 sm:gap-4 lg:gap-5">
+      <header className="font-title sticky top-0 z-50 w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+        <div className="flex h-16 w-full min-w-0 max-w-full items-center flex-nowrap gap-2 px-3 sm:gap-3 sm:px-4 lg:gap-4">
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
@@ -231,7 +231,7 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
           </Link>
 
           {/* ── 데스크탑 네비게이션 (로고 옆, 좁은 화면에선 내부 가로 스크롤) ── */}
-          <nav aria-label="메인 네비게이션" className="hidden lg:flex flex-1 min-w-0 items-center gap-1 overflow-x-auto scrollbar-hide">
+          <nav aria-label="메인 네비게이션" className="hidden lg:flex flex-1 min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide touch-pan-x">
             {visibleItems.map(item => {
               if (item.children) {
                 return (
@@ -273,13 +273,14 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
           </nav>
 
           {/* ── 우측: 쪽지 · 알림 · 앱 다운로드 · 프로필/로그인 ── */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <MessageBell />
             <NotificationBell />
             {canShowAppDownload && (
               <Link
                 href="/download"
                 title="N인플 데스크탑 앱 다운로드"
+                aria-label="N인플 데스크탑 앱 다운로드"
                 className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header bg-white hover:bg-white/90 transition-colors shrink-0 ring-2 ring-white/40"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
@@ -413,6 +414,13 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
                 </Link>
               );
             })}
+
+            {canShowAppDownload && (
+              <Link href="/download" onClick={() => setMobileOpen(false)}
+                className="font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors">
+                데스크탑 앱 다운로드
+              </Link>
+            )}
 
             {/* 로그인/로그아웃 */}
             <div className="border-t border-border/50 my-3 mx-2" />
