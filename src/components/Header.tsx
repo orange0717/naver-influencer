@@ -46,15 +46,14 @@ interface NavItem {
 // 대시보드(/)가 기능 허브 역할을 하므로 상단 네비는 최소화
 const NAV_ITEMS: NavItem[] = [
   { href: '/notice', label: '공지사항' },
-  { href: '/download', label: '데스크탑 앱' },
   { href: '/community', label: '커뮤니티' },
   { href: '/stories', label: '성장후기' },
   { href: '/subscribe', label: '이용권' },
   { href: '/intro', label: '서비스소개' },
 ];
 
-// Electron 데스크탑 앱에서는 커뮤니티·이용권·다운로드를 숨김(키워드 분석 도구로 집중)
-const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe', '/download']);
+// Electron 데스크탑 앱에서는 커뮤니티·이용권 숨김(키워드 분석 도구로 집중)
+const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
 
 
 function LockBadge({ plan }: { plan: PlanTier }) {
@@ -94,7 +93,7 @@ function NavDropdown({
   return (
     <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
-        className={`px-4 py-2 rounded-lg text-base font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+        className={`px-2.5 py-2 lg:px-3 xl:px-4 rounded-lg text-base font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
           anyActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
         }`}
       >
@@ -208,7 +207,7 @@ export default function Header({ serverUser }: HeaderProps) {
   // 표시 가능한 네비 아이템: 제한 사용자는 이용권만, 나머지는 전체 표시 (잠금은 내부에서)
   // 데스크탑 앱에서는 커뮤니티/이용권 숨김 (단, 제한 사용자는 이용권 결제 안내 필요하므로 예외)
   const visibleItems = NAV_ITEMS.filter(item => {
-    if (isRestricted) return item.href === '/subscribe' || item.href === '/download';
+    if (isRestricted) return item.href === '/subscribe';
     if (item.authOnly && !user.id) return false;
     if (inDesktopApp && item.href && DESKTOP_HIDDEN_HREFS.has(item.href)) return false;
     return true;
@@ -216,16 +215,31 @@ export default function Header({ serverUser }: HeaderProps) {
 
   return (
     <>
-      <header className="font-title sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-        <div className="w-full px-4 h-16 flex items-center gap-6">
+      <header className="font-title sticky top-0 z-50 w-full max-w-[100vw] overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+        <div className="flex h-16 min-w-full w-max items-center flex-nowrap gap-3 px-4 sm:gap-4 lg:gap-5">
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
           </Link>
 
-          {/* ── 데스크탑 네비게이션 (로고 옆) ── */}
-          <nav aria-label="메인 네비게이션" className="hidden lg:flex items-center gap-1">
+          {!inDesktopApp && (
+            <Link
+              href="/download"
+              title="N인플 데스크탑 앱 다운로드"
+              className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header bg-white hover:bg-white/90 transition-colors shrink-0 ring-2 ring-white/40"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span className="hidden sm:inline">앱 다운로드</span>
+            </Link>
+          )}
+
+          {/* ── 데스크탑 네비게이션 (로고·앱 버튼 옆, 좁은 화면에선 내부 가로 스크롤) ── */}
+          <nav aria-label="메인 네비게이션" className="hidden lg:flex flex-1 min-w-0 items-center gap-1 overflow-x-auto scrollbar-hide">
             {visibleItems.map(item => {
               if (item.children) {
                 return (
@@ -245,7 +259,7 @@ export default function Header({ serverUser }: HeaderProps) {
                   <button
                     key={item.href}
                     onClick={() => goToSubscribe(item.requiredPlan!)}
-                    className="px-4 py-2 rounded-lg text-base font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="px-2.5 py-2 lg:px-3 xl:px-4 rounded-lg text-base font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <span>{item.label}</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
@@ -257,7 +271,7 @@ export default function Header({ serverUser }: HeaderProps) {
               }
               return (
                 <Link key={item.href} href={item.href!}
-                  className={`px-4 py-2 rounded-lg text-base font-semibold transition-colors ${
+                  className={`px-2.5 py-2 lg:px-3 xl:px-4 rounded-lg text-base font-semibold transition-colors ${
                     isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}>
                   {item.label}
@@ -266,22 +280,8 @@ export default function Header({ serverUser }: HeaderProps) {
             })}
           </nav>
 
-          {/* ── 우측: 데스크탑 앱 다운로드 / 쪽지 / 알림 / 프로필 ── */}
+          {/* ── 우측: 쪽지 / 알림 / 프로필 (다운로드는 로고 옆 고정 — 좁은 화면에서 잘림 방지) ── */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto min-w-0">
-            {!inDesktopApp && (
-              <Link
-                href="/download"
-                title="N인플 데스크탑 앱 다운로드"
-                className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header bg-white hover:bg-white/90 transition-colors shrink-0 ring-2 ring-white/40"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span className="hidden sm:inline">앱 다운로드</span>
-              </Link>
-            )}
             <MessageBell />
             <NotificationBell />
             {authLoading ? (
