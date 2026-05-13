@@ -5,8 +5,6 @@ import Header from './Header';
 /** 서버에서 인증 상태를 읽어 Header 클라이언트 컴포넌트에 전달 */
 export default async function HeaderWrapper() {
   let serverUser: { type: string; id: string; name: string; imageUrl?: string } | null = null;
-  let serverHasSupabaseAuth = false;
-
   try {
     const cookieStore = await cookies();
 
@@ -24,7 +22,6 @@ export default async function HeaderWrapper() {
       });
 
       const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
-      serverHasSupabaseAuth = !!authUser;
 
       if (authUser) {
         const supabase = createServiceClient();
@@ -87,5 +84,5 @@ export default async function HeaderWrapper() {
     // 인증 실패 시 비로그인 상태로 렌더링
   }
 
-  return <Header serverUser={serverUser} serverHasSupabaseAuth={serverHasSupabaseAuth} />;
+  return <Header serverUser={serverUser} />;
 }

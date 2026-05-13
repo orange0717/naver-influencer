@@ -93,7 +93,7 @@ function NavDropdown({
   return (
     <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
-        className={`px-2.5 py-2 lg:px-3 xl:px-4 rounded-lg text-base font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+        className={`px-2 py-2 lg:px-2.5 xl:px-3.5 rounded-lg text-base font-semibold transition-colors flex items-center gap-1 cursor-pointer shrink-0 ${
           anyActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
         }`}
       >
@@ -148,11 +148,9 @@ type UserInfo = {
 
 interface HeaderProps {
   serverUser?: { type: string; id: string; name: string; imageUrl?: string } | null;
-  /** Supabase Auth 세션(회원가입·로그인). 데모 쿠키만으로는 false */
-  serverHasSupabaseAuth?: boolean;
 }
 
-export default function Header({ serverUser, serverHasSupabaseAuth = false }: HeaderProps) {
+export default function Header({ serverUser }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -179,8 +177,8 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
   // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
   const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser) as UserInfo;
 
-  /** 데스크탑 앱 다운로드: Supabase 로그인 회원만 (데모 체험·쿠키 세션만은 제외) */
-  const canShowAppDownload = !inDesktopApp && (!!user.authId || serverHasSupabaseAuth);
+  /** 데스크탑 앱 다운로드: 로그인·비데모만 노출. (/download 는 Supabase 회원만 접근 — 미가입 시 로그인으로 안내) */
+  const canShowAppDownload = !inDesktopApp && !!user.id && !user.isDemo;
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -222,8 +220,8 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
 
   return (
     <>
-      <header className="font-title sticky top-0 z-50 w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-        <div className="flex h-16 w-full min-w-0 max-w-full items-center flex-nowrap gap-2 px-3 sm:gap-3 sm:px-4 lg:gap-4">
+      <header className="font-title sticky top-0 z-50 w-full max-w-[100vw] bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+        <div className="flex h-16 w-full min-w-0 max-w-full items-center flex-nowrap gap-1.5 px-2.5 sm:gap-2 sm:px-3 lg:gap-3 lg:px-4">
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
@@ -251,7 +249,7 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
                   <button
                     key={item.href}
                     onClick={() => goToSubscribe(item.requiredPlan!)}
-                    className="px-2.5 py-2 lg:px-3 xl:px-4 rounded-lg text-base font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className={`px-2 py-2 lg:px-2.5 xl:px-3.5 rounded-lg text-base font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0`}
                   >
                     <span>{item.label}</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
@@ -263,7 +261,7 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
               }
               return (
                 <Link key={item.href} href={item.href!}
-                  className={`px-2.5 py-2 lg:px-3 xl:px-4 rounded-lg text-base font-semibold transition-colors ${
+                  className={`px-2 py-2 lg:px-2.5 xl:px-3.5 rounded-lg text-base font-semibold transition-colors shrink-0 ${
                     isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}>
                   {item.label}
@@ -294,23 +292,25 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
             {authLoading ? (
               <div className="w-20 h-8" />
             ) : user.id ? (
-              <div className="flex items-center gap-2">
-                <div className="relative" ref={profileRef}>
+              <div className="flex min-w-0 max-w-full items-center gap-1 sm:gap-2">
+                <div className="relative min-w-0" ref={profileRef}>
                   <button
                     onClick={() => setProfileOpen(!profileOpen)}
-                    className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                    className="flex max-w-full min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-white/10 sm:gap-2 sm:px-2 cursor-pointer"
                     title="프로필 메뉴">
                     {serverUser?.imageUrl ? (
-                      <img src={serverUser.imageUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+                      <img src={serverUser.imageUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
                     ) : (
-                      <div className={`w-7 h-7 rounded-full ${badgeColor} flex items-center justify-center text-white font-bold text-[10px]`}>
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${badgeColor} text-[10px] font-bold text-white`}>
                         {displayChar}
                       </div>
                     )}
-                    <span className="text-sm text-white font-semibold hidden sm:block">@{user.name || user.id}</span>
+                    <span className="hidden max-w-[5.5rem] truncate text-sm font-semibold text-white sm:block md:max-w-[9rem] lg:max-w-[11rem]">
+                      @{user.name || user.id}
+                    </span>
                   </button>
                   {profileOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-xl border border-border shadow-lg py-2 z-50">
+                    <div className="absolute right-0 top-full z-[100] mt-2 w-56 rounded-xl border border-border bg-surface py-2 shadow-lg">
                       <div className="px-4 py-2.5 border-b border-border">
                         <p className="text-sm font-bold text-text">{user.name || user.id}</p>
                         {user.email && <p className="text-xs text-dim mt-0.5">{user.email}</p>}
