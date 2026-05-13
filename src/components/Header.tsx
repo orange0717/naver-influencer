@@ -230,22 +230,7 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
           </Link>
 
-          {canShowAppDownload && (
-            <Link
-              href="/download"
-              title="N인플 데스크탑 앱 다운로드"
-              className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header bg-white hover:bg-white/90 transition-colors shrink-0 ring-2 ring-white/40"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              <span className="hidden sm:inline">앱 다운로드</span>
-            </Link>
-          )}
-
-          {/* ── 데스크탑 네비게이션 (로고·앱 버튼 옆, 좁은 화면에선 내부 가로 스크롤) ── */}
+          {/* ── 데스크탑 네비게이션 (로고 옆, 좁은 화면에선 내부 가로 스크롤) ── */}
           <nav aria-label="메인 네비게이션" className="hidden lg:flex flex-1 min-w-0 items-center gap-1 overflow-x-auto scrollbar-hide">
             {visibleItems.map(item => {
               if (item.children) {
@@ -287,10 +272,24 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
             })}
           </nav>
 
-          {/* ── 우측: 쪽지 / 알림 / 프로필 (다운로드는 로고 옆 고정 — 좁은 화면에서 잘림 방지) ── */}
+          {/* ── 우측: 쪽지 · 알림 · 앱 다운로드 · 프로필/로그인 ── */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto min-w-0">
             <MessageBell />
             <NotificationBell />
+            {canShowAppDownload && (
+              <Link
+                href="/download"
+                title="N인플 데스크탑 앱 다운로드"
+                className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header bg-white hover:bg-white/90 transition-colors shrink-0 ring-2 ring-white/40"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span className="hidden sm:inline">앱 다운로드</span>
+              </Link>
+            )}
             {authLoading ? (
               <div className="w-20 h-8" />
             ) : user.id ? (
