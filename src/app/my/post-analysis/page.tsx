@@ -480,7 +480,7 @@ export default function PostAnalysisPage() {
                     <th className="text-left px-5 py-3 font-semibold">제목</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">글자수</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">이미지</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">날짜</th>
+                    <th className="text-center px-3 py-3 font-semibold whitespace-nowrap min-w-[7.5rem]">날짜</th>
                     <th className="text-right px-5 py-3 font-semibold w-56">분석</th>
                   </tr>
                 </thead>
@@ -525,8 +525,8 @@ export default function PostAnalysisPage() {
                             <span className="text-xs">{analysis.imageCount}</span>
                           ) : <span className="text-[10px] text-dim">-</span>}
                         </td>
-                        <td className="text-center px-3 py-3.5">
-                          <span className="text-[11px] text-dim">{post.date}</span>
+                        <td className="text-center px-3 py-3.5 whitespace-nowrap align-middle">
+                          <span className="text-sm text-dim tabular-nums">{post.date}</span>
                         </td>
                         <td className="text-right px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1.5">
@@ -943,10 +943,14 @@ export default function PostAnalysisPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-dim">
-                        {analysis && <span>{analysis.charCount.toLocaleString()}자</span>}
-                        {analysis && <span>이미지 {analysis.imageCount}장</span>}
-                        {post.date && <span>{new Date(post.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}</span>}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-dim">
+                        {analysis && <span className="whitespace-nowrap">{analysis.charCount.toLocaleString()}자</span>}
+                        {analysis && <span className="whitespace-nowrap">이미지 {analysis.imageCount}장</span>}
+                        {post.date && (
+                          <span className="whitespace-nowrap tabular-nums shrink-0">
+                            {new Date(post.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
+                          </span>
+                        )}
                         {isAnalyzing ? (
                           <span className="animate-spin inline-block w-3 h-3 border border-accent border-t-transparent rounded-full" />
                         ) : aiResult ? (

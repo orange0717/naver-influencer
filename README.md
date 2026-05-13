@@ -97,6 +97,7 @@ chrome-extension/           # 크롬 확장 프로그램
 | `/api/cron/send-rank-notifications` | `0 21 * * *` | 순위 변동 알림 |
 | `/api/cron/crawl-search-exposure?size=100` | `30 23 * * *` | 검색 노출 크롤 |
 | `/api/cron/refresh-stats` | `45 * * * *` | 통계 리프레시 (매시 45분) |
+| `/api/cron/refresh-stats` | `10 15 * * 0` | 주간 전환 직후 보강 (UTC 일요일 15:10 ≈ KST 월요일 00:10) |
 | `/api/cron/charge-recurring` | `0 0 * * *` | 정기 결제 청구 (UTC 자정) |
 
 ### 런칭 전 크론 스모크

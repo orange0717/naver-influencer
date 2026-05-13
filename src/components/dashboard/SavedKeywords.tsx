@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 interface SavedKeyword {
   id: string;
@@ -39,12 +40,38 @@ export default function SavedKeywords() {
   const [keywords, setKeywords] = useState<SavedKeyword[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const buildAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch {
+      return {};
+    }
+  };
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/my/saved-keywords');
-        if (!res.ok) return;
+        const auth = await buildAuthHeaders();
+        const res = await fetch('/api/my/saved-keywords', {
+          credentials: 'include',
+          headers: { ...auth },
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            setFetchError('로그인 세션이 없거나 만료되었습니다. 다시 로그인하면 저장 목록을 불러올 수 있습니다.');
+          } else if (res.status === 403) {
+            setFetchError('이 계정은 키워드 저장 기능을 이용할 수 없습니다.');
+          } else {
+            setFetchError('목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+          }
+          return;
+        }
+        setFetchError(null);
         const data = await res.json();
         setKeywords(data.keywords || []);
       } catch { /* ignore */ }
@@ -55,7 +82,12 @@ export default function SavedKeywords() {
   const remove = async (keyword: string) => {
     setRemoving(keyword);
     try {
-      const res = await fetch(`/api/my/saved-keywords?keyword=${encodeURIComponent(keyword)}`, { method: 'DELETE' });
+      const auth = await buildAuthHeaders();
+      const res = await fetch(`/api/my/saved-keywords?keyword=${encodeURIComponent(keyword)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { ...auth },
+      });
       if (res.ok) {
         setKeywords(prev => prev.filter(k => k.keyword !== keyword));
       }
@@ -80,7 +112,13 @@ export default function SavedKeywords() {
         </Link>
       </div>
 
-      {keywords.length === 0 && (
+      {fetchError && (
+        <div className="px-4 py-3 text-sm text-down border-b border-down/20 bg-down/5">
+          {fetchError}
+        </div>
+      )}
+
+      {keywords.length === 0 && !fetchError && (
         <div className="px-4 py-8 text-center">
           <p className="text-sm text-dim mb-2">아직 저장한 키워드가 없습니다.</p>
           <p className="text-xs text-dim">

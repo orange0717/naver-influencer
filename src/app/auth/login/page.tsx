@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
 import DemoModal from '@/components/DemoModal';
+import { subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
 
 function sanitizeRedirect(raw: string | null): string {
   if (!raw) return '/';
@@ -58,17 +59,26 @@ function LoginPageContent() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/stats')
-      .then(r => r.json())
-      .then(d => {
-        if (cancelled) return;
-        setStats({
-          new_count: typeof d?.new_count === 'number' ? d.new_count : 0,
-          active_count: typeof d?.active_count === 'number' ? d.active_count : 0,
-        });
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+    const load = () => {
+      fetch('/api/stats')
+        .then(r => r.json())
+        .then(d => {
+          if (cancelled) return;
+          setStats({
+            new_count: typeof d?.new_count === 'number' ? d.new_count : 0,
+            active_count: typeof d?.active_count === 'number' ? d.active_count : 0,
+          });
+        })
+        .catch(() => {});
+    };
+    load();
+    const unsub = subscribeNewInfluencerWeekBoundaryRefresh(() => {
+      if (!cancelled) load();
+    });
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
   useEffect(() => {
@@ -238,6 +248,7 @@ function LoginPageContent() {
                     {stats.new_count === null ? '—' : `+${stats.new_count.toLocaleString()}`}
                   </div>
                   <div className="mt-1 text-[11px] text-emerald-200 font-semibold">▲ 새로 합류</div>
+                  <div className="mt-2 text-[10px] text-white/65 leading-snug">집계 주간: 매주 월요일 0시(KST) 전환</div>
                 </div>
                 <div className="rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 p-4">
                   <div className="text-xs text-white/75 mb-1">활동하는 인플루언서</div>

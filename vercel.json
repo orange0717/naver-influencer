@@ -74,6 +74,10 @@
       "schedule": "45 * * * *"
     },
     {
+      "path": "/api/cron/refresh-stats",
+      "schedule": "10 15 * * 0"
+    },
+    {
       "path": "/api/cron/charge-recurring",
       "schedule": "0 0 * * *"
     }

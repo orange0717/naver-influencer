@@ -4,21 +4,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DemoModal from '@/components/DemoModal';
 import LandingFaq from '@/components/LandingFaq';
+import { formatNewInfluencerWeekRangeKst, subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
 
-
-/* ── 이번 주 범위 (일요일 ~ 토요일, KST) ── */
-function useCurrentWeekRangeKst() {
+/* ── 신규 집계와 동일한 KST 주간 표기 (일요일은 전주 일요일 시작과 맞춤) ── */
+function useNewInfluencerWeekRangeLabel() {
   const [range, setRange] = useState<{ start: string; end: string } | null>(null);
   useEffect(() => {
-    const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-    const nowKst = new Date(Date.now() + KST_OFFSET_MS);
-    const dow = nowKst.getUTCDay(); // 0=Sun..6=Sat
-    const sunday = new Date(nowKst);
-    sunday.setUTCDate(sunday.getUTCDate() - dow);
-    const saturday = new Date(sunday);
-    saturday.setUTCDate(saturday.getUTCDate() + 6);
-    const fmt = (d: Date) => `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
-    setRange({ start: fmt(sunday), end: fmt(saturday) });
+    const refresh = () => setRange(formatNewInfluencerWeekRangeKst());
+    refresh();
+    return subscribeNewInfluencerWeekBoundaryRefresh(refresh);
   }, []);
   return range;
 }
@@ -27,9 +21,16 @@ function useCurrentWeekRangeKst() {
 function useStats() {
   const [stats, setStats] = useState({ influencer_count: 9000, active_count: 0, inactive_count: 0, new_count: 0, category_count: 20, keyword_count: 115000, total_users: 0 });
   useEffect(() => {
-    fetch('/api/stats').then(r => r.json()).then(setStats).catch(err => {
-      console.warn('[intro] stats 로드 실패', err instanceof Error ? err.message : err);
-    });
+    const load = () => {
+      fetch('/api/stats')
+        .then(r => r.json())
+        .then(setStats)
+        .catch(err => {
+          console.warn('[intro] stats 로드 실패', err instanceof Error ? err.message : err);
+        });
+    };
+    load();
+    return subscribeNewInfluencerWeekBoundaryRefresh(load);
   }, []);
   return stats;
 }
@@ -49,16 +50,20 @@ function useNewInfluencers() {
   const [list, setList] = useState<NewInfluencer[]>([]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
-    fetch('/api/influencers/recent')
-      .then(r => r.json())
-      .then(d => {
-        setList(d.influencers || []);
-        setLoaded(true);
-      })
-      .catch(err => {
-        console.warn('[intro] 신규 인플루언서 로드 실패', err instanceof Error ? err.message : err);
-        setLoaded(true);
-      });
+    const load = () => {
+      fetch('/api/influencers/recent')
+        .then(r => r.json())
+        .then(d => {
+          setList(d.influencers || []);
+          setLoaded(true);
+        })
+        .catch(err => {
+          console.warn('[intro] 신규 인플루언서 로드 실패', err instanceof Error ? err.message : err);
+          setLoaded(true);
+        });
+    };
+    load();
+    return subscribeNewInfluencerWeekBoundaryRefresh(load);
   }, []);
   return { list, loaded };
 }
@@ -99,7 +104,7 @@ export default function IntroClient() {
   const stats = useStats();
   const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
   const featuredStories = useFeaturedStories();
-  const weekRange = useCurrentWeekRangeKst();
+  const weekRange = useNewInfluencerWeekRangeLabel();
   const weekLabel = weekRange ? `${weekRange.start} ~ ${weekRange.end}` : '';
   const [demoOpen, setDemoOpen] = useState(false);
 
@@ -211,7 +216,7 @@ export default function IntroClient() {
                 <p className="text-sm text-text font-semibold mb-1">
                   이번 주{weekLabel && <span className="text-accent"> ({weekLabel})</span>} 새로 선정된 인플루언서가 없습니다
                 </p>
-                <p className="text-xs text-dim">매주 일요일 00:00에 집계가 초기화됩니다. 네이버 인플루언서 신규 선정은 비정기적으로 이루어지며, 이번 주에 선정된 인플루언서가 있으면 이곳에 표시됩니다.</p>
+                <p className="text-xs text-dim">집계 주간은 매주 월요일 0시(KST)에 바뀝니다. 네이버 인플루언서 신규 선정은 비정기적이며, 해당 주간에 선정된 인플루언서가 있으면 이곳에 표시됩니다.</p>
               </div>
             ) : (
               <div className="text-center py-8 text-sm text-dim">
@@ -233,7 +238,7 @@ export default function IntroClient() {
       <section className="bg-bg px-4 py-20 md:py-24 text-center">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">DATA</p>
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
-        <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되는 네이버 인플루언서 데이터</p>
+        <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되며, 신규 인플루언서 수는 매주 월요일 0시(KST) 기준 주간으로 갱신됩니다.</p>
 
         <div className="flex justify-center gap-12 md:gap-20">
           <div>
