@@ -199,9 +199,12 @@ export async function middleware(request: NextRequest) {
 
   // HTML 문서(브라우저 탐색)는 중간 캐시로 오래된 레이아웃/헤더가 남는 경우가 있어 재검증 유도
   if (acceptsHtml && !pathname.startsWith('/api/')) {
+    const isCompetitorPage = pathname === '/competitor';
     supabaseResponse.headers.set(
       'Cache-Control',
-      'private, max-age=0, must-revalidate',
+      isCompetitorPage
+        ? 'private, no-store, max-age=0, must-revalidate'
+        : 'private, max-age=0, must-revalidate',
     );
   }
 
