@@ -12,6 +12,8 @@ export function GET() {
       commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       ref: process.env.VERCEL_GIT_COMMIT_REF ?? null,
       env: process.env.VERCEL_ENV ?? null,
+      /** 동일 커밋 재배포 구분용 (Vercel 대시보드의 Deployment ID 와 동일) */
+      deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
     },
     {
       headers: {

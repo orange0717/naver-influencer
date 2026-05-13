@@ -197,6 +197,14 @@ export async function middleware(request: NextRequest) {
     frameSrc.push("capacitor://localhost", "https://localhost");
   }
 
+  // HTML 문서(브라우저 탐색)는 중간 캐시로 오래된 레이아웃/헤더가 남는 경우가 있어 재검증 유도
+  if (acceptsHtml && !pathname.startsWith('/api/')) {
+    supabaseResponse.headers.set(
+      'Cache-Control',
+      'private, max-age=0, must-revalidate',
+    );
+  }
+
   supabaseResponse.headers.set(
     'Content-Security-Policy',
     [
