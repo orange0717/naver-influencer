@@ -175,10 +175,10 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-bg overflow-y-auto lg:overflow-hidden">
-      <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row">
+    <div className="fixed inset-0 z-50 bg-bg overflow-y-auto overflow-x-hidden overscroll-y-contain">
+      <div className="min-h-[100dvh] flex flex-col lg:flex-row lg:min-h-[100dvh]">
         {/* ─── 좌측: 풀블리드 그라디언트 패널 (lg+ 표시, 모바일은 상단 헤더로 축소) ─── */}
-        <aside className="relative lg:flex-1 lg:min-w-0 overflow-hidden bg-gradient-to-br from-[#7A4F45] via-[#BF877A] to-[#D9ABA0] text-white">
+        <aside className="relative lg:flex-1 lg:min-w-0 overflow-x-hidden bg-gradient-to-br from-[#7A4F45] via-[#BF877A] to-[#D9ABA0] text-white">
           {/* 데코레이션 — blur orbs */}
           <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-40 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#F2E2DC]/40 blur-3xl" />
@@ -210,7 +210,7 @@ function LoginPageContent() {
           </div>
 
           {/* 데스크탑 — 풀 사이즈 카피 */}
-          <div className="hidden lg:flex relative h-full flex-col justify-between p-12 xl:p-16">
+          <div className="hidden lg:flex relative min-h-[100dvh] flex-col justify-between p-12 xl:p-16">
             <Link href="/" className="inline-flex items-center gap-2.5 group w-fit">
               <span className="w-11 h-11 rounded-xl bg-white text-accent flex items-center justify-center font-extrabold text-xl shadow-lg shadow-black/10 group-hover:scale-105 transition">
                 N
@@ -269,7 +269,7 @@ function LoginPageContent() {
         </aside>
 
         {/* ─── 우측: 로그인 폼 ─── */}
-        <section className="relative w-full lg:w-[480px] xl:w-[520px] lg:flex-shrink-0 bg-surface lg:overflow-y-auto">
+        <section className="relative w-full lg:w-[480px] xl:w-[520px] lg:flex-shrink-0 bg-surface lg:min-h-0">
           <div className="min-h-full flex flex-col">
             {/* 우측 상단 — 홈으로 */}
             <div className="px-6 lg:px-10 pt-6">
