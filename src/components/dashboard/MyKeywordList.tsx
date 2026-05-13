@@ -421,7 +421,7 @@ export default function MyKeywordList({
           {participationFilter === 'not_participated' && (
             <div className="rounded-lg border border-accent/25 bg-accent/5 px-3 py-2.5 text-[11px] text-text leading-relaxed">
               <span className="font-semibold text-accent">미참여 키워드</span>는 챌린지에 참여하기 전까지
-              순위·변동·통합검색(VIEW)·블로그탭 숫자가 비어 있습니다. 월 검색량·경쟁도만 참고용으로 보입니다.
+              순위·변동·통합검색·블로그탭 숫자가 비어 있습니다. 월 검색량·경쟁도만 참고용으로 보입니다.
               지표를 보려면 위에서 <span className="font-semibold">참여 키워드</span> 또는 <span className="font-semibold">전체 키워드</span>를 선택하세요.
             </div>
           )}
@@ -439,8 +439,8 @@ export default function MyKeywordList({
                   <th className="text-left px-5 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('keyword')}>키워드<SortArrow col="keyword" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('rank')}>순위<SortArrow col="rank" /></th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('change')}>변동<SortArrow col="change" /></th>
-                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]" title="네이버 통합검색 VIEW 영역 노출 순위">
-                    통합검색<span className="block font-normal text-[10px] text-dim font-medium">VIEW</span>
+                  <th className="text-center px-2 py-2.5 font-semibold text-[11px]" title="네이버 통합검색 노출 순위">
+                    통합검색
                   </th>
                   <th className="text-center px-2 py-2.5 font-semibold text-[11px]" title="블로그 탭 검색 노출 순위">블로그탭</th>
                   <th className="text-center px-3 py-2.5 font-semibold cursor-pointer hover:text-text select-none" onClick={() => handleSort('participants')}>참여자<SortArrow col="participants" /></th>
@@ -609,9 +609,9 @@ export default function MyKeywordList({
                               ) : null}
                             </div>
 
-                            {/* 통합검색 VIEW 노출 */}
+                            {/* 통합검색 노출 */}
                             <div>
-                              <p className="text-[11px] font-bold text-dim mb-1.5">통합검색 VIEW</p>
+                              <p className="text-[11px] font-bold text-dim mb-1.5">통합검색</p>
                               {exposureLoading === kw.keyword_id ? (
                                 <div className="flex items-center gap-2 py-1">
                                   <div className="animate-spin w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full" />
