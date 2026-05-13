@@ -270,10 +270,9 @@ export default function Header({ serverUser }: HeaderProps) {
             })}
           </nav>
 
-          {/* ── 우측: 쪽지 · 알림 · 앱 다운로드 · 프로필/로그인 ── */}
+          {/* ── 우측: 쪽지 · 앱 다운로드 · 알림 · 프로필/로그인 ── */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <MessageBell />
-            <NotificationBell />
             {canShowAppDownload && (
               <Link
                 href="/download"
@@ -289,6 +288,7 @@ export default function Header({ serverUser }: HeaderProps) {
                 <span className="hidden sm:inline">앱 다운로드</span>
               </Link>
             )}
+            <NotificationBell />
             {authLoading ? (
               <div className="w-20 h-8" />
             ) : user.id ? (
