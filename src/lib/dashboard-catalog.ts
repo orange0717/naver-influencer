@@ -201,14 +201,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'blogger',
   },
   {
-    id: 'keywords-hot',
-    category: 'keyword',
-    title: '실시간 상승 키워드',
-    description: '급상승 중인 키워드 모니터링',
-    href: '/keywords/hot',
-    requiredPlan: 'blogger',
-  },
-  {
     id: 'keywords-list',
     category: 'keyword',
     title: '인플루언서 키워드 챌린지 리스트',
