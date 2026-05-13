@@ -315,12 +315,6 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
                         <p className="text-sm font-bold text-text">{user.name || user.id}</p>
                         {user.email && <p className="text-xs text-dim mt-0.5">{user.email}</p>}
                       </div>
-                      {canShowAppDownload && (
-                        <Link href="/download" onClick={() => setProfileOpen(false)}
-                          className="flex items-center px-4 py-2.5 text-sm font-semibold text-accent hover:bg-accent/5 transition">
-                          데스크탑 앱 다운로드
-                        </Link>
-                      )}
                       <Link href="/profile" onClick={() => setProfileOpen(false)}
                         className="flex items-center px-4 py-2.5 text-sm text-text hover:bg-bg transition">
                         마이페이지
@@ -414,13 +408,6 @@ export default function Header({ serverUser, serverHasSupabaseAuth = false }: He
                 </Link>
               );
             })}
-
-            {canShowAppDownload && (
-              <Link href="/download" onClick={() => setMobileOpen(false)}
-                className="font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors">
-                데스크탑 앱 다운로드
-              </Link>
-            )}
 
             {/* 로그인/로그아웃 */}
             <div className="border-t border-border/50 my-3 mx-2" />

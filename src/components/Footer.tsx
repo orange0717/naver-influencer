@@ -11,38 +11,24 @@ const FOOTER_LINKS = [
   { href: '/community', label: '커뮤니티' },
   { href: '/notice', label: '공지사항' },
   { href: '/my', label: '대시보드' },
-  { href: '/download', label: '데스크탑 앱' },
   { href: '/terms', label: '이용약관' },
   { href: '/privacy', label: '개인정보처리방침' },
 ];
 
 // Electron 데스크탑 앱에서는 노출하지 않을 링크들
 // - /community, /subscribe : 앱은 분석 도구로 집중
-// - /download : 이미 데스크탑 앱을 사용 중이므로 불필요
-const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe', '/download']);
+const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
 
 export default function Footer() {
   const [inDesktopApp, setInDesktopApp] = useState(false);
-  const [hasSupabaseAuth, setHasSupabaseAuth] = useState(false);
 
   useEffect(() => {
     setInDesktopApp(isDesktop());
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then((d: { authId?: string | null }) => {
-        if (!cancelled) setHasSupabaseAuth(!!d?.authId);
-      })
-      .catch(() => { if (!cancelled) setHasSupabaseAuth(false); });
-    return () => { cancelled = true; };
-  }, []);
-
   const visibleLinks = inDesktopApp
     ? FOOTER_LINKS.filter(l => !DESKTOP_HIDDEN_HREFS.has(l.href))
-    : FOOTER_LINKS.filter(l => l.href !== '/download' || hasSupabaseAuth);
+    : FOOTER_LINKS;
 
   return (
     <footer className="bg-footer-bg text-footer-text"
