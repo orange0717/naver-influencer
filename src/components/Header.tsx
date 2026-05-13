@@ -136,6 +136,8 @@ type UserInfo = {
   id: string | null;
   blogId?: string | null;
   name: string | null;
+  email?: string | null;
+  authId?: string | null;
   isAdmin?: boolean;
   restricted?: boolean;
   subscriptionPlan?: string | null;
@@ -146,9 +148,11 @@ type UserInfo = {
 
 interface HeaderProps {
   serverUser?: { type: string; id: string; name: string; imageUrl?: string } | null;
+  /** Supabase Auth 세션(회원가입·로그인). 데모 쿠키만으로는 false */
+  serverHasSupabaseAuth?: boolean;
 }
 
-export default function Header({ serverUser }: HeaderProps) {
+export default function Header({ serverUser, serverHasSupabaseAuth = false }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -173,7 +177,10 @@ export default function Header({ serverUser }: HeaderProps) {
   }, []);
 
   // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
-  const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser);
+  const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser) as UserInfo;
+
+  /** 데스크탑 앱 다운로드: Supabase 로그인 회원만 (데모 체험·쿠키 세션만은 제외) */
+  const canShowAppDownload = !inDesktopApp && (!!user.authId || serverHasSupabaseAuth);
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -223,7 +230,7 @@ export default function Header({ serverUser }: HeaderProps) {
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
           </Link>
 
-          {!inDesktopApp && (
+          {canShowAppDownload && (
             <Link
               href="/download"
               title="N인플 데스크탑 앱 다운로드"
@@ -308,7 +315,7 @@ export default function Header({ serverUser }: HeaderProps) {
                         <p className="text-sm font-bold text-text">{user.name || user.id}</p>
                         {user.email && <p className="text-xs text-dim mt-0.5">{user.email}</p>}
                       </div>
-                      {!inDesktopApp && (
+                      {canShowAppDownload && (
                         <Link href="/download" onClick={() => setProfileOpen(false)}
                           className="flex items-center px-4 py-2.5 text-sm font-semibold text-accent hover:bg-accent/5 transition">
                           데스크탑 앱 다운로드

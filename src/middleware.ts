@@ -90,6 +90,7 @@ export async function middleware(request: NextRequest) {
   if (needsLoginPage) {
     const isDownload = matchesPathPrefix(pathname, '/download');
     if (isDownload) {
+      // 데스크탑 앱 다운로드: Supabase 회원만. 데모 쿠키(demo_mode)만으로는 접근 불가.
       if (!user) {
         const url = request.nextUrl.clone();
         url.pathname = '/auth/login';

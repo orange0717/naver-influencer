@@ -19,6 +19,8 @@ interface Props {
   isLoggedIn: boolean;
   userName: string | null;
   subscriptionExpiresAt: string | null;
+  /** Supabase 로그인 회원만 데스크탑 앱 안내 카드 표시 (데모 체험 제외) */
+  showDesktopAppPromo?: boolean;
   stats: {
     myKeywordCount: number;
     myBlogRank: number | null;
@@ -61,6 +63,7 @@ export default function DashboardGrid({
   isLoggedIn,
   userName,
   subscriptionExpiresAt,
+  showDesktopAppPromo = false,
   stats,
 }: Props) {
   const { favorites, toggle } = useFavorites();
@@ -111,6 +114,8 @@ export default function DashboardGrid({
   const visibleFavorites = sortAppsByPlan(filterApps(favoriteApps));
 
   const greeting = userName ? `@${userName} 님,` : '반갑습니다,';
+  /** 회원(Supabase)만. 데모 체험(쿠키만)은 authId 없음 → 비노출 */
+  const showDownloadCard = !inDesktopApp && (showDesktopAppPromo || !!user.authId);
 
   return (
     <div className="flex flex-col gap-8">
@@ -124,7 +129,7 @@ export default function DashboardGrid({
         <span>현재 베타버전 프로그램입니다.</span>
       </div>
 
-      {!inDesktopApp && (
+      {!inDesktopApp && showDownloadCard && (
         <Link
           href="/download"
           className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 lg:px-4 lg:py-3 rounded-xl bg-surface border border-border hover:border-accent/40 transition-colors group"

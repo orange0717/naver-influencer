@@ -23,14 +23,26 @@ const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe', '/down
 
 export default function Footer() {
   const [inDesktopApp, setInDesktopApp] = useState(false);
+  const [hasSupabaseAuth, setHasSupabaseAuth] = useState(false);
 
   useEffect(() => {
     setInDesktopApp(isDesktop());
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then((d: { authId?: string | null }) => {
+        if (!cancelled) setHasSupabaseAuth(!!d?.authId);
+      })
+      .catch(() => { if (!cancelled) setHasSupabaseAuth(false); });
+    return () => { cancelled = true; };
+  }, []);
+
   const visibleLinks = inDesktopApp
     ? FOOTER_LINKS.filter(l => !DESKTOP_HIDDEN_HREFS.has(l.href))
-    : FOOTER_LINKS;
+    : FOOTER_LINKS.filter(l => l.href !== '/download' || hasSupabaseAuth);
 
   return (
     <footer className="bg-footer-bg text-footer-text"

@@ -143,6 +143,7 @@ export default async function HomePage() {
         isLoggedIn={isLoggedIn}
         userName={userName}
         subscriptionExpiresAt={subscriptionExpiresAt}
+        showDesktopAppPromo={!!authUser}
         stats={{
           myKeywordCount,
           myBlogRank,

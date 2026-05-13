@@ -15,7 +15,7 @@ const bodySchema = z.object({
 
 /**
  * 데스크탑 앱 관련 비식별 이벤트 수집 (다운로드 페이지 방문, 에셋 클릭, 앱 실행).
- * 로그인 시 user_id 연결. download_* 이벤트는 로그인 필수, app_launch(Electron)만 비로그인 허용.
+ * 로그인 시 user_id 연결. download_* 이벤트는 Supabase 회원만(데모 쿠키 세션 제외), app_launch(Electron)만 비로그인 허용.
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
