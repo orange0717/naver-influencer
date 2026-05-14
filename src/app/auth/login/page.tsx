@@ -201,7 +201,7 @@ function LoginPageContent() {
               <span className="font-bold tracking-tight">N인플</span>
               <span className="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-sm text-[10px] font-bold tracking-wider text-white">BETA</span>
             </Link>
-            <p className="mt-6 inline-block px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-tight text-white/95">
+            <p className="mt-9 inline-block px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-tight text-white/95">
               블로거에서 인플루언서로
             </p>
             <h1 className="mt-3 text-2xl font-extrabold leading-tight">
@@ -213,7 +213,7 @@ function LoginPageContent() {
             <button
               type="button"
               onClick={() => setDemoOpen(true)}
-              className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-xs font-bold text-white transition cursor-pointer"
+              className="mt-7 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-xs font-bold text-white transition cursor-pointer"
             >
               가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
             </button>
@@ -221,7 +221,7 @@ function LoginPageContent() {
 
           {/* 데스크탑 — 풀 사이즈 카피 */}
           <div className="hidden lg:flex relative min-h-[100dvh] flex-col justify-between p-12 xl:p-16">
-            <Link href="/" className="inline-flex items-center gap-2.5 group w-fit">
+            <Link href="/" className="inline-flex items-center gap-2.5 group w-fit mb-10">
               <span className="w-11 h-11 rounded-xl bg-white text-accent flex items-center justify-center font-extrabold text-xl shadow-lg shadow-black/10 group-hover:scale-105 transition">
                 N
               </span>
@@ -268,7 +268,7 @@ function LoginPageContent() {
               </button>
             </div>
 
-            <div className="text-xs text-white/70 flex items-center gap-2">
+            <div className="text-xs text-white/70 flex items-center gap-2 mt-12">
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
                 현재 베타 프로그램 운영 중
