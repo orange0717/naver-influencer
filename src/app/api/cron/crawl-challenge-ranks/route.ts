@@ -194,38 +194,28 @@ async function ensureKeywordsExist(
   }
 }
 
-/** 크롤할 인플루언서 목록 조회 — 챌린지 참여자(total_keywords > 0) + 아직 챌린지 크롤을 한 번도 안 한 행(last_crawled_at IS NULL, 피드 upsert 등).
- *  미참여 확정 후에는 last_crawled_at만 갱신해 순환에서 제외(processInfluencer).
+/** 크롤할 인플루언서 목록 조회.
+ *
+ * 전체 인플루언서 풀을 오래된 순서로 순환한다. total_keywords=0도 다음 크롤 때
+ * 참여 키워드가 생길 수 있으므로 큐에서 제외하면 안 된다. 수동 활동중단 또는
+ * import에서 비활성 처리된 행만 제외한다.
  */
 async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>, batchSize: number) {
-  const activeLimit = Math.max(1, Math.floor(batchSize * 0.8));
-  const { data: active } = await supabase
+  const { data, error } = await supabase
     .from('influencers')
     .select('id, naver_id, naver_owner_id, category, my_keyword_category')
-    .gt('total_keywords', 0)
-    .order('last_crawled_at', { ascending: true, nullsFirst: false })
-    .limit(activeLimit);
+    .eq('is_active', true)
+    .neq('stopped_manual', true)
+    .order('last_crawled_at', { ascending: true, nullsFirst: true })
+    .limit(batchSize);
 
-  const result = active || [];
-  const remaining = batchSize - result.length;
-
-  if (remaining > 0) {
-    const seen = new Set(result.map(inf => inf.id));
-    const { data: uncrawled } = await supabase
-      .from('influencers')
-      .select('id, naver_id, naver_owner_id, category, my_keyword_category')
-      .is('last_crawled_at', null)
-      .limit(remaining * 2);
-
-    for (const inf of uncrawled || []) {
-      if (seen.has(inf.id)) continue;
-      result.push(inf);
-      if (result.length >= batchSize) break;
-    }
+  if (error) {
+    console.error('[crawl-challenge-ranks] target query failed:', error.message);
+    return [];
   }
 
-  console.log(`[crawl-challenge-ranks] Target: ${result.length} influencers (stale active first, uncrawled fill)`);
-  return result;
+  console.log(`[crawl-challenge-ranks] Target: ${data?.length || 0} influencers (full active pool, oldest first)`);
+  return data || [];
 }
 
 export async function GET(request: NextRequest) {
@@ -295,7 +285,7 @@ export async function GET(request: NextRequest) {
             .from('influencers')
             .update({ last_crawled_at: new Date().toISOString() })
             .eq('id', inf.id);
-          return { ok: false, count: 0 };
+          return { ok: true, count: 0 };
         }
         await supabase.from('influencers').update({ naver_owner_id: ownerId }).eq('id', inf.id);
       }
@@ -318,7 +308,7 @@ export async function GET(request: NextRequest) {
             last_crawled_at: new Date().toISOString(),
           })
           .eq('id', inf.id);
-        return { ok: false, count: 0 };
+        return { ok: true, count: 0 };
       }
 
       // 3. naver_keyword_id로 keyword_challenges 매칭

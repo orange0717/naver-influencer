@@ -21,6 +21,14 @@ function minutesSince(iso: string | null | undefined) {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000));
 }
 
+function activeInfluencerQuery(supabase: ReturnType<typeof createServiceClient>) {
+  return supabase
+    .from('influencers')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .neq('stopped_manual', true);
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (auth.error) return auth.error;
@@ -43,15 +51,21 @@ export async function GET(req: NextRequest) {
     ownerMissingRes,
     totalInfluencersRes,
   ] = await Promise.all([
-    supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0),
-    supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).gte('last_crawled_at', cutoff1h),
-    supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff24h}`),
-    supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).is('last_crawled_at', null),
-    supabase.from('influencers').select('naver_id, display_name, last_crawled_at').gt('total_keywords', 0).not('last_crawled_at', 'is', null).order('last_crawled_at', { ascending: true }).limit(5),
+    activeInfluencerQuery(supabase),
+    activeInfluencerQuery(supabase).gte('last_crawled_at', cutoff1h),
+    activeInfluencerQuery(supabase).or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff24h}`),
+    activeInfluencerQuery(supabase).is('last_crawled_at', null),
+    supabase
+      .from('influencers')
+      .select('naver_id, display_name, last_crawled_at')
+      .eq('is_active', true)
+      .neq('stopped_manual', true)
+      .not('last_crawled_at', 'is', null)
+      .order('last_crawled_at', { ascending: true })
+      .limit(5),
     supabase.from('crawl_jobs').select('id, job_type, status, started_at, completed_at, total_items, processed_items, failed_items, error_message').order('started_at', { ascending: false }).limit(20),
-    // crawl-challenge-ranks 큐: last_crawled_at 미설정(첫 수집 또는 미완)
-    supabase.from('influencers').select('*', { count: 'exact', head: true }).is('last_crawled_at', null),
-    supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).is('last_crawled_at', null),
+    activeInfluencerQuery(supabase).is('last_crawled_at', null),
+    activeInfluencerQuery(supabase).is('last_crawled_at', null),
     // 팬/팔로워는 있는데 네이버 챌린지 참여일(last_challenged_at) 미수신 → 공개 리스트와 체감 불일치 가능
     supabase
       .from('influencers')
@@ -60,7 +74,7 @@ export async function GET(req: NextRequest) {
       .or('subscriber_count.gt.0,total_follower_count.gt.0'),
     // 참여 키워드는 있는데 naver ownerId 없음 → participated API 호출 불가
     supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).is('naver_owner_id', null),
-    supabase.from('influencers').select('*', { count: 'exact', head: true }),
+    activeInfluencerQuery(supabase),
   ]);
 
   const total = totalActiveRes.count || 0;

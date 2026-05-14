@@ -4,9 +4,17 @@ import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler'
 
 export const maxDuration = 60;
 
+function activeInfluencerQuery(supabase: ReturnType<typeof createServiceClient>) {
+  return supabase
+    .from('influencers')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .neq('stopped_manual', true);
+}
+
 /**
  * 매일 아침 6:30 KST (21:30 UTC) 에 실행.
- * 활성 인플루언서 중 last_crawled_at 이 24시간 이상 지난 건수 집계.
+ * 전체 활성 인플루언서 중 last_crawled_at 이 24시간 이상 지난 건수 집계.
  * 결과는 crawl_jobs 테이블에 기록되며 /admin/crawler 페이지에서 조회 가능.
  */
 export async function GET(request: NextRequest) {
@@ -20,21 +28,12 @@ export async function GET(request: NextRequest) {
   try {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const { count: totalActive } = await supabase
-      .from('influencers')
-      .select('*', { count: 'exact', head: true })
-      .gt('total_keywords', 0);
+    const { count: totalActive } = await activeInfluencerQuery(supabase);
 
-    const { count: stale } = await supabase
-      .from('influencers')
-      .select('*', { count: 'exact', head: true })
-      .gt('total_keywords', 0)
+    const { count: stale } = await activeInfluencerQuery(supabase)
       .or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff}`);
 
-    const { count: neverCrawled } = await supabase
-      .from('influencers')
-      .select('*', { count: 'exact', head: true })
-      .gt('total_keywords', 0)
+    const { count: neverCrawled } = await activeInfluencerQuery(supabase)
       .is('last_crawled_at', null);
 
     const total = totalActive || 0;

@@ -38,6 +38,15 @@ export function sleep(ms = 1000) {
 /** 요청 타임아웃 (기본 15초) */
 const REQUEST_TIMEOUT_MS = 15_000;
 
+function isMissingCronLockRpc(error: { message?: string; code?: string }) {
+  return (
+    error.code === 'PGRST202' ||
+    error.message?.includes('try_acquire_cron_lock') ||
+    error.message?.includes('release_cron_lock') ||
+    error.message?.includes('Could not find the function')
+  );
+}
+
 /** User-Agent 포함 fetch + 재시도 + AbortController 타임아웃 + SSRF 방지 */
 export async function fetchWithRetry(
   url: string,
@@ -161,6 +170,10 @@ export async function tryAcquireCronLock(key: string, ttlSeconds = 600): Promise
   });
 
   if (error) {
+    if (isMissingCronLockRpc(error)) {
+      console.warn(`[crawler] cron lock RPC is not installed; continuing without lock (${key}).`);
+      return true;
+    }
     console.error(`[crawler] cron lock acquire failed (${key}):`, error.message);
     return true;
   }
@@ -173,6 +186,7 @@ export async function releaseCronLock(key: string) {
   const supabase = createServiceClient();
   const { error } = await supabase.rpc('release_cron_lock', { p_key: key });
   if (error) {
+    if (isMissingCronLockRpc(error)) return;
     console.error(`[crawler] cron lock release failed (${key}):`, error.message);
   }
 }

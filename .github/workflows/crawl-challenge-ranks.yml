@@ -1,0 +1,30 @@
+name: N인플 챌린지 순위 크롤링 안전망
+
+on:
+  schedule:
+    # Vercel Cron이 지연/비활성화되어도 15분 cadence를 유지하는 보조 트리거.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: crawl-challenge-ranks-scheduled
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Trigger scheduled crawler
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL || 'https://ninfle.kr' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret is required for the crawler safety-net workflow."
+            exit 1
+          fi
+
+          curl --fail --show-error --silent \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$NINFL_BASE_URL/api/cron/crawl-challenge-ranks-scheduled"
