@@ -14,6 +14,7 @@ const CRON_JOBS: Record<string, string> = {
   'generate-recommendations': '/api/cron/generate-recommendations',
   'crawl-blog-ranks': '/api/cron/crawl-blog-ranks',
   'crawl-selection-dates': '/api/cron/crawl-selection-dates',
+  'privacy-notices': '/api/cron/privacy-notices',
 };
 
 /** 수동 크론잡 실행 (테스트용)

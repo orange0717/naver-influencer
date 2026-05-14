@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS = {
   notify_top3_entry: true,
   notify_top3_exit: true,
   notify_significant_change: true,
+  privacy_notice_email: true,
 };
 
 async function getRecipient(request: NextRequest, supabase: ReturnType<typeof createServiceClient>) {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   const { data } = await supabase
     .from('notification_settings')
-    .select('email_enabled, kakao_enabled, in_app_enabled, notify_top3_entry, notify_top3_exit, notify_significant_change')
+    .select('email_enabled, kakao_enabled, in_app_enabled, notify_top3_entry, notify_top3_exit, notify_significant_change, privacy_notice_email')
     .eq(recipient.col, recipient.id)
     .single();
 

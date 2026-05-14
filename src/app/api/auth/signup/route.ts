@@ -4,6 +4,7 @@ import { validateBody } from '@/lib/validations';
 import { signupSchema } from '@/lib/validations/auth';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { clearPostAuthDemoCookies } from '@/lib/demo-session';
+import { getPrivacyPolicyVersion } from '@/lib/privacy-notice';
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
     signup_keyword_category: keywordCategory,
   };
   if (blogId) insertPayload.blog_id = blogId;
+  insertPayload.last_privacy_policy_version_ack = getPrivacyPolicyVersion();
 
   const { data, error } = await supabase
     .from('users')

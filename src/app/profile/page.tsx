@@ -66,6 +66,12 @@ function NotificationSettingsSection() {
         <ToggleRow label="이메일 알림" checked={settings.email_enabled} onChange={(v) => handleChange('email_enabled', v)} />
         <ToggleRow label="카카오 알림톡" checked={settings.kakao_enabled} onChange={(v) => handleChange('kakao_enabled', v)} />
         <ToggleRow label="인앱 알림" checked={settings.in_app_enabled} onChange={(v) => handleChange('in_app_enabled', v)} />
+        <ToggleRow
+          label="개인정보처리방침 안내 메일"
+          checked={settings.privacy_notice_email !== false}
+          onChange={(v) => handleChange('privacy_notice_email', v)}
+        />
+        <p className="text-[11px] text-dim pl-0.5 -mt-1 mb-1">처리방침 개정·연 1회 정기 안내(설정된 주기)입니다. 순위 알림과 별도입니다.</p>
 
         <hr className="border-border my-2" />
 

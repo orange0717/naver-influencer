@@ -54,6 +54,7 @@ interface ActiveStats {
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
+  const [pageLimit, setPageLimit] = useState(20);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
@@ -77,6 +78,7 @@ export default function AdminMembersPage() {
     const data = await res.json();
     setMembers(data.members || []);
     setTotal(data.total || 0);
+    setPageLimit(Math.min(50, Math.max(1, data.limit || 20)));
     setTotalPages(data.totalPages || 1);
     setLoading(false);
   }, [page, search]);
@@ -254,7 +256,7 @@ export default function AdminMembersPage() {
                   className="hover:bg-surface-hover transition cursor-pointer"
                 >
                   <td className="px-2 py-2.5 text-center text-xs text-dim font-rank tabular-nums">
-                    {(page - 1) * 20 + idx + 1}
+                    {total > 0 ? total - ((page - 1) * pageLimit + idx) : '-'}
                   </td>
                   <td className="px-3 py-2.5 font-semibold">
                     <span className="inline-flex items-center gap-1.5">
@@ -351,7 +353,7 @@ export default function AdminMembersPage() {
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span className="text-[11px] text-dim font-rank tabular-nums shrink-0 w-6 text-right">
-                        {(page - 1) * 20 + idx + 1}
+                        {total > 0 ? total - ((page - 1) * pageLimit + idx) : '-'}
                       </span>
                       <span className="font-semibold text-sm truncate">{m.nickname || '-'}</span>
                       {m.is_admin && (

@@ -299,3 +299,89 @@ export async function sendSubscriptionExpiredEmail(to: string, displayName: stri
     throw new Error(error.message || '이메일 발송 실패');
   }
 }
+
+/** 개인정보처리방침 개정 안내 */
+export async function sendPrivacyPolicyUpdateEmail(
+  to: string,
+  displayName: string,
+  policyVersion: string,
+) {
+  const safeName = escapeHtml(displayName);
+  const safeVer = escapeHtml(policyVersion);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfle.kr';
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `[N인플] 개인정보처리방침이 개정되었습니다 (${safeVer})`,
+    html: `
+      <div style="max-width:520px;margin:0 auto;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#333">
+        <div style="background:#c8816b;padding:24px 20px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
+        </div>
+        <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
+          <p style="font-size:16px;font-weight:bold;margin:0 0 16px">${safeName}님, 안녕하세요.</p>
+          <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
+            개인정보처리방침이 개정되어 안내드립니다.<br>
+            <strong>시행 기준 버전: ${safeVer}</strong><br><br>
+            자세한 내용은 아래 링크에서 확인하실 수 있습니다.
+          </p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="${baseUrl}/privacy"
+               style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
+              개인정보처리방침 보기
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:11px;color:#999;text-align:center;margin:0">
+            본 메일은 가입 시 등록하신 이메일로 발송되었습니다.<br>
+            수신 설정은 <a href="${baseUrl}/profile#notification-settings" style="color:#c8816b">마이페이지 · 알림 설정</a>에서 변경할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('[email] 개인정보처리방침 개정 안내 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
+}
+
+/** 개인정보처리방침 정기 안내 (변경 없을 때 주기적 리마인더) */
+export async function sendPrivacyAnnualReminderEmail(to: string, displayName: string) {
+  const safeName = escapeHtml(displayName);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfle.kr';
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: '[N인플] 개인정보처리방침 안내',
+    html: `
+      <div style="max-width:520px;margin:0 auto;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#333">
+        <div style="background:#c8816b;padding:24px 20px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
+        </div>
+        <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
+          <p style="font-size:16px;font-weight:bold;margin:0 0 16px">${safeName}님, 안녕하세요.</p>
+          <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
+            개인정보의 열람·정정·삭제·처리정지 요청 등 회원님의 권리와<br>
+            개인정보 보호책임자 연락처는 개인정보처리방침에서 확인하실 수 있습니다.
+          </p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="${baseUrl}/privacy"
+               style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
+              개인정보처리방침 보기
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:11px;color:#999;text-align:center;margin:0">
+            본 메일은 정기 안내입니다. 수신 설정은<br>
+            <a href="${baseUrl}/profile#notification-settings" style="color:#c8816b">마이페이지 · 알림 설정</a>에서 변경할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('[email] 개인정보 정기 안내 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
+}
