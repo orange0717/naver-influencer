@@ -26,5 +26,7 @@ jobs:
           fi
 
           curl --fail --show-error --silent \
+            -A "vercel-cron/1.0" \
             -H "Authorization: Bearer $CRON_SECRET" \
+            -H "x-vercel-cron-auth-token: github-actions-safety-net" \
             "$NINFL_BASE_URL/api/cron/crawl-challenge-ranks-scheduled"
