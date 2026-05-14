@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifySession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
+import { isTrialExpired } from '@/lib/trial';
 
 // 동시 로그인 검증을 건너뛸 경로 (auth 흐름 + 정적/공개 API)
 const SESSION_CHECK_BYPASS = [
@@ -102,6 +103,24 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/auth/login';
       url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
       return NextResponse.redirect(url);
+    }
+  }
+
+  // 데모 체험( trial_started + 72h ) 만료 후: 로그인 없이 데모 쿠키만 있으면 유료 전환 유도
+  // — /subscribe 는 허용(결제·안내). 그 외 보호 HTML 경로 + 홈(/) 은 /subscribe 로 보냄.
+  if (acceptsHtml && !user && hasDemoSession) {
+    const trialStarted = request.cookies.get('trial_started')?.value;
+    if (isTrialExpired(trialStarted)) {
+      const onSubscribe = pathname === '/subscribe' || pathname.startsWith('/subscribe/');
+      if (!onSubscribe) {
+        const blockedByLoginGate = needsLoginPage || pathname === '/';
+        if (blockedByLoginGate) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/subscribe';
+          url.search = '';
+          return NextResponse.redirect(url);
+        }
+      }
     }
   }
 
