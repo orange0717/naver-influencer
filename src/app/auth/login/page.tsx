@@ -109,7 +109,7 @@ function LoginPageContent() {
 
   if (!authChecked) {
     return (
-      <div className="fixed inset-0 z-50 bg-bg flex items-center justify-center">
+      <div className="fixed inset-0 z-[200] bg-bg flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     );
@@ -185,10 +185,10 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-bg overflow-y-auto overflow-x-hidden overscroll-y-contain">
-      <div className="min-h-[100dvh] flex flex-col lg:flex-row lg:min-h-[100dvh]">
+    <div className="fixed inset-0 z-[200] bg-bg overflow-y-auto overflow-x-hidden overscroll-y-contain">
+      <div className="min-h-[100svh] min-h-[100dvh] flex flex-col lg:flex-row lg:h-[100svh] lg:min-h-0 lg:max-h-[100svh] lg:overflow-hidden">
         {/* ─── 좌측: 풀블리드 그라디언트 패널 (lg+ 표시, 모바일은 상단 헤더로 축소) ─── */}
-        <aside className="relative lg:flex-1 lg:min-w-0 overflow-x-hidden bg-gradient-to-br from-[#7A4F45] via-[#BF877A] to-[#D9ABA0] text-white">
+        <aside className="relative lg:flex-1 lg:min-w-0 lg:min-h-0 lg:h-full lg:overflow-x-hidden lg:overflow-y-auto bg-gradient-to-br from-[#7A4F45] via-[#BF877A] to-[#D9ABA0] text-white">
           {/* 데코레이션 — blur orbs */}
           <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-40 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#F2E2DC]/40 blur-3xl" />
@@ -220,7 +220,7 @@ function LoginPageContent() {
           </div>
 
           {/* 데스크탑 — 풀 사이즈 카피 */}
-          <div className="hidden lg:flex relative min-h-[100dvh] flex-col justify-between p-12 xl:p-16">
+          <div className="hidden lg:flex relative h-full min-h-0 flex-col justify-between p-12 xl:p-16">
             <Link href="/" className="inline-flex items-center gap-2.5 group w-fit mb-10">
               <span className="w-11 h-11 rounded-xl bg-white text-accent flex items-center justify-center font-extrabold text-xl shadow-lg shadow-black/10 group-hover:scale-105 transition">
                 N
@@ -280,8 +280,8 @@ function LoginPageContent() {
         </aside>
 
         {/* ─── 우측: 로그인 폼 ─── */}
-        <section className="relative w-full lg:w-[480px] xl:w-[520px] lg:flex-shrink-0 bg-surface lg:min-h-0">
-          <div className="min-h-full flex flex-col">
+        <section className="relative w-full lg:w-[480px] xl:w-[520px] lg:flex-shrink-0 lg:min-h-0 lg:h-full lg:overflow-y-auto bg-surface">
+          <div className="min-h-full lg:min-h-0 flex flex-col">
             {/* 우측 상단 — 홈으로 */}
             <div className="px-6 lg:px-10 pt-6">
               <Link href="/" className="text-xs text-dim hover:text-accent transition inline-flex items-center gap-1">
@@ -408,7 +408,7 @@ function LoginPageContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="fixed inset-0 z-50 bg-bg flex items-center justify-center">
+      <div className="fixed inset-0 z-[200] bg-bg flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     }>

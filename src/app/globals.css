@@ -48,6 +48,8 @@
 
 html {
   overflow-x: hidden;
+  /* Windows 등에서 세로 스크롤바 유무로 가로 폭이 흔들리지 않게 */
+  scrollbar-gutter: stable;
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
