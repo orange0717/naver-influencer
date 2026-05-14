@@ -65,3 +65,9 @@ desktop/.cache/
 # 빌드 시 생성되는 OS별 아이콘은 커밋하지 않음(원본 PNG만 유지)
 desktop/icons/icon.icns
 desktop/icons/icon.ico
+
+# Repo-local side apps (venv + build output)
+backend/.venv/
+backend/.env
+frontend/node_modules/
+frontend/dist/

@@ -3,6 +3,7 @@ import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-se
 import { validateBody } from '@/lib/validations';
 import { signupSchema } from '@/lib/validations/auth';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
@@ -45,7 +46,9 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (existing) {
-    return NextResponse.json({ success: true, userId: existing.id });
+    const res = NextResponse.json({ success: true, userId: existing.id });
+    clearPostAuthDemoCookies(res);
+    return res;
   }
 
   // 중복 검증 (case-insensitive). DB UNIQUE 제약이 없어 race condition 까지는 못 막지만
@@ -111,5 +114,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '회원가입 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, userId: data.id });
+  const res = NextResponse.json({ success: true, userId: data.id });
+  clearPostAuthDemoCookies(res);
+  return res;
 }

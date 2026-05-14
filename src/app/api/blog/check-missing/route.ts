@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { createHmac } from 'crypto';
 import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { createServiceClient } from '@/lib/supabase-server';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -330,6 +331,9 @@ export async function POST(request: NextRequest) {
     if (!blogId || (!postTitle && !keyword)) {
       return NextResponse.json({ error: 'blogId, postTitle 또는 keyword 필수' }, { status: 400 });
     }
+
+    const denied = await assertBlogResourceAccess(request, String(blogId));
+    if (denied) return denied;
 
     // 캐시 확인
     const cacheKey = keyword

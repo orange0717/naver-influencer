@@ -10,8 +10,74 @@
     const sp = state && state.space && state.space.data ? state.space.data : null;
     const spaceId = sp && sp.id;
     const urlId = (sp && sp.urlId) || (location.pathname.split('/').filter(Boolean)[0] || null);
-    const isOwnSpace = sp && sp.isMySpace === true;
-    return { spaceId, urlId, isOwnSpace };
+    const isMySpace = sp ? sp.isMySpace : undefined;
+    return {
+      spaceId,
+      urlId,
+      /** 네이버가 true 로 줄 때만 확실한 본인 공간 */
+      isOwnSpace: isMySpace === true,
+      /** 타인 프로필로 판정되는 경우 */
+      isExplicitOther: isMySpace === false,
+    };
+  }
+
+  /** 팔로워·팔로잉 urlId 기준 집합 분석 (맞팬 / 나만 팬 / 상대만 팬) */
+  function analyzeFanRelations(followers, followings) {
+    const followerIds = new Set(followers.map((x) => x.urlId).filter(Boolean));
+    const followingIds = new Set(followings.map((x) => x.urlId).filter(Boolean));
+    const mutual = followings.filter((x) => x.urlId && followerIds.has(x.urlId));
+    const iFollowOnly = followings.filter((x) => x.urlId && !followerIds.has(x.urlId));
+    const followsMeOnly = followers.filter((x) => x.urlId && !followingIds.has(x.urlId));
+    return { mutual, iFollowOnly, followsMeOnly };
+  }
+
+  function showFanAnalysisPanel({ mutual, iFollowOnly, followsMeOnly }) {
+    const wrapId = '__ninfle_fan_analysis__';
+    let wrap = document.getElementById(wrapId);
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = wrapId;
+      wrap.style.cssText = [
+        'position:fixed', 'bottom:20px', 'right:20px', 'z-index:2147483646',
+        'max-width:min(360px,calc(100vw - 40px))', 'padding:14px 16px', 'border-radius:12px',
+        'background:#fff', 'color:#333', 'box-shadow:0 8px 32px rgba(0,0,0,0.15)',
+        'font:13px/1.45 -apple-system,system-ui,sans-serif', 'border:1px solid #e8e0dc',
+      ].join(';');
+      document.body.appendChild(wrap);
+    }
+    const copyJson = (label, arr) => {
+      const t = JSON.stringify(arr, null, 2);
+      navigator.clipboard.writeText(t).then(
+        () => toast(`${label} 목록을 클립보드에 복사했습니다.`, 'success'),
+        () => prompt('복사에 실패했습니다. 아래를 직접 복사하세요.', t),
+      );
+    };
+    wrap.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:14px;">팬 관계 분석</strong>
+        <button type="button" id="__ninfle_fan_close__" style="border:none;background:transparent;cursor:pointer;font-size:18px;line-height:1;color:#888;">×</button>
+      </div>
+      <ul style="margin:0 0 10px 18px;padding:0;">
+        <li><strong>맞팬</strong> ${mutual.length}명</li>
+        <li><strong>나만 팬</strong> ${iFollowOnly.length}명 <span style="color:#888;font-size:12px;">(내가 팬인데 상대는 나를 팬하지 않음)</span></li>
+        <li><strong>상대만 팬</strong> ${followsMeOnly.length}명 <span style="color:#888;font-size:12px;">(나를 팬인데 내가 팬하지 않음)</span></li>
+      </ul>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <button type="button" data-copy="mutual" class="__ninfle_fan_btn__" style="padding:6px 10px;border-radius:8px;border:1px solid #ccc;background:#fafafa;cursor:pointer;font-size:12px;">맞팬 복사</button>
+        <button type="button" data-copy="iFollowOnly" class="__ninfle_fan_btn__" style="padding:6px 10px;border-radius:8px;border:1px solid #c45c4a;background:#fff5f3;cursor:pointer;font-size:12px;">나만 팬 복사</button>
+        <button type="button" data-copy="followsMeOnly" class="__ninfle_fan_btn__" style="padding:6px 10px;border-radius:8px;border:1px solid #ccc;background:#fafafa;cursor:pointer;font-size:12px;">상대만 팬 복사</button>
+      </div>
+      <p style="margin:10px 0 0;font-size:11px;color:#888;">과거 맞팬이었다가 상대만 팬을 끊은 경우는, 현재 스냅샷에서는 「나만 팬」에 포함됩니다.</p>
+    `;
+    wrap.querySelector('#__ninfle_fan_close__').onclick = () => wrap.remove();
+    wrap.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.onclick = () => {
+        const k = btn.getAttribute('data-copy');
+        if (k === 'mutual') copyJson('맞팬', mutual);
+        else if (k === 'iFollowOnly') copyJson('나만 팬', iFollowOnly);
+        else if (k === 'followsMeOnly') copyJson('상대만 팬', followsMeOnly);
+      };
+    });
   }
 
   function pick(...args) {
@@ -101,6 +167,23 @@
       followings,
     };
 
+    const analysis = analyzeFanRelations(followers, followings);
+    await chrome.storage.local.set({
+      lastFanAnalysisAt: Date.now(),
+      lastFanAnalysis: {
+        mutual: analysis.mutual.length,
+        iFollowOnly: analysis.iFollowOnly.length,
+        followsMeOnly: analysis.followsMeOnly.length,
+      },
+    });
+    if (!silent) {
+      showFanAnalysisPanel(analysis);
+      toast(
+        `분석: 맞팬 ${analysis.mutual.length} · 나만 팬 ${analysis.iFollowOnly.length} · 상대만 팬 ${analysis.followsMeOnly.length}`,
+        'info',
+      );
+    }
+
     try {
       const result = await chrome.runtime.sendMessage({ type: 'UPLOAD_FANS', payload });
       if (result?.ok) {
@@ -111,7 +194,11 @@
             (c.removed ? ` (-${c.removed})` : ''),
           'success',
         );
-        await chrome.storage.local.set({ lastSyncAt: Date.now(), lastSyncCounts: c });
+        await chrome.storage.local.set({
+          lastSyncAt: Date.now(),
+          lastSyncCounts: c,
+          linkedOwnerUrlId: urlId,
+        });
       } else if (result?.error === 'NOT_AUTHENTICATED') {
         toast('N인플 로그인이 필요합니다. ninfle.kr 에 로그인 후 다시 시도하세요.', 'error');
       } else {
@@ -149,8 +236,22 @@
   }
 
   async function maybeAutoSync() {
-    const { isOwnSpace, urlId } = getOwnerInfo();
-    if (!isOwnSpace) return; // 본인 페이지가 아니면 자동 실행 안 함
+    const { spaceId, urlId, isOwnSpace, isExplicitOther } = getOwnerInfo();
+    if (isExplicitOther) {
+      console.log('[ninfle-ext] auto-sync skipped (other user space)', urlId);
+      return;
+    }
+    if (!spaceId || !urlId) return;
+
+    let allowAuto = isOwnSpace;
+    if (!allowAuto) {
+      const { linkedOwnerUrlId } = await chrome.storage.local.get('linkedOwnerUrlId');
+      allowAuto = !!(linkedOwnerUrlId && linkedOwnerUrlId === urlId);
+      if (!allowAuto) {
+        console.log('[ninfle-ext] auto-sync skipped (not own / no linkedOwnerUrlId yet — use manual sync once)');
+        return;
+      }
+    }
 
     const { autoSyncEnabled = true, lastAutoSyncAt = 0 } = await chrome.storage.local.get([
       'autoSyncEnabled', 'lastAutoSyncAt',
@@ -170,7 +271,7 @@
 
     console.log('[ninfle-ext] auto-syncing for', urlId);
     await chrome.storage.local.set({ lastAutoSyncAt: Date.now() });
-    await runSync({ silent: false });
+    await runSync({ silent: true });
   }
 
   // popup → content 메시지 (수동 동기화)

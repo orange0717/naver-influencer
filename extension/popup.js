@@ -79,9 +79,9 @@ async function refreshPageStatus() {
   try {
     const info = await chrome.tabs.sendMessage(tab.id, { type: 'PING_OWNER_INFO' });
     if (info?.spaceId && info?.urlId) {
-      el.textContent = `@${info.urlId}` + (info.isOwnSpace ? '' : ' (본인 페이지 아님)');
-      el.className = info.isOwnSpace ? 'value status-ok' : 'value status-warn';
-      if (!info.isOwnSpace) {
+      el.textContent = `@${info.urlId}` + (info.isExplicitOther ? ' (본인 페이지 아님)' : '');
+      el.className = info.isExplicitOther ? 'value status-warn' : 'value status-ok';
+      if (info.isExplicitOther) {
         help.textContent = '본인 계정이 아닌 페이지입니다. 본인 홈으로 이동하세요.';
       }
     } else {
@@ -125,5 +125,6 @@ $('sync-now').addEventListener('click', async () => {
 });
 
 (async function init() {
-  await Promise.all([refreshAuth(), refreshLastSync(), refreshPageStatus(), refreshAutoSync()]);
+  await refreshAuth();
+  await Promise.all([refreshLastSync(), refreshPageStatus(), refreshAutoSync()]);
 })();

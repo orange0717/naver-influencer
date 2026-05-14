@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import * as cheerio from 'cheerio';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { requirePaidPlan } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -174,6 +175,9 @@ function analyzeCharacters(text: string) {
  * body: { blogId, logNo }
  */
 export async function POST(request: NextRequest) {
+  const paid = await requirePaidPlan(request);
+  if ('error' in paid) return paid.error;
+
   const ip = getClientIp(request);
   if (await dashboardLimiter.check(ip)) return rateLimitResponse();
 

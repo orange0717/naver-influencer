@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { DashboardApp, AppCategoryMeta, PlanTier } from '@/lib/dashboard-catalog';
 
@@ -128,6 +129,8 @@ interface AppCardProps {
   category: AppCategoryMeta;
   /** 현재 사용자 플랜 (잠금 판정) */
   currentPlan: PlanTier;
+  /** 정식 로그인 또는 데모 세션 — false면 카드 탭 시 로그인으로 이동 */
+  isLoggedIn: boolean;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
   onSelect: (app: DashboardApp) => void;
@@ -137,10 +140,12 @@ export default function AppCard({
   app,
   category,
   currentPlan,
+  isLoggedIn,
   isFavorite,
   onToggleFavorite,
   onSelect,
 }: AppCardProps) {
+  const router = useRouter();
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
   const locked =
     !!app.requiredPlan && PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan];
@@ -150,10 +155,18 @@ export default function AppCard({
     ? '준비 중'
     : (app.ctaLabel || ctaForRequiredPlan(app.requiredPlan));
 
+  const handleCardActivate = () => {
+    if (!isLoggedIn) {
+      router.push(`/auth/login?redirect=${encodeURIComponent(app.href)}`);
+      return;
+    }
+    onSelect(app);
+  };
+
   return (
     <button
       type="button"
-      onClick={() => onSelect(app)}
+      onClick={handleCardActivate}
       className="group relative flex flex-col text-left bg-surface rounded-2xl border border-border p-3 lg:p-4 aspect-square transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-accent/40 cursor-pointer"
     >
       {/* 상단: 카테고리 태그 + 상태 뱃지 + 즐겨찾기 */}

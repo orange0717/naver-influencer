@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,9 @@ export async function POST(req: NextRequest) {
     if (!blog_id) {
       return NextResponse.json({ error: 'blog_id가 필요합니다.' }, { status: 400 });
     }
+
+    const denied = await assertBlogResourceAccess(req, String(blog_id));
+    if (denied) return denied;
 
     const supabase = createServiceClient();
 
@@ -76,6 +80,9 @@ export async function GET(req: NextRequest) {
   if (!blogId) {
     return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
   }
+
+  const denied = await assertBlogResourceAccess(req, blogId);
+  if (denied) return denied;
 
   try {
     const supabase = createServiceClient();

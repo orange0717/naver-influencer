@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -247,6 +248,9 @@ export async function GET(request: NextRequest) {
     if (!blogId) {
       return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
     }
+
+    const denied = await assertBlogResourceAccess(request, blogId);
+    if (denied) return denied;
 
     // 캐시 확인
     const cacheKey = `posts-${blogId}-${page}-${count}`;

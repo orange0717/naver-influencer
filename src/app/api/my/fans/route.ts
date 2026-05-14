@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getAuthUser } from '@/lib/auth';
+import { requireInfluencerPlan } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,10 +36,9 @@ function toItem(row: FanRow): FanItem {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await getAuthUser(request);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const gate = await requireInfluencerPlan(request);
+  if ('error' in gate) return gate.error;
+  const auth = gate.authUser;
 
   const supabase = createServiceClient();
   const ownerUserId = auth.userId;

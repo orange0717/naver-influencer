@@ -336,18 +336,26 @@ export async function GET(request: NextRequest) {
         await supabase.from('influencer_keywords').upsert(batch, { onConflict: 'influencer_id,keyword_id', ignoreDuplicates: true });
       }
 
-      // 4. 전일 순위 조회 (rank_change 계산용)
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      const { data: prevRankings } = await supabase
-        .from('keyword_rankings')
-        .select('keyword_id, rank_position')
-        .eq('influencer_id', inf.id)
-        .eq('snapshot_date', yesterdayStr);
-
+      // 4. 직전 스냅샷 순위 조회 (rank_change 계산용)
+      // 기존: snapshot_date === "어제" 한 날만 조회 → 크롤이 하루 비거나 부분 적재되면
+      // 전 키워드가 previous_rank 없음·rank_change 0으로 덮여 상승/하락 UI가 사라짐.
+      // 개선: 오늘 스냅샷 이전 중 가장 최근 일자의 순위를 키워드별로 사용 (최근 45일).
       const prevRankMap = new Map<string, number>();
-      prevRankings?.forEach(r => prevRankMap.set(r.keyword_id, r.rank_position));
+      const since = new Date();
+      since.setDate(since.getDate() - 45);
+      const sinceStr = since.toISOString().slice(0, 10);
+      const { data: priorRows } = await supabase
+        .from('keyword_rankings')
+        .select('keyword_id, rank_position, snapshot_date')
+        .eq('influencer_id', inf.id)
+        .lt('snapshot_date', snapshotDate)
+        .gte('snapshot_date', sinceStr)
+        .order('snapshot_date', { ascending: false });
+      for (const row of priorRows || []) {
+        if (!prevRankMap.has(row.keyword_id)) {
+          prevRankMap.set(row.keyword_id, row.rank_position);
+        }
+      }
 
       // 5. keyword_rankings UPSERT (배치)
       let batchCount = 0;

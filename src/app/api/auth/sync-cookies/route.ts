@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
+import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,12 @@ export async function POST() {
       return NextResponse.json({ synced: false });
     }
 
+    const jsonAuthed = (body: Record<string, unknown>) => {
+      const r = NextResponse.json(body);
+      clearPostAuthDemoCookies(r);
+      return r;
+    };
+
     const supabase = createServiceClient();
     const { data: profile } = await supabase
       .from('users')
@@ -26,7 +33,7 @@ export async function POST() {
       .single();
 
     if (!profile?.linked_influencer_id) {
-      return NextResponse.json({ synced: false });
+      return jsonAuthed({ synced: false });
     }
 
     const { data: inf } = await supabase
@@ -36,7 +43,7 @@ export async function POST() {
       .single();
 
     if (!inf?.naver_id) {
-      return NextResponse.json({ synced: false });
+      return jsonAuthed({ synced: false });
     }
 
     // 레거시 쿠키 설정
@@ -52,7 +59,7 @@ export async function POST() {
     cookieStore.set('naver_id', inf.naver_id, cookieOptions);
     cookieStore.set('user_type', 'influencer', cookieOptions);
 
-    return NextResponse.json({
+    return jsonAuthed({
       synced: true,
       naverId: inf.naver_id,
       displayName: inf.display_name,

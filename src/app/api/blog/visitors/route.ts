@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchBlogVisitors } from '@/lib/blog-crawler';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,12 +18,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
   }
 
+  const denied = await assertBlogResourceAccess(req, String(blogId));
+  if (denied) return denied;
+
   try {
     const supabase = createServiceClient();
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    let { data: visitors, error } = await supabase
+    const { data: visitorsInitial, error } = await supabase
       .from('blog_visitor_history')
       .select('visit_date, visitor_count')
       .eq('blog_id', blogId)
@@ -30,6 +34,8 @@ export async function GET(req: NextRequest) {
       .order('visit_date', { ascending: true });
 
     if (error) throw error;
+
+    let visitors = visitorsInitial;
 
     // KST 기준 오늘 날짜
     const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000)

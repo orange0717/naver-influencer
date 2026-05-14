@@ -232,6 +232,7 @@ export default function AdminMembersPage() {
           <table className="w-full text-sm min-w-[920px]">
             <thead>
               <tr className="border-b border-border text-[11px] text-dim">
+                <th className="text-center px-2 py-2.5 font-semibold w-11 tabular-nums">No</th>
                 <th className="text-left px-3 py-2.5 font-semibold">닉네임</th>
                 <th className="text-left px-3 py-2.5 font-semibold">이메일</th>
                 <th className="text-left px-3 py-2.5 font-semibold">블로그</th>
@@ -246,12 +247,15 @@ export default function AdminMembersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {members.map(m => (
+              {members.map((m, idx) => (
                 <tr
                   key={m.id}
                   onClick={() => openDetail(m.id)}
                   className="hover:bg-surface-hover transition cursor-pointer"
                 >
+                  <td className="px-2 py-2.5 text-center text-xs text-dim font-rank tabular-nums">
+                    {(page - 1) * 20 + idx + 1}
+                  </td>
                   <td className="px-3 py-2.5 font-semibold">
                     <span className="inline-flex items-center gap-1.5">
                       {m.nickname || '-'}
@@ -317,7 +321,7 @@ export default function AdminMembersPage() {
                 </tr>
               ))}
               {members.length === 0 && (
-                <tr><td colSpan={11} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
+                <tr><td colSpan={12} className="px-3 py-8 text-center text-dim">결과 없음</td></tr>
               )}
             </tbody>
           </table>
@@ -325,7 +329,7 @@ export default function AdminMembersPage() {
 
           {/* 카드 (모바일) */}
           <div className="md:hidden divide-y divide-border/20">
-            {members.map(m => {
+            {members.map((m, idx) => {
               const remainDays = m.subscription_plan && m.subscription_expires_at
                 ? Math.max(0, Math.ceil((new Date(m.subscription_expires_at).getTime() - Date.now()) / 86400000))
                 : null;
@@ -346,6 +350,9 @@ export default function AdminMembersPage() {
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="text-[11px] text-dim font-rank tabular-nums shrink-0 w-6 text-right">
+                        {(page - 1) * 20 + idx + 1}
+                      </span>
                       <span className="font-semibold text-sm truncate">{m.nickname || '-'}</span>
                       {m.is_admin && (
                         <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded-full leading-none shrink-0">관리자</span>

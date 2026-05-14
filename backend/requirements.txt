@@ -1,0 +1,10 @@
+greenlet>=3.5.0
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+sqlalchemy==2.0.41
+psycopg[binary]==3.2.13
+pydantic-settings==2.6.1
+playwright==1.59.0
+APScheduler==3.10.4
+python-dateutil==2.9.0.post0
+alembic==1.14.0

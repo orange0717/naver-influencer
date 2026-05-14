@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "N인플 자동 동기화",
   "short_name": "N인플",
-  "version": "1.0.0",
+  "version": "2.2.1",
   "description": "네이버 인플루언서 팔로워·팔로잉을 ninfle.kr로 자동 동기화. 페이지 방문만 하면 백그라운드에서 갱신됩니다.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -22,10 +22,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": [
-    "storage",
-    "notifications"
-  ],
+  "permissions": ["storage"],
   "host_permissions": [
     "https://in.naver.com/*",
     "https://gw.in.naver.com/*",

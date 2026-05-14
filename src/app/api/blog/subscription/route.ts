@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export async function GET(request: NextRequest) {
   const blogId = request.nextUrl.searchParams.get('blogId');
@@ -7,6 +8,9 @@ export async function GET(request: NextRequest) {
   if (!blogId) {
     return NextResponse.json({ subscribed: false });
   }
+
+  const denied = await assertBlogResourceAccess(request, String(blogId));
+  if (denied) return denied;
 
   try {
     const supabase = createServiceClient();

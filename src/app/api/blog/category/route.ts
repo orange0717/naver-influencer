@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthUser } from '@/lib/auth';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,9 @@ export async function GET(request: NextRequest) {
   const blogId = new URL(request.url).searchParams.get('blogId');
   if (!blogId) return NextResponse.json({ error: 'blogId 필수' }, { status: 400 });
 
+  const denied = await assertBlogResourceAccess(request, blogId);
+  if (denied) return denied;
+
   // 현재 저장된 카테고리 조회
   const { data: scoreData } = await supabase
     .from('blog_scores')
@@ -117,6 +121,9 @@ export async function POST(request: NextRequest) {
   if (!blogId || !category) {
     return NextResponse.json({ error: 'blogId, category 필수' }, { status: 400 });
   }
+
+  const denied = await assertBlogResourceAccess(request, String(blogId));
+  if (denied) return denied;
 
   if (!CATEGORIES.includes(category)) {
     return NextResponse.json({ error: '유효하지 않은 카테고리' }, { status: 400 });

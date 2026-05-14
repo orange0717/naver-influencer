@@ -28,7 +28,7 @@
 ### 1) 최초 1회: ninfle.kr 로그인 토큰 자동 캡처
 - 그냥 평소처럼 [ninfle.kr](https://ninfle.kr) 에 로그인하세요.
 - 좌측 하단에 "✓ N인플 확장 프로그램 연결됨" 알림이 잠깐 뜨면 끝.
-- 확장 프로그램은 Supabase 세션 토큰을 안전하게 `chrome.storage.local` 에 보관합니다 (브라우저 외부로 나가지 않음).
+- 확장 프로그램은 Supabase 세션 토큰을 `chrome.storage.local` 에 보관하고, **팬 데이터를 업로드할 때만** `Authorization: Bearer …` 로 ninfle.kr API에 보냅니다. 제3자 도메인으로 토큰을 보내지 않습니다.
 
 ### 2) 매일: 본인 인플루언서 홈만 들르세요
 - `https://in.naver.com/[본인 ID]` 방문

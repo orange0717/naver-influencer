@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractBlogKeywords } from '@/lib/blog-crawler';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 // 간단한 메모리 캐시 (1일)
 const cache = new Map<string, { data: unknown; expires: number }>();
@@ -10,6 +11,9 @@ export async function GET(request: NextRequest) {
   if (!blogId) {
     return NextResponse.json({ error: 'blogId is required' }, { status: 400 });
   }
+
+  const denied = await assertBlogResourceAccess(request, String(blogId));
+  if (denied) return denied;
 
   // 캐시 확인
   const cacheKey = `blog-keywords-${blogId}`;

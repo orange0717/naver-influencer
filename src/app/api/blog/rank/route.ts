@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { validateSearchParams } from '@/lib/validations';
 import { blogRankQuerySchema } from '@/lib/validations/blog';
 import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -160,6 +161,9 @@ export async function GET(request: NextRequest) {
     if (!v.success) return v.response;
 
     const { keyword, blogId } = v.data;
+
+    const denied = await assertBlogResourceAccess(request, blogId);
+    if (denied) return denied;
 
     // 캐시 확인 (3분)
     const cacheKey = `rank-${keyword}-${blogId}`;

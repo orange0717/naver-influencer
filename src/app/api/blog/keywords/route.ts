@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { isAdmin } from '@/lib/admin';
+import { userOwnsBlogId } from '@/lib/blog-access';
 import { validateBody } from '@/lib/validations';
 import { blogKeywordSchema, deleteBlogKeywordSchema } from '@/lib/validations/blog';
 
@@ -14,13 +16,17 @@ async function requireOwnBlog(request: NextRequest, blogId: string) {
     };
   }
 
-  if (auth.user.blog_id !== blogId) {
-    return {
-      error: NextResponse.json({ error: '본인 블로그의 키워드만 관리할 수 있습니다.' }, { status: 403 }),
-    };
+  if (auth.user.is_admin === true || isAdmin(auth.userId)) {
+    return { auth };
   }
 
-  return { auth };
+  if (await userOwnsBlogId(auth.userId, blogId)) {
+    return { auth };
+  }
+
+  return {
+    error: NextResponse.json({ error: '본인 블로그의 키워드만 관리할 수 있습니다.' }, { status: 403 }),
+  };
 }
 
 /**

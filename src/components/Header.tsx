@@ -177,8 +177,9 @@ export default function Header({ serverUser }: HeaderProps) {
   // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
   const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser) as UserInfo;
 
-  /** 데스크탑 앱 다운로드: 로그인·비데모만 노출. (/download 는 Supabase 회원만 접근 — 미가입 시 로그인으로 안내) */
-  const canShowAppDownload = !inDesktopApp && !!user.id && !user.isDemo;
+  /** 헤더에 /download 안내 표시 (Electron 내 제외). 링크 이동은 로그인·비데모 회원만 */
+  const canShowAppDownload = !inDesktopApp;
+  const downloadNavUnlocked = !authLoading && !!user.id && !user.isDemo;
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -272,21 +273,35 @@ export default function Header({ serverUser }: HeaderProps) {
 
           {/* ── 우측: 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {canShowAppDownload && (
-              <Link
-                href="/download"
-                title="N인플 데스크탑 앱 다운로드"
-                aria-label="N인플 데스크탑 앱 다운로드"
-                className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header bg-white hover:bg-white/90 transition-colors shrink-0 ring-2 ring-white/40"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span className="hidden sm:inline">앱 다운로드</span>
-              </Link>
-            )}
+            {canShowAppDownload &&
+              (downloadNavUnlocked ? (
+                <Link
+                  href="/download"
+                  title="N인플 데스크탑 앱 다운로드"
+                  aria-label="N인플 데스크탑 앱 다운로드"
+                  className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header bg-white hover:bg-white/90 transition-colors shrink-0 ring-2 ring-white/40"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span className="hidden sm:inline">앱 다운로드</span>
+                </Link>
+              ) : (
+                <span
+                  title="로그인 후 이용할 수 있습니다"
+                  aria-label="앱 다운로드 (로그인 필요)"
+                  className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold text-header/80 bg-white/45 cursor-not-allowed shrink-0 ring-2 ring-white/25"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-70">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span className="hidden sm:inline">앱 다운로드</span>
+                </span>
+              ))}
             <MessageBell />
             <NotificationBell />
             {authLoading ? (

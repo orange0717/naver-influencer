@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
@@ -34,75 +35,92 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const params = await searchParams;
 
   const cookieStore = await cookies();
+  const supabaseAuth = await createRouteHandlerClient();
+  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
 
-  // ─── 1. 데모 쿠키 체크 (우선: 데모 중이면 Supabase 인증 무시) ───
-  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
-  if (isDemo) {
-    naverId = cookieStore.get('naver_id')?.value;
-  }
-
-  // URL 파라미터 폴백 (쿠키가 안 설정된 경우)
-  if (!naverId && params.demo) {
-    naverId = params.demo;
-  }
-
-  // ─── 2. Supabase Auth 세션 체크 ───
   let isLoggedIn = false;
-  if (!naverId) {
-    const supabaseAuth = await createRouteHandlerClient();
-    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
 
-    if (authUser) {
-      isLoggedIn = true;
+  // ─── 1. Supabase 세션 우선 (가입 후 무료·유료 플랜은 여기서만 판정) ───
+  if (authUser) {
+    isLoggedIn = true;
 
-      // 관리자/활성 유료 구독자는 무조건 통과. 그 외에만 제한 체크.
-      const { isRestricted, getPaywallContext } = await import('@/lib/admin');
-      const ctx = await getPaywallContext(authUser.id, authUser.email);
-      if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
-        if (await isRestricted(authUser.email)) {
-          redirect('/subscribe');
-        }
+    // 관리자/활성 유료 구독자는 무조건 통과. 그 외에만 제한 체크.
+    const { isRestricted, getPaywallContext } = await import('@/lib/admin');
+    const ctx = await getPaywallContext(authUser.id, authUser.email);
+    if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
+      if (await isRestricted(authUser.email)) {
+        redirect('/subscribe');
       }
+    }
 
-      const { data: profile } = await supabase
-        .from('users')
-        .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at, signup_keyword_category')
-        .eq('auth_id', authUser.id)
+    const { data: profile } = await supabase
+      .from('users')
+      .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at, signup_keyword_category')
+      .eq('auth_id', authUser.id)
+      .single();
+
+    subscriptionPlan = profile?.subscription_plan || null;
+    subscriptionExpiresAt = profile?.subscription_expires_at || null;
+    signupKeywordCategoryFromUser = profile?.signup_keyword_category?.trim() || null;
+
+    if (profile?.linked_influencer_id) {
+      const { data: linkedInf } = await supabase
+        .from('influencers')
+        .select('naver_id')
+        .eq('id', profile.linked_influencer_id)
         .single();
+      naverId = linkedInf?.naver_id || undefined;
+    }
 
-      subscriptionPlan = profile?.subscription_plan || null;
-      subscriptionExpiresAt = profile?.subscription_expires_at || null;
-      signupKeywordCategoryFromUser = profile?.signup_keyword_category?.trim() || null;
-
-      if (profile?.linked_influencer_id) {
-        const { data: linkedInf } = await supabase
-          .from('influencers')
-          .select('naver_id')
-          .eq('id', profile.linked_influencer_id)
-          .single();
-        naverId = linkedInf?.naver_id || undefined;
-      }
-
-      // 인플루언서 미연결이지만 블로그가 있으면 blog_id를 naverId로 사용
-      if (!naverId && profile?.blog_id) {
-        naverId = profile.blog_id;
-      }
+    // 인플루언서 미연결이지만 블로그가 있으면 blog_id를 naverId로 사용
+    if (!naverId && profile?.blog_id) {
+      naverId = profile.blog_id;
+    }
+  } else {
+    // ─── 2. 비로그인: 데모·체험 쿠키 또는 ?demo= (체험 리다이렉트 직후) ───
+    if (cookieStore.get('demo_mode')?.value === 'true') {
+      naverId = cookieStore.get('naver_id')?.value;
+    }
+    if (!naverId && params.demo) {
+      naverId = params.demo;
+    }
+    if (!naverId) {
+      naverId = cookieStore.get('naver_id')?.value;
     }
   }
 
-  // ─── 3. 기존 쿠키 기반 체크 (하위 호환) ───
-  if (!naverId) {
-    naverId = cookieStore.get('naver_id')?.value;
-  }
+  /** UI용: 정식 로그인이 아닐 때만 데모 배너 등에 사용 */
+  const isDemo = !isLoggedIn && cookieStore.get('demo_mode')?.value === 'true';
 
   if (!naverId) {
     if (isLoggedIn) {
       redirect('/profile');
     }
-    redirect('/auth/login');
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <h1 className="font-title text-xl font-bold text-text mb-3">내 대시보드</h1>
+        <p className="text-sm text-dim mb-6 leading-relaxed">
+          로그인하거나 데모 체험을 시작하면 연결된 블로그·인플루언서 데이터를 이 페이지에서 확인할 수 있습니다.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            href="/auth/login?redirect=/my"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors"
+          >
+            로그인
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-border bg-surface font-semibold text-sm hover:border-accent transition-colors"
+          >
+            홈으로
+          </Link>
+        </div>
+      </div>
+    );
   }
 
-  // 체험/데모 만료 체크 — 활성 유료 구독자에게는 적용 안 됨
+  // 체험/데모 만료 체크 — 정식 로그인 사용자는 trial_started 잔존 쿠키와 무관하게 여기서 차단하지 않음
   const trialStarted = cookieStore.get('trial_started')?.value;
   const isTrial = !!trialStarted;
   const trialExpired = isTrialExpired(trialStarted);
@@ -111,7 +129,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     subscriptionExpiresAt &&
     new Date(subscriptionExpiresAt).getTime() > Date.now()
   );
-  if (trialExpired && !hasActivePlan) {
+  if (!isLoggedIn && trialExpired && !hasActivePlan) {
     redirect('/subscribe');
   }
 
@@ -135,7 +153,28 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     if (isLoggedIn) {
       redirect('/profile');
     }
-    redirect('/auth/login');
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <h1 className="font-title text-xl font-bold text-text mb-3">내 대시보드</h1>
+        <p className="text-sm text-dim mb-6 leading-relaxed">
+          연결된 인플루언서 정보를 찾을 수 없습니다. 로그인 후 프로필에서 블로그를 연결하거나 데모 체험을 이용해 보세요.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            href="/auth/login?redirect=/my"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors"
+          >
+            로그인
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-border bg-surface font-semibold text-sm hover:border-accent transition-colors"
+          >
+            홈으로
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const influencerId = influencerData.id;
@@ -626,7 +665,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     const baseline = sameRecord
       ? (latest.previous_rank ?? latest.rank_position + latest.rank_change)
       : oldest!.rank_position;
-    const cumulativeChange = baseline - latest.rank_position;
+    let cumulativeChange = baseline - latest.rank_position;
+    // 7일 구간에 스냅샷이 1회뿐이면 누적이 0으로만 나오는 경우가 많음 → DB 일간 rank_change로 보완
+    if (cumulativeChange === 0 && latest.rank_change !== 0) {
+      cumulativeChange = latest.rank_change;
+    }
     const kw = latest.keyword_challenges as unknown as KeywordChallengeJoin;
     return {
       keyword_id: latest.keyword_id,
@@ -646,7 +689,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     <div className="space-y-6">
 
       {/* ─── 체험/데모 배너 ─── */}
-      {isTrial && <TrialBanner isDemo={isDemo} />}
+      {!isLoggedIn && isTrial && <TrialBanner isDemo={isDemo} />}
 
       {/* ─── 구독 만료 임박/만료 배너 ─── */}
       <SubscriptionExpiryBanner
@@ -667,7 +710,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         subscriptionPlan={subscriptionPlan}
         subscriptionExpiresAt={subscriptionExpiresAt}
         top3Count={top3Count}
-        totalKeywords={totalRankedKeywords}
+        totalKeywords={participatedCount}
         myKeyword={influencer.my_keyword || undefined}
         naverId={naverId}
       />
@@ -693,9 +736,15 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
             <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
             <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
             <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
+            <span className="text-dim">순위 수집 <strong className="text-text font-rank">{totalRankedKeywords}</strong>건</span>
             <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
             <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || influencer.total_follower_count || 0)}</strong></span>
           </div>
+          {participatedCount > totalRankedKeywords && (
+            <p className="text-center text-[10px] text-dim mt-2 leading-snug">
+              순위 분포·1·TOP3·TOP10은 최근 수집된 순위가 있는 키워드만 집계합니다. 참여는 미수집·다른 주제 제외 전부입니다.
+            </p>
+          )}
         </div>
       )}
 

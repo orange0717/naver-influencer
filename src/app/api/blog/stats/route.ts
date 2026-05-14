@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchBlogProfileStats } from '@/lib/blog-crawler';
 import { createServiceClient } from '@/lib/supabase-server';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,9 @@ export async function GET(req: NextRequest) {
   if (!blogId) {
     return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
   }
+
+  const denied = await assertBlogResourceAccess(req, String(blogId));
+  if (denied) return denied;
 
   try {
     const stats = await fetchBlogProfileStats(blogId);

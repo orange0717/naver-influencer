@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getAuthUser } from '@/lib/auth';
+import { requireInfluencerPlan } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,10 +53,11 @@ function sanitize(item: NaverFanItem): NaverFanItem | null {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await getAuthUser(request);
-  if (!auth) {
-    return withCors(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
+  const gate = await requireInfluencerPlan(request);
+  if ('error' in gate) {
+    return withCors(gate.error as NextResponse);
   }
+  const auth = gate.authUser;
 
   let body: UploadPayload;
   try {

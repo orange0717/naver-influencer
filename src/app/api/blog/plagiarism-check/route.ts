@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import * as cheerio from 'cheerio';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { requirePaidPlan } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -150,6 +151,9 @@ async function extractPostText(blogId: string, logNo: string): Promise<string> {
  * SSE 스트리밍 응답
  */
 export async function POST(request: NextRequest) {
+  const paid = await requirePaidPlan(request);
+  if ('error' in paid) return paid.error;
+
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 

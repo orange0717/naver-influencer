@@ -247,6 +247,7 @@ export default function DashboardGrid({
                 app={app}
                 category={categoryMap[app.category]}
                 currentPlan={currentPlan}
+                isLoggedIn={isLoggedIn}
                 isFavorite
                 onToggleFavorite={toggle}
                 onSelect={setSelectedApp}
@@ -289,6 +290,7 @@ export default function DashboardGrid({
                   app={app}
                   category={cat}
                   currentPlan={currentPlan}
+                  isLoggedIn={isLoggedIn}
                   isFavorite={favorites.has(app.id)}
                   onToggleFavorite={toggle}
                   onSelect={setSelectedApp}

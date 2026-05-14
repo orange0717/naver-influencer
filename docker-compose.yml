@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: naver_influencer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-naver_influencer}
+      POSTGRES_DB: naver_influencer
+    ports:
+      - "5432:5432"
+    volumes:
+      # 프로젝트 폴더명이 naver-influencer 일 때 ./naver-influencer/postgres 와 겹치지 않도록 루트 전용 경로 사용
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U naver_influencer -d naver_influencer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://naver_influencer:${POSTGRES_PASSWORD:-naver_influencer}@db:5432/naver_influencer
+      CRAWLER_BASE_URL: https://ninfle.kr/
+      CRAWL_USE_NINFLE_PUBLIC_API: "true"
+      CRAWL_API_PAGE_SIZE: "500"
+      CRAWL_API_MAX_PAGES: "500"
+      CRAWL_API_PAUSE_SECONDS: "1"
+      CRAWL_API_429_MAX_RETRIES: "5"
+      CRAWL_API_429_BASE_SLEEP_SECONDS: "10"
+      CRAWL_SCHEDULE_TIMEZONE: Asia/Seoul
+      CRAWL_DAILY_HOUR: "0"
+      CRAWL_DAILY_MINUTE: "0"
+      PLAYWRIGHT_HEADLESS: "true"
+      EMBED_SCHEDULER_IN_API: "false"
+      API_TRIGGER_TOKEN: ${API_TRIGGER_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://naver_influencer:${POSTGRES_PASSWORD:-naver_influencer}@db:5432/naver_influencer
+      CRAWLER_BASE_URL: https://ninfle.kr/
+      CRAWL_USE_NINFLE_PUBLIC_API: "true"
+      CRAWL_API_PAGE_SIZE: "500"
+      CRAWL_API_MAX_PAGES: "500"
+      CRAWL_SCHEDULE_TIMEZONE: Asia/Seoul
+      CRAWL_DAILY_HOUR: "0"
+      CRAWL_DAILY_MINUTE: "0"
+      PLAYWRIGHT_HEADLESS: "true"
+      RUN_CRAWL_ON_STARTUP: "true"
+      CRAWL_API_PAUSE_SECONDS: "1"
+      CRAWL_API_429_MAX_RETRIES: "5"
+      CRAWL_API_429_BASE_SLEEP_SECONDS: "10"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - api

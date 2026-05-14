@@ -50,7 +50,8 @@ export default async function HomePage() {
   } = await supabaseAuth.auth.getUser();
 
   const cookieStore = await cookies();
-  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
+  /** 정식 로그인 시 데모 쿠키가 남아 있어도 홈은 회원 플랜 기준으로만 표시 */
+  const isDemo = !authUser && cookieStore.get('demo_mode')?.value === 'true';
   const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
 
   // 로그인/데모 유저 중 제한 사용자만 /subscribe로 분기. 비로그인은 게스트 대시보드 노출.

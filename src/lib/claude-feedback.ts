@@ -48,26 +48,22 @@ export const CLAUDE_FEEDBACK_SYSTEM_PROMPT = `당신은 네이버 블로그 글�
 /** 무료 체험 메시지 한도 (회원가입한 회원 한정) */
 export const CLAUDE_FREE_TRIAL_LIMIT = 3;
 
-export type ClaudeFeedbackPlan = 'admin' | 'influencer' | 'free_trial';
+export type ClaudeFeedbackPlan = 'admin' | 'influencer';
 
 export type ClaudeFeedbackUser = {
   id: string;          // 'auth:' + userId (Supabase Auth 회원만 허용)
   userId: string;      // users.id
   displayLabel: string;
   plan: ClaudeFeedbackPlan;
-  /** free_trial 일 때만 의미 있음 — 지금까지 보낸 메시지 수 */
+  /** 하위 호환 — 응답 JSON 필드 유지용 (항상 0) */
   freeTrialUsed: number;
-  /** free_trial 일 때 한도 (CLAUDE_FREE_TRIAL_LIMIT) */
   freeTrialLimit: number;
   /** PortOne 결제 이력 보유 여부. true → 모델 분기에서 Opus 사용 가능. admin 수동 부여 INFLUENCER 는 false. */
   isPaid: boolean;
 };
 
 /**
- * 인증된 회원을 반환한다. 비회원·제한 사용자는 null.
- * - 관리자 → plan='admin' (무제한)
- * - INFLUENCER 활성 구독자 → plan='influencer' (무제한)
- * - 그 외 회원 → plan='free_trial' (CLAUDE_FREE_TRIAL_LIMIT 메시지)
+ * 인플루언서 플랜(또는 관리자)만 반환한다. 비회원·무료·블로거·제한 사용자는 null.
  */
 export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFeedbackUser | null> {
   let authUser;
@@ -92,8 +88,8 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
   const freeTrialUsed = profile?.claude_free_trial_used ?? 0;
   const isPaid = !!profile?.first_paid_at;
 
-  // 관리자 우회
-  if (isAdmin(authUser.userId)) {
+  // 관리자 우회 (DB is_admin + 환경변수 부트스트랩)
+  if (authUser.user.is_admin === true || isAdmin(authUser.userId)) {
     return {
       id: 'auth:' + authUser.userId,
       userId: authUser.userId,
@@ -112,12 +108,16 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
     : 0;
   const isInfluencer = plan === 'INFLUENCER' && expires > Date.now();
 
+  if (!isInfluencer) {
+    return null;
+  }
+
   return {
     id: 'auth:' + authUser.userId,
     userId: authUser.userId,
     displayLabel,
-    plan: isInfluencer ? 'influencer' : 'free_trial',
-    freeTrialUsed,
+    plan: 'influencer',
+    freeTrialUsed: 0,
     freeTrialLimit: CLAUDE_FREE_TRIAL_LIMIT,
     isPaid,
   };

@@ -54,7 +54,7 @@ export async function GET(
 
     const { data: inf } = await supabase
       .from('influencers')
-      .select('id, naver_id, display_name, category')
+      .select('id, naver_id, display_name, category, total_keywords')
       .eq('naver_id', naverId)
       .single();
 
@@ -80,15 +80,16 @@ export async function GET(
     const latestDate = rankings?.[0]?.snapshot_date || formatDate(new Date());
     const latestRankings = rankings?.filter(r => r.snapshot_date === latestDate) || [];
 
-    const totalKeywords = latestRankings.length;
     const top3Count = latestRankings.filter(r => r.rank_position <= 3).length;
-    const top3Rate = totalKeywords > 0 ? Math.round((top3Count / totalKeywords) * 100) : 0;
+    // 대시보드·챌린지 현황과 동일: 분모는 네이버 기준 참여 키워드 수(집계 컬럼), 없을 때만 당일 스냅샷 건수
+    const participatedTotal = Number(inf.total_keywords) > 0 ? Number(inf.total_keywords) : latestRankings.length;
+    const top3Rate = participatedTotal > 0 ? Math.round((top3Count / participatedTotal) * 100) : 0;
 
     const svg = generateTop3WidgetSVG({
       displayName: inf.display_name || naverId,
       category: inf.category || '\u2014',
       top3Count,
-      totalKeywords,
+      totalKeywords: participatedTotal,
       top3Rate,
       snapshotDate: typeof latestDate === 'string' ? latestDate.replace(/-/g, '.') : formatDate(new Date()),
     });

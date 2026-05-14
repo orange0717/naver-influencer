@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { verifySession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { isTrialExpired } from '@/lib/trial';
+import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 
 // 동시 로그인 검증을 건너뛸 경로 (auth 흐름 + 정적/공개 API)
 const SESSION_CHECK_BYPASS = [
@@ -22,20 +23,8 @@ const DEVICE_ID_BYPASS = [
   '/api/',
 ];
 
-const AUTH_REQUIRED_PAGE_PREFIXES = [
-  '/my',
-  '/keywords',
-  '/influencers',
-  '/competitor',
-  '/community',
-  '/rankings',
-  '/notice',
-  '/subscribe',
-  '/messages',
-  '/dashboard',
-  '/profile',
-  '/download',
-];
+/** HTML 문서만: 커뮤니티는 비회원·비데모 접근 불가. 그 외 경로는 레이아웃/페이지에서 세부 제어 */
+const AUTH_REQUIRED_PAGE_PREFIXES = ['/community'];
 
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -88,26 +77,15 @@ export async function middleware(request: NextRequest) {
     acceptsHtml &&
     AUTH_REQUIRED_PAGE_PREFIXES.some(p => matchesPathPrefix(pathname, p));
 
-  if (needsLoginPage) {
-    const isDownload = matchesPathPrefix(pathname, '/download');
-    if (isDownload) {
-      // 데스크탑 앱 다운로드: Supabase 회원만. 데모 쿠키(demo_mode)만으로는 접근 불가.
-      if (!user) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/auth/login';
-        url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
-        return NextResponse.redirect(url);
-      }
-    } else if (!user && !hasDemoSession && !hasDemoParam) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/auth/login';
-      url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
-      return NextResponse.redirect(url);
-    }
+  if (needsLoginPage && !user && !hasDemoSession && !hasDemoParam) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    return NextResponse.redirect(url);
   }
 
   // 데모 체험( trial_started + 72h ) 만료 후: 로그인 없이 데모 쿠키만 있으면 유료 전환 유도
-  // — /subscribe 는 허용(결제·안내). 그 외 보호 HTML 경로 + 홈(/) 은 /subscribe 로 보냄.
+  // — /subscribe 는 허용(결제·안내). 커뮤니티(로그인 게이트) 또는 홈(/) 은 /subscribe 로 보냄.
   if (acceptsHtml && !user && hasDemoSession) {
     const trialStarted = request.cookies.get('trial_started')?.value;
     if (isTrialExpired(trialStarted)) {
@@ -242,6 +220,16 @@ export async function middleware(request: NextRequest) {
       "object-src 'none'",
     ].join('; '),
   );
+
+  // 정식 Supabase 세션이 있으면 데모 체험 쿠키는 무시·삭제 (가입 후 플랜 판정이 데모와 섞이지 않도록)
+  if (user) {
+    const hasDemoTrialCookies =
+      request.cookies.get('demo_mode')?.value === 'true' ||
+      !!request.cookies.get('trial_started')?.value;
+    if (hasDemoTrialCookies) {
+      clearPostAuthDemoCookies(supabaseResponse);
+    }
+  }
 
   return supabaseResponse;
 }

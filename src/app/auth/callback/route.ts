@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { registerSession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { createServiceClient } from '@/lib/supabase-server';
+import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 
 // next 파라미터를 같은 origin 의 내부 경로로만 허용 (open redirect 방지).
 // '//evil.com', '/\\evil.com', 외부 절대 URL 등은 모두 기본값으로 폴백.
@@ -85,7 +86,9 @@ export async function GET(request: NextRequest) {
           ?? null;
         await registerSession(user.id, deviceId, { userAgent, ip });
       }
-      return NextResponse.redirect(`${origin}${next}`);
+      const res = NextResponse.redirect(`${origin}${next}`);
+      clearPostAuthDemoCookies(res);
+      return res;
     }
   }
 

@@ -18,7 +18,7 @@ type Message = {
   created_at: string;
 };
 
-type Plan = 'admin' | 'influencer' | 'free_trial';
+type Plan = 'admin' | 'influencer';
 
 const INPUT_LIMIT = 8000;
 
@@ -65,9 +65,7 @@ export default function ClaudeChatClient() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false); // 모바일용
-  const [plan, setPlan] = useState<Plan>('free_trial');
-  const [freeTrialUsed, setFreeTrialUsed] = useState(0);
-  const [freeTrialLimit, setFreeTrialLimit] = useState(3);
+  const [plan, setPlan] = useState<Plan>('influencer');
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -104,8 +102,6 @@ export default function ClaudeChatClient() {
         const data = await res.json();
         setConversations(data.conversations || []);
         if (data.plan) setPlan(data.plan as Plan);
-        if (typeof data.freeTrialUsed === 'number') setFreeTrialUsed(data.freeTrialUsed);
-        if (typeof data.freeTrialLimit === 'number') setFreeTrialLimit(data.freeTrialLimit);
       }
     } catch {
       /* 무시 */
@@ -267,8 +263,6 @@ export default function ClaudeChatClient() {
       }
       const data = await res.json();
       if (data.plan) setPlan(data.plan as Plan);
-      if (typeof data.freeTrialUsed === 'number') setFreeTrialUsed(data.freeTrialUsed);
-      if (typeof data.freeTrialLimit === 'number') setFreeTrialLimit(data.freeTrialLimit);
       setMessages((prev) => {
         const without = prev.filter((m) => m.id !== optimisticUser.id);
         const next = [...without];
@@ -299,11 +293,8 @@ export default function ClaudeChatClient() {
   };
 
   const remaining = useMemo(() => INPUT_LIMIT - input.length, [input.length]);
-  const isFreeTrial = plan === 'free_trial';
-  const freeTrialRemaining = Math.max(0, freeTrialLimit - freeTrialUsed);
-  const freeTrialExhausted = isFreeTrial && freeTrialRemaining <= 0;
   const planLabel =
-    plan === 'admin' ? '관리자' : plan === 'influencer' ? '인플루언서 플랜' : '무료 체험';
+    plan === 'admin' ? '관리자' : '인플루언서 플랜';
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-bg">
@@ -418,29 +409,9 @@ export default function ClaudeChatClient() {
         </div>
 
         <div className="px-4 py-3 border-t border-border space-y-2">
-          {isFreeTrial ? (
-            <div className="rounded-lg bg-accent/10 border border-accent/30 px-3 py-2">
-              <p className="text-[11px] font-bold text-accent">
-                무료 체험 {freeTrialRemaining}/{freeTrialLimit}회 남음
-              </p>
-              {freeTrialExhausted ? (
-                <a
-                  href="/subscribe?highlight=influencer"
-                  className="block mt-1.5 text-[11px] text-accent hover:underline"
-                >
-                  인플루언서 플랜으로 계속 이용하기 →
-                </a>
-              ) : (
-                <p className="text-[10px] text-dim mt-0.5 leading-relaxed">
-                  메시지 1회 = 체험 1회 차감
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-lg bg-up/10 border border-up/30 px-3 py-2">
-              <p className="text-[11px] font-bold text-up">{planLabel} · 무제한 이용 가능</p>
-            </div>
-          )}
+          <div className="rounded-lg bg-up/10 border border-up/30 px-3 py-2">
+            <p className="text-[11px] font-bold text-up">{planLabel} · 무제한 이용 가능</p>
+          </div>
           <p className="text-[11px] text-dim leading-relaxed">
             맞춤법은{' '}
             <a href="/dashboard/writing/spellcheck" className="text-accent hover:underline">
@@ -521,24 +492,7 @@ export default function ClaudeChatClient() {
         {/* 입력 영역 */}
         <div className="px-4 md:px-6 py-3 border-t border-border bg-surface">
           <div className="max-w-2xl mx-auto">
-            {freeTrialExhausted ? (
-              <div className="rounded-2xl border border-accent/40 bg-accent/5 p-4 text-center">
-                <p className="text-sm font-bold text-accent mb-1">
-                  무료 체험 {freeTrialLimit}회를 모두 사용했어요
-                </p>
-                <p className="text-[12px] text-dim mb-3 leading-relaxed">
-                  인플루언서 플랜으로 업그레이드하면 블로그 글 피드백을 무제한으로 사용할 수 있어요.
-                </p>
-                <a
-                  href="/subscribe?highlight=influencer"
-                  className="inline-flex items-center px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white text-sm font-semibold transition-colors"
-                >
-                  인플루언서 플랜 보러가기 →
-                </a>
-              </div>
-            ) : (
-              <>
-                <div className="relative bg-bg border border-border rounded-2xl focus-within:border-accent/50 transition-colors shadow-sm">
+            <div className="relative bg-bg border border-border rounded-2xl focus-within:border-accent/50 transition-colors shadow-sm">
                   <textarea
                     ref={inputRef}
                     rows={1}
@@ -566,11 +520,6 @@ export default function ClaudeChatClient() {
                 <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-dim">
                   <span className="truncate">
                     Claude Haiku 4.5 · 빠른 피드백 모드
-                    {isFreeTrial && (
-                      <span className="ml-2 text-accent font-semibold">
-                        체험 {freeTrialRemaining}/{freeTrialLimit}회
-                      </span>
-                    )}
                   </span>
                   <span className="shrink-0 flex items-center gap-2">
                     <span className="hidden sm:inline">
@@ -582,9 +531,7 @@ export default function ClaudeChatClient() {
                       </span>
                     )}
                   </span>
-                </div>
-              </>
-            )}
+            </div>
           </div>
         </div>
       </section>
