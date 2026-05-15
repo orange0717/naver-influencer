@@ -25,12 +25,12 @@ jobs:
   refresh-from-ninfle:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
 
     steps:
       - name: 챌린지 순위 (TOP3·비율·마지막 챌린지 참여일)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
             echo "::error::CRON_SECRET 이 없습니다. GitHub Actions secrets 에 등록하세요."
@@ -43,32 +43,30 @@ jobs:
             -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
             "$BASE/api/cron/crawl-challenge-ranks-scheduled"
 
+      # crawl-challenge-ranks 안전망과 동일한 인증 헤더(UA + x-vercel-cron-auth-token + Bearer)
       - name: 인플루언서 통계 집계
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
         run: |
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
           curl --fail --show-error --silent --max-time 320 \
+            -A "vercel-cron/1.0" \
             -H "Authorization: Bearer $CRON_SECRET" \
+            -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
             "$BASE/api/cron/run?job=aggregate-influencers"
 
       - name: 팔로워·팬수 갱신
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
         run: |
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
           curl --fail --show-error --silent --max-time 320 \
+            -A "vercel-cron/1.0" \
             -H "Authorization: Bearer $CRON_SECRET" \
+            -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
             "$BASE/api/cron/run?job=update-followers"
 
       - name: 네이버 선정일(미수집분)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
         run: |
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
           curl --fail --show-error --silent --max-time 120 \
+            -A "vercel-cron/1.0" \
             -H "Authorization: Bearer $CRON_SECRET" \
+            -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
             "$BASE/api/cron/run?job=crawl-selection-dates"
