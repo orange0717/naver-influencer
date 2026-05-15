@@ -106,6 +106,20 @@ async function getInfluencersFromDB(
   // NULL은 항상 맨 뒤로
   const isDateSort = sortColumn === 'naver_created_at' || sortColumn === 'last_challenged_at' || sortColumn === 'last_crawled_at';
 
+  /** ninfl 그룹 정렬: 날짜 컬럼에 Number() 를 쓰면 NaN → 순서 깨짐 → ms 로 비교 */
+  const sortKeyForGroup = (row: Record<string, unknown>): number => {
+    const raw = row[sortColumn];
+    if (raw == null || raw === '') {
+      return ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    }
+    if (isDateSort) {
+      const t = new Date(String(raw)).getTime();
+      return Number.isFinite(t) ? t : (ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+    }
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   // N인플 순위: 활성 → 활동중단(관리자 수동 지정)
   // stopped_manual = true 인 인플루언서만 활동중단 그룹으로 이동.
   // Supabase max-rows(1000) 캡 때문에 배치로 전부 가져와서 서버에서 분류·정렬·페이지네이션
@@ -196,9 +210,10 @@ async function getInfluencersFromDB(
       const ga = activityGroup(a);
       const gb = activityGroup(b);
       if (ga !== gb) return ga - gb;
-      const sa = Number(a[sortColumn] ?? 0);
-      const sb = Number(b[sortColumn] ?? 0);
-      return ascending ? sa - sb : sb - sa;
+      const sa = sortKeyForGroup(a);
+      const sb = sortKeyForGroup(b);
+      if (sa !== sb) return ascending ? sa - sb : sb - sa;
+      return String(a.naver_id).localeCompare(String(b.naver_id));
     });
     let activeRank = 0;
     for (const inf of influencers) {
