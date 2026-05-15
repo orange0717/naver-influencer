@@ -29,6 +29,19 @@ interface Health {
   likely_backlog: boolean;
 }
 
+/** influencer_data_integrity_summary RPC (migration-097) */
+interface IntegritySummary {
+  computed_at?: string;
+  total_influencers?: number;
+  subscriber_fan_both_positive_mismatch?: number;
+  subscriber_zero_fan_positive?: number;
+  fan_zero_subscriber_positive?: number;
+  subscriber_gt_total_follower?: number;
+  top3_sum_vs_integrated_mismatch?: number;
+  total_keywords_positive_no_owner?: number;
+  sample_subscriber_fan_mismatch?: string[];
+}
+
 interface Oldest {
   naver_id: string;
   display_name: string;
@@ -62,6 +75,8 @@ export default function AdminCrawlerPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [backlog, setBacklog] = useState<Backlog | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
+  const [integrity, setIntegrity] = useState<IntegritySummary | null>(null);
+  const [integrityError, setIntegrityError] = useState<string | null>(null);
   const [oldest, setOldest] = useState<Oldest[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +90,8 @@ export default function AdminCrawlerPage() {
       setSummary(data.summary);
       setBacklog(data.backlog ?? null);
       setHealth(data.health ?? null);
+      setIntegrity(data.integrity ?? null);
+      setIntegrityError(data.integrity_error ?? null);
       setOldest(data.oldest);
       setJobs(data.recent_jobs);
     } finally {
@@ -172,6 +189,68 @@ export default function AdminCrawlerPage() {
                   <strong className="text-text">ownerId 없음</strong>은 참여 키워드 수는 있는데 내부 ownerId가 비어 participated API를 못 부르는 경우입니다. in.naver.com HTML 파싱 실패·차단을 의심합니다.
                 </li>
               </ul>
+            </section>
+          )}
+
+          {(integrity || integrityError) && (
+            <section className="space-y-3">
+              <h2 className="text-base font-bold">인플루언서 데이터 정합성</h2>
+              <p className="text-xs text-dim leading-relaxed -mt-1">
+                DB에 저장된 값끼리 모순이 있는지 집계합니다. 팬 수는 crawl-rankings·crawl-influencers 크론이 돌면서 점차 맞춰집니다.
+              </p>
+              {integrityError && (
+                <div className="bg-down/10 border border-down/30 text-down rounded-lg px-4 py-3 text-sm">
+                  {integrityError}
+                </div>
+              )}
+              {integrity && (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    <StatCard
+                      label="구독자≠fan_count (둘 다 양수)"
+                      value={(integrity.subscriber_fan_both_positive_mismatch ?? 0).toLocaleString()}
+                      tone={(integrity.subscriber_fan_both_positive_mismatch ?? 0) === 0 ? 'up' : 'down'}
+                    />
+                    <StatCard
+                      label="구독자 0 · fan_count 양수"
+                      value={(integrity.subscriber_zero_fan_positive ?? 0).toLocaleString()}
+                      tone={(integrity.subscriber_zero_fan_positive ?? 0) === 0 ? 'up' : 'neutral'}
+                    />
+                    <StatCard
+                      label="fan 0 · 구독자 양수"
+                      value={(integrity.fan_zero_subscriber_positive ?? 0).toLocaleString()}
+                      tone={(integrity.fan_zero_subscriber_positive ?? 0) === 0 ? 'up' : 'neutral'}
+                    />
+                    <StatCard
+                      label="구독자 > 총팔로워"
+                      value={(integrity.subscriber_gt_total_follower ?? 0).toLocaleString()}
+                      tone={(integrity.subscriber_gt_total_follower ?? 0) === 0 ? 'up' : 'down'}
+                    />
+                    <StatCard
+                      label="TOP3 합 ≠ integrated"
+                      value={(integrity.top3_sum_vs_integrated_mismatch ?? 0).toLocaleString()}
+                      tone={(integrity.top3_sum_vs_integrated_mismatch ?? 0) === 0 ? 'up' : 'neutral'}
+                    />
+                    <StatCard
+                      label="키워드 이력인데 ownerId 없음"
+                      value={(integrity.total_keywords_positive_no_owner ?? 0).toLocaleString()}
+                      tone={(integrity.total_keywords_positive_no_owner ?? 0) === 0 ? 'up' : 'down'}
+                    />
+                  </div>
+                  {Array.isArray(integrity.sample_subscriber_fan_mismatch) &&
+                    integrity.sample_subscriber_fan_mismatch.length > 0 && (
+                    <p className="text-xs text-dim break-all">
+                      샘플 naver_id:{' '}
+                      {integrity.sample_subscriber_fan_mismatch.map(id => (
+                        <span key={id} className="font-mono text-text/90">@{id} </span>
+                      ))}
+                    </p>
+                  )}
+                  {integrity.computed_at && (
+                    <p className="text-[11px] text-dim">집계 시각(UTC): {String(integrity.computed_at)}</p>
+                  )}
+                </>
+              )}
             </section>
           )}
         </>

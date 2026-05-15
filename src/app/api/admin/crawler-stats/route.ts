@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
+/** integrity RPC + 기존 병렬 집계 */
+export const maxDuration = 60;
 
 type CrawlJob = {
   id: string;
@@ -38,6 +40,8 @@ export async function GET(req: NextRequest) {
   const cutoff24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
   const cutoff1h = new Date(now - 60 * 60 * 1000).toISOString();
 
+  const integrityRpc = supabase.rpc('influencer_data_integrity_summary');
+
   const [
     totalActiveRes,
     freshRes,
@@ -50,6 +54,7 @@ export async function GET(req: NextRequest) {
     fansNoChallengeDateRes,
     ownerMissingRes,
     totalInfluencersRes,
+    integrityRes,
   ] = await Promise.all([
     activeInfluencerQuery(supabase),
     activeInfluencerQuery(supabase).gte('last_crawled_at', cutoff1h),
@@ -75,6 +80,7 @@ export async function GET(req: NextRequest) {
     // 참여 키워드는 있는데 naver ownerId 없음 → participated API 호출 불가
     supabase.from('influencers').select('*', { count: 'exact', head: true }).gt('total_keywords', 0).is('naver_owner_id', null),
     activeInfluencerQuery(supabase),
+    integrityRpc,
   ]);
 
   const total = totalActiveRes.count || 0;
@@ -102,6 +108,27 @@ export async function GET(req: NextRequest) {
     ? minutesSince(aggregateJob.completed_at || aggregateJob.started_at)
     : null;
 
+  type IntegrityRow = Record<string, unknown> | null;
+  const integrityData = integrityRes.data as IntegrityRow;
+  const integrityError = integrityRes.error;
+  let integrity: Record<string, unknown> | null = null;
+  let integrity_error: string | null = null;
+  if (integrityError) {
+    const msg = integrityError.message || String(integrityError);
+    if (
+      integrityError.code === 'PGRST202' ||
+      msg.includes('influencer_data_integrity_summary') ||
+      msg.includes('Could not find the function')
+    ) {
+      integrity_error =
+        '데이터 정합성 RPC가 아직 DB에 없습니다. supabase/migrations/migration-097-influencer-data-integrity-summary.sql 을 Supabase에 적용하세요.';
+    } else {
+      integrity_error = msg;
+    }
+  } else if (integrityData && typeof integrityData === 'object') {
+    integrity = integrityData as Record<string, unknown>;
+  }
+
   const backlog = {
     last_crawl_null: countOrZero('last_crawl_null', lastCrawlNullRes),
     active_last_crawl_null: countOrZero('active_last_crawl_null', activeLastCrawlNullRes),
@@ -120,6 +147,8 @@ export async function GET(req: NextRequest) {
   };
 
   return NextResponse.json({
+    integrity,
+    integrity_error,
     summary: {
       total_active: total,
       fresh_within_1h: fresh1h,
