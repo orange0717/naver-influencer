@@ -25,8 +25,22 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { createRequire } from 'module';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+
+const require = createRequire(import.meta.url);
+
+/** Node 20 등: global WebSocket 없을 때 ws 패키지로 Realtime 전송 계층만 대체 (REST 배치는 Realtime 미사용) */
+function supabaseOptionsForBatch() {
+  const auth = { persistSession: false, autoRefreshToken: false };
+  try {
+    const WebSocketImpl = require('ws');
+    return { auth, realtime: { transport: WebSocketImpl } };
+  } catch {
+    return { auth };
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -71,6 +85,7 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseOptionsForBatch(),
 );
 
 // ─── 유틸 ───

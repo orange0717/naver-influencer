@@ -43,7 +43,7 @@ jobs:
           node-version: '22'
 
       - name: 의존성 설치
-        run: npm install @supabase/supabase-js --no-save --no-audit --no-fund
+        run: npm install @supabase/supabase-js ws --no-save --no-audit --no-fund
 
       - name: 진행 상태 캐시 복원
         uses: actions/cache@v4
