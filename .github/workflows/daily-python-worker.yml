@@ -1,14 +1,19 @@
-# 인플루언서 리스트 지표가 DB·화면에 반영되도록, 매일 KST 자정에 ninfle 프로덕션 크론을 순서대로 호출합니다.
+# 인플루언서 리스트 지표를 DB·화면에 반영합니다. (전체 인플루언서 기준)
+#
+# 1) ninfle 프로덕션 크론: 챌린지 순위 → 통계 집계 → 선정일(미수집분)
+# 2) 전체 인플 프로필·팬수·챌린지수: refresh-influencer-profiles.mjs 워크플로 위임
+#    (--all --include-new --stale-days 0 → DB 전원, 3샤드 병렬, 수 시간 소요. 큐만 넣고 본 워크플로는 곧 종료)
 #
 # GitHub Actions schedule 은 UTC 기준입니다.
-# cron: '0 15 * * *' → 매일 15:00 UTC = 한국 자정(KST) 직후에 해당하는 시각입니다.
+# cron: '0 15 * * *' → 매일 15:00 UTC = 한국 자정(KST) 직후
 #
 # 필요한 Repository secrets:
-#   CRON_SECRET  (필수 — Vercel 환경변수와 동일 값)
+#   CRON_SECRET  (필수 — Vercel과 동일)
+#   (전체 프로필 갱신은 refresh-influencer-profiles.yml 이 Supabase secrets 사용)
 # 선택: Repository variables → NINFL_BASE_URL (미설정 시 https://ninfle.kr)
 #
-# 참고: 기존 파이썬 예시(workers/daily_sync/)는 DB 쓰기 없이 연결 테스트용입니다.
-#       화면 반영은 아래 curl 단계가 담당합니다.
+# permissions: 동일 저장소의 다른 워크플로(dispatch) 실행에 actions: write 필요
+# 참고: refresh-influencer-profiles.yml 이 KST 03:00(18:00 UTC)에도 스케줄되어 있으면 하루 2회 전체 갱신됨. 한쪽만 쓰려면 해당 파일의 schedule 을 조정하세요.
 
 name: 일일 인플 목록 갱신 (KST 자정)
 
@@ -16,6 +21,10 @@ on:
   schedule:
     - cron: "0 15 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
 
 concurrency:
   group: daily-ninfle-influencer-sync
@@ -43,7 +52,6 @@ jobs:
             -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
             "$BASE/api/cron/crawl-challenge-ranks-scheduled"
 
-      # /api/cron/run 은 배포 버전에 따라 job 목록이 달라질 수 있어, 크론 엔드포인트를 직접 호출합니다.
       - name: 인플루언서 통계 집계
         run: |
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
@@ -53,14 +61,14 @@ jobs:
             -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
             "$BASE/api/cron/aggregate-influencers"
 
-      - name: 팔로워·팬수 갱신 (연결·데모 인플만)
+      - name: 전체 인플루언서 프로필·팬수·챌린지수 갱신 (3샤드 워크플로 실행)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
-          curl --fail --show-error --silent --max-time 320 \
-            -A "vercel-cron/1.0" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
-            "$BASE/api/cron/update-followers"
+          # scripts/refresh-influencer-profiles.mjs --apply --all --shard k/3
+          gh workflow run refresh-influencer-profiles.yml --ref main \
+            -f stale_days=0 \
+            -f reset_progress=false
 
       - name: 네이버 선정일(미수집분)
         run: |
