@@ -39,7 +39,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Supabase JS 2.x: Node 20은 글로벌 WebSocket 미지원으로 createClient 시 실패 → 22+
+          node-version: '22'
 
       - name: 의존성 설치
         run: npm install @supabase/supabase-js --no-save --no-audit --no-fund
