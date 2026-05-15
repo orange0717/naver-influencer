@@ -43,7 +43,7 @@ jobs:
             -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
             "$BASE/api/cron/crawl-challenge-ranks-scheduled"
 
-      # crawl-challenge-ranks 안전망과 동일한 인증 헤더(UA + x-vercel-cron-auth-token + Bearer)
+      # /api/cron/run 은 배포 버전에 따라 job 목록이 달라질 수 있어, 크론 엔드포인트를 직접 호출합니다.
       - name: 인플루언서 통계 집계
         run: |
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
@@ -51,16 +51,16 @@ jobs:
             -A "vercel-cron/1.0" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
-            "$BASE/api/cron/run?job=aggregate-influencers"
+            "$BASE/api/cron/aggregate-influencers"
 
-      - name: 팔로워·팬수 갱신
+      - name: 팔로워·팬수 갱신 (연결·데모 인플만)
         run: |
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
           curl --fail --show-error --silent --max-time 320 \
             -A "vercel-cron/1.0" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
-            "$BASE/api/cron/run?job=update-followers"
+            "$BASE/api/cron/update-followers"
 
       - name: 네이버 선정일(미수집분)
         run: |
@@ -69,4 +69,4 @@ jobs:
             -A "vercel-cron/1.0" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
-            "$BASE/api/cron/run?job=crawl-selection-dates"
+            "$BASE/api/cron/crawl-selection-dates"
