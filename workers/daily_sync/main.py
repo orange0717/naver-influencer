@@ -1,7 +1,10 @@
 """
 GitHub Actions 일일 스케줄에서 호출하는 예시 엔트리포인트.
 
-여기에 ninfle/Supabase 갱신 로직을 채우면 됩니다. 지금은 연결·권한만 검증합니다.
+인플 목록이 화면에 반영되게 하려면 GitHub Actions에서 ninfle 크론 URL을 curl로 호출하는
+워크플로(.github/workflows/daily-python-worker.yml)를 사용합니다.
+
+이 스크립트는 Supabase 연결·권한만 검증하는 예시입니다.
 환경변수(Repository secrets와 동일 이름):
   NEXT_PUBLIC_SUPABASE_URL
   SUPABASE_SERVICE_ROLE_KEY

@@ -1,14 +1,16 @@
-# 일일 스케줄로 파이썬 워커 실행 (예시)
+# 인플루언서 리스트 지표가 DB·화면에 반영되도록, 매일 KST 자정에 ninfle 프로덕션 크론을 순서대로 호출합니다.
 #
-# GitHub Actions의 schedule 은 저장소 기본 시간대가 **UTC** 입니다.
-# cron: '0 15 * * *' → 매일 15:00 UTC = 한국시간 **익일 00:00** (KST = UTC+9, 일광절약 없음)
+# GitHub Actions schedule 은 UTC 기준입니다.
+# cron: '0 15 * * *' → 매일 15:00 UTC = 한국 자정(KST) 직후에 해당하는 시각입니다.
 #
-# 필요한 Repository secrets (Settings → Secrets and variables → Actions):
-#   NEXT_PUBLIC_SUPABASE_URL
-#   SUPABASE_SERVICE_ROLE_KEY
+# 필요한 Repository secrets:
+#   CRON_SECRET  (필수 — Vercel 환경변수와 동일 값)
+# 선택: Repository variables → NINFL_BASE_URL (미설정 시 https://ninfle.kr)
 #
-# 수동 실행: Actions 탭 → 본 워크플로 → "Run workflow"
-name: 일일 파이썬 워커 (KST 자정)
+# 참고: 기존 파이썬 예시(workers/daily_sync/)는 DB 쓰기 없이 연결 테스트용입니다.
+#       화면 반영은 아래 curl 단계가 담당합니다.
+
+name: 일일 인플 목록 갱신 (KST 자정)
 
 on:
   schedule:
@@ -16,35 +18,57 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: daily-python-worker
+  group: daily-ninfle-influencer-sync
   cancel-in-progress: false
 
 jobs:
-  run:
+  refresh-from-ninfle:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
-      - name: 체크아웃
-        uses: actions/checkout@v4
-
-      - name: Python 설정
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: workers/daily_sync/requirements.txt
-
-      - name: 의존성 설치
-        run: pip install -r workers/daily_sync/requirements.txt
-
-      - name: 일일 작업 실행
+      - name: 챌린지 순위 (TOP3·비율·마지막 챌린지 참여일)
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
         run: |
-          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::Actions Secrets 에 NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 를 등록하세요."
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET 이 없습니다. GitHub Actions secrets 에 등록하세요."
             exit 1
           fi
-          python workers/daily_sync/main.py
+          BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
+          curl --fail --show-error --silent --max-time 320 \
+            -A "vercel-cron/1.0" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "x-vercel-cron-auth-token: github-actions-daily-sync" \
+            "$BASE/api/cron/crawl-challenge-ranks-scheduled"
+
+      - name: 인플루언서 통계 집계
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
+        run: |
+          BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
+          curl --fail --show-error --silent --max-time 320 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE/api/cron/run?job=aggregate-influencers"
+
+      - name: 팔로워·팬수 갱신
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
+        run: |
+          BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
+          curl --fail --show-error --silent --max-time 320 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE/api/cron/run?job=update-followers"
+
+      - name: 네이버 선정일(미수집분)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
+        run: |
+          BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
+          curl --fail --show-error --silent --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE/api/cron/run?job=crawl-selection-dates"
