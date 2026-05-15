@@ -289,14 +289,24 @@ export async function GET(request: NextRequest) {
         prevRankings?.forEach(r => prevRankMap.set(r.influencer_id, r.rank_position));
 
         // 인플루언서 배치 UPSERT
-        const influencerRows = rankings.map(rank => ({
-          naver_id: rank.naverId,
-          display_name: rank.influencerName,
-          profile_url: rank.influencerUrl || `https://in.naver.com/${rank.naverId}`,
-          category: rank.category || kw.category,
-          fan_count: rank.fanCount || 0,
-          last_crawled_at: new Date().toISOString(),
-        }));
+        // - 팬 수: UI(/api/influencers)는 subscriber_count 우선 — fan_count만 넣으면 화면과 DB가 어긋남
+        // - 파싱 실패 시 0으로 덮어쓰지 않음(기존 Feed·이전 크롤 값 유지)
+        // - category: 검색 스니펫은 in.naver 프로필/Feed와 표기가 달라 덮어쓰지 않음(crawl-influencers가 담당)
+        const influencerRows = rankings.map(rank => {
+          const fans =
+            typeof rank.fanCount === 'number' && Number.isFinite(rank.fanCount) && rank.fanCount > 0
+              ? rank.fanCount
+              : null;
+          return {
+            naver_id: rank.naverId,
+            display_name: rank.influencerName,
+            profile_url: rank.influencerUrl || `https://in.naver.com/${rank.naverId}`,
+            last_crawled_at: new Date().toISOString(),
+            ...(fans != null
+              ? { fan_count: fans, subscriber_count: fans, total_follower_count: fans }
+              : {}),
+          };
+        });
 
         const { data: dbInfluencers } = await supabase
           .from('influencers')
