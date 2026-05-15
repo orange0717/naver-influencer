@@ -39,6 +39,8 @@ jobs:
       NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL }}
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: 챌린지 순위 (TOP3·비율·마지막 챌린지 참여일)
         run: |
           if [ -z "$CRON_SECRET" ]; then
