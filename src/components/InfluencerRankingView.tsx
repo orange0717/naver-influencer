@@ -86,6 +86,7 @@ export default function InfluencerRankingView() {
       });
       if (category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
+      params.set('_ts', String(Date.now()));
 
       const res = await fetch(`/api/influencers?${params}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');

@@ -82,6 +82,8 @@ export default function InfluencersPage() {
       });
       if (category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
+      // 프록시·브라우저가 GET을 캐시하는 경우까지 끊기 위한 캐시 무효(서버는 미사용 파라미터 무시)
+      params.set('_ts', String(Date.now()));
 
       const res = await fetch(`/api/influencers?${params}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
