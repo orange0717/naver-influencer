@@ -7,6 +7,12 @@ import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories
 
 export const dynamic = 'force-dynamic';
 
+/** 리스트/정렬이 CDN·브라우저에 캐시되면 배포 직후에도 옛 데이터가 보일 수 있음 */
+const LIST_JSON_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  Pragma: 'no-cache',
+} as const;
+
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
   if (await searchLimiter.check(ip)) return rateLimitResponse();
@@ -33,7 +39,7 @@ export async function GET(request: NextRequest) {
     logger.error('influencers', 'data fetch error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: '인플루언서 데이터를 불러오는 중 오류가 발생했습니다.' },
-      { status: 500 },
+      { status: 500, headers: LIST_JSON_HEADERS },
     );
   }
 }
@@ -366,15 +372,18 @@ async function getInfluencersFromDB(
     activeTotal = activeCount || 0;
   }
 
-  return NextResponse.json({
-    influencers: items,
-    categories,
-    total,
-    activeTotal,
-    page,
-    total_pages: totalPages,
-    source: 'db',
-  });
+  return NextResponse.json(
+    {
+      influencers: items,
+      categories,
+      total,
+      activeTotal,
+      page,
+      total_pages: totalPages,
+      source: 'db',
+    },
+    { headers: LIST_JSON_HEADERS },
+  );
 }
 
 /** 실시간 API 폴백 (DB에 데이터가 없을 때) */
@@ -401,14 +410,17 @@ async function getInfluencersFromAPI(
     const categories = await fetchCategories();
     const categoryNames = ['전체', ...categories.map(c => c.name)];
 
-    return NextResponse.json({
-      influencers: filtered,
-      categories: categoryNames,
-      total: search ? filtered.length : result.total,
-      page,
-      total_pages: search ? Math.ceil(filtered.length / limit) : result.totalPages,
-      source: 'api',
-    });
+    return NextResponse.json(
+      {
+        influencers: filtered,
+        categories: categoryNames,
+        total: search ? filtered.length : result.total,
+        page,
+        total_pages: search ? Math.ceil(filtered.length / limit) : result.totalPages,
+        source: 'api',
+      },
+      { headers: LIST_JSON_HEADERS },
+    );
   }
 
   const result = await fetchAllInfluencersSummary();
@@ -431,12 +443,15 @@ async function getInfluencersFromAPI(
   const influencers = filtered.slice(start, start + limit);
   const categoryNames = ['전체', ...result.categories.map(c => c.name)];
 
-  return NextResponse.json({
-    influencers,
-    categories: categoryNames,
-    total,
-    page,
-    total_pages: totalPages,
-    source: 'api',
-  });
+  return NextResponse.json(
+    {
+      influencers,
+      categories: categoryNames,
+      total,
+      page,
+      total_pages: totalPages,
+      source: 'api',
+    },
+    { headers: LIST_JSON_HEADERS },
+  );
 }
