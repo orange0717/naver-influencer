@@ -4,6 +4,10 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 import type { ParsedRanking } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+/** 키워드당 sleep(2s) + HTML fetch·DB upsert — 기본 서버리스 타임아웃을 넘기기 쉬움 */
+export const maxDuration = 300;
+
 const NAVER_SEARCH_URL = 'https://search.naver.com/search.naver';
 const BATCH_SIZE = 20; // Vercel 60초 제한 내 안전한 키워드 수
 const TODAY = () => new Date().toISOString().slice(0, 10);
@@ -207,9 +211,9 @@ async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClien
     }
   }
 
-  // 나머지 Tier는 BATCH_SIZE 내에서 채우기
+  // 나머지 Tier는 (Tier0 제외) 최대 BATCH_SIZE개까지 채우기 — 상한은 break 조건과 동일해야 함
   for (const item of [...(tier1 || []), ...tier2, ...tier3]) {
-    if (!seen.has(item.id) && result.length < Math.max(BATCH_SIZE, result.length)) {
+    if (!seen.has(item.id) && result.length < BATCH_SIZE + tier0.length) {
       seen.add(item.id);
       result.push(item);
     }

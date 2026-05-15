@@ -44,14 +44,17 @@ async function fetchHtmlCategory(naverId: string): Promise<{ myKeywordCategory: 
 
 /** Feed Discover API로 키워드별 인플루언서 수집 (최대 100명) */
 async function fetchInfluencersByKeywordId(
-  keywordId: number,
+  keywordId: number | string,
 ): Promise<FeedCreator[]> {
+  const kid = String(keywordId).trim();
+  if (!/^\d+$/.test(kid)) return [];
+
   const results: FeedCreator[] = [];
   const seenIds = new Set<string>();
   let cursor: string | undefined;
 
   for (let page = 0; page < 2; page++) {
-    let url = `${FEED_API_BASE}/discover/collection/searched?keywordId=${keywordId}&limit=50`;
+    let url = `${FEED_API_BASE}/discover/collection/searched?keywordId=${encodeURIComponent(kid)}&limit=50`;
     if (cursor) url += `&cursor=${cursor}`;
 
     try {
