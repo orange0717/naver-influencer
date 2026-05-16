@@ -142,6 +142,7 @@ export default async function HomePage() {
       <DashboardGrid
         currentPlan={currentPlan}
         isLoggedIn={isLoggedIn}
+        isDemoUser={!!demoNaverId}
         userName={userName}
         subscriptionExpiresAt={subscriptionExpiresAt}
         stats={{

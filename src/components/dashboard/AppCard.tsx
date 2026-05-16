@@ -131,6 +131,8 @@ interface AppCardProps {
   currentPlan: PlanTier;
   /** 정식 로그인 또는 데모 세션 — false면 카드 탭 시 로그인으로 이동 */
   isLoggedIn: boolean;
+  /** 데모 체험: 키워드 카테고리 앱은 유료 플랜 뱃지·잠금 표시 생략 */
+  isDemoUser?: boolean;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
   onSelect: (app: DashboardApp) => void;
@@ -141,6 +143,7 @@ export default function AppCard({
   category,
   currentPlan,
   isLoggedIn,
+  isDemoUser = false,
   isFavorite,
   onToggleFavorite,
   onSelect,
@@ -148,7 +151,9 @@ export default function AppCard({
   const router = useRouter();
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
   const locked =
-    !!app.requiredPlan && PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan];
+    !!app.requiredPlan &&
+    PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan] &&
+    !(isDemoUser && app.category === 'keyword');
 
   // 카드 하단 풀폭 라벨 (시각용, 클릭은 카드 전체에서 처리)
   const planTagLabel = app.devPreview

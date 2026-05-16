@@ -86,7 +86,7 @@ src/
 |-----|-----|------|------|
 | 18:00 | 03:00 | crawl-keywords | Step 1: 키워드 목록 크롤링 (GraphQL 카테고리 + REST 키워드) |
 | 19:00 | 04:00 | crawl-rankings | Step 2: 검색 순위 크롤링 (Tier 0~3 배치 전략) |
-| 매 3시간 (01:30,04:30,...) | — | crawl-challenge-ranks | Step 2.5: 챌린지 공식 순위 (연결 인플루언서 키워드) |
+| 매 10분 (UTC) | — | crawl-challenge-ranks-scheduled → crawl-challenge-ranks | Step 2.5: 챌린지 공식 순위 (24h 전 순환) |
 | 0,6,12,18 | 매 6시간 | crawl-influencers | 인플루언서 수집 (Feed Discover API) |
 | 20:00 | 05:00 | update-volumes | Step 3: 검색량 업데이트 (네이버 검색광고 + DataLab API) |
 | 20:30 | 05:30 | aggregate-influencers | 인플루언서 통계 집계 (total_keywords, avg_rank 등) |

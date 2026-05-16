@@ -56,11 +56,11 @@ services:
       CRAWL_SCHEDULE_TIMEZONE: Asia/Seoul
       CRAWL_DAILY_HOUR: "0"
       CRAWL_DAILY_MINUTE: "0"
-      PLAYWRIGHT_HEADLESS: "true"
       RUN_CRAWL_ON_STARTUP: "true"
       CRAWL_API_PAUSE_SECONDS: "1"
       CRAWL_API_429_MAX_RETRIES: "5"
       CRAWL_API_429_BASE_SLEEP_SECONDS: "10"
+      PLAYWRIGHT_HEADLESS: "true"
     depends_on:
       db:
         condition: service_healthy

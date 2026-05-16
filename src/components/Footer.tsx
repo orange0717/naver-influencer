@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { isDesktop } from '@/lib/desktop';
 import { CONTACT_BLOG_URL, CONTACT_EMAIL, contactBlogLabel } from '@/lib/site-contact';
+import { useAuth } from '@/hooks/useAuth';
 
 const FOOTER_LINKS = [
   { href: '/influencers', label: '리스트' },
@@ -22,14 +23,22 @@ const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
 
 export default function Footer() {
   const [inDesktopApp, setInDesktopApp] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     setInDesktopApp(isDesktop());
   }, []);
 
-  const visibleLinks = inDesktopApp
-    ? FOOTER_LINKS.filter(l => !DESKTOP_HIDDEN_HREFS.has(l.href))
-    : FOOTER_LINKS;
+  const visibleLinks = useMemo(() => {
+    const base = inDesktopApp
+      ? FOOTER_LINKS.filter(l => !DESKTOP_HIDDEN_HREFS.has(l.href))
+      : FOOTER_LINKS;
+    return base.filter(l => {
+      if (l.href === '/notice' && (!user.id || user.isDemo)) return false;
+      if ((l.href === '/keywords' || l.href === '/keywords/blogger') && !user.id) return false;
+      return true;
+    });
+  }, [inDesktopApp, user.id, user.isDemo]);
 
   return (
     <footer className="bg-footer-bg text-footer-text"

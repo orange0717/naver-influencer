@@ -3,14 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getLatestUpdate, type UpdateItem } from '@/lib/update-data';
-
-interface BannerNotice {
-  id: string;
-  title: string;
-  tag: string;
-  date: string;
-  href: string;
-}
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * 업데이트 공지 배너
@@ -19,6 +12,7 @@ interface BannerNotice {
  * - localStorage 기반 dismiss (버전/ID 별, 브라우저 종료 후에도 유지)
  */
 export default function UpdateBanner() {
+  const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [item, setItem] = useState<
     | { version: string; title: string; date: string; href?: string; changes: string[] }
@@ -76,6 +70,11 @@ export default function UpdateBanner() {
 
   if (!item || !visible) return null;
 
+  const bannerHref =
+    item.href && (!user.id || user.isDemo) && item.href.startsWith('/notice')
+      ? `/auth/login?redirect=${encodeURIComponent(item.href)}`
+      : item.href;
+
   const handleDismiss = () => {
     localStorage.setItem(`update-dismiss-${item.version}`, '1');
     setVisible(false);
@@ -116,8 +115,8 @@ export default function UpdateBanner() {
 
   return (
     <div className="relative bg-gradient-to-r from-accent/[0.08] to-accent/[0.03] border-b border-accent/15">
-      {item.href ? (
-        <Link href={item.href} className="block hover:bg-accent/[0.05] transition-colors">
+      {bannerHref ? (
+        <Link href={bannerHref} className="block hover:bg-accent/[0.05] transition-colors">
           {inner}
         </Link>
       ) : (

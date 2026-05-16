@@ -8,12 +8,18 @@ const CRON_JOBS: Record<string, string> = {
   'crawl-keywords': '/api/cron/crawl-keywords',
   'crawl-rankings': '/api/cron/crawl-rankings',
   'crawl-challenge-ranks': '/api/cron/crawl-challenge-ranks',
+  'crawl-challenge-ranks-scheduled': '/api/cron/crawl-challenge-ranks-scheduled',
   'crawl-influencers': '/api/cron/crawl-influencers',
   'update-volumes': '/api/cron/update-volumes',
   'aggregate-influencers': '/api/cron/aggregate-influencers',
   'generate-recommendations': '/api/cron/generate-recommendations',
   'crawl-blog-ranks': '/api/cron/crawl-blog-ranks',
+  'crawl-blog-visitors': '/api/cron/crawl-blog-visitors',
   'crawl-selection-dates': '/api/cron/crawl-selection-dates',
+  'crawl-search-exposure': '/api/cron/crawl-search-exposure?size=20',
+  'update-followers': '/api/cron/update-followers',
+  'verify-daily-coverage': '/api/cron/verify-daily-coverage',
+  'refresh-stats': '/api/cron/refresh-stats',
   'privacy-notices': '/api/cron/privacy-notices',
 };
 

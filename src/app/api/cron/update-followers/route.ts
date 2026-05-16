@@ -136,6 +136,11 @@ export async function GET(request: NextRequest) {
         if (profile.subscriberCount > 0) {
           updateData.subscriber_count = profile.subscriberCount;
         }
+        // crawl-influencers와 동일 규칙 — fan_count 미갱신 시 정합성 RPC·리스트 표시가 깨짐
+        const fanCount = profile.subscriberCount || profile.totalFollowerCount || 0;
+        if (fanCount > 0) {
+          updateData.fan_count = fanCount;
+        }
         if (profile.ownerId) {
           updateData.naver_owner_id = profile.ownerId;
         }

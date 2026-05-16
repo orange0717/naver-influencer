@@ -16,6 +16,8 @@ import { useAuth } from '@/hooks/useAuth';
 interface Props {
   currentPlan: PlanTier;
   isLoggedIn: boolean;
+  /** 데모 체험 세션 — 키워드 기능 노출·플랜 잠금 해제(키워드 카테고리만) */
+  isDemoUser?: boolean;
   userName: string | null;
   subscriptionExpiresAt: string | null;
   stats: {
@@ -58,6 +60,7 @@ function sortAppsByPlan(apps: typeof DASHBOARD_APPS): typeof DASHBOARD_APPS {
 export default function DashboardGrid({
   currentPlan: serverPlan,
   isLoggedIn,
+  isDemoUser = false,
   userName,
   subscriptionExpiresAt,
   stats,
@@ -87,10 +90,13 @@ export default function DashboardGrid({
 
   const filterApps = (apps: typeof DASHBOARD_APPS) => {
     let result = apps;
-    if (isLoggedIn) {
-      result = result.filter(app =>
-        !app.requiredPlan || PLAN_RANK[currentPlan] >= PLAN_RANK[app.requiredPlan],
-      );
+    if (!isLoggedIn) {
+      result = result.filter(app => app.category !== 'keyword');
+    } else if (isLoggedIn) {
+      result = result.filter(app => {
+        if (isDemoUser && app.category === 'keyword') return true;
+        return !app.requiredPlan || PLAN_RANK[currentPlan] >= PLAN_RANK[app.requiredPlan];
+      });
     }
     if (normalizedQuery) {
       result = result.filter(app =>
@@ -248,6 +254,7 @@ export default function DashboardGrid({
                 category={categoryMap[app.category]}
                 currentPlan={currentPlan}
                 isLoggedIn={isLoggedIn}
+                isDemoUser={isDemoUser}
                 isFavorite
                 onToggleFavorite={toggle}
                 onSelect={setSelectedApp}
@@ -291,6 +298,7 @@ export default function DashboardGrid({
                   category={cat}
                   currentPlan={currentPlan}
                   isLoggedIn={isLoggedIn}
+                  isDemoUser={isDemoUser}
                   isFavorite={favorites.has(app.id)}
                   onToggleFavorite={toggle}
                   onSelect={setSelectedApp}
@@ -316,6 +324,7 @@ export default function DashboardGrid({
           category={categoryMap[selectedApp.category]}
           currentPlan={currentPlan}
           isLoggedIn={isLoggedIn}
+          isDemoUser={isDemoUser}
           onClose={() => setSelectedApp(null)}
         />
       )}

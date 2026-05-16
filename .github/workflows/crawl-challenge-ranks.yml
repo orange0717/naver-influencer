@@ -2,8 +2,8 @@ name: N인플 챌린지 순위 크롤링 안전망
 
 on:
   schedule:
-    # Vercel Cron이 지연/비활성화되어도 15분 cadence를 유지하는 보조 트리거.
-    - cron: '*/15 * * * *'
+    # Vercel Cron과 동일한 cadence(10분). 지연/비활성화 시 보조 트리거.
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 concurrency:

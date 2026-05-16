@@ -4,7 +4,9 @@ import { verifyCronSecret } from '@/lib/crawler';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-const CRAWL_PATH = '/api/cron/crawl-challenge-ranks?batch=300&concurrency=8';
+// 일일 전 인플 1회 순환: 활성 ~2만명 / (10분 크론 144회) ≈ 회당 140명만 넘겨도 이론상 24h 커버.
+// batch는 여유 있게 두되, 270초 안에 끝나지 않으면 다음 회차가 이어받음. 429 발생 시 concurrency 하향.
+const CRAWL_PATH = '/api/cron/crawl-challenge-ranks?batch=330&concurrency=15';
 
 async function callCron(origin: string, path: string) {
   const headers: HeadersInit = {

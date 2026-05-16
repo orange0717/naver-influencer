@@ -14,7 +14,7 @@ export const maxDuration = 300;
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-// 15분마다 실행 → 96회/일. 전체 약 17,000명을 매일 1회 커버 목표.
+// 10분마다 실행 → 144회/일. 전체 활성 ~2만 명을 24h 안 1회 순환 목표(회당 처리량은 batch·타임아웃에 따름).
 // 중복 실행은 cron_locks로 막고, 실행 시간 제한에 닿으면 다음 회차가 이어받는다.
 const DEFAULT_BATCH_SIZE = 500;
 const DEFAULT_CONCURRENCY = 8;
@@ -43,6 +43,29 @@ interface ParticipatedKeyword {
 /** naverId 형식 검증 (영문/숫자/언더스코어만 허용) */
 function isValidNaverId(id: string): boolean {
   return /^[a-zA-Z0-9_]{2,30}$/.test(id);
+}
+
+/** 쿼리/표시용 @ 접두사 제거 후 검증 */
+function normalizeNaverIdParam(raw: string | null): string | null {
+  if (!raw) return null;
+  const s = raw.trim().replace(/^@/, '');
+  return isValidNaverId(s) ? s : null;
+}
+
+/** ?naver_ids=a,b,c (순서 유지, 중복 제거, 최대 MAX개) */
+function parseNaverIdsList(param: string | null, max = 40): string[] {
+  if (!param?.trim()) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of param.split(',')) {
+    const id = normalizeNaverIdParam(part);
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+      if (out.length >= max) break;
+    }
+  }
+  return out;
 }
 
 /** 인플루언서 프로필 페이지에서 ownerId 추출 */
@@ -207,6 +230,7 @@ async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceCl
     .eq('is_active', true)
     .neq('stopped_manual', true)
     .order('last_crawled_at', { ascending: true, nullsFirst: true })
+    .order('id', { ascending: true })
     .limit(batchSize);
 
   if (error) {
@@ -218,13 +242,56 @@ async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceCl
   return data || [];
 }
 
+type InfluencerCrawlRow = {
+  id: string;
+  naver_id: string;
+  naver_owner_id: string | null;
+  category: string;
+  my_keyword_category: string;
+};
+
+/** naver_id 목록 순서를 유지하며 행 조회 (수동 우선 크롤용) */
+async function fetchInfluencersByNaverIds(
+  supabase: ReturnType<typeof createServiceClient>,
+  naverIds: string[],
+): Promise<InfluencerCrawlRow[]> {
+  if (naverIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('influencers')
+    .select('id, naver_id, naver_owner_id, category, my_keyword_category')
+    .in('naver_id', naverIds);
+
+  if (error) {
+    console.error('[crawl-challenge-ranks] explicit naver_ids query failed:', error.message);
+    return [];
+  }
+
+  const byNaver = new Map((data || []).map(r => [r.naver_id, r]));
+  const ordered: InfluencerCrawlRow[] = [];
+  for (const id of naverIds) {
+    const row = byNaver.get(id);
+    if (row) ordered.push(row);
+    else console.warn(`[crawl-challenge-ranks] No influencer row for naver_id=${id}`);
+  }
+  return ordered;
+}
+
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const targetNaverId = request.nextUrl.searchParams.get('naver_id');
-  const lockKey = targetNaverId ? `${CRON_LOCK_KEY}:${targetNaverId}` : CRON_LOCK_KEY;
+  const naverIdsFromList = parseNaverIdsList(request.nextUrl.searchParams.get('naver_ids'));
+  const singleFromParam = normalizeNaverIdParam(request.nextUrl.searchParams.get('naver_id'));
+  const explicitNaverIds =
+    naverIdsFromList.length > 0 ? naverIdsFromList : singleFromParam ? [singleFromParam] : [];
+
+  const lockKey =
+    explicitNaverIds.length === 1
+      ? `${CRON_LOCK_KEY}:${explicitNaverIds[0]}`
+      : explicitNaverIds.length > 1
+        ? `${CRON_LOCK_KEY}:multi-explicit`
+        : CRON_LOCK_KEY;
   const lockAcquired = await tryAcquireCronLock(lockKey, CRON_LOCK_TTL_SECONDS);
   if (!lockAcquired) {
     console.log(`[crawl-challenge-ranks] Previous run is still active; skipping (${lockKey})`);
@@ -251,15 +318,10 @@ export async function GET(request: NextRequest) {
   console.log(`[Cron] crawl-challenge-ranks started at ${new Date().toISOString()} (batch=${BATCH_SIZE}, concurrency=${CONCURRENCY})`);
 
   try {
-    let influencers: { id: string; naver_id: string; naver_owner_id: string | null; category: string; my_keyword_category: string }[];
+    let influencers: InfluencerCrawlRow[];
 
-    if (targetNaverId) {
-      const { data } = await supabase
-        .from('influencers')
-        .select('id, naver_id, naver_owner_id, category, my_keyword_category')
-        .eq('naver_id', targetNaverId)
-        .limit(1);
-      influencers = data || [];
+    if (explicitNaverIds.length > 0) {
+      influencers = await fetchInfluencersByNaverIds(supabase, explicitNaverIds);
     } else {
       influencers = await getInfluencersToCrawl(supabase, BATCH_SIZE);
     }

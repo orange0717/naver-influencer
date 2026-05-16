@@ -84,6 +84,33 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // 공지사항: 정식 Supabase 로그인만 허용 (비회원·데모 쿠키만 있는 경우 차단)
+  const needsNoticeLogin = acceptsHtml && matchesPathPrefix(pathname, '/notice');
+  if (needsNoticeLogin && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    return NextResponse.redirect(url);
+  }
+
+  // 키워드 분석 UI·데이터: 정식 로그인 또는 데모 체험 쿠키 (완전 비회원 공개 아님)
+  const needsKeywordsLogin =
+    acceptsHtml && matchesPathPrefix(pathname, '/keywords');
+  if (needsKeywordsLogin && !user && !hasDemoSession) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    return NextResponse.redirect(url);
+  }
+
+  const isKeywordsApi =
+    pathname === '/api/keywords' ||
+    pathname.startsWith('/api/keywords/') ||
+    pathname === '/api/downloads/keywords';
+  if (isKeywordsApi && !user && !hasDemoSession) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
   // 데모 체험( trial_started + 72h ) 만료 후: 로그인 없이 데모 쿠키만 있으면 유료 전환 유도
   // — /subscribe 는 허용(결제·안내). 커뮤니티(로그인 게이트) 또는 홈(/) 은 /subscribe 로 보냄.
   if (acceptsHtml && !user && hasDemoSession) {

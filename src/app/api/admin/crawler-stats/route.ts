@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
     never,
     oldest,
     recentJobs,
+    latestChallengeRankJob,
     lastCrawlNullRes,
     activeLastCrawlNullRes,
     fansNoChallengeDateRes,
@@ -67,8 +68,16 @@ export async function GET(req: NextRequest) {
       .neq('stopped_manual', true)
       .not('last_crawled_at', 'is', null)
       .order('last_crawled_at', { ascending: true })
+      .order('id', { ascending: true })
       .limit(5),
     supabase.from('crawl_jobs').select('id, job_type, status, started_at, completed_at, total_items, processed_items, failed_items, error_message').order('started_at', { ascending: false }).limit(20),
+    // 최근 20건 혼합 목록에서는 다른 크론에 밀려 빠져 오탐이 나므로 타입별 최신 1건을 따로 조회
+    supabase
+      .from('crawl_jobs')
+      .select('id, job_type, status, started_at, completed_at, total_items, processed_items, failed_items, error_message')
+      .eq('job_type', 'crawl-challenge-ranks')
+      .order('started_at', { ascending: false })
+      .limit(1),
     activeInfluencerQuery(supabase).is('last_crawled_at', null),
     activeInfluencerQuery(supabase).is('last_crawled_at', null),
     // 팬/팔로워는 있는데 네이버 챌린지 참여일(last_challenged_at) 미수신 → 공개 리스트와 체감 불일치 가능
@@ -101,7 +110,11 @@ export async function GET(req: NextRequest) {
     if (!acc[job.job_type]) acc[job.job_type] = job;
     return acc;
   }, {});
-  const challengeJob = latestByType['crawl-challenge-ranks'];
+  if (latestChallengeRankJob.error) {
+    console.error('[crawler-stats] latest crawl-challenge-ranks job:', latestChallengeRankJob.error.message);
+  }
+  const challengeJobDedicated = ((latestChallengeRankJob.data || [])[0] ?? undefined) as CrawlJob | undefined;
+  const challengeJob = challengeJobDedicated ?? latestByType['crawl-challenge-ranks'];
   const aggregateJob = latestByType['aggregate-influencers'];
   const challengeLastRunMin = minutesSince(challengeJob?.started_at);
   const aggregateLastSuccessMin = aggregateJob?.status === 'success'

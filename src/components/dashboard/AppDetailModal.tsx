@@ -23,10 +23,11 @@ interface Props {
   category: AppCategoryMeta;
   currentPlan: PlanTier;
   isLoggedIn: boolean;
+  isDemoUser?: boolean;
   onClose: () => void;
 }
 
-export default function AppDetailModal({ app, category, currentPlan, isLoggedIn, onClose }: Props) {
+export default function AppDetailModal({ app, category, currentPlan, isLoggedIn, isDemoUser = false, onClose }: Props) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -41,7 +42,9 @@ export default function AppDetailModal({ app, category, currentPlan, isLoggedIn,
   }, [onClose]);
 
   const locked =
-    !!app.requiredPlan && PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan];
+    !!app.requiredPlan &&
+    PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan] &&
+    !(isDemoUser && app.category === 'keyword');
   const needsLogin = !!app.authOnly && !isLoggedIn;
 
   let targetHref = app.href;

@@ -78,10 +78,9 @@ export default function KeywordsPage() {
       router.replace('/auth/login?redirect=/keywords');
       return;
     }
-    if (!planAllowed) {
-      router.replace('/subscribe?highlight=influencer');
-    }
-  }, [authLoading, user.id, planAllowed, router]);
+    if (planAllowed || user.isDemo) return;
+    router.replace('/subscribe?highlight=influencer');
+  }, [authLoading, user.id, user.isDemo, planAllowed, router]);
 
   const handleDownload = async () => {
     if (!canDownload || downloading) return;
@@ -401,7 +400,7 @@ export default function KeywordsPage() {
     return list;
   }, [keywords, subFilter, sortKey, sortOrder, search]);
 
-  if (authLoading || !user.id || !planAllowed) {
+  if (authLoading || !user.id || !(planAllowed || user.isDemo)) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center">
         <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />

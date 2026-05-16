@@ -45,7 +45,7 @@ interface NavItem {
 
 // 대시보드(/)가 기능 허브 역할을 하므로 상단 네비는 최소화
 const NAV_ITEMS: NavItem[] = [
-  { href: '/notice', label: '공지사항' },
+  { href: '/notice', label: '공지사항', authOnly: true },
   { href: '/community', label: '커뮤니티' },
   { href: '/stories', label: '성장후기' },
   { href: '/subscribe', label: '이용권' },
@@ -214,7 +214,7 @@ export default function Header({ serverUser }: HeaderProps) {
   // 데스크탑 앱에서는 커뮤니티/이용권 숨김 (단, 제한 사용자는 이용권 결제 안내 필요하므로 예외)
   const visibleItems = NAV_ITEMS.filter(item => {
     if (isRestricted) return item.href === '/subscribe';
-    if (item.authOnly && !user.id) return false;
+    if (item.authOnly && (!user.id || user.isDemo)) return false;
     if (inDesktopApp && item.href && DESKTOP_HIDDEN_HREFS.has(item.href)) return false;
     return true;
   });

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 
+export const dynamic = 'force-dynamic';
+/** SearchAd/DataLab + 최대 100키워드 DB 반영 — 충분한 상한 */
+export const maxDuration = 300;
+
 const SEARCHAD_API_URL = 'https://api.searchad.naver.com/keywordstool';
 const DATALAB_API_URL = 'https://openapi.naver.com/v1/datalab/search';
 const BATCH_SIZE = 5; // 검색광고 API: 한 번에 5개 키워드
