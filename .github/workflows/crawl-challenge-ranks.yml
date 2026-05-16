@@ -2,8 +2,8 @@ name: N인플 챌린지 순위 크롤링 안전망
 
 on:
   schedule:
-    # Vercel Cron과 동일한 cadence(10분). 지연/비활성화 시 보조 트리거.
-    - cron: '*/10 * * * *'
+    # Vercel Cron과 동일한 cadence(5분). 지연/비활성화 시 보조 트리거.
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -25,8 +25,10 @@ jobs:
             exit 1
           fi
 
-          curl --fail --show-error --silent \
-            -A "vercel-cron/1.0" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "x-vercel-cron-auth-token: github-actions-safety-net" \
-            "$NINFL_BASE_URL/api/cron/crawl-challenge-ranks-scheduled"
+          for SHARD in 0 1; do
+            curl --fail --show-error --silent --max-time 320 \
+              -A "vercel-cron/1.0" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "x-vercel-cron-auth-token: github-actions-safety-net" \
+              "$NINFL_BASE_URL/api/cron/crawl-challenge-ranks-scheduled?shard=$SHARD&shards=2"
+          done

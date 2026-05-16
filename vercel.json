@@ -26,8 +26,12 @@
       "schedule": "0 21 * * *"
     },
     {
-      "path": "/api/cron/crawl-challenge-ranks-scheduled",
-      "schedule": "*/10 * * * *"
+      "path": "/api/cron/crawl-challenge-ranks-scheduled?shard=0&shards=2",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/crawl-challenge-ranks-scheduled?shard=1&shards=2",
+      "schedule": "2-57/5 * * * *"
     },
     {
       "path": "/api/cron/verify-daily-coverage",

@@ -14,7 +14,7 @@ export const maxDuration = 300;
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PAGE_LIMIT = 50;
-// 10분마다 실행 → 144회/일. 전체 활성 ~2만 명을 24h 안 1회 순환 목표(회당 처리량은 batch·타임아웃에 따름).
+// 5분마다 실행 → 288회/일. 전체 활성 ~2만 명을 24h 안 1회 순환 목표(회당 처리량은 batch·타임아웃에 따름).
 // 중복 실행은 cron_locks로 막고, 실행 시간 제한에 닿으면 다음 회차가 이어받는다.
 const DEFAULT_BATCH_SIZE = 500;
 const DEFAULT_CONCURRENCY = 8;
@@ -23,7 +23,7 @@ const MAX_CONCURRENCY = 15;
 const CRON_LOCK_KEY = 'cron:crawl-challenge-ranks';
 const CRON_LOCK_TTL_SECONDS = 330;
 const TODAY = () => new Date().toISOString().slice(0, 10);
-const MAX_RUNTIME_MS = 270_000; // 300초 중 안전 마진 30초
+const MAX_RUNTIME_MS = 285_000; // 300초 중 안전 마진 15초
 
 /** keyword를 정규화 (keyword_clean 생성용) */
 function cleanKeyword(keyword: string): string {
@@ -217,13 +217,34 @@ async function ensureKeywordsExist(
   }
 }
 
+/** id 기준 샤드 (0 … shards-1). 동일 id는 항상 같은 샤드. */
+function crawlShardIndex(id: string, shards: number): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  }
+  return ((h % shards) + shards) % shards;
+}
+
 /** 크롤할 인플루언서 목록 조회.
  *
  * 전체 인플루언서 풀을 오래된 순서로 순환한다. total_keywords=0도 다음 크롤 때
  * 참여 키워드가 생길 수 있으므로 큐에서 제외하면 안 된다. 수동 활동중단 또는
  * import에서 비활성 처리된 행만 제외한다.
+ *
+ * shard/shards 가 있으면 큐를 둘로 나눠 Vercel 크론 2개가 동시에 다른 인플을 처리한다.
  */
-async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceClient>, batchSize: number) {
+async function getInfluencersToCrawl(
+  supabase: ReturnType<typeof createServiceClient>,
+  batchSize: number,
+  shard?: number,
+  shards?: number,
+) {
+  const useShard = shards != null && shards > 1 && shard != null && shard >= 0 && shard < shards;
+  const fetchLimit = useShard
+    ? Math.min(batchSize * shards * 4, MAX_BATCH_SIZE * 3)
+    : batchSize;
+
   const { data, error } = await supabase
     .from('influencers')
     .select('id, naver_id, naver_owner_id, category, my_keyword_category')
@@ -231,15 +252,21 @@ async function getInfluencersToCrawl(supabase: ReturnType<typeof createServiceCl
     .neq('stopped_manual', true)
     .order('last_crawled_at', { ascending: true, nullsFirst: true })
     .order('id', { ascending: true })
-    .limit(batchSize);
+    .limit(fetchLimit);
 
   if (error) {
     console.error('[crawl-challenge-ranks] target query failed:', error.message);
     return [];
   }
 
-  console.log(`[crawl-challenge-ranks] Target: ${data?.length || 0} influencers (full active pool, oldest first)`);
-  return data || [];
+  let rows = data || [];
+  if (useShard) {
+    rows = rows.filter(r => crawlShardIndex(r.id, shards!) === shard!).slice(0, batchSize);
+  }
+
+  const shardLabel = useShard ? ` shard=${shard}/${shards}` : '';
+  console.log(`[crawl-challenge-ranks] Target: ${rows.length} influencers (oldest first${shardLabel})`);
+  return rows;
 }
 
 type InfluencerCrawlRow = {
@@ -286,12 +313,25 @@ export async function GET(request: NextRequest) {
   const explicitNaverIds =
     naverIdsFromList.length > 0 ? naverIdsFromList : singleFromParam ? [singleFromParam] : [];
 
+  const shardParam = request.nextUrl.searchParams.get('shard');
+  const shardsParam = request.nextUrl.searchParams.get('shards');
+  const shards =
+    shardsParam != null && Number.isFinite(Number(shardsParam)) && Number(shardsParam) > 1
+      ? Math.min(Math.floor(Number(shardsParam)), 8)
+      : undefined;
+  const shard =
+    shardParam != null && shards != null && Number.isFinite(Number(shardParam))
+      ? Math.floor(Number(shardParam))
+      : undefined;
+
   const lockKey =
     explicitNaverIds.length === 1
       ? `${CRON_LOCK_KEY}:${explicitNaverIds[0]}`
       : explicitNaverIds.length > 1
         ? `${CRON_LOCK_KEY}:multi-explicit`
-        : CRON_LOCK_KEY;
+        : shards != null && shard != null
+          ? `${CRON_LOCK_KEY}:shard-${shard}-${shards}`
+          : CRON_LOCK_KEY;
   const lockAcquired = await tryAcquireCronLock(lockKey, CRON_LOCK_TTL_SECONDS);
   if (!lockAcquired) {
     console.log(`[crawl-challenge-ranks] Previous run is still active; skipping (${lockKey})`);
@@ -315,7 +355,11 @@ export async function GET(request: NextRequest) {
     ? Math.min(concurrencyParam, MAX_CONCURRENCY)
     : DEFAULT_CONCURRENCY;
 
-  console.log(`[Cron] crawl-challenge-ranks started at ${new Date().toISOString()} (batch=${BATCH_SIZE}, concurrency=${CONCURRENCY})`);
+  const shardLog =
+    shards != null && shard != null && explicitNaverIds.length === 0 ? `, shard=${shard}/${shards}` : '';
+  console.log(
+    `[Cron] crawl-challenge-ranks started at ${new Date().toISOString()} (batch=${BATCH_SIZE}, concurrency=${CONCURRENCY}${shardLog})`,
+  );
 
   try {
     let influencers: InfluencerCrawlRow[];
@@ -323,7 +367,7 @@ export async function GET(request: NextRequest) {
     if (explicitNaverIds.length > 0) {
       influencers = await fetchInfluencersByNaverIds(supabase, explicitNaverIds);
     } else {
-      influencers = await getInfluencersToCrawl(supabase, BATCH_SIZE);
+      influencers = await getInfluencersToCrawl(supabase, BATCH_SIZE, shard, shards);
     }
 
     if (influencers.length === 0) {
@@ -533,7 +577,7 @@ export async function GET(request: NextRequest) {
           totalFailed++;
         }
       }
-      await sleep(150);
+      await sleep(80);
     }
 
     await updateCrawlJob(jobId, {

@@ -4,9 +4,8 @@ import { verifyCronSecret } from '@/lib/crawler';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-// 일일 전 인플 1회 순환: 활성 ~2만명 / (10분 크론 144회) ≈ 회당 140명만 넘겨도 이론상 24h 커버.
-// batch는 여유 있게 두되, 270초 안에 끝나지 않으면 다음 회차가 이어받음. 429 발생 시 concurrency 하향.
-const CRAWL_PATH = '/api/cron/crawl-challenge-ranks?batch=330&concurrency=15';
+// 일일 전 인플 1회 순환: 5분×2샤드 크론 + 야간 drain 워크플로(선택).
+const CRAWL_BASE = '/api/cron/crawl-challenge-ranks?batch=500&concurrency=15';
 
 async function callCron(origin: string, path: string) {
   const headers: HeadersInit = {
@@ -49,10 +48,18 @@ export async function GET(request: NextRequest) {
   }
 
   const origin = request.nextUrl.origin;
-  const crawl = await callCron(origin, CRAWL_PATH);
+  const shard = request.nextUrl.searchParams.get('shard');
+  const shards = request.nextUrl.searchParams.get('shards');
+  let path = CRAWL_BASE;
+  if (shard != null && shards != null) {
+    path += `&shard=${encodeURIComponent(shard)}&shards=${encodeURIComponent(shards)}`;
+  }
+  const crawl = await callCron(origin, path);
   return NextResponse.json({
     success: crawl.ok,
     crawl,
+    shard: shard != null ? Number(shard) : null,
+    shards: shards != null ? Number(shards) : null,
     timestamp: new Date().toISOString(),
   }, { status: crawl.ok ? 200 : 502 });
 }

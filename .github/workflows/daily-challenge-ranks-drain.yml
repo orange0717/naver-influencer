@@ -1,0 +1,67 @@
+# 24h 커버 미달 시 새벽에 큐를 비울 때까지 crawl-challenge-ranks 반복 호출.
+# Vercel 5분×2샤드만으로 부족한 날의 보충용 (수동 workflow_dispatch 가능).
+name: 챌린지 순위 일일 drain
+
+on:
+  schedule:
+    # 17:00 UTC = KST 02:00 (트래픽 낮은 시간)
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+    inputs:
+      max_rounds:
+        description: '최대 반복 횟수'
+        required: false
+        default: '60'
+      stale_threshold:
+        description: '이 수 이하 stale이면 종료'
+        required: false
+        default: '200'
+
+concurrency:
+  group: daily-challenge-ranks-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL || 'https://ninfle.kr' }}
+      MAX_ROUNDS: ${{ github.event.inputs.max_rounds || '60' }}
+      STALE_THRESHOLD: ${{ github.event.inputs.stale_threshold || '200' }}
+
+    steps:
+      - name: Drain until daily coverage target
+        run: |
+          set -euo pipefail
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret is required."
+            exit 1
+          fi
+          BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
+          AUTH=(-H "Authorization: Bearer $CRON_SECRET" -A "vercel-cron/1.0")
+
+          for round in $(seq 1 "$MAX_ROUNDS"); do
+            COV=$(curl -sS "${AUTH[@]}" "$BASE/api/cron/verify-daily-coverage" || echo '{}')
+            STALE=$(node -e "const j=JSON.parse(process.argv[1]); console.log(j.stale ?? 999999)" "$COV")
+            TOTAL=$(node -e "const j=JSON.parse(process.argv[1]); console.log(j.total_active ?? 0)" "$COV")
+            PCT=$(node -e "const j=JSON.parse(process.argv[1]); console.log(j.coverage_pct ?? 0)" "$COV")
+            echo "Round $round/$MAX_ROUNDS — active=$TOTAL stale=$STALE coverage=${PCT}%"
+
+            if [ "$STALE" -le "$STALE_THRESHOLD" ]; then
+              echo "Target reached (stale<=$STALE_THRESHOLD)."
+              exit 0
+            fi
+
+            for SHARD in 0 1; do
+              echo "  shard $SHARD/2 ..."
+              curl -sS --max-time 320 "${AUTH[@]}" \
+                "$BASE/api/cron/crawl-challenge-ranks?batch=500&concurrency=15&shard=$SHARD&shards=2" \
+                | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const j=JSON.parse(s);console.log('   ',JSON.stringify({ok:j.success,processed:j.influencers_processed,total:j.influencers_total,failed:j.failed}));}catch{console.log(s.slice(0,200));}});"
+            done
+            sleep 45
+          done
+
+          echo "::warning::Max rounds reached; check /admin/crawler coverage."
+          exit 1
