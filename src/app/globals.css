@@ -98,6 +98,59 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   마이크로 인터랙션 — 통합 디자인 시스템 실제 적용
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 버튼 — 호버/포커스/활성 상태 */
+button {
+  transition: all var(--duration-base) var(--easing-in-out);
+}
+
+button:not(:disabled):hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 카드 호버 효과 */
+[role="article"], .card, [class*="card"] {
+  transition: all var(--duration-base) var(--easing-in-out);
+}
+
+[role="article"]:hover, .card:hover, [class*="card"]:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 입력 필드 포커스 */
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 3px rgba(204, 148, 134, 0.1);
+}
+
+/* 링크/탭 호버 */
+a {
+  transition: color var(--duration-fast) var(--easing-in-out);
+}
+
+a:hover:not(.btn) {
+  color: var(--color-accent-hover);
+}
+
+/* 배지 및 작은 요소 */
+[class*="badge"], .tag {
+  transition: all var(--duration-fast) var(--easing-in-out);
+}
+
+[class*="badge"]:hover, .tag:hover {
+  box-shadow: var(--shadow-sm);
+}
   width: 0;
   height: 0;
 }
