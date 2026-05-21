@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
 import DemoModal from '@/components/DemoModal';
+import { LandingGhostCta } from '@/components/landing/LandingGhostCta';
+import { LandingTrialCta } from '@/components/landing/LandingTrialCta';
 import { subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
 
 function sanitizeRedirect(raw: string | null): string {
@@ -16,19 +18,6 @@ function sanitizeRedirect(raw: string | null): string {
   return raw;
 }
 
-/** 그라디언트 패널 고스트 CTA (우측 상단 참조 스타일) */
-const LANDING_GHOST_CTA_SM =
-  'inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-transparent border border-white/40 hover:bg-white/10 hover:border-white/55 backdrop-blur-sm text-white font-bold transition cursor-pointer';
-const LANDING_GHOST_CTA_MD =
-  'inline-flex items-center gap-2 px-5 py-3 rounded-full bg-transparent border border-white/40 hover:bg-white/10 hover:border-white/55 backdrop-blur-sm text-white font-bold transition cursor-pointer';
-
-/** 화이트 패널 우측 상단 — 동일 고스트 형태, 배경에 맞게 액센트 보더 */
-const LANDING_GHOST_SURFACE =
-  'inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-full bg-transparent border border-accent/40 hover:bg-accent/5 hover:border-accent/60 text-accent text-xs sm:text-sm font-bold transition cursor-pointer';
-
-function LandingGhostArrow() {
-  return <span aria-hidden>→</span>;
-}
 
 function LoginPageContent() {
   const [email, setEmail] = useState('');
@@ -200,118 +189,107 @@ function LoginPageContent() {
 
   return (
     <div className="fixed inset-0 z-[200] bg-bg overflow-y-auto overflow-x-hidden overscroll-y-contain">
-      <div className="min-h-[100svh] min-h-[100dvh] flex flex-col lg:flex-row lg:h-[100svh] lg:min-h-0 lg:max-h-[100svh] lg:overflow-hidden">
-        {/* ─── 좌측: 풀블리드 그라디언트 패널 (lg+ 표시, 모바일은 상단 헤더로 축소) ─── */}
-        <aside className="relative lg:flex-1 lg:min-w-0 lg:min-h-0 lg:h-full lg:overflow-x-hidden lg:overflow-y-auto bg-gradient-to-br from-[#7A4F45] via-[#BF877A] to-[#D9ABA0] text-white">
-          {/* 데코레이션 — blur orbs */}
-          <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/15 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-40 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#F2E2DC]/40 blur-3xl" />
-          <div className="pointer-events-none absolute top-1/3 right-1/4 w-72 h-72 rounded-full bg-[#7A4F45]/30 blur-3xl" />
+      <div className="flex min-h-[100svh] min-h-[100dvh] flex-col lg:h-[100svh] lg:max-h-[100svh] lg:min-h-0 lg:flex-row lg:overflow-hidden">
+        {/* ─── 좌측: 그라디언트 히어로 ─── */}
+        <aside className="relative flex min-h-[280px] flex-1 flex-col overflow-x-hidden bg-gradient-to-br from-[#7A4F45] via-[#BF877A] to-[#D9ABA0] text-white lg:min-h-0 lg:h-full lg:overflow-y-auto">
+          <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-40 -right-20 h-[28rem] w-[28rem] rounded-full bg-[#F2E2DC]/40 blur-3xl" />
+          <div className="pointer-events-none absolute top-1/3 right-1/4 h-72 w-72 rounded-full bg-[#7A4F45]/30 blur-3xl" />
 
-          <button
-            type="button"
+          <LandingGhostCta
+            size="md"
+            variant="gradient"
             onClick={() => setDemoOpen(true)}
-            className={`hidden lg:inline-flex absolute top-6 right-6 xl:top-8 xl:right-8 z-10 ${LANDING_GHOST_CTA_MD}`}
+            className="absolute top-6 right-6 z-10 hidden lg:inline-flex xl:top-8 xl:right-8"
           >
-            3일 무료 체험하기 <LandingGhostArrow />
-          </button>
+            3일 무료 체험하기
+          </LandingGhostCta>
 
-          {/* 모바일 — 컴팩트 헤더 */}
-          <div className="lg:hidden relative px-6 pt-10 pb-12">
-            <div className="flex items-start justify-between gap-3">
-            <Link href="/" className="inline-flex items-center gap-2 text-white/90 hover:text-white transition">
-              <span className="w-9 h-9 rounded-lg bg-white text-accent flex items-center justify-center font-extrabold">N</span>
-              <span className="font-bold tracking-tight">N인플</span>
-              <span className="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-sm text-[10px] font-bold tracking-wider text-white">BETA</span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => setDemoOpen(true)}
-              className={`shrink-0 ${LANDING_GHOST_CTA_SM}`}
-            >
-              3일 무료 체험하기 <LandingGhostArrow />
-            </button>
+          {/* 모바일 */}
+          <div className="relative px-6 pb-12 pt-10 lg:hidden">
+            <div className="flex items-start justify-between gap-4">
+              <Link href="/" className="inline-flex items-center gap-2 text-white/90 transition hover:text-white">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white font-extrabold text-accent">N</span>
+                <span className="font-bold tracking-tight">N인플</span>
+                <span className="ml-1 rounded-md border border-white/30 bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider backdrop-blur-sm">BETA</span>
+              </Link>
+              <LandingGhostCta size="sm" variant="gradient" onClick={() => setDemoOpen(true)} className="shrink-0">
+                3일 무료 체험하기
+              </LandingGhostCta>
             </div>
-            <p className="mt-9 inline-block px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-tight text-white/95">
+            <p className="mt-9 inline-block rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold tracking-tight text-white/95 backdrop-blur-sm">
               블로거에서 인플루언서로
             </p>
             <h1 className="mt-3 text-2xl font-extrabold leading-tight">
-              감으로 쓰던 블로그를,<br/>데이터로 다시 씁니다.
+              감으로 쓰던 블로그를,<br />
+              데이터로 다시 씁니다.
             </h1>
-            <p className="mt-3 text-sm text-white/85 leading-relaxed">
-              키워드 분석부터 글 피드백까지,<br/>네이버 블로그 성장에 필요한 모든 것
+            <p className="mt-3 text-sm leading-relaxed text-white/85">
+              키워드 분석부터 글 피드백까지,<br />
+              네이버 블로그 성장에 필요한 모든 것
             </p>
-                        <div className="mt-7 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setDemoOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-xs font-bold text-white transition cursor-pointer"
-              >
-                가입 없이 3일 무료체험 시작 <LandingGhostArrow />
-              </button>
-              <Link href="/stories" className={LANDING_GHOST_CTA_SM}>
-                성장후기 <LandingGhostArrow />
-              </Link>
+            <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
+              <LandingTrialCta size="sm" onClick={() => setDemoOpen(true)} />
+              <LandingGhostCta size="sm" variant="gradient" href="/stories">
+                성장후기
+              </LandingGhostCta>
             </div>
           </div>
 
-          {/* 데스크탑 — 풀 사이즈 카피 */}
-          <div className="hidden lg:flex relative h-full min-h-0 flex-col justify-between p-12 xl:p-16">
-            <Link href="/" className="inline-flex items-center gap-2.5 group w-fit mb-10">
-              <span className="w-11 h-11 rounded-xl bg-white text-accent flex items-center justify-center font-extrabold text-xl shadow-lg shadow-black/10 group-hover:scale-105 transition">
+          {/* 데스크탑 */}
+          <div className="relative hidden min-h-0 flex-1 flex-col justify-between p-12 xl:p-16 lg:flex">
+            <Link href="/" className="group mb-10 inline-flex w-fit items-center gap-2.5">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-xl font-extrabold text-accent shadow-lg shadow-black/10 transition group-hover:scale-105">
                 N
               </span>
               <span className="text-lg font-bold tracking-tight">N인플</span>
-              <span className="ml-1 px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-sm border border-white/30 text-[10px] font-bold tracking-wider">BETA</span>
+              <span className="ml-1 rounded-md border border-white/30 bg-white/20 px-2 py-0.5 text-[10px] font-bold tracking-wider backdrop-blur-sm">
+                BETA
+              </span>
             </Link>
 
-            <div className="space-y-6 max-w-xl">
-              <span className="inline-block px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm text-xs font-semibold tracking-tight text-white/95">
+            <div className="max-w-xl space-y-6">
+              <span className="inline-block rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold tracking-tight text-white/95 backdrop-blur-sm">
                 블로거에서 인플루언서로
               </span>
-              <h1 className="text-5xl xl:text-6xl font-extrabold leading-[1.15] tracking-tight">
-                감으로 쓰던 블로그를,<br/>데이터로 다시 씁니다.
+              <h1 className="text-5xl font-extrabold leading-[1.15] tracking-tight xl:text-6xl">
+                감으로 쓰던 블로그를,<br />
+                데이터로 다시 씁니다.
               </h1>
-              <p className="text-lg xl:text-xl text-white/90 leading-relaxed">
-                키워드 분석부터 글 피드백까지,<br/>네이버 블로그 성장에 필요한 모든 것
+              <p className="text-lg leading-relaxed text-white/90 xl:text-xl">
+                키워드 분석부터 글 피드백까지,<br />
+                네이버 블로그 성장에 필요한 모든 것
               </p>
 
-              {/* 미리보기 카드 — 신규 인플루언서 + 활동하는 인플루언서 (실데이터) */}
-              <div className="pt-6 grid grid-cols-2 gap-3 max-w-md">
-                <div className="rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 p-4">
-                  <div className="text-xs text-white/75 mb-1">이번 주 신규 인플루언서</div>
-                  <div className="text-2xl font-extrabold font-mono tracking-tight">
+              <div className="grid max-w-md grid-cols-2 gap-3 pt-6">
+                <div className="rounded-2xl border border-white/25 bg-white/15 p-4 backdrop-blur-sm">
+                  <div className="mb-1 text-xs text-white/75">이번 주 신규 인플루언서</div>
+                  <div className="font-mono text-2xl font-extrabold tracking-tight">
                     {stats.new_count === null ? '—' : `+${stats.new_count.toLocaleString()}`}
                   </div>
-                  <div className="mt-1 text-[11px] text-emerald-200 font-semibold">▲ 새로 합류</div>
-                  <div className="mt-2 text-[10px] text-white/65 leading-snug">집계 주간: 매주 월요일 0시(KST) 전환</div>
+                  <div className="mt-1 text-[11px] font-semibold text-emerald-200">▲ 새로 합류</div>
+                  <div className="mt-2 text-[10px] leading-snug text-white/65">집계 주간: 매주 월요일 0시(KST) 전환</div>
                 </div>
-                <div className="rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 p-4">
-                  <div className="text-xs text-white/75 mb-1">활동하는 인플루언서</div>
-                  <div className="text-2xl font-extrabold font-mono tracking-tight">
+                <div className="rounded-2xl border border-white/25 bg-white/15 p-4 backdrop-blur-sm">
+                  <div className="mb-1 text-xs text-white/75">활동하는 인플루언서</div>
+                  <div className="font-mono text-2xl font-extrabold tracking-tight">
                     {stats.active_count === null ? '—' : stats.active_count.toLocaleString()}
                   </div>
                   <div className="mt-1 text-[11px] text-white/75">실시간 집계</div>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDemoOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-sm font-bold text-white transition cursor-pointer"
-                >
-                  가입 없이 3일 무료체험 시작 <LandingGhostArrow />
-                </button>
-                <Link href="/stories" className={LANDING_GHOST_CTA_MD}>
-                  성장후기 <LandingGhostArrow />
-                </Link>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <LandingTrialCta size="md" onClick={() => setDemoOpen(true)} />
+                <LandingGhostCta size="md" variant="gradient" href="/stories">
+                  성장후기
+                </LandingGhostCta>
               </div>
             </div>
 
-            <div className="text-xs text-white/70 flex items-center gap-2 mt-12">
+            <div className="mt-12 flex items-center gap-2 text-xs text-white/70">
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
                 현재 베타 프로그램 운영 중
               </span>
               <span className="text-white/40">·</span>
@@ -320,127 +298,137 @@ function LoginPageContent() {
           </div>
         </aside>
 
-        {/* ─── 우측: 로그인 폼 (세로·가로 정중앙) ─── */}
-        <section className="relative w-full lg:w-[480px] xl:w-[520px] lg:flex-shrink-0 lg:min-h-0 lg:h-full lg:overflow-y-auto bg-surface flex flex-col min-h-[min(100svh,100dvh)] lg:min-h-0">
-          <Link
-            href="/"
-            className="absolute top-6 left-6 lg:left-10 z-10 text-xs text-dim hover:text-accent transition inline-flex items-center gap-1"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            홈으로
-          </Link>
-          <button
-            type="button"
-            onClick={() => setDemoOpen(true)}
-            className={`absolute top-6 right-6 lg:right-10 z-10 ${LANDING_GHOST_SURFACE}`}
-          >
-            3일 무료 체험하기 <LandingGhostArrow />
-          </button>
-
-          <div className="flex-1 flex flex-col items-center justify-center w-full min-h-0 px-6 lg:px-10 py-20 lg:py-10">
-              <div className="w-full max-w-sm space-y-6">
-                {/* ─── 헤더 ─── */}
-                <div>
-                  <h2 className="text-2xl font-extrabold tracking-tight">로그인</h2>
-                  <p className="text-sm text-dim mt-1.5">N인플 계정으로 로그인해 주세요</p>
-                </div>
-
-                {error && (
-                  <div className="bg-down/10 border border-down/30 rounded-xl p-3 text-sm text-down">
-                    {error}
-                  </div>
-                )}
-
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="example@email.com"
-                      autoFocus
-                      className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호</label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="비밀번호를 입력해주세요"
-                      className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        로그인 중...
-                      </span>
-                    ) : (
-                      '로그인'
-                    )}
-                  </button>
-
-                  <div className="flex items-center justify-center gap-3 text-xs text-dim">
-                    <Link href={`/auth/signup?redirect=${encodedRedirectTo}`} className="hover:text-accent transition">회원가입</Link>
-                    <span className="text-border">|</span>
-                    <Link href="/auth/forgot" className="hover:text-accent transition">ID/PW 찾기</Link>
-                  </div>
-                </form>
-
-                {/* ─── 또는 ─── */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-[10px] uppercase tracking-wider">
-                    <span className="bg-surface px-3 text-dim">또는</span>
-                  </div>
-                </div>
-
-                {/* ─── 소셜 로그인 (가로 아이콘) ─── */}
-                <div className="flex items-center justify-center gap-4">
-                  <button
-                    type="button"
-                    onClick={handleGoogleLogin}
-                    disabled={googleLoading || loading}
-                    aria-label="Google로 로그인"
-                    title="Google로 로그인"
-                    className="w-12 h-12 rounded-full bg-white border border-border hover:border-accent/50 hover:shadow-md flex items-center justify-center transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {googleLoading ? (
-                      <span className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin" />
-                    ) : (
-                      <svg width="22" height="22" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
-                        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
-                        <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
-                        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-
-              </div>
+        {/* ─── 우측: 로그인 — 세로 정중앙 ─── */}
+        <section className="relative flex w-full min-h-[min(100svh,100dvh)] flex-col bg-surface lg:h-full lg:min-h-0 lg:w-[480px] lg:flex-shrink-0 xl:w-[520px]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-6 pt-6 lg:px-10">
+            <Link
+              href="/"
+              className="pointer-events-auto inline-flex items-center gap-1 text-xs text-dim transition hover:text-accent"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              홈으로
+            </Link>
+            <LandingGhostCta
+              size="sm"
+              variant="surface"
+              onClick={() => setDemoOpen(true)}
+              className="pointer-events-auto sm:hidden"
+            >
+              3일 무료 체험하기
+            </LandingGhostCta>
+            <LandingGhostCta
+              size="md"
+              variant="surface"
+              onClick={() => setDemoOpen(true)}
+              className="pointer-events-auto hidden sm:inline-flex"
+            >
+              3일 무료 체험하기
+            </LandingGhostCta>
           </div>
 
-          <div className="absolute bottom-6 left-0 right-0 px-6 lg:px-10 flex items-center justify-center gap-3 text-[11px] text-dim pointer-events-none">
-            <Link href="/terms" className="hover:text-accent transition pointer-events-auto">이용약관</Link>
+          <div className="flex min-h-0 flex-1 flex-col justify-center px-6 lg:px-10">
+            <div className="mx-auto w-full max-w-sm space-y-6 py-16 sm:py-20 lg:py-12">
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight text-text">로그인</h2>
+                <p className="mt-1.5 text-sm text-dim">N인플 계정으로 로그인해 주세요</p>
+              </div>
+
+              {error && (
+                <div className="rounded-xl border border-down/30 bg-down/10 p-3 text-sm text-down">{error}</div>
+              )}
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-dim">이메일</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="example@email.com"
+                    autoFocus
+                    className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-dim">비밀번호</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="비밀번호를 입력해주세요"
+                    className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full cursor-pointer rounded-xl bg-accent py-3 font-bold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      로그인 중...
+                    </span>
+                  ) : (
+                    '로그인'
+                  )}
+                </button>
+                <div className="flex items-center justify-center gap-3 text-xs text-dim">
+                  <Link href={`/auth/signup?redirect=${encodedRedirectTo}`} className="transition hover:text-accent">
+                    회원가입
+                  </Link>
+                  <span className="text-border">|</span>
+                  <Link href="/auth/forgot" className="transition hover:text-accent">
+                    ID/PW 찾기
+                  </Link>
+                </div>
+              </form>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-wider">
+                  <span className="bg-surface px-3 text-dim">또는</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={googleLoading || loading}
+                  aria-label="Google로 로그인"
+                  title="Google로 로그인"
+                  className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-border bg-white transition hover:border-accent/50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {googleLoading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/30 border-t-gray-600" />
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
+                      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
+                      <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
+                      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-3 px-6 pb-6 text-[11px] text-dim lg:px-10">
+            <Link href="/terms" className="pointer-events-auto transition hover:text-accent">
+              이용약관
+            </Link>
             <span className="text-border">·</span>
-            <Link href="/privacy" className="hover:text-accent transition pointer-events-auto">개인정보처리방침</Link>
+            <Link href="/privacy" className="pointer-events-auto transition hover:text-accent">
+              개인정보처리방침
+            </Link>
           </div>
         </section>
       </div>
