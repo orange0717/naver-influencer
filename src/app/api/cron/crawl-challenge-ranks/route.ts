@@ -9,7 +9,6 @@ import {
   updateCrawlJob,
   verifyCronSecret,
 } from '@/lib/crawler';
-import { applyDailyCrawlQueueFilters } from '@/lib/crawl-queue';
 
 export const maxDuration = 300;
 
@@ -251,6 +250,7 @@ async function getInfluencersToCrawl(
     .select('id, naver_id, naver_owner_id, category, my_keyword_category')
     .eq('is_active', true)
     .neq('stopped_manual', true)
+    .or(dailyCrawlQueueOrFilter())
     .order('last_crawled_at', { ascending: true, nullsFirst: true })
     .order('id', { ascending: true })
     .limit(fetchLimit);

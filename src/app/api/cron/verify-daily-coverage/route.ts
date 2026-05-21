@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
-import { applyDailyCrawlQueueFilters } from '@/lib/crawl-queue';
+import { dailyCrawlQueueOrFilter } from '@/lib/crawl-queue';
 
 export const maxDuration = 60;
 
@@ -14,14 +14,15 @@ function activeInfluencerQuery(supabase: ReturnType<typeof createServiceClient>)
 }
 
 function crawlTargetQuery(supabase: ReturnType<typeof createServiceClient>) {
-  return applyDailyCrawlQueueFilters(
-    supabase.from('influencers').select('*', { count: 'exact', head: true }),
-  );
+  return supabase
+    .from('influencers')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .neq('stopped_manual', true)
+    .or(dailyCrawlQueueOrFilter());
 }
 
-/**
- * 24h 커버리지 집계. coverage_pct 는 일일 크롤 대상(crawl_target) 기준 100% 목표.
- */
+/** 24h 커버리지. coverage_pct = 일일 크롤 대상(crawl_target) 기준 100% 목표 */
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

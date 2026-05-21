@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
-import { applyLongInactiveDeactivateFilters } from '@/lib/crawl-queue';
+import { challengeRecencyCutoffIso } from '@/lib/crawl-queue';
 
 export const maxDuration = 120;
 
@@ -17,11 +17,20 @@ export async function GET(request: NextRequest) {
 
   const jobId = await createCrawlJob('reconcile-crawl-eligibility');
   const supabase = createServiceClient();
+  const cutoff = challengeRecencyCutoffIso();
 
   try {
-    const { data: rows, error } = await applyLongInactiveDeactivateFilters(
-      supabase.from('influencers').select('id'),
-    ).limit(5000);
+    const { data: rows, error } = await supabase
+      .from('influencers')
+      .select('id')
+      .eq('is_active', true)
+      .neq('stopped_manual', true)
+      .not('last_challenged_at', 'is', null)
+      .lt('last_challenged_at', cutoff)
+      .eq('top1_count', 0)
+      .eq('top2_count', 0)
+      .eq('top3_count', 0)
+      .limit(5000);
 
     if (error) throw new Error(error.message);
 
@@ -30,12 +39,12 @@ export async function GET(request: NextRequest) {
 
     for (let i = 0; i < ids.length; i += 200) {
       const batch = ids.slice(i, i + 200);
-      const { error: updErr, count } = await supabase
+      const { error: updErr } = await supabase
         .from('influencers')
         .update({ is_active: false })
         .in('id', batch);
       if (updErr) throw new Error(updErr.message);
-      deactivated += count ?? batch.length;
+      deactivated += batch.length;
     }
 
     const summary = { candidates: ids.length, deactivated };

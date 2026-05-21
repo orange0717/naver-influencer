@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/admin';
+import { dailyCrawlQueueOrFilter } from '@/lib/crawl-queue';
 
 export const dynamic = 'force-dynamic';
 /** integrity RPC + 기존 병렬 집계 */
@@ -31,6 +32,15 @@ function activeInfluencerQuery(supabase: ReturnType<typeof createServiceClient>)
     .neq('stopped_manual', true);
 }
 
+function crawlTargetQuery(supabase: ReturnType<typeof createServiceClient>) {
+  return supabase
+    .from('influencers')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .neq('stopped_manual', true)
+    .or(dailyCrawlQueueOrFilter());
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (auth.error) return auth.error;
@@ -44,6 +54,10 @@ export async function GET(req: NextRequest) {
 
   const [
     totalActiveRes,
+    crawlTargetTotalRes,
+    crawlTargetFresh24hRes,
+    crawlTargetStaleRes,
+    crawlTargetNeverRes,
     freshRes,
     stale24hRes,
     never,
@@ -97,11 +111,15 @@ export async function GET(req: NextRequest) {
   ]);
 
   const total = totalActiveRes.count || 0;
+  const crawlTargetTotal = crawlTargetTotalRes.count || 0;
+  const crawlTargetStale = crawlTargetStaleRes.count || 0;
+  const crawlTargetFresh = crawlTargetFresh24hRes.count ?? Math.max(0, crawlTargetTotal - crawlTargetStale);
+  const coverageTargetPct = crawlTargetTotal > 0 ? +(crawlTargetFresh / crawlTargetTotal * 100).toFixed(2) : 100;
   const fresh1h = freshRes.count || 0;
   const stale24h = stale24hRes.count || 0;
   const neverCrawled = never.count || 0;
   const freshCount = total - stale24h;
-  const coverage24hPct = total > 0 ? +(freshCount / total * 100).toFixed(2) : 0;
+  const coverageAllPct = total > 0 ? +(freshCount / total * 100).toFixed(2) : 0;
   const coverage1hPct = total > 0 ? +(fresh1h / total * 100).toFixed(2) : 0;
 
   const countOrZero = (label: string, res: { count?: number | null; error?: { message: string } | null }) => {
@@ -160,7 +178,7 @@ export async function GET(req: NextRequest) {
     aggregate_last_success_minutes: aggregateLastSuccessMin,
     aggregate_recent_success: aggregateLastSuccessMin != null && aggregateLastSuccessMin <= 90,
     likely_scheduler_stopped: challengeLastRunMin == null || challengeLastRunMin > 60,
-    likely_backlog: stale24h > 0 && challengeLastRunMin != null && challengeLastRunMin <= 60,
+    likely_backlog: crawlTargetStale > 0 && challengeLastRunMin != null && challengeLastRunMin <= 60,
   };
 
   return NextResponse.json({
@@ -168,11 +186,16 @@ export async function GET(req: NextRequest) {
     integrity_error,
     summary: {
       total_active: total,
+      crawl_target_total: crawlTargetTotal,
+      crawl_target_fresh_24h: crawlTargetFresh,
+      crawl_target_stale_24h: crawlTargetStale,
+      crawl_target_never_crawled: crawlTargetNeverRes.count || 0,
+      coverage_24h_pct: coverageTargetPct,
+      coverage_24h_pct_all_active: coverageAllPct,
       fresh_within_1h: fresh1h,
       fresh_within_24h: freshCount,
       stale_over_24h: stale24h,
       never_crawled: neverCrawled,
-      coverage_24h_pct: coverage24hPct,
       coverage_1h_pct: coverage1hPct,
     },
     backlog,
