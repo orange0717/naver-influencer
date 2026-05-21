@@ -33,7 +33,7 @@ export default function CopyButton({ text, className, label = '복사', copiedLa
   return (
     <button
       onClick={handleCopy}
-      className={className || 'absolute top-2 right-2 px-2.5 py-1 bg-accent text-white text-[10px] font-bold rounded-md hover:bg-accent-hover transition cursor-pointer'}
+      className={className || 'absolute top-2 right-2 px-2.5 py-1 bg-accent text-white text-[10px] font-bold rounded-md hover:bg-accent-hover transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/40'}
     >
       {copied ? copiedLabel : label}
     </button>

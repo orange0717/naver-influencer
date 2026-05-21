@@ -44,6 +44,18 @@
   --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-serif: 'Noto Serif KR', 'Playfair Display', serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+
+  /* 그림자 */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(180, 140, 120, 0.08);
+  --shadow-md: 0 4px 16px rgba(180, 140, 120, 0.12);
+  --shadow-lg: 0 8px 32px rgba(180, 140, 120, 0.16);
+
+  /* 애니메이션 타이밍 */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --easing-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html {

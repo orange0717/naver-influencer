@@ -208,7 +208,7 @@ export default function BillingButton({ planKey, label, className }: Props) {
         disabled={loading}
         className={
           className ||
-          'w-full block text-center py-3 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition disabled:opacity-50'
+          'w-full block text-center py-3 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/40'
         }
       >
         {loading ? '결제 진행 중…' : label}

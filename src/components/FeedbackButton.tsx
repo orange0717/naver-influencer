@@ -106,7 +106,7 @@ export default function FeedbackButton() {
                   <h3 id="feedback-title" className="font-bold text-base">피드백 보내기</h3>
                   <button
                     onClick={handleClose}
-                    className="w-8 h-8 rounded-lg hover:bg-border/30 flex items-center justify-center text-dim cursor-pointer"
+                    className="w-8 h-8 rounded-lg hover:bg-border/30 flex items-center justify-center text-dim cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/40"
                     aria-label="닫기"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -120,7 +120,7 @@ export default function FeedbackButton() {
                       onClick={() => setCategory(c.value)}
                       role="radio"
                       aria-checked={category === c.value}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/40 ${
                         category === c.value
                           ? 'bg-accent text-white'
                           : 'bg-border/30 text-dim hover:bg-border/50'
@@ -150,7 +150,7 @@ export default function FeedbackButton() {
                   <button
                     onClick={handleSubmit}
                     disabled={!message.trim() || sending}
-                    className="px-5 py-2 bg-accent text-white text-sm font-bold rounded-xl hover:bg-accent-hover transition disabled:opacity-40 cursor-pointer"
+                    className="px-5 py-2 bg-accent text-white text-sm font-bold rounded-xl hover:bg-accent-hover transition disabled:opacity-40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/40"
                   >
                     {sending ? '전송 중...' : '보내기'}
                   </button>

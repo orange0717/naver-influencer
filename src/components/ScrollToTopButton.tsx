@@ -22,7 +22,7 @@ export default function ScrollToTopButton() {
       onClick={handleClick}
       aria-label="맨 위로"
       title="맨 위로"
-      className="fixed right-6 z-50 flex flex-col items-center justify-center cursor-pointer transition-all"
+      className="fixed right-6 z-50 flex flex-col items-center justify-center cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-accent/40"
       style={{
         bottom: '84px',
         width: '48px',
