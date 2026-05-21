@@ -58,6 +58,10 @@ export async function GET(req: NextRequest) {
     integrityRes,
   ] = await Promise.all([
     activeInfluencerQuery(supabase),
+    crawlTargetQuery(supabase),
+    crawlTargetQuery(supabase).gte('last_crawled_at', cutoff24h),
+    crawlTargetQuery(supabase).or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff24h}`),
+    crawlTargetQuery(supabase).is('last_crawled_at', null),
     activeInfluencerQuery(supabase).gte('last_crawled_at', cutoff1h),
     activeInfluencerQuery(supabase).or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff24h}`),
     activeInfluencerQuery(supabase).is('last_crawled_at', null),
