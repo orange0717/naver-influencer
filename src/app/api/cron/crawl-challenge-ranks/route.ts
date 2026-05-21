@@ -9,6 +9,7 @@ import {
   updateCrawlJob,
   verifyCronSecret,
 } from '@/lib/crawler';
+import { applyDailyCrawlQueueFilters } from '@/lib/crawl-queue';
 
 export const maxDuration = 300;
 

@@ -8,7 +8,10 @@
 set -euo pipefail
 
 ROUNDS=2
-STALE_THRESHOLD=200
+STALE_THRESHOLD=0
+SHARDS=3
+BATCH=650
+CONCURRENCY=18
 BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
 FROM_ENV=false
 
@@ -59,10 +62,10 @@ for round in $(seq 1 "$ROUNDS"); do
     exit 0
   fi
 
-  for SHARD in 0 1; do
-    echo "  shard $SHARD/2 ..."
+  for SHARD in $(seq 0 $((SHARDS - 1))); do
+    echo "  shard $SHARD/$SHARDS ..."
     BODY=$(curl -sS --max-time 320 "${NINFLE_CRON_AUTH[@]}" \
-      "$BASE/api/cron/crawl-challenge-ranks?batch=500&concurrency=15&shard=$SHARD&shards=2" \
+      "$BASE/api/cron/crawl-challenge-ranks?batch=$BATCH&concurrency=$CONCURRENCY&shard=$SHARD&shards=$SHARDS" \
       || echo '{"error":"curl failed"}')
     ninfle_cron_assert_json "$BODY" "crawl-challenge-ranks shard=$SHARD"
     node -e "const j=JSON.parse(process.argv[1]); console.log('   ', JSON.stringify({ok:j.success,processed:j.influencers_processed,total:j.influencers_total,failed:j.failed}));" "$BODY"

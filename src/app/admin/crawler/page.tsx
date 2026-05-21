@@ -141,9 +141,9 @@ export default function AdminCrawlerPage() {
             <div className="bg-down/10 border border-down/30 text-down rounded-lg px-4 py-3 text-sm font-semibold">
               경고: crawl-challenge-ranks가 1시간 이상 실행되지 않았습니다. Vercel Cron 활성화, Production 배포, CRON_SECRET 설정을 먼저 확인하세요.
             </div>
-          ) : summary.stale_over_24h > 0 && (
+          ) : (summary.crawl_target_stale_24h ?? summary.stale_over_24h) > 0 && (
             <div className="bg-down/10 border border-down/30 text-down rounded-lg px-4 py-3 text-sm font-semibold">
-              경고: {summary.stale_over_24h.toLocaleString()}명이 24시간 이상 크롤되지 않았습니다. 크론은 최근 실행됐으므로 큐 처리량과 실패율을 점검하세요.
+              경고: 일일 크롤 대상 중 {(summary.crawl_target_stale_24h ?? summary.stale_over_24h).toLocaleString()}명이 24시간 이상 크롤되지 않았습니다. 3샤드·야간 drain·비활성 정리 크론을 확인하세요.
             </div>
           )}
 

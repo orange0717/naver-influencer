@@ -4,8 +4,14 @@ import { verifyCronSecret } from '@/lib/crawler';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-// 일일 전 인플 1회 순환: 5분×2샤드 크론 + 야간 drain 워크플로(선택).
-const CRAWL_BASE = '/api/cron/crawl-challenge-ranks?batch=500&concurrency=15';
+import {
+  PRODUCTION_CRAWL_BATCH,
+  PRODUCTION_CRAWL_CONCURRENCY,
+  PRODUCTION_CRAWL_SHARDS,
+} from '@/lib/crawl-queue';
+
+// 일일 전 인플 1회 순환: 5분×3샤드 크론 + 야간 drain.
+const CRAWL_BASE = `/api/cron/crawl-challenge-ranks?batch=${PRODUCTION_CRAWL_BATCH}&concurrency=${PRODUCTION_CRAWL_CONCURRENCY}`;
 
 async function callCron(origin: string, path: string) {
   const headers: HeadersInit = {
