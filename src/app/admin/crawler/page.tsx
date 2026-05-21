@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 
 interface Summary {
   total_active: number;
+  crawl_target_total?: number;
+  crawl_target_fresh_24h?: number;
+  crawl_target_stale_24h?: number;
+  crawl_target_never_crawled?: number;
+  coverage_24h_pct_all_active?: number;
   fresh_within_1h: number;
   fresh_within_24h: number;
   stale_over_24h: number;

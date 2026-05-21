@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
+import { dailyCrawlQueueOrFilter } from '@/lib/crawl-queue';
 
 export const maxDuration = 60;
 
@@ -12,11 +13,16 @@ function activeInfluencerQuery(supabase: ReturnType<typeof createServiceClient>)
     .neq('stopped_manual', true);
 }
 
-/**
- * 매일 아침 6:30 KST (21:30 UTC) 에 실행.
- * 전체 활성 인플루언서 중 last_crawled_at 이 24시간 이상 지난 건수 집계.
- * 결과는 crawl_jobs 테이블에 기록되며 /admin/crawler 페이지에서 조회 가능.
- */
+function crawlTargetQuery(supabase: ReturnType<typeof createServiceClient>) {
+  return supabase
+    .from('influencers')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .neq('stopped_manual', true)
+    .or(dailyCrawlQueueOrFilter());
+}
+
+/** 24h 커버리지. coverage_pct = 일일 크롤 대상(crawl_target) 기준 100% 목표 */
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -28,35 +34,46 @@ export async function GET(request: NextRequest) {
   try {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const { count: totalActive } = await activeInfluencerQuery(supabase);
-
-    const { count: stale } = await activeInfluencerQuery(supabase)
-      .or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff}`);
-
-    const { count: neverCrawled } = await activeInfluencerQuery(supabase)
-      .is('last_crawled_at', null);
+    const [
+      { count: totalActive },
+      { count: crawlTargetTotal },
+      { count: crawlTargetStale },
+      { count: crawlTargetNever },
+      { count: allStale },
+    ] = await Promise.all([
+      activeInfluencerQuery(supabase),
+      crawlTargetQuery(supabase),
+      crawlTargetQuery(supabase).or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff}`),
+      crawlTargetQuery(supabase).is('last_crawled_at', null),
+      activeInfluencerQuery(supabase).or(`last_crawled_at.is.null,last_crawled_at.lt.${cutoff}`),
+    ]);
 
     const total = totalActive || 0;
-    const staleCount = stale || 0;
-    const fresh = total - staleCount;
-    const coverage = total > 0 ? +(fresh / total * 100).toFixed(2) : 0;
+    const targetTotal = crawlTargetTotal || 0;
+    const targetStale = crawlTargetStale || 0;
+    const targetFresh = targetTotal - targetStale;
+    const coverageTarget = targetTotal > 0 ? +(targetFresh / targetTotal * 100).toFixed(2) : 100;
+    const coverageAll = total > 0 ? +(((total - (allStale || 0)) / total) * 100).toFixed(2) : 0;
 
     const summary = {
       total_active: total,
-      crawled_last_24h: fresh,
-      stale: staleCount,
-      never_crawled: neverCrawled || 0,
-      coverage_pct: coverage,
+      crawl_target_total: targetTotal,
+      crawled_last_24h: targetFresh,
+      stale: targetStale,
+      never_crawled: crawlTargetNever || 0,
+      coverage_pct: coverageTarget,
+      coverage_pct_all: coverageAll,
+      stale_all_active: allStale || 0,
     };
 
     console.log('[verify-daily-coverage]', JSON.stringify(summary));
 
     await updateCrawlJob(jobId, {
       status: 'success',
-      total_items: total,
-      processed_items: fresh,
-      failed_items: staleCount,
-      error_message: staleCount > 0 ? `${staleCount} influencers not crawled in last 24h` : undefined,
+      total_items: targetTotal,
+      processed_items: targetFresh,
+      failed_items: targetStale,
+      error_message: targetStale > 0 ? `${targetStale} crawl-target rows stale (>24h)` : undefined,
     });
 
     return NextResponse.json({ success: true, ...summary, timestamp: new Date().toISOString() });

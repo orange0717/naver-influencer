@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthUser } from '@/lib/auth';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 
 // 네이버 공식 블로그 주제 분류
 const CATEGORIES = [
@@ -65,6 +60,8 @@ export async function GET(request: NextRequest) {
 
   const denied = await assertBlogResourceAccess(request, blogId);
   if (denied) return denied;
+
+  const supabase = createServiceClient();
 
   // 현재 저장된 카테고리 조회
   const { data: scoreData } = await supabase
@@ -128,6 +125,8 @@ export async function POST(request: NextRequest) {
   if (!CATEGORIES.includes(category)) {
     return NextResponse.json({ error: '유효하지 않은 카테고리' }, { status: 400 });
   }
+
+  const supabase = createServiceClient();
 
   const { error } = await supabase
     .from('blog_scores')

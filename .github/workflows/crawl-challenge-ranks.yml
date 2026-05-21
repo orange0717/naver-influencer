@@ -1,8 +1,8 @@
+# Vercel Cron 보조(5분×3샤드). 시크릿: .github/GITHUB_ACTIONS_SECRETS.md
 name: N인플 챌린지 순위 크롤링 안전망
 
 on:
   schedule:
-    # Vercel Cron과 동일한 cadence(5분). 지연/비활성화 시 보조 트리거.
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
@@ -13,22 +13,21 @@ concurrency:
 jobs:
   trigger:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL || 'https://ninfle.kr' }}
+      NINFLE_CRON_AUTH_LABEL: github-actions-safety-net
     steps:
-      - name: Trigger scheduled crawler
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL || 'https://ninfle.kr' }}
-        run: |
-          if [ -z "$CRON_SECRET" ]; then
-            echo "::error::CRON_SECRET secret is required for the crawler safety-net workflow."
-            exit 1
-          fi
+      - uses: actions/checkout@v4
 
-          for SHARD in 0 1; do
+      - name: Trigger scheduled crawler (3 shards)
+        run: |
+          set -euo pipefail
+          source .github/scripts/ninfle-cron-auth.sh
+          BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
+          for SHARD in 0 1 2; do
             curl --fail --show-error --silent --max-time 320 \
-              -A "vercel-cron/1.0" \
-              -H "Authorization: Bearer $CRON_SECRET" \
-              -H "x-vercel-cron-auth-token: github-actions-safety-net" \
-              "$NINFL_BASE_URL/api/cron/crawl-challenge-ranks-scheduled?shard=$SHARD&shards=2"
+              "${NINFLE_CRON_AUTH[@]}" \
+              "$BASE/api/cron/crawl-challenge-ranks-scheduled?shard=$SHARD&shards=3"
           done
