@@ -40,10 +40,6 @@ function GhostArrow() {
   );
 }
 
-/** 그라디언트 패널 성장후기 등 — 기본 반투명, 호버 시 선명 */
-export const LANDING_GHOST_SOFT_OPACITY =
-  'opacity-70 hover:opacity-100 transition-opacity duration-300 ease-in-out';
-
 type CommonProps = {
   children: React.ReactNode;
   size?: Size;
