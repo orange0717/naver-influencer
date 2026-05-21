@@ -1,5 +1,6 @@
 name: 키워드챌린지 등수(게시글 수) 매일 갱신
 
+# Supabase secrets 필수 — .github/GITHUB_ACTIONS_SECRETS.md
 # 매일 KST 05:00 (전날 20:00 UTC) 실행
 # 6-way matrix 로 전체 약 13,000명을 6등분 병렬 처리 (스크립트 내부 PARALLEL=5)
 # 각 shard 약 2,170명 × 30초 / 5 동시 ≒ 3.6시간 → 하루 안에 전체 1바퀴 완료

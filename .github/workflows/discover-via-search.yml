@@ -1,5 +1,6 @@
 name: 신규 인플루언서 매일 발굴 (통합검색)
 
+# Supabase secrets 필수 — .github/GITHUB_ACTIONS_SECRETS.md
 # 매일 KST 05:00 (전날 20:00 UTC) — keyword_challenges 워크플로(KST 04:00) 직후
 on:
   schedule:
