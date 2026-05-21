@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
 import DemoModal from '@/components/DemoModal';
-import { LandingGhostCta } from '@/components/landing/LandingGhostCta';
+import { LandingGhostCta, LANDING_GHOST_SOFT_OPACITY } from '@/components/landing/LandingGhostCta';
 import { LandingTrialCta } from '@/components/landing/LandingTrialCta';
 import { subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
 
@@ -32,6 +32,7 @@ function LoginPageContent() {
   });
 
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [rightTrialCtaVisible, setRightTrialCtaVisible] = useState(true);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -83,6 +84,17 @@ function LoginPageContent() {
       unsub();
     };
   }, []);
+
+  useEffect(() => {
+    if (localStorage.getItem('login-right-trial-cta-dismissed') === '1') {
+      setRightTrialCtaVisible(false);
+    }
+  }, []);
+
+  const dismissRightTrialCta = () => {
+    localStorage.setItem('login-right-trial-cta-dismissed', '1');
+    setRightTrialCtaVisible(false);
+  };
 
   useEffect(() => {
     const reason = searchParams.get('reason');
@@ -222,7 +234,12 @@ function LoginPageContent() {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
               <LandingTrialCta size="sm" onClick={() => setDemoOpen(true)} />
-              <LandingGhostCta size="sm" variant="gradient" href="/stories">
+              <LandingGhostCta
+                size="sm"
+                variant="gradient"
+                href="/stories"
+                className={LANDING_GHOST_SOFT_OPACITY}
+              >
                 성장후기
               </LandingGhostCta>
             </div>
@@ -273,7 +290,12 @@ function LoginPageContent() {
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <LandingTrialCta size="md" onClick={() => setDemoOpen(true)} />
-                <LandingGhostCta size="md" variant="gradient" href="/stories">
+                <LandingGhostCta
+                  size="md"
+                  variant="gradient"
+                  href="/stories"
+                  className={LANDING_GHOST_SOFT_OPACITY}
+                >
                   성장후기
                 </LandingGhostCta>
               </div>
@@ -302,14 +324,27 @@ function LoginPageContent() {
               </svg>
               홈으로
             </Link>
-            <LandingGhostCta
-              size="sm"
-              variant="surface"
-              onClick={() => setDemoOpen(true)}
-              className="pointer-events-auto sm:px-5 sm:py-3 sm:text-sm"
-            >
-              3일 무료 체험하기
-            </LandingGhostCta>
+            {rightTrialCtaVisible ? (
+              <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+                <LandingGhostCta
+                  size="sm"
+                  variant="surface"
+                  onClick={() => setDemoOpen(true)}
+                  className="sm:px-5 sm:py-3 sm:text-sm"
+                >
+                  3일 무료 체험하기
+                </LandingGhostCta>
+                <button
+                  type="button"
+                  onClick={dismissRightTrialCta}
+                  className="cursor-pointer text-xs text-dim transition hover:text-accent"
+                >
+                  삭제
+                </button>
+              </div>
+            ) : (
+              <span className="pointer-events-none" aria-hidden />
+            )}
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col justify-center px-6 lg:px-10">
