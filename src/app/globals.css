@@ -151,9 +151,6 @@ a:hover:not(.btn) {
 [class*="badge"]:hover, .tag:hover {
   box-shadow: var(--shadow-sm);
 }
-  width: 0;
-  height: 0;
-}
 
 /* 순위 숫자 모노스페이스 */
 .font-rank {
