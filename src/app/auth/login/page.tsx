@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
 import DemoModal from '@/components/DemoModal';
-import { LandingGhostCta } from '@/components/landing/LandingGhostCta';
+import { LandingPrimaryCta } from '@/components/landing/LandingPrimaryCta';
 import { LandingTrialCta } from '@/components/landing/LandingTrialCta';
 import { subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
 
@@ -217,9 +217,9 @@ function LoginPageContent() {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
               <LandingTrialCta size="sm" onClick={() => setDemoOpen(true)} />
-              <LandingGhostCta size="sm" variant="gradient" href="/stories">
+              <LandingPrimaryCta size="sm" href="/stories">
                 성장후기
-              </LandingGhostCta>
+              </LandingPrimaryCta>
             </div>
           </div>
 
@@ -268,9 +268,9 @@ function LoginPageContent() {
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <LandingTrialCta size="md" onClick={() => setDemoOpen(true)} />
-                <LandingGhostCta size="md" variant="gradient" href="/stories">
+                <LandingPrimaryCta size="md" href="/stories">
                   성장후기
-                </LandingGhostCta>
+                </LandingPrimaryCta>
               </div>
             </div>
 
