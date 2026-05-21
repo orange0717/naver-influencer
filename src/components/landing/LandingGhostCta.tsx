@@ -10,12 +10,13 @@ const SIZE: Record<Size, string> = {
   md: 'px-5 py-3 text-sm',
 };
 
-const VARIANT: Record<Variant, string> = {
-  gradient:
-    'border-white/30 text-white/90 hover:text-white hover:border-white/80 hover:bg-white/5',
-  surface:
-    'border-accent/30 text-accent hover:border-accent/80 hover:bg-accent/5',
-};
+/** 그라디언트 패널 — 성장후기·좌측 상단 CTA (Figma ghost) */
+const GRADIENT_GHOST =
+  'border-white/20 text-white/80 hover:border-white/60 hover:text-white hover:bg-white/5';
+
+/** 화이트 패널 우측 상단 — 동일 리듬, 밝은 배경용 로즈 아웃라인 */
+const SURFACE_GHOST =
+  'border-accent/25 text-accent/80 hover:border-accent/55 hover:text-accent hover:bg-accent/5';
 
 const BASE =
   'group inline-flex items-center justify-center gap-2 rounded-full bg-transparent font-semibold tracking-tight border backdrop-blur-sm transition-all duration-300 ease-in-out cursor-pointer';
@@ -63,7 +64,8 @@ export function LandingGhostCta({
   className = '',
   ...props
 }: ButtonProps | LinkProps) {
-  const cls = `${BASE} ${SIZE[size]} ${VARIANT[variant]} ${className}`.trim();
+  const variantCls = variant === 'gradient' ? GRADIENT_GHOST : SURFACE_GHOST;
+  const cls = `${BASE} ${SIZE[size]} ${variantCls} ${className}`.trim();
 
   const content = (
     <>

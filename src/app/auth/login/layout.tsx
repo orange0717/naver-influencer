@@ -11,5 +11,17 @@ export default async function LoginLayout({ children }: { children: React.ReactN
     redirect(`/my?demo=${naverId}`);
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {/* 풀스크린 랜딩: 글로벌 Header·main 패딩이 겹치지 않도록 */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `body:has([data-landing-login]) header{display:none!important}body:has([data-landing-login]) main{padding:0!important;max-width:none!important}`,
+        }}
+      />
+      <div data-landing-login className="contents">
+        {children}
+      </div>
+    </>
+  );
 }
