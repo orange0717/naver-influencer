@@ -210,13 +210,21 @@ function LoginPageContent() {
             <p className="mt-3 text-sm text-white/85 leading-relaxed">
               키워드 분석부터 글 피드백까지,<br/>네이버 블로그 성장에 필요한 모든 것
             </p>
-            <button
-              type="button"
-              onClick={() => setDemoOpen(true)}
-              className="mt-7 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-xs font-bold text-white transition cursor-pointer"
-            >
-              가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
-            </button>
+            <div className="mt-7 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDemoOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-xs font-bold text-white transition cursor-pointer"
+              >
+                가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
+              </button>
+              <Link
+                href="/stories"
+                className="ml-1 inline-flex items-center px-4 py-2.5 rounded-full border border-white/40 bg-transparent hover:bg-white/10 text-xs font-semibold text-white/95 transition"
+              >
+                성장후기
+              </Link>
+            </div>
           </div>
 
           {/* 데스크탑 — 풀 사이즈 카피 */}
@@ -259,13 +267,21 @@ function LoginPageContent() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setDemoOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-sm font-bold text-white transition cursor-pointer w-fit"
-              >
-                가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDemoOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-sm font-bold text-white transition cursor-pointer"
+                >
+                  가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
+                </button>
+                <Link
+                  href="/stories"
+                  className="ml-2 inline-flex items-center px-5 py-3 rounded-full border border-white/40 bg-transparent hover:bg-white/10 text-sm font-semibold text-white/95 transition"
+                >
+                  성장후기
+                </Link>
+              </div>
             </div>
 
             <div className="text-xs text-white/70 flex items-center gap-2 mt-12">
@@ -279,20 +295,19 @@ function LoginPageContent() {
           </div>
         </aside>
 
-        {/* ─── 우측: 로그인 폼 ─── */}
-        <section className="relative w-full lg:w-[480px] xl:w-[520px] lg:flex-shrink-0 lg:min-h-0 lg:h-full lg:overflow-y-auto bg-surface">
-          <div className="min-h-full lg:min-h-0 flex flex-col">
-            {/* 우측 상단 — 홈으로 */}
-            <div className="px-6 lg:px-10 pt-6">
-              <Link href="/" className="text-xs text-dim hover:text-accent transition inline-flex items-center gap-1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 12H5M12 19l-7-7 7-7"/>
-                </svg>
-                홈으로
-              </Link>
-            </div>
+        {/* ─── 우측: 로그인 폼 (세로·가로 정중앙) ─── */}
+        <section className="relative w-full lg:w-[480px] xl:w-[520px] lg:flex-shrink-0 lg:min-h-0 lg:h-full lg:overflow-y-auto bg-surface flex flex-col min-h-[min(100svh,100dvh)] lg:min-h-0">
+          <Link
+            href="/"
+            className="absolute top-6 left-6 lg:left-10 z-10 text-xs text-dim hover:text-accent transition inline-flex items-center gap-1"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            홈으로
+          </Link>
 
-            <div className="flex-1 flex items-center justify-center px-6 lg:px-10 py-10">
+          <div className="flex-1 flex flex-col items-center justify-center w-full min-h-0 px-6 lg:px-10 py-20 lg:py-10">
               <div className="w-full max-w-sm space-y-6">
                 {/* ─── 헤더 ─── */}
                 <div>
@@ -388,14 +403,12 @@ function LoginPageContent() {
                 </div>
 
               </div>
-            </div>
+          </div>
 
-            {/* 우측 하단 — 푸터 링크 */}
-            <div className="px-6 lg:px-10 pb-6 flex items-center justify-center gap-3 text-[11px] text-dim">
-              <Link href="/terms" className="hover:text-accent transition">이용약관</Link>
-              <span className="text-border">·</span>
-              <Link href="/privacy" className="hover:text-accent transition">개인정보처리방침</Link>
-            </div>
+          <div className="absolute bottom-6 left-0 right-0 px-6 lg:px-10 flex items-center justify-center gap-3 text-[11px] text-dim pointer-events-none">
+            <Link href="/terms" className="hover:text-accent transition pointer-events-auto">이용약관</Link>
+            <span className="text-border">·</span>
+            <Link href="/privacy" className="hover:text-accent transition pointer-events-auto">개인정보처리방침</Link>
           </div>
         </section>
       </div>
