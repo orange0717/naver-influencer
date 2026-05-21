@@ -16,6 +16,20 @@ function sanitizeRedirect(raw: string | null): string {
   return raw;
 }
 
+/** 그라디언트 패널 고스트 CTA (우측 상단 참조 스타일) */
+const LANDING_GHOST_CTA_SM =
+  'inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-transparent border border-white/40 hover:bg-white/10 hover:border-white/55 backdrop-blur-sm text-white font-bold transition cursor-pointer';
+const LANDING_GHOST_CTA_MD =
+  'inline-flex items-center gap-2 px-5 py-3 rounded-full bg-transparent border border-white/40 hover:bg-white/10 hover:border-white/55 backdrop-blur-sm text-white font-bold transition cursor-pointer';
+
+/** 화이트 패널 우측 상단 — 동일 고스트 형태, 배경에 맞게 액센트 보더 */
+const LANDING_GHOST_SURFACE =
+  'inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-full bg-transparent border border-accent/40 hover:bg-accent/5 hover:border-accent/60 text-accent text-xs sm:text-sm font-bold transition cursor-pointer';
+
+function LandingGhostArrow() {
+  return <span aria-hidden>→</span>;
+}
+
 function LoginPageContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -194,13 +208,30 @@ function LoginPageContent() {
           <div className="pointer-events-none absolute -bottom-40 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#F2E2DC]/40 blur-3xl" />
           <div className="pointer-events-none absolute top-1/3 right-1/4 w-72 h-72 rounded-full bg-[#7A4F45]/30 blur-3xl" />
 
+          <button
+            type="button"
+            onClick={() => setDemoOpen(true)}
+            className={`hidden lg:inline-flex absolute top-6 right-6 xl:top-8 xl:right-8 z-10 ${LANDING_GHOST_CTA_MD}`}
+          >
+            3일 무료 체험하기 <LandingGhostArrow />
+          </button>
+
           {/* 모바일 — 컴팩트 헤더 */}
           <div className="lg:hidden relative px-6 pt-10 pb-12">
+            <div className="flex items-start justify-between gap-3">
             <Link href="/" className="inline-flex items-center gap-2 text-white/90 hover:text-white transition">
               <span className="w-9 h-9 rounded-lg bg-white text-accent flex items-center justify-center font-extrabold">N</span>
               <span className="font-bold tracking-tight">N인플</span>
               <span className="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-sm text-[10px] font-bold tracking-wider text-white">BETA</span>
             </Link>
+            <button
+              type="button"
+              onClick={() => setDemoOpen(true)}
+              className={`shrink-0 ${LANDING_GHOST_CTA_SM}`}
+            >
+              3일 무료 체험하기 <LandingGhostArrow />
+            </button>
+            </div>
             <p className="mt-9 inline-block px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-tight text-white/95">
               블로거에서 인플루언서로
             </p>
@@ -210,19 +241,16 @@ function LoginPageContent() {
             <p className="mt-3 text-sm text-white/85 leading-relaxed">
               키워드 분석부터 글 피드백까지,<br/>네이버 블로그 성장에 필요한 모든 것
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-2">
+                        <div className="mt-7 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={() => setDemoOpen(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-xs font-bold text-white transition cursor-pointer"
               >
-                가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
+                가입 없이 3일 무료체험 시작 <LandingGhostArrow />
               </button>
-              <Link
-                href="/stories"
-                className="ml-1 inline-flex items-center px-4 py-2.5 rounded-full border border-white/40 bg-transparent hover:bg-white/10 text-xs font-semibold text-white/95 transition"
-              >
-                성장후기
+              <Link href="/stories" className={LANDING_GHOST_CTA_SM}>
+                성장후기 <LandingGhostArrow />
               </Link>
             </div>
           </div>
@@ -267,19 +295,16 @@ function LoginPageContent() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setDemoOpen(true)}
                   className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-sm font-bold text-white transition cursor-pointer"
                 >
-                  가입 없이 3일 무료체험 시작 <span aria-hidden>→</span>
+                  가입 없이 3일 무료체험 시작 <LandingGhostArrow />
                 </button>
-                <Link
-                  href="/stories"
-                  className="ml-2 inline-flex items-center px-5 py-3 rounded-full border border-white/40 bg-transparent hover:bg-white/10 text-sm font-semibold text-white/95 transition"
-                >
-                  성장후기
+                <Link href="/stories" className={LANDING_GHOST_CTA_MD}>
+                  성장후기 <LandingGhostArrow />
                 </Link>
               </div>
             </div>
@@ -306,6 +331,13 @@ function LoginPageContent() {
             </svg>
             홈으로
           </Link>
+          <button
+            type="button"
+            onClick={() => setDemoOpen(true)}
+            className={`absolute top-6 right-6 lg:right-10 z-10 ${LANDING_GHOST_SURFACE}`}
+          >
+            3일 무료 체험하기 <LandingGhostArrow />
+          </button>
 
           <div className="flex-1 flex flex-col items-center justify-center w-full min-h-0 px-6 lg:px-10 py-20 lg:py-10">
               <div className="w-full max-w-sm space-y-6">
