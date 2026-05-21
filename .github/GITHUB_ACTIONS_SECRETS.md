@@ -45,6 +45,17 @@ GitHub Actions는 `vercel-cron/1.0` User-Agent 와 함께 아래 헤더를 보�
 | 일일 drain | `github-actions-drain` |
 | 일일 인플 목록 갱신 | `github-actions-daily-sync` |
 
+## 로컬에서 일괄 등록 (권장)
+
+프로젝트 루트에 `.env.local`(또는 `vercel env pull` 한 env)이 있으면:
+
+```bash
+chmod +x scripts/setup-github-actions-secrets.sh
+./scripts/setup-github-actions-secrets.sh --from-env-local
+```
+
+값을 직접 입력하려면 인자 없이 실행합니다. (`gh auth login` 필요)
+
 ## 등록 후 확인
 
 1. **Actions → 챌린지 순위 일일 drain → Run workflow** (수동 1회, `max_rounds=2` 로 짧게 테스트 가능)
