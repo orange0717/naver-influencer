@@ -23,7 +23,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         },
       });
 
-      const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+      const { data } = await supabaseAuth.auth.getUser();
+      const authUser = data?.user;
 
       if (authUser) {
         const supabase = createServiceClient();
