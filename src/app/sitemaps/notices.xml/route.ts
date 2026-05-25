@@ -2,8 +2,8 @@
  * 공지사항 동적 sitemap
  */
 import { NextResponse } from 'next/server';
-export const dynamic = 'force-dynamic';
 import { createServiceClient } from '@/lib/supabase-server';
+
 export const dynamic = 'force-dynamic';
 
 export const revalidate = 3600;

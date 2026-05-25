@@ -2,8 +2,8 @@
  * 성장 후기 동적 sitemap (status='approved' 만 색인)
  */
 import { NextResponse } from 'next/server';
-export const dynamic = 'force-dynamic';
 import { createServiceClient } from '@/lib/supabase-server';
+
 export const dynamic = 'force-dynamic';
 
 export const revalidate = 3600;
