@@ -69,6 +69,7 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 
       // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
       // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
+      // 주의: r= 값은 페이지 내 상대 순위이므로, 페이지 번호를 반영해 절대 순위로 변환
       const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
       const seen = new Set<string>();
       let match;
@@ -81,7 +82,9 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 
         if (linkBlogId.toLowerCase() === blogIdLower) {
           if (!postId || linkPostId === postId) {
-            return { exposed: true, rank: parseInt(rankStr) };
+            // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
+            const absoluteRank = start + parseInt(rankStr) - 1;
+            return { exposed: true, rank: absoluteRank };
           }
         }
       }
