@@ -4,7 +4,9 @@
  * - Sitemap 사양 상한 50,000개 미만 유지
  */
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { createServiceClient } from '@/lib/supabase-server';
+export const dynamic = 'force-dynamic';
 
 export const revalidate = 86400;
 
