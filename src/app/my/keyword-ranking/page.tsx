@@ -269,6 +269,30 @@ export default function KeywordRankingPage() {
     showError('순위 결과가 초기화되었습니다.', 3000);
   };
 
+  const handleClearPostKeywords = (postId: string) => {
+    if (!profile) return;
+    if (!confirm('이 포스팅의 모든 키워드를 삭제하시겠습니까?')) return;
+
+    // 키워드 초기화
+    setEditingKeywords(prev => ({ ...prev, [postId]: [''] }));
+    const updated = { ...postKeywords };
+    delete updated[postId];
+    setPostKeywords(updated);
+    saveCustomKeywords(profile.blogId, updated);
+
+    // 해당 포스팅의 순위 결과도 삭제
+    const newResults = { ...rankingResults };
+    for (const key of Object.keys(newResults)) {
+      if (key.startsWith(`${postId}::`)) {
+        delete newResults[key];
+      }
+    }
+    setRankingResults(newResults);
+    saveRankingResults(profile.blogId, newResults);
+
+    showError('포스팅의 키워드가 초기화되었습니다.', 3000);
+  };
+
   const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
     setPostsLoading(true);
     try {
@@ -591,12 +615,20 @@ export default function KeywordRankingPage() {
                                     <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
                                   )}
                                 </div>
-                                {keywords.length < 5 && (
-                                  <button onClick={() => addKeyword(post.id)}
-                                    className="text-xs text-accent mt-1.5 cursor-pointer hover:underline">
-                                    + 키워드 추가
-                                  </button>
-                                )}
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  {keywords.length < 5 && (
+                                    <button onClick={() => addKeyword(post.id)}
+                                      className="text-xs text-accent cursor-pointer hover:underline">
+                                      + 키워드 추가
+                                    </button>
+                                  )}
+                                  {keywords.some(k => k.trim()) && (
+                                    <button onClick={() => handleClearPostKeywords(post.id)}
+                                      className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">
+                                      초기화
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </>
                           )}
@@ -743,12 +775,20 @@ export default function KeywordRankingPage() {
                           </div>
                         );
                       })}
-                      {keywords.length < 5 && (
-                        <button onClick={() => addKeyword(post.id)}
-                          className="text-xs text-accent cursor-pointer hover:underline">
-                          + 키워드 추가
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {keywords.length < 5 && (
+                          <button onClick={() => addKeyword(post.id)}
+                            className="text-xs text-accent cursor-pointer hover:underline">
+                            + 키워드 추가
+                          </button>
+                        )}
+                        {keywords.some(k => k.trim()) && (
+                          <button onClick={() => handleClearPostKeywords(post.id)}
+                            className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">
+                            초기화
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
