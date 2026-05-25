@@ -555,7 +555,7 @@ export default function KeywordRankingPage() {
           )}
           <button
             onClick={handleResetResults}
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-dim/5 text-dim/70 border border-dim/20 hover:bg-dim/10 transition cursor-pointer"
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
             title="모든 키워드와 순위 데이터 초기화"
           >
             초기화

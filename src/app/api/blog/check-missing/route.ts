@@ -46,7 +46,12 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
   exposed: boolean;
   rank: number | null;
 }> {
+  if (!blogId || !postId) {
+    return { exposed: false, rank: null };
+  }
+
   const blogIdLower = blogId.toLowerCase();
+  const postIdStr = String(postId);
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
   for (let page = 1; page <= 3; page++) {
@@ -80,12 +85,10 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
         if (seen.has(key)) continue;
         seen.add(key);
 
-        if (linkBlogId.toLowerCase() === blogIdLower) {
-          if (!postId || linkPostId === postId) {
-            // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
-            const absoluteRank = start + parseInt(rankStr) - 1;
-            return { exposed: true, rank: absoluteRank };
-          }
+        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+          // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
+          const absoluteRank = start + parseInt(rankStr) - 1;
+          return { exposed: true, rank: absoluteRank };
         }
       }
 
@@ -108,10 +111,8 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 
         for (const link of blogLinks) {
           globalRank++;
-          if (link.blogId.toLowerCase() === blogIdLower) {
-            if (!postId || link.postId === postId) {
-              return { exposed: true, rank: globalRank };
-            }
+          if (link.blogId.toLowerCase() === blogIdLower && link.postId === postIdStr) {
+            return { exposed: true, rank: globalRank };
           }
         }
       }
@@ -131,7 +132,12 @@ async function checkViewTab(query: string, blogId: string, postId?: string): Pro
   exposed: boolean;
   rank: number | null;
 }> {
+  if (!blogId || !postId) {
+    return { exposed: false, rank: null };
+  }
+
   const blogIdLower = blogId.toLowerCase();
+  const postIdStr = String(postId);
   const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
   for (let page = 1; page <= 3; page++) {
@@ -163,11 +169,9 @@ async function checkViewTab(query: string, blogId: string, postId?: string): Pro
         if (seen.has(key)) continue;
         seen.add(key);
 
-        if (linkBlogId.toLowerCase() === blogIdLower) {
-          if (!postId || linkPostId === postId) {
-            const absoluteRank = start + parseInt(rankStr) - 1;
-            return { exposed: true, rank: absoluteRank };
-          }
+        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+          const absoluteRank = start + parseInt(rankStr) - 1;
+          return { exposed: true, rank: absoluteRank };
         }
       }
 
@@ -190,7 +194,7 @@ async function checkViewTab(query: string, blogId: string, postId?: string): Pro
               const blogMatch = link.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
               if (!blogMatch) continue;
               rank++;
-              if (blogMatch[1].toLowerCase() === blogIdLower && (!postId || blogMatch[2] === postId)) {
+              if (blogMatch[1].toLowerCase() === blogIdLower && blogMatch[2] === postIdStr) {
                 return { exposed: true, rank };
               }
             }
