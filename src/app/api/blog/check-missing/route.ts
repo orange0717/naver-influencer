@@ -124,47 +124,83 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 }
 
 /**
- * 네이버 통합검색(VIEW) — 블로그 검색 API(blog.json) 사용
- * webkr.json보다 블로그 포스팅 검색에 정확
- * postId까지 매칭하여 특정 포스팅의 순위 확인
+ * 네이버 통합검색(VIEW) — 검색 결과 페이지 직접 파싱
+ * data-cr-on="r=순위" 속성에서 네이버 공식 순위 추출
  */
 async function checkViewTab(query: string, blogId: string, postId?: string): Promise<{
   exposed: boolean;
   rank: number | null;
 }> {
-  if (!NAVER_SEARCH_CLIENT_ID || !NAVER_SEARCH_CLIENT_SECRET) {
-    return { exposed: false, rank: null };
-  }
+  const blogIdLower = blogId.toLowerCase();
+  const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
-  try {
-    const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=100&sort=sim`;
-    const res = await fetch(url, {
-      headers: {
-        'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
-        'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
-      },
-    });
-    if (!res.ok) return { exposed: false, rank: null };
+  for (let page = 1; page <= 3; page++) {
+    const start = (page - 1) * 10 + 1;
+    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
 
-    const data = await res.json();
-    const items = data.items || [];
-    const blogIdLower = blogId.toLowerCase();
+    try {
+      const res = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+          'Accept-Encoding': 'gzip, deflate',
+          'Referer': 'https://search.naver.com/',
+        },
+      });
+      if (!res.ok) continue;
 
-    let blogRank = 0;
-    for (const item of items) {
-      const link = item.link || '';
-      const blogMatch = link.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)(?:\/(\d+))?/);
-      if (!blogMatch) continue;
+      const html = await res.text();
 
-      blogRank++;
-      if (blogMatch[1].toLowerCase() === blogIdLower) {
-        // postId가 있으면 정확 매칭, 없으면 blogId만 매칭
-        if (!postId || !blogMatch[2] || blogMatch[2] === postId) {
-          return { exposed: true, rank: blogRank };
+      // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..."
+      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+      const seen = new Set<string>();
+      let match;
+
+      while ((match = rankRegex.exec(html)) !== null) {
+        const [, linkBlogId, linkPostId, rankStr] = match;
+        const key = `${linkBlogId}/${linkPostId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (linkBlogId.toLowerCase() === blogIdLower) {
+          if (!postId || linkPostId === postId) {
+            const absoluteRank = start + parseInt(rankStr) - 1;
+            return { exposed: true, rank: absoluteRank };
+          }
         }
       }
-    }
-  } catch { /* ignore */ }
+
+      // 2순위 폴백: webkr API 사용
+      if (seen.size === 0 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
+        try {
+          const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
+          const apiRes = await fetch(apiUrl, {
+            headers: {
+              'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
+              'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
+            },
+          });
+          if (apiRes.ok) {
+            const apiData = await apiRes.json();
+            const items = apiData.items || [];
+            let rank = 0;
+            for (const item of items) {
+              const link = item.link || '';
+              const blogMatch = link.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+              if (!blogMatch) continue;
+              rank++;
+              if (blogMatch[1].toLowerCase() === blogIdLower && (!postId || blogMatch[2] === postId)) {
+                return { exposed: true, rank };
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      }
+    } catch { continue; }
+
+    if (page < 3) await new Promise(r => setTimeout(r, 500));
+  }
 
   return { exposed: false, rank: null };
 }
