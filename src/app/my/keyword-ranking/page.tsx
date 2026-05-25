@@ -261,25 +261,44 @@ export default function KeywordRankingPage() {
     downloadCsvInBrowser(`my_keyword_ranking_${todayStamp()}.csv`, csv);
   };
 
-  const handleResetResults = () => {
-    if (!profile || blogPosts.length === 0) return;
+  const handleResetResults = useCallback(async () => {
+    if (!profile) return;
     if (!confirm('모든 포스팅의 키워드와 순위 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
 
-    // 1. 모든 포스팅의 키워드 초기화
-    const emptyKeywords: Record<string, string[]> = {};
-    for (const post of blogPosts) {
-      emptyKeywords[post.id] = [''];
+    try {
+      // 1. 프론트엔드 상태 초기화
+      // 모든 로드된 포스팅에 대해 빈 키워드 상태 설정
+      setEditingKeywords(prev => {
+        const updated = { ...prev };
+        if (blogPosts && blogPosts.length > 0) {
+          blogPosts.forEach(post => {
+            updated[post.id] = [''];
+          });
+        }
+        return updated;
+      });
+
+      // 저장된 키워드 전부 삭제
+      setPostKeywords({});
+      saveCustomKeywords(profile.blogId, {});
+
+      // 2. 모든 순위 결과 초기화
+      setRankingResults({});
+      saveRankingResults(profile.blogId, {});
+
+      // 3. 백엔드에서 저장된 키워드도 삭제 요청
+      // 저장된 검색 키워드 테이블의 해당 사용자 키워드 모두 삭제
+      const response = await fetch('/api/my/saved-keywords?all=true', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(() => null);
+
+      showError('모든 키워드와 순위 데이터가 초기화되었습니다.', 3000);
+    } catch (err) {
+      showError('초기화 중 오류가 발생했습니다.', 3000);
+      console.error('Reset error:', err);
     }
-    setEditingKeywords(emptyKeywords);
-    setPostKeywords({});
-    saveCustomKeywords(profile.blogId, {});
-
-    // 2. 모든 순위 결과 초기화
-    setRankingResults({});
-    saveRankingResults(profile.blogId, {});
-
-    showError('모든 키워드와 순위 데이터가 초기화되었습니다.', 3000);
-  };
+  }, [profile, blogPosts, showError]);
 
   const handleClearPostKeywords = (postId: string) => {
     if (!profile) return;
