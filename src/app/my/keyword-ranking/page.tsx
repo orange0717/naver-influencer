@@ -262,11 +262,23 @@ export default function KeywordRankingPage() {
   };
 
   const handleResetResults = () => {
-    if (!profile) return;
-    if (!confirm('저장된 모든 순위 결과를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+    if (!profile || blogPosts.length === 0) return;
+    if (!confirm('모든 포스팅의 키워드와 순위 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+
+    // 1. 모든 포스팅의 키워드 초기화
+    const emptyKeywords: Record<string, string[]> = {};
+    for (const post of blogPosts) {
+      emptyKeywords[post.id] = [''];
+    }
+    setEditingKeywords(emptyKeywords);
+    setPostKeywords({});
+    saveCustomKeywords(profile.blogId, {});
+
+    // 2. 모든 순위 결과 초기화
     setRankingResults({});
     saveRankingResults(profile.blogId, {});
-    showError('순위 결과가 초기화되었습니다.', 3000);
+
+    showError('모든 키워드와 순위 데이터가 초기화되었습니다.', 3000);
   };
 
   const handleClearPostKeywords = (postId: string) => {
@@ -524,8 +536,8 @@ export default function KeywordRankingPage() {
           )}
           <button
             onClick={handleResetResults}
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-down/10 text-down border border-down/30 hover:bg-down/20 transition cursor-pointer"
-            title="저장된 모든 순위 결과 초기화"
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-dim/5 text-dim/70 border border-dim/20 hover:bg-dim/10 transition cursor-pointer"
+            title="모든 키워드와 순위 데이터 초기화"
           >
             초기화
           </button>
