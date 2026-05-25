@@ -261,6 +261,14 @@ export default function KeywordRankingPage() {
     downloadCsvInBrowser(`my_keyword_ranking_${todayStamp()}.csv`, csv);
   };
 
+  const handleResetResults = () => {
+    if (!profile) return;
+    if (!confirm('저장된 모든 순위 결과를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+    setRankingResults({});
+    saveRankingResults(profile.blogId, {});
+    showError('순위 결과가 초기화되었습니다.', 3000);
+  };
+
   const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
     setPostsLoading(true);
     try {
@@ -490,6 +498,13 @@ export default function KeywordRankingPage() {
               CSV 다운로드
             </button>
           )}
+          <button
+            onClick={handleResetResults}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-down/10 text-down border border-down/30 hover:bg-down/20 transition cursor-pointer"
+            title="저장된 모든 순위 결과 초기화"
+          >
+            초기화
+          </button>
           {checkingAll ? (
             <button
               onClick={stopChecking}
