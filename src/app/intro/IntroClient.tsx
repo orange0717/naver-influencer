@@ -5,6 +5,7 @@ import Link from 'next/link';
 import DemoModal from '@/components/DemoModal';
 import LandingFaq from '@/components/LandingFaq';
 import { formatNewInfluencerWeekRangeKst, subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
+import { useAuth } from '@/hooks/useAuth';
 
 /* ── 신규 집계와 동일한 KST 주간 표기 (일요일은 전주 일요일 시작과 맞춤) ── */
 function useNewInfluencerWeekRangeLabel() {
@@ -101,6 +102,8 @@ function SectionDivider() {
 }
 
 export default function IntroClient() {
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const stats = useStats();
   const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
   const featuredStories = useFeaturedStories();
@@ -131,17 +134,19 @@ export default function IntroClient() {
           실시간으로 변경되는 키워드챌린지 순위를 빠르게 체크하세요.
         </p>
 
-        <div className="flex flex-wrap gap-3 justify-center mb-10">
-          <Link href="/keywords" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
-            키워드 분석
-          </Link>
-          <Link href="/influencers" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
-            인플루언서 검색
-          </Link>
-          <Link href="/" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
-            대시보드
-          </Link>
-        </div>
+        {isLoggedIn && (
+          <div className="flex flex-wrap gap-3 justify-center mb-10">
+            <Link href="/keywords" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
+              키워드 분석
+            </Link>
+            <Link href="/influencers" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
+              인플루언서 검색
+            </Link>
+            <Link href="/" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
+              대시보드
+            </Link>
+          </div>
+        )}
 
         <button
           onClick={() => setDemoOpen(true)}
@@ -224,11 +229,13 @@ export default function IntroClient() {
               </div>
             )}
 
-            <div className="text-center mt-6">
-              <Link href="/influencers" className="text-sm text-accent font-semibold hover:underline">
-                전체 인플루언서 보기 →
-              </Link>
-            </div>
+            {isLoggedIn && (
+              <div className="text-center mt-6">
+                <Link href="/influencers" className="text-sm text-accent font-semibold hover:underline">
+                  전체 인플루언서 보기 →
+                </Link>
+              </div>
+            )}
           </div>
         </section>
 
