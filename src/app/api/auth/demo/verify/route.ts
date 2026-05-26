@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createHash } from 'crypto';
 import { createServiceClient } from '@/lib/supabase-server';
 import { validateBody } from '@/lib/validations';
 import { z } from 'zod';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +85,21 @@ export async function POST(request: NextRequest) {
         expires_at: expiresAt.toISOString(),
       })
       .eq('id', session.id);
+
+    // 관리자 페이지 [데모 체험] 메뉴를 위해 trial_users 테이블 업데이트
+    try {
+      const ua = request.headers.get('user-agent') || '';
+      await supabase.rpc('upsert_trial_user', {
+        p_naver_id: naverId,
+        p_blog_id: null,
+        p_display_name: displayName,
+        p_ip_hash: ip ? sha256Hex(ip) : null,
+        p_ua_hash: ua ? sha256Hex(ua) : null,
+        p_source: 'influencer',
+      });
+    } catch (e) {
+      console.error('trial_users upsert error:', e);
+    }
 
     // 쿠키 설정 (3일)
     const cookieStore = await cookies();

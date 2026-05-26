@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { createServiceClient } from '@/lib/supabase-server';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +80,20 @@ async function startDemo(naverId: string, blogId: string, ip: string) {
     started_at: now.toISOString(),
     expires_at: expiresAt.toISOString(),
   });
+
+  // 관리자 페이지 [데모 체험] 메뉴를 위해 trial_users 테이블에도 기록
+  try {
+    await supabase.rpc('upsert_trial_user', {
+      p_naver_id: effectiveNaverId,
+      p_blog_id: blogId || null,
+      p_display_name: displayName,
+      p_ip_hash: ip ? sha256Hex(ip) : null,
+      p_ua_hash: '', // demo/start는 user-agent 접근 불가 (query string 방식)
+      p_source: naverId ? 'influencer' : 'blogger',
+    });
+  } catch (e) {
+    console.error('trial_users upsert error:', e);
+  }
 
   return { effectiveNaverId, displayName, naverId, blogId };
 }
