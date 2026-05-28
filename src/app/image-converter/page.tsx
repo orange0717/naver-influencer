@@ -4,8 +4,8 @@ import { useRef, useState } from 'react';
 
 interface ConvertedFile {
   name: string;
-  data: string;
   mimeType: string;
+  blob: Blob;
 }
 
 export default function ImageConverterPage() {
@@ -14,15 +14,35 @@ export default function ImageConverterPage() {
   const [isConverting, setIsConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [convertedFiles, setConvertedFiles] = useState<ConvertedFile[]>([]);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [showWarning, setShowWarning] = useState(false);
 
   const MAX_FILES = 20;
+
+  const parseErrorFromResponse = async (response: Response) => {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const data = await response.json();
+        return (data?.error as string) || '변환에 실패했습니다.';
+      } catch {
+        return '변환에 실패했습니다.';
+      }
+    }
+    try {
+      const text = await response.text();
+      return text?.slice(0, 200) || '변환에 실패했습니다.';
+    } catch {
+      return '변환에 실패했습니다.';
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
 
     setError(null);
     setConvertedFiles([]);
+    setProgress(null);
 
     // 파일 개수 초과 경고
     if (files.length > MAX_FILES) {
@@ -43,28 +63,40 @@ export default function ImageConverterPage() {
 
     setIsConverting(true);
     setError(null);
+    setConvertedFiles([]);
+    setProgress({ done: 0, total: selectedFiles.length });
 
     try {
-      const formData = new FormData();
-      selectedFiles.forEach(file => {
+      const out: ConvertedFile[] = [];
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i]!;
+        setProgress({ done: i, total: selectedFiles.length });
+
+        const formData = new FormData();
         formData.append('files', file);
-      });
 
-      const response = await fetch('/api/tools/convert-image', {
-        method: 'POST',
-        body: formData,
-      });
+        const response = await fetch('/api/tools/convert-image', {
+          method: 'POST',
+          body: formData,
+        });
 
-      const data = await response.json();
+        if (!response.ok) {
+          const message = await parseErrorFromResponse(response);
+          setError(`${file.name}: ${message}`);
+          return;
+        }
 
-      if (!response.ok) {
-        setError(data.error || '변환에 실패했습니다.');
-        setIsConverting(false);
-        return;
+        const blob = await response.blob();
+        const mimeType = blob.type || response.headers.get('content-type') || 'application/octet-stream';
+        const encodedName = response.headers.get('x-output-filename');
+        const name = (encodedName ? decodeURIComponent(encodedName) : null) || file.name;
+
+        out.push({ name, mimeType, blob });
+        setConvertedFiles([...out]);
       }
 
-      setConvertedFiles(data.files);
-      setError(null);
+      setProgress({ done: selectedFiles.length, total: selectedFiles.length });
     } catch (err) {
       setError('변환 중 오류가 발생했습니다. 다시 시도해주세요.');
       console.error('Conversion error:', err);
@@ -75,14 +107,7 @@ export default function ImageConverterPage() {
 
   const handleDownloadAll = () => {
     convertedFiles.forEach((file, idx) => {
-      const binaryString = atob(file.data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      const blob = new Blob([bytes], { type: file.mimeType });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(file.blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = file.name;
@@ -98,14 +123,7 @@ export default function ImageConverterPage() {
   };
 
   const handleDownloadSingle = (file: ConvertedFile, index: number) => {
-    const binaryString = atob(file.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    const blob = new Blob([bytes], { type: file.mimeType });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(file.blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = file.name;
@@ -121,6 +139,7 @@ export default function ImageConverterPage() {
     setConvertedFiles([]);
     setError(null);
     setShowWarning(false);
+    setProgress(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -225,6 +244,11 @@ export default function ImageConverterPage() {
             <>
               <span className="inline-block animate-spin">⏳</span>
               변환 중...
+              {progress && (
+                <span className="text-sm font-semibold opacity-90">
+                  ({Math.min(progress.done + 1, progress.total)}/{progress.total})
+                </span>
+              )}
             </>
           ) : (
             <>
