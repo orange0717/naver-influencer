@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 interface ConvertedFile {
   name: string;
   mimeType: string;
-  blob: Blob;
+  url: string;
 }
 
 export default function ImageConverterPage() {
@@ -92,13 +92,20 @@ export default function ImageConverterPage() {
         const encodedName = response.headers.get('x-output-filename');
         const name = (encodedName ? decodeURIComponent(encodedName) : null) || file.name;
 
-        out.push({ name, mimeType, blob });
+        const url = URL.createObjectURL(blob);
+        out.push({ name, mimeType, url });
         setConvertedFiles([...out]);
       }
 
       setProgress({ done: selectedFiles.length, total: selectedFiles.length });
     } catch (err) {
-      setError('변환 중 오류가 발생했습니다. 다시 시도해주세요.');
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : '변환 중 오류가 발생했습니다. 다시 시도해주세요.';
+      setError(message);
       console.error('Conversion error:', err);
     } finally {
       setIsConverting(false);
@@ -107,9 +114,8 @@ export default function ImageConverterPage() {
 
   const handleDownloadAll = () => {
     convertedFiles.forEach((file, idx) => {
-      const url = URL.createObjectURL(file.blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = file.url;
       a.download = file.name;
 
       // 약간의 딜레이를 두고 다운로드
@@ -117,24 +123,28 @@ export default function ImageConverterPage() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
       }, idx * 200);
     });
   };
 
   const handleDownloadSingle = (file: ConvertedFile, index: number) => {
-    const url = URL.createObjectURL(file.blob);
     const a = document.createElement('a');
-    a.href = url;
+    a.href = file.url;
     a.download = file.name;
 
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const handleReset = () => {
+    convertedFiles.forEach(f => {
+      try {
+        URL.revokeObjectURL(f.url);
+      } catch {
+        // ignore
+      }
+    });
     setSelectedFiles([]);
     setConvertedFiles([]);
     setError(null);
