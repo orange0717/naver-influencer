@@ -44,6 +44,28 @@ const TOOLS: ToolArticle[] = [
     ],
     recommended: '체험단 · 협찬 블로거, 원고 납품 전 최종 검수가 필요한 분',
   },
+  {
+    id: 'image-converter',
+    name: 'JPG ↔ PNG 변환기',
+    tagline: '이미지 포맷 대량 변환 (최대 20장)',
+    url: '/image-converter',
+    icon: '🖼️',
+    badge: '자사 도구',
+    category: '이미지',
+    isOwn: true,
+    description: [
+      'JPG를 PNG로, PNG를 JPG로 간편하게 변환하는 도구입니다.',
+      '최대 20장까지 한 번에 처리 가능하며, 높은 품질(95% 압축률)로 유지됩니다. 이미지 최적화나 포맷 변환이 필요할 때 유용합니다.',
+    ],
+    features: [
+      '최대 20장 일괄 변환',
+      'JPG ↔ PNG 상호 변환',
+      '높은 품질 유지 (95% 압축률)',
+      '즉시 다운로드 가능',
+      '별도의 가입 불필요',
+    ],
+    recommended: '블로그 이미지 포맷 변환이 필요한 블로거, 빠른 이미지 처리가 필요한 분',
+  },
   // ─── 협력사 도구들은 여기에 추가 ───
 ];
 
