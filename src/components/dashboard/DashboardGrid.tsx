@@ -91,7 +91,8 @@ export default function DashboardGrid({
   const filterApps = (apps: typeof DASHBOARD_APPS) => {
     let result = apps;
     if (!isLoggedIn) {
-      result = result.filter(app => app.category !== 'keyword');
+      // 비로그인: 키워드(유료) + MY(개인 데이터) 카테고리 숨김
+      result = result.filter(app => app.category !== 'keyword' && app.category !== 'my');
     } else if (isLoggedIn) {
       result = result.filter(app => {
         if (isDemoUser && app.category === 'keyword') return true;
@@ -184,18 +185,20 @@ export default function DashboardGrid({
         className="sticky top-14 z-30 -mx-4 px-4 py-2.5 bg-bg/90 backdrop-blur-md border-y border-border"
       >
         <div className="flex flex-wrap items-center gap-1.5 lg:gap-2 lg:overflow-x-auto lg:flex-nowrap scrollbar-hide">
-          <button
-            type="button"
-            onClick={() => document.getElementById('section-favorites')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            aria-label="즐겨찾기 섹션으로 이동"
-            className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-xs lg:text-sm font-bold hover:bg-accent/20 transition-colors cursor-pointer"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill={visibleFavorites.length > 0 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true" className="lg:w-[14px] lg:h-[14px]">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-            즐겨찾기
-            <span className="text-[10px] lg:text-[11px] font-bold opacity-80">{visibleFavorites.length}</span>
-          </button>
+          {isLoggedIn && (
+            <button
+              type="button"
+              onClick={() => document.getElementById('section-favorites')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              aria-label="즐겨찾기 섹션으로 이동"
+              className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-xs lg:text-sm font-bold hover:bg-accent/20 transition-colors cursor-pointer"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={visibleFavorites.length > 0 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true" className="lg:w-[14px] lg:h-[14px]">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              즐겨찾기
+              <span className="text-[10px] lg:text-[11px] font-bold opacity-80">{visibleFavorites.length}</span>
+            </button>
+          )}
           {APP_CATEGORIES.map(cat => {
             const count = filterApps(DASHBOARD_APPS.filter(a => a.category === cat.key)).length;
             if (count === 0) return null;
@@ -236,7 +239,8 @@ export default function DashboardGrid({
         </div>
       </nav>
 
-      {/* ── 즐겨찾기 섹션 ── */}
+      {/* ── 즐겨찾기 섹션 (로그인 시) / 로그인 안내 (비로그인) ── */}
+      {isLoggedIn ? (
       <section id="section-favorites" className="scroll-mt-28 pt-6 border-t border-border">
         <div className="flex items-center gap-2 mb-3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-accent lg:w-[18px] lg:h-[18px]" aria-hidden="true">
@@ -275,6 +279,19 @@ export default function DashboardGrid({
           </div>
         )}
       </section>
+      ) : (
+      <section className="scroll-mt-28 pt-6 border-t border-border">
+        <div className="rounded-2xl border border-dashed border-border bg-surface/50 p-8 lg:p-12 text-center flex flex-col items-center gap-4">
+          <p className="text-sm lg:text-base text-text font-semibold">로그인 후 이용 가능한 서비스입니다.</p>
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold hover:bg-accent-hover transition-colors"
+          >
+            로그인하기
+          </Link>
+        </div>
+      </section>
+      )}
 
       {/* ── 카테고리 섹션 ── */}
       {APP_CATEGORIES.map(cat => {
