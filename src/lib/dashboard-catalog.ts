@@ -183,6 +183,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/decoder',
     ctaLabel: '무료플랜',
   },
+  {
+    id: 'image-converter',
+    category: 'research',
+    title: 'JPG ↔ PNG 변환기',
+    description: '이미지 포맷을 한 번에 최대 20장까지 변환 — 가입 없이 바로 사용',
+    href: '/image-converter',
+    ctaLabel: '바로가기',
+  },
 
   // ── 키워드 ──
   {
@@ -228,19 +236,11 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
     authOnly: true,
   },
-  {
-    id: 'image-converter',
-    category: 'writing',
-    title: 'JPG ↔ PNG 변환기',
-    description: '이미지 포맷을 한 번에 최대 20장까지 변환 — 가입 없이 바로 사용',
-    href: '/image-converter',
-    ctaLabel: '바로가기',
-  },
   // ── 추천 서비스 ──
   {
     id: 'orangelibrary',
     category: 'partner',
-    title: '오렌지도서관',
+    title: 'OrangeLibrary',
     description: '글쓰기 실력을 키우고 싶다면 오렌지도서관 — AI 교정·교열·윤문, 글쓰기 학습',
     href: 'https://orangelibrary.co.kr',
     external: true,

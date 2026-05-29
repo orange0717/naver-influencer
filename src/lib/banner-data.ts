@@ -35,7 +35,7 @@ export const PROMO_BANNERS: BannerItem[] = [
     href: 'https://orangelibrary.co.kr',
     external: true,
     gradient: 'from-[#FDF6F3] to-[#F5E6E0]',
-    badge: '오렌지도서관',
+    badge: 'OrangeLibrary',
   },
   {
     id: 'orangeconnect',
