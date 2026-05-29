@@ -230,11 +230,11 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   },
   // ── 추천 서비스 ──
   {
-    id: 'orangerefine',
+    id: 'orangelibrary',
     category: 'partner',
-    title: 'OrangeRefine',
-    description: '글쓰기 실력을 키우고 싶다면 오렌지리파인 — AI 교정·교열·윤문, 글쓰기 학습',
-    href: 'https://orangerefine.kr',
+    title: '오렌지도서관',
+    description: '글쓰기 실력을 키우고 싶다면 오렌지도서관 — AI 교정·교열·윤문, 글쓰기 학습',
+    href: 'https://orangelibrary.co.kr',
     external: true,
     ctaLabel: '바로가기',
   },

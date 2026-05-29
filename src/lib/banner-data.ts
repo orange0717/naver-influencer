@@ -27,15 +27,15 @@ export interface BannerItem {
 /* ── 자사 서비스 홍보 배너 ── */
 export const PROMO_BANNERS: BannerItem[] = [
   {
-    id: 'orangerefine',
+    id: 'orangelibrary',
     type: 'promo',
     title: '블로그 글, AI로 한 번에 교정하세요',
     description: '맞춤법 · 교정 · 교열 · 윤문까지 3단계 AI 검수. 가입 시 10,000文 무료 지급.',
     cta: '무료로 체험하기 →',
-    href: 'https://orangerefine.kr',
+    href: 'https://orangelibrary.co.kr',
     external: true,
     gradient: 'from-[#FDF6F3] to-[#F5E6E0]',
-    badge: 'OrangeRefine',
+    badge: '오렌지도서관',
   },
   {
     id: 'orangeconnect',
@@ -54,19 +54,7 @@ export const PROMO_BANNERS: BannerItem[] = [
 export const SUBSCRIBE_BANNERS: BannerItem[] = [];
 
 /* ── 협력사 배너 (블로그 관련 도구) ── */
-export const PARTNER_BANNERS: BannerItem[] = [
-  {
-    id: 'partner-tools',
-    type: 'partner',
-    title: '블로거를 위한 추천 도구 모음',
-    description: '블로그 운영에 도움이 되는 도구들을 직접 사용해보고 소개합니다. AI 교정, SEO 분석 등.',
-    cta: '추천 도구 보기 →',
-    href: '/tools',
-    external: false,
-    gradient: 'from-[#F0F9F4] to-[#E8F5E9]',
-    badge: '추천 도구',
-  },
-];
+export const PARTNER_BANNERS: BannerItem[] = [];
 
 /** 배너 ID로 특정 배너 가져오기 */
 export function getBanner(id: string): BannerItem | undefined {
