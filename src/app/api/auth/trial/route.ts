@@ -83,22 +83,18 @@ export async function POST(request: NextRequest) {
       const ua = request.headers.get('user-agent') || '';
       const ipHash = ip ? sha256Hex(ip) : null;
       const uaHash = ua ? sha256Hex(ua) : null;
-      await supabase
-        .from('trial_users')
-        .upsert(
-          {
-            naver_id: naverId,
-            blog_id: blogId || null,
-            display_name: influencer?.display_name || null,
-            ip_hash: ipHash,
-            ua_hash: uaHash,
-            source: 'influencer',
-            last_started_at: new Date().toISOString(),
-          },
-          { onConflict: 'naver_id', ignoreDuplicates: false }
-        );
-    } catch {
+      const { error } = await supabase.rpc('upsert_trial_user', {
+        p_naver_id: naverId,
+        p_blog_id: blogId || null,
+        p_display_name: influencer?.display_name || null,
+        p_ip_hash: ipHash,
+        p_ua_hash: uaHash,
+        p_source: 'influencer',
+      });
+      if (error) console.error('Trial user tracking error:', error);
+    } catch (e) {
       // 추적 실패는 trial 시작 자체를 막지 않음
+      console.error('Trial user tracking exception:', e);
     }
 
     return NextResponse.json({

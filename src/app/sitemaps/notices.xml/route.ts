@@ -4,6 +4,8 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 3600;
 
 const SITE_URL = 'https://ninfle.kr';

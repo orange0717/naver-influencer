@@ -46,6 +46,23 @@ interface BlogPostResult {
 }
 
 /**
+ * URL 인코딩 문자가 있으면 디코딩, 없으면 원본 반환
+ * Worker proxy는 이미 디코딩된 텍스트를 반환할 수 있음
+ */
+function decodeIfUrlEncoded(text: string): string {
+  if (!text) return text;
+  // %XX 패턴이 있으면 URL 인코딩되어 있다고 판단
+  if (/%[0-9A-Fa-f]{2}/.test(text)) {
+    try {
+      return decodeURIComponent(text.replace(/\+/g, ' '));
+    } catch {
+      return text; // 디코딩 실패 시 원본 반환
+    }
+  }
+  return text;
+}
+
+/**
  * 방법 1: Cloudflare Worker 프록시를 통한 PostTitleListAsync API
  * Worker가 한국 엣지에서 네이버 API를 호출 — 해외 Vercel에서도 작동
  */
@@ -62,7 +79,7 @@ async function fetchFromPostListApi(blogId: string, page: number, count: number)
 
   const posts: BlogPostResult[] = (data.postList || []).map((post: NaverPostItem) => ({
     id: post.logNo,
-    title: decodeURIComponent(post.title.replace(/\+/g, ' ')),
+    title: decodeIfUrlEncoded(post.title || ''),
     url: `https://blog.naver.com/${blogId}/${post.logNo}`,
     commentCount: parseInt(post.commentCount || '0', 10),
     viewCount: parseInt(post.readCount || '0', 10),
@@ -150,7 +167,7 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
         for (const post of listData) {
           posts.push({
             id: post.logNo || '',
-            title: decodeURIComponent((post.title || '').replace(/\+/g, ' ')),
+            title: decodeIfUrlEncoded(post.title || ''),
             url: `https://blog.naver.com/${blogId}/${post.logNo}`,
             commentCount: parseInt(post.commentCount || '0', 10),
             viewCount: parseInt(post.readCount || '0', 10),

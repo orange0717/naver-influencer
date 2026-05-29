@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { login as gaLogin } from '@/lib/gtag';
 import DemoModal from '@/components/DemoModal';
-import { LandingGhostCta } from '@/components/landing/LandingGhostCta';
+import { LandingPrimaryCta } from '@/components/landing/LandingPrimaryCta';
 import { LandingTrialCta } from '@/components/landing/LandingTrialCta';
 import { subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
 
@@ -199,16 +199,11 @@ function LoginPageContent() {
 
           {/* 모바일 */}
           <div className="relative px-6 pb-12 pt-10 lg:hidden">
-            <div className="flex items-start justify-between gap-4">
-              <Link href="/" className="inline-flex items-center gap-2 text-white/90 transition hover:text-white">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white font-extrabold text-accent">N</span>
-                <span className="font-bold tracking-tight">N인플</span>
-                <span className="ml-1 rounded-md border border-white/30 bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider backdrop-blur-sm">BETA</span>
-              </Link>
-              <LandingGhostCta size="sm" variant="gradient" onClick={() => setDemoOpen(true)} className="shrink-0">
-                3일 무료 체험하기
-              </LandingGhostCta>
-            </div>
+            <Link href="/" className="inline-flex items-center gap-2 text-white/90 transition hover:text-white">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white font-extrabold text-accent">N</span>
+              <span className="font-bold tracking-tight">N인플</span>
+              <span className="ml-1 rounded-md border border-white/30 bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider backdrop-blur-sm">BETA</span>
+            </Link>
             <p className="mt-9 inline-block rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold tracking-tight text-white/95 backdrop-blur-sm">
               블로거에서 인플루언서로
             </p>
@@ -222,9 +217,9 @@ function LoginPageContent() {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
               <LandingTrialCta size="sm" onClick={() => setDemoOpen(true)} />
-              <LandingGhostCta size="sm" variant="gradient" href="/stories">
+              <LandingPrimaryCta size="sm" href="/stories">
                 성장후기
-              </LandingGhostCta>
+              </LandingPrimaryCta>
             </div>
           </div>
 
@@ -273,9 +268,9 @@ function LoginPageContent() {
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <LandingTrialCta size="md" onClick={() => setDemoOpen(true)} />
-                <LandingGhostCta size="md" variant="gradient" href="/stories">
+                <LandingPrimaryCta size="md" href="/stories">
                   성장후기
-                </LandingGhostCta>
+                </LandingPrimaryCta>
               </div>
             </div>
 
@@ -292,7 +287,7 @@ function LoginPageContent() {
 
         {/* ─── 우측: 로그인 — 세로 정중앙 ─── */}
         <section className="relative flex w-full min-h-[100svh] min-h-[100dvh] flex-col bg-surface lg:h-full lg:min-h-0 lg:w-[480px] lg:flex-shrink-0 xl:w-[520px]">
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-6 pt-6 lg:px-10">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-6 lg:px-10">
             <Link
               href="/"
               className="pointer-events-auto inline-flex items-center gap-1 text-xs text-dim transition hover:text-accent"
@@ -302,14 +297,6 @@ function LoginPageContent() {
               </svg>
               홈으로
             </Link>
-            <LandingGhostCta
-              size="sm"
-              variant="surface"
-              onClick={() => setDemoOpen(true)}
-              className="pointer-events-auto sm:px-5 sm:py-3 sm:text-sm"
-            >
-              3일 무료 체험하기
-            </LandingGhostCta>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col justify-center px-6 lg:px-10">

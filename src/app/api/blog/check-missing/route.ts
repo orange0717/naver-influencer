@@ -46,7 +46,12 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
   exposed: boolean;
   rank: number | null;
 }> {
+  if (!blogId || !postId) {
+    return { exposed: false, rank: null };
+  }
+
   const blogIdLower = blogId.toLowerCase();
+  const postIdStr = String(postId);
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
   for (let page = 1; page <= 3; page++) {
@@ -69,6 +74,7 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 
       // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
       // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
+      // 주의: r= 값은 페이지 내 상대 순위이므로, 페이지 번호를 반영해 절대 순위로 변환
       const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
       const seen = new Set<string>();
       let match;
@@ -79,10 +85,10 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
         if (seen.has(key)) continue;
         seen.add(key);
 
-        if (linkBlogId.toLowerCase() === blogIdLower) {
-          if (!postId || linkPostId === postId) {
-            return { exposed: true, rank: parseInt(rankStr) };
-          }
+        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+          // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
+          const absoluteRank = start + parseInt(rankStr) - 1;
+          return { exposed: true, rank: absoluteRank };
         }
       }
 
@@ -105,10 +111,8 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 
         for (const link of blogLinks) {
           globalRank++;
-          if (link.blogId.toLowerCase() === blogIdLower) {
-            if (!postId || link.postId === postId) {
-              return { exposed: true, rank: globalRank };
-            }
+          if (link.blogId.toLowerCase() === blogIdLower && link.postId === postIdStr) {
+            return { exposed: true, rank: globalRank };
           }
         }
       }
@@ -121,47 +125,86 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
 }
 
 /**
- * 네이버 통합검색(VIEW) — 블로그 검색 API(blog.json) 사용
- * webkr.json보다 블로그 포스팅 검색에 정확
- * postId까지 매칭하여 특정 포스팅의 순위 확인
+ * 네이버 통합검색(VIEW) — 검색 결과 페이지 직접 파싱
+ * data-cr-on="r=순위" 속성에서 네이버 공식 순위 추출
  */
 async function checkViewTab(query: string, blogId: string, postId?: string): Promise<{
   exposed: boolean;
   rank: number | null;
 }> {
-  if (!NAVER_SEARCH_CLIENT_ID || !NAVER_SEARCH_CLIENT_SECRET) {
+  if (!blogId || !postId) {
     return { exposed: false, rank: null };
   }
 
-  try {
-    const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=100&sort=sim`;
-    const res = await fetch(url, {
-      headers: {
-        'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
-        'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
-      },
-    });
-    if (!res.ok) return { exposed: false, rank: null };
+  const blogIdLower = blogId.toLowerCase();
+  const postIdStr = String(postId);
+  const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
-    const data = await res.json();
-    const items = data.items || [];
-    const blogIdLower = blogId.toLowerCase();
+  for (let page = 1; page <= 3; page++) {
+    const start = (page - 1) * 10 + 1;
+    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
 
-    let blogRank = 0;
-    for (const item of items) {
-      const link = item.link || '';
-      const blogMatch = link.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)(?:\/(\d+))?/);
-      if (!blogMatch) continue;
+    try {
+      const res = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+          'Accept-Encoding': 'gzip, deflate',
+          'Referer': 'https://search.naver.com/',
+        },
+      });
+      if (!res.ok) continue;
 
-      blogRank++;
-      if (blogMatch[1].toLowerCase() === blogIdLower) {
-        // postId가 있으면 정확 매칭, 없으면 blogId만 매칭
-        if (!postId || !blogMatch[2] || blogMatch[2] === postId) {
-          return { exposed: true, rank: blogRank };
+      const html = await res.text();
+
+      // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..."
+      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+      const seen = new Set<string>();
+      let match;
+
+      while ((match = rankRegex.exec(html)) !== null) {
+        const [, linkBlogId, linkPostId, rankStr] = match;
+        const key = `${linkBlogId}/${linkPostId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+          const absoluteRank = start + parseInt(rankStr) - 1;
+          return { exposed: true, rank: absoluteRank };
         }
       }
-    }
-  } catch { /* ignore */ }
+
+      // 2순위 폴백: webkr API 사용
+      if (seen.size === 0 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
+        try {
+          const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
+          const apiRes = await fetch(apiUrl, {
+            headers: {
+              'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
+              'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
+            },
+          });
+          if (apiRes.ok) {
+            const apiData = await apiRes.json();
+            const items = apiData.items || [];
+            let rank = 0;
+            for (const item of items) {
+              const link = item.link || '';
+              const blogMatch = link.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+              if (!blogMatch) continue;
+              rank++;
+              if (blogMatch[1].toLowerCase() === blogIdLower && blogMatch[2] === postIdStr) {
+                return { exposed: true, rank };
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      }
+    } catch { continue; }
+
+    if (page < 3) await new Promise(r => setTimeout(r, 500));
+  }
 
   return { exposed: false, rank: null };
 }

@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ saved: data, success: true });
 }
 
-/** DELETE: 키워드 삭제 */
+/** DELETE: 키워드 삭제 (단일 또는 전체) */
 export async function DELETE(request: NextRequest) {
   if (await dashboardLimiter.check(getClientIp(request))) {
     return rateLimitResponse();
@@ -204,21 +204,26 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const keyword = searchParams.get('keyword');
+  const all = searchParams.get('all') === 'true';
 
-  if (!keyword) {
+  const supabase = createServiceClient();
+  let query = supabase
+    .from('saved_search_keywords')
+    .delete()
+    .eq('user_id', auth.userId);
+
+  // 모든 키워드 삭제 또는 특정 키워드 삭제
+  if (!all && keyword) {
+    query = query.eq('keyword', keyword.trim());
+  } else if (!all) {
     return NextResponse.json({ error: '키워드가 필요합니다.' }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from('saved_search_keywords')
-    .delete()
-    .eq('keyword', keyword)
-    .eq('user_id', auth.userId);
+  const { error } = await query;
 
   if (error) {
     return NextResponse.json({ error: '삭제에 실패했습니다.' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, deleted: all ? 'all' : keyword });
 }
