@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>네이버 AI 인용 실시간 검증 대시보드 · N인플</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+<!-- 검증 결과 주입: verify_naver_ai.py 가 생성. 없으면 아래 DEMO 폴백 사용 -->
+<script src="verification_result.js" onerror="window.__noVerify=true"></script>
+
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        base:'#FDF6F3', surface:'#FFFFFF', line:'#F2E2DC',
+        rose:'#BF877A', dusty:'#D9ABA0', cream:'#F2E2DC',
+        up:'#2E8B57', down:'#D94848', hold:'#8C7A6E',
+        warn:'#C8962E', gold:'#D4A017',
+      },
+      fontFamily: { sans:['Pretendard','system-ui','sans-serif'] },
+    }},
+  };
+</script>
+<style>
+  body{font-family:'Pretendard',system-ui,sans-serif}
+  .font-rank{font-variant-numeric:tabular-nums}
+  @keyframes softpulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .pulse{animation:softpulse 1.8s ease-in-out infinite}
+</style>
+</head>
+
+<body class="bg-base text-[#3D2E28] min-h-screen">
+
+<!-- ─── 헤더 ─── -->
+<header class="bg-surface/80 backdrop-blur border-b border-line sticky top-0 z-20">
+  <div class="max-w-6xl mx-auto px-5 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-rose flex items-center justify-center text-white font-bold text-lg shadow-sm">N</div>
+      <div>
+        <h1 class="text-[15px] font-bold leading-tight">네이버 AI 인용 · 실시간 검증</h1>
+        <p class="text-[11px] text-hold leading-tight" id="subTitle">AI 브리핑이 가져간 내 글이 지금도 노출 중인지 교차검증</p>
+      </div>
+    </div>
+    <button id="reverifyBtn"
+      class="flex items-center gap-1.5 text-[12.5px] font-semibold text-white bg-rose hover:bg-[#a8705f] transition rounded-full px-3.5 py-2 shadow-sm">
+      <span id="spin">↻</span> 다시 검증
+    </button>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 py-6 space-y-6">
+
+  <!-- 검증 출처 안내 배너 -->
+  <div id="srcBanner" class="hidden text-[12px] rounded-xl px-4 py-2.5 border"></div>
+
+  <!-- ─── 요약 위젯 ─── -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+      <p class="text-[12px] text-hold mb-1">총 인용 추적 포스팅</p>
+      <div class="flex items-end gap-1.5">
+        <span id="kTotal" class="text-[34px] font-extrabold font-rank leading-none text-rose">–</span>
+        <span class="text-[15px] font-semibold text-hold mb-1">건</span>
+      </div>
+      <p class="text-[11px] text-hold mt-2">검증 키워드 기준</p>
+    </div>
+    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+      <p class="text-[12px] text-hold mb-1">실시간 정상 노출 중</p>
+      <div class="flex items-end gap-1.5">
+        <span id="kLive" class="text-[34px] font-extrabold font-rank leading-none text-up">–</span>
+        <span class="text-[15px] font-semibold text-hold mb-1">건</span>
+        <span class="ml-auto mb-1 inline-flex items-center gap-1 text-[11px] font-bold text-up">
+          <span class="w-1.5 h-1.5 rounded-full bg-up pulse"></span>LIVE
+        </span>
+      </div>
+      <p class="text-[11px] text-hold mt-2">AI 브리핑에서 내 글 인용 확인됨</p>
+    </div>
+    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+      <p class="text-[12px] text-hold mb-1">검증 성공률</p>
+      <div class="flex items-end gap-1.5">
+        <span id="kRate" class="text-[34px] font-extrabold font-rank leading-none text-rose">–</span>
+        <span class="text-[15px] font-semibold text-hold mb-1">%</span>
+      </div>
+      <div class="mt-2.5 h-2 rounded-full bg-base overflow-hidden">
+        <div id="rateBar" class="h-full bg-rose transition-all duration-700" style="width:0%"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── AI 효자 글 (실제 인용 확인된 글) ─── -->
+  <section id="heroWrap" class="hidden"></section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- ─── 메인 테이블 ─── -->
+    <section class="lg:col-span-2">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-[13px] font-bold text-rose flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose"></span> 네이버 AI가 가져간 내 포스팅 · 검증 결과
+        </h2>
+        <span id="checkedAt" class="text-[11px] text-hold"></span>
+      </div>
+
+      <!-- 데스크탑 -->
+      <div class="hidden lg:block bg-surface rounded-2xl border border-line overflow-hidden shadow-sm">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-base/70 text-[11.5px] text-hold border-b border-line">
+              <th class="py-3 px-4 font-semibold">인용일자</th>
+              <th class="py-3 px-3 font-semibold">검색 키워드</th>
+              <th class="py-3 px-3 font-semibold">내 포스팅 제목 / 비고</th>
+              <th class="py-3 px-3 font-semibold text-center">실시간 검증 상태</th>
+              <th class="py-3 px-4 font-semibold whitespace-nowrap">최근 검증</th>
+            </tr>
+          </thead>
+          <tbody id="rowsDesktop" class="text-[12.5px] divide-y divide-line"></tbody>
+        </table>
+      </div>
+      <!-- 모바일 -->
+      <div class="lg:hidden space-y-3" id="rowsMobile"></div>
+    </section>
+
+    <!-- ─── 상태 분포 + 범례 ─── -->
+    <section class="space-y-6">
+      <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+        <h2 class="text-[13px] font-bold text-rose mb-1 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose"></span> 검증 상태 분포
+        </h2>
+        <p class="text-[11px] text-hold mb-3">키워드별 실시간 노출 현황</p>
+        <div class="relative h-[180px]"><canvas id="statusDonut"></canvas></div>
+      </div>
+
+      <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm text-[12px] space-y-2.5">
+        <h2 class="text-[13px] font-bold text-rose mb-1">상태 배지 읽는 법</h2>
+        <div class="flex items-start gap-2">
+          <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-up/10 text-up font-bold">🟢 정상 노출 중</span>
+          <span class="text-hold">실시간 AI 브리핑에서 내 글 인용 확인됨</span>
+        </div>
+        <div class="flex items-start gap-2">
+          <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warn/10 text-warn font-bold">🟡 매칭 실패</span>
+          <span class="text-hold">AI 브리핑에 내 블로그의 '다른 글'이 인용됨</span>
+        </div>
+        <div class="flex items-start gap-2">
+          <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-down/10 text-down font-bold">🔴 미노출</span>
+          <span class="text-hold">내 블로그가 AI 브리핑에 없음 (AI 영역 없음 또는 타사만 인용)</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="text-center text-[11px] text-hold/80 pt-1 pb-6">
+    검증 엔진 <code>verify_naver_ai.py</code> → <code>verification_result.js</code> 자동 반영 ·
+    <span id="srcFoot"></span>
+  </footer>
+</main>
+
+<script>
+/* ───── 검증 데이터 로드 (없으면 DEMO 폴백) ───── */
+const DEMO = {
+  target: 'paichaiuniv', source: 'demo(폴백)',
+  generated_at: '— 검증 전 —',
+  items: [
+    { keyword:"나는 나로 살기로 했다 후기", status:"verified",
+      my_title:"힐링 책 추천, '나는 나로 살기로 했다' 책 리뷰 및 명언 공유",
+      my_url:"https://blog.naver.com/paichaiuniv/221949907451", my_date:"2020.05.08",
+      others:[], checked_at:"—" },
+    { keyword:"독서모임 추천 도서", status:"mismatch", my_title:"", my_url:"", my_date:"",
+      others:["목회와신학","파주시도서관","문화체육관광부"], checked_at:"—" },
+    { keyword:"퇴사 후 무엇을 할 것인가", status:"mismatch", my_title:"", my_url:"", my_date:"",
+      others:["교보문고","KB라이프생명"], checked_at:"—" },
+    { keyword:"글쓰기 잘하는 법", status:"mismatch", my_title:"", my_url:"", my_date:"",
+      others:["레포트월드"], checked_at:"—" },
+  ],
+};
+const V = (window.VERIFICATION && window.VERIFICATION.items) ? window.VERIFICATION : DEMO;
+const isDemo = !(window.VERIFICATION && window.VERIFICATION.items);
+
+/* ───── 배지 ───── */
+const BADGE = {
+  verified: {cls:'bg-up/10 text-up',   dot:'bg-up',   label:'🟢 정상 노출 중'},
+  mismatch: {cls:'bg-warn/10 text-warn',dot:'bg-warn', label:'🟡 매칭 실패'},
+  expired:  {cls:'bg-down/10 text-down',dot:'bg-down', label:'🔴 미노출'},
+};
+function badge(st){
+  const b = BADGE[st] || BADGE.expired;
+  const live = st==='verified' ? ' pulse' : '';
+  return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${b.cls} text-[11px] font-bold whitespace-nowrap">
+    <span class="w-1.5 h-1.5 rounded-full ${b.dot}${live}"></span>${b.label}</span>`;
+}
+function titleCell(it){
+  // ✅ 내 블로그 글이 인용됨
+  if(it.status==='verified' && it.my_title){
+    return `<a href="${it.my_url}" target="_blank" rel="noopener"
+      class="font-semibold hover:text-rose hover:underline decoration-dusty leading-snug">${it.my_title}</a>`;
+  }
+  // ⚠️ 내 블로그의 '다른 글'이 인용됨 (타사 도메인은 표시하지 않음)
+  if(it.status==='mismatch'){
+    if(it.my_title){
+      return `<a href="${it.my_url}" target="_blank" rel="noopener"
+        class="text-warn font-semibold hover:underline decoration-dusty leading-snug">↳ 내 블로그 다른 글: ${it.my_title}</a>`;
+    }
+    return `<span class="text-warn text-[12px]">내 블로그의 다른 글이 인용됨</span>`;
+  }
+  // ❌ 미노출 — 내 글이 AI 브리핑에 없음 (타사 도메인은 의도적으로 미표시)
+  return `<span class="text-hold text-[12px]">내 글 미인용 — AI 브리핑에 내 블로그 없음</span>`;
+}
+
+/* ───── 렌더 ───── */
+function rowDesktop(it){
+  return `<tr class="hover:bg-base/50 transition">
+    <td class="py-3.5 px-4 text-hold font-rank whitespace-nowrap align-top">${it.my_date||'–'}</td>
+    <td class="py-3.5 px-3 align-top">
+      <span class="inline-block px-2 py-0.5 rounded-md bg-cream/60 text-[11.5px] text-rose font-medium">${it.keyword}</span></td>
+    <td class="py-3.5 px-3 align-top">${titleCell(it)}</td>
+    <td class="py-3.5 px-3 text-center align-top">${badge(it.status)}</td>
+    <td class="py-3.5 px-4 text-hold text-[11.5px] font-rank whitespace-nowrap align-top">${it.checked_at||'–'}</td>
+  </tr>`;
+}
+function cardMobile(it){
+  return `<div class="bg-surface rounded-2xl border border-line p-4 shadow-sm">
+    <div class="flex items-center justify-between mb-2">
+      <span class="px-2 py-0.5 rounded-md bg-cream/60 text-[11px] text-rose font-medium">🔍 ${it.keyword}</span>
+      ${badge(it.status)}
+    </div>
+    <div class="text-[13.5px] leading-snug mb-1">${titleCell(it)}</div>
+    <div class="flex items-center justify-between text-[11px] text-hold font-rank mt-1.5">
+      <span>${it.my_date?('인용일 '+it.my_date):''}</span><span>검증 ${it.checked_at||'–'}</span>
+    </div>
+  </div>`;
+}
+
+/* ───── AI 효자 글: 실제 인용 확인된 글만 상단에 크게 ───── */
+function heroCard(it){
+  return `<a href="${it.my_url}" target="_blank" rel="noopener"
+    class="block bg-surface rounded-xl border border-line p-4 hover:border-gold/60 hover:shadow transition">
+    <div class="flex items-center justify-between mb-1.5">
+      <span class="px-2 py-0.5 rounded-md bg-cream/60 text-[11px] text-rose font-medium">🔍 ${it.keyword}</span>
+      <span class="text-[11px] text-hold font-rank whitespace-nowrap">${it.my_date?('인용일 '+it.my_date):''}</span>
+    </div>
+    <p class="text-[14px] font-bold leading-snug text-[#3D2E28]">${it.my_title||it.my_url}</p>
+    <p class="text-[11px] text-rose/70 mt-1.5 truncate">${it.my_url}</p>
+  </a>`;
+}
+function renderHero(){
+  const wrap = document.getElementById('heroWrap');
+  const wins = V.items.filter(i=>i.status==='verified' && i.my_url);
+  if(!wins.length){ wrap.classList.add('hidden'); wrap.innerHTML=''; return; }
+  wrap.classList.remove('hidden');
+  wrap.innerHTML = `
+    <div class="rounded-2xl border border-gold/30 p-5 shadow-sm"
+         style="background:linear-gradient(135deg,#FFF9EF 0%,#FFFFFF 60%)">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-[18px]">🏆</span>
+        <h2 class="text-[14px] font-bold text-[#9a7b12]">AI 효자 글 · 네이버 AI 브리핑이 지금 인용 중</h2>
+        <span class="ml-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-up">
+          <span class="w-1.5 h-1.5 rounded-full bg-up pulse"></span>LIVE</span>
+        <span class="ml-auto text-[11.5px] text-hold">총 <b class="text-up">${wins.length}</b>건 노출 확인</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">${wins.map(heroCard).join('')}</div>
+    </div>`;
+}
+
+function render(){
+  const items = V.items;
+  renderHero();
+  document.getElementById('rowsDesktop').innerHTML = items.map(rowDesktop).join('');
+  document.getElementById('rowsMobile').innerHTML  = items.map(cardMobile).join('');
+
+  const total = items.length;
+  const live  = items.filter(i=>i.status==='verified').length;
+  const miss  = items.filter(i=>i.status==='mismatch').length;
+  const exp   = items.filter(i=>i.status==='expired').length;
+  const rate  = total ? Math.round(live/total*100) : 0;
+
+  document.getElementById('kTotal').textContent = total;
+  document.getElementById('kLive').textContent  = live;
+  document.getElementById('kRate').textContent  = rate;
+  setTimeout(()=>document.getElementById('rateBar').style.width = rate+'%', 60);
+  document.getElementById('checkedAt').textContent = V.generated_at ? ('검증시각 '+V.generated_at) : '';
+  document.getElementById('srcFoot').textContent  = '소스: '+(V.source||'-')+' · 타겟 '+(V.target||'-');
+
+  // 출처 배너
+  const banner = document.getElementById('srcBanner');
+  banner.classList.remove('hidden');
+  if(isDemo){
+    banner.className = 'text-[12px] rounded-xl px-4 py-2.5 border border-warn/30 bg-warn/5 text-warn';
+    banner.innerHTML = '⚠️ <b>아직 검증 전(데모 데이터)</b>입니다. 터미널에서 <code class="bg-white/60 px-1 rounded">python3 verify_naver_ai.py --target 내blogId --html ./html</code> 실행 후 새로고침하면 실제 검증 결과로 바뀝니다.';
+  } else {
+    const ko = V.source && V.source.startsWith('live') ? '실시간 라이브 검증' : '로컬 저장 HTML 검증';
+    banner.className = 'text-[12px] rounded-xl px-4 py-2.5 border border-up/30 bg-up/5 text-up';
+    banner.innerHTML = `✅ <b>${ko}</b> 완료 · 타겟 <b>${V.target}</b> · ${total}개 키워드 검증됨`;
+  }
+
+  // 도넛
+  if(window.__donut) window.__donut.destroy();
+  window.__donut = new Chart(document.getElementById('statusDonut'),{
+    type:'doughnut',
+    data:{ labels:['정상 노출','매칭 실패','미노출'],
+      datasets:[{ data:[live,miss,exp],
+        backgroundColor:['#2E8B57','#C8962E','#D94848'], borderColor:'#fff', borderWidth:2 }]},
+    options:{ cutout:'60%', plugins:{ legend:{ position:'bottom',
+      labels:{ boxWidth:9, boxHeight:9, font:{size:11}, color:'#5b4a43', padding:10 }},
+      tooltip:{ callbacks:{ label:x=>` ${x.label}: ${x.raw}건` }}}},
+  });
+}
+render();
+
+/* ───── '다시 검증' 이벤트 ───── */
+document.getElementById('reverifyBtn').addEventListener('click', ()=>{
+  const spin = document.getElementById('spin');
+  spin.style.display='inline-block'; spin.animate(
+    [{transform:'rotate(0)'},{transform:'rotate(360deg)'}],{duration:600,iterations:2});
+  // file:// 환경에선 브라우저가 직접 파이썬을 못 돌리므로 안내 후 새로고침.
+  setTimeout(()=>{
+    alert('실시간 재검증은 터미널에서 검증 엔진을 다시 돌린 뒤 반영됩니다:\n\n'
+      + '  python3 verify_naver_ai.py --target 내blogId --html ./html\n'
+      + '  (라이브) python3 verify_naver_ai.py --target 내blogId --live\n\n'
+      + '실행이 끝나면 [확인]을 눌러 최신 결과로 새로고침합니다.');
+    location.reload();
+  }, 500);
+});
+</script>
+</body>
+</html>
