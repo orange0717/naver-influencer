@@ -271,12 +271,21 @@ def _collect_resolved(soup, target_blog: str, master: dict):
 
 
 def load_archive_posts(path: str = ARCHIVE_JSON) -> dict:
-    """기존 아카이브를 {archive_key: post} 로 로드(누적 보존용)."""
+    """기존 아카이브에서 '실제 인용된 글'만 {archive_key: post} 로 로드(누적 보존용).
+
+    파일에는 전체 카탈로그(미인용 포함)가 저장되므로, 누적 대상은 cited 글만 골라야
+    다음 실행에서 미인용 글까지 '인용됨'으로 오인하지 않는다(구버전 호환: cite_count>0).
+    """
     if os.path.isfile(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            return {archive_key(p.get("post_url", "")): p for p in data.get("posts", [])}
+            out = {}
+            for p in data.get("posts", []):
+                is_cited = p.get("cited", (p.get("cite_count", 0) or 0) > 0)
+                if is_cited:
+                    out[archive_key(p.get("post_url", ""))] = p
+            return out
         except Exception:
             pass
     return {}
@@ -325,21 +334,69 @@ def merge_archive(prev: dict, mine_hits: list, today: str) -> dict:
     return posts
 
 
-def save_archive(posts: dict, target: str, total_posts: int | None = None) -> dict:
-    """기여도(매칭 키워드 수) 내림차순 정렬 후 json + js(window.ARCHIVE) 저장.
+def _pid_int(p: dict) -> int:
+    try:
+        return int(p.get("post_id") or 0)
+    except (TypeError, ValueError):
+        return 0
 
-    total_posts = 마스터 리스트의 전체 발행 글 수(있으면 인용/미인용 분리 표시).
+
+def build_catalog(master: dict, cited_posts: dict, today: str) -> dict:
+    """마스터 리스트(전체 발행) 전부를 대시보드용 카탈로그로 환원.
+
+    각 글에 cited(인용 여부) 플래그를 붙인다. 인용된 글은 누적 정보(키워드·기여도·
+    카테고리·최초발견)를 그대로 쓰고, 미인용 글은 제목 기반으로 카테고리만 추론한다.
+    → 대시보드에서 '내 글 전체 목록 + AI 인용/미인용'을 한눈에 본다.
+    """
+    cited_by_id = {str(r.get("post_id")): r for r in cited_posts.values()
+                   if r.get("post_id")}
+    catalog = {}
+    for logno, mp in master.items():
+        pid = str(logno)
+        rec = cited_by_id.get(pid)
+        if rec:                                  # ✅ AI가 가져간 글
+            item = dict(rec)
+            item["cited"] = True
+            item["title"] = mp.get("title") or item.get("title", "")
+            item["post_url"] = mp.get("url") or item.get("post_url", "")
+            if not item.get("post_date"):
+                item["post_date"] = mp.get("date", "")
+        else:                                    # ⏳ 아직 인용 안 된 글
+            item = {
+                "post_id": pid,
+                "post_url": mp.get("url", ""),
+                "title": mp.get("title", ""),
+                "post_date": mp.get("date", ""),
+                "keywords": [],
+                "matched_by": [],
+                "category": categorize(mp.get("title", ""), []),
+                "first_seen": "",
+                "last_seen": "",
+                "status": "미인용",
+                "cite_count": 0,
+                "cited": False,
+            }
+        catalog[pid] = item
+    return catalog
+
+
+def save_archive(posts: dict, target: str, total_posts: int | None = None) -> dict:
+    """전체 카탈로그를 정렬 후 json + js(window.ARCHIVE) 저장.
+
+    정렬: ① AI 인용 글 먼저  ② 기여도(매칭 키워드 수) 내림차순  ③ 최신(logNo 큰 순).
+    total_posts = 마스터 리스트의 전체 발행 글 수(인용/미인용 분리 표시).
     """
     arr = sorted(posts.values(),
-                 key=lambda p: (-p.get("cite_count", 0), p.get("first_seen", "")))
-    cited = len(arr)
+                 key=lambda p: (not p.get("cited"), -p.get("cite_count", 0), -_pid_int(p)))
+    cited = sum(1 for p in arr if p.get("cited"))
+    total = total_posts if total_posts is not None else len(arr)
     payload = {
         "target": target,
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "total": cited,
-        "total_posts": total_posts,                       # 전체 발행 글 수(기준점)
+        "total": total,                                   # = 전체 발행(목록 전체)
+        "total_posts": total,                             # 전체 발행 글 수(기준점)
         "cited": cited,                                    # AI가 가져간 글 수
-        "not_cited": (total_posts - cited) if total_posts is not None else None,
+        "not_cited": total - cited,                        # 아직 인용 안 된 글 수
         "posts": arr,
     }
     with open(ARCHIVE_JSON, "w", encoding="utf-8") as f:
@@ -352,18 +409,18 @@ def save_archive(posts: dict, target: str, total_posts: int | None = None) -> di
 
 
 def archive_report(payload: dict):
-    posts = payload["posts"]
+    cited_posts = [p for p in payload["posts"] if p.get("cited")]
     print("\n" + "=" * 70)
     print(f"  📚 네이버 AI가 가져간 내 블로그 자산  ·  타겟 {payload['target']}"
-          f"  ·  총 {payload['total']}개")
+          f"  ·  인용 {payload.get('cited', len(cited_posts))} / 전체 {payload['total']}개")
     print("=" * 70)
-    if not posts:
+    if not cited_posts:
         print("  아직 AI 브리핑에서 '내 블로그' 인용이 확인된 글이 없습니다.")
         print("  → 검색결과 HTML을 ./html 에 더 저장하고 다시 실행하면 누적됩니다.")
         return
     from collections import defaultdict
     by_cat = defaultdict(list)
-    for p in posts:
+    for p in cited_posts:
         by_cat[p.get("category") or "기타"].append(p)
     for cat in sorted(by_cat, key=lambda c: -len(by_cat[c])):
         print(f"\n  ▸ [{cat}] {len(by_cat[cat])}개")
@@ -381,7 +438,7 @@ def save_match_summary(master_index: dict, archive_payload: dict, target: str,
     글의 post_id 집합을 빼서 '아직 인용되지 않은 글'을 명확히 가른다.
     """
     cited_ids = {str(p.get("post_id")) for p in archive_payload.get("posts", [])
-                 if p.get("post_id")}
+                 if p.get("post_id") and p.get("cited")}
     total = len(master_index)
     cited, not_cited = [], []
     for pid, post in master_index.items():
@@ -618,12 +675,13 @@ def main():
     if items:
         report(payload)
 
-    # ② 전수 아카이브 누적 — 마스터로 해소된 '실제 발행 글'만 대장에 적립
+    # ② 전수 아카이브 누적 — 마스터로 해소된 '실제 발행 글'만 인용으로 적립
+    today = date.today().isoformat()
     total_posts = len(master) if master else None
-    archive_payload = save_archive(
-        merge_archive(load_archive_posts(), mine_hits, date.today().isoformat()),
-        target, total_posts,
-    )
+    cited_posts = merge_archive(load_archive_posts(), mine_hits, today)
+    # 대시보드용 카탈로그 = 마스터 전체(미인용 포함) + 인용 플래그
+    catalog = build_catalog(master, cited_posts, today) if master else cited_posts
+    archive_payload = save_archive(catalog, target, total_posts)
     archive_report(archive_payload)
 
     # ③ 매칭 요약 — 전체 발행 대비 'AI 인용 / 미인용' 분리
