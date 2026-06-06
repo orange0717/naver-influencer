@@ -251,23 +251,81 @@ def influencer_cards(soup, target_blog: str):
     return out
 
 
-def _collect_resolved(soup, target_blog: str, master: dict):
-    """이 검색결과에서 '마스터로 해소된 내 글'만 모은다.
+def ai_regions(soup):
+    """🎯 매칭 대상 '영역'만 반환 = AI 브리핑 출처 카드 + 신규 인플루언서 리스트.
 
-    대상 = AI 브리핑 출처 카드 + 하단 신규 인플루언서 리스트.
-    반환: [(master_post, card, matched_by)]  (마스터에 없는 글은 버림 = 환각 차단)
+    ⚠️ 일반 통합검색 결과(블로그/뷰 탭, fds-web-list-root 등)는 절대 포함하지 않는다.
+       (검색에 떴다는 이유만으로 'AI가 인용했다'고 오인하는 허위 양성 차단)
     """
-    resolved, seen_logno = [], set()
-    for card in mine_cards(soup, target_blog) + influencer_cards(soup, target_blog):
-        post, by = resolve_to_master(card, master)
-        if not post:
+    regions, seen = [], set()
+    for box in list(ai_cards(soup)) + _influencer_containers(soup):
+        if id(box) not in seen:
+            seen.add(id(box)); regions.append(box)
+    return regions
+
+
+def _region_index(regions):
+    """영역 내부의 (숫자 고유 포스팅ID 집합, 비교용 제목 텍스트 조각들) 인덱스 구축."""
+    ids, texts = set(), []
+    for box in regions:
+        for a in box.find_all("a", href=True):
+            href = a.get("href", "")
+            lg = extract_logno(href)
+            if lg:
+                ids.add(lg)
+            for num in re.findall(r"\d{8,}", href):    # 링크 형태 불문 '숫자 ID'만 추출
+                ids.add(num)
+            t = a.get_text(" ", strip=True)
+            if t and len(t) >= 6:
+                texts.append(_title_norm(t))
+    return ids, texts
+
+
+def match_master(soup, master: dict, target_blog: str):
+    """🧭 마스터(내 원본 발행 목록)를 Base 로 두고 AI/인플루언서 영역에서 역방향 탐색.
+
+    규칙(오렌지 지시):
+      ① 절대 기준 = 마스터 리스트. 마스터의 각 글이 'AI 영역에 존재하는지' 역으로 찾는다.
+      ② 숫자 고유 포스팅 번호(\\d+) 1:1 대조 — URL/링크 형태 불문.
+      ③ 제목은 말줄임(…)으로 잘리므로 '양방향 포함'으로 유연 매칭
+         (마스터제목 in AI제목  또는  AI제목 in 마스터제목).
+    반환: [(master_post, matched_by)]   matched_by ∈ {"logno","title"}
+    영역 자체가 없으면 []  → 정직하게 0(이 화면엔 AI 인용 영역이 없다는 뜻).
+    """
+    regions = ai_regions(soup)
+    if not regions:
+        return []
+    ids, texts = _region_index(regions)
+    texts = [t for t in dict.fromkeys(texts) if len(t) >= 6]   # 중복 제거 + 너무 짧은 조각 제외
+    mnorm = {str(pid): _title_norm(mp.get("title", "")) for pid, mp in master.items()}
+    hits, seen = [], set()
+
+    def add(pid, by):
+        pid = str(pid)
+        if pid not in seen:
+            seen.add(pid); hits.append((master[pid], by))
+
+    # ② 숫자 고유 포스팅 번호 정확 일치(가장 강한 증거)
+    for pid in master:
+        if str(pid) in ids:
+            add(pid, "logno")
+    # ③-a 원본 제목이 AI 텍스트에 통째로 포함(= AI 쪽 제목이 더 긺)
+    for pid, mt in mnorm.items():
+        if pid in seen or len(mt) < 6:
             continue
-        pid = str(post.get("post_id"))
-        if pid in seen_logno:                # 같은 글 중복 제거(섹션 간 겹침)
-            continue
-        seen_logno.add(pid)
-        resolved.append((post, card, by))
-    return resolved
+        if any(mt in t for t in texts):
+            add(pid, "title")
+    # ③-b AI 잘린 제목(…)이 원본 제목에 포함 — '유일하게' 한 글에만 걸릴 때만(오매칭 방지)
+    for t in texts:
+        cand = [pid for pid, mt in mnorm.items() if t in mt]
+        if len(cand) == 1 and cand[0] not in seen:
+            add(cand[0], "title")
+    return hits
+
+
+def _collect_resolved(soup, target_blog: str, master: dict):
+    """run_local/run_live 어댑터 — match_master 결과를 (mpost, card, matched_by) 로."""
+    return [(mp, mp, by) for mp, by in match_master(soup, master, target_blog)]
 
 
 def load_archive_posts(path: str = ARCHIVE_JSON) -> dict:
@@ -528,7 +586,9 @@ def run_local(html_src: str, target: str, url_map: dict, master: dict):
         soup = BeautifulSoup(read_html(path), "html.parser")
         kw = extract_keyword(soup, os.path.splitext(os.path.basename(path))[0])
         status, my, others = verify_soup(soup, target, url_map.get(kw))
-        items.append(_record(kw, status, my, others, source=os.path.basename(path)))
+        has_region = bool(ai_regions(soup))
+        items.append(_record(kw, status, my, others,
+                             source=os.path.basename(path), ai_region=has_region))
         # 📚 아카이브 누적용 — 마스터 리스트로 해소된 '실제 발행 글'만
         for mpost, card, by in _collect_resolved(soup, target, master):
             mine_hits.append((kw, mpost, card, by))
@@ -550,14 +610,15 @@ def run_live(keywords: list[str], target: str, url_map: dict, master: dict):
             continue
         soup = BeautifulSoup(html, "html.parser")
         status, my, others = verify_soup(soup, target, url_map.get(kw))
-        items.append(_record(kw, status, my, others, source="live"))
+        has_region = bool(ai_regions(soup))
+        items.append(_record(kw, status, my, others, source="live", ai_region=has_region))
         # 📚 아카이브 누적용 — 마스터 리스트로 해소된 '실제 발행 글'만
         for mpost, card, by in _collect_resolved(soup, target, master):
             mine_hits.append((kw, mpost, card, by))
     return items, mine_hits
 
 
-def _record(keyword, status, my, others, source="", note=""):
+def _record(keyword, status, my, others, source="", note="", ai_region=False):
     return {
         "keyword": keyword,
         "status": status,
@@ -565,6 +626,7 @@ def _record(keyword, status, my, others, source="", note=""):
         "my_url": (my or {}).get("url", ""),
         "my_date": (my or {}).get("date", ""),
         "others": others[:6],
+        "ai_region": ai_region,            # 이 HTML에 AI 브리핑/인플루언서 영역이 있었나
         "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "source": source,
         "note": note,
@@ -692,6 +754,19 @@ def main():
         print(f"     ✅ AI가 가져간 글 {ms['cited_count']}개"
               f"   ·   ⏳ 아직 인용 안 된 글 {ms['not_cited_count']}개")
         print(f"  [저장] {MATCH_JSON}")
+
+    # ④ 입력 HTML 진단 — 'AI 브리핑/인플루언서 영역'이 실제로 들어있는 HTML 수
+    if items:
+        with_region = [it for it in items if it.get("ai_region")]
+        print("\n  🔬 입력 HTML 진단")
+        print(f"     AI 브리핑/인플루언서 영역 감지 : {len(with_region)}/{len(items)}개 HTML")
+        if not with_region:
+            print("     ⚠️ 이 HTML들엔 AI 브리핑 영역이 없습니다(=일반 검색결과만 저장됨).")
+            print("        → 브라우저에서 'AI 브리핑'이 화면에 실제로 뜬 상태로, '출처 더보기'까지")
+            print("          펼친 뒤 Cmd+S(웹페이지 HTML만)로 저장해야 매칭이 잡힙니다.")
+        else:
+            for it in with_region:
+                print(f"       · [{it['keyword']}] 영역 O → 매칭 {('O' if it['status']==VERIFIED else '검토')}")
 
 
 if __name__ == "__main__":
