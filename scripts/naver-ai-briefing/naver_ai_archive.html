@@ -89,6 +89,7 @@
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-[13px] font-bold text-rose flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full bg-rose"></span> 네이버 AI가 퍼간 내 글 · 마스터 목록
+          <span id="demoNote" class="hidden ml-1 px-2 py-0.5 rounded-full bg-warn/15 text-warn text-[11px] font-bold">예시 레이아웃 미리보기 · 실데이터 0건</span>
         </h2>
         <div class="flex items-center gap-2">
           <input id="searchBox" type="text" placeholder="🔍 제목·키워드·카테고리 검색"
@@ -153,29 +154,20 @@
 
 <script>
 /* ───── 아카이브 데이터 로드 (없으면 DEMO 예시 폴백) ───── */
+// ⚠️ 실데이터가 0건일 때만 쓰는 '자리표시자' 예시.
+//    실제 책 제목/실제 URL은 절대 쓰지 않는다(진짜 인용으로 오인 방지).
 const DEMO = {
-  target: 'orangelibrary_', updated_at: '— 예시 데이터 —', total: 5,
+  target: 'orangelibrary_', updated_at: '— 예시 자리표시자 (실데이터 아님) —', total: 0,
   posts: [
-    { post_url:'https://blog.naver.com/orangelibrary_/223586427182',
-      title:"요한 볼프강 폰 괴테 시집 독일 좋은시추천", post_date:'2024.09.17',
-      keywords:['감동적인시 괴테시집추천','독일 시인 추천','인생 시집'], category:'시',
-      first_seen:'2026-06-06', last_seen:'2026-06-06', status:'관리중', cite_count:3 },
-    { post_url:'https://blog.naver.com/orangelibrary_/0000000001',
-      title:"나는 나로 살기로 했다 — 마음을 다독이는 에세이 추천", post_date:'2024.03.11',
-      keywords:['자존감 에세이','위로되는 책','퇴사 후 읽을 책'], category:'에세이',
-      first_seen:'2026-06-05', last_seen:'2026-06-06', status:'관리중', cite_count:3 },
-    { post_url:'https://blog.naver.com/orangelibrary_/0000000002',
-      title:"데미안 줄거리와 명문장 — 헤르만 헤세 성장소설", post_date:'2023.11.02',
-      keywords:['데미안 명문장','성장소설 추천'], category:'소설',
-      first_seen:'2026-06-04', last_seen:'2026-06-06', status:'관리중', cite_count:2 },
-    { post_url:'https://blog.naver.com/orangelibrary_/0000000003',
-      title:"아주 작은 습관의 힘 핵심 요약 — 자기계발 입문", post_date:'2024.01.20',
-      keywords:['습관 만들기 책','자기계발 추천'], category:'자기계발',
-      first_seen:'2026-06-03', last_seen:'2026-06-06', status:'관리중', cite_count:2 },
-    { post_url:'https://blog.naver.com/orangelibrary_/0000000004',
-      title:"니체 인생 명언과 철학 입문 정리", post_date:'2023.08.15',
-      keywords:['니체 명언'], category:'철학',
-      first_seen:'2026-06-02', last_seen:'2026-06-06', status:'관리중', cite_count:1 },
+    { post_url:'#', title:"예시 자리 — 여기에 AI가 가져간 '시' 글이 정리됩니다",
+      post_date:'—', keywords:['예시 키워드'], category:'시',
+      first_seen:'—', last_seen:'—', status:'예시', cite_count:0 },
+    { post_url:'#', title:"예시 자리 — '에세이' 글이 이렇게 누적됩니다",
+      post_date:'—', keywords:['예시 키워드'], category:'에세이',
+      first_seen:'—', last_seen:'—', status:'예시', cite_count:0 },
+    { post_url:'#', title:"예시 자리 — '소설' 글 카테고리 표시 예시",
+      post_date:'—', keywords:['예시 키워드'], category:'소설',
+      first_seen:'—', last_seen:'—', status:'예시', cite_count:0 },
   ],
 };
 const realOk = !!(window.ARCHIVE && Array.isArray(window.ARCHIVE.posts) && window.ARCHIVE.posts.length);
@@ -228,11 +220,19 @@ function contribBar(n,max){
     <div class="w-12 h-1.5 rounded-full bg-base overflow-hidden"><div class="h-full bg-rose" style="width:${w}%"></div></div>
   </div>`;
 }
+function titleLink(p){
+  // 데모(자리표시자)는 실제 링크가 아니므로 클릭 비활성 + '예시' 표식
+  if(isDemo){
+    return `<span class="font-semibold text-hold/70 leading-snug">${p.title}</span>
+      <span class="ml-1 inline-block px-1.5 py-0.5 rounded bg-warn/15 text-warn text-[10px] font-bold align-middle">예시</span>`;
+  }
+  return `<a href="${p.post_url}" target="_blank" rel="noopener" class="font-semibold hover:text-rose hover:underline decoration-dusty leading-snug">${p.title||p.post_url}</a>`;
+}
 function rowDesktop(p,max){
-  return `<tr class="hover:bg-base/50 transition">
+  return `<tr class="hover:bg-base/50 transition${isDemo?' opacity-60':''}">
     <td class="py-3.5 px-4 align-top">
-      <a href="${p.post_url}" target="_blank" rel="noopener" class="font-semibold hover:text-rose hover:underline decoration-dusty leading-snug">${p.title||p.post_url}</a>
-      <div class="text-[10.5px] text-hold/80 font-rank mt-0.5">${p.post_date?('작성 '+p.post_date):''}</div>
+      ${titleLink(p)}
+      <div class="text-[10.5px] text-hold/80 font-rank mt-0.5">${(!isDemo&&p.post_date)?('작성 '+p.post_date):''}</div>
     </td>
     <td class="py-3.5 px-3 align-top">${catBadge(p.category)}</td>
     <td class="py-3.5 px-3 align-top text-center">${contribBar(p.cite_count||0,max)}</td>
@@ -244,10 +244,13 @@ function rowDesktop(p,max){
   </tr>`;
 }
 function cardMobile(p,max){
-  return `<div class="bg-surface rounded-2xl border border-line p-4 shadow-sm">
+  const titleEl = isDemo
+    ? `<span class="block text-[13.5px] font-semibold leading-snug text-hold/70">${p.title} <span class="px-1.5 py-0.5 rounded bg-warn/15 text-warn text-[10px] font-bold">예시</span></span>`
+    : `<a href="${p.post_url}" target="_blank" rel="noopener" class="block text-[13.5px] font-semibold leading-snug hover:text-rose">${p.title||p.post_url}</a>`;
+  return `<div class="bg-surface rounded-2xl border border-line p-4 shadow-sm${isDemo?' opacity-60':''}">
     <div class="flex items-center justify-between mb-1.5">${catBadge(p.category)}
       <span class="text-[11px] text-hold">기여도 <b class="text-rose font-rank">${p.cite_count||0}</b></span></div>
-    <a href="${p.post_url}" target="_blank" rel="noopener" class="block text-[13.5px] font-semibold leading-snug hover:text-rose">${p.title||p.post_url}</a>
+    ${titleEl}
     <div class="mt-2">${kwChips(p.keywords)}</div>
     <div class="flex items-center justify-between text-[11px] text-hold font-rank mt-2">
       <span>최초발견 ${p.first_seen||'–'}</span><span>${p.status||'관리중'}</span>
@@ -289,22 +292,27 @@ function renderTable(){
 /* ───── 요약 + 도넛 ───── */
 function renderSummary(){
   document.getElementById('targetTag').textContent = '타겟 · '+(A.target||'-');
-  const total = A.posts.length;
+  // 데모(자리표시자)일 땐 실제 수집 0건이므로 통계는 모두 0으로 정직하게 표시
+  const total = isDemo ? 0 : A.posts.length;
   const catSet = new Set(A.posts.map(p=>p.category||'기타'));
   const kwSet  = new Set(); A.posts.forEach(p=>(p.keywords||[]).forEach(k=>kwSet.add(k)));
   document.getElementById('sTotal').textContent = total;
-  document.getElementById('sCats').textContent  = total? catSet.size : 0;
-  document.getElementById('sKw').textContent    = kwSet.size;
+  document.getElementById('sCats').textContent  = isDemo ? 0 : (total? catSet.size : 0);
+  document.getElementById('sKw').textContent    = isDemo ? 0 : kwSet.size;
   document.getElementById('srcFoot').textContent = '데이터 갱신: '+(A.updated_at||'-');
 
   const banner = document.getElementById('srcBanner');
   banner.classList.remove('hidden');
+  const demoNote = document.getElementById('demoNote');
   if(isDemo){
+    demoNote.classList.remove('hidden');
     banner.className='text-[12px] rounded-xl px-4 py-2.5 border border-warn/30 bg-warn/5 text-warn';
-    banner.innerHTML='⚠️ <b>예시(데모) 데이터</b>입니다 — 아직 실제로 누적된 인용 자산이 없습니다. '
+    banner.innerHTML='⚠️ <b>아직 네이버 AI가 가져간 내 글이 0건</b>입니다. 아래 목록은 '
+      +'<b>레이아웃을 보여주는 빈 예시(자리표시자)</b>일 뿐, 실제 인용된 글이 아닙니다. '
       +'검색결과를 <code class="bg-white/60 px-1 rounded">./html</code>에 저장하고 '
-      +'<code class="bg-white/60 px-1 rounded">python3 verify_naver_ai.py --target orangelibrary_ --html ./html</code> 실행 후 새로고침하면 실제 자산으로 바뀝니다.';
+      +'<code class="bg-white/60 px-1 rounded">python3 verify_naver_ai.py --target orangelibrary_ --html ./html</code> 실행 후 새로고침하면 실제 자산이 채워집니다.';
   } else {
+    demoNote.classList.add('hidden');
     banner.className='text-[12px] rounded-xl px-4 py-2.5 border border-up/30 bg-up/5 text-up';
     banner.innerHTML=`✅ <b>실제 누적 아카이브</b> · 타겟 <b>${A.target}</b> · 네이버 AI가 가져간 내 글 <b>${total}</b>개`;
   }
