@@ -43,7 +43,7 @@ import csv
 import json
 import glob
 import argparse
-from datetime import datetime
+from datetime import datetime, date
 from urllib.parse import quote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -64,6 +64,9 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 CSV_IN = "naver_ai_briefing_citations.csv"   # 있으면 키워드→내 글 URL 매핑 보강
 RESULT_JS = "verification_result.js"
 RESULT_JSON = "verification_result.json"
+# 📚 전수 아카이브(누적): 네이버 AI가 가져간 '내 블로그 글'만 모은 자산 대장
+ARCHIVE_JS = "ai_collected_my_posts.js"
+ARCHIVE_JSON = "ai_collected_my_posts.json"
 
 VERIFIED, MISMATCH, EXPIRED = "verified", "mismatch", "expired"
 BADGE = {VERIFIED: "✅ 정상 노출", MISMATCH: "⚠️ 매칭 실패", EXPIRED: "❌ 미노출"}
@@ -118,6 +121,130 @@ def verify_soup(soup, target_blog: str, want_url: str | None = None):
         return VERIFIED, mine[0], others
     # 내 글이 AI 브리핑에 없음 → 미노출 (타사만 있든, AI 영역이 아예 없든)
     return EXPIRED, None, others
+
+
+# ─────────────────────── 📚 전수 아카이브(누적) ───────────────────────
+# 목적: 단순 일치 검증이 아니라, 네이버 AI 브리핑이 '내 블로그(target)에서
+#       가져다 쓴 모든 포스팅'을 한 번이라도 인용됐으면 누적 기록한다.
+#       타사 도메인은 애초에 담기지 않으므로 화면에 섞일 여지가 없다.
+
+# 인용 섹션/카테고리 추론 규칙 (제목 + AI 매칭 키워드 기반, 위에서부터 우선)
+CATEGORY_RULES = [
+    ("시",       ["시집", "좋은시", "시추천", "시 추천", "시인", "괴테", "릴케",
+                  "윤동주", "나태주", "한용운", "김소월", "정호승", "ryan"]),
+    ("소설",     ["소설", "장편", "단편", "추리", "스릴러", "고전소설", "novel"]),
+    ("에세이",   ["에세이", "산문", "수필", "essay"]),
+    ("자기계발", ["자기계발", "성공", "습관", "동기부여", "성장", "부자", "마인드셋"]),
+    ("철학",     ["철학", "니체", "쇼펜하우어", "스토아", "명상록", "소크라테스", "칸트"]),
+    ("심리",     ["심리", "마음", "위로", "힐링", "관계", "감정", "불안"]),
+    ("명언/글귀", ["명언", "글귀", "좋은글", "명언집", "어록"]),
+    ("인문",     ["인문", "역사", "고전", "교양"]),
+]
+
+
+def categorize(title: str, keywords: list[str]) -> str:
+    """제목+키워드로 AI 답변에서 기여한 주제 분야를 추론."""
+    hay = (title + " " + " ".join(keywords or [])).lower()
+    for cat, kws in CATEGORY_RULES:
+        if any(kw.lower() in hay for kw in kws):
+            return cat
+    return "기타"
+
+
+def archive_key(url: str) -> str:
+    """같은 글이면 같은 키. blog.naver.com/<id>/<logNo> → 'id/logNo'."""
+    k = post_key(url)
+    return f"{k[0]}/{k[1]}" if k[1] else (url or "").lower()
+
+
+def mine_cards(soup, target_blog: str):
+    """이 검색결과의 AI 브리핑 출처 중 '내 블로그 글' 전부(여러 개일 수 있음)."""
+    return [p for p in parse_all_cards(soup)
+            if (p.get("blog_id") or "").lower() == target_blog]
+
+
+def load_archive_posts(path: str = ARCHIVE_JSON) -> dict:
+    """기존 아카이브를 {archive_key: post} 로 로드(누적 보존용)."""
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return {archive_key(p.get("post_url", "")): p for p in data.get("posts", [])}
+        except Exception:
+            pass
+    return {}
+
+
+def merge_archive(prev: dict, mine_hits: list, today: str) -> dict:
+    """기존 아카이브 + 이번 수집분(mine_hits=[(keyword, card)]) → 누적 병합."""
+    posts = {k: dict(v) for k, v in prev.items()}
+    for kw, card in mine_hits:
+        key = archive_key(card.get("url", ""))
+        rec = posts.get(key)
+        if rec is None:
+            rec = {
+                "post_url": card.get("url", ""),
+                "title": card.get("title", "") or "",
+                "post_date": card.get("date", "") or "",
+                "keywords": [],
+                "category": "",
+                "first_seen": today,
+                "last_seen": today,
+                "status": "관리중",
+                "cite_count": 0,
+            }
+            posts[key] = rec
+        if card.get("title") and not rec.get("title"):
+            rec["title"] = card["title"]
+        if card.get("date") and not rec.get("post_date"):
+            rec["post_date"] = card["date"]
+        if kw and kw not in rec["keywords"]:
+            rec["keywords"].append(kw)
+        rec["last_seen"] = today
+        rec["cite_count"] = len(rec["keywords"])      # AI 유입 기여도 = 매칭 키워드 수
+        rec["category"] = categorize(rec.get("title", ""), rec["keywords"])
+    return posts
+
+
+def save_archive(posts: dict, target: str) -> dict:
+    """기여도(매칭 키워드 수) 내림차순 정렬 후 json + js(window.ARCHIVE) 저장."""
+    arr = sorted(posts.values(),
+                 key=lambda p: (-p.get("cite_count", 0), p.get("first_seen", "")))
+    payload = {
+        "target": target,
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "total": len(arr),
+        "posts": arr,
+    }
+    with open(ARCHIVE_JSON, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    with open(ARCHIVE_JS, "w", encoding="utf-8") as f:
+        f.write("window.ARCHIVE = ")
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+        f.write(";\n")
+    return payload
+
+
+def archive_report(payload: dict):
+    posts = payload["posts"]
+    print("\n" + "=" * 70)
+    print(f"  📚 네이버 AI가 가져간 내 블로그 자산  ·  타겟 {payload['target']}"
+          f"  ·  총 {payload['total']}개")
+    print("=" * 70)
+    if not posts:
+        print("  아직 AI 브리핑에서 '내 블로그' 인용이 확인된 글이 없습니다.")
+        print("  → 검색결과 HTML을 ./html 에 더 저장하고 다시 실행하면 누적됩니다.")
+        return
+    from collections import defaultdict
+    by_cat = defaultdict(list)
+    for p in posts:
+        by_cat[p.get("category") or "기타"].append(p)
+    for cat in sorted(by_cat, key=lambda c: -len(by_cat[c])):
+        print(f"\n  ▸ [{cat}] {len(by_cat[cat])}개")
+        for p in by_cat[cat]:
+            print(f"     · ({p['cite_count']}회 유입) {p['title'] or p['post_url']}")
+            print(f"       키워드: {', '.join(p['keywords'][:5])}")
+            print(f"       {p['post_url']}  · 최초발견 {p['first_seen']}  · 상태 {p['status']}")
 
 
 # ─────────────────────────── 입력 소스 ───────────────────────────
@@ -183,17 +310,19 @@ def fetch_live(keyword: str):
 # ─────────────────────────── 실행 ───────────────────────────
 
 def run_local(html_src: str, target: str, url_map: dict):
-    items = []
+    items, mine_hits = [], []
     for path in iter_html(html_src):
         soup = BeautifulSoup(read_html(path), "html.parser")
         kw = extract_keyword(soup, os.path.splitext(os.path.basename(path))[0])
         status, my, others = verify_soup(soup, target, url_map.get(kw))
         items.append(_record(kw, status, my, others, source=os.path.basename(path)))
-    return items
+        for card in mine_cards(soup, target):       # 📚 아카이브 누적용(내 글만)
+            mine_hits.append((kw, card))
+    return items, mine_hits
 
 
 def run_live(keywords: list[str], target: str, url_map: dict):
-    items = []
+    items, mine_hits = [], []
     for kw in keywords:
         html, st = fetch_live(kw)
         if st == "playwright_missing":
@@ -208,7 +337,9 @@ def run_live(keywords: list[str], target: str, url_map: dict):
         soup = BeautifulSoup(html, "html.parser")
         status, my, others = verify_soup(soup, target, url_map.get(kw))
         items.append(_record(kw, status, my, others, source="live"))
-    return items
+        for card in mine_cards(soup, target):       # 📚 아카이브 누적용(내 글만)
+            mine_hits.append((kw, card))
+    return items, mine_hits
 
 
 def _record(keyword, status, my, others, source="", note=""):
@@ -275,13 +406,13 @@ def main():
             kws = list(url_map.keys())
         if not kws:
             sys.exit("[안내] 라이브 모드는 --keywords \"a,b\" 또는 CSV의 키워드가 필요합니다.")
-        items = run_live(kws, target, url_map)
+        items, mine_hits = run_live(kws, target, url_map)
         source = "live(playwright)"
     else:
         if not iter_html(args.html):
             print(f"[입력 없음] '{args.html}' 에 HTML이 없습니다. 검색결과를 Cmd+S로 저장해 넣으세요.")
             return
-        items = run_local(args.html, target, url_map)
+        items, mine_hits = run_local(args.html, target, url_map)
         source = "local-html"
 
     payload = {
@@ -292,6 +423,13 @@ def main():
     }
     save_outputs(payload)
     report(payload)
+
+    # 📚 전수 아카이브 누적 — 네이버 AI가 가져간 '내 블로그 글'만 대장에 적립
+    archive_payload = save_archive(
+        merge_archive(load_archive_posts(), mine_hits, date.today().isoformat()),
+        target,
+    )
+    archive_report(archive_payload)
 
 
 if __name__ == "__main__":

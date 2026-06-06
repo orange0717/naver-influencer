@@ -1,0 +1,8 @@
+# 사용자별 입력 데이터 (브라우저 Cmd+S 로 저장한 검색결과 HTML) — 커밋 제외
+html/
+html_live/
+
+# 런타임 산출물
+__pycache__/
+*.pyc
+naver_ai_briefing_citations.csv

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>네이버 AI가 가져간 내 콘텐츠 자산 · 아카이브 대시보드</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+<!-- 아카이브 데이터 주입: verify_naver_ai.py 가 누적 생성. 없으면 DEMO(예시) 폴백 -->
+<script src="ai_collected_my_posts.js" onerror="window.__noArchive=true"></script>
+
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        base:'#FDF6F3', surface:'#FFFFFF', line:'#F2E2DC',
+        rose:'#BF877A', dusty:'#D9ABA0', cream:'#F2E2DC',
+        up:'#2E8B57', down:'#D94848', hold:'#8C7A6E',
+        warn:'#C8962E', gold:'#D4A017',
+      },
+      fontFamily: { sans:['Pretendard','system-ui','sans-serif'] },
+    }},
+  };
+</script>
+<style>
+  body{font-family:'Pretendard',system-ui,sans-serif}
+  .font-rank{font-variant-numeric:tabular-nums}
+  .cat-chip{cursor:pointer;transition:all .15s}
+  .cat-chip[data-active="1"]{background:#BF877A;color:#fff;border-color:#BF877A}
+</style>
+</head>
+
+<body class="bg-base text-[#3D2E28] min-h-screen">
+
+<!-- ─── 헤더 ─── -->
+<header class="bg-surface/80 backdrop-blur border-b border-line sticky top-0 z-20">
+  <div class="max-w-6xl mx-auto px-5 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-rose flex items-center justify-center text-white font-bold text-lg shadow-sm">📚</div>
+      <div>
+        <h1 class="text-[15px] font-bold leading-tight">네이버 AI가 가져간 내 콘텐츠 자산</h1>
+        <p class="text-[11px] text-hold leading-tight">오렌지 라이브러리 글이 AI 브리핑에 인용된 전수 아카이브</p>
+      </div>
+    </div>
+    <span id="targetTag" class="text-[12px] font-semibold text-rose bg-cream/60 rounded-full px-3 py-1.5"></span>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 py-6 space-y-6">
+
+  <!-- 데이터 출처 배너 -->
+  <div id="srcBanner" class="hidden text-[12px] rounded-xl px-4 py-2.5 border"></div>
+
+  <!-- ─── 요약 위젯 ─── -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+      <p class="text-[12px] text-hold mb-1">AI가 가져간 내 글</p>
+      <div class="flex items-end gap-1.5">
+        <span id="sTotal" class="text-[34px] font-extrabold font-rank leading-none text-rose">–</span>
+        <span class="text-[15px] font-semibold text-hold mb-1">개</span>
+      </div>
+      <p class="text-[11px] text-hold mt-2">단 한 번이라도 인용된 포스팅(누적)</p>
+    </div>
+    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+      <p class="text-[12px] text-hold mb-1">정리된 카테고리</p>
+      <div class="flex items-end gap-1.5">
+        <span id="sCats" class="text-[34px] font-extrabold font-rank leading-none text-up">–</span>
+        <span class="text-[15px] font-semibold text-hold mb-1">분야</span>
+      </div>
+      <p class="text-[11px] text-hold mt-2">AI 답변에서 기여한 주제 분야 수</p>
+    </div>
+    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+      <p class="text-[12px] text-hold mb-1">누적 AI 매칭 키워드</p>
+      <div class="flex items-end gap-1.5">
+        <span id="sKw" class="text-[34px] font-extrabold font-rank leading-none text-rose">–</span>
+        <span class="text-[15px] font-semibold text-hold mb-1">개</span>
+      </div>
+      <p class="text-[11px] text-hold mt-2">AI를 통해 유입된 검색어 총합</p>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- ─── 마스터 테이블 ─── -->
+    <section class="lg:col-span-2 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-[13px] font-bold text-rose flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose"></span> 네이버 AI가 퍼간 내 글 · 마스터 목록
+        </h2>
+        <div class="flex items-center gap-2">
+          <input id="searchBox" type="text" placeholder="🔍 제목·키워드·카테고리 검색"
+            class="text-[12px] rounded-full border border-line bg-surface px-3 py-1.5 w-52 focus:outline-none focus:border-rose" />
+          <select id="sortSel" class="text-[12px] rounded-full border border-line bg-surface px-2.5 py-1.5 focus:outline-none focus:border-rose">
+            <option value="cite">기여도순</option>
+            <option value="recent">최신 발견순</option>
+            <option value="title">제목순</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 카테고리 필터 칩 -->
+      <div id="catChips" class="flex flex-wrap gap-1.5"></div>
+
+      <!-- 데스크탑 -->
+      <div class="hidden lg:block bg-surface rounded-2xl border border-line overflow-hidden shadow-sm">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-base/70 text-[11.5px] text-hold border-b border-line">
+              <th class="py-3 px-4 font-semibold">가져간 포스팅 제목</th>
+              <th class="py-3 px-3 font-semibold whitespace-nowrap">카테고리</th>
+              <th class="py-3 px-3 font-semibold text-center whitespace-nowrap">AI 유입 기여도</th>
+              <th class="py-3 px-3 font-semibold">AI 매칭 키워드</th>
+              <th class="py-3 px-4 font-semibold whitespace-nowrap">최초 발견 · 상태</th>
+            </tr>
+          </thead>
+          <tbody id="rowsDesktop" class="text-[12.5px] divide-y divide-line"></tbody>
+        </table>
+      </div>
+      <!-- 모바일 -->
+      <div class="lg:hidden space-y-3" id="rowsMobile"></div>
+      <p id="emptyHint" class="hidden text-center text-[12px] text-hold py-8"></p>
+    </section>
+
+    <!-- ─── 카테고리 분포 + 안내 ─── -->
+    <section class="space-y-6">
+      <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+        <h2 class="text-[13px] font-bold text-rose mb-1 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose"></span> 카테고리별 자산 분포
+        </h2>
+        <p class="text-[11px] text-hold mb-3">AI가 가져간 글이 어떤 분야에 몰려있나</p>
+        <div class="relative h-[200px]"><canvas id="catDonut"></canvas></div>
+      </div>
+
+      <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm text-[12px] space-y-2 leading-relaxed">
+        <h2 class="text-[13px] font-bold text-rose mb-1">이 대장이 하는 일</h2>
+        <p class="text-hold">네이버 AI 브리핑이 <b class="text-rose">내 블로그(오렌지 라이브러리)</b>에서
+          가져다 쓴 글만 골라 누적 기록합니다. 타사 도메인은 <b>원천 차단</b>되어 여기 절대 표시되지 않습니다.</p>
+        <p class="text-hold">검색결과 HTML을 <code class="bg-base px-1 rounded">./html</code>에 저장하고
+          <code class="bg-base px-1 rounded">verify_naver_ai.py</code>를 다시 돌릴 때마다
+          새로 발견된 글이 이 목록에 <b>추가·갱신</b>됩니다.</p>
+      </div>
+    </section>
+  </div>
+
+  <footer class="text-center text-[11px] text-hold/80 pt-1 pb-6">
+    아카이브 엔진 <code>verify_naver_ai.py</code> → <code>ai_collected_my_posts.js</code> 자동 누적 ·
+    <span id="srcFoot"></span>
+  </footer>
+</main>
+
+<script>
+/* ───── 아카이브 데이터 로드 (없으면 DEMO 예시 폴백) ───── */
+const DEMO = {
+  target: 'orangelibrary_', updated_at: '— 예시 데이터 —', total: 5,
+  posts: [
+    { post_url:'https://blog.naver.com/orangelibrary_/223586427182',
+      title:"요한 볼프강 폰 괴테 시집 독일 좋은시추천", post_date:'2024.09.17',
+      keywords:['감동적인시 괴테시집추천','독일 시인 추천','인생 시집'], category:'시',
+      first_seen:'2026-06-06', last_seen:'2026-06-06', status:'관리중', cite_count:3 },
+    { post_url:'https://blog.naver.com/orangelibrary_/0000000001',
+      title:"나는 나로 살기로 했다 — 마음을 다독이는 에세이 추천", post_date:'2024.03.11',
+      keywords:['자존감 에세이','위로되는 책','퇴사 후 읽을 책'], category:'에세이',
+      first_seen:'2026-06-05', last_seen:'2026-06-06', status:'관리중', cite_count:3 },
+    { post_url:'https://blog.naver.com/orangelibrary_/0000000002',
+      title:"데미안 줄거리와 명문장 — 헤르만 헤세 성장소설", post_date:'2023.11.02',
+      keywords:['데미안 명문장','성장소설 추천'], category:'소설',
+      first_seen:'2026-06-04', last_seen:'2026-06-06', status:'관리중', cite_count:2 },
+    { post_url:'https://blog.naver.com/orangelibrary_/0000000003',
+      title:"아주 작은 습관의 힘 핵심 요약 — 자기계발 입문", post_date:'2024.01.20',
+      keywords:['습관 만들기 책','자기계발 추천'], category:'자기계발',
+      first_seen:'2026-06-03', last_seen:'2026-06-06', status:'관리중', cite_count:2 },
+    { post_url:'https://blog.naver.com/orangelibrary_/0000000004',
+      title:"니체 인생 명언과 철학 입문 정리", post_date:'2023.08.15',
+      keywords:['니체 명언'], category:'철학',
+      first_seen:'2026-06-02', last_seen:'2026-06-06', status:'관리중', cite_count:1 },
+  ],
+};
+const realOk = !!(window.ARCHIVE && Array.isArray(window.ARCHIVE.posts) && window.ARCHIVE.posts.length);
+const A = realOk ? window.ARCHIVE : DEMO;
+const isDemo = !realOk;
+
+/* 카테고리 색상 팔레트 */
+const CAT_COLORS = ['#BF877A','#2E8B57','#C8962E','#D9ABA0','#8C7A6E','#D4A017','#A0789A','#5B8FB9','#CD7F32'];
+const catColor = (() => {
+  const cats = [...new Set(A.posts.map(p=>p.category||'기타'))];
+  const map = {}; cats.forEach((c,i)=>map[c]=CAT_COLORS[i%CAT_COLORS.length]); return map;
+})();
+
+/* ───── 상태 ───── */
+let state = { q:'', cat:'전체', sort:'cite' };
+
+function filtered(){
+  let list = A.posts.slice();
+  if(state.cat!=='전체') list = list.filter(p=>(p.category||'기타')===state.cat);
+  if(state.q){
+    const q = state.q.toLowerCase();
+    list = list.filter(p =>
+      (p.title||'').toLowerCase().includes(q) ||
+      (p.category||'').toLowerCase().includes(q) ||
+      (p.keywords||[]).some(k=>k.toLowerCase().includes(q)));
+  }
+  const cmp = {
+    cite:   (a,b)=> (b.cite_count||0)-(a.cite_count||0) || (a.title||'').localeCompare(b.title||''),
+    recent: (a,b)=> (b.first_seen||'').localeCompare(a.first_seen||''),
+    title:  (a,b)=> (a.title||'').localeCompare(b.title||''),
+  }[state.sort];
+  return list.sort(cmp);
+}
+
+/* ───── 셀/행 ───── */
+function catBadge(c){
+  const col = catColor[c]||'#8C7A6E';
+  return `<span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold text-white whitespace-nowrap" style="background:${col}">${c||'기타'}</span>`;
+}
+function kwChips(ks){
+  if(!ks||!ks.length) return '<span class="text-hold text-[11px]">–</span>';
+  const shown = ks.slice(0,3).map(k=>`<span class="inline-block px-1.5 py-0.5 rounded bg-cream/60 text-[10.5px] text-rose">${k}</span>`).join(' ');
+  const more = ks.length>3 ? `<span class="text-[10.5px] text-hold"> +${ks.length-3}</span>` : '';
+  return shown+more;
+}
+function contribBar(n,max){
+  const w = max? Math.round(n/max*100):0;
+  return `<div class="flex items-center gap-1.5 justify-center">
+    <span class="font-rank font-bold text-rose text-[13px]">${n}</span>
+    <div class="w-12 h-1.5 rounded-full bg-base overflow-hidden"><div class="h-full bg-rose" style="width:${w}%"></div></div>
+  </div>`;
+}
+function rowDesktop(p,max){
+  return `<tr class="hover:bg-base/50 transition">
+    <td class="py-3.5 px-4 align-top">
+      <a href="${p.post_url}" target="_blank" rel="noopener" class="font-semibold hover:text-rose hover:underline decoration-dusty leading-snug">${p.title||p.post_url}</a>
+      <div class="text-[10.5px] text-hold/80 font-rank mt-0.5">${p.post_date?('작성 '+p.post_date):''}</div>
+    </td>
+    <td class="py-3.5 px-3 align-top">${catBadge(p.category)}</td>
+    <td class="py-3.5 px-3 align-top text-center">${contribBar(p.cite_count||0,max)}</td>
+    <td class="py-3.5 px-3 align-top">${kwChips(p.keywords)}</td>
+    <td class="py-3.5 px-4 align-top whitespace-nowrap">
+      <div class="text-hold font-rank text-[11.5px]">${p.first_seen||'–'}</div>
+      <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-up/10 text-up text-[10.5px] font-bold">${p.status||'관리중'}</span>
+    </td>
+  </tr>`;
+}
+function cardMobile(p,max){
+  return `<div class="bg-surface rounded-2xl border border-line p-4 shadow-sm">
+    <div class="flex items-center justify-between mb-1.5">${catBadge(p.category)}
+      <span class="text-[11px] text-hold">기여도 <b class="text-rose font-rank">${p.cite_count||0}</b></span></div>
+    <a href="${p.post_url}" target="_blank" rel="noopener" class="block text-[13.5px] font-semibold leading-snug hover:text-rose">${p.title||p.post_url}</a>
+    <div class="mt-2">${kwChips(p.keywords)}</div>
+    <div class="flex items-center justify-between text-[11px] text-hold font-rank mt-2">
+      <span>최초발견 ${p.first_seen||'–'}</span><span>${p.status||'관리중'}</span>
+    </div>
+  </div>`;
+}
+
+/* ───── 카테고리 칩 ───── */
+function renderChips(){
+  const counts = {};
+  A.posts.forEach(p=>{const c=p.category||'기타'; counts[c]=(counts[c]||0)+1;});
+  const cats = ['전체', ...Object.keys(counts).sort((a,b)=>counts[b]-counts[a])];
+  document.getElementById('catChips').innerHTML = cats.map(c=>{
+    const n = c==='전체' ? A.posts.length : counts[c];
+    const active = state.cat===c ? '1':'0';
+    return `<span class="cat-chip px-2.5 py-1 rounded-full border border-line bg-surface text-[11.5px] font-medium text-hold" data-cat="${c}" data-active="${active}">${c} <b class="font-rank">${n}</b></span>`;
+  }).join('');
+  document.querySelectorAll('.cat-chip').forEach(el=>{
+    el.addEventListener('click',()=>{ state.cat=el.dataset.cat; renderChips(); renderTable(); });
+  });
+}
+
+/* ───── 테이블 렌더 ───── */
+function renderTable(){
+  const list = filtered();
+  const max = Math.max(1, ...A.posts.map(p=>p.cite_count||0));
+  const dt = document.getElementById('rowsDesktop');
+  const mb = document.getElementById('rowsMobile');
+  const hint = document.getElementById('emptyHint');
+  dt.innerHTML = list.map(p=>rowDesktop(p,max)).join('');
+  mb.innerHTML = list.map(p=>cardMobile(p,max)).join('');
+  if(!list.length){
+    hint.classList.remove('hidden');
+    hint.textContent = A.posts.length ? '검색·필터 조건에 맞는 글이 없습니다.' :
+      '아직 네이버 AI가 가져간 글이 확인되지 않았습니다. 검색결과 HTML을 저장하고 엔진을 다시 실행하세요.';
+  } else hint.classList.add('hidden');
+}
+
+/* ───── 요약 + 도넛 ───── */
+function renderSummary(){
+  document.getElementById('targetTag').textContent = '타겟 · '+(A.target||'-');
+  const total = A.posts.length;
+  const catSet = new Set(A.posts.map(p=>p.category||'기타'));
+  const kwSet  = new Set(); A.posts.forEach(p=>(p.keywords||[]).forEach(k=>kwSet.add(k)));
+  document.getElementById('sTotal').textContent = total;
+  document.getElementById('sCats').textContent  = total? catSet.size : 0;
+  document.getElementById('sKw').textContent    = kwSet.size;
+  document.getElementById('srcFoot').textContent = '데이터 갱신: '+(A.updated_at||'-');
+
+  const banner = document.getElementById('srcBanner');
+  banner.classList.remove('hidden');
+  if(isDemo){
+    banner.className='text-[12px] rounded-xl px-4 py-2.5 border border-warn/30 bg-warn/5 text-warn';
+    banner.innerHTML='⚠️ <b>예시(데모) 데이터</b>입니다 — 아직 실제로 누적된 인용 자산이 없습니다. '
+      +'검색결과를 <code class="bg-white/60 px-1 rounded">./html</code>에 저장하고 '
+      +'<code class="bg-white/60 px-1 rounded">python3 verify_naver_ai.py --target orangelibrary_ --html ./html</code> 실행 후 새로고침하면 실제 자산으로 바뀝니다.';
+  } else {
+    banner.className='text-[12px] rounded-xl px-4 py-2.5 border border-up/30 bg-up/5 text-up';
+    banner.innerHTML=`✅ <b>실제 누적 아카이브</b> · 타겟 <b>${A.target}</b> · 네이버 AI가 가져간 내 글 <b>${total}</b>개`;
+  }
+
+  // 카테고리 도넛
+  const counts = {}; A.posts.forEach(p=>{const c=p.category||'기타'; counts[c]=(counts[c]||0)+1;});
+  const labels = Object.keys(counts);
+  if(window.__catDonut) window.__catDonut.destroy();
+  window.__catDonut = new Chart(document.getElementById('catDonut'),{
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:labels.map(l=>counts[l]),
+      backgroundColor:labels.map(l=>catColor[l]||'#8C7A6E'), borderColor:'#fff', borderWidth:2 }]},
+    options:{ cutout:'58%', plugins:{ legend:{ position:'bottom',
+      labels:{ boxWidth:9, boxHeight:9, font:{size:11}, color:'#5b4a43', padding:9 }},
+      tooltip:{ callbacks:{ label:x=>` ${x.label}: ${x.raw}개` }}}},
+  });
+}
+
+/* ───── 이벤트 ───── */
+document.getElementById('searchBox').addEventListener('input', e=>{ state.q=e.target.value.trim(); renderTable(); });
+document.getElementById('sortSel').addEventListener('change', e=>{ state.sort=e.target.value; renderTable(); });
+
+/* ───── 초기 렌더 ───── */
+renderSummary();
+renderChips();
+renderTable();
+</script>
+</body>
+</html>
