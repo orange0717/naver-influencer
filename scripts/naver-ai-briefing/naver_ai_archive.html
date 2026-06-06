@@ -55,31 +55,31 @@
   <!-- 데이터 출처 배너 -->
   <div id="srcBanner" class="hidden text-[12px] rounded-xl px-4 py-2.5 border"></div>
 
-  <!-- ─── 요약 위젯 ─── -->
+  <!-- ─── 요약 위젯: 마스터 리스트(전체 발행) 기준 인용/미인용 ─── -->
   <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
-      <p class="text-[12px] text-hold mb-1">AI가 가져간 내 글</p>
+      <p class="text-[12px] text-hold mb-1">전체 발행 글 <span class="text-[10.5px] text-hold/70">(기준점)</span></p>
       <div class="flex items-end gap-1.5">
-        <span id="sTotal" class="text-[34px] font-extrabold font-rank leading-none text-rose">–</span>
+        <span id="sTotalPosts" class="text-[34px] font-extrabold font-rank leading-none text-[#3D2E28]">–</span>
         <span class="text-[15px] font-semibold text-hold mb-1">개</span>
       </div>
-      <p class="text-[11px] text-hold mt-2">단 한 번이라도 인용된 포스팅(누적)</p>
+      <p class="text-[11px] text-hold mt-2">내 블로그 마스터 리스트(실제 발행 글)</p>
     </div>
     <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
-      <p class="text-[12px] text-hold mb-1">정리된 카테고리</p>
+      <p class="text-[12px] text-hold mb-1">AI가 가져간 글</p>
       <div class="flex items-end gap-1.5">
-        <span id="sCats" class="text-[34px] font-extrabold font-rank leading-none text-up">–</span>
-        <span class="text-[15px] font-semibold text-hold mb-1">분야</span>
-      </div>
-      <p class="text-[11px] text-hold mt-2">AI 답변에서 기여한 주제 분야 수</p>
-    </div>
-    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
-      <p class="text-[12px] text-hold mb-1">누적 AI 매칭 키워드</p>
-      <div class="flex items-end gap-1.5">
-        <span id="sKw" class="text-[34px] font-extrabold font-rank leading-none text-rose">–</span>
+        <span id="sCited" class="text-[34px] font-extrabold font-rank leading-none text-up">–</span>
         <span class="text-[15px] font-semibold text-hold mb-1">개</span>
       </div>
-      <p class="text-[11px] text-hold mt-2">AI를 통해 유입된 검색어 총합</p>
+      <p class="text-[11px] text-hold mt-2">단 한 번이라도 AI 브리핑에 인용(누적)</p>
+    </div>
+    <div class="bg-surface rounded-2xl border border-line p-5 shadow-sm">
+      <p class="text-[12px] text-hold mb-1">아직 인용 안 된 글</p>
+      <div class="flex items-end gap-1.5">
+        <span id="sNotCited" class="text-[34px] font-extrabold font-rank leading-none text-hold">–</span>
+        <span class="text-[15px] font-semibold text-hold mb-1">개</span>
+      </div>
+      <p class="text-[11px] text-hold mt-2">AI 브리핑에 아직 미등장(기회 영역)</p>
     </div>
   </section>
 
@@ -170,7 +170,11 @@ const DEMO = {
       first_seen:'—', last_seen:'—', status:'예시', cite_count:0 },
   ],
 };
-const realOk = !!(window.ARCHIVE && Array.isArray(window.ARCHIVE.posts) && window.ARCHIVE.posts.length);
+// 실데이터 판정: 마스터 리스트가 로드되면(total_posts 숫자) 인용 0건이라도 '실데이터'.
+//  → 'AI 인용 0 / 미인용 829' 같은 정직한 상태도 예시가 아니라 진짜로 표시한다.
+//  DEMO(예시)는 아카이브 파일 자체가 없을 때(window.ARCHIVE undefined)만 사용.
+const realOk = !!(window.ARCHIVE && Array.isArray(window.ARCHIVE.posts)
+  && (window.ARCHIVE.posts.length > 0 || typeof window.ARCHIVE.total_posts === 'number'));
 const A = realOk ? window.ARCHIVE : DEMO;
 const isDemo = !realOk;
 
@@ -292,13 +296,13 @@ function renderTable(){
 /* ───── 요약 + 도넛 ───── */
 function renderSummary(){
   document.getElementById('targetTag').textContent = '타겟 · '+(A.target||'-');
-  // 데모(자리표시자)일 땐 실제 수집 0건이므로 통계는 모두 0으로 정직하게 표시
-  const total = isDemo ? 0 : A.posts.length;
-  const catSet = new Set(A.posts.map(p=>p.category||'기타'));
-  const kwSet  = new Set(); A.posts.forEach(p=>(p.keywords||[]).forEach(k=>kwSet.add(k)));
-  document.getElementById('sTotal').textContent = total;
-  document.getElementById('sCats').textContent  = isDemo ? 0 : (total? catSet.size : 0);
-  document.getElementById('sKw').textContent    = isDemo ? 0 : kwSet.size;
+  const cited = isDemo ? 0 : A.posts.length;          // AI가 가져간 글(누적)
+  // 전체 발행 글: 마스터 리스트 기준점(total_posts). 없으면 인용 수로 폴백.
+  const totalPosts = (typeof A.total_posts === 'number') ? A.total_posts : (isDemo ? 0 : cited);
+  const notCited = Math.max(0, totalPosts - cited);
+  document.getElementById('sTotalPosts').textContent = totalPosts;
+  document.getElementById('sCited').textContent      = cited;
+  document.getElementById('sNotCited').textContent   = notCited;
   document.getElementById('srcFoot').textContent = '데이터 갱신: '+(A.updated_at||'-');
 
   const banner = document.getElementById('srcBanner');
@@ -307,14 +311,22 @@ function renderSummary(){
   if(isDemo){
     demoNote.classList.remove('hidden');
     banner.className='text-[12px] rounded-xl px-4 py-2.5 border border-warn/30 bg-warn/5 text-warn';
-    banner.innerHTML='⚠️ <b>아직 네이버 AI가 가져간 내 글이 0건</b>입니다. 아래 목록은 '
+    banner.innerHTML='⚠️ <b>아직 아카이브 데이터가 없습니다</b>. 아래 목록은 '
       +'<b>레이아웃을 보여주는 빈 예시(자리표시자)</b>일 뿐, 실제 인용된 글이 아닙니다. '
       +'검색결과를 <code class="bg-white/60 px-1 rounded">./html</code>에 저장하고 '
       +'<code class="bg-white/60 px-1 rounded">python3 verify_naver_ai.py --target orangelibrary_ --html ./html</code> 실행 후 새로고침하면 실제 자산이 채워집니다.';
+  } else if(cited === 0){
+    // 실데이터지만 아직 인용 0건 — 정직하게 '기준점은 확보, 인용 0' 으로 안내
+    demoNote.classList.add('hidden');
+    banner.className='text-[12px] rounded-xl px-4 py-2.5 border border-warn/30 bg-warn/5 text-warn';
+    banner.innerHTML=`🧭 <b>기준점 확보됨</b> · 전체 발행 <b>${totalPosts}</b>개 중 `
+      +`네이버 AI가 가져간 글 <b>0</b>개 (아직 인용 확인 안 됨). `
+      +`검색결과 HTML을 <code class="bg-white/60 px-1 rounded">./html</code>에 더 저장할수록 인용 글이 채워집니다.`;
   } else {
     demoNote.classList.add('hidden');
     banner.className='text-[12px] rounded-xl px-4 py-2.5 border border-up/30 bg-up/5 text-up';
-    banner.innerHTML=`✅ <b>실제 누적 아카이브</b> · 타겟 <b>${A.target}</b> · 네이버 AI가 가져간 내 글 <b>${total}</b>개`;
+    banner.innerHTML=`✅ <b>실제 누적 아카이브</b> · 타겟 <b>${A.target}</b> · `
+      +`전체 발행 <b>${totalPosts}</b>개 중 AI가 가져간 글 <b>${cited}</b>개`;
   }
 
   // 카테고리 도넛
