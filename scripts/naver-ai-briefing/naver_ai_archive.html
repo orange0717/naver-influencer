@@ -115,7 +115,7 @@
             <tr class="bg-base/70 text-[11.5px] text-hold border-b border-line">
               <th class="py-3 px-4 font-semibold">가져간 포스팅 제목</th>
               <th class="py-3 px-3 font-semibold whitespace-nowrap">카테고리</th>
-              <th class="py-3 px-3 font-semibold text-center whitespace-nowrap">AI 유입 기여도</th>
+              <th class="py-3 px-3 font-semibold text-center whitespace-nowrap" title="기여도 = 유입 키워드 수 × 매칭신뢰(logNo 정확 1.0 / 제목 추정 0.7) → 전체 인용 대비 비중 %">AI 유입 기여도 <span class="text-hold/60">ⓘ</span></th>
               <th class="py-3 px-3 font-semibold">AI 매칭 키워드</th>
               <th class="py-3 px-4 font-semibold whitespace-nowrap">최초 발견 · 상태</th>
             </tr>
@@ -166,8 +166,8 @@ const DEMO = {
   total: 0, total_posts: 0, cited: 0, not_cited: 0,
   posts: [
     { post_url:'#', title:"예시 자리 — 여기에 AI가 가져간 '시' 글이 정리됩니다",
-      post_date:'—', keywords:['예시 키워드'], category:'시', cited:true,
-      first_seen:'—', last_seen:'—', status:'예시', cite_count:0 },
+      post_date:'—', keywords:['예시 키워드'], category:'시', cited:true, matched_by:['logno'],
+      first_seen:'—', last_seen:'—', status:'예시', cite_count:2, contrib_pct:100 },
     { post_url:'#', title:"예시 자리 — '에세이' 글이 이렇게 누적됩니다",
       post_date:'—', keywords:['예시 키워드'], category:'에세이', cited:false,
       first_seen:'—', last_seen:'—', status:'예시', cite_count:0 },
@@ -208,8 +208,8 @@ function filtered(){
   }
   const pid = p => parseInt(p.post_id||'0',10)||0;
   const cmp = {
-    // 기여도순: AI 인용 글 먼저 → 기여도 높은 순 → 최신(logNo 큰 순)
-    cite:   (a,b)=> (b.cited?1:0)-(a.cited?1:0) || (b.cite_count||0)-(a.cite_count||0) || pid(b)-pid(a),
+    // 기여도순: AI 인용 글 먼저 → 기여도 비중 높은 순 → 유입 키워드 수 → 최신(logNo 큰 순)
+    cite:   (a,b)=> (b.cited?1:0)-(a.cited?1:0) || (b.contrib_pct||0)-(a.contrib_pct||0) || (b.cite_count||0)-(a.cite_count||0) || pid(b)-pid(a),
     recent: (a,b)=> pid(b)-pid(a),
     title:  (a,b)=> (a.title||'').localeCompare(b.title||''),
   }[state.sort];
@@ -227,11 +227,17 @@ function kwChips(ks){
   const more = ks.length>3 ? `<span class="text-[10.5px] text-hold"> +${ks.length-3}</span>` : '';
   return shown+more;
 }
-function contribBar(n,max){
-  const w = max? Math.round(n/max*100):0;
-  return `<div class="flex items-center gap-1.5 justify-center">
-    <span class="font-rank font-bold text-rose text-[13px]">${n}</span>
-    <div class="w-12 h-1.5 rounded-full bg-base overflow-hidden"><div class="h-full bg-rose" style="width:${w}%"></div></div>
+function contribBar(p,maxPct){
+  // 미인용 글은 기여도 0 → 옅게 '–'
+  if(!p.cited) return `<span class="text-hold/40 text-[12px]">–</span>`;
+  const pct = p.contrib_pct||0;
+  const kw  = p.cite_count||0;
+  const w   = maxPct? Math.round(pct/maxPct*100):0;   // 1위 글이 막대 가득 차도록 상대 길이
+  const conf = (p.matched_by||[]).includes('logno') ? '정확' : '추정';
+  return `<div class="flex flex-col items-center gap-0.5" title="기여도 = 유입 키워드 수 × 매칭신뢰(logNo 1.0/제목 0.7), 전체 인용 대비 비중">
+    <span class="font-rank font-bold text-rose text-[14px] leading-none">${pct}%</span>
+    <div class="w-14 h-1.5 rounded-full bg-base overflow-hidden"><div class="h-full bg-rose" style="width:${w}%"></div></div>
+    <span class="text-[9.5px] text-hold/80 font-rank">${kw}키워드 · ${conf}</span>
   </div>`;
 }
 function titleLink(p){
@@ -254,7 +260,7 @@ function rowDesktop(p,max){
       <div class="text-[10.5px] text-hold/80 font-rank mt-0.5">${(!isDemo&&p.post_date)?('작성 '+p.post_date):''}</div>
     </td>
     <td class="py-3.5 px-3 align-top">${catBadge(p.category)}</td>
-    <td class="py-3.5 px-3 align-top text-center">${contribBar(p.cite_count||0,max)}</td>
+    <td class="py-3.5 px-3 align-top text-center">${contribBar(p,max)}</td>
     <td class="py-3.5 px-3 align-top">${kwChips(p.keywords)}</td>
     <td class="py-3.5 px-4 align-top whitespace-nowrap">
       ${statusBadge(p)}
@@ -269,7 +275,7 @@ function cardMobile(p,max){
   return `<div class="bg-surface rounded-2xl border border-line p-4 shadow-sm${isDemo?' opacity-60':''}">
     <div class="flex items-center justify-between mb-1.5">
       <div class="flex items-center gap-1.5">${catBadge(p.category)} ${statusBadge(p)}</div>
-      <span class="text-[11px] text-hold">기여도 <b class="text-rose font-rank">${p.cite_count||0}</b></span></div>
+      <span class="text-[11px] text-hold">기여도 <b class="text-rose font-rank">${p.cited?((p.contrib_pct||0)+'%'):'–'}</b></span></div>
     ${titleEl}
     <div class="mt-2">${kwChips(p.keywords)}</div>
     ${p.cited?`<div class="text-[11px] text-hold font-rank mt-2">최초발견 ${p.first_seen||'–'}</div>`:''}
@@ -308,7 +314,7 @@ function renderChips(){
 /* ───── 테이블 렌더 ───── */
 function renderTable(){
   const list = filtered();
-  const max = Math.max(1, ...A.posts.map(p=>p.cite_count||0));
+  const max = Math.max(1, ...A.posts.map(p=>p.contrib_pct||0));
   const dt = document.getElementById('rowsDesktop');
   const mb = document.getElementById('rowsMobile');
   const hint = document.getElementById('emptyHint');

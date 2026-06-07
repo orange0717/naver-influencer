@@ -1,6 +1,6 @@
 window.ARCHIVE = {
   "target": "orangelibrary_",
-  "updated_at": "2026-06-06 14:47",
+  "updated_at": "2026-06-07 15:07",
   "total": 829,
   "total_posts": 829,
   "cited": 0,
@@ -18,7 +18,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224307489127",
@@ -32,7 +34,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224307482065",
@@ -46,7 +50,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224307217282",
@@ -60,7 +66,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224307197381",
@@ -74,7 +82,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224306434390",
@@ -88,7 +98,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224306245661",
@@ -102,7 +114,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224304807111",
@@ -116,7 +130,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224304742508",
@@ -130,7 +146,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224304462191",
@@ -144,7 +162,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224303372392",
@@ -158,7 +178,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224302270506",
@@ -172,7 +194,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224301397545",
@@ -186,7 +210,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224301387609",
@@ -200,7 +226,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224301108180",
@@ -214,7 +242,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224300641229",
@@ -228,7 +258,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224300120564",
@@ -242,7 +274,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224299623789",
@@ -256,7 +290,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224299619140",
@@ -270,7 +306,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224298579821",
@@ -284,7 +322,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224298391191",
@@ -298,7 +338,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224297515048",
@@ -312,7 +354,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224297180554",
@@ -326,7 +370,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224296411510",
@@ -340,7 +386,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224296140103",
@@ -354,7 +402,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224295564109",
@@ -368,7 +418,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224294828405",
@@ -382,7 +434,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224294592839",
@@ -396,7 +450,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224294513539",
@@ -410,7 +466,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224294105432",
@@ -424,7 +482,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224294050792",
@@ -438,7 +498,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224293822386",
@@ -452,7 +514,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224292548255",
@@ -466,7 +530,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224291979485",
@@ -480,7 +546,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224291770304",
@@ -494,7 +562,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224290588400",
@@ -508,7 +578,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224288411124",
@@ -522,7 +594,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224287809439",
@@ -536,7 +610,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224287563185",
@@ -550,7 +626,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224286590627",
@@ -564,7 +642,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224284889763",
@@ -578,7 +658,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224284057449",
@@ -592,7 +674,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224282165155",
@@ -606,7 +690,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224280470164",
@@ -620,7 +706,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224279311953",
@@ -634,7 +722,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224278158508",
@@ -648,7 +738,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224278140085",
@@ -662,7 +754,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224277255205",
@@ -676,7 +770,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224276956819",
@@ -690,7 +786,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224275718914",
@@ -704,7 +802,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224273022959",
@@ -718,7 +818,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224272349689",
@@ -732,7 +834,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224271812188",
@@ -746,7 +850,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224270947529",
@@ -760,7 +866,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224269945089",
@@ -774,7 +882,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224269672895",
@@ -788,7 +898,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224267425639",
@@ -802,7 +914,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224266985954",
@@ -816,7 +930,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224266626375",
@@ -830,7 +946,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224265812348",
@@ -844,7 +962,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224265497437",
@@ -858,7 +978,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224264985063",
@@ -872,7 +994,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224263720022",
@@ -886,7 +1010,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224262663325",
@@ -900,7 +1026,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224260765895",
@@ -914,7 +1042,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224259173509",
@@ -928,7 +1058,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224258212227",
@@ -942,7 +1074,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224258207700",
@@ -956,7 +1090,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224258195737",
@@ -970,7 +1106,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224257806250",
@@ -984,7 +1122,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224257538281",
@@ -998,7 +1138,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224257329407",
@@ -1012,7 +1154,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224257056672",
@@ -1026,7 +1170,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224256500737",
@@ -1040,7 +1186,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224253986284",
@@ -1054,7 +1202,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224253673611",
@@ -1068,7 +1218,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224252478790",
@@ -1082,7 +1234,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224249092112",
@@ -1096,7 +1250,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224248134211",
@@ -1110,7 +1266,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224246716957",
@@ -1124,7 +1282,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224244650245",
@@ -1138,7 +1298,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224244407582",
@@ -1152,7 +1314,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224244118824",
@@ -1166,7 +1330,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224242120106",
@@ -1180,7 +1346,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224241202436",
@@ -1194,7 +1362,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224241124750",
@@ -1208,7 +1378,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224240266396",
@@ -1222,7 +1394,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224239999409",
@@ -1236,7 +1410,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224239599797",
@@ -1250,7 +1426,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224239039155",
@@ -1264,7 +1442,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224238800888",
@@ -1278,7 +1458,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224237795656",
@@ -1292,7 +1474,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224237781650",
@@ -1306,7 +1490,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224237446338",
@@ -1320,7 +1506,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224237376984",
@@ -1334,7 +1522,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224236185480",
@@ -1348,7 +1538,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224233658893",
@@ -1362,7 +1554,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224233629548",
@@ -1376,7 +1570,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224232660568",
@@ -1390,7 +1586,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224232610757",
@@ -1404,7 +1602,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224232094237",
@@ -1418,7 +1618,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224232085457",
@@ -1432,7 +1634,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224232079067",
@@ -1446,7 +1650,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224231763624",
@@ -1460,7 +1666,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224231343956",
@@ -1474,7 +1682,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224231013679",
@@ -1488,7 +1698,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224230822650",
@@ -1502,7 +1714,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224229639519",
@@ -1516,7 +1730,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224226369427",
@@ -1530,7 +1746,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224225723364",
@@ -1544,7 +1762,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224224859068",
@@ -1558,7 +1778,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224223646354",
@@ -1572,7 +1794,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224222644415",
@@ -1586,7 +1810,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224220454080",
@@ -1600,7 +1826,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224220114923",
@@ -1614,7 +1842,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224219163413",
@@ -1628,7 +1858,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224217265526",
@@ -1642,7 +1874,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224217145265",
@@ -1656,7 +1890,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224214280225",
@@ -1670,7 +1906,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224205865787",
@@ -1684,7 +1922,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224204401632",
@@ -1698,7 +1938,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224203168329",
@@ -1712,7 +1954,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224203143762",
@@ -1726,7 +1970,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224202952491",
@@ -1740,7 +1986,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224201561100",
@@ -1754,7 +2002,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224199525866",
@@ -1768,7 +2018,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224193132805",
@@ -1782,7 +2034,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224191187453",
@@ -1796,7 +2050,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224188953413",
@@ -1810,7 +2066,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224188930661",
@@ -1824,7 +2082,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224187606202",
@@ -1838,7 +2098,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224187577840",
@@ -1852,7 +2114,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224186773721",
@@ -1866,7 +2130,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224186125701",
@@ -1880,7 +2146,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224185398271",
@@ -1894,7 +2162,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224184705989",
@@ -1908,7 +2178,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224183866806",
@@ -1922,7 +2194,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224183516552",
@@ -1936,7 +2210,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224181519765",
@@ -1950,7 +2226,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224174820639",
@@ -1964,7 +2242,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224173293811",
@@ -1978,7 +2258,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224171804995",
@@ -1992,7 +2274,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224170510732",
@@ -2006,7 +2290,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224168186461",
@@ -2020,7 +2306,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224167850575",
@@ -2034,7 +2322,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224167173485",
@@ -2048,7 +2338,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224167137144",
@@ -2062,7 +2354,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224166663219",
@@ -2076,7 +2370,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224164933500",
@@ -2090,7 +2386,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224163557208",
@@ -2104,7 +2402,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224162199634",
@@ -2118,7 +2418,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224161906909",
@@ -2132,7 +2434,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224161870479",
@@ -2146,7 +2450,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224160979397",
@@ -2160,7 +2466,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224160960907",
@@ -2174,7 +2482,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224159801647",
@@ -2188,7 +2498,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224159693534",
@@ -2202,7 +2514,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224159455187",
@@ -2216,7 +2530,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224159427673",
@@ -2230,7 +2546,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224158802534",
@@ -2244,7 +2562,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224158764335",
@@ -2258,7 +2578,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224158552160",
@@ -2272,7 +2594,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224158499675",
@@ -2286,7 +2610,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224157047728",
@@ -2300,7 +2626,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224156383589",
@@ -2314,7 +2642,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224156367120",
@@ -2328,7 +2658,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224155599404",
@@ -2342,7 +2674,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224154991548",
@@ -2356,7 +2690,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224154973235",
@@ -2370,7 +2706,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224154816158",
@@ -2384,7 +2722,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224154058192",
@@ -2398,7 +2738,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224152710002",
@@ -2412,7 +2754,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224152466937",
@@ -2426,7 +2770,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224150683107",
@@ -2440,7 +2786,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224150652041",
@@ -2454,7 +2802,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224150302742",
@@ -2468,7 +2818,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224150168849",
@@ -2482,7 +2834,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224149817298",
@@ -2496,7 +2850,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224149291469",
@@ -2510,7 +2866,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224148693174",
@@ -2524,7 +2882,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224148535307",
@@ -2538,7 +2898,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224148100944",
@@ -2552,7 +2914,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224148076509",
@@ -2566,7 +2930,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224146849808",
@@ -2580,7 +2946,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224146714487",
@@ -2594,7 +2962,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224145439717",
@@ -2608,7 +2978,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224145421079",
@@ -2622,7 +2994,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224144102498",
@@ -2636,7 +3010,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224144053975",
@@ -2650,7 +3026,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224142973488",
@@ -2664,7 +3042,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224142938256",
@@ -2678,7 +3058,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224141997521",
@@ -2692,7 +3074,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224141051484",
@@ -2706,7 +3090,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224139756090",
@@ -2720,7 +3106,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224138342128",
@@ -2734,7 +3122,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224137222424",
@@ -2748,7 +3138,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224136807231",
@@ -2762,7 +3154,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224135887810",
@@ -2776,7 +3170,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224135477870",
@@ -2790,7 +3186,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224134509102",
@@ -2804,7 +3202,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224134303834",
@@ -2818,7 +3218,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224133464407",
@@ -2832,7 +3234,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224133453802",
@@ -2846,7 +3250,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224132461346",
@@ -2860,7 +3266,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224132444575",
@@ -2874,7 +3282,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224131146277",
@@ -2888,7 +3298,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224131120239",
@@ -2902,7 +3314,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224130698517",
@@ -2916,7 +3330,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224130155360",
@@ -2930,7 +3346,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224129446519",
@@ -2944,7 +3362,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224128637593",
@@ -2958,7 +3378,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224126920999",
@@ -2972,7 +3394,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224126613934",
@@ -2986,7 +3410,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224125986080",
@@ -3000,7 +3426,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224124973503",
@@ -3014,7 +3442,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224124037361",
@@ -3028,7 +3458,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224122431964",
@@ -3042,7 +3474,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224112307212",
@@ -3056,7 +3490,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224111026487",
@@ -3070,7 +3506,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224109734455",
@@ -3084,7 +3522,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224108713307",
@@ -3098,7 +3538,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224107757114",
@@ -3112,7 +3554,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224106567262",
@@ -3126,7 +3570,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224105345494",
@@ -3140,7 +3586,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224103380397",
@@ -3154,7 +3602,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224102539728",
@@ -3168,7 +3618,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224101456164",
@@ -3182,7 +3634,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224100335672",
@@ -3196,7 +3650,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224099298423",
@@ -3210,7 +3666,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224095266199",
@@ -3224,7 +3682,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224094406376",
@@ -3238,7 +3698,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224092378780",
@@ -3252,7 +3714,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224092372709",
@@ -3266,7 +3730,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224089031448",
@@ -3280,7 +3746,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224084364785",
@@ -3294,7 +3762,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224078990436",
@@ -3308,7 +3778,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224076946370",
@@ -3322,7 +3794,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224075100345",
@@ -3336,7 +3810,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224073875451",
@@ -3350,7 +3826,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224070526044",
@@ -3364,7 +3842,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224068434216",
@@ -3378,7 +3858,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224065904070",
@@ -3392,7 +3874,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224064164162",
@@ -3406,7 +3890,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224062382358",
@@ -3420,7 +3906,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224061328477",
@@ -3434,7 +3922,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224052876181",
@@ -3448,7 +3938,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224051195269",
@@ -3462,7 +3954,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224047939961",
@@ -3476,7 +3970,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224046009678",
@@ -3490,7 +3986,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224042760992",
@@ -3504,7 +4002,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224041057636",
@@ -3518,7 +4018,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224040125739",
@@ -3532,7 +4034,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224038910627",
@@ -3546,7 +4050,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224036006503",
@@ -3560,7 +4066,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224033821015",
@@ -3574,7 +4082,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224032728380",
@@ -3588,7 +4098,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224031986772",
@@ -3602,7 +4114,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224031020938",
@@ -3616,7 +4130,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224030570596",
@@ -3630,7 +4146,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224029160558",
@@ -3644,7 +4162,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224026305050",
@@ -3658,7 +4178,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224025065160",
@@ -3672,7 +4194,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224023988128",
@@ -3686,7 +4210,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224022198400",
@@ -3700,7 +4226,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224021451982",
@@ -3714,7 +4242,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224019605103",
@@ -3728,7 +4258,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224018284696",
@@ -3742,7 +4274,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224017911874",
@@ -3756,7 +4290,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224016721131",
@@ -3770,7 +4306,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224015524633",
@@ -3784,7 +4322,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224014283468",
@@ -3798,7 +4338,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224014262076",
@@ -3812,7 +4354,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224013366584",
@@ -3826,7 +4370,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224009201760",
@@ -3840,7 +4386,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224006708214",
@@ -3854,7 +4402,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224004438829",
@@ -3868,7 +4418,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224002813223",
@@ -3882,7 +4434,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224001823995",
@@ -3896,7 +4450,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "224000316580",
@@ -3910,7 +4466,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223997823413",
@@ -3924,7 +4482,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223995590421",
@@ -3938,7 +4498,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223992018490",
@@ -3952,7 +4514,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223990143289",
@@ -3966,7 +4530,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223987095637",
@@ -3980,7 +4546,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223985753116",
@@ -3994,7 +4562,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223983213699",
@@ -4008,7 +4578,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223981716853",
@@ -4022,7 +4594,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223980850793",
@@ -4036,7 +4610,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223978828448",
@@ -4050,7 +4626,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223977600047",
@@ -4064,7 +4642,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223977515819",
@@ -4078,7 +4658,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223974833740",
@@ -4092,7 +4674,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223973639777",
@@ -4106,7 +4690,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223972294174",
@@ -4120,7 +4706,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223968348402",
@@ -4134,7 +4722,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223966888766",
@@ -4148,7 +4738,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223962615738",
@@ -4162,7 +4754,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223961580295",
@@ -4176,7 +4770,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223960252385",
@@ -4190,7 +4786,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223957575614",
@@ -4204,7 +4802,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223956631001",
@@ -4218,7 +4818,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223954824050",
@@ -4232,7 +4834,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223952884845",
@@ -4246,7 +4850,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223951308392",
@@ -4260,7 +4866,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223949729169",
@@ -4274,7 +4882,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223949084211",
@@ -4288,7 +4898,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223948074095",
@@ -4302,7 +4914,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223946785744",
@@ -4316,7 +4930,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223945997995",
@@ -4330,7 +4946,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223944735451",
@@ -4344,7 +4962,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223940713178",
@@ -4358,7 +4978,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223940569092",
@@ -4372,7 +4994,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223939164066",
@@ -4386,7 +5010,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223938506652",
@@ -4400,7 +5026,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223933364575",
@@ -4414,7 +5042,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223932692215",
@@ -4428,7 +5058,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223931651037",
@@ -4442,7 +5074,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223931212542",
@@ -4456,7 +5090,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223930844133",
@@ -4470,7 +5106,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223930111866",
@@ -4484,7 +5122,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223930030166",
@@ -4498,7 +5138,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223929105904",
@@ -4512,7 +5154,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223928841044",
@@ -4526,7 +5170,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223928704323",
@@ -4540,7 +5186,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223928516332",
@@ -4554,7 +5202,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223928373842",
@@ -4568,7 +5218,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223927780170",
@@ -4582,7 +5234,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223927433002",
@@ -4596,7 +5250,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223926433701",
@@ -4610,7 +5266,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223926208346",
@@ -4624,7 +5282,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223925316893",
@@ -4638,7 +5298,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223923955190",
@@ -4652,7 +5314,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223923816593",
@@ -4666,7 +5330,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223923748815",
@@ -4680,7 +5346,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223923706535",
@@ -4694,7 +5362,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223922924948",
@@ -4708,7 +5378,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223922839157",
@@ -4722,7 +5394,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223922781815",
@@ -4736,7 +5410,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223922637792",
@@ -4750,7 +5426,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223922609901",
@@ -4764,7 +5442,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223922547853",
@@ -4778,7 +5458,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223922533283",
@@ -4792,7 +5474,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223921889028",
@@ -4806,7 +5490,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223921861217",
@@ -4820,7 +5506,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223921802022",
@@ -4834,7 +5522,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223920693644",
@@ -4848,7 +5538,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223920669890",
@@ -4862,7 +5554,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223920624924",
@@ -4876,7 +5570,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223920568644",
@@ -4890,7 +5586,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223920418235",
@@ -4904,7 +5602,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223920297134",
@@ -4918,7 +5618,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223920272139",
@@ -4932,7 +5634,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223919478291",
@@ -4946,7 +5650,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223919443420",
@@ -4960,7 +5666,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223919413332",
@@ -4974,7 +5682,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223919316683",
@@ -4988,7 +5698,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223918485292",
@@ -5002,7 +5714,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223914039699",
@@ -5016,7 +5730,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223912993763",
@@ -5030,7 +5746,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223911694225",
@@ -5044,7 +5762,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223907811279",
@@ -5058,7 +5778,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223907165059",
@@ -5072,7 +5794,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223906254822",
@@ -5086,7 +5810,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223905040124",
@@ -5100,7 +5826,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223903937552",
@@ -5114,7 +5842,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223903865994",
@@ -5128,7 +5858,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223901739440",
@@ -5142,7 +5874,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223899287281",
@@ -5156,7 +5890,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223899239967",
@@ -5170,7 +5906,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223898403004",
@@ -5184,7 +5922,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223892690681",
@@ -5198,7 +5938,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223891711394",
@@ -5212,7 +5954,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223891666793",
@@ -5226,7 +5970,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223889937229",
@@ -5240,7 +5986,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223888606181",
@@ -5254,7 +6002,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223885219857",
@@ -5268,7 +6018,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223884355198",
@@ -5282,7 +6034,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223883493252",
@@ -5296,7 +6050,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223882337848",
@@ -5310,7 +6066,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223881255993",
@@ -5324,7 +6082,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223878790505",
@@ -5338,7 +6098,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223875703595",
@@ -5352,7 +6114,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223873803586",
@@ -5366,7 +6130,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223873175817",
@@ -5380,7 +6146,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223873049895",
@@ -5394,7 +6162,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223871978755",
@@ -5408,7 +6178,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223869319421",
@@ -5422,7 +6194,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223868696992",
@@ -5436,7 +6210,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223867919729",
@@ -5450,7 +6226,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223867774775",
@@ -5464,7 +6242,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223866724687",
@@ -5478,7 +6258,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223866645344",
@@ -5492,7 +6274,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223866174583",
@@ -5506,7 +6290,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223865513145",
@@ -5520,7 +6306,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223864114659",
@@ -5534,7 +6322,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223864068259",
@@ -5548,7 +6338,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223863976144",
@@ -5562,7 +6354,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223863919308",
@@ -5576,7 +6370,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223863449957",
@@ -5590,7 +6386,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223863379887",
@@ -5604,7 +6402,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223862296346",
@@ -5618,7 +6418,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223861412669",
@@ -5632,7 +6434,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223861307847",
@@ -5646,7 +6450,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223860604643",
@@ -5660,7 +6466,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223860518922",
@@ -5674,7 +6482,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223859202868",
@@ -5688,7 +6498,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223859114758",
@@ -5702,7 +6514,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223858291882",
@@ -5716,7 +6530,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223857038491",
@@ -5730,7 +6546,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223856952638",
@@ -5744,7 +6562,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223855923577",
@@ -5758,7 +6578,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223855873082",
@@ -5772,7 +6594,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223855287221",
@@ -5786,7 +6610,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223855249490",
@@ -5800,7 +6626,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223854574840",
@@ -5814,7 +6642,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223854484364",
@@ -5828,7 +6658,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223853702768",
@@ -5842,7 +6674,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223853224731",
@@ -5856,7 +6690,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223852272493",
@@ -5870,7 +6706,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223852194498",
@@ -5884,7 +6722,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223851518870",
@@ -5898,7 +6738,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223850819645",
@@ -5912,7 +6754,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223849326581",
@@ -5926,7 +6770,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223849282055",
@@ -5940,7 +6786,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223848156854",
@@ -5954,7 +6802,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223847758856",
@@ -5968,7 +6818,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223847152592",
@@ -5982,7 +6834,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223847129074",
@@ -5996,7 +6850,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223846541922",
@@ -6010,7 +6866,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223845508312",
@@ -6024,7 +6882,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223844362328",
@@ -6038,7 +6898,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223843209611",
@@ -6052,7 +6914,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223841950338",
@@ -6066,7 +6930,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223840556814",
@@ -6080,7 +6946,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223840524786",
@@ -6094,7 +6962,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223839904150",
@@ -6108,7 +6978,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223839073647",
@@ -6122,7 +6994,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223835244974",
@@ -6136,7 +7010,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223833212533",
@@ -6150,7 +7026,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223833146276",
@@ -6164,7 +7042,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223833099213",
@@ -6178,7 +7058,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223832448671",
@@ -6192,7 +7074,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223832056919",
@@ -6206,7 +7090,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223832016967",
@@ -6220,7 +7106,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223831979437",
@@ -6234,7 +7122,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223831893806",
@@ -6248,7 +7138,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223830985693",
@@ -6262,7 +7154,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223828930038",
@@ -6276,7 +7170,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223827902111",
@@ -6290,7 +7186,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223826711623",
@@ -6304,7 +7202,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223826446020",
@@ -6318,7 +7218,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223825324453",
@@ -6332,7 +7234,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223825177545",
@@ -6346,7 +7250,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223825051894",
@@ -6360,7 +7266,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223824292080",
@@ -6374,7 +7282,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223824240452",
@@ -6388,7 +7298,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223823631389",
@@ -6402,7 +7314,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223823407804",
@@ -6416,7 +7330,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223823341925",
@@ -6430,7 +7346,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223823306288",
@@ -6444,7 +7362,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223822496736",
@@ -6458,7 +7378,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223822344634",
@@ -6472,7 +7394,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223821361104",
@@ -6486,7 +7410,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223821214982",
@@ -6500,7 +7426,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223820037297",
@@ -6514,7 +7442,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223819875090",
@@ -6528,7 +7458,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223818167272",
@@ -6542,7 +7474,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223818036193",
@@ -6556,7 +7490,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223816209185",
@@ -6570,7 +7506,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223816120739",
@@ -6584,7 +7522,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223815410037",
@@ -6598,7 +7538,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223815295488",
@@ -6612,7 +7554,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223814403365",
@@ -6626,7 +7570,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223814367025",
@@ -6640,7 +7586,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223813480440",
@@ -6654,7 +7602,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223813392928",
@@ -6668,7 +7618,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223812100629",
@@ -6682,7 +7634,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223809366749",
@@ -6696,7 +7650,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223809214399",
@@ -6710,7 +7666,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223808508136",
@@ -6724,7 +7682,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223808395985",
@@ -6738,7 +7698,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223807343909",
@@ -6752,7 +7714,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223807324022",
@@ -6766,7 +7730,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223806387725",
@@ -6780,7 +7746,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223805828925",
@@ -6794,7 +7762,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223805759316",
@@ -6808,7 +7778,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223805373791",
@@ -6822,7 +7794,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223805182659",
@@ -6836,7 +7810,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223804029041",
@@ -6850,7 +7826,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223803690539",
@@ -6864,7 +7842,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223802829712",
@@ -6878,7 +7858,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223802780491",
@@ -6892,7 +7874,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223801404720",
@@ -6906,7 +7890,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223801205268",
@@ -6920,7 +7906,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223799813597",
@@ -6934,7 +7922,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223799740423",
@@ -6948,7 +7938,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223798491132",
@@ -6962,7 +7954,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223798423042",
@@ -6976,7 +7970,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223797380085",
@@ -6990,7 +7986,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223797298580",
@@ -7004,7 +8002,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223796375917",
@@ -7018,7 +8018,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223796320804",
@@ -7032,7 +8034,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223794031898",
@@ -7046,7 +8050,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223793965206",
@@ -7060,7 +8066,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223792725895",
@@ -7074,7 +8082,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223791351591",
@@ -7088,7 +8098,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223789491538",
@@ -7102,7 +8114,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223789428719",
@@ -7116,7 +8130,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223789276496",
@@ -7130,7 +8146,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223789072685",
@@ -7144,7 +8162,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223786590234",
@@ -7158,7 +8178,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223784090180",
@@ -7172,7 +8194,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223782386171",
@@ -7186,7 +8210,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223780047970",
@@ -7200,7 +8226,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223778573011",
@@ -7214,7 +8242,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223777039563",
@@ -7228,7 +8258,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223775517094",
@@ -7242,7 +8274,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223773824236",
@@ -7256,7 +8290,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223772267104",
@@ -7270,7 +8306,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223770999495",
@@ -7284,7 +8322,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223769018591",
@@ -7298,7 +8338,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223767819726",
@@ -7312,7 +8354,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223766067387",
@@ -7326,7 +8370,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223764786720",
@@ -7340,7 +8386,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223764661183",
@@ -7354,7 +8402,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223763787604",
@@ -7368,7 +8418,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223761861685",
@@ -7382,7 +8434,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223761051537",
@@ -7396,7 +8450,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223759575764",
@@ -7410,7 +8466,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223758140118",
@@ -7424,7 +8482,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223755502697",
@@ -7438,7 +8498,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223754741919",
@@ -7452,7 +8514,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223754487566",
@@ -7466,7 +8530,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223753176721",
@@ -7480,7 +8546,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223751756812",
@@ -7494,7 +8562,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223749000164",
@@ -7508,7 +8578,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223747698316",
@@ -7522,7 +8594,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223746485791",
@@ -7536,7 +8610,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223745411814",
@@ -7550,7 +8626,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223744578623",
@@ -7564,7 +8642,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223743360798",
@@ -7578,7 +8658,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223741574216",
@@ -7592,7 +8674,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223741541063",
@@ -7606,7 +8690,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223740893348",
@@ -7620,7 +8706,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223739852521",
@@ -7634,7 +8722,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223739366775",
@@ -7648,7 +8738,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223737180092",
@@ -7662,7 +8754,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223735790865",
@@ -7676,7 +8770,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223734517893",
@@ -7690,7 +8786,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223734136487",
@@ -7704,7 +8802,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223732215262",
@@ -7718,7 +8818,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223731393177",
@@ -7732,7 +8834,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223730619991",
@@ -7746,7 +8850,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223729069655",
@@ -7760,7 +8866,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223728828374",
@@ -7774,7 +8882,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223724764747",
@@ -7788,7 +8898,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223723437515",
@@ -7802,7 +8914,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223722607800",
@@ -7816,7 +8930,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223721814068",
@@ -7830,7 +8946,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223721706784",
@@ -7844,7 +8962,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223719890767",
@@ -7858,7 +8978,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223718871959",
@@ -7872,7 +8994,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223717677740",
@@ -7886,7 +9010,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223716493546",
@@ -7900,7 +9026,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223714686450",
@@ -7914,7 +9042,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223712658257",
@@ -7928,7 +9058,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223708664521",
@@ -7942,7 +9074,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223707834897",
@@ -7956,7 +9090,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223707027257",
@@ -7970,7 +9106,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223706282080",
@@ -7984,7 +9122,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223706064262",
@@ -7998,7 +9138,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223705188720",
@@ -8012,7 +9154,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223704574622",
@@ -8026,7 +9170,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223703236222",
@@ -8040,7 +9186,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223703065141",
@@ -8054,7 +9202,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223702355669",
@@ -8068,7 +9218,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223701515177",
@@ -8082,7 +9234,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223701264454",
@@ -8096,7 +9250,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223699183014",
@@ -8110,7 +9266,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223698061822",
@@ -8124,7 +9282,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223697687353",
@@ -8138,7 +9298,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223697194682",
@@ -8152,7 +9314,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223695757163",
@@ -8166,7 +9330,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223694941945",
@@ -8180,7 +9346,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223694329623",
@@ -8194,7 +9362,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223693397925",
@@ -8208,7 +9378,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223692737366",
@@ -8222,7 +9394,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223690174553",
@@ -8236,7 +9410,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223689692560",
@@ -8250,7 +9426,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223688420222",
@@ -8264,7 +9442,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223687879149",
@@ -8278,7 +9458,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223687754065",
@@ -8292,7 +9474,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223686723385",
@@ -8306,7 +9490,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223685767020",
@@ -8320,7 +9506,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223685018511",
@@ -8334,7 +9522,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223684903997",
@@ -8348,7 +9538,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223683949280",
@@ -8362,7 +9554,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223681275605",
@@ -8376,7 +9570,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223680918739",
@@ -8390,7 +9586,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223680070289",
@@ -8404,7 +9602,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223678928738",
@@ -8418,7 +9618,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223678077615",
@@ -8432,7 +9634,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223675949970",
@@ -8446,7 +9650,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223675653514",
@@ -8460,7 +9666,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223674681426",
@@ -8474,7 +9682,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223673709443",
@@ -8488,7 +9698,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223673620654",
@@ -8502,7 +9714,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223671458689",
@@ -8516,7 +9730,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223670720015",
@@ -8530,7 +9746,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223670634715",
@@ -8544,7 +9762,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223668874587",
@@ -8558,7 +9778,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223668759322",
@@ -8572,7 +9794,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223667241394",
@@ -8586,7 +9810,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223666615992",
@@ -8600,7 +9826,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223664916136",
@@ -8614,7 +9842,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223664068876",
@@ -8628,7 +9858,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223660856021",
@@ -8642,7 +9874,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223660767948",
@@ -8656,7 +9890,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223659409874",
@@ -8670,7 +9906,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223657854052",
@@ -8684,7 +9922,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223655967881",
@@ -8698,7 +9938,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223653762727",
@@ -8712,7 +9954,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223648527685",
@@ -8726,7 +9970,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223646670842",
@@ -8740,7 +9986,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223644089823",
@@ -8754,7 +10002,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223643882301",
@@ -8768,7 +10018,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223638965383",
@@ -8782,7 +10034,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223637721471",
@@ -8796,7 +10050,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223637348703",
@@ -8810,7 +10066,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223637200438",
@@ -8824,7 +10082,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223636212837",
@@ -8838,7 +10098,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223634431511",
@@ -8852,7 +10114,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223633944509",
@@ -8866,7 +10130,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223633594506",
@@ -8880,7 +10146,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223631039843",
@@ -8894,7 +10162,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223629561568",
@@ -8908,7 +10178,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223628158575",
@@ -8922,7 +10194,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223625525856",
@@ -8936,7 +10210,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223624498750",
@@ -8950,7 +10226,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223622097951",
@@ -8964,7 +10242,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223620733035",
@@ -8978,7 +10258,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223620314532",
@@ -8992,7 +10274,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223618947073",
@@ -9006,7 +10290,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223617215013",
@@ -9020,7 +10306,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223616473465",
@@ -9034,7 +10322,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223614644447",
@@ -9048,7 +10338,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223614406129",
@@ -9062,7 +10354,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223613096963",
@@ -9076,7 +10370,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223612074912",
@@ -9090,7 +10386,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223610793624",
@@ -9104,7 +10402,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223608204765",
@@ -9118,7 +10418,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223608022111",
@@ -9132,7 +10434,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223607244111",
@@ -9146,7 +10450,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223605987204",
@@ -9160,7 +10466,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223603952133",
@@ -9174,7 +10482,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223602366543",
@@ -9188,7 +10498,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223600334745",
@@ -9202,7 +10514,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223600039889",
@@ -9216,7 +10530,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223598032407",
@@ -9230,7 +10546,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223597669593",
@@ -9244,7 +10562,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223595456275",
@@ -9258,7 +10578,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223593919739",
@@ -9272,7 +10594,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223593850928",
@@ -9286,7 +10610,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223593664241",
@@ -9300,7 +10626,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223591908376",
@@ -9314,7 +10642,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223590799943",
@@ -9328,7 +10658,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223590505932",
@@ -9342,7 +10674,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223589190729",
@@ -9356,7 +10690,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223587994590",
@@ -9370,7 +10706,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223586998813",
@@ -9384,7 +10722,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223586427182",
@@ -9398,7 +10738,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223586192276",
@@ -9412,7 +10754,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223586108886",
@@ -9426,7 +10770,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223585369392",
@@ -9440,7 +10786,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223583407105",
@@ -9454,7 +10802,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223582615642",
@@ -9468,7 +10818,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223580936901",
@@ -9482,7 +10834,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223580916427",
@@ -9496,7 +10850,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223579700950",
@@ -9510,7 +10866,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223578403801",
@@ -9524,7 +10882,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223578296165",
@@ -9538,7 +10898,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223575940566",
@@ -9552,7 +10914,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223573874948",
@@ -9566,7 +10930,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223572882986",
@@ -9580,7 +10946,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223571561404",
@@ -9594,7 +10962,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223571149220",
@@ -9608,7 +10978,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223569990453",
@@ -9622,7 +10994,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223568650083",
@@ -9636,7 +11010,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223567569678",
@@ -9650,7 +11026,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223566767908",
@@ -9664,7 +11042,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223565566283",
@@ -9678,7 +11058,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223564344208",
@@ -9692,7 +11074,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223562994275",
@@ -9706,7 +11090,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223561693755",
@@ -9720,7 +11106,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223558855533",
@@ -9734,7 +11122,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223557636244",
@@ -9748,7 +11138,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223557332914",
@@ -9762,7 +11154,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223556208456",
@@ -9776,7 +11170,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223554841191",
@@ -9790,7 +11186,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223553912557",
@@ -9804,7 +11202,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223553684418",
@@ -9818,7 +11218,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223553604704",
@@ -9832,7 +11234,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223552377124",
@@ -9846,7 +11250,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223552267774",
@@ -9860,7 +11266,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223551566879",
@@ -9874,7 +11282,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223551277030",
@@ -9888,7 +11298,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223550345596",
@@ -9902,7 +11314,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223550220362",
@@ -9916,7 +11330,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223549198173",
@@ -9930,7 +11346,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223549080028",
@@ -9944,7 +11362,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223548823865",
@@ -9958,7 +11378,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223547081631",
@@ -9972,7 +11394,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223544785174",
@@ -9986,7 +11410,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223544499206",
@@ -10000,7 +11426,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223543374674",
@@ -10014,7 +11442,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223542847541",
@@ -10028,7 +11458,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223542595975",
@@ -10042,7 +11474,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223542528991",
@@ -10056,7 +11490,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223541306057",
@@ -10070,7 +11506,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223540984468",
@@ -10084,7 +11522,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223540225664",
@@ -10098,7 +11538,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223540023298",
@@ -10112,7 +11554,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223537710538",
@@ -10126,7 +11570,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223536671079",
@@ -10140,7 +11586,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223536495419",
@@ -10154,7 +11602,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223536411166",
@@ -10168,7 +11618,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223534862030",
@@ -10182,7 +11634,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223534589195",
@@ -10196,7 +11650,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223532549736",
@@ -10210,7 +11666,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223528715830",
@@ -10224,7 +11682,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223527887787",
@@ -10238,7 +11698,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223527866069",
@@ -10252,7 +11714,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223527588961",
@@ -10266,7 +11730,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223526809834",
@@ -10280,7 +11746,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223525601283",
@@ -10294,7 +11762,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223524478693",
@@ -10308,7 +11778,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223524399115",
@@ -10322,7 +11794,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223523043287",
@@ -10336,7 +11810,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223522020845",
@@ -10350,7 +11826,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223521409753",
@@ -10364,7 +11842,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223520679506",
@@ -10378,7 +11858,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223519650972",
@@ -10392,7 +11874,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223517524085",
@@ -10406,7 +11890,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223516308831",
@@ -10420,7 +11906,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223515692081",
@@ -10434,7 +11922,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223515435817",
@@ -10448,7 +11938,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223515084677",
@@ -10462,7 +11954,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223514162224",
@@ -10476,7 +11970,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223513345930",
@@ -10490,7 +11986,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223512733155",
@@ -10504,7 +12002,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223511904354",
@@ -10518,7 +12018,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223510689192",
@@ -10532,7 +12034,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223509596026",
@@ -10546,7 +12050,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223505870756",
@@ -10560,7 +12066,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223504723262",
@@ -10574,7 +12082,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223504495757",
@@ -10588,7 +12098,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223502760663",
@@ -10602,7 +12114,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223501565326",
@@ -10616,7 +12130,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223499226865",
@@ -10630,7 +12146,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223499099395",
@@ -10644,7 +12162,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223497877120",
@@ -10658,7 +12178,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223497044268",
@@ -10672,7 +12194,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223493592147",
@@ -10686,7 +12210,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223492427859",
@@ -10700,7 +12226,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223491180962",
@@ -10714,7 +12242,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223490097126",
@@ -10728,7 +12258,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223490054776",
@@ -10742,7 +12274,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223488840018",
@@ -10756,7 +12290,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223488795610",
@@ -10770,7 +12306,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223487888783",
@@ -10784,7 +12322,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223487282378",
@@ -10798,7 +12338,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223487242482",
@@ -10812,7 +12354,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223487198181",
@@ -10826,7 +12370,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223486023704",
@@ -10840,7 +12386,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223485845559",
@@ -10854,7 +12402,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223484788655",
@@ -10868,7 +12418,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223483974796",
@@ -10882,7 +12434,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223483716919",
@@ -10896,7 +12450,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223482500672",
@@ -10910,7 +12466,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223481632735",
@@ -10924,7 +12482,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223481415095",
@@ -10938,7 +12498,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223480791508",
@@ -10952,7 +12514,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223479051466",
@@ -10966,7 +12530,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223478524349",
@@ -10980,7 +12546,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223477902610",
@@ -10994,7 +12562,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223477485637",
@@ -11008,7 +12578,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223476127537",
@@ -11022,7 +12594,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223475479003",
@@ -11036,7 +12610,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223475110275",
@@ -11050,7 +12626,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223475096970",
@@ -11064,7 +12642,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223474027646",
@@ -11078,7 +12658,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223473365724",
@@ -11092,7 +12674,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223473358180",
@@ -11106,7 +12690,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223473054936",
@@ -11120,7 +12706,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223472399284",
@@ -11134,7 +12722,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223470802703",
@@ -11148,7 +12738,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223470653132",
@@ -11162,7 +12754,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223470437841",
@@ -11176,7 +12770,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223468762702",
@@ -11190,7 +12786,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223468088293",
@@ -11204,7 +12802,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223465846965",
@@ -11218,7 +12818,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223463862226",
@@ -11232,7 +12834,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223462774856",
@@ -11246,7 +12850,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223462530725",
@@ -11260,7 +12866,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223462030539",
@@ -11274,7 +12882,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223461286029",
@@ -11288,7 +12898,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223459994151",
@@ -11302,7 +12914,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223459532996",
@@ -11316,7 +12930,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223457948963",
@@ -11330,7 +12946,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223457430839",
@@ -11344,7 +12962,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223457358946",
@@ -11358,7 +12978,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223457154179",
@@ -11372,7 +12994,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223456597048",
@@ -11386,7 +13010,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223456557207",
@@ -11400,7 +13026,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223456444677",
@@ -11414,7 +13042,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223456060688",
@@ -11428,7 +13058,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223454185266",
@@ -11442,7 +13074,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223452951113",
@@ -11456,7 +13090,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223452888463",
@@ -11470,7 +13106,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223452814428",
@@ -11484,7 +13122,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223452030446",
@@ -11498,7 +13138,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223452004626",
@@ -11512,7 +13154,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223449984530",
@@ -11526,7 +13170,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223448833127",
@@ -11540,7 +13186,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223447737136",
@@ -11554,7 +13202,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223447589401",
@@ -11568,7 +13218,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223446796741",
@@ -11582,7 +13234,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223445589297",
@@ -11596,7 +13250,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     },
     {
       "post_id": "223444506295",
@@ -11610,7 +13266,9 @@ window.ARCHIVE = {
       "last_seen": "",
       "status": "미인용",
       "cite_count": 0,
-      "cited": false
+      "cited": false,
+      "contrib_score": 0.0,
+      "contrib_pct": 0.0
     }
   ]
 };

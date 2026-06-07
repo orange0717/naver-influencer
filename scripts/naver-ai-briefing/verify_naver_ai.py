@@ -438,14 +438,52 @@ def build_catalog(master: dict, cited_posts: dict, today: str) -> dict:
     return catalog
 
 
+def _match_confidence(matched_by) -> float:
+    """매칭 신뢰 가중치 — logNo(고유번호) 정확매칭이 있으면 1.0, 제목 fuzzy 만이면 0.7.
+
+    logNo 는 글의 고유번호라 오탐이 없고, 제목 부분일치는 추정이므로 낮춘다.
+    """
+    mb = matched_by or []
+    if "logno" in mb:
+        return 1.0
+    if mb:                       # title 등 fuzzy 매칭만 있는 경우
+        return 0.7
+    return 0.0
+
+
+def compute_contribution(posts: dict) -> None:
+    """각 글에 기여도(raw 점수 + 전체 대비 비중 %)를 부여한다(제자리 수정).
+
+    기여도 raw = AI 유입 키워드 수(cite_count) × 매칭 신뢰가중(logNo 1.0 / 제목 0.7).
+    기여도 %  = 그 글의 raw / 전체 인용 글 raw 합 × 100  (내 AI 인용에서 차지하는 비중).
+    미인용 글은 0.  → '내 어떤 글이 AI 노출에 가장 크게 기여하나' 를 줄세운다.
+    """
+    raws = {}
+    for key, p in posts.items():
+        if p.get("cited"):
+            conf = _match_confidence(p.get("matched_by"))
+            raws[key] = round((p.get("cite_count", 0) or 0) * conf, 2)
+        else:
+            raws[key] = 0.0
+    total = sum(raws.values())
+    for key, p in posts.items():
+        raw = raws[key]
+        p["contrib_score"] = raw
+        p["contrib_pct"] = round(raw / total * 100, 1) if total > 0 else 0.0
+
+
 def save_archive(posts: dict, target: str, total_posts: int | None = None) -> dict:
     """전체 카탈로그를 정렬 후 json + js(window.ARCHIVE) 저장.
 
-    정렬: ① AI 인용 글 먼저  ② 기여도(매칭 키워드 수) 내림차순  ③ 최신(logNo 큰 순).
+    정렬: ① AI 인용 글 먼저  ② 기여도(가중 점수) 내림차순  ③ 최신(logNo 큰 순).
     total_posts = 마스터 리스트의 전체 발행 글 수(인용/미인용 분리 표시).
     """
+    compute_contribution(posts)          # 기여도(점수·비중%) 계산 후 정렬
     arr = sorted(posts.values(),
-                 key=lambda p: (not p.get("cited"), -p.get("cite_count", 0), -_pid_int(p)))
+                 key=lambda p: (not p.get("cited"),
+                                -p.get("contrib_score", 0),
+                                -p.get("cite_count", 0),
+                                -_pid_int(p)))
     cited = sum(1 for p in arr if p.get("cited"))
     total = total_posts if total_posts is not None else len(arr)
     payload = {
@@ -483,7 +521,8 @@ def archive_report(payload: dict):
     for cat in sorted(by_cat, key=lambda c: -len(by_cat[c])):
         print(f"\n  ▸ [{cat}] {len(by_cat[cat])}개")
         for p in by_cat[cat]:
-            print(f"     · ({p['cite_count']}회 유입) {p['title'] or p['post_url']}")
+            print(f"     · 기여도 {p.get('contrib_pct', 0)}% "
+                  f"({p['cite_count']}키워드 유입) {p['title'] or p['post_url']}")
             print(f"       키워드: {', '.join(p['keywords'][:5])}")
             print(f"       {p['post_url']}  · 최초발견 {p['first_seen']}  · 상태 {p['status']}")
 
