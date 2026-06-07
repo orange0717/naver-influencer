@@ -438,44 +438,26 @@ def build_catalog(master: dict, cited_posts: dict, today: str) -> dict:
     return catalog
 
 
-def _match_confidence(matched_by) -> float:
-    """매칭 신뢰 가중치 — logNo(고유번호) 정확매칭이 있으면 1.0, 제목 fuzzy 만이면 0.7.
-
-    logNo 는 글의 고유번호라 오탐이 없고, 제목 부분일치는 추정이므로 낮춘다.
-    """
-    mb = matched_by or []
-    if "logno" in mb:
-        return 1.0
-    if mb:                       # title 등 fuzzy 매칭만 있는 경우
-        return 0.7
-    return 0.0
-
-
 def compute_contribution(posts: dict) -> None:
-    """각 글에 기여도(raw 점수 + 전체 대비 비중 %)를 부여한다(제자리 수정).
+    """각 글에 기여도(점수 + 전체 대비 비중 %)를 부여한다(제자리 수정).
 
-    기여도 raw = AI 유입 키워드 수(cite_count) × 매칭 신뢰가중(logNo 1.0 / 제목 0.7).
-    기여도 %  = 그 글의 raw / 전체 인용 글 raw 합 × 100  (내 AI 인용에서 차지하는 비중).
+    기여도 점수 = AI 유입 키워드 수(cite_count).
+    기여도 %   = 그 글의 점수 / 전체 인용 글 점수 합 × 100  (내 AI 인용에서 차지하는 비중).
     미인용 글은 0.  → '내 어떤 글이 AI 노출에 가장 크게 기여하나' 를 줄세운다.
     """
-    raws = {}
+    scores = {k: (p.get("cite_count", 0) or 0) if p.get("cited") else 0
+              for k, p in posts.items()}
+    total = sum(scores.values())
     for key, p in posts.items():
-        if p.get("cited"):
-            conf = _match_confidence(p.get("matched_by"))
-            raws[key] = round((p.get("cite_count", 0) or 0) * conf, 2)
-        else:
-            raws[key] = 0.0
-    total = sum(raws.values())
-    for key, p in posts.items():
-        raw = raws[key]
-        p["contrib_score"] = raw
-        p["contrib_pct"] = round(raw / total * 100, 1) if total > 0 else 0.0
+        score = scores[key]
+        p["contrib_score"] = score
+        p["contrib_pct"] = round(score / total * 100, 1) if total > 0 else 0.0
 
 
 def save_archive(posts: dict, target: str, total_posts: int | None = None) -> dict:
     """전체 카탈로그를 정렬 후 json + js(window.ARCHIVE) 저장.
 
-    정렬: ① AI 인용 글 먼저  ② 기여도(가중 점수) 내림차순  ③ 최신(logNo 큰 순).
+    정렬: ① AI 인용 글 먼저  ② 기여도(유입 키워드 수) 내림차순  ③ 최신(logNo 큰 순).
     total_posts = 마스터 리스트의 전체 발행 글 수(인용/미인용 분리 표시).
     """
     compute_contribution(posts)          # 기여도(점수·비중%) 계산 후 정렬

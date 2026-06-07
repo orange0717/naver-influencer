@@ -115,7 +115,7 @@
             <tr class="bg-base/70 text-[11.5px] text-hold border-b border-line">
               <th class="py-3 px-4 font-semibold">가져간 포스팅 제목</th>
               <th class="py-3 px-3 font-semibold whitespace-nowrap">카테고리</th>
-              <th class="py-3 px-3 font-semibold text-center whitespace-nowrap" title="기여도 = 유입 키워드 수 × 매칭신뢰(logNo 정확 1.0 / 제목 추정 0.7) → 전체 인용 대비 비중 %">AI 유입 기여도 <span class="text-hold/60">ⓘ</span></th>
+              <th class="py-3 px-3 font-semibold text-center whitespace-nowrap" title="기여도 = 그 글의 AI 유입 키워드 수가 전체 인용에서 차지하는 비중 %">AI 유입 기여도 <span class="text-hold/60">ⓘ</span></th>
               <th class="py-3 px-3 font-semibold">AI 매칭 키워드</th>
               <th class="py-3 px-4 font-semibold whitespace-nowrap">최초 발견 · 상태</th>
             </tr>
@@ -233,11 +233,10 @@ function contribBar(p,maxPct){
   const pct = p.contrib_pct||0;
   const kw  = p.cite_count||0;
   const w   = maxPct? Math.round(pct/maxPct*100):0;   // 1위 글이 막대 가득 차도록 상대 길이
-  const conf = (p.matched_by||[]).includes('logno') ? '정확' : '추정';
-  return `<div class="flex flex-col items-center gap-0.5" title="기여도 = 유입 키워드 수 × 매칭신뢰(logNo 1.0/제목 0.7), 전체 인용 대비 비중">
+  return `<div class="flex flex-col items-center gap-0.5" title="기여도 = 유입 키워드 수의 전체 인용 대비 비중">
     <span class="font-rank font-bold text-rose text-[14px] leading-none">${pct}%</span>
     <div class="w-14 h-1.5 rounded-full bg-base overflow-hidden"><div class="h-full bg-rose" style="width:${w}%"></div></div>
-    <span class="text-[9.5px] text-hold/80 font-rank">${kw}키워드 · ${conf}</span>
+    <span class="text-[9.5px] text-hold/80 font-rank">${kw}키워드</span>
   </div>`;
 }
 function titleLink(p){

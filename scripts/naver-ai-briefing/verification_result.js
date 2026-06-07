@@ -1,7 +1,7 @@
 window.VERIFICATION = {
   "target": "orangelibrary_",
   "source": "local-html",
-  "generated_at": "2026-06-07 15:07",
+  "generated_at": "2026-06-07 15:11",
   "items": [
     {
       "keyword": "감동적인시 괴테시집추천해줘",
@@ -11,7 +11,7 @@ window.VERIFICATION = {
       "my_date": "",
       "others": [],
       "ai_region": false,
-      "checked_at": "2026-06-07 15:07",
+      "checked_at": "2026-06-07 15:11",
       "source": "감동적인시 괴테시집추천해줘 _ 네이버 검색.html",
       "note": ""
     }
