@@ -236,6 +236,15 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
     authOnly: true,
   },
+  {
+    id: 'youtube-stt',
+    category: 'writing',
+    title: '유튜브 음원 텍스트 추출',
+    description: '유튜브 영상의 자막을 텍스트로 추출하거나, 자막이 없으면 음원을 CLOVA Speech로 변환 · 가입 후 이용',
+    href: '/dashboard/youtube-stt',
+    requiredPlan: 'blogger',
+    authOnly: true,
+  },
   // ── 추천 서비스 ──
   {
     id: 'orangelibrary',

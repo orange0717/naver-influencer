@@ -4,6 +4,7 @@ import { verifySession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { isTrialExpired } from '@/lib/trial';
 import { clearPostAuthDemoCookies } from '@/lib/demo-session';
+import { isRestricted } from '@/lib/admin';
 
 // 동시 로그인 검증을 건너뛸 경로 (auth 흐름 + 정적/공개 API)
 const SESSION_CHECK_BYPASS = [
@@ -247,6 +248,20 @@ export async function middleware(request: NextRequest) {
       "object-src 'none'",
     ].join('; '),
   );
+
+  // 제한된 사용자: 홈(/) + 프로필(/profile) 외 페이지는 모두 홈으로 리다이렉트.
+  // 허용 경로 매칭을 먼저 수행해, 허용 경로일 땐 DB 비용(isRestricted = users + restricted_users 2회 SELECT)을 피한다.
+  // 로그아웃은 /api/auth/logout POST 라 acceptsHtml 가드로 자연히 통과.
+  if (user && user.email && acceptsHtml) {
+    const allowedForRestricted =
+      pathname === '/' || matchesPathPrefix(pathname, '/profile');
+    if (!allowedForRestricted && (await isRestricted(user.email))) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  }
 
   // 정식 Supabase 세션이 있으면 데모 체험 쿠키는 무시·삭제 (가입 후 플랜 판정이 데모와 섞이지 않도록)
   if (user) {
