@@ -13,9 +13,11 @@
 
 ## 배포
 ```bash
-# Vercel CLI 직접 배포 (GitHub remote 미연결 상태)
-export PATH="/tmp/node-v20.11.1-darwin-arm64/bin:$PATH"
-npx --yes vercel deploy --prod --cwd /Users/orange/개발/naver-influencer
+# Vercel CLI 직접 배포 (Vercel↔GitHub 자동배포 미연결 → CLI 수동 배포)
+# Vercel 연결 디렉토리: /Users/orange/개발/ninfle (.vercel/project.json)
+#   projectName: naver-influencer · org: orangelibrary · 도메인: ninfle.kr
+# vercel CLI: nvm node(v24)에 설치됨 (구 /tmp/node-v20… 경로는 폐기)
+cd /Users/orange/개발/ninfle && vercel deploy --prod
 ```
 
 ## 디자인 시스템
