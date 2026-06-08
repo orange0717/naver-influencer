@@ -25,6 +25,18 @@ interface FeedItem {
   creator: FeedCreator;
 }
 
+interface NewInfluencer {
+  user_id: string;
+  nickname: string;
+  category: string;
+  discovered_at: string;
+}
+
+function fmtDiscoveredAt(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 /** Feed API에 myKeywordCategory가 없을 때 in.naver.com HTML 페이지에서 카테고리 추출 (fallback) */
 async function fetchHtmlCategory(naverId: string): Promise<{ myKeywordCategory: string; categoryMyType: string }> {
   try {
@@ -156,6 +168,10 @@ export async function GET(request: NextRequest) {
   let totalInfluencers = 0;
   let totalKeywordsProcessed = 0;
   let totalFailed = 0;
+  // 가이드라인 3: 이번 실행에서 처음 발견된 인플루언서만 표준 포맷으로 누적
+  const newlyDiscovered: NewInfluencer[] = [];
+  const newlyDiscoveredSeen = new Set<string>();
+  const runDiscoveredAt = fmtDiscoveredAt(new Date());
 
   console.log('[Cron] crawl-influencers started at', new Date().toISOString());
 
@@ -198,6 +214,27 @@ export async function GET(request: NextRequest) {
             }
             return { c, mk, cmt };
           }));
+
+          // 가이드라인 2-③: upsert 전에 DB에 없던 naver_id를 식별 (오늘 처음 발견된 유저)
+          const batchNaverIds = enriched
+            .map(({ c }) => c.urlId)
+            .filter((id): id is string => Boolean(id));
+          const { data: existingRows } = await supabase
+            .from('influencers')
+            .select('naver_id')
+            .in('naver_id', batchNaverIds);
+          const existingSet = new Set((existingRows ?? []).map((r) => r.naver_id));
+
+          for (const { c, mk } of enriched) {
+            if (!c.urlId || existingSet.has(c.urlId) || newlyDiscoveredSeen.has(c.urlId)) continue;
+            newlyDiscoveredSeen.add(c.urlId);
+            newlyDiscovered.push({
+              user_id: c.urlId,
+              nickname: c.nickname || '',
+              category: fix(mk || kw.category || ''),
+              discovered_at: runDiscoveredAt,
+            });
+          }
 
           const rows = enriched.map(({ c, mk, cmt }) => ({
             naver_id: c.urlId!,
@@ -276,13 +313,15 @@ export async function GET(request: NextRequest) {
       failed_items: totalFailed,
     });
 
-    console.log(`[Cron] crawl-influencers done: ${totalKeywordsProcessed}/${keywords.length} keywords, ${totalInfluencers} influencers, ${totalFailed} failed`);
+    console.log(`[Cron] crawl-influencers done: ${totalKeywordsProcessed}/${keywords.length} keywords, ${totalInfluencers} influencers, ${newlyDiscovered.length} newly discovered, ${totalFailed} failed`);
 
     return NextResponse.json({
       success: true,
       keywords_total: keywords.length,
       keywords_processed: totalKeywordsProcessed,
       influencers_found: totalInfluencers,
+      newly_discovered_count: newlyDiscovered.length,
+      newly_discovered: newlyDiscovered,
       failed: totalFailed,
       timestamp: new Date().toISOString(),
     });
