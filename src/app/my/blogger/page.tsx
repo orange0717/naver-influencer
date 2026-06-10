@@ -8,6 +8,7 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
+import { filterMissing, calculateMissingRate } from '@/lib/missing-rate';
 
 interface BloggerProfile {
   blogId: string;
@@ -491,10 +492,7 @@ export default function BloggerDashboard() {
     if (!profile) return;
     let posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     if (postFilter === 'missing') {
-      posts = posts.filter(p => {
-        const mr = missingResults[p.id];
-        return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
-      });
+      posts = filterMissing(posts, missingResults);
     }
     if (posts.length === 0) return;
     const headers = ['번호', '제목', 'URL', '작성일', '댓글수', '통합검색 노출', '통합검색 순위', '블로그탭 노출', '블로그탭 순위'];
@@ -609,6 +607,34 @@ export default function BloggerDashboard() {
   }, [profile?.blogId, allBlogPosts, blogPosts, missingResults]);
 
   const totalScore = blogScoreCalc.hasData ? blogScoreCalc.score : (scoreData?.total_score || 0);
+
+  // ══════════════════════════════════════════════════════════
+  // 현재 화면 슬라이스 기반 누락 계산
+  //   filteredList: 전체(또는 누락 필터) 적용된 페이지네이션 전 리스트
+  //   currentViewList: 현재 페이지·postsPerPage 만큼 잘라낸 화면 표시 리스트
+  //   missingInView: 화면에 보이는 항목 중 누락(통합 OR 블로그탭 누락) 객체 배열
+  //   missingRateInView: (missingInView.length / currentViewList.length) * 100 정수
+  // ══════════════════════════════════════════════════════════
+  const filteredList = useMemo(() => {
+    const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    if (postFilter === 'missing') return filterMissing(all, missingResults);
+    return all;
+  }, [allBlogPosts, blogPosts, postFilter, missingResults]);
+
+  const currentViewList = useMemo(() => {
+    const start = (blogPostsPage - 1) * postsPerPage;
+    return filteredList.slice(start, start + postsPerPage);
+  }, [filteredList, blogPostsPage, postsPerPage]);
+
+  const missingInView = useMemo(
+    () => filterMissing(currentViewList, missingResults),
+    [currentViewList, missingResults]
+  );
+
+  const missingRateInView = useMemo(
+    () => calculateMissingRate(currentViewList, missingResults),
+    [currentViewList, missingResults]
+  );
 
   useEffect(() => {
     latestScoresRef.current = { total: totalScore, scores: [0, 0, 0, 0, 0, 0], grade: '' };
@@ -739,7 +765,7 @@ export default function BloggerDashboard() {
         {/* 2행: 순위 + 누락율 */}
         <AnimatedStatCard label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.viewExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.viewExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={250} />
         <AnimatedStatCard label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.blogExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.blogExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={300} />
-        <AnimatedStatCard label="누락율" value={blogScoreCalc.hasData && blogScoreCalc.totalKeywords > 0 ? Math.round((blogScoreCalc.anyMissing / blogScoreCalc.totalKeywords) * 100) : 0} suffix="%" placeholder={blogScoreCalc.hasData ? undefined : '—'} description={blogScoreCalc.hasData ? `${blogScoreCalc.totalKeywords}개 중 ${blogScoreCalc.anyMissing}개 누락` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>} color={(() => { if (!blogScoreCalc.hasData || blogScoreCalc.totalKeywords === 0) return 'dim'; const rate = (blogScoreCalc.anyMissing / blogScoreCalc.totalKeywords) * 100; return rate <= 30 ? 'up' : rate <= 60 ? 'accent' : 'down'; })()} delay={350} />
+        <AnimatedStatCard label="누락율" value={missingRateInView} suffix="%" placeholder={currentViewList.length === 0 ? '—' : undefined} description={currentViewList.length > 0 ? `${currentViewList.length}개 중 ${missingInView.length}개 누락` : '포스트 목록 로딩중'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>} color={currentViewList.length === 0 ? 'dim' : missingRateInView <= 30 ? 'up' : missingRateInView <= 60 ? 'accent' : 'down'} delay={350} />
         <AnimatedStatCard label="전체 순위" value={0} placeholder="개발중" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} color="dim" delay={400} />
         <AnimatedStatCard label={`${category} 순위`} value={0} placeholder="개발중" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>} color="dim" delay={450} />
       </div>
@@ -770,14 +796,7 @@ export default function BloggerDashboard() {
               </button>
               <button onClick={() => { setPostFilter('missing'); setBlogPostsPage(1); }}
                 className={`px-3 py-1.5 font-semibold transition cursor-pointer ${postFilter === 'missing' ? 'bg-down text-white' : 'text-dim hover:bg-surface-hover'}`}>
-                누락 {(() => {
-                  const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-                  const cnt = all.filter(p => {
-                    const mr = missingResults[p.id];
-                    return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
-                  }).length;
-                  return cnt > 0 ? cnt : '';
-                })()}
+                누락 {missingInView.length > 0 ? missingInView.length : ''}
               </button>
             </div>
             {allBlogPosts.length > 0 && (
@@ -829,17 +848,7 @@ export default function BloggerDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {(() => {
-                    let all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-                    if (postFilter === 'missing') {
-                      all = all.filter(p => {
-                        const mr = missingResults[p.id];
-                        return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
-                      });
-                    }
-                    const start = (blogPostsPage - 1) * postsPerPage;
-                    return all.slice(start, start + postsPerPage);
-                  })().map((post, i) => {
+                  {currentViewList.map((post, i) => {
                     const mr = missingResults[post.id];
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition group">
@@ -922,16 +931,7 @@ export default function BloggerDashboard() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {(() => {
-                let all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-                if (postFilter === 'missing') {
-                  all = all.filter(p => {
-                    const mr = missingResults[p.id];
-                    return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
-                  });
-                }
-                return all.slice(0, 10);
-              })().map((post, i) => {
+              {currentViewList.map((post, i) => {
                 const mr = missingResults[post.id];
                 return (
                   <div key={post.id} className="px-4 py-3.5">
@@ -1000,14 +1000,9 @@ export default function BloggerDashboard() {
 
             {/* 페이지네이션 + 키워드순위 링크 */}
             {(() => {
-              let list = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-              if (postFilter === 'missing') {
-                list = list.filter(p => {
-                  const mr = missingResults[p.id];
-                  return mr && (!mr.viewTab.exposed || !mr.blogTab.exposed);
-                });
-              }
-              const total = postFilter === 'missing' ? list.length : (allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal);
+              const total = postFilter === 'missing'
+                ? filteredList.length
+                : (allBlogPosts.length > 0 ? allBlogPosts.length : blogPostsTotal);
               const totalPages = Math.ceil(total / postsPerPage);
               return (
                 <div className="px-5 py-3 border-t border-border/50 flex flex-col items-center gap-2">
