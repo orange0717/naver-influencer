@@ -25,6 +25,7 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
+  const [maintenance, setMaintenance] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const [stats, setStats] = useState<{ new_count: number | null; active_count: number | null }>({
     new_count: null,
@@ -95,20 +96,68 @@ function LoginPageContent() {
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
-    supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
-      if (authUser) {
-        await supabase
-          .from('users')
-          .select('linked_influencer_id, blog_id')
-          .eq('auth_id', authUser.id)
-          .single();
+    let settled = false;
+    // Supabase 가 응답하지 않으면(점검·장애) getUser 가 영영 resolve 되지 않아
+    // 스피너가 무한히 돈다. 8초 내 응답이 없으면 점검 안내 화면으로 전환.
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setMaintenance(true);
+    }, 8000);
+    supabase.auth
+      .getUser()
+      .then(async ({ data: { user: authUser } }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (authUser) {
+          await supabase
+            .from('users')
+            .select('linked_influencer_id, blog_id')
+            .eq('auth_id', authUser.id)
+            .single();
 
-        router.replace(redirectTo);
-      } else {
-        setAuthChecked(true);
-      }
-    });
+          router.replace(redirectTo);
+        } else {
+          setAuthChecked(true);
+        }
+      })
+      .catch(() => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        setMaintenance(true);
+      });
+    return () => clearTimeout(timer);
   }, [redirectTo, router]);
+
+  if (maintenance) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg px-6">
+        <div className="w-full max-w-sm space-y-5 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+            </svg>
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-extrabold tracking-tight text-text">시스템 점검 중입니다</h2>
+            <p className="text-sm leading-relaxed text-dim">
+              현재 서비스 점검으로 일시적으로 로그인이 어렵습니다.<br />
+              빠르게 정상화하겠습니다. 잠시 후 다시 이용해 주세요.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition hover:bg-accent-hover"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!authChecked) {
     return (
