@@ -6,6 +6,58 @@ import { isTrialExpired } from '@/lib/trial';
 import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 import { isRestricted } from '@/lib/admin';
 
+/**
+ * 점검 모드: 켜면 모든 HTML 페이지 요청을 점검 안내 화면으로 즉시 응답한다.
+ * Supabase 호출보다 앞단에서 끝나므로 백엔드 장애와 무관하게 빠르게 뜬다.
+ * 복구 후 false 로 바꾸고 재배포하면 정상화.
+ */
+const MAINTENANCE_MODE = true;
+
+const MAINTENANCE_HTML = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>시스템 점검 중 — N인플</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    background: #FDF6F3;
+    color: #4A3F3A;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: #FFFFFF;
+    border: 1px solid #F2E2DC;
+    border-radius: 20px;
+    padding: 48px 36px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(191, 135, 122, 0.12);
+  }
+  .icon { font-size: 48px; margin-bottom: 20px; }
+  h1 { font-size: 22px; font-weight: 700; color: #BF877A; margin-bottom: 14px; }
+  p { font-size: 15px; line-height: 1.7; color: #8C7A6E; }
+  .sub { margin-top: 18px; font-size: 13px; color: #B5A69E; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🛠️</div>
+    <h1>시스템 점검 중입니다</h1>
+    <p>보다 안정적인 서비스 제공을 위해<br />시스템 점검을 진행하고 있습니다.<br />잠시 후 다시 이용해 주세요.</p>
+    <p class="sub">이용에 불편을 드려 죄송합니다.</p>
+  </div>
+</body>
+</html>`;
+
 // 동시 로그인 검증을 건너뛸 경로 (auth 흐름 + 정적/공개 API)
 const SESSION_CHECK_BYPASS = [
   '/auth/',
@@ -58,6 +110,21 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get('host') || '';
   if (host.endsWith('.vercel.app')) {
     return new NextResponse('Not Found', { status: 404 });
+  }
+
+  // 점검 모드: HTML 페이지 탐색은 모두 점검 안내로 응답 (백엔드 호출 이전에 종료)
+  if (MAINTENANCE_MODE) {
+    const acceptsHtmlEarly = request.headers.get('accept')?.includes('text/html') ?? false;
+    if (acceptsHtmlEarly && !request.nextUrl.pathname.startsWith('/_next/')) {
+      return new NextResponse(MAINTENANCE_HTML, {
+        status: 503,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store, must-revalidate',
+          'Retry-After': '3600',
+        },
+      });
+    }
   }
 
   let supabaseResponse = NextResponse.next({ request });
