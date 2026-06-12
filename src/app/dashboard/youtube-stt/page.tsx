@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { getPaywallContext } from '@/lib/admin';
 import YoutubeSttClient from './YoutubeSttClient';
 
@@ -13,9 +13,7 @@ export const metadata = {
 
 export default async function YoutubeSttPage() {
   const supabaseAuth = await createRouteHandlerClient();
-  const {
-    data: { user: authUser },
-  } = await supabaseAuth.auth.getUser();
+  const authUser = await getUserWithTimeout(supabaseAuth);
 
   if (!authUser) redirect('/auth/login?redirect=/dashboard/youtube-stt');
 

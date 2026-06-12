@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { createServiceClient, createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
 import { isTrialExpired } from '@/lib/trial';
@@ -36,7 +36,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   const cookieStore = await cookies();
   const supabaseAuth = await createRouteHandlerClient();
-  const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+  const authUser = await getUserWithTimeout(supabaseAuth);
 
   let isLoggedIn = false;
 

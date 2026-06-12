@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { getPaywallContext } from '@/lib/admin';
 import SpellcheckClient from './SpellcheckClient';
 
@@ -13,9 +13,7 @@ export const metadata = {
 // Claude AI 호출 비용 발생 기능 — 데모 체험 제외, 가입 회원 전용
 export default async function SpellcheckPage() {
   const supabaseAuth = await createRouteHandlerClient();
-  const {
-    data: { user: authUser },
-  } = await supabaseAuth.auth.getUser();
+  const authUser = await getUserWithTimeout(supabaseAuth);
 
   if (!authUser) {
     return (

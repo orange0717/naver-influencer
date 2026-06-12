@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { isAdmin } from '@/lib/admin';
 import AdminSidebar from './AdminSidebar';
 import AdminLogoutButton from './AdminLogoutButton';
@@ -23,8 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         },
       });
 
-      const { data } = await supabaseAuth.auth.getUser();
-      const authUser = data?.user;
+      const authUser = await getUserWithTimeout(supabaseAuth);
 
       if (authUser) {
         const supabase = createServiceClient();

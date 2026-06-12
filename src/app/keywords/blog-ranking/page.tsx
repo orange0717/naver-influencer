@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { getPaywallContext } from '@/lib/admin';
 import BlogRankingClient from './BlogRankingClient';
 
@@ -12,9 +12,7 @@ export const metadata = {
 
 export default async function BlogRankingPage() {
   const supabaseAuth = await createRouteHandlerClient();
-  const {
-    data: { user: authUser },
-  } = await supabaseAuth.auth.getUser();
+  const authUser = await getUserWithTimeout(supabaseAuth);
 
   if (authUser) {
     const ctx = await getPaywallContext(authUser.id, authUser.email);

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +31,7 @@ export default async function KeywordsLayout({
   children: React.ReactNode;
 }) {
   const supabaseAuth = await createRouteHandlerClient();
-  const {
-    data: { user: authUser },
-  } = await supabaseAuth.auth.getUser();
+  const authUser = await getUserWithTimeout(supabaseAuth);
 
   const cookieStore = await cookies();
   const isDemo = cookieStore.get('demo_mode')?.value === 'true';
