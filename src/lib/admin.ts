@@ -52,6 +52,16 @@ function hasActiveSubscription(
   return t > Date.now();
 }
 
+/* ── isRestricted 결과 캐시 ─────────────────────────────────────
+   미들웨어가 거의 모든 HTML 요청에 isRestricted 를 호출하며(users +
+   restricted_users 최대 2회 SELECT), 캐시가 없으면 매 페이지마다 DB 부하가
+   쌓여 Supabase 지연·미들웨어 타임아웃(504)으로 번질 수 있다. verifySession
+   과 동일하게 30초 인메모리 캐시로 같은 이메일의 빠른 연속 요청을 흡수한다.
+   주의: Edge isolate 별 메모리 — 분산 캐시 아님. cold/miss 시엔 DB 히트.
+────────────────────────────────────────────────────────────── */
+const RESTRICTED_CACHE_TTL_MS = 30_000;
+const restrictedCache = new Map<string, { restricted: boolean; until: number }>();
+
 /**
  * 주어진 이메일이 제한된 사용자인지 확인 (DB + 환경변수 폴백)
  *
@@ -64,6 +74,16 @@ export async function isRestricted(email: string | null | undefined): Promise<bo
   if (!email) return false;
   const lower = email.toLowerCase();
 
+  const now = Date.now();
+  const cached = restrictedCache.get(lower);
+  if (cached && cached.until > now) return cached.restricted;
+
+  const result = await _computeRestricted(lower);
+  restrictedCache.set(lower, { restricted: result, until: now + RESTRICTED_CACHE_TTL_MS });
+  return result;
+}
+
+async function _computeRestricted(lower: string): Promise<boolean> {
   // 1) 활성 유료 구독 우선 — 365일 권한 등 부여된 회원은 제한 우회
   try {
     const supabase = createServiceClient();

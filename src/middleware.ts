@@ -31,6 +31,28 @@ function matchesPathPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+/**
+ * Supabase 외부 호출이 hang/지연되어 Edge 미들웨어가 Vercel 제한시간(~25초)을
+ * 넘기면 MIDDLEWARE_INVOCATION_TIMEOUT(504)로 사이트 전체가 죽는다. 각 호출을
+ * 짧은 타임아웃으로 감싸 지연 시 안전한 fallback 으로 즉시 진행시켜, 일시적
+ * Supabase 지연이 전체 장애로 번지지 않게 한다.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
+}
+
 export async function middleware(request: NextRequest) {
   // Vercel 기본 도메인 차단 — ninfle.kr 외 vercel.app 호스트는 404 응답
   const host = request.headers.get('host') || '';
@@ -61,8 +83,12 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // 세션 토큰 갱신 + 사용자 조회
-  const { data: { user } } = await supabase.auth.getUser();
+  // 세션 토큰 갱신 + 사용자 조회 (지연 시 비로그인으로 폴백 — 미들웨어 hang 방지)
+  const user = await withTimeout(
+    supabase.auth.getUser().then((r) => r.data.user),
+    8000,
+    null,
+  );
 
   // 동시 로그인 기기 제한 검증 (전 플랜 1대 공통)
   const pathname = request.nextUrl.pathname;
@@ -145,7 +171,8 @@ export async function middleware(request: NextRequest) {
 
   // 검증: 로그인됨 + 우회 경로 아님 + 기존 device (새로 발급한 첫 요청은 통과)
   if (user && deviceId && !isBypass && !isNewDevice) {
-    const ok = await verifySession(user.id, deviceId);
+    // 지연 시 true 폴백 — 세션 유효 취급하여 통과(강제 로그아웃 안 함). 가용성 우선.
+    const ok = await withTimeout(verifySession(user.id, deviceId), 4000, true);
     if (!ok) {
       await supabase.auth.signOut();
       const url = request.nextUrl.clone();
@@ -255,7 +282,8 @@ export async function middleware(request: NextRequest) {
   if (user && user.email && acceptsHtml) {
     const allowedForRestricted =
       pathname === '/' || matchesPathPrefix(pathname, '/profile');
-    if (!allowedForRestricted && (await isRestricted(user.email))) {
+    // 지연 시 false 폴백 — 제한 없음 취급하여 통과. 유료 페이지·API 는 자체 가드 보유.
+    if (!allowedForRestricted && (await withTimeout(isRestricted(user.email), 4000, false))) {
       const url = request.nextUrl.clone();
       url.pathname = '/';
       url.search = '';
