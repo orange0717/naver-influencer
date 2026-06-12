@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { unstable_cache } from 'next/cache';
-import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient, createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
@@ -45,9 +45,7 @@ function resolvePlan(subscriptionPlan: string | null, expiresAt: string | null):
 
 export default async function HomePage() {
   const supabaseAuth = await createRouteHandlerClient();
-  const {
-    data: { user: authUser },
-  } = await supabaseAuth.auth.getUser();
+  const authUser = await getUserWithTimeout(supabaseAuth);
 
   const cookieStore = await cookies();
   /** 정식 로그인 시 데모 쿠키가 남아 있어도 홈은 회원 플랜 기준으로만 표시 */

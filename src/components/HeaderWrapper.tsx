@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
 import Header from './Header';
 
 /** 서버에서 인증 상태를 읽어 Header 클라이언트 컴포넌트에 전달 */
@@ -21,7 +21,7 @@ export default async function HeaderWrapper() {
         },
       });
 
-      const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+      const authUser = await getUserWithTimeout(supabaseAuth);
 
       if (authUser) {
         const supabase = createServiceClient();
