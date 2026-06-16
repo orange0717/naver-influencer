@@ -11,7 +11,7 @@ import { isRestricted } from '@/lib/admin';
  * Supabase 호출보다 앞단에서 끝나므로 백엔드 장애와 무관하게 빠르게 뜬다.
  * 복구 후 false 로 바꾸고 재배포하면 정상화.
  */
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 const MAINTENANCE_HTML = `<!DOCTYPE html>
 <html lang="ko">
