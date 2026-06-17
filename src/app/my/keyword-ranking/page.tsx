@@ -212,6 +212,7 @@ export default function KeywordRankingPage() {
   }, []);
 
   const { user } = useAuth();
+  const isLoggedIn = !!(user.id || user.authId);
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
 
   const handleDownload = () => {
@@ -496,7 +497,33 @@ export default function KeywordRankingPage() {
     );
   }
 
-  // 블로그 미연결
+  // 비로그인(게스트): 강제 리다이렉트 없이 로그인 유도 빈 상태 — /my 게스트 화면과 동일 톤
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
+        <h1 className="font-title text-2xl font-extrabold">키워드순위</h1>
+        <p className="text-sm text-dim leading-relaxed">
+          로그인하시면 본인의 키워드 순위 및 최신 데이터를 저장하고 동기화할 수 있습니다.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+          <Link
+            href="/auth/login?redirect=/my/keyword-ranking"
+            className="inline-flex items-center justify-center px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition-colors"
+          >
+            로그인
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center px-6 py-3 border border-border bg-surface font-semibold rounded-xl hover:border-accent transition-colors"
+          >
+            홈으로
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 로그인했지만 블로그 미연결
   if (!profile || !profile.blogId) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
