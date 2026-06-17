@@ -136,6 +136,8 @@ interface AppCardProps {
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
   onSelect: (app: DashboardApp) => void;
+  /** 개발 중(devPreview) 카드 클릭 시 — 네비게이션 차단하고 토스트 표시 */
+  onDevPreview?: () => void;
 }
 
 export default function AppCard({
@@ -147,6 +149,7 @@ export default function AppCard({
   isFavorite,
   onToggleFavorite,
   onSelect,
+  onDevPreview,
 }: AppCardProps) {
   const router = useRouter();
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
@@ -161,6 +164,11 @@ export default function AppCard({
     : (app.ctaLabel || ctaForRequiredPlan(app.requiredPlan));
 
   const handleCardActivate = () => {
+    // 개발 중 기능은 로그인 여부와 무관하게 진입 차단 + 토스트만 표시
+    if (app.devPreview) {
+      onDevPreview?.();
+      return;
+    }
     if (!isLoggedIn) {
       router.push(`/auth/login?redirect=${encodeURIComponent(app.href)}`);
       return;
@@ -181,7 +189,11 @@ export default function AppCard({
             {category.tag}
           </span>
           {app.devPreview && (
-            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold text-dim bg-bg border border-border rounded-full">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-accent bg-accent/10 border border-accent/20 rounded-full">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-accent opacity-75 animate-ping" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+              </span>
               개발 중
             </span>
           )}

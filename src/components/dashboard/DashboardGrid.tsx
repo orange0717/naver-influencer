@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import AppCard, { useFavorites } from './AppCard';
 import AppDetailModal from './AppDetailModal';
@@ -68,7 +68,19 @@ export default function DashboardGrid({
   const { favorites, toggle } = useFavorites();
   const [query, setQuery] = useState('');
   const [selectedApp, setSelectedApp] = useState<DashboardApp | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  const handleDevPreview = useCallback(() => {
+    showToast('현재 기능 준비 중입니다!');
+  }, [showToast]);
 
   // 클라이언트에서 /api/auth/me 로 로드된 최신 플랜으로 덮어쓰기 (서버 초기값 폴백)
   // 주의: /api/auth/me 의 쿠키 폴백 경로는 subscriptionPlan 을 응답에 포함하지 않음 (undefined).
@@ -262,6 +274,7 @@ export default function DashboardGrid({
                 isFavorite
                 onToggleFavorite={toggle}
                 onSelect={setSelectedApp}
+                onDevPreview={handleDevPreview}
               />
             ))}
           </div>
@@ -319,6 +332,7 @@ export default function DashboardGrid({
                   isFavorite={favorites.has(app.id)}
                   onToggleFavorite={toggle}
                   onSelect={setSelectedApp}
+                  onDevPreview={handleDevPreview}
                 />
               ))}
             </div>
@@ -344,6 +358,19 @@ export default function DashboardGrid({
           isDemoUser={isDemoUser}
           onClose={() => setSelectedApp(null)}
         />
+      )}
+
+      {/* ── 토스트 (개발 중 기능 안내 등) ── */}
+      {toast && (
+        <div className="fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4 pointer-events-none">
+          <div
+            role="status"
+            aria-live="polite"
+            className="px-4 py-2.5 rounded-xl bg-text text-bg text-sm font-semibold shadow-lg animate-fade-in-up"
+          >
+            {toast}
+          </div>
+        </div>
       )}
     </div>
   );

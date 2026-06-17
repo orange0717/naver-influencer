@@ -96,28 +96,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     if (isLoggedIn) {
       redirect('/profile');
     }
-    return (
-      <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <h1 className="font-title text-xl font-bold text-text mb-3">내 대시보드</h1>
-        <p className="text-sm text-dim mb-6 leading-relaxed">
-          로그인하거나 데모 체험을 시작하면 연결된 블로그·인플루언서 데이터를 이 페이지에서 확인할 수 있습니다.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/auth/login?redirect=/my"
-            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors"
-          >
-            로그인
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-border bg-surface font-semibold text-sm hover:border-accent transition-colors"
-          >
-            홈으로
-          </Link>
-        </div>
-      </div>
-    );
+    // 비로그인(게스트): 강제 리다이렉트 없이 MY 대시보드의 빈 상태(Empty State)를 렌더.
+    return <GuestDashboard />;
   }
 
   // 체험/데모 만료 체크 — 정식 로그인 사용자는 trial_started 잔존 쿠키와 무관하게 여기서 차단하지 않음
@@ -845,6 +825,70 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         defaultCategory={topicScope.length > 0 ? topicScope : myCategory || null}
       />
 
+      </div>
+    </div>
+  );
+}
+
+/** 비로그인 게스트용 MY 대시보드 빈 상태 — 레이아웃은 유지하되 데이터 자리는 플레이스홀더로 채우고 로그인 CTA 노출 */
+function GuestDashboard() {
+  const placeholderStats = [
+    { label: '참여 키워드', suffix: '개' },
+    { label: 'TOP 3 키워드', suffix: '개' },
+    { label: '순위 변동', suffix: '건' },
+    { label: '토픽', suffix: '개' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* ─── 로그인 유도 배너 ─── */}
+      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1.5">
+            <h1 className="font-title text-lg lg:text-xl font-bold text-text">내 대시보드</h1>
+            <p className="text-sm text-dim leading-relaxed">
+              로그인하시면 본인의 키워드 순위 및 최신 데이터를 저장하고 동기화할 수 있습니다.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Link
+              href="/auth/login?redirect=/my"
+              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors"
+            >
+              로그인
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-border bg-surface font-semibold text-sm hover:border-accent transition-colors"
+            >
+              홈으로
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 빈 상태 통계 카드 (레이아웃 미리보기) ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        {placeholderStats.map((c) => (
+          <div key={c.label} className="bg-surface border border-border rounded-2xl p-4 text-center">
+            <p className="text-xs text-dim mb-1">{c.label}</p>
+            <p className="text-xl font-black text-dim font-rank">-{c.suffix}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ─── 빈 상태 안내 ─── */}
+      <div className="rounded-2xl border border-dashed border-border bg-surface/50 p-8 lg:p-12 text-center">
+        <div className="w-14 h-14 mx-auto rounded-full bg-accent/10 flex items-center justify-center text-accent mb-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+        </div>
+        <p className="text-sm lg:text-base text-text font-semibold mb-1.5">아직 표시할 데이터가 없습니다</p>
+        <p className="text-xs lg:text-sm text-dim leading-relaxed max-w-md mx-auto">
+          로그인 후 블로그·인플루언서를 연결하면 키워드 순위, 순위 추이, 추천 키워드를 이곳에서 확인할 수 있습니다.
+        </p>
       </div>
     </div>
   );

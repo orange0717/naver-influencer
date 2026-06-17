@@ -191,6 +191,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/image-converter',
     ctaLabel: '바로가기',
   },
+  {
+    id: 'ai-briefing-geo',
+    category: 'research',
+    title: 'AI 브리핑 GEO/AEO 확인',
+    description: '내 콘텐츠가 생성형 AI 검색(GEO)·답변 엔진(AEO)에 어떻게 노출되는지 분석 — 현재 개발 중입니다.',
+    href: '#',
+    devPreview: true,
+  },
 
   // ── 키워드 ──
   {

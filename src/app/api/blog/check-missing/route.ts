@@ -4,6 +4,7 @@ import { createHmac } from 'crypto';
 import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { createServiceClient } from '@/lib/supabase-server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { cacheGet, cacheSet } from '@/lib/kv-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,31 +12,15 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || '';
 const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
 
-// 메모리 캐시 (5분)
-const cache = new Map<string, { data: unknown; expires: number }>();
-const CACHE_TTL = 5 * 60 * 1000;
-const MAX_CACHE = 200;
+// 순위 결과 공유 캐시 (Redis, 인스턴스·기기 간 공유 / 30분)
+const CACHE_TTL_SEC = 30 * 60;
 
-// 검색량 캐시 (24시간)
-const volumeCache = new Map<string, { volume: number; expires: number }>();
-const VOLUME_CACHE_TTL = 24 * 60 * 60 * 1000;
+// 검색량 공유 캐시 (24시간)
+const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
 
-// displayName 캐시 (30분)
+// displayName 캐시 (30분, 프로세스 로컬 — DB 조회가 이미 빠름)
 const nameCache = new Map<string, { name: string; expires: number }>();
 const NAME_CACHE_TTL = 30 * 60 * 1000;
-
-function cleanCache() {
-  if (cache.size > MAX_CACHE) {
-    const now = Date.now();
-    for (const [k, v] of cache) {
-      if (v.expires < now) cache.delete(k);
-    }
-    if (cache.size > MAX_CACHE) {
-      const oldest = [...cache.entries()].sort((a, b) => a[1].expires - b[1].expires);
-      for (let i = 0; i < oldest.length - MAX_CACHE; i++) cache.delete(oldest[i][0]);
-    }
-  }
-}
 
 /**
  * 네이버 블로그탭에서 포스팅 노출 여부 확인
@@ -296,8 +281,8 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
  */
 async function getSearchVolume(keyword: string): Promise<number> {
   const cacheKey = keyword.trim().toLowerCase();
-  const cached = volumeCache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) return cached.volume;
+  const cached = await cacheGet<number>(`vol:${cacheKey}`);
+  if (cached !== null) return cached;
 
   const apiKey = process.env.NAVER_API_KEY?.trim();
   const secretKey = process.env.NAVER_SECRET_KEY?.trim();
@@ -343,15 +328,8 @@ async function getSearchVolume(keyword: string): Promise<number> {
       volume = pc + mobile;
     }
 
-    // 캐시 저장 (24시간)
-    volumeCache.set(cacheKey, { volume, expires: Date.now() + VOLUME_CACHE_TTL });
-    // 캐시 크기 제한
-    if (volumeCache.size > 500) {
-      const now = Date.now();
-      for (const [k, v] of volumeCache) {
-        if (v.expires < now) volumeCache.delete(k);
-      }
-    }
+    // 캐시 저장 (24시간, 공유)
+    await cacheSet(`vol:${cacheKey}`, volume, VOLUME_CACHE_TTL_SEC);
 
     return volume;
   } catch {
@@ -378,13 +356,14 @@ export async function POST(request: NextRequest) {
     const denied = await assertBlogResourceAccess(request, String(blogId));
     if (denied) return denied;
 
-    // 캐시 확인
+    // 캐시 확인 (Redis 공유 — 다른 인스턴스/기기가 확인한 결과도 재사용)
     const cacheKey = keyword
-      ? `missing-${blogId}-${postId || ''}-kw-${keyword.trim()}`
-      : `missing-${blogId}-${postId || postTitle.slice(0, 30)}`;
-    const cached = cache.get(cacheKey);
-    if (cached && cached.expires > Date.now()) {
-      return NextResponse.json(cached.data);
+      ? `rank:${blogId}:${postId || ''}:kw:${keyword.trim()}`
+      : `rank:${blogId}:${postId || postTitle.slice(0, 30)}`;
+    const cached = await cacheGet<Record<string, unknown>>(cacheKey);
+    if (cached !== null) {
+      // 캐시 히트는 네이버를 치지 않으므로 클라이언트가 대기 없이 다음 키워드로 넘어갈 수 있다.
+      return NextResponse.json({ ...cached, cached: true });
     }
 
     // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 자동 추출
@@ -433,9 +412,8 @@ export async function POST(request: NextRequest) {
       searchVolume,
     };
 
-    // 캐시 저장
-    cleanCache();
-    cache.set(cacheKey, { data: result, expires: Date.now() + CACHE_TTL });
+    // 캐시 저장 (공유)
+    await cacheSet(cacheKey, result, CACHE_TTL_SEC);
 
     return NextResponse.json(result);
   } catch {

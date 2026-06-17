@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,52 +29,34 @@ interface RankingResult {
   searchVolume?: number;
 }
 
-const STORAGE_PREFIX = 'ninfl_custom_keywords_';
-const RANKING_STORAGE_PREFIX = 'ninfl_ranking_results_';
+const STATE_API = '/api/my/keyword-ranking-state';
 
-// 키워드 저장: postId → 키워드 배열
-function loadCustomKeywords(blogId: string): Record<string, string[]> {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${blogId}`);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // 이전 형식(string) 호환
-      const result: Record<string, string[]> = {};
-      for (const [k, v] of Object.entries(parsed)) {
-        result[k] = Array.isArray(v) ? v as string[] : [v as string];
-      }
-      return result;
-    }
-  } catch { /* ignore */ }
-  return {};
+// 서버(DB)에서 저장된 키워드/순위 상태를 복원한다. (기기 간 동기화의 핵심)
+async function fetchRankingState(blogId: string): Promise<{
+  postKeywords: Record<string, string[]>;
+  rankingResults: Record<string, RankingResult>;
+}> {
+  const res = await fetch(`${STATE_API}?blogId=${encodeURIComponent(blogId)}`);
+  if (!res.ok) throw new Error('상태 로드 실패');
+  return res.json();
 }
 
-function saveCustomKeywords(blogId: string, data: Record<string, string[]>): void {
-  try {
-    localStorage.setItem(`${STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
-  } catch { /* ignore */ }
+// 포스트별 키워드 할당을 DB에 저장 (제거된 키워드 삭제 포함)
+function saveKeywordsToDb(blogId: string, postId: string, keywords: string[]): void {
+  fetch(STATE_API, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blogId, postId, keywords }),
+  }).catch(() => { /* 낙관적 UI — 실패는 다음 동작에서 재시도됨 */ });
 }
 
-// 순위 결과: "postId::keyword" → RankingResult
-function loadRankingResults(blogId: string): Record<string, RankingResult> {
-  try {
-    const raw = localStorage.getItem(`${RANKING_STORAGE_PREFIX}${blogId}`);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return {};
-}
-
-function saveRankingResults(blogId: string, data: Record<string, RankingResult>): void {
-  try {
-    // 최대 500개 키워드만 보관 (오래된 것 제거)
-    const entries = Object.entries(data);
-    if (entries.length > 500) {
-      const trimmed = Object.fromEntries(entries.slice(-500));
-      localStorage.setItem(`${RANKING_STORAGE_PREFIX}${blogId}`, JSON.stringify(trimmed));
-    } else {
-      localStorage.setItem(`${RANKING_STORAGE_PREFIX}${blogId}`, JSON.stringify(data));
-    }
-  } catch { /* ignore */ }
+// 단일 (post, keyword) 순위 결과를 DB에 갱신
+function saveRankResultToDb(blogId: string, postId: string, keyword: string, result: RankingResult): void {
+  fetch(STATE_API, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blogId, postId, keyword, result }),
+  }).catch(() => { /* ignore */ });
 }
 
 function rankKey(postId: string, keyword: string): string {
@@ -278,20 +261,19 @@ export default function KeywordRankingPage() {
         return updated;
       });
 
-      // 저장된 키워드 전부 삭제
+      // 저장된 키워드 전부 삭제 (로컬 상태)
       setPostKeywords({});
-      saveCustomKeywords(profile.blogId, {});
-
-      // 2. 모든 순위 결과 초기화
+      // 2. 모든 순위 결과 초기화 (로컬 상태)
       setRankingResults({});
-      saveRankingResults(profile.blogId, {});
 
-      // 3. 백엔드에서 저장된 키워드도 삭제 요청
-      // 저장된 검색 키워드 테이블의 해당 사용자 키워드 모두 삭제
-      const response = await fetch('/api/my/saved-keywords?all=true', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-      }).catch(() => null);
+      // 3. DB: 키워드순위 상태 + 저장된 검색 키워드 테이블 모두 초기화
+      await Promise.all([
+        fetch(`${STATE_API}?all=true`, { method: 'DELETE' }).catch(() => null),
+        fetch('/api/my/saved-keywords?all=true', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        }).catch(() => null),
+      ]);
 
       showError('모든 키워드와 순위 데이터가 초기화되었습니다.', 3000);
     } catch (err) {
@@ -309,9 +291,8 @@ export default function KeywordRankingPage() {
     const updated = { ...postKeywords };
     delete updated[postId];
     setPostKeywords(updated);
-    saveCustomKeywords(profile.blogId, updated);
 
-    // 해당 포스팅의 순위 결과도 삭제
+    // 해당 포스팅의 순위 결과도 로컬에서 제거
     const newResults = { ...rankingResults };
     for (const key of Object.keys(newResults)) {
       if (key.startsWith(`${postId}::`)) {
@@ -319,7 +300,9 @@ export default function KeywordRankingPage() {
       }
     }
     setRankingResults(newResults);
-    saveRankingResults(profile.blogId, newResults);
+
+    // DB: 빈 키워드 목록 저장 = 해당 포스트의 모든 행(키워드+순위) 삭제
+    saveKeywordsToDb(profile.blogId, postId, []);
 
     showError('포스팅의 키워드가 초기화되었습니다.', 3000);
   };
@@ -344,14 +327,25 @@ export default function KeywordRankingPage() {
       setProfile(p);
       if (p?.blogId) {
         await fetchBlogPosts(p.blogId, 1);
-        const saved = loadCustomKeywords(p.blogId);
-        setPostKeywords(saved);
-        const savedResults = loadRankingResults(p.blogId);
-        setRankingResults(savedResults);
       }
       setLoading(false);
     })();
   }, [fetchBlogPosts]);
+
+  // DB에서 저장된 키워드/순위 상태 복원 (기기 간 동기화). staleTime으로 재방문 시 재요청 최소화.
+  const { data: syncedState } = useQuery({
+    queryKey: ['keyword-ranking-state', profile?.blogId],
+    queryFn: () => fetchRankingState(profile!.blogId),
+    enabled: !!profile?.blogId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (syncedState) {
+      setPostKeywords(syncedState.postKeywords);
+      setRankingResults(syncedState.rankingResults);
+    }
+  }, [syncedState]);
 
   // 포스트 로드 시 키워드 초기화 (저장된 키워드 있으면 사용, 없으면 빈 입력 1개)
   useEffect(() => {
@@ -379,9 +373,8 @@ export default function KeywordRankingPage() {
     if (!profile) return;
     const kws = (editingKeywords[postId] || []).map(k => k.trim()).filter(Boolean);
     if (kws.length > 0) {
-      const updated = { ...postKeywords, [postId]: kws };
-      setPostKeywords(updated);
-      saveCustomKeywords(profile.blogId, updated);
+      setPostKeywords(prev => ({ ...prev, [postId]: kws }));
+      saveKeywordsToDb(profile.blogId, postId, kws);
     }
   };
 
@@ -404,8 +397,8 @@ export default function KeywordRankingPage() {
     setTimeout(() => handleKeywordSave(postId), 0);
   };
 
-  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number }> => {
-    if (!profile || !keyword.trim()) return { ok: false, status: 0 };
+  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean }> => {
+    if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false };
     const key = rankKey(post.id, keyword.trim());
     setCheckingKey(key);
     try {
@@ -421,12 +414,10 @@ export default function KeywordRankingPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setRankingResults(prev => {
-          const updated = { ...prev, [key]: data };
-          if (profile) saveRankingResults(profile.blogId, updated);
-          return updated;
-        });
-        // 저장된 키워드라면 최신 순위 캐시도 갱신 (실패 무시)
+        setRankingResults(prev => ({ ...prev, [key]: data }));
+        // DB에 순위 결과 갱신 (기기 간 동기화)
+        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), data);
+        // 저장된 키워드라면 saved_search_keywords 최신 순위 캐시도 갱신 (실패 무시)
         fetch('/api/my/saved-keywords', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -439,17 +430,17 @@ export default function KeywordRankingPage() {
             post_id: post.id,
           }),
         }).catch(() => { /* ignore */ });
-        return { ok: true, status: res.status };
+        return { ok: true, status: res.status, cached: data?.cached === true };
       }
       if (res.status === 429) {
         showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
       } else {
         showError(`순위 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`);
       }
-      return { ok: false, status: res.status };
+      return { ok: false, status: res.status, cached: false };
     } catch {
       showError('네트워크 오류로 순위를 확인하지 못했습니다.');
-      return { ok: false, status: 0 };
+      return { ok: false, status: 0, cached: false };
     } finally { setCheckingKey(''); }
   };
 
@@ -477,7 +468,8 @@ export default function KeywordRankingPage() {
         showError(`요청 한도 초과로 ${i + 1}/${pairs.length}에서 중단했습니다. 5분 후 다시 시도해주세요.`, 8000);
         break;
       }
-      if (i < pairs.length - 1) {
+      // 캐시 히트는 네이버를 치지 않았으므로 대기 불필요 → 재조회 시 거의 즉시 완료
+      if (i < pairs.length - 1 && !r.cached) {
         await new Promise(r => setTimeout(r, 7000));
       }
     }
