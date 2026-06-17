@@ -847,7 +847,7 @@ function GuestDashboard() {
           <div className="space-y-1.5">
             <h1 className="font-title text-lg lg:text-xl font-bold text-text">내 대시보드</h1>
             <p className="text-sm text-dim leading-relaxed">
-              로그인하시면 본인의 키워드 순위 및 최신 데이터를 저장하고 동기화할 수 있습니다.
+              로그인하시면 본인의 작업 데이터를 저장하고 다른 기기에서도 이어서 작업할 수 있습니다.
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
