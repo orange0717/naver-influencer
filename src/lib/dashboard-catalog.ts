@@ -194,7 +194,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'ai-briefing-geo',
     category: 'research',
-    title: 'AI 브리핑 GEO/AEO 확인',
+    title: 'AI 검색최적화',
     description: '내 콘텐츠가 생성형 AI 검색(GEO)·답변 엔진(AEO)에 어떻게 노출되는지 분석 — 현재 개발 중입니다.',
     href: '#',
     devPreview: true,

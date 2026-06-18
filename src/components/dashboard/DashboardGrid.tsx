@@ -294,13 +294,15 @@ export default function DashboardGrid({
       </section>
       ) : (
       <section className="scroll-mt-28 pt-6 border-t border-border">
-        <div className="rounded-2xl border border-dashed border-border bg-surface/50 p-8 lg:p-12 text-center flex flex-col items-center gap-4">
-          <p className="text-sm lg:text-base text-text font-semibold">로그인 후 이용 가능한 서비스입니다.</p>
+        <div className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 lg:px-5 lg:py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <p className="flex-1 text-xs lg:text-sm text-text leading-relaxed">
+            지금은 <span className="font-bold text-accent">미리보기 화면</span>이에요. 로그인하면 내 블로그 데이터로 채워집니다.
+          </p>
           <Link
             href="/auth/login"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold hover:bg-accent-hover transition-colors"
+            className="shrink-0 inline-flex items-center justify-center px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl bg-accent text-white text-xs lg:text-sm font-bold hover:bg-accent-hover transition-colors"
           >
-            로그인하기
+            3초 만에 시작하기
           </Link>
         </div>
       </section>
