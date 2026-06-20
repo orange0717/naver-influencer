@@ -154,6 +154,7 @@ export default function AppCard({
   const router = useRouter();
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
   const locked =
+    isLoggedIn &&
     !!app.requiredPlan &&
     PLAN_RANK[currentPlan] < PLAN_RANK[app.requiredPlan] &&
     !(isDemoUser && app.category === 'keyword');

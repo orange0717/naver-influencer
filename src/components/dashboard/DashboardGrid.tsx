@@ -29,6 +29,9 @@ interface Props {
 
 const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
 
+/** 비로그인 미리보기용 샘플 지표 — 방문자가 실제 작동 모습을 체감하도록 빈 값('-'/0) 대신 노출 */
+const DEMO_STATS = { myKeywordCount: 12, myBlogRank: 327 };
+
 function planName(plan: PlanTier): string {
   if (plan === 'influencer') return '인플루언서';
   if (plan === 'blogger') return '예비 인플루언서 +';
@@ -102,10 +105,8 @@ export default function DashboardGrid({
 
   const filterApps = (apps: typeof DASHBOARD_APPS) => {
     let result = apps;
-    if (!isLoggedIn) {
-      // 비로그인: 키워드(유료) + MY(개인 데이터) 카테고리 숨김
-      result = result.filter(app => app.category !== 'keyword' && app.category !== 'my');
-    } else if (isLoggedIn) {
+    // 비로그인: 미리보기 — 모든 카테고리/앱을 잠금 없이 그대로 노출
+    if (isLoggedIn) {
       result = result.filter(app => {
         if (isDemoUser && app.category === 'keyword') return true;
         return !app.requiredPlan || PLAN_RANK[currentPlan] >= PLAN_RANK[app.requiredPlan];
@@ -173,12 +174,16 @@ export default function DashboardGrid({
           <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
             <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">내 블로그 순위</p>
             <p className="text-sm lg:text-xl font-black text-white">
-              {stats.myBlogRank !== null ? `${stats.myBlogRank.toLocaleString()}위` : '-'}
+              {isLoggedIn
+                ? (stats.myBlogRank !== null ? `${stats.myBlogRank.toLocaleString()}위` : '-')
+                : `${DEMO_STATS.myBlogRank.toLocaleString()}위`}
             </p>
           </div>
           <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
             <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">관심 키워드</p>
-            <p className="text-sm lg:text-xl font-black text-white">{stats.myKeywordCount.toLocaleString()}개</p>
+            <p className="text-sm lg:text-xl font-black text-white">
+              {(isLoggedIn ? stats.myKeywordCount : DEMO_STATS.myKeywordCount).toLocaleString()}개
+            </p>
           </div>
           <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
             <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">읽지 않은 공지</p>
