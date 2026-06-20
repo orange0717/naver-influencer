@@ -153,6 +153,7 @@ export default function AppCard({
 }: AppCardProps) {
   const router = useRouter();
   const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
+  // 비로그인 미리보기에서는 유료 잠금 뱃지를 숨겨 모든 카드를 체험 가능한 모습으로 노출
   const locked =
     isLoggedIn &&
     !!app.requiredPlan &&

@@ -126,6 +126,9 @@ export default function DashboardGrid({
 
   const greeting = userName ? `@${userName} 님,` : '반갑습니다,';
 
+  const displayBlogRank = isLoggedIn ? stats.myBlogRank : DEMO_STATS.myBlogRank;
+  const displayKeywordCount = isLoggedIn ? stats.myKeywordCount : DEMO_STATS.myKeywordCount;
+
   return (
     <div className="flex flex-col gap-8">
       {/* ── 베타 안내 배너 ── */}
@@ -174,16 +177,12 @@ export default function DashboardGrid({
           <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
             <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">내 블로그 순위</p>
             <p className="text-sm lg:text-xl font-black text-white">
-              {isLoggedIn
-                ? (stats.myBlogRank !== null ? `${stats.myBlogRank.toLocaleString()}위` : '-')
-                : `${DEMO_STATS.myBlogRank.toLocaleString()}위`}
+              {displayBlogRank !== null ? `${displayBlogRank.toLocaleString()}위` : '-'}
             </p>
           </div>
           <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
             <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">관심 키워드</p>
-            <p className="text-sm lg:text-xl font-black text-white">
-              {(isLoggedIn ? stats.myKeywordCount : DEMO_STATS.myKeywordCount).toLocaleString()}개
-            </p>
+            <p className="text-sm lg:text-xl font-black text-white">{displayKeywordCount.toLocaleString()}개</p>
           </div>
           <div className="bg-white/15 border border-white/25 rounded-xl p-3 lg:p-4">
             <p className="text-[10px] lg:text-xs text-white/80 font-semibold mb-0.5 lg:mb-1">읽지 않은 공지</p>
