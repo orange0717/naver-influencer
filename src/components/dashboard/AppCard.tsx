@@ -208,37 +208,39 @@ export default function AppCard({
             </span>
           )}
         </div>
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggleFavorite(app.id);
-          }}
-          onKeyDown={e => {
-            if (e.key === 'Enter' || e.key === ' ') {
+        {isLoggedIn && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={e => {
               e.preventDefault();
               e.stopPropagation();
               onToggleFavorite(app.id);
-            }
-          }}
-          aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-          className="p-1 -mr-1 -mt-1 rounded-full text-dim hover:text-accent hover:bg-accent/5 transition-colors cursor-pointer shrink-0"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill={isFavorite ? 'currentColor' : 'none'}
-            stroke="currentColor"
-            strokeWidth="2"
-            className={isFavorite ? 'text-accent' : ''}
-            aria-hidden="true"
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleFavorite(app.id);
+              }
+            }}
+            aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+            className="p-1 -mr-1 -mt-1 rounded-full text-dim hover:text-accent hover:bg-accent/5 transition-colors cursor-pointer shrink-0"
           >
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-        </span>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill={isFavorite ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              strokeWidth="2"
+              className={isFavorite ? 'text-accent' : ''}
+              aria-hidden="true"
+            >
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </span>
+        )}
       </div>
 
       {/* 제목 (설명은 모달로 이전) */}
