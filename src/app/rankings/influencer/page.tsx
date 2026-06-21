@@ -6,14 +6,5 @@ export const metadata = {
 };
 
 export default function InfluencerRankingPage() {
-  return (
-    <>
-      <div className="max-w-3xl mx-auto px-4 pt-6">
-        <div className="bg-accent/10 border border-accent/30 rounded-xl px-4 py-3 text-sm text-accent font-semibold text-center">
-          개발 중
-        </div>
-      </div>
-      <InfluencerRankingView />
-    </>
-  );
+  return <InfluencerRankingView />;
 }
