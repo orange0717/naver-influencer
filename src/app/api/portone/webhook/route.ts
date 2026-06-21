@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/portone';
 import { createServiceClient } from '@/lib/supabase-server';
-import { PAYMENT_ID_REGEX } from '@/lib/billing';
+import { PAYMENT_ID_REGEX, completeBillingKeyIssue } from '@/lib/billing';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,10 +94,39 @@ export async function POST(req: NextRequest) {
         }
         break;
       }
-      // Transaction.Paid 는 chargePlan() 흐름에서 이미 동기 처리됨 — 로깅만.
-      case 'Transaction.Paid':
-        console.log('[PortOne webhook] Paid:', payload.data?.paymentId);
+      // Transaction.Paid: 정상 흐름(chargePlan / billing-complete 콜백)에서 이미 동기 처리되지만,
+      // 클라이언트가 complete 콜백을 보내기 전에 브라우저가 닫히면 구독이 미활성으로 남는다.
+      // 웹훅을 멱등 fallback 으로 사용해 결제 미반영을 막는다. completeBillingKeyIssue 는
+      // payment_id UNIQUE + 기존 구독 정리로 멱등하며, 내부에서 PortOne PAID 를 재확인한다.
+      case 'Transaction.Paid': {
+        const pid = payload.data?.paymentId;
+        console.log('[PortOne webhook] Paid:', pid);
+        if (pid && PAYMENT_ID_REGEX.test(pid)) {
+          const { data: existingTx } = await supa
+            .from('payment_transactions')
+            .select('id')
+            .eq('payment_id', pid)
+            .eq('status', 'PAID')
+            .maybeSingle();
+          if (!existingTx) {
+            const { data: intent } = await supa
+              .from('payment_intents')
+              .select('user_id, plan_key')
+              .eq('payment_id', pid)
+              .maybeSingle();
+            if (intent?.user_id && intent?.plan_key) {
+              const r = await completeBillingKeyIssue({
+                userId: intent.user_id,
+                paymentId: pid,
+                planKey: intent.plan_key,
+              });
+              if (!r.ok) console.error('[PortOne webhook] fallback activation failed:', pid, r.error);
+              else console.log('[PortOne webhook] fallback activated subscription:', pid);
+            }
+          }
+        }
         break;
+      }
       default:
         console.log('[PortOne webhook] unhandled event:', type);
     }

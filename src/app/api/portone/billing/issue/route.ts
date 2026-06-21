@@ -8,6 +8,7 @@ import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-se
 import { preparePortoneIssue } from '@/lib/billing';
 import { getPlan } from '@/lib/payment-config';
 import { isAdmin } from '@/lib/admin';
+import { paymentLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,10 @@ const ADMIN_ONLY_PLANS = new Set(['TEST_PAYMENT_100']);
 
 export async function POST(req: NextRequest) {
   try {
+    if (await paymentLimiter.check(`payment-issue:${getClientIp(req)}`)) {
+      return rateLimitResponse();
+    }
+
     const { planKey } = (await req.json()) as { planKey?: string };
     if (!planKey || !getPlan(planKey)) {
       return NextResponse.json({ error: '유효하지 않은 플랜입니다.' }, { status: 400 });

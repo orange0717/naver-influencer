@@ -9,11 +9,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@/lib/supabase-server';
 import { completeBillingKeyIssue } from '@/lib/billing';
 import { getPlan } from '@/lib/payment-config';
+import { paymentLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    if (await paymentLimiter.check(`payment-complete:${getClientIp(req)}`)) {
+      return rateLimitResponse();
+    }
+
     const { paymentId, planKey } = (await req.json()) as { paymentId?: string; planKey?: string };
     if (!paymentId || !planKey) {
       return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 });

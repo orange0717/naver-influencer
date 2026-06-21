@@ -243,6 +243,8 @@ export default function BloggerDashboard() {
   const [blogPostsLoading, setBlogPostsLoading] = useState(false);
   const [postsPerPage, setPostsPerPage] = useState(10);
   const [missingResults, setMissingResults] = useState<Record<string, MissingResult>>({});
+  // 키워드순위 결과 (postId::keyword) — DB(keyword_rank_lookups)에서 복원, blogScoreCalc 합산용
+  const [kwRankingResults, setKwRankingResults] = useState<Record<string, MissingResult>>({});
   const [checkingMissing, setCheckingMissing] = useState<string>('');
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
@@ -377,7 +379,7 @@ export default function BloggerDashboard() {
   }, [profile, fetchScoreData]);
 
   useEffect(() => {
-    getProfileFromApi().then(p => {
+    getProfileFromApi().then(async p => {
       if (!p) {
         // 프로필 조회 실패 시 에러 표시 (무한 리다이렉트 방지)
         const hasSession = document.cookie.includes('sb-') || localStorage.getItem('sb-') !== null;
@@ -402,41 +404,36 @@ export default function BloggerDashboard() {
         }
       }
       setProfile(p);
-      // 키워드순위 페이지의 결과 불러오기 (postId::keyword → postId별 최고 순위)
+      // 키워드순위 결과를 DB에서 불러오기 (postId::keyword → postId별 최고 순위)
       try {
-        const savedRankings = localStorage.getItem(`ninfl_ranking_results_${p.blogId}`);
-        if (savedRankings) {
-          const parsed = JSON.parse(savedRankings);
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            const byPost: Record<string, MissingResult> = {};
-            for (const [key, result] of Object.entries(parsed)) {
-              const r = result as MissingResult;
-              if (!r || !r.viewTab || !r.blogTab) continue;
-              const postId = key.includes('::') ? key.split('::')[0] : key;
-              const existing = byPost[postId];
-              if (!existing) {
-                byPost[postId] = { ...r };
-              } else {
-                if (r.viewTab.exposed && (!existing.viewTab.exposed || (r.viewTab.rank && existing.viewTab.rank && r.viewTab.rank < existing.viewTab.rank))) {
-                  existing.viewTab = r.viewTab;
-                }
-                if (r.blogTab.exposed && (!existing.blogTab.exposed || (r.blogTab.rank && existing.blogTab.rank && r.blogTab.rank < existing.blogTab.rank))) {
-                  existing.blogTab = r.blogTab;
-                }
-                if (r.searchVolume && (!existing.searchVolume || r.searchVolume > existing.searchVolume)) {
-                  existing.searchVolume = r.searchVolume;
-                }
+        const res = await fetch(`/api/my/keyword-ranking-state?blogId=${encodeURIComponent(p.blogId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const parsed = (data?.rankingResults ?? {}) as Record<string, MissingResult>;
+          setKwRankingResults(parsed);
+          const byPost: Record<string, MissingResult> = {};
+          for (const [key, result] of Object.entries(parsed)) {
+            const r = result as MissingResult;
+            if (!r || !r.viewTab || !r.blogTab) continue;
+            const postId = key.includes('::') ? key.split('::')[0] : key;
+            const existing = byPost[postId];
+            if (!existing) {
+              byPost[postId] = { ...r };
+            } else {
+              if (r.viewTab.exposed && (!existing.viewTab.exposed || (r.viewTab.rank && existing.viewTab.rank && r.viewTab.rank < existing.viewTab.rank))) {
+                existing.viewTab = r.viewTab;
+              }
+              if (r.blogTab.exposed && (!existing.blogTab.exposed || (r.blogTab.rank && existing.blogTab.rank && r.blogTab.rank < existing.blogTab.rank))) {
+                existing.blogTab = r.blogTab;
+              }
+              if (r.searchVolume && (!existing.searchVolume || r.searchVolume > existing.searchVolume)) {
+                existing.searchVolume = r.searchVolume;
               }
             }
-            setMissingResults(prev => ({ ...byPost, ...prev }));
-          } else {
-            localStorage.removeItem(`ninfl_ranking_results_${p.blogId}`);
           }
+          setMissingResults(prev => ({ ...byPost, ...prev }));
         }
-      } catch {
-        // 손상된 캐시 자동 삭제
-        if (p.blogId) localStorage.removeItem(`ninfl_ranking_results_${p.blogId}`);
-      }
+      } catch { /* ignore */ }
       fetchBlogPosts(p.blogId, 1);
       fetchAllBlogPosts(p.blogId);
       fetchScoreData(p.blogId);
@@ -539,18 +536,8 @@ export default function BloggerDashboard() {
     const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     const publicPosts = posts.filter(p => p.isPublic !== false);
 
-    // 키워드 레벨 결과 가져오기 (postId::keyword 형식)
-    let kwResults: Record<string, MissingResult> = {};
-    try {
-      const blogId = profile?.blogId;
-      if (blogId) {
-        const raw = localStorage.getItem(`ninfl_ranking_results_${blogId}`);
-        if (raw) kwResults = JSON.parse(raw);
-      }
-    } catch { /* ignore */ }
-
-    // 키워드 레벨 데이터가 있으면 모든 키워드 합산
-    const kwEntries = Object.entries(kwResults);
+    // 키워드 레벨 결과 (postId::keyword 형식) — DB에서 복원된 state 사용
+    const kwEntries = Object.entries(kwRankingResults);
     const hasKwData = kwEntries.length > 0;
 
     // 포스트 레벨 데이터도 확인
@@ -604,7 +591,7 @@ export default function BloggerDashboard() {
       totalKeywords,
       hasData: true,
     };
-  }, [profile?.blogId, allBlogPosts, blogPosts, missingResults]);
+  }, [profile?.blogId, allBlogPosts, blogPosts, missingResults, kwRankingResults]);
 
   const totalScore = blogScoreCalc.hasData ? blogScoreCalc.score : (scoreData?.total_score || 0);
 
