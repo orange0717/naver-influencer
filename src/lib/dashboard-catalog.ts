@@ -164,6 +164,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '인플루언서 리스트',
     description: '네이버 인플루언서 전체 목록·검색·필터',
     href: '/influencers',
+    requiredPlan: 'influencer',
   },
   {
     id: 'rankings-influencer',
