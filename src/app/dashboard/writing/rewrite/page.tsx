@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
-import { getPaywallContext } from '@/lib/admin';
+import { createRouteHandlerClient, getUserWithTimeout, createServiceClient } from '@/lib/supabase-server';
+import { isAdmin } from '@/lib/admin';
 import RewriteClient from './RewriteClient';
 
 export const dynamic = 'force-dynamic';
@@ -31,9 +31,20 @@ export default async function RewritePage() {
     );
   }
 
-  const ctx = await getPaywallContext(authUser.id, authUser.email);
-  const allowed = ctx.isAdminUser || ctx.hasActivePaidPlan;
-  if (!allowed) redirect('/subscribe?highlight=blogger');
+  if (!isAdmin(authUser.id)) {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('users')
+      .select('subscription_plan, subscription_expires_at')
+      .eq('auth_id', authUser.id)
+      .single();
+    const expires = data?.subscription_expires_at;
+    const isInfluencer =
+      data?.subscription_plan === 'INFLUENCER' &&
+      !!expires &&
+      new Date(expires).getTime() > Date.now();
+    if (!isInfluencer) redirect('/subscribe?required=influencer');
+  }
 
   return <RewriteClient />;
 }
