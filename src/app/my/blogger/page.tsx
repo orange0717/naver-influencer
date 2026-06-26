@@ -469,9 +469,10 @@ export default function BloggerDashboard() {
     finally { setCheckingMissing(''); }
   };
 
-  const checkAllMissing = async () => {
-    const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-    if (!profile || posts.length === 0) return;
+  const checkMissingForCount = async (count: number) => {
+    const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    if (!profile || all.length === 0) return;
+    const posts = count === 0 ? all : all.slice(0, count);
     setCheckingAll(true);
     setCheckProgress({ current: 0, total: posts.length });
     for (let i = 0; i < posts.length; i++) {
@@ -481,9 +482,10 @@ export default function BloggerDashboard() {
     }
     setCheckingAll(false);
     setCheckProgress({ current: 0, total: 0 });
-    // 상위노출 확률을 서버에 저장
     saveScoreToServer();
   };
+
+  const checkAllMissing = () => checkMissingForCount(0);
 
   const downloadPostsCsv = () => {
     if (!profile) return;
@@ -817,7 +819,12 @@ export default function BloggerDashboard() {
             <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>
             <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
               {[10, 30, 60, 90, 180].map(n => (
-                <button key={n} onClick={() => { setPostsPerPage(n); setBlogPostsPage(1); if (profile) fetchBlogPosts(profile.blogId, 1); }}
+                <button key={n} onClick={() => {
+                  setPostsPerPage(n);
+                  setBlogPostsPage(1);
+                  if (profile) fetchBlogPosts(profile.blogId, 1);
+                  if (!checkingAll) checkMissingForCount(n);
+                }}
                   className={`px-2.5 py-1 font-semibold transition cursor-pointer ${postsPerPage === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
                   {n}개
                 </button>
