@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 
 interface KeywordResult {
   keyword: string;
@@ -192,9 +193,20 @@ export default function BloggerKeywordsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="text-xl font-extrabold">키워드 검색</h1>
-        <p className="text-xs text-dim">네이버 검색 키워드의 검색량을 분석합니다</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-xl font-extrabold">키워드 검색</h1>
+          <p className="text-xs text-dim">네이버 검색 키워드의 검색량을 분석합니다</p>
+        </div>
+        <Link
+          href="/keywords/bulk"
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-accent text-accent hover:bg-accent hover:text-white transition-colors"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+          </svg>
+          대량 키워드 조회
+        </Link>
       </div>
 
       {/* 검색창 */}
