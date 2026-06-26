@@ -3,7 +3,7 @@ import { createRouteHandlerClient, getUserWithTimeout, createServiceClient } fro
 
 export const dynamic = 'force-dynamic';
 
-export default async function RankingsLayout({
+export default async function BulkKeywordsLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -15,7 +15,6 @@ export default async function RankingsLayout({
     redirect('/auth/login');
   }
 
-  // 관리자 우회
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('users')

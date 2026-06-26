@@ -207,6 +207,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     description: '내 콘텐츠가 네이버 AI 브리핑(생성형 검색 답변)에 어떻게 인용·노출되는지 분석 — 현재 개발 중입니다.',
     href: '#',
     devPreview: true,
+    requiredPlan: 'influencer',
   },
 
   // ── 키워드 ──
@@ -216,6 +217,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '키워드 검색',
     description: '블로그·검색량·경쟁도 기반 키워드 조사 (정렬·저장 키워드 지원)',
     href: '/keywords/blogger',
+  },
+  {
+    id: 'keywords-bulk',
+    category: 'keyword',
+    title: '대량 키워드 조회',
+    description: '여러 키워드의 검색량을 한번에 분석 — 최대 100개, CSV 다운로드',
+    href: '/keywords/bulk',
+    requiredPlan: 'influencer',
   },
   {
     id: 'keywords-blog-ranking',

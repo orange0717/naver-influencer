@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
-import { checkToolAnonQuota } from '@/lib/anon-quota';
+import { requireInfluencerPlan } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_KEYWORDS = 100;
 const BATCH_SIZE = 5;
-const ANON_DAILY_LIMIT = 50;
 
 function generateSignature(timestamp: string, method: string, path: string, secretKey: string): string {
   const message = `${timestamp}.${method}.${path}`;
@@ -96,6 +95,10 @@ async function fetchBatch(
 }
 
 export async function POST(request: NextRequest) {
+  // 인플루언서 플랜 이상 필수
+  const auth = await requireInfluencerPlan(request);
+  if (auth.error) return auth.error;
+
   let body: { keywords?: unknown };
   try {
     body = await request.json();
@@ -115,18 +118,6 @@ export async function POST(request: NextRequest) {
 
   if (keywords.length === 0) {
     return NextResponse.json({ error: '유효한 키워드가 없습니다.' }, { status: 400 });
-  }
-
-  // 비회원 일일 호출 캡 — 키워드 개수만큼 차감
-  const quota = await checkToolAnonQuota(request, 'bulk-search-volume', ANON_DAILY_LIMIT);
-  if (!quota.allowed) {
-    return NextResponse.json(
-      {
-        error: `오늘 대량 조회 한도(${ANON_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 시도해 주세요.`,
-        limitExceeded: true,
-      },
-      { status: 429 },
-    );
   }
 
   const apiKey = process.env.NAVER_API_KEY?.trim();
