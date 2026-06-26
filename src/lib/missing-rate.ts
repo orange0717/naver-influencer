@@ -10,12 +10,16 @@ export interface PostLike {
 
 export type MissingResultsMap = Record<string, MissingState>;
 
-// 누락 정의: 통합검색 OR 블로그탭 둘 중 하나라도 미노출
-// 미검사 포스트(결과 없음)는 누락으로 카운트하지 않음
+// 누락 정의: 통합검색 OR 블로그탭 중 하나라도 명시적으로 미노출(false)
+// exposed=null(미검사·DB 미반환)은 "알 수 없음"으로 처리해 누락으로 카운트하지 않음
 export function isPostMissing(post: PostLike, results: MissingResultsMap): boolean {
   const mr = results[post.id];
   if (!mr) return false;
-  return !mr.viewTab.exposed || !mr.blogTab.exposed;
+  const viewExp = mr.viewTab.exposed as boolean | null;
+  const blogExp = mr.blogTab.exposed as boolean | null;
+  // 둘 다 null이면 아직 확인 전 → 누락 아님
+  if (viewExp === null && blogExp === null) return false;
+  return viewExp === false || blogExp === false;
 }
 
 export function filterMissing<T extends PostLike>(posts: T[], results: MissingResultsMap): T[] {
