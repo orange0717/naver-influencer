@@ -271,6 +271,15 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'blogger',
     authOnly: true,
   },
+  {
+    id: 'writing-rewrite',
+    category: 'writing',
+    title: '리라이팅',
+    description: '교정·교열·윤문 후 다른 표현으로 글을 새롭게 재작성 — 자연스럽게·격식체·간결하게 3가지 스타일',
+    href: '/dashboard/writing/rewrite',
+    requiredPlan: 'blogger',
+    authOnly: true,
+  },
   // ── 추천 서비스 ──
   {
     id: 'orangelibrary',
