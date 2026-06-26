@@ -8,7 +8,7 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
-import { filterMissing, calculateMissingRate } from '@/lib/missing-rate';
+import { filterMissing, calculateMissingRate, countMissing } from '@/lib/missing-rate';
 
 interface BloggerProfile {
   blogId: string;
@@ -623,6 +623,31 @@ export default function BloggerDashboard() {
     [currentViewList, missingResults]
   );
 
+  // ══════════════════════════════════════════════════════════
+  // 누락율 슬라이스 선택 (최신 N개 기준)
+  // ══════════════════════════════════════════════════════════
+  const [missingRateSlice, setMissingRateSlice] = useState<10 | 30 | 60 | 180 | 0>(10);
+
+  const missingRateSlicePosts = useMemo(() => {
+    const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
+    return missingRateSlice === 0 ? posts : posts.slice(0, missingRateSlice);
+  }, [allBlogPosts, blogPosts, missingRateSlice]);
+
+  const missingCountForSlice = useMemo(
+    () => countMissing(missingRateSlicePosts, missingResults),
+    [missingRateSlicePosts, missingResults]
+  );
+
+  const checkedCountForSlice = useMemo(
+    () => missingRateSlicePosts.filter(p => missingResults[p.id]).length,
+    [missingRateSlicePosts, missingResults]
+  );
+
+  const missingRateForSlice = useMemo(() => {
+    if (checkedCountForSlice === 0) return 0;
+    return Math.round((missingCountForSlice / checkedCountForSlice) * 100);
+  }, [missingCountForSlice, checkedCountForSlice]);
+
   useEffect(() => {
     latestScoresRef.current = { total: totalScore, scores: [0, 0, 0, 0, 0, 0], grade: '' };
   }, [totalScore]);
@@ -752,7 +777,31 @@ export default function BloggerDashboard() {
         {/* 2행: 순위 + 누락율 */}
         <AnimatedStatCard label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.viewExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.viewExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={250} />
         <AnimatedStatCard label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.blogExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.blogExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={300} />
-        <AnimatedStatCard label="누락율" value={missingRateInView} suffix="%" placeholder={currentViewList.length === 0 ? '—' : undefined} description={currentViewList.length > 0 ? `${currentViewList.length}개 중 ${missingInView.length}개 누락` : '포스트 목록 로딩중'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>} color={currentViewList.length === 0 ? 'dim' : missingRateInView <= 30 ? 'up' : missingRateInView <= 60 ? 'accent' : 'down'} delay={350} />
+        {/* 누락율 — 슬라이스 탭 */}
+        <div className={`bg-surface rounded-2xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-500 ease-out`}>
+          <div className="flex items-start justify-between mb-2">
+            <div className="w-8 h-8 rounded-xl bg-down/10 text-down flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+          </div>
+          <p className="text-[11px] text-dim mb-1">누락율</p>
+          <div className="flex rounded-md border border-border overflow-hidden text-[10px] mb-2">
+            {([10, 30, 60, 180, 0] as const).map(n => (
+              <button key={n} onClick={() => setMissingRateSlice(n)}
+                className={`flex-1 py-0.5 font-semibold transition cursor-pointer ${missingRateSlice === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
+                {n === 0 ? '전체' : `${n}개`}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className={`text-2xl font-black font-rank ${checkedCountForSlice === 0 ? 'text-dim' : missingRateForSlice <= 30 ? 'text-up' : missingRateForSlice <= 60 ? 'text-accent' : 'text-down'}`}>
+              {checkedCountForSlice === 0 ? '—' : `${missingRateForSlice}%`}
+            </span>
+          </div>
+          <p className="text-[10px] text-dim/60 mt-0.5">
+            {checkedCountForSlice === 0 ? '누락 확인 후 표시' : `검사 ${checkedCountForSlice}개 중 ${missingCountForSlice}개 누락`}
+          </p>
+        </div>
         <AnimatedStatCard label="전체 순위" value={0} placeholder="개발중" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} color="dim" delay={400} />
         <AnimatedStatCard label={`${category} 순위`} value={0} placeholder="개발중" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>} color="dim" delay={450} />
       </div>

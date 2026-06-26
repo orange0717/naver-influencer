@@ -381,24 +381,40 @@ export async function POST(request: NextRequest) {
       checkViewTab(query, blogId, postId || ''),
     ]);
 
-    // 폴백: 사용자 키워드가 아닌 경우에만 원본 제목으로 재검색
-    if (!keyword && !blogTab.exposed && !viewTab.exposed) {
-      let fallbackQuery = postTitle;
-      // displayName만 제거한 원본에 가까운 제목
-      if (displayName && displayName.length >= 2) {
-        fallbackQuery = fallbackQuery.replace(new RegExp(displayName, 'gi'), ' ');
-      }
-      fallbackQuery = fallbackQuery.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-      // 30자 이내로 제한
-      if (fallbackQuery.length > 30) fallbackQuery = fallbackQuery.slice(0, 30);
+    // 폴백: 사용자 키워드가 아닌 경우 여러 쿼리 조합으로 재시도
+    if (!keyword && (!blogTab.exposed || !viewTab.exposed)) {
+      // 원본 제목에서 추가 후보 쿼리 생성
+      const fallbackCandidates: string[] = [];
 
-      if (fallbackQuery !== query && fallbackQuery.length >= 4) {
+      // 후보 1: 단어 2개 (가장 긴 단어 2개 조합 — 더 구체적)
+      let cleaned = postTitle;
+      if (displayName && displayName.length >= 2) {
+        cleaned = cleaned.replace(new RegExp(displayName, 'gi'), ' ');
+      }
+      cleaned = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+      const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
+      const words2 = cleaned.split(/\s+/).filter((w: string) => w.length >= 2 && !stop.has(w) && !/^\d+$/.test(w));
+      const byLength = [...words2].sort((a, b) => b.length - a.length);
+      if (byLength.length >= 2) fallbackCandidates.push(byLength.slice(0, 2).join(' '));
+      if (byLength.length >= 1) fallbackCandidates.push(byLength[0]);
+
+      // 후보 2: 원본 제목 앞 30자
+      const rawTitle = postTitle.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+      if (rawTitle.length >= 4 && rawTitle !== query) {
+        fallbackCandidates.push(rawTitle.length > 30 ? rawTitle.slice(0, 30) : rawTitle);
+      }
+
+      for (const fb of fallbackCandidates) {
+        if (fb === query || fb.length < 2) continue;
+        if (blogTab.exposed && viewTab.exposed) break;
         const [fbBlog, fbView] = await Promise.all([
-          checkBlogTab(fallbackQuery, blogId, postId || ''),
-          checkViewTab(fallbackQuery, blogId, postId || ''),
+          !blogTab.exposed ? checkBlogTab(fb, blogId, postId || '') : Promise.resolve(blogTab),
+          !viewTab.exposed ? checkViewTab(fb, blogId, postId || '') : Promise.resolve(viewTab),
         ]);
         if (fbBlog.exposed) blogTab = fbBlog;
         if (fbView.exposed) viewTab = fbView;
+        if (blogTab.exposed && viewTab.exposed) break;
+        await new Promise(r => setTimeout(r, 300));
       }
     }
 
