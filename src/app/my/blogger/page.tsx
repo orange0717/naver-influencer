@@ -929,23 +929,19 @@ export default function BloggerDashboard() {
                           </div>
                         </td>
                         <td className="text-center px-3 py-3.5">
-                          {mr ? (
-                            mr.viewTab.exposed ? (
-                              <span className="text-[11px] font-bold text-up">노출</span>
-                            ) : (
-                              <span className="text-[11px] font-bold text-down">누락</span>
-                            )
+                          {(mr?.viewTab.exposed as boolean | null | undefined) === true ? (
+                            <span className="text-[11px] font-bold text-up">노출</span>
+                          ) : (mr?.viewTab.exposed as boolean | null | undefined) === false ? (
+                            <span className="text-[11px] font-bold text-down">누락</span>
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
                           )}
                         </td>
                         <td className="text-center px-3 py-3.5">
-                          {mr ? (
-                            mr.blogTab.exposed ? (
-                              <span className="text-[11px] font-bold text-up">노출</span>
-                            ) : (
-                              <span className="text-[11px] font-bold text-down">누락</span>
-                            )
+                          {(mr?.blogTab.exposed as boolean | null | undefined) === true ? (
+                            <span className="text-[11px] font-bold text-up">노출</span>
+                          ) : (mr?.blogTab.exposed as boolean | null | undefined) === false ? (
+                            <span className="text-[11px] font-bold text-down">누락</span>
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
                           )}
@@ -1010,18 +1006,22 @@ export default function BloggerDashboard() {
                           })}
                         </div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          {mr ? (
+                          {mr && ((mr.viewTab.exposed as boolean | null) !== null || (mr.blogTab.exposed as boolean | null) !== null) ? (
                             <>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
-                              }`}>
-                                통합 {mr.viewTab.exposed ? '노출' : '누락'}
-                              </span>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
-                              }`}>
-                                블로그 {mr.blogTab.exposed ? '노출' : '누락'}
-                              </span>
+                              {(mr.viewTab.exposed as boolean | null) !== null && (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                                }`}>
+                                  통합 {mr.viewTab.exposed ? '노출' : '누락'}
+                                </span>
+                              )}
+                              {(mr.blogTab.exposed as boolean | null) !== null && (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
+                                }`}>
+                                  블로그 {mr.blogTab.exposed ? '노출' : '누락'}
+                                </span>
+                              )}
                             </>
                           ) : null}
                           <span className="text-[11px] text-dim">{post.date}</span>
