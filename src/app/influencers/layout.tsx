@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
+import { requireInfluencerPlusPage } from '@/lib/plan-server-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,17 +28,8 @@ export default async function InfluencersLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabaseAuth = await createRouteHandlerClient();
-  const authUser = await getUserWithTimeout(supabaseAuth);
-
-  const cookieStore = await cookies();
-  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
-  const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
-
-  // 로그인 또는 유효한 데모 세션 필수
-  if (!authUser && !demoNaverId) {
-    redirect('/auth/login');
-  }
+  // 인플루언서 구독자(또는 관리자)만 열람 가능 — 그 외엔 로그인/구독 페이지로 리다이렉트
+  await requireInfluencerPlusPage('/influencers');
 
   return <>{children}</>;
 }
