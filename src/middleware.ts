@@ -205,6 +205,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
+  // 인플루언서 순위/키챌 데이터 API: 로그인 또는 데모 세션 필요
+  // - /api/influencers/recent (인트로 공개용), /api/influencers/list (무료 명단, 자체 로그인 체크)는 제외
+  const isInfluencersRankingApi =
+    (pathname === '/api/influencers' || pathname.startsWith('/api/influencers/')) &&
+    pathname !== '/api/influencers/recent' &&
+    !pathname.startsWith('/api/influencers/list');
+  if (isInfluencersRankingApi && !user && !hasDemoSession) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
   // 데모 체험( trial_started + 72h ) 만료 후: 로그인 없이 데모 쿠키만 있으면 유료 전환 유도
   // — /subscribe 는 허용(결제·안내). 커뮤니티(로그인 게이트) 또는 홈(/) 은 /subscribe 로 보냄.
   if (acceptsHtml && !user && hasDemoSession) {
