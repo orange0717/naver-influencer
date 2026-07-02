@@ -77,15 +77,21 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       naverId = profile.blog_id;
     }
   } else {
-    // ─── 2. 비로그인: 데모·체험 쿠키 또는 ?demo= (체험 리다이렉트 직후) ───
+    // ─── 2. 비로그인: 데모 체험 쿠키는 값 자체를 신뢰하지 않고 demo_sessions DB로 실재/만료를 검증 ───
+    // (httpOnly 쿠키라도 서명되어 있지 않아 curl 등 raw 요청으로 위조 가능 — ?demo= 쿼리 파라미터 폴백도
+    //  검증 없이 임의 naver_id를 그대로 신뢰하는 구멍이라 제거)
     if (cookieStore.get('demo_mode')?.value === 'true') {
-      naverId = cookieStore.get('naver_id')?.value;
-    }
-    if (!naverId && params.demo) {
-      naverId = params.demo;
-    }
-    if (!naverId) {
-      naverId = cookieStore.get('naver_id')?.value;
+      const cookieNaverId = cookieStore.get('naver_id')?.value;
+      if (cookieNaverId) {
+        const { data: demoSession } = await supabase
+          .from('demo_sessions')
+          .select('expires_at')
+          .eq('naver_id', cookieNaverId)
+          .maybeSingle();
+        if (demoSession && new Date(demoSession.expires_at).getTime() > Date.now()) {
+          naverId = cookieNaverId;
+        }
+      }
     }
   }
 
