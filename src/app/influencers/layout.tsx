@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { requireInfluencerPlusPage } from '@/lib/plan-server-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,13 +22,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function InfluencersLayout({
+export default function InfluencersLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // 인플루언서 구독자(또는 관리자)만 열람 가능 — 그 외엔 로그인/구독 페이지로 리다이렉트
-  await requireInfluencerPlusPage('/influencers');
-
+  // 실제 구독 여부 가드는 하위 라우트(page.tsx, [id]/page.tsx)에서 개별 처리
+  // — /influencers/list(무료 명단)는 이 레이아웃을 공유하지만 다른 가드를 사용해야 하므로
+  //   레이아웃 레벨에서는 더 이상 구독 체크를 하지 않는다.
   return <>{children}</>;
 }

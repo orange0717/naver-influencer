@@ -7,6 +7,7 @@ import { CONTACT_BLOG_URL, CONTACT_EMAIL, contactBlogLabel } from '@/lib/site-co
 import { useAuth } from '@/hooks/useAuth';
 
 const FOOTER_LINKS = [
+  { href: '/influencers/list', label: '명단(무료)' },
   { href: '/influencers', label: '리스트' },
   { href: '/keywords/blogger', label: '키워드검색' },
   { href: '/keywords', label: '키워드챌린지' },
