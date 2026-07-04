@@ -23,11 +23,18 @@ interface BlogPost {
 }
 
 interface BriefingResult {
-  hasAiBriefing: boolean | null;  // AI 브리핑 컬럼: 이 키워드로 AI 탭에 들어갔을 때 실제 브리핑 콘텐츠가 생성됐는지
-  exposed: boolean | null;        // AI 탭 컬럼: 그 브리핑의 출처 목록에 내 게시글이 포함되는지
+  // AI 브리핑(통합검색 인라인 위젯) — AI 탭과 완전히 별개인 독립 서비스
+  hasAiBriefing: boolean | null;  // 이 키워드로 통합검색 시 AI 브리핑 위젯 콘텐츠 자체가 생성됐는지
+  exposed: boolean | null;        // 그 위젯의 출처 목록에 내 게시글(blogId+postId)이 포함되는지
   sourceIndex: number | null;
   sourceTotal: number | null;
   matchedTitle: string | null;
+  // AI 탭 — 위 필드와 서로 무관하게 독립적으로 판정된 결과(같은 키워드라도 소스 큐레이션이 다름)
+  hasAiTab: boolean | null;       // 이 키워드로 AI 탭에 들어갔을 때 콘텐츠 자체가 생성됐는지
+  tabExposed: boolean | null;     // AI 탭의 출처 목록에 내 게시글이 포함되는지
+  tabSourceIndex: number | null;
+  tabSourceTotal: number | null;
+  tabMatchedTitle: string | null;
   error?: string;
 }
 
@@ -82,7 +89,11 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
   } catch { return null; }
 }
 
-/** "AI 브리핑" 컬럼 배지 — 이 키워드로 AI 탭에 들어갔을 때 실제 브리핑 콘텐츠가 생성됐는지만 표시(인용 여부 무관). */
+/**
+ * "AI 브리핑" 컬럼 배지 — 통합검색 인라인 위젯(AI 탭과 무관한 별개 서비스) 결과만 사용.
+ * "있음"은 반드시 인용(exposed)까지 확인됐을 때만 표시한다 — 콘텐츠만 생성되고 내 글이
+ * 인용되지 않은 경우는 "미인용"으로 구분 표시(둘 다 "없음"으로 뭉뚱그리면 원인 파악이 안 됨).
+ */
 function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
   if (!result) return <span className="text-[10px] text-dim/50">--</span>;
   if (result.hasAiBriefing === false) {
@@ -92,20 +103,10 @@ function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
       </span>
     );
   }
-  return (
-    <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="이 키워드로 검색 시 AI 브리핑 콘텐츠가 생성됩니다.">
-      있음
-    </span>
-  );
-}
-
-/** "AI 탭" 컬럼 배지 — AI 브리핑의 출처 목록에 내 게시글이 실제로 포함되는지(blogId+logNo 기준 매칭). */
-function AiTabBadge({ result }: { result?: BriefingResult }) {
-  if (!result) return <span className="text-[10px] text-dim/50">--</span>;
-  if (!result.hasAiBriefing || !result.exposed) {
+  if (!result.exposed) {
     return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 브리핑의 출처 목록에 이 게시글이 없습니다.">
-        없음
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 브리핑 콘텐츠는 생성됐지만 출처 목록에 이 게시글이 없습니다.">
+        미인용
       </span>
     );
   }
@@ -117,6 +118,41 @@ function AiTabBadge({ result }: { result?: BriefingResult }) {
       {result.sourceIndex && (
         <span className="text-[10px] text-dim">
           출처 #{result.sourceIndex}{result.sourceTotal ? `/${result.sourceTotal}` : ''}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * "AI 탭" 컬럼 배지 — AI 탭(전체화면 채팅형 UI, AI 브리핑과 무관한 별개 서비스) 결과만 사용.
+ * ⚠️ 절대 hasAiBriefing/exposed(AI 브리핑 필드)를 참조하지 않는다 — 같은 키워드라도 두 서비스는
+ * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 없음+탭 있음" 같은 조합도 정상적으로 나올 수 있다.
+ */
+function AiTabBadge({ result }: { result?: BriefingResult }) {
+  if (!result) return <span className="text-[10px] text-dim/50">--</span>;
+  if (result.hasAiTab === false) {
+    return (
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로는 AI 탭 콘텐츠 자체가 생성되지 않았습니다.">
+        없음
+      </span>
+    );
+  }
+  if (!result.tabExposed) {
+    return (
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 탭 콘텐츠는 생성됐지만 출처 목록에 이 게시글이 없습니다.">
+        미인용
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 탭의 출처 목록에 이 게시글이 포함되어 있습니다.">
+        있음
+      </span>
+      {result.tabSourceIndex && (
+        <span className="text-[10px] text-dim">
+          출처 #{result.tabSourceIndex}{result.tabSourceTotal ? `/${result.tabSourceTotal}` : ''}
         </span>
       )}
     </span>
@@ -158,7 +194,11 @@ export default function NaverMatePage() {
 
   const handleDownload = () => {
     if (!canDownload) return;
-    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '타겟 키워드', 'AI 브리핑', 'AI 탭', '출처 순번', '출처 총계'];
+    const headers = [
+      '포스팅 제목', '포스팅 URL', '작성일', '타겟 키워드',
+      'AI 브리핑', '브리핑 출처 순번', '브리핑 출처 총계',
+      'AI 탭', '탭 출처 순번', '탭 출처 총계',
+    ];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
       const kws = postKeywords[post.id] || [];
@@ -166,17 +206,20 @@ export default function NaverMatePage() {
       for (const kw of kws) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
         const result = briefingResults[rankKey(post.id, kw)];
-        const briefingStatus = !result ? '미확인' : result.hasAiBriefing ? '있음' : '없음';
-        const tabStatus = !result ? '미확인' : (result.hasAiBriefing && result.exposed) ? '있음' : '없음';
+        // AI 브리핑/AI 탭은 서로 완전히 독립된 서비스 결과 — 각자의 필드만으로 판정한다
+        const briefingStatus = !result ? '미확인' : result.hasAiBriefing === false ? '없음' : result.exposed ? '있음' : '미인용';
+        const tabStatus = !result ? '미확인' : result.hasAiTab === false ? '없음' : result.tabExposed ? '있음' : '미인용';
         rows.push([
           post.title,
           post.url,
           post.date,
           kw,
           briefingStatus,
-          tabStatus,
           result?.sourceIndex ?? '',
           result?.sourceTotal ?? '',
+          tabStatus,
+          result?.tabSourceIndex ?? '',
+          result?.tabSourceTotal ?? '',
         ]);
       }
       if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
@@ -450,9 +493,10 @@ export default function NaverMatePage() {
       </div>
 
       <p className="text-xs text-dim/80 -mt-3">
-        AI 브리핑 확인은 실제 브라우저로 네이버 AI 탭 답변 생성을 직접 기다린 뒤 내 게시글이 출처로 인용됐는지까지 확인하기 때문에 건당 20~30초 정도 걸릴 수 있습니다.
+        AI 브리핑(통합검색 인라인 위젯)과 AI 탭은 서로 완전히 다른 별개 서비스입니다 — 실제 브라우저로 두 화면을 순차 방문해
+        각각 콘텐츠 생성 여부와 내 게시글의 출처 인용 여부를 독립적으로 확인하기 때문에 건당 30~50초 정도 걸릴 수 있습니다.
         한 번에 한 포스팅씩만 확인해주세요 — 짧은 시간에 반복 확인하면 네이버 측에서 일시적으로 접근이 제한될 수 있습니다.
-        같은 키워드라도 검색 시점에 따라 AI 브리핑 자체가 노출되지 않거나 출처 목록이 달라질 수 있습니다.
+        같은 키워드라도 검색 시점에 따라 두 서비스 각각의 노출 여부와 출처 목록이 서로 다르게 나타날 수 있습니다.
       </p>
 
       {/* 포스팅 수 선택 */}

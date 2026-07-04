@@ -12,6 +12,11 @@ type BriefingResult = {
   sourceIndex: number | null;
   sourceTotal: number | null;
   matchedTitle: string | null;
+  hasAiTab: boolean | null;
+  tabExposed: boolean | null;
+  tabSourceIndex: number | null;
+  tabSourceTotal: number | null;
+  tabMatchedTitle: string | null;
 };
 
 async function guard(request: NextRequest): Promise<{ res: NextResponse } | { userId: string }> {
@@ -35,7 +40,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('ai_briefing_exposures')
-    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, checked_at')
+    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, checked_at')
     .eq('user_id', g.userId)
     .eq('blog_id', blogId);
 
@@ -48,7 +53,11 @@ export async function GET(request: NextRequest) {
     post_id: string; keyword: string;
     has_ai_briefing: boolean | null; exposed: boolean | null;
     source_index: number | null; source_total: number | null;
-    matched_title: string | null; checked_at: string | null;
+    matched_title: string | null;
+    has_ai_tab: boolean | null; tab_exposed: boolean | null;
+    tab_source_index: number | null; tab_source_total: number | null;
+    tab_matched_title: string | null;
+    checked_at: string | null;
   }>) {
     (postKeywords[r.post_id] ??= []).push(r.keyword);
     if (r.checked_at) {
@@ -58,6 +67,11 @@ export async function GET(request: NextRequest) {
         sourceIndex: r.source_index,
         sourceTotal: r.source_total,
         matchedTitle: r.matched_title,
+        hasAiTab: r.has_ai_tab,
+        tabExposed: r.tab_exposed,
+        tabSourceIndex: r.tab_source_index,
+        tabSourceTotal: r.tab_source_total,
+        tabMatchedTitle: r.tab_matched_title,
       };
     }
   }
@@ -137,6 +151,11 @@ export async function PATCH(request: NextRequest) {
       source_index: typeof r.sourceIndex === 'number' ? r.sourceIndex : null,
       source_total: typeof r.sourceTotal === 'number' ? r.sourceTotal : null,
       matched_title: typeof r.matchedTitle === 'string' ? r.matchedTitle : null,
+      has_ai_tab: typeof r.hasAiTab === 'boolean' ? r.hasAiTab : null,
+      tab_exposed: typeof r.tabExposed === 'boolean' ? r.tabExposed : null,
+      tab_source_index: typeof r.tabSourceIndex === 'number' ? r.tabSourceIndex : null,
+      tab_source_total: typeof r.tabSourceTotal === 'number' ? r.tabSourceTotal : null,
+      tab_matched_title: typeof r.tabMatchedTitle === 'string' ? r.tabMatchedTitle : null,
       checked_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,post_id,keyword' });
