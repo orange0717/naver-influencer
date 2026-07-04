@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
 
     await cacheSet(cacheKey, result, CACHE_TTL_SEC);
     return NextResponse.json(result);
-  } catch {
+  } catch (e) {
+    console.error('[check-ai-briefing] 처리 중 예외:', e);
     return NextResponse.json({ error: 'AI 브리핑 확인 중 오류' }, { status: 500 });
   }
 }
