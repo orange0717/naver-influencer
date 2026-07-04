@@ -331,7 +331,8 @@ export default function NaverMatePage() {
       if (res.status === 429) {
         showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
       } else {
-        showError(`AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`);
+        const body = await res.json().catch(() => null);
+        showError(body?.error || `AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`, 8000);
       }
       return { ok: false, status: res.status, cached: false };
     } catch {
