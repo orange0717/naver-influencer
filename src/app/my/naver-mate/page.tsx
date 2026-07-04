@@ -24,10 +24,6 @@ interface BlogPost {
 
 interface BriefingResult {
   hasAiBriefing: boolean | null;
-  exposed: boolean | null;
-  sourceIndex: number | null;
-  sourceTotal: number | null;
-  matchedTitle: string | null;
   error?: string;
 }
 
@@ -82,29 +78,21 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
   } catch { return null; }
 }
 
-/** AI 탭 노출 상태 배지 — 3가지 상태를 구분한다: 미확인 / AI 브리핑 자체가 없음 / 노출·미노출 */
+/** AI 탭 존재 여부 배지 — 미확인 / 있음 / 없음 2단계로 구분한다. */
 function BriefingBadge({ result }: { result?: BriefingResult }) {
   if (!result) return <span className="text-[10px] text-dim/50">--</span>;
   if (result.hasAiBriefing === false) {
     return (
-      <span className="text-xs text-dim bg-border/20 px-2 py-0.5 rounded-full" title="이 키워드로는 검색 시 AI 브리핑 자체가 노출되지 않았습니다.">
-        AI 브리핑 없음
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로 검색 시 AI 탭 자체가 제공되지 않습니다.">
+        AI 탭 없음
       </span>
     );
   }
-  if (result.exposed) {
-    return (
-      <span className="inline-flex items-center gap-1">
-        <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">노출 중</span>
-        {result.sourceIndex && (
-          <span className="text-[10px] text-dim">
-            출처 #{result.sourceIndex}{result.sourceTotal ? `/${result.sourceTotal}` : ''}
-          </span>
-        )}
-      </span>
-    );
-  }
-  return <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full">미노출</span>;
+  return (
+    <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="이 키워드로 검색 시 AI 탭이 제공됩니다.">
+      AI 탭 있음
+    </span>
+  );
 }
 
 export default function NaverMatePage() {
@@ -142,7 +130,7 @@ export default function NaverMatePage() {
 
   const handleDownload = () => {
     if (!canDownload) return;
-    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '타겟 키워드', 'AI 브리핑 노출여부', '출처 순번', '출처 총계'];
+    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '타겟 키워드', 'AI 탭 노출여부'];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
       const kws = postKeywords[post.id] || [];
@@ -150,15 +138,13 @@ export default function NaverMatePage() {
       for (const kw of kws) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
         const result = briefingResults[rankKey(post.id, kw)];
-        const status = !result ? '미확인' : result.hasAiBriefing === false ? 'AI 브리핑 없음' : result.exposed ? '노출 중' : '미노출';
+        const status = !result ? '미확인' : result.hasAiBriefing === false ? 'AI 탭 없음' : 'AI 탭 있음';
         rows.push([
           post.title,
           post.url,
           post.date,
           kw,
           status,
-          result?.sourceIndex ?? '',
-          result?.sourceTotal ?? '',
         ]);
       }
       if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
@@ -432,8 +418,8 @@ export default function NaverMatePage() {
       </div>
 
       <p className="text-xs text-dim/80 -mt-3">
-        AI 브리핑 확인은 실제 브라우저로 네이버 AI 탭 답변 생성을 직접 기다리기 때문에 건당 20~30초 정도 걸릴 수 있습니다.
-        한 번에 한 포스팅씩만 확인할 수 있으며, 같은 키워드라도 검색 시점에 따라 AI 브리핑 자체가 노출되지 않을 수 있습니다.
+        AI 탭 확인은 네이버 검색 결과 페이지에서 AI 탭 제공 여부만 가볍게 확인하므로 대부분 몇 초 내로 끝납니다.
+        같은 키워드라도 검색 시점에 따라 AI 탭이 노출되지 않을 수 있습니다.
       </p>
 
       {/* 포스팅 수 선택 */}
