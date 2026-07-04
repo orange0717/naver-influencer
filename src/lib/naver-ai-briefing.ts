@@ -190,8 +190,8 @@ async function enterAiTab(page: Page, keyword: string): Promise<boolean> {
 
 /**
  * keyword로 네이버 "AI" 탭에 진입 → 답변 생성 여부 + (생성 시) 내 포스팅의 인용 인덱스를 확인한다.
- * 브라우저 1회 실행당 호출 1건 — 배치로 여러 키워드를 확인할 때는 launchBrowser를 한 번만 열고
- * page만 새로 만들어 재사용하는 것이 비용 효율적이다 (checkAiBriefingBatch 참고).
+ * ⚠️ 2026-07-04: 이용약관/서버 부하 리스크 검토에 따라 배치 실행은 지원하지 않는다 — 반드시
+ * 사용자가 선택한 포스팅 1건에 대해서만, 온디맨드로 단건 호출한다 (naver-mate 페이지 참고).
  */
 export async function checkAiBriefingExposure(
   keyword: string,
@@ -204,27 +204,6 @@ export async function checkAiBriefingExposure(
   } finally {
     await browser.close().catch(() => {});
   }
-}
-
-/** 브라우저 인스턴스를 재사용하며 여러 (keyword, blogId, postId)를 순차 확인 (크론 배치용) */
-export async function checkAiBriefingBatch(
-  items: Array<{ keyword: string; blogId: string; postId: string }>,
-  delayMs = 5_000,
-): Promise<AiBriefingCheckResult[]> {
-  const browser = await launchBrowser();
-  const results: AiBriefingCheckResult[] = [];
-  try {
-    for (let i = 0; i < items.length; i++) {
-      const { keyword, blogId, postId } = items[i];
-      results.push(await checkOne(browser, keyword, blogId, postId));
-      if (i < items.length - 1) {
-        await new Promise(r => setTimeout(r, delayMs));
-      }
-    }
-  } finally {
-    await browser.close().catch(() => {});
-  }
-  return results;
 }
 
 async function checkOne(browser: Browser, keyword: string, blogId: string, postId: string): Promise<AiBriefingCheckResult> {

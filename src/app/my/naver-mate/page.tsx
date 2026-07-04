@@ -32,9 +32,6 @@ interface BriefingResult {
 }
 
 const STATE_API = '/api/my/ai-briefing-state';
-// 헤드리스 브라우저 실행 비용이 커서(건당 최대 20~30초, AI 탭 스트리밍 완료 대기 포함) API 자체 rate limit(5분 10회)보다
-// 넉넉하게 간격을 둬 "전체 확인" 도중 429가 나지 않도록 한다.
-const CHECK_INTERVAL_MS = 15_000;
 
 // 서버(DB)에서 저장된 타겟 키워드/AI 브리핑 결과를 복원한다. (기기 간 동기화)
 async function fetchBriefingState(blogId: string): Promise<{
@@ -126,10 +123,7 @@ export default function NaverMatePage() {
   // "postId::keyword" → BriefingResult
   const [briefingResults, setBriefingResults] = useState<Record<string, BriefingResult>>({});
   const [checkingKey, setCheckingKey] = useState('');
-  const [checkingAll, setCheckingAll] = useState(false);
-  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const [errorMessage, setErrorMessage] = useState('');
-  const abortRef = useRef(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showError = useCallback((msg: string, ms = 5000) => {
@@ -341,41 +335,6 @@ export default function NaverMatePage() {
     } finally { setCheckingKey(''); }
   };
 
-  const checkAllBriefings = async () => {
-    if (!profile || blogPosts.length === 0) return;
-    abortRef.current = false;
-    setCheckingAll(true);
-
-    const pairs: { post: BlogPost; keyword: string }[] = [];
-    for (const post of blogPosts) {
-      const kws = (editingKeywords[post.id] || []).filter(k => k.trim());
-      for (const kw of kws) pairs.push({ post, keyword: kw.trim() });
-    }
-
-    setCheckProgress({ current: 0, total: pairs.length });
-
-    for (let i = 0; i < pairs.length; i++) {
-      if (abortRef.current) break;
-      setCheckProgress({ current: i + 1, total: pairs.length });
-      const r = await checkSingleKeyword(pairs[i].post, pairs[i].keyword);
-      if (r.status === 429) {
-        showError(`요청 한도 초과로 ${i + 1}/${pairs.length}에서 중단했습니다. 5분 후 다시 시도해주세요.`, 8000);
-        break;
-      }
-      // 캐시 히트는 브라우저를 재실행하지 않으므로 대기 불필요
-      if (i < pairs.length - 1 && !r.cached) {
-        await new Promise(r => setTimeout(r, CHECK_INTERVAL_MS));
-      }
-    }
-
-    setCheckingAll(false);
-    setCheckProgress({ current: 0, total: 0 });
-  };
-
-  const stopChecking = () => {
-    abortRef.current = true;
-  };
-
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto space-y-6">
@@ -469,28 +428,12 @@ export default function NaverMatePage() {
           >
             초기화
           </button>
-          {checkingAll ? (
-            <button
-              onClick={stopChecking}
-              className="px-4 py-2 bg-down/10 text-down font-bold rounded-xl text-sm cursor-pointer hover:bg-down/20 transition"
-            >
-              중지 {checkProgress.current}/{checkProgress.total}
-            </button>
-          ) : (
-            <button
-              onClick={checkAllBriefings}
-              disabled={postsLoading || blogPosts.length === 0}
-              className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
-            >
-              전체 확인
-            </button>
-          )}
         </div>
       </div>
 
       <p className="text-xs text-dim/80 -mt-3">
         AI 브리핑 확인은 실제 브라우저로 네이버 AI 탭 답변 생성을 직접 기다리기 때문에 건당 20~30초 정도 걸릴 수 있습니다.
-        또한 같은 키워드라도 검색 시점에 따라 AI 브리핑 자체가 노출되지 않을 수 있습니다.
+        한 번에 한 포스팅씩만 확인할 수 있으며, 같은 키워드라도 검색 시점에 따라 AI 브리핑 자체가 노출되지 않을 수 있습니다.
       </p>
 
       {/* 포스팅 수 선택 */}
@@ -606,7 +549,7 @@ export default function NaverMatePage() {
                           <td className="text-center px-4 py-1.5">
                             <button
                               onClick={() => checkSingleKeyword(post, kw)}
-                              disabled={checkingKey === key || checkingAll || !kw.trim()}
+                              disabled={!!checkingKey || !kw.trim()}
                               className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
                             >
                               {checkingKey === key ? (
@@ -665,7 +608,7 @@ export default function NaverMatePage() {
                               />
                               <button
                                 onClick={() => checkSingleKeyword(post, kw)}
-                                disabled={checkingKey === key || checkingAll || !kw.trim()}
+                                disabled={!!checkingKey || !kw.trim()}
                                 className="px-2.5 py-1.5 text-[11px] text-accent border border-accent/30 rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
                               >
                                 {checkingKey === key ? (
