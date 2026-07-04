@@ -32,7 +32,7 @@ interface BriefingResult {
 }
 
 const STATE_API = '/api/my/ai-briefing-state';
-// 헤드리스 브라우저 실행 비용이 커서(건당 10~20초) API 자체 rate limit(5분 10회)보다
+// 헤드리스 브라우저 실행 비용이 커서(건당 최대 20~30초, AI 탭 스트리밍 완료 대기 포함) API 자체 rate limit(5분 10회)보다
 // 넉넉하게 간격을 둬 "전체 확인" 도중 429가 나지 않도록 한다.
 const CHECK_INTERVAL_MS = 15_000;
 
@@ -488,7 +488,7 @@ export default function NaverMatePage() {
       </div>
 
       <p className="text-xs text-dim/80 -mt-3">
-        AI 브리핑 확인은 실제 브라우저로 네이버 검색을 직접 실행하기 때문에 건당 10~20초 정도 걸릴 수 있습니다.
+        AI 브리핑 확인은 실제 브라우저로 네이버 AI 탭 답변 생성을 직접 기다리기 때문에 건당 20~30초 정도 걸릴 수 있습니다.
         또한 같은 키워드라도 검색 시점에 따라 AI 브리핑 자체가 노출되지 않을 수 있습니다.
       </p>
 

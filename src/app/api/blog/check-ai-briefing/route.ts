@@ -5,7 +5,7 @@ import { cacheGet, cacheSet } from '@/lib/kv-cache';
 import { checkAiBriefingExposure } from '@/lib/naver-ai-briefing';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 90; // AI 탭 스트리밍 완료까지 폴링 대기(최대 20초) + 브라우저 콜드스타트 여유
 
 // AI 브리핑 확인 결과 캐시 (Redis 공유, 30분) — 헤드리스 브라우저 재실행 비용이 크므로 짧은 재확인은 캐시로 흡수
 const CACHE_TTL_SEC = 30 * 60;
