@@ -23,7 +23,11 @@ interface BlogPost {
 }
 
 interface BriefingResult {
-  hasAiBriefing: boolean | null;
+  hasAiBriefing: boolean | null;  // AI 브리핑 컬럼: 이 키워드로 AI 탭에 들어갔을 때 실제 브리핑 콘텐츠가 생성됐는지
+  exposed: boolean | null;        // AI 탭 컬럼: 그 브리핑의 출처 목록에 내 게시글이 포함되는지
+  sourceIndex: number | null;
+  sourceTotal: number | null;
+  matchedTitle: string | null;
   error?: string;
 }
 
@@ -78,19 +82,43 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
   } catch { return null; }
 }
 
-/** AI 탭 존재 여부 배지 — 미확인 / 있음 / 없음 2단계로 구분한다. */
-function BriefingBadge({ result }: { result?: BriefingResult }) {
+/** "AI 브리핑" 컬럼 배지 — 이 키워드로 AI 탭에 들어갔을 때 실제 브리핑 콘텐츠가 생성됐는지만 표시(인용 여부 무관). */
+function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
   if (!result) return <span className="text-[10px] text-dim/50">--</span>;
   if (result.hasAiBriefing === false) {
     return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로 검색 시 AI 탭 자체가 제공되지 않습니다.">
-        AI 탭 없음
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로는 AI 브리핑 콘텐츠 자체가 생성되지 않았습니다.">
+        없음
       </span>
     );
   }
   return (
-    <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="이 키워드로 검색 시 AI 탭이 제공됩니다.">
-      AI 탭 있음
+    <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="이 키워드로 검색 시 AI 브리핑 콘텐츠가 생성됩니다.">
+      있음
+    </span>
+  );
+}
+
+/** "AI 탭" 컬럼 배지 — AI 브리핑의 출처 목록에 내 게시글이 실제로 포함되는지(blogId+logNo 기준 매칭). */
+function AiTabBadge({ result }: { result?: BriefingResult }) {
+  if (!result) return <span className="text-[10px] text-dim/50">--</span>;
+  if (!result.hasAiBriefing || !result.exposed) {
+    return (
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 브리핑의 출처 목록에 이 게시글이 없습니다.">
+        없음
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 브리핑의 출처 목록에 이 게시글이 포함되어 있습니다.">
+        있음
+      </span>
+      {result.sourceIndex && (
+        <span className="text-[10px] text-dim">
+          출처 #{result.sourceIndex}{result.sourceTotal ? `/${result.sourceTotal}` : ''}
+        </span>
+      )}
     </span>
   );
 }
@@ -130,7 +158,7 @@ export default function NaverMatePage() {
 
   const handleDownload = () => {
     if (!canDownload) return;
-    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '타겟 키워드', 'AI 탭 노출여부'];
+    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '타겟 키워드', 'AI 브리핑', 'AI 탭', '출처 순번', '출처 총계'];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
       const kws = postKeywords[post.id] || [];
@@ -138,13 +166,17 @@ export default function NaverMatePage() {
       for (const kw of kws) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
         const result = briefingResults[rankKey(post.id, kw)];
-        const status = !result ? '미확인' : result.hasAiBriefing === false ? 'AI 탭 없음' : 'AI 탭 있음';
+        const briefingStatus = !result ? '미확인' : result.hasAiBriefing ? '있음' : '없음';
+        const tabStatus = !result ? '미확인' : (result.hasAiBriefing && result.exposed) ? '있음' : '없음';
         rows.push([
           post.title,
           post.url,
           post.date,
           kw,
-          status,
+          briefingStatus,
+          tabStatus,
+          result?.sourceIndex ?? '',
+          result?.sourceTotal ?? '',
         ]);
       }
       if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
@@ -418,8 +450,9 @@ export default function NaverMatePage() {
       </div>
 
       <p className="text-xs text-dim/80 -mt-3">
-        AI 탭 확인은 네이버 검색 결과 페이지에서 AI 탭 제공 여부만 가볍게 확인하므로 대부분 몇 초 내로 끝납니다.
-        같은 키워드라도 검색 시점에 따라 AI 탭이 노출되지 않을 수 있습니다.
+        AI 브리핑 확인은 실제 브라우저로 네이버 AI 탭 답변 생성을 직접 기다린 뒤 내 게시글이 출처로 인용됐는지까지 확인하기 때문에 건당 20~30초 정도 걸릴 수 있습니다.
+        한 번에 한 포스팅씩만 확인해주세요 — 짧은 시간에 반복 확인하면 네이버 측에서 일시적으로 접근이 제한될 수 있습니다.
+        같은 키워드라도 검색 시점에 따라 AI 브리핑 자체가 노출되지 않거나 출처 목록이 달라질 수 있습니다.
       </p>
 
       {/* 포스팅 수 선택 */}
@@ -456,7 +489,8 @@ export default function NaverMatePage() {
                     <th className="text-left px-4 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
                     <th className="text-left px-3 py-3 font-semibold w-44">타겟 키워드</th>
-                    <th className="text-center px-3 py-3 font-semibold w-32">AI 탭 노출</th>
+                    <th className="text-center px-3 py-3 font-semibold w-24">AI 브리핑</th>
+                    <th className="text-center px-3 py-3 font-semibold w-32">AI 탭</th>
                     <th className="text-center px-4 py-3 font-semibold w-16">확인</th>
                   </tr>
                 </thead>
@@ -530,7 +564,10 @@ export default function NaverMatePage() {
                             </div>
                           </td>
                           <td className="text-center px-3 py-1.5">
-                            <BriefingBadge result={result} />
+                            <BriefingLabelBadge result={result} />
+                          </td>
+                          <td className="text-center px-3 py-1.5">
+                            <AiTabBadge result={result} />
                           </td>
                           <td className="text-center px-4 py-1.5">
                             <button
@@ -610,7 +647,10 @@ export default function NaverMatePage() {
                             </div>
                             {result && (
                               <div className="flex items-center gap-2">
-                                <BriefingBadge result={result} />
+                                <span className="text-[10px] text-dim">브리핑</span>
+                                <BriefingLabelBadge result={result} />
+                                <span className="text-[10px] text-dim">탭</span>
+                                <AiTabBadge result={result} />
                               </div>
                             )}
                           </div>
