@@ -5,12 +5,12 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: '무료 플랜 인플루언서 명단',
-  description: '선정일자와 주제만 담은 무료 플랜 인플루언서 명단 — 이름·프로필·팬수·챌린지 데이터는 포함되지 않습니다.',
+  description: '이름·프로필 링크·선정일자·주제를 담은 무료 플랜 인플루언서 명단 — 팬수·챌린지 데이터는 포함되지 않습니다.',
   keywords: ['네이버 인플루언서', '무료 플랜', '인플루언서 명단'],
   alternates: { canonical: 'https://ninfle.kr/influencers/free-plan' },
   openGraph: {
     title: '무료 플랜 인플루언서 명단 — N인플',
-    description: '선정일자·주제만 담은 무료 열람 명단',
+    description: '이름·프로필 링크·선정일자·주제를 담은 무료 열람 명단',
     url: 'https://ninfle.kr/influencers/free-plan',
     siteName: 'N인플',
     locale: 'ko_KR',
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '무료 플랜 인플루언서 명단 — N인플',
-    description: '선정일자·주제만 담은 무료 열람 명단',
+    description: '이름·프로필 링크·선정일자·주제를 담은 무료 열람 명단',
   },
 };
 

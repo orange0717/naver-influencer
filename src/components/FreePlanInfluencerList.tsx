@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import CategoryFilter from '@/components/CategoryFilter';
 
 interface FreePlanItem {
+  name: string;
+  profileUrl: string;
   selectionDate: string | null;
   subject: string;
 }
@@ -63,7 +65,7 @@ export default function FreePlanInfluencerList() {
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-dim px-0.5 leading-relaxed">
-        선정일자·주제만 담은 무료 플랜 대상자 명단입니다. 이름·프로필·팬수·챌린지 데이터는 포함되지 않습니다.
+        이름·프로필 링크·선정일자·주제를 담은 무료 플랜 대상자 명단입니다. 팬수·챌린지 데이터는 포함되지 않습니다.
       </p>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -94,6 +96,8 @@ export default function FreePlanInfluencerList() {
               <thead>
                 <tr className="border-b border-border bg-bg/50">
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs w-14">#</th>
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">이름</th>
+                  <th className="text-left py-3 px-4 font-semibold text-dim text-xs">프로필 링크</th>
                   <th
                     className="text-left py-3 px-4 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors"
                     onClick={() => { setOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setPage(1); }}
@@ -108,6 +112,14 @@ export default function FreePlanInfluencerList() {
                   <tr key={i} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
                     <td className="py-3 px-4 font-bold font-rank text-xs text-dim">
                       {(page - 1) * 50 + i + 1}
+                    </td>
+                    <td className="py-3 px-4 text-xs font-semibold text-text">{it.name || '-'}</td>
+                    <td className="py-3 px-4 text-xs">
+                      {it.profileUrl ? (
+                        <a href={it.profileUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                          바로가기
+                        </a>
+                      ) : '-'}
                     </td>
                     <td className="py-3 px-4 text-xs text-text">{formatNaverDate(it.selectionDate)}</td>
                     <td className="py-3 px-4 text-xs font-semibold text-text">{it.subject || '-'}</td>

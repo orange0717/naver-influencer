@@ -4,7 +4,7 @@ import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 
-/** 무료 플랜 명단 전용 — 선정일자·주제 2개 컬럼만 조회/응답한다 (이름·프로필·팬수·챌린지 데이터 절대 미포함) */
+/** 무료 플랜 명단 전용 — 이름·프로필 링크·선정일자·주제만 조회/응답한다 (팬수·챌린지 데이터는 미포함) */
 const LIST_JSON_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
   Pragma: 'no-cache',
@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
   try {
     const categories = ['전체', ...KEYWORD_CHALLENGE_CATEGORIES];
 
-    // 선정일자(naver_created_at) + 주제(my_keyword_category/category) 2개 컬럼만 셀렉트
-    const SELECT_COLS = 'naver_created_at, first_seen_at, my_keyword_category, category';
+    // 이름(display_name) + 프로필 링크(profile_url) + 선정일자(naver_created_at) + 주제(my_keyword_category/category)만 셀렉트
+    const SELECT_COLS = 'display_name, profile_url, naver_created_at, first_seen_at, my_keyword_category, category';
 
     let query = supabase.from('influencers').select(SELECT_COLS, { count: 'exact' });
 
@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(total / limit);
 
     const items = (data || []).map(inf => ({
+      name: inf.display_name || '',
+      profileUrl: inf.profile_url || '',
       selectionDate: inf.naver_created_at || inf.first_seen_at || null,
       subject: inf.my_keyword_category || inf.category || '',
     }));

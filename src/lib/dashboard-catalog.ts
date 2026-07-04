@@ -170,7 +170,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'influencers-free-plan',
     category: 'research',
     title: '무료 플랜 인플루언서 명단',
-    description: '선정일자·주제만 담은 무료 열람 명단 — 이름·프로필·팬수·챌린지 데이터는 포함되지 않습니다.',
+    description: '이름·프로필 링크·선정일자·주제를 담은 무료 열람 명단 — 팬수·챌린지 데이터는 포함되지 않습니다.',
     href: '/influencers/free-plan',
     authOnly: true,
     ctaLabel: '무료플랜',
