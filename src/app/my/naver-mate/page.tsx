@@ -91,7 +91,7 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
 
 /**
  * "AI 브리핑" 컬럼 배지 — 통합검색 인라인 위젯(AI 탭과 무관한 별개 서비스) 결과만 사용.
- * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "있음"/"미인용" 두 가지로만 통일한다.
+ * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "인용"/"미인용" 두 가지로만 통일한다.
  * 콘텐츠 자체가 생성되지 않은 경우("없음")와 생성됐지만 내 글이 인용되지 않은 경우를
  * 더 이상 구분 표시하지 않고 둘 다 "미인용"으로 표기한다 — exposed 단일 필드로만 판정.
  */
@@ -107,7 +107,7 @@ function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
   return (
     <span className="inline-flex items-center gap-1">
       <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 브리핑의 출처 목록에 이 게시글이 포함되어 있습니다.">
-        있음
+        인용
       </span>
       {result.sourceIndex && (
         <span className="text-[10px] text-dim">
@@ -121,8 +121,8 @@ function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
 /**
  * "AI 탭" 컬럼 배지 — AI 탭(전체화면 채팅형 UI, AI 브리핑과 무관한 별개 서비스) 결과만 사용.
  * ⚠️ 절대 hasAiBriefing/exposed(AI 브리핑 필드)를 참조하지 않는다 — 같은 키워드라도 두 서비스는
- * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 미인용+탭 있음" 같은 조합도 정상적으로 나올 수 있다.
- * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "있음"/"미인용" 두 가지로만 통일(BriefingLabelBadge와 동일 원칙).
+ * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 미인용+탭 인용" 같은 조합도 정상적으로 나올 수 있다.
+ * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "인용"/"미인용" 두 가지로만 통일(BriefingLabelBadge와 동일 원칙).
  */
 function AiTabBadge({ result }: { result?: BriefingResult }) {
   if (!result) return <span className="text-[10px] text-dim/50">--</span>;
@@ -136,7 +136,7 @@ function AiTabBadge({ result }: { result?: BriefingResult }) {
   return (
     <span className="inline-flex items-center gap-1">
       <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 탭의 출처 목록에 이 게시글이 포함되어 있습니다.">
-        있음
+        인용
       </span>
       {result.tabSourceIndex && (
         <span className="text-[10px] text-dim">
@@ -205,9 +205,9 @@ export default function NaverMatePage() {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
         const result = briefingResults[rankKey(post.id, kw)];
         // AI 브리핑/AI 탭은 서로 완전히 독립된 서비스 결과 — 각자의 필드만으로 판정한다
-        // 2026-07-04(6차): 상태 문구 통일 — "없음" 문구 제거, 미확인/있음/미인용 3가지만 사용
-        const briefingStatus = !result ? '미확인' : result.exposed ? '있음' : '미인용';
-        const tabStatus = !result ? '미확인' : result.tabExposed ? '있음' : '미인용';
+        // 2026-07-04(6차): 상태 문구 통일 — "없음" 문구 제거, 미확인/인용/미인용 3가지만 사용
+        const briefingStatus = !result ? '미확인' : result.exposed ? '인용' : '미인용';
+        const tabStatus = !result ? '미확인' : result.tabExposed ? '인용' : '미인용';
         rows.push([
           post.title,
           post.url,
