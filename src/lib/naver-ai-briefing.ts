@@ -3,15 +3,25 @@ import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 /**
  * 네이버 "AI" 탭(생성형 검색 답변) 노출 여부 확인 — 네이버메이트 기능의 핵심 엔진.
  *
- * ⚠️ 2026-07-04 구조 수정: 오렌지가 제공한 실제 스크린샷 + URL로 확인한 결과,
- * AI 답변은 통합검색 결과에 끼워진 박스가 아니라 검색 후 별도 클릭해 들어가는
- * **전용 "AI" 탭**(`ssc=tab.ait.all`)이며, 챗봇처럼 답변이 스트리밍되고 인용은
- * 문단 안에 인라인 칩(클릭 시 해당 블로그로 이동하는 실제 링크)으로 박힌다.
- * "출처 전체보기" 확장형 리스트가 아니므로 컨테이너를 문서 전체로 보고 텍스트
- * 안정화를 기다린 뒤 blog.naver.com 링크를 그대로 수집한다.
- * ⚠️ Chrome 자동화 도구가 search.naver.com 자체를 접근 차단하고 있어 실제 DOM을
- * 직접 열어 검증하지 못했다 — 아래 셀렉터/휴리스틱은 오렌지 확인 답변 기반 추정치이며,
- * 로컬 puppeteer 실행 결과로 추후 보정 필요.
+ * ⚠️ 2026-07-04 실측 검증 완료 (scripts/test-ai-briefing.mjs 로컬 puppeteer 실행):
+ * - AI 답변은 통합검색 결과에 끼워진 박스가 아니라 검색 후 클릭해 들어가는 전용
+ *   "AI" 탭(`ssc=tab.ait.all`)이며, 챗봇처럼 답변이 문단 단위로 스트리밍된다.
+ * - **`ssc=tab.ait.all` URL로 직접 goto하면 네이버가 "잘못된 접근입니다"로 거부한다.**
+ *   반드시 일반 검색 결과 페이지에 먼저 진입한 뒤, 그 페이지 안의 실제 AI 탭
+ *   <a> 앵커를 클릭(in-page navigation)해야 정상 진입된다 — referrer/세션 검증으로 추정.
+ * - 실측 스트리밍 완료 시간은 키워드당 약 15~25초. 인용 출처는 `a[href*="blog.naver.com"]`
+ *   형태로 실제 DOM에 존재함(추측이 아니라 실측 확인) — 다만 시각적으로는 별도 칩(span)이
+ *   붙어있어 사람 눈엔 "인라인 칩"처럼 보이는 것.
+ * - 답변 전체가 사실상 "브리핑"이라 컨테이너를 따로 특정하지 않고 document 전체에서
+ *   텍스트 길이/링크를 본다 — 셀렉터 기반 컨테이너 탐색은 네이버가 매 배포마다 바꾸는
+ *   해시 클래스명 때문에 신뢰도가 낮고, 실측 결과 body 레벨 판단으로 충분했다.
+ * - 동일 키워드도 매 요청마다 인용 링크 개수가 달라짐(실측: 0개/3개 등 편차 확인) — AI 생성
+ *   특성상 정상이며, 코드 버그가 아님. `hasAiBriefing`은 답변 텍스트 생성 여부만 판단하고
+ *   `exposed`/`sourceTotal`은 매 확인 시점의 실제 결과를 그대로 반영한다.
+ * - ⚠️ **자동화 탐지 주의**: 짧은 시간에 반복 요청하면(테스트 중 8회 정도 연속 실행 후 발생)
+ *   AI 탭 클릭 경로가 맞아도 "잘못된 접근입니다" 문구로 막힌다. `BLOCKED_TEXT_MARKER`로 감지해
+ *   `hasAiBriefing:false`가 아닌 별도 error로 반환 — 절대 "브리핑 없음"과 혼동하면 안 됨.
+ *   짧은 간격의 반복 확인(배치/전체확인)은 이 차단을 유발할 위험이 실측으로 확인됨.
  * 참고: /Users/orange/개발/naver-ai-briefing-tracker (Playwright 기반 로컬 프로토타입)의
  * 매칭 로직(blogId+postId 파싱)은 그대로 유지.
  */
@@ -20,48 +30,33 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 const NAVIGATION_TIMEOUT_MS = 25_000;
 
 // AI 탭은 챗봇처럼 답변이 스트리밍되므로 고정 대기 대신 텍스트가 안정될 때까지 폴링
-const MAX_STREAM_WAIT_MS = 20_000;
-const POLL_INTERVAL_MS = 800;
-const STABLE_CHECKS_REQUIRED = 2; // 연속으로 텍스트가 안 바뀌면 스트리밍 종료로 간주
+// 실측 완료 시간이 최대 22.5초였던 것을 감안해 여유를 둠
+const MAX_STREAM_WAIT_MS = 35_000;
+const POLL_INTERVAL_MS = 1_000;
+const STABLE_CHECKS_REQUIRED = 3; // 연속 3회(3초) 텍스트가 안 바뀌면 스트리밍 종료로 간주
 const MIN_ANSWER_TEXT_LENGTH = 80; // 이 이하면 답변 미생성(hasAiBriefing=false)으로 간주
 
-// 네이버 DOM은 자주 바뀌므로 다중 셀렉터 + 헤딩 텍스트 fallback, 최종적으로 body 전체
-const CONTAINER_SELECTORS = [
-  'div[class*="ai_briefing" i]',
-  'section[class*="ai_briefing" i]',
-  'div[class*="AiBriefing"]',
-  'div[id*="ai_briefing" i]',
-  'div.sc_new._ai_briefing',
-  'div[class*="ait_" i]',
-  'div[class*="answer" i]',
-  'main',
-];
+// 실측 확인: 짧은 시간에 반복 요청하면 네이버가 AI 탭 자체를 이 문구로 막아버림
+// (클릭 경로가 맞아도 발생 — 봇/자동화 탐지로 추정). "브리핑 없음"과 반드시 구분해야
+// 사용자가 "이 키워드는 AI 브리핑이 없다"로 오인하지 않는다.
+const BLOCKED_TEXT_MARKER = '잘못된 접근입니다';
 
 const SOURCE_SELECTORS = [
   'a[href*="blog.naver.com"]',
   'a[href*="m.blog.naver.com"]',
   'a[href*="cafe.naver.com"]',
   'a[href*="post.naver.com"]',
-  'a[class*="source" i]',
-  'a[class*="citation" i]',
-  'a[class*="chip" i]',
-  'li[class*="source" i] a',
-  'div[class*="source" i] a',
 ];
-
-// 일부 화면엔 여전히 "출처 더보기" 류 확장 버튼이 남아있을 수 있어 방어적으로 유지
-const EXPAND_TEXTS = ['출처', '전체보기', '더보기', '참고 링크'];
-const EXPAND_WAIT_MS = 700;
 
 interface RawSource {
   url: string;
   title: string;
-  author: string;
 }
 
 interface BriefingEvalResult {
   answerTextLength: number;
   sources: RawSource[];
+  blocked: boolean;
 }
 
 export interface AiBriefingCheckResult {
@@ -73,67 +68,24 @@ export interface AiBriefingCheckResult {
   error?: string;
 }
 
-/** 브라우저 컨텍스트 안에서 실행 — 답변 컨테이너 탐색 + 출처 링크 수집 */
-async function evaluateBriefing(args: {
-  containerSelectors: string[];
-  sourceSelectors: string[];
-  expandTexts: string[];
-  expandWaitMs: number;
-}): Promise<BriefingEvalResult> {
-  const { containerSelectors, sourceSelectors, expandTexts, expandWaitMs } = args;
-
-  function findContainer(): Element {
-    for (const sel of containerSelectors) {
-      const el = document.querySelector(sel);
-      if (el) return el;
-    }
-    const headings = Array.from(document.querySelectorAll('h2, h3, strong'));
-    const heading = headings.find(h => (h.textContent || '').includes('AI'));
-    if (heading) {
-      const closest = heading.closest('section') || heading.closest('div.sc_new') || heading.parentElement;
-      if (closest) return closest;
-    }
-    return document.body;
-  }
-
-  const container = findContainer();
-
-  // 남아있을 수 있는 "출처 더보기" 류 버튼 확장 시도 (방어적)
-  const clickable = Array.from(container.querySelectorAll('a, button, span'));
-  for (const text of expandTexts) {
-    const btn = clickable.find(el => {
-      const t = (el.textContent || '').trim();
-      return t === text || t.includes(text);
-    });
-    if (btn) {
-      try { (btn as unknown as HTMLElement).click(); } catch { /* 클릭 불가 요소는 무시 */ }
-    }
-  }
-  if (expandWaitMs > 0) {
-    await new Promise(resolve => setTimeout(resolve, expandWaitMs));
+/** 브라우저 컨텍스트 안에서 실행 — 문서 전체에서 답변 텍스트 길이 + 출처 링크 수집 */
+function evaluateBriefing(sourceSelectors: string[], blockedMarker: string): BriefingEvalResult {
+  const bodyText = document.body.innerText || '';
+  if (bodyText.includes(blockedMarker)) {
+    return { answerTextLength: 0, sources: [], blocked: true };
   }
 
   const seen = new Set<string>();
   const sources: RawSource[] = [];
   for (const sel of sourceSelectors) {
-    const links = container.querySelectorAll(sel);
-    links.forEach(link => {
+    document.querySelectorAll(sel).forEach(link => {
       const href = link.getAttribute('href') || '';
       if (!href || seen.has(href)) return;
       seen.add(href);
-      const title = (link.textContent || '').trim();
-      let author = '';
-      const parent = link.closest('li, article, div');
-      if (parent) {
-        const cand = parent.querySelector('[class*="name" i], [class*="author" i], [class*="blog" i], [class*="nick" i]');
-        if (cand) author = (cand.textContent || '').trim();
-      }
-      sources.push({ url: href, title, author });
+      sources.push({ url: href, title: (link.textContent || '').trim() });
     });
   }
-
-  const answerText = (container.textContent || '').trim();
-  return { answerTextLength: answerText.length, sources };
+  return { answerTextLength: bodyText.length, sources, blocked: false };
 }
 
 /** 스트리밍 답변 텍스트가 안정될 때까지 폴링 (고정 대기 대신) */
@@ -209,6 +161,27 @@ async function launchBrowser(): Promise<Browser> {
   return puppeteer.launch({ executablePath: localPath, headless: true });
 }
 
+/** 일반 검색 결과 페이지에서 실제 "AI" 탭 앵커를 찾아 클릭(in-page navigation)해 진입한다. */
+async function enterAiTab(page: Page, keyword: string): Promise<boolean> {
+  const searchUrl = `https://search.naver.com/search.naver?query=${encodeURIComponent(keyword)}`;
+  await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
+
+  const hasAiTabLink = await page.evaluate(() => {
+    return !!Array.from(document.querySelectorAll('a')).find(a => (a.getAttribute('href') || '').includes('ssc=tab.ait.all'));
+  });
+  if (!hasAiTabLink) return false; // 이 키워드는 AI 탭 자체가 제공되지 않음
+
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS }).catch(() => null),
+    page.evaluate(() => {
+      const a = Array.from(document.querySelectorAll('a')).find(el => (el.getAttribute('href') || '').includes('ssc=tab.ait.all'));
+      if (a) (a as HTMLElement).click();
+    }),
+  ]);
+
+  return page.url().includes('ssc=tab.ait.all');
+}
+
 /**
  * keyword로 네이버 "AI" 탭에 진입 → 답변 생성 여부 + (생성 시) 내 포스팅의 인용 인덱스를 확인한다.
  * 브라우저 1회 실행당 호출 1건 — 배치로 여러 키워드를 확인할 때는 launchBrowser를 한 번만 열고
@@ -256,24 +229,18 @@ async function checkOne(browser: Browser, keyword: string, blogId: string, postI
     await page.setUserAgent(USER_AGENT);
     await page.setViewport({ width: 1366, height: 900 });
 
-    // AI 탭 전용 URL — ait_pv/ait_chat_id는 네이버가 세션 진입 시 서버에서 발급하는 값이라
-    // 직접 구성하지 않고 ssc=tab.ait.all + query만으로 진입한다.
-    const url = `https://search.naver.com/search.naver?ssc=tab.ait.all&sm=tab_jum&query=${encodeURIComponent(keyword)}`;
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
-
-    // 이 키워드로 AI 탭 자체가 제공되지 않으면 네이버가 통합검색 등으로 리다이렉트할 수 있음
-    if (!page.url().includes('ssc=tab.ait.all')) {
-      return { ...empty, hasAiBriefing: false };
-    }
+    const entered = await enterAiTab(page, keyword);
+    if (!entered) return { ...empty, hasAiBriefing: false };
 
     await waitForStreamStable(page);
 
-    const result = await page.evaluate(evaluateBriefing, {
-      containerSelectors: CONTAINER_SELECTORS,
-      sourceSelectors: SOURCE_SELECTORS,
-      expandTexts: EXPAND_TEXTS,
-      expandWaitMs: EXPAND_WAIT_MS,
-    }) as BriefingEvalResult;
+    const result = await page.evaluate(evaluateBriefing, SOURCE_SELECTORS, BLOCKED_TEXT_MARKER) as BriefingEvalResult;
+
+    if (result.blocked) {
+      // "브리핑 없음"과 구분되는 별도 에러 — API가 502로 응답해 "확인 실패"로 노출되고
+      // "이 키워드는 AI 브리핑이 없다"로 오인되지 않도록 한다.
+      return { ...empty, error: '네이버 AI 탭 접근이 일시적으로 제한되었습니다. 잠시 후 다시 시도해주세요.' };
+    }
 
     if (result.answerTextLength < MIN_ANSWER_TEXT_LENGTH) {
       return { ...empty, hasAiBriefing: false };
