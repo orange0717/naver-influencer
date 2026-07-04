@@ -167,13 +167,22 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
   },
   {
+    id: 'influencers-free-plan',
+    category: 'research',
+    title: '무료 플랜 인플루언서 명단',
+    description: '선정일자·주제만 담은 무료 열람 명단 — 이름·프로필·팬수·챌린지 데이터는 포함되지 않습니다.',
+    href: '/influencers/free-plan',
+    authOnly: true,
+    ctaLabel: '무료플랜',
+  },
+  {
     id: 'rankings-influencer',
     category: 'research',
     title: '네이버 인플루언서 공식 순위',
     description: '네이버가 발표하는 공식 카테고리별 인플루언서 순위 — 주 1회 업데이트',
     href: '/rankings/official',
     requiredPlan: 'influencer',
-    ctaLabel: '조회하기',
+    ctaLabel: '인플루언서 플랜',
   },
   {
     id: 'competitor',
@@ -199,7 +208,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: 'JPG ↔ PNG 변환기',
     description: '이미지 포맷을 한 번에 최대 20장까지 변환 — 가입 없이 바로 사용',
     href: '/image-converter',
-    ctaLabel: '바로가기',
+    ctaLabel: '무료플랜',
   },
   {
     id: 'ai-briefing-geo',
