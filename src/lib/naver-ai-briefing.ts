@@ -147,6 +147,12 @@ async function launchBrowser(): Promise<Browser> {
   const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 
   if (isServerless) {
+    // ⚠️ 2026-07-04 실측 확인: Vercel의 Node 서버리스 함수는 실제로 AWS Lambda 위에서 돌지만
+    // @sparticuz/chromium이 환경 감지에 쓰는 AWS_EXECUTION_ENV/AWS_LAMBDA_JS_RUNTIME 값을
+    // 노출하지 않는다. 그 결과 라이브러리가 al2023.tar.br(공유 라이브러리 묶음, libnss3.so 포함)를
+    // 추출하지 않아 "libnss3.so: cannot open shared object file" 로 브라우저 실행 자체가 실패했다
+    // (프로덕션에서 500 즉시 실패로 재현·확인됨). import 전에 신호를 직접 주입해 추출을 강제한다.
+    process.env.AWS_LAMBDA_JS_RUNTIME ??= 'nodejs22.x';
     const chromium = (await import('@sparticuz/chromium')).default;
     return puppeteer.launch({
       args: chromium.args,
