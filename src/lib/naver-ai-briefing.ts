@@ -38,9 +38,19 @@ const NAVIGATION_TIMEOUT_MS = 25_000;
 const MAX_STREAM_WAIT_MS = 35_000;
 const POLL_INTERVAL_MS = 1_000;
 const STABLE_CHECKS_REQUIRED = 3; // 연속 3회(3초) 텍스트가 안 바뀌면 스트리밍 종료로 간주
-const MIN_ANSWER_TEXT_LENGTH = 80; // 이 이하면 답변 미생성(hasAiBriefing=false)으로 간주
 
-// 네이버가 실제 콘텐츠 상단에 붙이는 공식 라벨 — "탭 존재"와 "실제 브리핑 생성"을 구분하는 핵심 신호
+// ⚠️ 2026-07-04(3차) 오렌지 실측 제보로 상향 조정: "AI 탭" 콘텐츠는 최소 2가지 다른 레이아웃으로
+// 나타난다 — (1) "✨ AI 브리핑 실험 단계로..." 뱃지 + 인라인 인용 칩 레이아웃, (2) 뱃지 없이
+// 문단/표/섹션 + 우측 "출처 N건" 사이드 패널 + 하단 챗봇 입력창이 있는 레이아웃(예: "미운오리새끼"
+// 키워드 실측). (2)번은 실제 콘텐츠가 분명히 생성됐는데도 "AI 브리핑" 문구가 화면에 없어, 이
+// 문구를 필수 조건(AND)으로 걸면 오탐(거짓 음성)이 발생한다 — 그래서 문구 매칭은 필수가 아닌
+// 보조 신호(OR)로 완화하고, 대신 답변 텍스트 길이 임계값을 상향했다. 탭 진입 시 항상 붙는
+// 고정 UI(네비 메뉴 + 하단 disclaimer + 챗봇 placeholder 문구)만으로는 대략 100~150자 내외로
+// 추정되므로, 실제 생성된 콘텐츠(문단/표)와 확실히 구분되도록 여유를 두고 300자로 설정.
+const MIN_ANSWER_TEXT_LENGTH = 300; // 이 미만이고 라벨도 없으면 답변 미생성(hasAiBriefing=false)으로 간주
+
+// 네이버가 일부 레이아웃의 콘텐츠 상단에 붙이는 공식 라벨 — 있으면 "생성됨"의 강한 신호이지만,
+// 없다고 해서 "미생성"으로 단정하지는 않는다(레이아웃에 따라 아예 없는 경우가 실측 확인됨).
 const BRIEFING_LABEL_MARKER = 'AI 브리핑';
 
 // 실측 확인: 짧은 시간에 반복 요청하면 네이버가 AI 탭 자체를 이 문구로 막아버림
@@ -242,8 +252,10 @@ async function checkOne(browser: Browser, keyword: string, blogId: string, postI
       return { ...empty, error: '네이버 AI 탭 접근이 일시적으로 제한되었습니다. 잠시 후 다시 시도해주세요.' };
     }
 
-    // "AI 브리핑" 공식 라벨 + 최소 답변 길이를 함께 요구 — 탭 메뉴 존재만으로는 판단하지 않는다.
-    const hasAiBriefing = result.hasBriefingLabel && result.answerTextLength >= MIN_ANSWER_TEXT_LENGTH;
+    // "AI 브리핑" 공식 라벨이 있으면 강한 확정 신호로 인정하고, 없어도 답변 텍스트가 충분히 길면
+    // (고정 네비/disclaimer 수준을 확실히 넘는 분량) 생성된 것으로 판단한다 — 레이아웃에 따라
+    // 라벨 자체가 없는 경우가 실측 확인됐기 때문에 라벨을 필수 조건(AND)으로 걸지 않는다.
+    const hasAiBriefing = result.hasBriefingLabel || result.answerTextLength >= MIN_ANSWER_TEXT_LENGTH;
     if (!hasAiBriefing) {
       return { ...empty, hasAiBriefing: false };
     }
