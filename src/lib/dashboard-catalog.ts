@@ -161,7 +161,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'influencers',
     category: 'research',
-    title: '인플루언서 리스트',
+    title: '인플루언서 리스트(키챌반영)',
     description: '네이버 인플루언서 전체 목록·검색·필터',
     href: '/influencers',
     requiredPlan: 'influencer',
@@ -169,7 +169,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'influencers-free-plan',
     category: 'research',
-    title: '무료 플랜 인플루언서 명단',
+    title: '인플루언서 리스트(명단)',
     description: '이름·프로필 링크·선정일자·주제를 담은 무료 열람 명단 — 팬수·챌린지 데이터는 포함되지 않습니다.',
     href: '/influencers/free-plan',
     authOnly: true,
