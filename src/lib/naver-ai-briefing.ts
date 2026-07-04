@@ -1,4 +1,4 @@
-import puppeteer, { type Browser, type Page } from 'puppeteer-core';
+import puppeteer, { type Browser, type Page, type HTTPRequest } from 'puppeteer-core';
 
 /**
  * 네이버 "AI 브리핑"(통합검색 인라인 위젯) + "AI 탭"(ssc=tab.ait.all) 노출 여부 확인
@@ -13,16 +13,16 @@ import puppeteer, { type Browser, type Page } from 'puppeteer-core';
  *   "AI Briefing"의 약자로 추정). "펼쳐서 더보기" 버튼으로 펼치는 요약 카드 + "관련 질문" +
  *   "출처 N건 전체보기" 형태로, AI 탭(`ssc=tab.ait.all`, 클릭해서 들어가는 전체화면 채팅형 UI)과
  *   완전히 다른 DOM 위치·다른 출처 목록을 가진다.
- * - 따라서 이 모듈은 이제 **두 화면을 각각 별도로 방문·평가**해서 완전히 독립된 결과를 만든다:
- *   1) AI 브리핑 — 일반 검색결과 페이지(`search.naver.com/search.naver?query=...`)에 진입해
+ * - 따라서 이 모듈은 **두 화면을 각각 별도로 평가**해서 완전히 독립된 결과를 만든다:
+ *   1) AI 브리핑 — 일반 검색결과 페이지(`search.naver.com/search.naver?query=...`)에서
  *      `[class*="fds-aib"]` 위젯이 실제로 렌더링되는지 + "펼쳐서 더보기"로 펼친 뒤 그 안의
  *      출처 목록에 내 게시글(blogId+logNo)이 포함되는지.
- *   2) AI 탭 — 그 페이지 안의 실제 "AI" 탭 앵커를 클릭해 들어가서, 스트리밍 완료 후 콘텐츠와
+ *   2) AI 탭 — 같은 페이지 안의 실제 "AI" 탭 앵커를 클릭해 들어가서, 스트리밍 완료 후 콘텐츠와
  *      그 출처 목록에 내 게시글이 포함되는지.
  * - 두 결과는 서로의 값에 절대 영향을 주지 않는다 — "AI 브리핑 없음 + AI 탭 있음"처럼 어느
  *   조합도 나올 수 있다(같은 키워드라도 두 기능이 서로 다른 소스 큐레이션을 쓰기 때문).
  * - "있음" 판정은 반드시 **인용(citation) 매칭까지 성공했을 때만** — 콘텐츠가 생성됐다는 사실
- *   만으로는 "있음"으로 표시하지 않는다(콘텐츠 생성됐지만 내 글이 인용 안 된 경우는 "없음").
+ *   만으로는 "있음"으로 표시하지 않는다.
  * - 인용 매칭은 blogId(대소문자 무관) + logNo(postId) 조합으로 정확히 일치하는 URL만 인정한다
  *   (`extractBlogPost`/`findMatch` — 같은 블로그의 다른 글이 인용된 경우 매칭되지 않도록
  *   postId까지 반드시 비교, URL 문자열 단순 비교 아님).
@@ -30,19 +30,45 @@ import puppeteer, { type Browser, type Page } from 'puppeteer-core';
  *   반드시 일반 검색 결과 페이지에 먼저 진입한 뒤, 그 페이지 안의 실제 AI 탭
  *   <a> 앵커를 클릭(in-page navigation)해야 정상 진입된다 — referrer/세션 검증으로 추정.
  * - ⚠️ **자동화 탐지 주의**: 짧은 시간에 반복 요청하면 네이버가 "잘못된 접근입니다" 문구로
- *   막는다(실측 확인됨). `BLOCKED_TEXT_MARKER`로 감지해 "없음"이 아닌 별도 error로 반환 —
- *   절대 "없음"과 혼동하면 안 됨. 배치/자동 반복 실행은 여전히 지원하지 않는다(단건 온디맨드만).
- * - 두 화면을 순차 방문하므로 건당 소요 시간이 늘어난다(대략 30~50초) — route의
- *   maxDuration을 이에 맞춰 넉넉히 잡아야 한다.
+ *   막는다(실측 확인됨). `BLOCKED_TEXT_MARKER`로 감지해 별도 error로 반환.
+ *
+ * 2026-07-04(5차) 오렌지 지시로 성능 최적화 진행 — 정확도는 그대로 유지하면서 건당 소요 시간을
+ * 단축하기 위해 다음을 적용했다:
+ * 1) **중복 페이지 이동 제거** — 기존엔 AI 브리핑 확인 후 AI 탭 확인을 위해 같은 검색 결과
+ *    페이지로 다시 goto했다(같은 키워드 검색을 2번 수행). 이제 한 번만 진입하고, 그 상태에서
+ *    바로 AI 탭 앵커를 클릭해 들어간다 — 페이지 로드 1회 완전히 제거.
+ * 2) **폴링 → 이벤트 기반 대기** — `waitForWidgetToAppear`(1초 간격 폴링)를 Puppeteer 내장
+ *    `page.waitForSelector`로 교체(브라우저 내부적으로 훨씬 빠르게 반응). 텍스트 안정화 대기도
+ *    Node↔브라우저 왕복 폴링 대신, 브라우저 컨텍스트 안에서 MutationObserver + debounce로
+ *    "더 이상 DOM이 안 바뀜"을 즉시 감지하도록 재작성(`waitForContentStable`) — 실제 스트리밍이
+ *    멈춘 시점에 훨씬 가깝게 반응하고, 왕복 오버헤드가 없다.
+ * 3) **고정 sleep 제거** — "펼쳐서 더보기" 클릭 후 무조건 3초 기다리던 부분을 위와 동일한
+ *    MutationObserver 기반 동적 대기로 교체(콘텐츠가 이미 펼쳐져 있으면 훨씬 빨리 통과).
+ * 4) **리소스 차단** — 이미지/폰트/미디어 리소스는 판정 로직(텍스트/링크)과 무관하므로 요청
+ *    자체를 차단(page.setRequestInterception). 스타일시트는 의도적으로 차단하지 않는다 —
+ *    `document.body.innerText`(AI 탭 판정에 사용)는 CSS 렌더링에 의존하므로(예: display:none
+ *    요소 제외) 스타일을 차단하면 정확도가 깨질 수 있다.
+ * 5) **브라우저 프로세스 재사용** — 서버리스 컨테이너가 warm 상태로 재사용될 때 매번 Chromium을
+ *    새로 띄우지 않도록 모듈 스코프에 브라우저 인스턴스를 캐싱(`getBrowser`). 페이지(탭)는 요청마다
+ *    새로 열고 닫지만, 가장 비용이 큰 브라우저 프로세스 기동은 warm 컨테이너에서 생략된다.
+ * 6) **단계별 소요 시간 로깅** — 병목 구간 파악을 위해 launch/setup/search/briefing/tab/compare
+ *    각 구간의 소요 시간을 콘솔에 구조화 로그로 남긴다(Vercel 함수 로그에서 확인 가능).
+ * 7) **진행 단계 콜백** — `checkAiBriefingExposure`에 선택적 `onStage` 콜백을 추가해 프론트엔드가
+ *    "검색 중 → AI 브리핑 확인 중 → AI 탭 확인 중 → 출처 비교 중" 진행 상황을 실시간으로 표시할
+ *    수 있도록 지원한다(check-ai-briefing route에서 스트리밍 응답으로 중계).
  */
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const NAVIGATION_TIMEOUT_MS = 25_000;
 
-// AI 탭은 챗봇처럼 답변이 스트리밍되므로 고정 대기 대신 텍스트가 안정될 때까지 폴링
-const MAX_STREAM_WAIT_MS = 35_000;
-const POLL_INTERVAL_MS = 1_000;
-const STABLE_CHECKS_REQUIRED = 3; // 연속 3회(3초) 텍스트가 안 바뀌면 스트리밍/렌더링 종료로 간주
+// 콘텐츠 안정화 대기 — MutationObserver가 마지막 변경 이후 이 시간(ms) 동안 추가 변경이 없으면
+// "스트리밍/렌더링 종료"로 간주(고정 폴링 대비 실제 종료 시점에 훨씬 가깝게 반응).
+const STABLE_DEBOUNCE_MS = 900;
+const MAX_STREAM_WAIT_MS = 35_000; // 그래도 끝나지 않을 경우의 안전장치(최대 대기)
+
+// "펼쳐서 더보기" 클릭 직후 펼쳐지는 콘텐츠는 보통 즉시 렌더링되므로 더 짧은 debounce/상한 사용
+const EXPAND_DEBOUNCE_MS = 500;
+const EXPAND_MAX_WAIT_MS = 4_000;
 
 // AI 브리핑 위젯은 통합검색 페이지 진입 후 비동기로 늦게 렌더링된다 — 최대 대기 시간
 const MAX_WIDGET_WAIT_MS = 20_000;
@@ -67,6 +93,13 @@ const SOURCE_SELECTORS = [
   'a[href*="post.naver.com"]',
 ];
 
+// 판정 로직(텍스트/링크)과 무관한 리소스 — 차단해도 정확도에 영향 없음.
+// ⚠️ 'stylesheet'는 의도적으로 제외: evaluateWholeDocument가 쓰는 innerText는 CSS 렌더링 결과에
+// 의존하므로(display:none 요소 제외 등) 스타일 차단 시 오탐 위험이 있다.
+const BLOCKED_RESOURCE_TYPES = new Set(['image', 'media', 'font']);
+
+export type AiBriefingStage = 'searching' | 'briefing' | 'tab' | 'comparing';
+
 interface RawSource {
   url: string;
   title: string;
@@ -87,6 +120,10 @@ interface SurfaceResult {
   matchedTitle: string | null;
 }
 
+const EMPTY_SURFACE: SurfaceResult = {
+  has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null,
+};
+
 export interface AiBriefingCheckResult {
   hasAiBriefing: boolean;         // AI 브리핑(통합검색 인라인 위젯) 콘텐츠 생성 여부
   exposed: boolean;               // AI 브리핑 출처에 내 게시글(blogId+logNo) 포함 여부
@@ -100,6 +137,11 @@ export interface AiBriefingCheckResult {
   tabMatchedTitle: string | null; // AI 탭에서 매칭된 출처 표시 제목
   error?: string;
 }
+
+const EMPTY_RESULT: Omit<AiBriefingCheckResult, 'error'> = {
+  hasAiBriefing: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null,
+  hasAiTab: false, tabExposed: false, tabSourceIndex: null, tabSourceTotal: null, tabMatchedTitle: null,
+};
 
 /** 브라우저 컨텍스트 안에서 실행 — document 전체 기준(AI 탭 전용, 탭 페이지는 콘텐츠가 전체 화면) */
 function evaluateWholeDocument(sourceSelectors: string[], blockedMarker: string, briefingLabelMarker: string): SurfaceEvalResult {
@@ -164,34 +206,45 @@ function evaluateWidget(widgetSelector: string, sourceSelectors: string[], block
   };
 }
 
-/** 텍스트 길이가 안정될 때까지 폴링(고정 대기 대신) — measureFn이 현재 길이를 반환 */
-async function waitForTextStable(page: Page, measureFn: () => number): Promise<void> {
-  let lastLength = -1;
-  let stableCount = 0;
-  const start = Date.now();
+/**
+ * 브라우저 컨텍스트 안에서 MutationObserver로 DOM 변경을 직접 감시해, 마지막 변경 이후
+ * `debounceMs` 동안 추가 변경이 없으면 즉시 resolve한다(Node↔브라우저 폴링 왕복 없음).
+ * `scopeSelector`가 있으면 그 selector에 매칭되는 노드들만 관찰(위젯 전용), 없으면 document.body 전체.
+ * 아무리 안정화되지 않아도 `maxWaitMs` 후에는 안전장치로 resolve.
+ */
+async function waitForContentStable(page: Page, scopeSelector: string | null, debounceMs: number, maxWaitMs: number): Promise<void> {
+  await page.evaluate((scopeSelector, debounceMs, maxWaitMs) => {
+    return new Promise<void>(resolve => {
+      const targets = scopeSelector
+        ? Array.from(document.querySelectorAll(scopeSelector))
+        : [document.body];
+      if (targets.length === 0) { resolve(); return; }
 
-  while (Date.now() - start < MAX_STREAM_WAIT_MS) {
-    const length = await page.evaluate(measureFn).catch(() => 0);
-    if (length > 0 && length === lastLength) {
-      stableCount++;
-      if (stableCount >= STABLE_CHECKS_REQUIRED) return;
-    } else {
-      stableCount = 0;
-    }
-    lastLength = length;
-    await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
-  }
-}
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+      let maxTimer: ReturnType<typeof setTimeout> | null = null;
+      const observer = new MutationObserver(schedule);
+      let settled = false;
 
-/** AI 브리핑 위젯이 나타날 때까지 폴링(늦게 비동기로 렌더링되거나, 아예 안 나타날 수도 있음) */
-async function waitForWidgetToAppear(page: Page, widgetSelector: string): Promise<boolean> {
-  const start = Date.now();
-  while (Date.now() - start < MAX_WIDGET_WAIT_MS) {
-    const count = await page.evaluate(sel => document.querySelectorAll(sel).length, widgetSelector).catch(() => 0);
-    if (count > 0) return true;
-    await new Promise(r => setTimeout(r, 1_000));
-  }
-  return false;
+      function settle() {
+        if (settled) return;
+        settled = true;
+        if (debounceTimer) clearTimeout(debounceTimer);
+        if (maxTimer) clearTimeout(maxTimer);
+        observer.disconnect();
+        resolve();
+      }
+      function schedule() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(settle, debounceMs);
+      }
+
+      for (const t of targets) {
+        observer.observe(t, { childList: true, subtree: true, characterData: true });
+      }
+      schedule(); // 관찰 시작 시점부터 이미 조용하면 debounceMs 후 바로 안정 판정
+      maxTimer = setTimeout(settle, maxWaitMs);
+    });
+  }, scopeSelector, debounceMs, maxWaitMs);
 }
 
 /** 네이버 블로그 URL(경로형/쿼리형 모두)에서 {blogId, postId} 추출 */
@@ -230,9 +283,7 @@ function findMatch(sources: RawSource[], blogId: string, postId: string): { inde
 /** 평가 결과 + blogId/postId를 조합해 최종 SurfaceResult(있음/없음 + 출처 정보)를 만든다 */
 function toSurfaceResult(evalResult: SurfaceEvalResult, blogId: string, postId: string): SurfaceResult {
   const has = evalResult.hasBriefingLabel || evalResult.answerTextLength >= MIN_ANSWER_TEXT_LENGTH;
-  if (!has) {
-    return { has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null };
-  }
+  if (!has) return { ...EMPTY_SURFACE };
   const match = findMatch(evalResult.sources, blogId, postId);
   return {
     has: true,
@@ -271,58 +322,73 @@ async function launchBrowser(): Promise<Browser> {
   return puppeteer.launch({ executablePath: localPath, headless: true });
 }
 
+// 서버리스 컨테이너가 warm 상태로 재사용될 때 Chromium 프로세스 자체를 재사용해 기동 비용을 절감.
+// 페이지(탭)는 매 요청마다 새로 열고 닫는다 — 브라우저 프로세스만 공유.
+let cachedBrowserPromise: Promise<Browser> | null = null;
+
+async function getBrowser(forceNew = false): Promise<Browser> {
+  if (!forceNew && cachedBrowserPromise) {
+    try {
+      const browser = await cachedBrowserPromise;
+      if (browser.isConnected()) return browser;
+    } catch {
+      // 캐시된 launch 자체가 실패한 경우 — 아래에서 새로 재시도
+    }
+  }
+  cachedBrowserPromise = launchBrowser();
+  return cachedBrowserPromise;
+}
+
+/** Puppeteer/Chromium 프로세스 자체가 죽어서 발생하는 에러인지 판별 — 이 경우만 캐시 무효화 후 재시도 */
+function isBrowserDeadError(message: string): boolean {
+  return /Protocol error|Target closed|Session closed|Connection closed|WebSocket is (not open|closed)/i.test(message);
+}
+
 /**
- * 일반 통합검색 결과 페이지에 진입해 "AI 브리핑" 인라인 위젯을 확인한다.
+ * 일반 통합검색 결과 페이지(이미 로드되어 있음)에서 "AI 브리핑" 인라인 위젯을 확인한다.
  * 위젯이 렌더링되면 "펼쳐서 더보기" 버튼을 클릭해 전체 콘텐츠 + 출처 목록을 펼친 뒤 평가한다.
  */
-async function checkBriefingWidget(page: Page, keyword: string, blogId: string, postId: string): Promise<SurfaceResult & { blocked: boolean }> {
-  const searchUrl = `https://search.naver.com/search.naver?query=${encodeURIComponent(keyword)}`;
-  await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
-
-  const blockedEarly = await page.evaluate(marker => (document.body.innerText || '').includes(marker), BLOCKED_TEXT_MARKER).catch(() => false);
-  if (blockedEarly) {
-    return { has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null, blocked: true };
-  }
-
-  const appeared = await waitForWidgetToAppear(page, WIDGET_SELECTOR);
+async function checkBriefingWidget(page: Page, blogId: string, postId: string): Promise<SurfaceResult & { blocked: boolean }> {
+  const appeared = await page.waitForSelector(WIDGET_SELECTOR, { timeout: MAX_WIDGET_WAIT_MS })
+    .then(() => true)
+    .catch(() => false);
   if (!appeared) {
     // 위젯 자체가 렌더링되지 않음 — 이 키워드는 AI 브리핑이 노출되지 않는 것으로 간주
-    return { has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null, blocked: false };
+    return { ...EMPTY_SURFACE, blocked: false };
   }
 
-  // 텍스트 길이가 안정될 때까지 대기(비동기 스트리밍/렌더링 완료 대기)
-  await waitForTextStable(page, () => {
-    const nodes = Array.from(document.querySelectorAll('[class*="fds-aib"]'));
-    return nodes.reduce((sum, n) => sum + (n.textContent || '').length, 0);
-  });
+  // 콘텐츠가 안정될 때까지 대기(비동기 스트리밍/렌더링 완료 대기, MutationObserver 기반)
+  await waitForContentStable(page, WIDGET_SELECTOR, STABLE_DEBOUNCE_MS, MAX_STREAM_WAIT_MS);
 
   // "펼쳐서 더보기" 버튼이 있으면 클릭해 전체 콘텐츠/출처를 펼친다
-  await page.evaluate((selector, expandText) => {
+  const clicked = await page.evaluate((selector, expandText) => {
     const nodes = Array.from(document.querySelectorAll(selector));
-    const btn = nodes.find(el => (el.textContent || '').includes(expandText));
-    if (btn) (btn as HTMLElement).click();
-  }, WIDGET_SELECTOR, WIDGET_EXPAND_BUTTON_TEXT).catch(() => {});
-  await new Promise(r => setTimeout(r, 3_000));
+    const btn = nodes.find(el => (el.textContent || '').includes(expandText)) as HTMLElement | undefined;
+    if (btn) { btn.click(); return true; }
+    return false;
+  }, WIDGET_SELECTOR, WIDGET_EXPAND_BUTTON_TEXT).catch(() => false);
+
+  if (clicked) {
+    // 펼침 애니메이션/추가 렌더링이 끝날 때까지만 짧게 대기(고정 3초 대신 동적 감지)
+    await waitForContentStable(page, WIDGET_SELECTOR, EXPAND_DEBOUNCE_MS, EXPAND_MAX_WAIT_MS);
+  }
 
   const evalResult = await page.evaluate(
     evaluateWidget, WIDGET_SELECTOR, SOURCE_SELECTORS, BLOCKED_TEXT_MARKER, BRIEFING_LABEL_MARKER,
   ) as SurfaceEvalResult;
 
   if (evalResult.blocked) {
-    return { has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null, blocked: true };
+    return { ...EMPTY_SURFACE, blocked: true };
   }
 
   return { ...toSurfaceResult(evalResult, blogId, postId), blocked: false };
 }
 
-/** 일반 검색 결과 페이지에서 실제 "AI" 탭 앵커를 찾아 클릭(in-page navigation)해 진입한다. */
-async function enterAiTab(page: Page, keyword: string): Promise<boolean> {
-  const searchUrl = `https://search.naver.com/search.naver?query=${encodeURIComponent(keyword)}`;
-  await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
-
+/** 이미 로드된 검색 결과 페이지 안에서 실제 "AI" 탭 앵커를 찾아 클릭(in-page navigation)해 진입한다. */
+async function enterAiTab(page: Page): Promise<boolean> {
   const hasAiTabLink = await page.evaluate(() => {
     return !!Array.from(document.querySelectorAll('a')).find(a => (a.getAttribute('href') || '').includes('ssc=tab.ait.all'));
-  });
+  }).catch(() => false);
   if (!hasAiTabLink) return false; // 이 키워드는 AI 탭 메뉴 자체가 제공되지 않음(드묾)
 
   await Promise.all([
@@ -337,28 +403,29 @@ async function enterAiTab(page: Page, keyword: string): Promise<boolean> {
 }
 
 /** AI 탭에 진입해 콘텐츠 생성 여부 + 출처 인용 여부를 확인한다. */
-async function checkAiTab(page: Page, keyword: string, blogId: string, postId: string): Promise<SurfaceResult & { blocked: boolean }> {
-  const entered = await enterAiTab(page, keyword);
+async function checkAiTab(page: Page, blogId: string, postId: string): Promise<SurfaceResult & { blocked: boolean }> {
+  const entered = await enterAiTab(page);
   if (!entered) {
-    return { has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null, blocked: false };
+    return { ...EMPTY_SURFACE, blocked: false };
   }
 
-  await waitForTextStable(page, () => (document.body?.innerText || '').length);
+  await waitForContentStable(page, null, STABLE_DEBOUNCE_MS, MAX_STREAM_WAIT_MS);
 
   const evalResult = await page.evaluate(
     evaluateWholeDocument, SOURCE_SELECTORS, BLOCKED_TEXT_MARKER, BRIEFING_LABEL_MARKER,
   ) as SurfaceEvalResult;
 
   if (evalResult.blocked) {
-    return { has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null, blocked: true };
+    return { ...EMPTY_SURFACE, blocked: true };
   }
 
   return { ...toSurfaceResult(evalResult, blogId, postId), blocked: false };
 }
 
 /**
- * keyword로 (1) 통합검색 "AI 브리핑" 인라인 위젯과 (2) "AI" 탭을 각각 독립적으로 방문해
- * 콘텐츠 생성 여부 + 내 포스팅의 인용 여부(blogId+logNo 기준)를 확인한다.
+ * keyword로 (1) 통합검색 "AI 브리핑" 인라인 위젯과 (2) "AI" 탭을 각각 독립적으로 확인해
+ * 콘텐츠 생성 여부 + 내 포스팅의 인용 여부(blogId+logNo 기준)를 반환한다.
+ * `onStage` 콜백으로 진행 단계(searching→briefing→tab→comparing)를 실시간 전달할 수 있다.
  * ⚠️ 이용약관/서버 부하/자동화 탐지 리스크 때문에 배치 실행은 지원하지 않는다 — 반드시
  * 사용자가 선택한 포스팅 1건에 대해서만, 온디맨드로 단건 호출한다 (naver-mate 페이지 참고).
  */
@@ -366,43 +433,93 @@ export async function checkAiBriefingExposure(
   keyword: string,
   blogId: string,
   postId: string,
+  onStage?: (stage: AiBriefingStage) => void,
 ): Promise<AiBriefingCheckResult> {
-  const browser = await launchBrowser();
+  let browser: Browser;
   try {
-    return await checkOne(browser, keyword, blogId, postId);
-  } finally {
-    await browser.close().catch(() => {});
+    browser = await getBrowser();
+  } catch (e) {
+    return { ...EMPTY_RESULT, error: e instanceof Error ? e.message : String(e) };
   }
+
+  const result = await checkOne(browser, keyword, blogId, postId, onStage);
+
+  // 브라우저 프로세스 자체가 죽어서 실패한 경우 — 캐시를 무효화하고 한 번만 새로 띄워 재시도
+  if (result.error && isBrowserDeadError(result.error)) {
+    cachedBrowserPromise = null;
+    try {
+      const freshBrowser = await getBrowser(true);
+      return await checkOne(freshBrowser, keyword, blogId, postId, onStage);
+    } catch (e) {
+      return { ...EMPTY_RESULT, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  return result;
 }
 
-const EMPTY_RESULT: Omit<AiBriefingCheckResult, 'error'> = {
-  hasAiBriefing: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null,
-  hasAiTab: false, tabExposed: false, tabSourceIndex: null, tabSourceTotal: null, tabMatchedTitle: null,
-};
-
-async function checkOne(browser: Browser, keyword: string, blogId: string, postId: string): Promise<AiBriefingCheckResult> {
+async function checkOne(
+  browser: Browser,
+  keyword: string,
+  blogId: string,
+  postId: string,
+  onStage?: (stage: AiBriefingStage) => void,
+): Promise<AiBriefingCheckResult> {
   const BLOCKED_ERROR = '네이버 접근이 일시적으로 제한되었습니다. 잠시 후 다시 시도해주세요.';
-  let page;
+
+  const overallStart = Date.now();
+  let lastMark = overallStart;
+  const timings: Record<string, number> = {};
+  const lap = (label: string) => {
+    const now = Date.now();
+    timings[label] = now - lastMark;
+    lastMark = now;
+  };
+
+  let page: Page | undefined;
   try {
     page = await browser.newPage();
     await page.setUserAgent(USER_AGENT);
     await page.setViewport({ width: 1366, height: 900 });
 
-    // 1) AI 브리핑(통합검색 인라인 위젯) — 독립적으로 확인
-    const briefing = await checkBriefingWidget(page, keyword, blogId, postId);
+    // 판정과 무관한 리소스(이미지/폰트/미디어) 차단 — 로딩 시간 단축, 텍스트/링크 판정엔 영향 없음
+    await page.setRequestInterception(true);
+    page.on('request', (req: HTTPRequest) => {
+      if (BLOCKED_RESOURCE_TYPES.has(req.resourceType())) req.abort().catch(() => {});
+      else req.continue().catch(() => {});
+    });
+    lap('setup');
+
+    onStage?.('searching');
+    const searchUrl = `https://search.naver.com/search.naver?query=${encodeURIComponent(keyword)}`;
+    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
+    lap('search');
+
+    const blockedEarly = await page.evaluate(marker => (document.body.innerText || '').includes(marker), BLOCKED_TEXT_MARKER).catch(() => false);
+    if (blockedEarly) {
+      return { ...EMPTY_RESULT, error: BLOCKED_ERROR };
+    }
+
+    // 1) AI 브리핑(통합검색 인라인 위젯) — 독립적으로 확인 (같은 페이지, 추가 이동 없음)
+    onStage?.('briefing');
+    const briefing = await checkBriefingWidget(page, blogId, postId);
+    lap('briefing');
     if (briefing.blocked) {
       return { ...EMPTY_RESULT, error: BLOCKED_ERROR };
     }
 
-    // 2) AI 탭 — 완전히 별도로 재진입해서 확인(위젯 결과와 서로 영향 없음)
-    const tab = await checkAiTab(page, keyword, blogId, postId);
+    // 2) AI 탭 — 같은 페이지에서 탭 앵커 클릭으로 진입(별도 재검색 없음), 위젯 결과와 서로 영향 없음
+    onStage?.('tab');
+    const tab = await checkAiTab(page, blogId, postId);
+    lap('tab');
     if (tab.blocked) {
       // 브리핑은 정상 확인됐지만 탭 확인 중 차단된 경우 — 절반의 결과라도 "없음"으로
       // 단정하지 않도록 에러로 반환한다(캐시되지 않아 다음 시도가 바로 재확인 가능).
       return { ...EMPTY_RESULT, error: BLOCKED_ERROR };
     }
 
-    return {
+    onStage?.('comparing');
+    const result: AiBriefingCheckResult = {
       hasAiBriefing: briefing.has,
       exposed: briefing.exposed,
       sourceIndex: briefing.sourceIndex,
@@ -414,9 +531,14 @@ async function checkOne(browser: Browser, keyword: string, blogId: string, postI
       tabSourceTotal: tab.sourceTotal,
       tabMatchedTitle: tab.matchedTitle,
     };
+    lap('compare');
+    return result;
   } catch (e) {
     return { ...EMPTY_RESULT, error: e instanceof Error ? e.message : String(e) };
   } finally {
+    const totalMs = Date.now() - overallStart;
+    const breakdown = Object.entries(timings).map(([k, v]) => `${k}=${v}ms`).join(' ');
+    console.log(`[ai-briefing][timing] keyword="${keyword}" ${breakdown} total=${totalMs}ms`);
     await page?.close().catch(() => {});
   }
 }

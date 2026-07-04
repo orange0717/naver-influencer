@@ -91,21 +91,15 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
 
 /**
  * "AI 브리핑" 컬럼 배지 — 통합검색 인라인 위젯(AI 탭과 무관한 별개 서비스) 결과만 사용.
- * "있음"은 반드시 인용(exposed)까지 확인됐을 때만 표시한다 — 콘텐츠만 생성되고 내 글이
- * 인용되지 않은 경우는 "미인용"으로 구분 표시(둘 다 "없음"으로 뭉뚱그리면 원인 파악이 안 됨).
+ * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "있음"/"미인용" 두 가지로만 통일한다.
+ * 콘텐츠 자체가 생성되지 않은 경우("없음")와 생성됐지만 내 글이 인용되지 않은 경우를
+ * 더 이상 구분 표시하지 않고 둘 다 "미인용"으로 표기한다 — exposed 단일 필드로만 판정.
  */
 function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
   if (!result) return <span className="text-[10px] text-dim/50">--</span>;
-  if (result.hasAiBriefing === false) {
-    return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로는 AI 브리핑 콘텐츠 자체가 생성되지 않았습니다.">
-        없음
-      </span>
-    );
-  }
   if (!result.exposed) {
     return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 브리핑 콘텐츠는 생성됐지만 출처 목록에 이 게시글이 없습니다.">
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 브리핑 출처 목록에 이 게시글이 없습니다.">
         미인용
       </span>
     );
@@ -127,20 +121,14 @@ function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
 /**
  * "AI 탭" 컬럼 배지 — AI 탭(전체화면 채팅형 UI, AI 브리핑과 무관한 별개 서비스) 결과만 사용.
  * ⚠️ 절대 hasAiBriefing/exposed(AI 브리핑 필드)를 참조하지 않는다 — 같은 키워드라도 두 서비스는
- * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 없음+탭 있음" 같은 조합도 정상적으로 나올 수 있다.
+ * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 미인용+탭 있음" 같은 조합도 정상적으로 나올 수 있다.
+ * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "있음"/"미인용" 두 가지로만 통일(BriefingLabelBadge와 동일 원칙).
  */
 function AiTabBadge({ result }: { result?: BriefingResult }) {
   if (!result) return <span className="text-[10px] text-dim/50">--</span>;
-  if (result.hasAiTab === false) {
-    return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로는 AI 탭 콘텐츠 자체가 생성되지 않았습니다.">
-        없음
-      </span>
-    );
-  }
   if (!result.tabExposed) {
     return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 탭 콘텐츠는 생성됐지만 출처 목록에 이 게시글이 없습니다.">
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 탭 출처 목록에 이 게시글이 없습니다.">
         미인용
       </span>
     );
@@ -159,6 +147,15 @@ function AiTabBadge({ result }: { result?: BriefingResult }) {
   );
 }
 
+/** 확인 진행 단계 → 사용자에게 보여줄 문구 (2026-07-04(6차) 진행 상태 UI) */
+const STAGE_LABELS: Record<string, string> = {
+  searching: '검색 중...',
+  briefing: 'AI 브리핑 확인 중...',
+  tab: 'AI 탭 확인 중...',
+  comparing: '출처 비교 중...',
+  done: '완료',
+};
+
 export default function NaverMatePage() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -175,6 +172,7 @@ export default function NaverMatePage() {
   // "postId::keyword" → BriefingResult
   const [briefingResults, setBriefingResults] = useState<Record<string, BriefingResult>>({});
   const [checkingKey, setCheckingKey] = useState('');
+  const [checkingStage, setCheckingStage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -207,8 +205,9 @@ export default function NaverMatePage() {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
         const result = briefingResults[rankKey(post.id, kw)];
         // AI 브리핑/AI 탭은 서로 완전히 독립된 서비스 결과 — 각자의 필드만으로 판정한다
-        const briefingStatus = !result ? '미확인' : result.hasAiBriefing === false ? '없음' : result.exposed ? '있음' : '미인용';
-        const tabStatus = !result ? '미확인' : result.hasAiTab === false ? '없음' : result.tabExposed ? '있음' : '미인용';
+        // 2026-07-04(6차): 상태 문구 통일 — "없음" 문구 제거, 미확인/있음/미인용 3가지만 사용
+        const briefingStatus = !result ? '미확인' : result.exposed ? '있음' : '미인용';
+        const tabStatus = !result ? '미확인' : result.tabExposed ? '있음' : '미인용';
         rows.push([
           post.title,
           post.url,
@@ -363,10 +362,14 @@ export default function NaverMatePage() {
     setTimeout(() => handleKeywordSave(postId), 0);
   };
 
+  // 2026-07-04(6차) 오렌지 지시: 진행 단계를 실시간으로 보여주기 위해 NDJSON 스트리밍 응답을 소비.
+  // 캐시 적중/검증 실패/접근 거부 등은 서버가 여전히 일반 JSON으로 즉시 응답하므로
+  // content-type으로 분기해서 두 경로 모두 처리한다.
   const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean }> => {
     if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false };
     const key = rankKey(post.id, keyword.trim());
     setCheckingKey(key);
+    setCheckingStage('searching');
     try {
       const res = await fetch('/api/blog/check-ai-briefing', {
         method: 'POST',
@@ -377,23 +380,72 @@ export default function NaverMatePage() {
           keyword: keyword.trim(),
         }),
       });
-      if (res.ok) {
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
+        } else {
+          const body = await res.json().catch(() => null);
+          showError(body?.error || `AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`, 8000);
+        }
+        return { ok: false, status: res.status, cached: false };
+      }
+
+      const isStream = res.headers.get('content-type')?.includes('application/x-ndjson') && res.body;
+      if (!isStream) {
+        // 캐시 적중 등 — 일반 JSON 즉시 응답
         const data = await res.json();
         setBriefingResults(prev => ({ ...prev, [key]: data }));
         saveBriefingResultToDb(profile.blogId, post.id, keyword.trim(), data);
         return { ok: true, status: res.status, cached: data?.cached === true };
       }
-      if (res.status === 429) {
-        showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
-      } else {
-        const body = await res.json().catch(() => null);
-        showError(body?.error || `AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`, 8000);
+
+      // NDJSON 스트림: 줄 단위로 진행 단계({stage}) 및 최종 결과({stage:'done'|'error', ...})를 수신
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalData: (Record<string, unknown> & { error?: string }) | null = null;
+      let streamError: string | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg: { stage?: string; error?: string; result?: Record<string, unknown> };
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.stage === 'error') {
+            streamError = msg.error || 'AI 브리핑 확인 중 오류';
+          } else if (msg.stage === 'done') {
+            finalData = msg.result || null;
+            setCheckingStage('done');
+          } else if (msg.stage) {
+            setCheckingStage(msg.stage);
+          }
+        }
       }
+
+      if (streamError) {
+        showError(streamError, 8000);
+        return { ok: false, status: res.status, cached: false };
+      }
+      if (finalData) {
+        setBriefingResults(prev => ({ ...prev, [key]: finalData as unknown as BriefingResult }));
+        saveBriefingResultToDb(profile.blogId, post.id, keyword.trim(), finalData as unknown as BriefingResult);
+        return { ok: true, status: res.status, cached: false };
+      }
+      showError('AI 브리핑 확인 결과를 받지 못했습니다. 잠시 후 다시 시도해주세요.', 8000);
       return { ok: false, status: res.status, cached: false };
     } catch {
       showError('네트워크 오류로 AI 브리핑을 확인하지 못했습니다.');
       return { ok: false, status: 0, cached: false };
-    } finally { setCheckingKey(''); }
+    } finally {
+      setCheckingKey('');
+      setCheckingStage('');
+    }
   };
 
   if (loading) {
@@ -461,6 +513,12 @@ export default function NaverMatePage() {
           >
             ✕
           </button>
+        </div>
+      )}
+      {checkingKey && (
+        <div className="px-4 py-3 rounded-xl bg-accent/10 border border-accent/30 text-accent text-sm flex items-center gap-2">
+          <span className="w-3.5 h-3.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block shrink-0" />
+          <span className="flex-1">{STAGE_LABELS[checkingStage] || '확인 중...'}</span>
         </div>
       )}
       {/* 헤더 */}
