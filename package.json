@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
+    "@sparticuz/chromium": "^131.0.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.0",
     "@capacitor/keyboard": "^8.0.2",
@@ -42,6 +43,7 @@
     "cheerio": "^1.2.0",
     "firebase-admin": "^13.7.0",
     "next": "16.1.6",
+    "puppeteer-core": "^24.40.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
