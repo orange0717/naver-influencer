@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           } catch (e) {
             console.error('[oauth-callback] cleanup deleteUser failed:', e);
           }
-          return NextResponse.redirect(`${origin}/auth/login?reason=oauth_no_account`);
+          return NextResponse.redirect(`${origin}/?authModal=login&reason=oauth_no_account`);
         }
 
         let deviceId = cookieStore.get(DEVICE_ID_COOKIE)?.value;
@@ -92,6 +92,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 에러 시 로그인 페이지로 리다이렉트
-  return NextResponse.redirect(`${origin}/auth/login?error=confirm_failed`);
+  // 에러 시 메인페이지 로그인 모달로 리다이렉트
+  return NextResponse.redirect(`${origin}/?authModal=login&error=confirm_failed`);
 }

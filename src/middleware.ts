@@ -173,8 +173,8 @@ export async function middleware(request: NextRequest) {
 
   if (needsLoginPage && !user && !hasDemoSession && !hasDemoParam) {
     const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    url.pathname = '/';
+    url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 
@@ -182,8 +182,8 @@ export async function middleware(request: NextRequest) {
   const needsNoticeLogin = acceptsHtml && matchesPathPrefix(pathname, '/notice');
   if (needsNoticeLogin && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    url.pathname = '/';
+    url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 
@@ -192,8 +192,8 @@ export async function middleware(request: NextRequest) {
     acceptsHtml && matchesPathPrefix(pathname, '/keywords');
   if (needsKeywordsLogin && !user && !hasDemoSession) {
     const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    url.search = `?redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    url.pathname = '/';
+    url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 
@@ -255,8 +255,8 @@ export async function middleware(request: NextRequest) {
     if (!ok) {
       await supabase.auth.signOut();
       const url = request.nextUrl.clone();
-      url.pathname = '/auth/login';
-      url.search = '?reason=session_taken';
+      url.pathname = '/';
+      url.search = '?authModal=login&reason=session_taken';
       return NextResponse.redirect(url);
     }
   }

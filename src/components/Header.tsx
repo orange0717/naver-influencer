@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthModal } from '@/contexts/AuthModalContext';
 import { isDesktop } from '@/lib/desktop';
 import NotificationBell from './NotificationBell';
 import MessageBell from './MessageBell';
@@ -158,6 +159,7 @@ export default function Header({ serverUser }: HeaderProps) {
   const [inDesktopApp, setInDesktopApp] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const { user: clientUser, isLoading: authLoading, logout: authLogout } = useAuth();
+  const { openLogin } = useAuthModal();
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -349,10 +351,12 @@ export default function Header({ serverUser }: HeaderProps) {
                 </div>
               </div>
             ) : (
-              <Link href="/auth/login"
-                className="px-3 py-1.5 bg-white text-header text-sm font-semibold rounded-lg hover:bg-white/90 transition-colors">
+              <button
+                type="button"
+                onClick={() => openLogin()}
+                className="cursor-pointer px-3 py-1.5 bg-white text-header text-sm font-semibold rounded-lg hover:bg-white/90 transition-colors">
                 로그인
-              </Link>
+              </button>
             )}
             <button
               className="lg:hidden p-1 text-white/70"
@@ -432,10 +436,12 @@ export default function Header({ serverUser }: HeaderProps) {
                 로그아웃
               </button>
             ) : (
-              <Link href="/auth/login" onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors">
+              <button
+                type="button"
+                onClick={() => { setMobileOpen(false); openLogin(); }}
+                className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors cursor-pointer text-left w-full">
                 로그인 / 회원가입
-              </Link>
+              </button>
             )}
           </nav>
         </div>
