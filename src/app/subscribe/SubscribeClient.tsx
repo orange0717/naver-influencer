@@ -79,7 +79,7 @@ export default function SubscribeClient() {
           <div>
             <p className="text-sm font-bold text-accent">무료 체험 기간이 종료되었습니다</p>
             <p className="text-xs text-text/80 mt-1 leading-relaxed">
-              이미 3일 무료 체험을 사용하셨습니다. 계속 이용하시려면 아래에서 이용권을 구독해주세요.
+              이미 7일 무료 체험을 사용하셨습니다. 계속 이용하시려면 아래에서 이용권을 구독해주세요.
             </p>
           </div>
         </div>
@@ -191,7 +191,7 @@ export default function SubscribeClient() {
               href="/auth/signup"
               className="block text-center py-3 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition"
             >
-              3일 무료체험
+              7일 무료체험
             </Link>
           )}
 
@@ -234,7 +234,7 @@ export default function SubscribeClient() {
               href="/auth/signup"
               className="block text-center py-3 bg-accent/10 text-accent font-bold text-sm rounded-xl hover:bg-accent/20 transition"
             >
-              3일 무료체험
+              7일 무료체험
             </Link>
           )}
 
@@ -420,7 +420,7 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">무료 체험</p>
-              <p className="font-semibold">3일 (가입 전 인플루언서/블로그 주소 입력)</p>
+              <p className="font-semibold">7일 (가입 전 인플루언서/블로그 주소 입력)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 주기</p>

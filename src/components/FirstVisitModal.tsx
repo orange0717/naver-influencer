@@ -71,7 +71,7 @@ export default function FirstVisitModal() {
             </h2>
             <p className="text-sm text-dim text-center mb-3 leading-relaxed">
               회원가입 없이 인플루언서홈 또는 블로그 주소만 입력하면<br />
-              <span className="text-accent font-semibold">3일간 핵심 기능을 무료</span>로 체험할 수 있습니다.
+              <span className="text-accent font-semibold">7일간 핵심 기능을 무료</span>로 체험할 수 있습니다.
             </p>
             <p className="text-[11px] text-dim/80 text-center mb-8 leading-relaxed">
               ※ Claude AI 기능(맞춤법 검사·블로그 글 피드백)은 가입 후 이용 가능
@@ -89,7 +89,7 @@ export default function FirstVisitModal() {
                 onClick={startDemo}
                 className="flex-1 px-4 py-3 rounded-xl bg-accent text-white text-sm font-bold hover:bg-accent-hover transition"
               >
-                3일 무료체험
+                7일 무료체험
               </button>
             </div>
           </div>

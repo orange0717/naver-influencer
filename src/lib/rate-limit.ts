@@ -157,5 +157,5 @@ export const chatbookCreateLimiter = createRateLimiter({ limit: 10, windowMs: 60
 /** 데스크탑 앱 텔레메트리(공개 POST): IP당 1분 90회 */
 export const desktopTelemetryLimiter = createRateLimiter({ limit: 90, windowMs: 60 * 1000 });
 
-/** 네이버메이트 AI 브리핑 확인: 헤드리스 브라우저 실행 비용이 커서 5분에 10회로 제한 */
+/** 'AI 브리핑 · AI 탭'(구 네이버메이트) 확인: 헤드리스 브라우저 실행 비용이 커서 5분에 10회로 제한 */
 export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });

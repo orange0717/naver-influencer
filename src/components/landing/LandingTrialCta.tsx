@@ -15,7 +15,7 @@ export function LandingTrialCta({
 }) {
   return (
     <LandingPrimaryCta onClick={onClick} size={size} className={className}>
-      가입 없이 3일 무료체험 시작
+      가입 없이 7일 무료체험 시작
     </LandingPrimaryCta>
   );
 }

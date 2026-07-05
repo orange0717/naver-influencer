@@ -12,7 +12,7 @@ function sha256Hex(value: string): string {
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_DAYS = 3;
+const DEMO_DAYS = 7;
 const DEMO_MAX_AGE = 60 * 60 * 24 * DEMO_DAYS;
 
 const verifySchema = z.object({
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       console.error('trial_users upsert error:', e);
     }
 
-    // 쿠키 설정 (3일)
+    // 쿠키 설정 (7일)
     const cookieStore = await cookies();
     const cookieOptions = {
       httpOnly: true,

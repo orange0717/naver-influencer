@@ -148,6 +148,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     requiredPlan: 'influencer',
     authOnly: true,
   },
+  {
+    id: 'ai-briefing-geo',
+    category: 'my',
+    title: 'AI 브리핑 · AI 탭',
+    description: '내 콘텐츠가 네이버 AI 브리핑(생성형 검색 답변)에 어떻게 인용·노출되는지 분석',
+    href: '/my/naver-mate',
+    requiredPlan: 'influencer',
+  },
   // ── 랭킹 ──
 
   // ── 정보 ──
@@ -209,14 +217,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     description: '이미지 포맷을 한 번에 최대 20장까지 변환 — 가입 없이 바로 사용',
     href: '/image-converter',
     ctaLabel: '무료플랜',
-  },
-  {
-    id: 'ai-briefing-geo',
-    category: 'research',
-    title: '네이버메이트',
-    description: '내 콘텐츠가 네이버 AI 브리핑(생성형 검색 답변)에 어떻게 인용·노출되는지 분석',
-    href: '/my/naver-mate',
-    requiredPlan: 'influencer',
   },
 
   // ── 키워드 ──

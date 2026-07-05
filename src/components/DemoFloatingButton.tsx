@@ -11,8 +11,8 @@ export default function DemoFloatingButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="3일 데모체험 시작"
-        title="3일 데모체험 시작"
+        aria-label="7일 데모체험 시작"
+        title="7일 데모체험 시작"
         className="fixed bottom-24 right-6 z-50 flex items-center justify-center font-bold cursor-pointer transition-all hover:scale-105"
         style={{
           backgroundColor: '#FFFFFF',
@@ -26,7 +26,7 @@ export default function DemoFloatingButton() {
           boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
         }}
       >
-        3일 데모체험
+        7일 데모체험
       </button>
       <DemoModal open={open} onClose={() => setOpen(false)} />
     </>

@@ -13,7 +13,7 @@ function sha256Hex(value: string): string {
 
 export const dynamic = 'force-dynamic';
 
-const TRIAL_DAYS = 3;
+const TRIAL_DAYS = 7;
 const TRIAL_MAX_AGE = 60 * 60 * 24 * TRIAL_DAYS;
 
 const trialSchema = z.object({
@@ -24,7 +24,7 @@ const trialSchema = z.object({
 
 /**
  * POST /api/auth/trial
- * 회원가입 없이 인플루언서 ID로 3일 무료 체험 시작
+ * 회원가입 없이 인플루언서 ID로 7일 무료 체험 시작
  */
 export async function POST(request: NextRequest) {
   try {

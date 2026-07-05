@@ -65,7 +65,7 @@ export default function TrialPage() {
         <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto">
           <span className="text-2xl font-black text-accent">N</span>
         </div>
-        <h1 className="font-title text-2xl font-extrabold">3일 무료 체험</h1>
+        <h1 className="font-title text-2xl font-extrabold">7일 무료 체험</h1>
         <p className="text-sm text-dim">
           인플루언서홈 또는 블로그 주소를 입력하면<br />
           대시보드를 바로 이용할 수 있습니다.
@@ -122,7 +122,7 @@ export default function TrialPage() {
 
       <div className="text-center space-y-2">
         <p className="text-xs text-dim">
-          체험 기간: 3일 / 별도 결제 없음 / 자동 종료
+          체험 기간: 7일 / 별도 결제 없음 / 자동 종료
         </p>
         <p className="text-xs text-dim">
           이미 계정이 있으신가요?{' '}

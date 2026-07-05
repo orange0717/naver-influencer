@@ -2,7 +2,7 @@ import puppeteer, { type Browser, type Page, type HTTPRequest } from 'puppeteer-
 
 /**
  * 네이버 "AI 브리핑"(통합검색 인라인 위젯) + "AI 탭"(ssc=tab.ait.all) 노출 여부 확인
- * — 네이버메이트 기능의 핵심 엔진.
+ * — 'AI 브리핑 · AI 탭' 기능(구 네이버메이트)의 핵심 엔진.
  *
  * ⚠️ 2026-07-04(4차) 오렌지 실측 제보로 아키텍처 전면 재검토:
  * - 이전(3차)까지는 "AI 탭에 들어갔을 때 보이는 콘텐츠"를 "AI 브리핑"이라고 잘못 가정했다
@@ -81,6 +81,18 @@ const BRIEFING_LABEL_MARKER = 'AI 브리핑';
 
 // 실측 확인: 짧은 시간에 반복 요청하면 네이버가 페이지 자체를 이 문구로 막아버림
 const BLOCKED_TEXT_MARKER = '잘못된 접근입니다';
+
+// AI 탭 답변 생성 중에는 이 버튼(aria-label="중지")이 보이다가, 생성이 완전히 끝나면 사라진다.
+// ⚠️ 2026-07-05 실측 확인된 버그 원인: AI 탭은 "생각 중" 단계에서 스켈레톤이 드문드문 갱신되다가
+// 실제 답변+출처 스트리밍은 한참(10초 이상) 뒤에 시작된다. 그 "생각 중" 단계에도 900ms 넘는
+// 조용한 구간이 여러 번 있어서, DOM-mutation debounce(`waitForContentStable`)만으로는 스트리밍이
+// 실제로 끝나기 훨씬 전(본문 100자 안팎, 출처 0건)에 "안정됨"으로 오판하고 그 시점의 텅 빈 DOM을
+// 평가해버린다 — 실제로는 인용된 글이 나중에(보통 20~25초 뒤) 출처에 포함되는데도 "미인용"으로
+// 잘못 판정되는 원인이었다. 이 버튼의 등장→소멸을 1차 신호로 사용해 진짜 스트리밍 종료 시점을
+// 잡고, 이후 `waitForContentStable`은 그 뒤의 미세한 후처리 렌더링을 잡는 2차 안전장치로만 쓴다.
+const STOP_BUTTON_SELECTOR = 'button[aria-label="중지"]';
+const STOP_BUTTON_APPEAR_TIMEOUT_MS = 5_000; // 이미 다른 이유로 빨리 끝난 경우도 있으니 못 찾아도 치명적이지 않음
+const STOP_BUTTON_DISAPPEAR_TIMEOUT_MS = 35_000; // MAX_STREAM_WAIT_MS와 동일한 안전 상한
 
 // AI 브리핑 인라인 위젯의 내부 컴포넌트는 전부 이 접두사 클래스를 쓴다(실측 확인, 2026-07-04 4차)
 const WIDGET_SELECTOR = '[class*="fds-aib"]';
@@ -247,6 +259,19 @@ async function waitForContentStable(page: Page, scopeSelector: string | null, de
   }, scopeSelector, debounceMs, maxWaitMs);
 }
 
+/**
+ * AI 탭 답변 생성이 실제로 끝날 때까지 기다린다("중지" 버튼 등장→소멸 기준).
+ * 버튼이 아예 나타나지 않으면(이미 생성이 끝났거나 UI가 다른 경우) 조용히 통과 —
+ * 이 경우엔 뒤이은 `waitForContentStable`이 최종 안전장치 역할을 한다.
+ */
+async function waitForGenerationToFinish(page: Page): Promise<boolean> {
+  const appeared = await page.waitForSelector(STOP_BUTTON_SELECTOR, { timeout: STOP_BUTTON_APPEAR_TIMEOUT_MS })
+    .then(() => true).catch(() => false);
+  if (!appeared) return false; // 신호를 못 찾음 — 호출부에서 기존 긴 debounce로 폴백
+  return page.waitForSelector(STOP_BUTTON_SELECTOR, { hidden: true, timeout: STOP_BUTTON_DISAPPEAR_TIMEOUT_MS })
+    .then(() => true).catch(() => false);
+}
+
 /** 네이버 블로그 URL(경로형/쿼리형 모두)에서 {blogId, postId} 추출 */
 function extractBlogPost(url: string): { blogId: string; postId: string } | null {
   try {
@@ -409,7 +434,15 @@ async function checkAiTab(page: Page, blogId: string, postId: string): Promise<S
     return { ...EMPTY_SURFACE, blocked: false };
   }
 
-  await waitForContentStable(page, null, STABLE_DEBOUNCE_MS, MAX_STREAM_WAIT_MS);
+  // 1차: "중지" 버튼 등장→소멸로 실제 스트리밍 종료를 판정(가장 신뢰도 높은 신호).
+  const confirmedFinished = await waitForGenerationToFinish(page);
+  // 2차: confirmedFinished면 후처리 렌더링만 짧게 확인, 신호를 못 찾았으면 기존 긴 debounce로 폴백.
+  await waitForContentStable(
+    page,
+    null,
+    confirmedFinished ? EXPAND_DEBOUNCE_MS : STABLE_DEBOUNCE_MS,
+    confirmedFinished ? EXPAND_MAX_WAIT_MS : MAX_STREAM_WAIT_MS,
+  );
 
   const evalResult = await page.evaluate(
     evaluateWholeDocument, SOURCE_SELECTORS, BLOCKED_TEXT_MARKER, BRIEFING_LABEL_MARKER,

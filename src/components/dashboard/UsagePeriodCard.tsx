@@ -5,7 +5,7 @@ interface Props {
   subscriptionExpiresAt?: string | null;
   /** trial_started 쿠키 (timestamp ms 문자열) */
   trialStartedTs?: string | null;
-  /** 체험(3일) */
+  /** 체험(7일) */
   isDemo?: boolean;
 }
 
@@ -50,7 +50,7 @@ export default function UsagePeriodCard({
   if (trialStartedTs) {
     const startedMs = Number(trialStartedTs);
     if (!isNaN(startedMs) && startedMs > 0) {
-      const durationDays = 3;
+      const durationDays = 7;
       const endMs = startedMs + durationDays * 24 * 60 * 60 * 1000;
       const end = new Date(endMs);
       const left = Math.max(0, daysBetween(now, end) + 1);
