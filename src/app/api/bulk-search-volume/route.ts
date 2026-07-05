@@ -1,32 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHmac } from 'crypto';
 import { requireInfluencerPlan } from '@/lib/admin';
+import { fetchNaverKeywordTool, mapNaverKeywordToResult, type NaverKeyword, type KeywordResult } from '@/lib/naver-searchad';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_KEYWORDS = 100;
 const BATCH_SIZE = 5;
-
-function generateSignature(timestamp: string, method: string, path: string, secretKey: string): string {
-  const message = `${timestamp}.${method}.${path}`;
-  return createHmac('sha256', secretKey).update(message).digest('base64');
-}
-
-interface NaverKeyword {
-  relKeyword: string;
-  monthlyPcQcCnt: number | string;
-  monthlyMobileQcCnt: number | string;
-  compIdx: string;
-}
-
-interface KeywordResult {
-  keyword: string;
-  monthlyPc: number | string;
-  monthlyMobile: number | string;
-  monthlyTotal: number | string;
-  competition: string;
-  found: boolean;
-}
 
 async function fetchBatch(
   keywords: string[],
@@ -34,22 +13,10 @@ async function fetchBatch(
   secretKey: string,
   customerId: string,
 ): Promise<KeywordResult[]> {
-  const timestamp = String(Date.now());
-  const signature = generateSignature(timestamp, 'GET', '/keywordstool', secretKey);
-  const hintParam = keywords.map(k => encodeURIComponent(k)).join(',');
-  const url = `https://api.searchad.naver.com/keywordstool?hintKeywords=${hintParam}&showDetail=1`;
-
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'X-Timestamp': timestamp,
-      'X-API-KEY': apiKey,
-      'X-Customer': customerId,
-      'X-Signature': signature,
-    },
-  });
-
-  if (!res.ok) {
+  let list: NaverKeyword[];
+  try {
+    list = await fetchNaverKeywordTool(keywords, apiKey, secretKey, customerId);
+  } catch {
     // 배치 실패 시 해당 키워드 전부 not found 처리
     return keywords.map(k => ({
       keyword: k,
@@ -61,9 +28,6 @@ async function fetchBatch(
     }));
   }
 
-  const data = await res.json();
-  const list: NaverKeyword[] = data.keywordList || [];
-
   // 요청한 키워드와 정확히 일치하는 항목만 매핑
   const resultMap = new Map<string, NaverKeyword>();
   for (const item of list) {
@@ -74,23 +38,8 @@ async function fetchBatch(
   return keywords.map(k => {
     const item = resultMap.get(k.trim());
     if (!item) return { keyword: k, monthlyPc: 0, monthlyMobile: 0, monthlyTotal: 0, competition: '-', found: false };
-
-    const pc = typeof item.monthlyPcQcCnt === 'number' ? item.monthlyPcQcCnt : 0;
-    const mobile = typeof item.monthlyMobileQcCnt === 'number' ? item.monthlyMobileQcCnt : 0;
-    const total = pc + mobile;
-
-    let competition = '낮음';
-    if (item.compIdx === 'HIGH') competition = '높음';
-    else if (item.compIdx === 'MEDIUM') competition = '중간';
-
-    return {
-      keyword: k,
-      monthlyPc: pc < 10 ? '< 10' : pc,
-      monthlyMobile: mobile < 10 ? '< 10' : mobile,
-      monthlyTotal: total < 10 ? '< 10' : total,
-      competition,
-      found: true,
-    };
+    // 입력한 키워드 원문을 그대로 유지 (Naver relKeyword 공백 처리 차이 방지)
+    return { ...mapNaverKeywordToResult(item), keyword: k };
   });
 }
 

@@ -231,7 +231,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     id: 'keywords-bulk',
     category: 'keyword',
     title: '대량 키워드 조회',
-    description: '여러 키워드의 검색량을 한번에 분석 — 최대 100개, CSV 다운로드',
+    description: '키워드 검색량 분석(최대 100개) + 연관 키워드 발굴(최대 1,000개), CSV 다운로드',
     href: '/keywords/bulk',
     requiredPlan: 'influencer',
   },
