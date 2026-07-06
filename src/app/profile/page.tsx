@@ -128,6 +128,11 @@ export default function ProfilePage() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoResult, setPromoResult] = useState<{ success: boolean; label?: string; expires_at?: string; error?: string } | null>(null);
 
+  // 쿠폰 등록
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponResult, setCouponResult] = useState<{ success: boolean; plan?: string; expiresAt?: string; error?: string } | null>(null);
+
   // 블로그 주소
   const [blogIdInput, setBlogIdInput] = useState('');
   const [blogIdSaving, setBlogIdSaving] = useState(false);
@@ -353,6 +358,40 @@ export default function ProfilePage() {
       setPromoResult({ success: false, error: '코드 적용 중 오류가 발생했습니다.' });
     } finally {
       setPromoLoading(false);
+    }
+  };
+
+  const redeemCoupon = async () => {
+    if (!couponCode.trim() || couponLoading) return;
+    setCouponLoading(true);
+    setCouponResult(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+      const res = await fetch('/api/coupons/redeem', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: couponCode.trim() }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setCouponResult({ success: true, plan: data.plan, expiresAt: data.expiresAt });
+        setCouponCode('');
+        setUser(prev => prev ? { ...prev, subscription_plan: data.plan, subscription_expires_at: data.expiresAt } : prev);
+        showToast('쿠폰이 등록되었습니다!');
+      } else {
+        setCouponResult({ success: false, error: data.error });
+      }
+    } catch {
+      setCouponResult({ success: false, error: '쿠폰 등록 중 오류가 발생했습니다.' });
+    } finally {
+      setCouponLoading(false);
     }
   };
 
@@ -718,6 +757,37 @@ export default function ProfilePage() {
             {promoResult.success
               ? `${promoResult.label} (만료: ${new Date(promoResult.expires_at!).toLocaleDateString('ko-KR')})`
               : promoResult.error}
+          </p>
+        )}
+      </div>
+
+      {/* 쿠폰 등록 */}
+      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+        <h3 className="font-bold text-sm">쿠폰 등록</h3>
+        <p className="text-[11px] text-dim">발급받은 무료 체험 쿠폰 코드를 입력하세요.</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={couponCode}
+            onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
+            onKeyDown={e => e.key === 'Enter' && redeemCoupon()}
+            placeholder="쿠폰 코드 입력"
+            maxLength={20}
+            className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent transition-colors uppercase"
+          />
+          <button
+            onClick={redeemCoupon}
+            disabled={couponLoading || !couponCode.trim()}
+            className="px-4 py-2.5 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            {couponLoading ? '등록중...' : '등록'}
+          </button>
+        </div>
+        {couponResult && (
+          <p className={`text-xs ${couponResult.success ? 'text-up' : 'text-down'}`}>
+            {couponResult.success
+              ? `${couponResult.plan === 'INFLUENCER' ? '인플루언서' : '블로거'} 플랜 적용 완료 (만료: ${new Date(couponResult.expiresAt!).toLocaleDateString('ko-KR')})`
+              : couponResult.error}
           </p>
         )}
       </div>
