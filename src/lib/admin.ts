@@ -16,6 +16,11 @@ export function isAdmin(userId: string): boolean {
   return ADMIN_IDS.includes(userId);
 }
 
+/** DB is_admin + ADMIN_USER_IDS 부트스트랩 목록 통합 확인 */
+export function isAdminFromProfile(profile: { id: string; is_admin?: boolean | null }): boolean {
+  return profile.is_admin === true || isAdmin(profile.id);
+}
+
 /**
  * users.is_admin 컬럼 + ADMIN_USER_IDS 환경변수(부트스트랩 폴백) 조합으로
  * 비동기 관리자 확인. 새 권한 검사는 가능한 이 함수 또는 미리 로드된

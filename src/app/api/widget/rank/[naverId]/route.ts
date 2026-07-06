@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { logger } from '@/lib/logger';
 import { widgetResponse } from '@/lib/widget-response';
+import { escapeXml } from '@/lib/escape-xml';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,13 +32,14 @@ function generateRankWidgetSVG(data: {
   snapshotDate: string;
 }) {
   const W = 170; // 네이버 블로그 위젯 최대 가로
-  const name = data.displayName.length > 8 ? data.displayName.slice(0, 8) + '…' : data.displayName;
-  const dateStr = data.snapshotDate;
+  const name = escapeXml(data.displayName.length > 8 ? data.displayName.slice(0, 8) + '…' : data.displayName);
+  const category = escapeXml(data.category);
+  const dateStr = escapeXml(data.snapshotDate);
 
   // TOP 키워드 행 생성 (최대 5개)
   const keywordRows = data.topKeywords.slice(0, 5).map((kw, i) => {
     const badge = getRankBadge(kw.rank);
-    const kwName = kw.keyword.length > 7 ? kw.keyword.slice(0, 7) + '…' : kw.keyword;
+    const kwName = escapeXml(kw.keyword.length > 7 ? kw.keyword.slice(0, 7) + '…' : kw.keyword);
     const changeText = kw.change > 0 ? `▲${kw.change}` : kw.change < 0 ? `▼${Math.abs(kw.change)}` : '';
     const changeColor = kw.change > 0 ? '#22C55E' : kw.change < 0 ? '#EF4444' : '#9CA3AF';
     const y = 104 + i * 20;
@@ -72,7 +74,7 @@ function generateRankWidgetSVG(data: {
 
   <!-- 이름 + 카테고리 -->
   <text x="10" y="50" font-family="Arial,sans-serif" font-size="12" font-weight="800" fill="#1F2937">${name}</text>
-  <text x="10" y="62" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">${data.category} · ${data.totalKeywords}개 키워드</text>
+  <text x="10" y="62" font-family="Arial,sans-serif" font-size="8" fill="#9CA3AF">${category} · ${data.totalKeywords}개 키워드</text>
 
   <!-- 통계 뱃지 3개 -->
   <rect x="8" y="70" width="48" height="22" rx="6" fill="#FFF5EE"/>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
-import { isAdmin } from '@/lib/admin';
+import { isAdminFromProfile } from '@/lib/admin';
 import { validateBody, validateSearchParams, paginationSchema } from '@/lib/validations';
 import { createNoticeSchema } from '@/lib/validations/notice';
 import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    if (!isAdmin(authUser.userId)) {
+    if (!isAdminFromProfile(authUser.user)) {
       return NextResponse.json({ error: '관리자만 공지를 작성할 수 있습니다.' }, { status: 403 });
     }
 

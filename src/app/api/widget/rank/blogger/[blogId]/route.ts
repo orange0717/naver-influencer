@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { widgetResponse } from '@/lib/widget-response';
+import { escapeXml } from '@/lib/escape-xml';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +33,9 @@ function generateBloggerRankWidgetSVG(data: {
   topKeywords: { keyword: string; rank: number; change: number }[];
   scoredAt: string;
 }) {
-  const name = data.blogName.length > 12 ? data.blogName.slice(0, 12) + '…' : data.blogName;
+  const name = escapeXml(data.blogName.length > 12 ? data.blogName.slice(0, 12) + '…' : data.blogName);
+  const blogId = escapeXml(data.blogId);
+  const scoredAt = escapeXml(data.scoredAt);
   const gi = getGradeInfo(data.grade);
 
   // 바 너비 (max 80px)
@@ -42,7 +45,7 @@ function generateBloggerRankWidgetSVG(data: {
 
   // TOP 키워드 행 (최대 2개)
   const keywordRows = data.topKeywords.slice(0, 2).map((kw, i) => {
-    const kwName = kw.keyword.length > 12 ? kw.keyword.slice(0, 12) + '…' : kw.keyword;
+    const kwName = escapeXml(kw.keyword.length > 12 ? kw.keyword.slice(0, 12) + '…' : kw.keyword);
     const changeText = kw.change > 0 ? `▲${kw.change}` : kw.change < 0 ? `▼${Math.abs(kw.change)}` : '—';
     const changeColor = kw.change > 0 ? '#22C55E' : kw.change < 0 ? '#EF4444' : '#9CA3AF';
     const y = 132 + i * 18;
@@ -75,7 +78,7 @@ function generateBloggerRankWidgetSVG(data: {
   <rect x="10" y="8" width="20" height="20" rx="4" fill="rgba(255,255,255,0.25)"/>
   <text x="20" y="23" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white" text-anchor="middle">B</text>
   <text x="38" y="23" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="white">블로거 등급 · 순위</text>
-  <text x="240" y="23" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="rgba(255,255,255,0.7)" text-anchor="end">${data.scoredAt}</text>
+  <text x="240" y="23" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="rgba(255,255,255,0.7)" text-anchor="end">${scoredAt}</text>
 
   <!-- 이름 + 등급 -->
   <text x="14" y="55" font-family="Arial,sans-serif" font-size="13" font-weight="800" fill="#1F2937">${name}</text>
@@ -114,7 +117,7 @@ function generateBloggerRankWidgetSVG(data: {
 
   <!-- 하단 -->
   <line x1="14" y1="${height - 24}" x2="236" y2="${height - 24}" stroke="#F3F4F6" stroke-width="1"/>
-  <text x="14" y="${height - 10}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB">@${data.blogId} · ${data.scoredAt} 기준</text>
+  <text x="14" y="${height - 10}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB">@${blogId} · ${scoredAt} 기준</text>
   <text x="236" y="${height - 10}" font-family="Arial,sans-serif" font-size="7" fill="#D1D5DB" text-anchor="end">N인플</text>
 
   <!-- 하단 악센트 (네이버 그린) -->
