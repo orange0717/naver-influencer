@@ -159,3 +159,6 @@ export const desktopTelemetryLimiter = createRateLimiter({ limit: 90, windowMs: 
 
 /** 'AI 브리핑 · AI 탭'(구 네이버메이트) 확인: 헤드리스 브라우저 실행 비용이 커서 5분에 10회로 제한 */
 export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
+
+/** Chrome 확장 / 외부 키워드 분석 API */
+export const extKeywordAnalysisLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });

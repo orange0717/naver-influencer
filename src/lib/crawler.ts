@@ -1,5 +1,5 @@
-import crypto from 'crypto';
 import { createServiceClient } from './supabase-server';
+import { timingSafeEqualSecret } from './secure-compare';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -94,24 +94,9 @@ export async function fetchWithRetry(
   throw new Error(`Failed after ${retries + 1} attempts: ${url}`);
 }
 
-/** CRON_SECRET 검증 (timing-safe 비교, 길이 노출 방지) */
+/** CRON_SECRET 검증 (timing-safe 비교, fail-closed) */
 export function verifyCronSecret(request: Request): boolean {
-  const userAgent = request.headers.get('user-agent') || '';
-  const isVercelCron = userAgent === 'vercel-cron/1.0';
-  const vercelCronToken = request.headers.get('x-vercel-cron-auth-token');
   const secret = process.env.CRON_SECRET;
-
-  // Vercel Cron은 CRON_SECRET이 설정된 경우 Authorization: Bearer <CRON_SECRET>로 호출한다.
-  // 일부 런타임에서는 플랫폼 내부 토큰 헤더만 들어오는 경우가 있어 Vercel Cron UA와 함께 허용한다.
-  if (isVercelCron && vercelCronToken) return true;
-
-  // CRON_SECRET이 아직 배포 환경에 없으면 수동 호출은 막되, Vercel 스케줄 자체는 살려둔다.
-  // 공개 엔드포인트 보안을 위해 운영 환경에는 CRON_SECRET 설정을 권장한다.
-  if (!secret && isVercelCron) {
-    console.warn('[crawler] CRON_SECRET is missing; allowing Vercel Cron user-agent fallback.');
-    return true;
-  }
-
   if (!secret) {
     console.error('[crawler] CRON_SECRET 환경변수가 설정되지 않았습니다.');
     return false;
@@ -121,10 +106,7 @@ export function verifyCronSecret(request: Request): boolean {
   const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   if (!provided) return false;
 
-  // 길이가 달라도 timing-safe하게 비교 (SHA-256 해시 비교)
-  const hashProvided = crypto.createHash('sha256').update(provided).digest();
-  const hashSecret = crypto.createHash('sha256').update(secret).digest();
-  return crypto.timingSafeEqual(hashProvided, hashSecret);
+  return timingSafeEqualSecret(provided, secret);
 }
 
 /** crawl_jobs 생성 */

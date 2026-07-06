@@ -1,132 +1,76 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
+import { verifyAuthorizationToken } from '@/lib/secure-compare';
 
 export const dynamic = 'force-dynamic';
 
+const NOTIFICATION_CONTENT: Record<
+  'PASSWORD_RENEWAL' | 'PRIVACY_POLICY',
+  { title: string; body: string; metadata: Record<string, string> }
+> = {
+  PASSWORD_RENEWAL: {
+    title: 'Password Change Reminder',
+    body: 'Please change your password for security. It has been 6 months since your last change.',
+    metadata: { reminder_type: 'security_password' },
+  },
+  PRIVACY_POLICY: {
+    title: 'Privacy Policy Update',
+    body: 'Our privacy policy has been updated. Please review the changes.',
+    metadata: { update_version: '2026-01-01' },
+  },
+};
+
 /**
  * POST /api/notifications/create
- * 관리자 전용: 모든 사용자에게 보안 알림 생성 (비밀번호 변경, 개인정보 처리방침)
- *
- * Request body:
- * {
- *   notificationType: 'PASSWORD_RENEWAL' | 'PRIVACY_POLICY'
- * }
+ * 관리자 전용: 모든 사용자에게 보안 알림 생성
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { notificationType } = body;
 
-    // 1. Validate notification type
     if (!['PASSWORD_RENEWAL', 'PRIVACY_POLICY'].includes(notificationType)) {
-      return NextResponse.json(
-        { error: 'Invalid notification type' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid notification type' }, { status: 400 });
     }
 
-    // 2. Admin authentication (bearer token)
-    const authHeader = request.headers.get('Authorization') || '';
-    const adminToken = process.env.ADMIN_NOTIFICATION_TOKEN;
-
-    if (!adminToken || !authHeader.includes(adminToken)) {
+    if (!verifyAuthorizationToken(request, process.env.ADMIN_NOTIFICATION_TOKEN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 3. Get Supabase client (service role)
-    const supabase = await createRouteHandlerClient();
+    const content = NOTIFICATION_CONTENT[notificationType as keyof typeof NOTIFICATION_CONTENT];
+    const supabase = createServiceClient();
 
-    // 4. Get all users from database
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, email, nickname')
-      .order('created_at', { ascending: false });
+    const { data, error } = await supabase.rpc('create_security_notification_for_all_users', {
+      p_notification_type: notificationType,
+      p_title: content.title,
+      p_body: content.body,
+      p_metadata: content.metadata,
+    });
 
-    if (usersError) {
-      console.error('[NOTIFICATIONS] Failed to fetch users:', usersError);
+    if (error) {
+      console.error('[NOTIFICATIONS] RPC failed:', error);
       return NextResponse.json(
-        { error: `Failed to fetch users: ${usersError.message}` },
-        { status: 500 }
+        { error: `Failed to create notifications: ${error.message}` },
+        { status: 500 },
       );
     }
 
-    if (!users || users.length === 0) {
-      return NextResponse.json(
-        {
-          success: true,
-          notificationType,
-          totalCreated: 0,
-          totalFailed: 0,
-          message: 'No users found',
-          timestamp: new Date().toISOString(),
-        }
-      );
-    }
+    const row = Array.isArray(data) ? data[0] : data;
+    const totalCreated = row?.total_created ?? 0;
+    const totalFailed = row?.total_failed ?? 0;
 
-    // 5. Prepare notification data based on type
-    const getNotificationContent = (type: string) => {
-      if (type === 'PASSWORD_RENEWAL') {
-        return {
-          title: 'Password Change Reminder',
-          body: 'Please change your password for security. It has been 6 months since your last change.',
-          metadata: { reminder_type: 'security_password' },
-        };
-      } else {
-        return {
-          title: 'Privacy Policy Update',
-          body: 'Our privacy policy has been updated. Please review the changes.',
-          metadata: { update_version: '2026-01-01' },
-        };
-      }
-    };
-
-    const content = getNotificationContent(notificationType);
-
-    // 6. Create notifications for all users (batch insert)
-    const notifications = users.map((user) => ({
-      user_id: user.id,
-      notification_type: notificationType,
-      title: content.title,
-      body: content.body,
-      metadata: content.metadata,
-      is_read: false,
-      email_sent: false,
-      created_at: new Date().toISOString(),
-    }));
-
-    const { data: createdNotifications, error: insertError } = await supabase
-      .from('notifications')
-      .insert(notifications)
-      .select();
-
-    if (insertError) {
-      console.error('[NOTIFICATIONS] Failed to insert notifications:', insertError);
-      return NextResponse.json(
-        { error: `Failed to create notifications: ${insertError.message}` },
-        { status: 500 }
-      );
-    }
-
-    const totalCreated = createdNotifications?.length || 0;
-
-    // 7. Queue email sending (optional: can be deferred to background job)
-    // For now, we'll just log success and return
-    console.log(
-      `[${notificationType}] Notifications created for ${totalCreated} users`
-    );
+    console.log(`[${notificationType}] Notifications created for ${totalCreated} users`);
 
     return NextResponse.json({
       success: true,
       notificationType,
       totalCreated,
-      totalFailed: users.length - totalCreated,
+      totalFailed,
       timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[NOTIFICATIONS] Unexpected error:', error);
-    return NextResponse.json(
-      { error: `Internal error: ${error.message}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Internal error: ${message}` }, { status: 500 });
   }
 }

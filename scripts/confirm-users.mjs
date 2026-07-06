@@ -1,9 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { requireSupabaseClient } from './_supabase-env.mjs';
 
-const supabase = createClient(
-  'https://gppfpmuadpnxmeefomwz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwcGZwbXVhZHBueG1lZWZvbXd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjk3OTY1MiwiZXhwIjoyMDg4NTU1NjUyfQ.-DcOEoFdTSp20XbViMPIHyOleDgYg8h5tvmcUGFBUzk'
-);
+const supabase = requireSupabaseClient();
 
 async function confirmAll() {
   const { data: { users }, error: listErr } = await supabase.auth.admin.listUsers();
@@ -30,13 +27,11 @@ async function confirmAll() {
       email_confirm: true,
     });
     if (error) {
-      console.error(`  FAIL: ${user.email} - ${error.message}`);
+      console.error(`  FAIL ${user.email}:`, error.message);
     } else {
-      console.log(`  OK: ${user.email} 인증 완료`);
+      console.log(`  OK ${user.email}`);
     }
   }
-
-  console.log('\n완료!');
 }
 
 confirmAll();

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAuthUser } from '@/lib/auth';
+import { extKeywordAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +12,17 @@ const ALLOWED_ORIGINS = [
   'https://ninfle.kr',
   'chrome-extension://',
 ];
+
+const EXT_CLIENT_HEADER = 'extension/2.1';
+
+function isAllowedExtClient(request: NextRequest): boolean {
+  const client = request.headers.get('x-ninfle-client') || '';
+  if (client === EXT_CLIENT_HEADER) return true;
+
+  const origin = request.headers.get('origin') || '';
+  const referer = request.headers.get('referer') || '';
+  return ALLOWED_ORIGINS.some(o => origin.startsWith(o) || referer.startsWith(o));
+}
 
 function getCorsHeaders(request?: NextRequest) {
   const origin = request?.headers.get('origin') || '';
@@ -162,6 +175,16 @@ async function fetchCompetitionScore(keyword: string, searchVolume: number) {
 }
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (await extKeywordAnalysisLimiter.check(ip)) {
+    return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429, headers: getCorsHeaders(request) });
+  }
+
+  const authUser = await getAuthUser(request);
+  if (!authUser && !isAllowedExtClient(request)) {
+    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401, headers: getCorsHeaders(request) });
+  }
+
   const keyword = request.nextUrl.searchParams.get('keyword');
   if (!keyword) {
     return NextResponse.json({ error: '키워드를 입력해주세요.' }, { status: 400, headers: getCorsHeaders(request) });

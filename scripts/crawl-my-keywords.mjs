@@ -13,14 +13,10 @@
  *   3. 매칭된 키워드에 대해 search.naver.com에서 순위 스크래핑 (keyword_rankings)
  */
 
-import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
+import { requireSupabaseClient } from './_supabase-env.mjs';
 
-// ── 환경 변수 ──
-const SUPABASE_URL = 'https://gppfpmuadpnxmeefomwz.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwcGZwbXVhZHBueG1lZWZvbXd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjk3OTY1MiwiZXhwIjoyMDg4NTU1NjUyfQ.-DcOEoFdTSp20XbViMPIHyOleDgYg8h5tvmcUGFBUzk';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const supabase = requireSupabaseClient();
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const GRAPHQL_URL = 'https://in.naver.com/graphql';

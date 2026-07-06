@@ -6,13 +6,10 @@
  * 네이버 API에서 실제 마지막 참여일을 가져와 DB 업데이트
  */
 
-import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
+import { requireSupabaseClient } from './_supabase-env.mjs';
 
-const SUPABASE_URL = 'https://gppfpmuadpnxmeefomwz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwcGZwbXVhZHBueG1lZWZvbXd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjk3OTY1MiwiZXhwIjoyMDg4NTU1NjUyfQ.-DcOEoFdTSp20XbViMPIHyOleDgYg8h5tvmcUGFBUzk';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = requireSupabaseClient();
 
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const PROGRESS_FILE = 'scripts/.bulk-dates-progress.json';

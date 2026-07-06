@@ -19,7 +19,9 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
       }
 
       // 새 API 호출
-      fetch(API_BASE + '/api/ext/keyword-analysis?keyword=' + encodeURIComponent(keyword))
+      fetch(API_BASE + '/api/ext/keyword-analysis?keyword=' + encodeURIComponent(keyword), {
+        headers: { 'X-Ninfle-Client': 'extension/2.1' },
+      })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data.error) {

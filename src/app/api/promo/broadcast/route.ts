@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
-import { isAdmin } from '@/lib/admin';
+import { isAdminFromProfile } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const auth = await getAuthUser(request);
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-  if (!isAdmin(auth.userId)) {
+  if (!isAdminFromProfile(auth.user)) {
     return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
   }
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const auth = await getAuthUser(request);
     if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-    if (!isAdmin(auth.userId)) {
+    if (!isAdminFromProfile(auth.user)) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
