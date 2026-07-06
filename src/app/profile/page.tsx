@@ -132,6 +132,7 @@ export default function ProfilePage() {
   const [couponCode, setCouponCode] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponResult, setCouponResult] = useState<{ success: boolean; plan?: string; expiresAt?: string; error?: string } | null>(null);
+  const [availableCoupons, setAvailableCoupons] = useState<{ code: string; name: string; plan: string; duration_days: number }[]>([]);
 
   // 블로그 주소
   const [blogIdInput, setBlogIdInput] = useState('');
@@ -183,6 +184,14 @@ export default function ProfilePage() {
         setSnsX(data.ad_profile.sns_x || '');
         setSnsTiktok(data.ad_profile.sns_tiktok || '');
       }
+    }
+
+    const couponsRes = await fetch('/api/coupons/available', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (couponsRes.ok) {
+      const couponsData = await couponsRes.json();
+      setAvailableCoupons(couponsData.items || []);
     }
 
     setLoading(false);
@@ -361,8 +370,9 @@ export default function ProfilePage() {
     }
   };
 
-  const redeemCoupon = async () => {
-    if (!couponCode.trim() || couponLoading) return;
+  const redeemCoupon = async (codeOverride?: string) => {
+    const code = (codeOverride ?? couponCode).trim();
+    if (!code || couponLoading) return;
     setCouponLoading(true);
     setCouponResult(null);
 
@@ -376,13 +386,14 @@ export default function ProfilePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ code: couponCode.trim() }),
+        body: JSON.stringify({ code }),
       });
 
       const data = await res.json();
       if (res.ok) {
         setCouponResult({ success: true, plan: data.plan, expiresAt: data.expiresAt });
         setCouponCode('');
+        setAvailableCoupons(prev => prev.filter(c => c.code !== code));
         setUser(prev => prev ? { ...prev, subscription_plan: data.plan, subscription_expires_at: data.expiresAt } : prev);
         showToast('쿠폰이 등록되었습니다!');
       } else {
@@ -761,6 +772,30 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* 받은 쿠폰 (자동 노출) */}
+      {availableCoupons.length > 0 && (
+        <div className="bg-accent/10 border border-accent/30 rounded-xl p-5 space-y-3">
+          <h3 className="font-bold text-sm text-accent">회원님께 도착한 무료 체험 쿠폰이 있어요</h3>
+          {availableCoupons.map(c => (
+            <div key={c.code} className="flex items-center justify-between bg-surface rounded-lg p-3 gap-3">
+              <div>
+                <p className="text-sm font-semibold">{c.name}</p>
+                <p className="text-[11px] text-dim">
+                  {c.plan === 'INFLUENCER' ? '인플루언서' : '블로거'} 플랜 · {c.duration_days}일 · <span className="font-mono">{c.code}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => redeemCoupon(c.code)}
+                disabled={couponLoading}
+                className="px-4 py-2 bg-accent text-white text-xs font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                {couponLoading ? '등록중...' : '지금 등록하기'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* 쿠폰 등록 */}
       <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
         <h3 className="font-bold text-sm">쿠폰 등록</h3>
@@ -776,7 +811,7 @@ export default function ProfilePage() {
             className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent transition-colors uppercase"
           />
           <button
-            onClick={redeemCoupon}
+            onClick={() => redeemCoupon()}
             disabled={couponLoading || !couponCode.trim()}
             className="px-4 py-2.5 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 shrink-0"
           >
