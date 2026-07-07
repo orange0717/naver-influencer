@@ -193,6 +193,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     ctaLabel: '인플루언서 플랜',
   },
   {
+    id: 'rankings-naver-mate',
+    category: 'research',
+    title: '네이버 메이트 랭킹',
+    description: '네이버 메이트(AI 브리핑 인용수 기반) 분야별 랭킹 — 매일 자동 수집, 누구나 무료 열람',
+    href: '/rankings/naver-mate',
+    devPreview: true,
+  },
+  {
     id: 'competitor',
     category: 'research',
     title: '경쟁자 분석',

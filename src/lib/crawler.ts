@@ -15,6 +15,10 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   'influencer.naver.com',
   'api.searchad.naver.com',
   'pstatic.net',
+  'apis.naver.com',
+  'm.kin.naver.com',
+  'l.premium.naver.com',
+  'mate.naver.com',
 ];
 
 /** URL이 허용된 외부 도메인인지 검증 */
