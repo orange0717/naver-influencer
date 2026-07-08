@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/admin';
+import { generateCouponCode } from '@/lib/coupons';
 
 export const dynamic = 'force-dynamic';
-
-function generateCouponCode(durationDays: number): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let suffix = '';
-  for (let i = 0; i < 6; i++) {
-    suffix += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return `FREE${durationDays}-${suffix}`;
-}
 
 /**
  * POST /api/admin/coupons/issue

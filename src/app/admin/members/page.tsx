@@ -66,6 +66,7 @@ export default function AdminMembersPage() {
   const [planChoice, setPlanChoice] = useState<'INFLUENCER' | 'BLOGGER' | 'FREE'>('INFLUENCER');
   const [planDuration, setPlanDuration] = useState(30);
   const [planSaving, setPlanSaving] = useState(false);
+  const [grantingTrial, setGrantingTrial] = useState(false);
   const [stats, setStats] = useState<ActiveStats | null>(null);
   const [todayModalOpen, setTodayModalOpen] = useState(false);
 
@@ -153,6 +154,40 @@ export default function AdminMembersPage() {
       alert('네트워크 오류');
     } finally {
       setPlanSaving(false);
+    }
+  };
+
+  const grantTrial = async () => {
+    if (!detail || grantingTrial) return;
+    const label = detail.user.nickname || detail.user.email;
+    if (!window.confirm(`"${label}" 님에게 7일 무료 이용권을 지급하시겠습니까?`)) return;
+
+    setGrantingTrial(true);
+    try {
+      const res = await fetch('/api/admin/coupons/grant-now', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetEmail: detail.user.email, durationDays: 7, plan: 'INFLUENCER' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || '지급 실패');
+        return;
+      }
+      setDetail({
+        ...detail,
+        user: {
+          ...detail.user,
+          subscription_plan: data.plan,
+          subscription_expires_at: data.expiresAt,
+        },
+      });
+      fetchMembers();
+      alert(`7일 무료 이용권이 지급되었습니다. (만료: ${new Date(data.expiresAt).toLocaleString('ko-KR')})`);
+    } catch {
+      alert('네트워크 오류');
+    } finally {
+      setGrantingTrial(false);
     }
   };
 
@@ -503,6 +538,15 @@ export default function AdminMembersPage() {
                         {planEditing ? '닫기' : '변경'}
                       </button>
                     </p>
+                  </div>
+                  <div className="col-span-2">
+                    <button
+                      onClick={grantTrial}
+                      disabled={grantingTrial}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-accent/10 text-accent hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
+                    >
+                      {grantingTrial ? '지급 중...' : '7일 무료 이용권 지급'}
+                    </button>
                   </div>
                   <div>
                     <p className="text-[11px] text-dim">가입일</p>

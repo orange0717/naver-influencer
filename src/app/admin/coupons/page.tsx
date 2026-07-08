@@ -14,12 +14,21 @@ interface Coupon {
   used: boolean;
   used_at: string | null;
   created_at: string;
+  created_by: string | null;
 }
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** 미사용 / 사용중(만료 전) / 만료 3단계 상태 */
+function couponStatus(c: Coupon): { label: string; className: string } {
+  if (!c.used) return { label: '미사용', className: 'bg-up/10 text-up' };
+  const expiresAt = c.used_at ? new Date(c.used_at).getTime() + c.duration_days * 86400000 : 0;
+  if (expiresAt > Date.now()) return { label: '사용중', className: 'bg-accent/10 text-accent' };
+  return { label: '만료', className: 'bg-dim/10 text-dim' };
 }
 
 export default function AdminCouponsPage() {
@@ -181,11 +190,14 @@ export default function AdminCouponsPage() {
                 <th className="text-center px-3 py-2.5 font-semibold">기간</th>
                 <th className="text-center px-3 py-2.5 font-semibold">상태</th>
                 <th className="text-left px-3 py-2.5 font-semibold">사용일시</th>
-                <th className="text-left px-4 py-2.5 font-semibold">발급일시</th>
+                <th className="text-left px-3 py-2.5 font-semibold">발급일시</th>
+                <th className="text-left px-4 py-2.5 font-semibold">지급 관리자</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/30">
-              {coupons.map(c => (
+              {coupons.map(c => {
+                const status = couponStatus(c);
+                return (
                 <tr key={c.id} className="hover:bg-bg/40">
                   <td className="px-4 py-2.5 font-mono font-semibold">{c.code}</td>
                   <td className="px-3 py-2.5">{c.name}</td>
@@ -193,16 +205,14 @@ export default function AdminCouponsPage() {
                   <td className="px-3 py-2.5 text-dim">{c.plan === 'INFLUENCER' ? '인플루언서' : '블로거'}</td>
                   <td className="px-3 py-2.5 text-center font-rank">{c.duration_days}일</td>
                   <td className="px-3 py-2.5 text-center">
-                    {c.used ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-dim/10 text-dim">사용완료</span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-up/10 text-up">미사용</span>
-                    )}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.className}`}>{status.label}</span>
                   </td>
                   <td className="px-3 py-2.5 text-dim text-xs">{formatDate(c.used_at)}</td>
-                  <td className="px-4 py-2.5 text-dim text-xs">{formatDate(c.created_at)}</td>
+                  <td className="px-3 py-2.5 text-dim text-xs">{formatDate(c.created_at)}</td>
+                  <td className="px-4 py-2.5 text-dim text-xs">{c.created_by || '-'}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
