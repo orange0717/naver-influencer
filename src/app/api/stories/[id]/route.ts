@@ -5,8 +5,11 @@ import { isAdmin, requireAdmin } from '@/lib/admin';
 import { validateBody } from '@/lib/validations';
 import { patchStorySchema } from '@/lib/validations/stories';
 import { getClientIp } from '@/lib/rate-limit';
+import { submitToIndexNow } from '@/lib/indexnow';
 
 export const dynamic = 'force-dynamic';
+
+const SITE_URL = 'https://ninfle.kr';
 
 /**
  * GET /api/stories/[id] — 후기 상세
@@ -106,6 +109,10 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       .eq('id', id);
 
     if (error) throw error;
+
+    if (v.data.status === 'approved') {
+      submitToIndexNow(`${SITE_URL}/stories/${id}`);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
