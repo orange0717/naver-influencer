@@ -9,6 +9,7 @@ import RankDistribution from '@/components/dashboard/RankDistribution';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
+import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
 import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
@@ -28,6 +29,7 @@ export const dynamic = 'force-dynamic';
 export default async function MyDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const supabase = createServiceClient();
   let naverId: string | undefined;
+  let internalUserId: string | undefined;
   /** 로그인 사용자의 가입 시 선택 주제 — 인플 주력 필드가 비어 있을 때 `/my` 주제 한정에 사용 */
   let signupKeywordCategoryFromUser: string | null = null;
   let subscriptionPlan: string | null = null;
@@ -55,13 +57,14 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
     const { data: profile } = await supabase
       .from('users')
-      .select('linked_influencer_id, blog_id, subscription_plan, subscription_expires_at, signup_keyword_category')
+      .select('id, linked_influencer_id, blog_id, subscription_plan, subscription_expires_at, signup_keyword_category')
       .eq('auth_id', authUser.id)
       .single();
 
     subscriptionPlan = profile?.subscription_plan || null;
     subscriptionExpiresAt = profile?.subscription_expires_at || null;
     signupKeywordCategoryFromUser = profile?.signup_keyword_category?.trim() || null;
+    internalUserId = profile?.id || undefined;
 
     if (profile?.linked_influencer_id) {
       const { data: linkedInf } = await supabase
@@ -671,6 +674,49 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // ─── 5. 스마트 알림 (순위 트렌드 분석) ───
   const rankAlerts = analyzeRankAlerts(latestRankings || []);
 
+  // ─── 6. NGI(Ninfle Growth Index) 계산용 데이터 수집 ───
+  // AI 가시성: 네이버메이트에서 실제로 확인(checked_at 존재)한 건만 집계 — 한 번도 안 썼으면 null(측정 불가)
+  let aiVisibility: { exposedCount: number; tabExposedCount: number; checkedCount: number } | null = null;
+  if (internalUserId && naverId) {
+    const { data: briefingRows } = await supabase
+      .from('ai_briefing_exposures')
+      .select('exposed, tab_exposed, checked_at')
+      .eq('user_id', internalUserId)
+      .eq('blog_id', naverId)
+      .not('checked_at', 'is', null);
+    if (briefingRows && briefingRows.length > 0) {
+      aiVisibility = {
+        checkedCount: briefingRows.length,
+        exposedCount: briefingRows.filter((r) => r.exposed === true).length,
+        tabExposedCount: briefingRows.filter((r) => r.tab_exposed === true).length,
+      };
+    }
+  }
+
+  // 네이버 메이트 선정 여부 (블로그 홈 경로 = naverId 로 매칭)
+  let mateStatus: { selected: boolean; expertiseValue: string | null } | null = null;
+  if (naverId) {
+    const { data: mateRow } = await supabase
+      .from('naver_mates')
+      .select('id')
+      .eq('platform', 'blog')
+      .eq('platform_key', naverId)
+      .maybeSingle();
+    if (mateRow) {
+      const { data: monthlyRow } = await supabase
+        .from('naver_mate_monthly')
+        .select('expertise_value')
+        .eq('mate_id', mateRow.id)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      mateStatus = { selected: true, expertiseValue: monthlyRow?.expertise_value || null };
+    } else {
+      mateStatus = { selected: false, expertiseValue: null };
+    }
+  }
+
   return (
     <div className="space-y-6">
 
@@ -712,6 +758,17 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         dataDateLabel={dataDateLabel}
       />
 
+      {/* ─── 네이버 메이트 선정 뱃지 (선정된 경우만 노출) ─── */}
+      {mateStatus?.selected && (
+        <div className="flex items-center gap-2 rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-gold shrink-0"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span className="text-[13px] font-bold text-text">네이버 메이트 선정</span>
+          {mateStatus.expertiseValue && (
+            <span className="text-[11px] text-dim">· {mateStatus.expertiseValue}</span>
+          )}
+        </div>
+      )}
+
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
       <div className="space-y-6">
 
@@ -734,8 +791,29 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {/* ─── 2. 통계 카드 4개 ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      {/* ─── 2. 통계 카드 ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {categoryRank > 0 && (
+          <AnimatedStatCard
+            label="카테고리 순위"
+            value={categoryRank}
+            suffix={categoryTotal > 0 ? `위/${categoryTotal}` : '위'}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+            color="accent"
+            delay={80}
+          />
+        )}
+        {aiVisibility && (
+          <AnimatedStatCard
+            label="AI브리핑 인용"
+            value={aiVisibility.exposedCount}
+            suffix="건"
+            description={`확인 ${aiVisibility.checkedCount}건 중`}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>}
+            color={aiVisibility.exposedCount > 0 ? 'up' : 'dim'}
+            delay={120}
+          />
+        )}
         <AnimatedStatCard
           label="참여 키워드"
           value={participatedCount}
@@ -805,6 +883,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
 
+      {/* ─── 2-3. 조회수(블로그 방문자) 추이 ─── */}
+      <BlogVisitorChart blogId={naverId} />
+
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />
 
@@ -843,6 +924,8 @@ function GuestDashboard() {
     { label: 'TOP 3 키워드', suffix: '개' },
     { label: '순위 변동', suffix: '건' },
     { label: '토픽', suffix: '개' },
+    { label: '카테고리 순위', suffix: '위' },
+    { label: 'AI브리핑 인용', suffix: '건' },
   ];
 
   return (
@@ -874,7 +957,7 @@ function GuestDashboard() {
       </div>
 
       {/* ─── 빈 상태 통계 카드 (레이아웃 미리보기) ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {placeholderStats.map((c) => (
           <div key={c.label} className="bg-surface border border-border rounded-2xl p-4 text-center">
             <p className="text-xs text-dim mb-1">{c.label}</p>
