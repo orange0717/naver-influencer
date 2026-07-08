@@ -198,7 +198,6 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     title: '네이버 메이트 랭킹',
     description: '네이버 메이트(AI 브리핑 인용수 기반) 분야별 랭킹 — 매일 자동 수집, 누구나 무료 열람',
     href: '/naver-mate-ranking',
-    devPreview: true,
   },
   {
     id: 'competitor',
