@@ -495,7 +495,7 @@ export async function GET(request: NextRequest) {
 
       if (validRows.length > 0) {
         // 1차: atomic RPC — 단일 트랜잭션, 도중 실패 시 전체 rollback
-        // (migration-085-atomic-ranking-upsert.sql)
+        // (migration-085-atomic-ranking-upsert.sql, migration-104에서 statement_timeout 추가)
         const { error: rpcError } = await supabase.rpc(
           'upsert_keyword_rankings_atomic',
           { p_rows: validRows }
@@ -518,6 +518,18 @@ export async function GET(request: NextRequest) {
             else batchCount += batch.length;
           }
         }
+      }
+
+      // keyword_rankings 적재가 (부분이라도) 실패하면 last_crawled_at을 갱신하지 않는다.
+      // 예전엔 이 실패와 무관하게 last_crawled_at/집계값이 항상 "방금 크롤됨"으로 덮어써져서,
+      // 실제 순위 원자료는 며칠째 그대로인데 대시보드 상단 값만 최신처럼 보이는 문제가 있었음.
+      // last_crawled_at을 건드리지 않으면 순환 크롤 큐(oldest first)에서 계속 우선순위로 남는다.
+      if (validRows.length > 0 && batchCount < validRows.length) {
+        console.error(
+          `[crawl-challenge-ranks] ${inf.naver_id}: keyword_rankings 적재 실패 ` +
+          `(${batchCount}/${validRows.length}) — last_crawled_at 갱신 보류`
+        );
+        return { ok: false, count: batchCount };
       }
 
       // 6. influencers 테이블 집계 업데이트
