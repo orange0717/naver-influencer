@@ -1,4 +1,24 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: '서비스 미리보기 — 회원가입 없이 둘러보기',
+  description: '키워드 분석, 인플루언서 랭킹, 챌린지 순위 등 N인플의 주요 기능을 회원가입 없이 화면으로 먼저 둘러볼 수 있습니다.',
+  alternates: { canonical: 'https://ninfle.kr/guide' },
+  openGraph: {
+    title: '서비스 미리보기 — N인플',
+    description: '회원가입 없이 N인플의 주요 기능을 미리 둘러보세요.',
+    url: 'https://ninfle.kr/guide',
+    siteName: 'N인플',
+    locale: 'ko_KR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '서비스 미리보기 — N인플',
+    description: '회원가입 없이 N인플의 주요 기능을 미리 둘러보세요.',
+  },
+};
 
 /* ── 브라우저 프레임 ── */
 function BrowserFrame({ url, children }: { url: string; children: React.ReactNode }) {

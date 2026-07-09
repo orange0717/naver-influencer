@@ -1,8 +1,29 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: '오렌지커넥트 — 인플루언서·브랜드 매칭',
+  description: '오렌지커넥트에서 인플루언서는 콘텐츠 가치를, 브랜드사는 확실한 광고효과를 얻는 체험단·협찬 캠페인 매칭 서비스를 이용할 수 있습니다.',
+  alternates: { canonical: 'https://ninfle.kr/orangeconnect' },
+  openGraph: {
+    title: '오렌지커넥트 — N인플',
+    description: '인플루언서와 브랜드사를 연결하는 체험단·협찬 캠페인 매칭 서비스',
+    url: 'https://ninfle.kr/orangeconnect',
+    siteName: 'N인플',
+    locale: 'ko_KR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '오렌지커넥트 — N인플',
+    description: '인플루언서와 브랜드사를 연결하는 체험단·협찬 캠페인 매칭 서비스',
+  },
+};
 
 export default function OrangeConnectPage() {
   return (
     <div className="min-h-screen flex flex-col">
+      <h1 className="sr-only">오렌지커넥트 — 인플루언서·브랜드 매칭</h1>
 
       {/* 미니 헤더 */}
       <header className="absolute top-0 left-0 right-0 z-10 px-6 md:px-10 py-5">
