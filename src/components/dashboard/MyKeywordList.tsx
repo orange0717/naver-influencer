@@ -432,7 +432,7 @@ export default function MyKeywordList({
       {filteredKeywords.length > 0 ? (
         <div className="rounded-2xl border border-border bg-surface overflow-hidden">
           {/* 데스크톱 테이블 */}
-          <div className="hidden lg:block">
+          <div className="hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="text-xs text-dim border-b border-border/50 bg-bg/30">
@@ -642,7 +642,7 @@ export default function MyKeywordList({
           </div>
 
           {/* 모바일 카드 */}
-          <div className="lg:hidden divide-y divide-border/20">
+          <div className="md:hidden divide-y divide-border/20">
             {displayList.map(kw => {
               const comp = getCompLevel(kw.participant_count);
               const dimmed = !kw.is_participated;

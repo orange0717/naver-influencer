@@ -64,8 +64,10 @@ export default function ClaudeChatClient() {
   const [loadingList, setLoadingList] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [retryContent, setRetryContent] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false); // 모바일용
   const [plan, setPlan] = useState<Plan>('influencer');
+  const [isPaid, setIsPaid] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -102,6 +104,7 @@ export default function ClaudeChatClient() {
         const data = await res.json();
         setConversations(data.conversations || []);
         if (data.plan) setPlan(data.plan as Plan);
+        setIsPaid(!!data.isPaid);
       }
     } catch {
       /* 무시 */
@@ -121,6 +124,7 @@ export default function ClaudeChatClient() {
         const data = await res.json();
         const msgs: Message[] = data.messages || [];
         setMessages(msgs.length > 0 ? msgs : [GREETING]);
+        setIsPaid(!!data.isPaid);
       } else {
         setMessages([GREETING]);
       }
@@ -192,8 +196,8 @@ export default function ClaudeChatClient() {
     }
   };
 
-  const handleSend = async () => {
-    const content = input.trim();
+  const handleSend = async (retryText?: string) => {
+    const content = (retryText ?? input).trim();
     if (!content || sending) return;
     if (content.length > INPUT_LIMIT) {
       setErrorText(`메시지는 ${INPUT_LIMIT}자 이내로 입력해주세요.`);
@@ -202,6 +206,7 @@ export default function ClaudeChatClient() {
 
     setSending(true);
     setErrorText(null);
+    setRetryContent(null);
 
     let conversationId = activeId;
 
@@ -242,7 +247,7 @@ export default function ClaudeChatClient() {
       if (prev.length === 1 && prev[0].id === 'greeting') return [optimisticUser];
       return [...prev, optimisticUser];
     });
-    setInput('');
+    if (!retryText) setInput('');
 
     try {
       const headers = await authHeaders();
@@ -257,12 +262,14 @@ export default function ClaudeChatClient() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setErrorText(data.error || '응답을 받지 못했습니다.');
+        if (res.status === 429 || res.status === 502) setRetryContent(content);
         // 낙관 메시지 롤백
         setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));
         return;
       }
       const data = await res.json();
       if (data.plan) setPlan(data.plan as Plan);
+      setIsPaid(!!data.isPaid);
       setMessages((prev) => {
         const without = prev.filter((m) => m.id !== optimisticUser.id);
         const next = [...without];
@@ -275,6 +282,7 @@ export default function ClaudeChatClient() {
       fetchConversations();
     } catch {
       setErrorText('네트워크 오류가 발생했습니다.');
+      setRetryContent(content);
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));
     } finally {
       setSending(false);
@@ -295,6 +303,9 @@ export default function ClaudeChatClient() {
   const remaining = useMemo(() => INPUT_LIMIT - input.length, [input.length]);
   const planLabel =
     plan === 'admin' ? '관리자' : '인플루언서 플랜';
+  const modelLabel = isPaid
+    ? 'Claude Opus 4.6 · 정밀 피드백 모드'
+    : 'Claude Haiku 4.5 · 빠른 피드백 모드';
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-bg">
@@ -484,8 +495,18 @@ export default function ClaudeChatClient() {
 
         {/* 에러 토스트 */}
         {errorText && (
-          <div className="px-4 md:px-6 py-2 bg-down/10 border-t border-down/30 text-down text-xs text-center">
-            {errorText}
+          <div className="px-4 md:px-6 py-2 bg-down/10 border-t border-down/30 text-down text-xs text-center flex items-center justify-center gap-2">
+            <span>{errorText}</span>
+            {retryContent && (
+              <button
+                type="button"
+                onClick={() => handleSend(retryContent)}
+                disabled={sending}
+                className="underline font-semibold hover:text-down/80 disabled:opacity-50 cursor-pointer"
+              >
+                다시 시도
+              </button>
+            )}
           </div>
         )}
 
@@ -507,7 +528,7 @@ export default function ClaudeChatClient() {
                   />
                   <button
                     type="button"
-                    onClick={handleSend}
+                    onClick={() => handleSend()}
                     disabled={!input.trim() || sending}
                     className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-3 h-9 rounded-full bg-accent hover:bg-accent-hover text-white text-xs font-bold disabled:bg-dim/40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     aria-label="전송"
@@ -519,7 +540,7 @@ export default function ClaudeChatClient() {
                 </div>
                 <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-dim">
                   <span className="truncate">
-                    Claude Haiku 4.5 · 빠른 피드백 모드
+                    {modelLabel}
                   </span>
                   <span className="shrink-0 flex items-center gap-2">
                     <span className="hidden sm:inline">

@@ -8,6 +8,9 @@ export const maxDuration = 60;
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
+// 블로거 1명 내 키워드 동시 처리 수 (네이버 검색 부하 고려 — crawl-challenge-ranks 웨이브 패턴과 동일)
+const KEYWORD_CONCURRENCY = 4;
+
 /**
  * 네이버 블로그탭에서 특정 블로그의 순위를 검색 (1~3페이지, ~30개)
  */
@@ -163,9 +166,10 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // 키워드별 순위 체크
-      for (const keyword of kwList) {
-        try {
+      // 키워드별 순위 체크 — KEYWORD_CONCURRENCY 만큼 웨이브 병렬 처리
+      for (let i = 0; i < kwList.length; i += KEYWORD_CONCURRENCY) {
+        const wave = kwList.slice(i, i + KEYWORD_CONCURRENCY);
+        const results = await Promise.allSettled(wave.map(async (keyword) => {
           const result = await searchBlogRank(keyword, blogId);
           const prevRank = prevRanks.get(keyword) ?? null;
 
@@ -192,14 +196,21 @@ export async function GET(request: NextRequest) {
               onConflict: 'blog_id,keyword,snapshot_date',
             });
 
-          totalChecked++;
-          if (result.rank !== null) totalRanked++;
+          return result.rank !== null;
+        }));
 
-          // Rate limiting — 키워드 사이 600ms 대기
-          await sleep(600);
-        } catch (err) {
-          console.error(`[crawl-blog-ranks] Error checking ${blogId}/${keyword}:`, err);
+        for (let j = 0; j < results.length; j++) {
+          const r = results[j];
+          totalChecked++;
+          if (r.status === 'fulfilled') {
+            if (r.value) totalRanked++;
+          } else {
+            console.error(`[crawl-blog-ranks] Error checking ${blogId}/${wave[j]}:`, r.reason);
+          }
         }
+
+        // Rate limiting — 웨이브 사이 600ms 대기
+        await sleep(600);
       }
 
       // 블로거 사이 1초 대기

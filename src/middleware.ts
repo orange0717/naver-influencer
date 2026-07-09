@@ -5,6 +5,7 @@ import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { isTrialExpired } from '@/lib/trial';
 import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 import { isRestricted } from '@/lib/admin';
+import { defaultApiLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 /**
  * 점검 모드: 켜면 모든 HTML 페이지 요청을 점검 안내 화면으로 즉시 응답한다.
@@ -67,6 +68,9 @@ const SESSION_CHECK_BYPASS = [
   '/favicon',
 ];
 
+// 서버 간 인증 트래픽(크론 시크릿·웹훅 서명 검증)은 IP 기반 전역 제한에서 제외
+const DEFAULT_RATE_LIMIT_BYPASS = ['/api/cron/', '/api/portone/'];
+
 const DEVICE_ID_BYPASS = [
   '/opengraph-image',
   '/robots.txt',
@@ -124,6 +128,18 @@ export async function middleware(request: NextRequest) {
           'Retry-After': '3600',
         },
       });
+    }
+  }
+
+  // 전역 API Rate Limit 안전망 — 라우트 자체 limiter 유무와 무관하게 IP당 기본 상한 적용
+  const earlyPathname = request.nextUrl.pathname;
+  if (
+    earlyPathname.startsWith('/api/') &&
+    !DEFAULT_RATE_LIMIT_BYPASS.some(p => earlyPathname.startsWith(p))
+  ) {
+    const ip = getClientIp(request);
+    if (await defaultApiLimiter.check(`default:${ip}`)) {
+      return rateLimitResponse();
     }
   }
 

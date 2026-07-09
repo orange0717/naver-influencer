@@ -2,6 +2,10 @@
 -- 네이버 인플루언서 키워드챌린지 — DB Schema
 -- Supabase SQL Editor에서 실행
 -- =============================================
+-- ⚠️ 이 파일은 초기 스키마 스냅샷이며 이후 변경사항은 반영되지 않았습니다 (STALE).
+-- 현재 스키마의 실제 소스는 supabase/migrations/ 디렉토리입니다 (migration-001 ~ migration-105+).
+-- 최신 테이블 구조를 확인하려면 반드시 supabase/migrations/ 전체를 함께 참고하세요.
+-- =============================================
 
 -- 0. UUID 확장
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

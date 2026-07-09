@@ -61,6 +61,7 @@ export async function GET(
   return NextResponse.json({
     conversation: { id: conv.id, title: conv.title },
     messages: data || [],
+    isPaid: user.isPaid,
   });
 }
 
@@ -206,5 +207,6 @@ export async function POST(
     plan: user.plan,
     freeTrialUsed: user.freeTrialUsed,
     freeTrialLimit: user.freeTrialLimit,
+    isPaid: user.isPaid,
   });
 }

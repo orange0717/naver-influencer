@@ -32,7 +32,7 @@ cd /Users/orange/개발/ninfle && vercel deploy --prod
 ```
 src/
 ├── app/
-│   ├── api/              # API 라우트 (18개)
+│   ├── api/              # API 라우트 (209개)
 │   │   ├── keywords/     # 키워드 CRUD
 │   │   ├── my/           # 내 대시보드/순위 히스토리
 │   │   ├── subscription/  # 구독 상태/활성화
@@ -55,17 +55,13 @@ src/
 │   ├── RankHistoryChart.tsx   # 순위 추이 LineChart
 │   ├── TrendAreaChart.tsx     # 검색량 추이 AreaChart
 │   └── CompetitorBarChart.tsx # 경쟁자 비교 BarChart
-├── data/                 # Mock 데이터
-│   ├── mock-keywords.ts  # 키워드 15개 + 카테고리
-│   ├── mock-influencers.ts
-│   ├── mock-rankings.ts
-│   ├── mock-recommendations.ts
-│   └── mock-packages.ts  # 충전 패키지 + 가격표
+├── data/                 # 정적 데이터
+│   ├── faq-data.ts       # FAQ 목록
+│   └── subcategory-map.ts # 카테고리/서브카테고리 매핑
 └── lib/
     ├── types.ts          # TypeScript 인터페이스
     ├── supabase.ts       # Supabase 클라이언트 (anon)
     ├── supabase-server.ts # Supabase 서버 클라이언트 (service_role)
-    ├── points.ts         # (레거시) 포인트 차감 로직
     ├── subscription.ts   # 구독 확인/활성화 로직
     ├── plans.ts          # 플랜 & 기간 상수 (PERSONAL/INFLUENCER/AGENCY)
     ├── crawler.ts        # 크롤러 공통 유틸 (fetchWithRetry, verifyCronSecret, crawlJob)
@@ -98,9 +94,9 @@ src/
 | 23:00 | 08:00 | crawl-selection-dates | 키워드챌린지 선정일 크롤링 (__PRELOADED_STATE__ 파싱) |
 
 ## 반응형 전략
-- Desktop (lg+): 테이블 형태
-- Mobile (<lg): 카드 형태로 자동 전환
-- `hidden lg:block` / `lg:hidden` 패턴 사용
+- Desktop (md+): 테이블 형태
+- Mobile (<md): 카드 형태로 자동 전환
+- `hidden md:block` / `md:hidden` 패턴 사용 (전 컴포넌트 통일, 2026-07-09)
 
 ## 현재 상태
 - 프론트엔드: 완료 (오렌지 테마 + 구독 UI)

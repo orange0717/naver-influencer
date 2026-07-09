@@ -105,7 +105,7 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
       </div>
 
       {/* 데스크톱 테이블 */}
-      <div className="hidden lg:block">
+      <div className="hidden md:block">
         <table className="w-full">
           <thead>
             <tr className="text-[11px] text-dim border-b border-border/50">
@@ -165,7 +165,7 @@ export default function ChallengeTable({ rankings }: { rankings: ChallengeRankin
       </div>
 
       {/* 모바일 카드 */}
-      <div className="lg:hidden divide-y divide-border/20">
+      <div className="md:hidden divide-y divide-border/20">
         {displayList.map(r => {
           const comp = getCompLevel(r.participant_count);
           return (

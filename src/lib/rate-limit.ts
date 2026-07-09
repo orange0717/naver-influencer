@@ -165,3 +165,10 @@ export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60
 
 /** Chrome 확장 / 외부 키워드 분석 API */
 export const extKeywordAnalysisLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
+
+/**
+ * 전역 기본 API Rate Limiter (안전망) — 개별 라우트에 전용 limiter가 없는 경우를 위한 IP당 기본 상한.
+ * 미들웨어(src/middleware.ts)에서 모든 /api/ 요청에 적용되며, 라우트 자체 limiter가 더 엄격하면
+ * 그쪽이 먼저 걸리므로 이 값은 "커버되지 않은 라우트"에 대한 최소 보호 역할만 한다.
+ */
+export const defaultApiLimiter = createRateLimiter({ limit: 60, windowMs: 60 * 1000 });

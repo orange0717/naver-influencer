@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     plan: user.plan,
     freeTrialUsed: user.freeTrialUsed,
     freeTrialLimit: user.freeTrialLimit,
+    isPaid: user.isPaid,
   });
 }
 
