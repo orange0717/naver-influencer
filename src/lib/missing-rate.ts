@@ -1,6 +1,6 @@
 export interface MissingState {
-  blogTab: { exposed: boolean; rank: number | null };
-  viewTab: { exposed: boolean; rank: number | null };
+  blogTab: { exposed: boolean | null; rank: number | null };
+  viewTab: { exposed: boolean | null; rank: number | null };
 }
 
 export interface PostLike {
@@ -15,8 +15,8 @@ export type MissingResultsMap = Record<string, MissingState>;
 export function isPostMissing(post: PostLike, results: MissingResultsMap): boolean {
   const mr = results[post.id];
   if (!mr) return false;
-  const viewExp = mr.viewTab.exposed as boolean | null;
-  const blogExp = mr.blogTab.exposed as boolean | null;
+  const viewExp = mr.viewTab.exposed;
+  const blogExp = mr.blogTab.exposed;
   // 둘 다 null이면 아직 확인 전 → 누락 아님
   if (viewExp === null && blogExp === null) return false;
   return viewExp === false || blogExp === false;

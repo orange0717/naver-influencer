@@ -30,10 +30,15 @@ interface BlogPost {
 }
 
 interface MissingResult {
-  blogTab: { exposed: boolean; rank: number | null };
-  viewTab: { exposed: boolean; rank: number | null };
+  blogTab: { exposed: boolean | null; rank: number | null };
+  viewTab: { exposed: boolean | null; rank: number | null };
   searchVolume?: number;
+  status?: 'ok' | 'failed';
+  checkedAt?: string | null;
 }
+
+// 검사 결과 캐시 신선도 — 이 시간 이내에 성공(ok) 검사된 포스트는 재검사를 건너뛴다 (새 글/수정 글만 재검사)
+const CHECK_FRESH_MS = 24 * 60 * 60 * 1000;
 
 interface BlogScoreData {
   total_score: number;
@@ -247,7 +252,7 @@ export default function BloggerDashboard() {
   const [kwRankingResults, setKwRankingResults] = useState<Record<string, MissingResult>>({});
   const [checkingMissing, setCheckingMissing] = useState<string>('');
   const [checkingAll, setCheckingAll] = useState(false);
-  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0, failed: 0 });
   const [postFilter, setPostFilter] = useState<'all' | 'missing'>('all');
   const [scoreData, setScoreData] = useState<BlogScoreData | null>(null);
   const [category, setCategory] = useState('기타');
@@ -434,6 +439,15 @@ export default function BloggerDashboard() {
           setMissingResults(prev => ({ ...byPost, ...prev }));
         }
       } catch { /* ignore */ }
+      // 포스트별 개별 누락 검사 결과 복원 (DB — 실시간 데이터 기준, 새로고침해도 소실되지 않음)
+      try {
+        const missingRes = await fetch(`/api/my/post-missing-state?blogId=${encodeURIComponent(p.blogId)}`);
+        if (missingRes.ok) {
+          const data = await missingRes.json();
+          const stored = (data?.results ?? {}) as Record<string, MissingResult>;
+          setMissingResults(prev => ({ ...prev, ...stored }));
+        }
+      } catch { /* ignore */ }
       fetchBlogPosts(p.blogId, 1);
       fetchAllBlogPosts(p.blogId);
       fetchScoreData(p.blogId);
@@ -452,36 +466,78 @@ export default function BloggerDashboard() {
     setProfile(prev => prev ? { ...prev, ...data } : prev);
   }, [profile]);
 
-  const checkMissing = async (post: BlogPost) => {
-    if (!profile) return;
+  // 포스트 1개 검사 → 결과 즉시 반영 (서버가 DB에도 즉시 저장). 오류 시 최대 3회 재시도.
+  const checkMissing = async (post: BlogPost): Promise<'ok' | 'failed'> => {
+    if (!profile) return 'failed';
     setCheckingMissing(post.id);
+    const MAX_ATTEMPTS = 3;
     try {
-      const res = await fetch('/api/blog/check-missing', {
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const res = await fetch('/api/blog/check-missing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setMissingResults(prev => ({
+              ...prev,
+              [post.id]: { ...data, status: 'ok', checkedAt: new Date().toISOString() },
+            }));
+            return 'ok';
+          }
+        } catch { /* 네트워크 오류 — 재시도 */ }
+        if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, 800 * attempt));
+      }
+    } finally {
+      setCheckingMissing('');
+    }
+
+    // 재시도 소진 → "검사 실패" 상태로 저장하고 다음 포스트로 계속 진행
+    setMissingResults(prev => ({
+      ...prev,
+      [post.id]: {
+        blogTab: prev[post.id]?.blogTab ?? { exposed: null, rank: null },
+        viewTab: prev[post.id]?.viewTab ?? { exposed: null, rank: null },
+        status: 'failed',
+        checkedAt: new Date().toISOString(),
+      },
+    }));
+    try {
+      await fetch('/api/my/post-missing-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id }),
+        body: JSON.stringify({ blogId: profile.blogId, postId: post.id, postTitle: post.title }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setMissingResults(prev => ({ ...prev, [post.id]: data }));
-      }
     } catch { /* ignore */ }
-    finally { setCheckingMissing(''); }
+    return 'failed';
   };
 
+  // 전체 포스팅을 하나씩 순차 검사 → 검사 직후 즉시 저장 → 모두 끝나면 누락률 계산
+  // 이미 신선한(24시간 이내) 성공 결과가 있는 포스트는 건너뛰어 불필요한 재검사를 줄인다.
   const checkMissingForCount = async (count: number) => {
     const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     if (!profile || all.length === 0) return;
     const posts = count === 0 ? all : all.slice(0, count);
     setCheckingAll(true);
-    setCheckProgress({ current: 0, total: posts.length });
+    setCheckProgress({ current: 0, total: posts.length, failed: 0 });
+    const now = Date.now();
+    let failedCount = 0;
     for (let i = 0; i < posts.length; i++) {
-      setCheckProgress({ current: i + 1, total: posts.length });
-      await checkMissing(posts[i]);
-      if (i < posts.length - 1) await new Promise(r => setTimeout(r, 2000));
+      const post = posts[i];
+      const existing = missingResults[post.id];
+      const isFresh = existing?.status === 'ok' && !!existing.checkedAt
+        && (now - new Date(existing.checkedAt).getTime()) < CHECK_FRESH_MS;
+      if (!isFresh) {
+        const result = await checkMissing(post);
+        if (result === 'failed') failedCount++;
+        if (i < posts.length - 1) await new Promise(r => setTimeout(r, 2000));
+      }
+      setCheckProgress({ current: i + 1, total: posts.length, failed: failedCount });
     }
     setCheckingAll(false);
-    setCheckProgress({ current: 0, total: 0 });
+    setCheckProgress({ current: 0, total: 0, failed: 0 });
     saveScoreToServer();
   };
 
@@ -849,6 +905,7 @@ export default function BloggerDashboard() {
                   <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {checkProgress.current}/{checkProgress.total}
+                    {checkProgress.failed > 0 ? ` (실패 ${checkProgress.failed})` : ''}
                   </span>
                 ) : '전체 누락율 확인'}
               </button>
@@ -929,19 +986,23 @@ export default function BloggerDashboard() {
                           </div>
                         </td>
                         <td className="text-center px-3 py-3.5">
-                          {(mr?.viewTab.exposed as boolean | null | undefined) === true ? (
+                          {mr?.viewTab.exposed === true ? (
                             <span className="text-[11px] font-bold text-up">노출</span>
-                          ) : (mr?.viewTab.exposed as boolean | null | undefined) === false ? (
+                          ) : mr?.viewTab.exposed === false ? (
                             <span className="text-[11px] font-bold text-down">누락</span>
+                          ) : mr?.status === 'failed' ? (
+                            <span className="text-[10px] font-bold text-accent">실패</span>
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
                           )}
                         </td>
                         <td className="text-center px-3 py-3.5">
-                          {(mr?.blogTab.exposed as boolean | null | undefined) === true ? (
+                          {mr?.blogTab.exposed === true ? (
                             <span className="text-[11px] font-bold text-up">노출</span>
-                          ) : (mr?.blogTab.exposed as boolean | null | undefined) === false ? (
+                          ) : mr?.blogTab.exposed === false ? (
                             <span className="text-[11px] font-bold text-down">누락</span>
+                          ) : mr?.status === 'failed' ? (
+                            <span className="text-[10px] font-bold text-accent">실패</span>
                           ) : (
                             <span className="text-[10px] text-dim/50">—</span>
                           )}
@@ -958,7 +1019,7 @@ export default function BloggerDashboard() {
                             className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50">
                             {checkingMissing === post.id ? (
                               <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                            ) : mr ? '재확인' : '확인'}
+                            ) : mr?.status === 'failed' ? '재시도' : mr ? '재확인' : '확인'}
                           </button>
                         </td>
                       </tr>
@@ -1006,16 +1067,16 @@ export default function BloggerDashboard() {
                           })}
                         </div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          {mr && ((mr.viewTab.exposed as boolean | null) !== null || (mr.blogTab.exposed as boolean | null) !== null) ? (
+                          {mr && (mr.viewTab.exposed !== null || mr.blogTab.exposed !== null) ? (
                             <>
-                              {(mr.viewTab.exposed as boolean | null) !== null && (
+                              {mr.viewTab.exposed !== null && (
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                                   mr.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
                                 }`}>
                                   통합 {mr.viewTab.exposed ? '노출' : '누락'}
                                 </span>
                               )}
-                              {(mr.blogTab.exposed as boolean | null) !== null && (
+                              {mr.blogTab.exposed !== null && (
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                                   mr.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
                                 }`}>
@@ -1023,6 +1084,8 @@ export default function BloggerDashboard() {
                                 </span>
                               )}
                             </>
+                          ) : mr?.status === 'failed' ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-accent/10 text-accent">검사 실패</span>
                           ) : null}
                           <span className="text-[11px] text-dim">{post.date}</span>
                           {post.commentCount > 0 && <span className="text-[11px] text-accent">댓글 {post.commentCount}</span>}
@@ -1031,7 +1094,7 @@ export default function BloggerDashboard() {
                             className="text-[10px] text-accent cursor-pointer disabled:opacity-50">
                             {checkingMissing === post.id ? (
                               <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                            ) : mr ? '재확인' : '순위확인'}
+                            ) : mr?.status === 'failed' ? '재시도' : mr ? '재확인' : '순위확인'}
                           </button>
                         </div>
                       </div>

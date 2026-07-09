@@ -431,6 +431,27 @@ export async function POST(request: NextRequest) {
     // 캐시 저장 (공유)
     await cacheSet(cacheKey, result, CACHE_TTL_SEC);
 
+    // 검사 결과 즉시 DB 반영 (포스트 1개 검사 → 저장, 전체 일괄 계산 방지)
+    if (postId) {
+      try {
+        const supabase = createServiceClient();
+        await supabase.from('post_missing_checks').upsert({
+          blog_id: blogId,
+          post_id: String(postId),
+          post_title: postTitle || null,
+          query,
+          view_exposed: viewTab.exposed,
+          view_rank: viewTab.rank,
+          blog_exposed: blogTab.exposed,
+          blog_rank: blogTab.rank,
+          search_volume: searchVolume,
+          status: 'ok',
+          fail_count: 0,
+          checked_at: new Date().toISOString(),
+        }, { onConflict: 'blog_id,post_id' });
+      } catch { /* DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) */ }
+    }
+
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: '누락 확인 중 오류' }, { status: 500 });
