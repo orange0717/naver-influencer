@@ -4,6 +4,13 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+const ALLOWED_MIME_EXT: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+
 /** POST /api/profile/avatar — 프로필 사진 업로드 (base64 → DB 저장) */
 export async function POST(req: NextRequest) {
   const supabase = createServiceClient();
@@ -40,11 +47,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '2MB 이하 이미지만 업로드 가능합니다.' }, { status: 400 });
     }
 
+    const ext = ALLOWED_MIME_EXT[file.type];
+    if (!ext) {
+      return NextResponse.json({ error: 'PNG, JPG, WEBP, GIF 형식만 업로드 가능합니다.' }, { status: 400 });
+    }
+
     // Storage 업로드 시도 → 실패 시 base64 폴백
     let publicUrl: string;
 
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
       const path = `avatars/${userId}.${ext}`;
       const buffer = Buffer.from(await file.arrayBuffer());
 

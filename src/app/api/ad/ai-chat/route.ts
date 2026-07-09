@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAdvertiserUser } from '@/lib/ad-auth';
 import { parseQueryToFilters, matchPowerContentKeyword } from '@/lib/ai-search';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
@@ -18,6 +19,9 @@ export async function POST(request: NextRequest) {
   if (AI_DISABLED) return aiDisabledResponse();
   const ip = getClientIp(request);
   if (await searchLimiter.check(ip)) return rateLimitResponse();
+
+  const auth = await getAdvertiserUser(request);
+  if (!auth) return Response.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

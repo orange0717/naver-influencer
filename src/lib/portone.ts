@@ -173,5 +173,15 @@ export async function verifyWebhookSignature(
     .map((s) => s.trim())
     .filter((s) => s.startsWith('v1,'))
     .map((s) => s.slice(3));
-  return received.includes(expected);
+  return received.reduce((matched, sig) => timingSafeEqualStr(sig, expected) || matched, false);
+}
+
+/** 상수 시간 문자열 비교 (타이밍 공격 방지) */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
