@@ -48,6 +48,8 @@ export async function GET(
       .eq('is_deleted', false)
       .order('created_at', { ascending: true });
 
+    const cookieUser = await getCookieUser();
+
     // 투표 조회
     let poll = null;
     const { data: pollData } = await supabase
@@ -64,7 +66,6 @@ export async function GET(
         .order('sort_order', { ascending: true });
 
       // 현재 사용자의 투표 여부
-      const cookieUser = await getCookieUser();
       let userVoteOptionId: string | null = null;
       if (cookieUser) {
         const { data: vote } = await supabase
@@ -86,10 +87,23 @@ export async function GET(
       };
     }
 
+    // 현재 로그인한 사용자의 좋아요 여부 (계정별로 서버에서 판단 — 클라이언트 캐시에 의존하지 않음)
+    let liked = false;
+    if (cookieUser) {
+      const { data: existingLike } = await supabase
+        .from('community_likes')
+        .select('id')
+        .eq('post_id', id)
+        .eq('user_id', cookieUser.id)
+        .single();
+      liked = !!existingLike;
+    }
+
     return NextResponse.json({
       post: { ...post, view_count: newViewCount ?? post.view_count },
       comments: comments || [],
       poll,
+      liked,
     });
   } catch (err) {
     console.error('[community] GET detail error:', err);

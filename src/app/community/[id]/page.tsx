@@ -100,6 +100,8 @@ export default function CommunityPostPage() {
       setPost(data.post);
       setComments(data.comments || []);
       setPoll(data.poll || null);
+      // 좋아요 여부는 서버가 로그인 계정 기준으로 판단 (계정별 정확성 보장, 클라이언트 캐시 미사용)
+      setLiked(!!data.liked);
     } catch {
       router.push('/community');
     } finally {
@@ -111,23 +113,12 @@ export default function CommunityPostPage() {
     fetchPost();
   }, [fetchPost]);
 
-  // 좋아요 로컬 체크
-  useEffect(() => {
-    try {
-      const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
-      setLiked(likedPosts.includes(postId));
-    } catch { /* localStorage 접근 실패 무시 */ }
-  }, [postId]);
-
   const handleLike = async () => {
     if (liked || !user) return;
     try {
       const res = await fetch(`/api/community/${postId}/like`, { method: 'POST' });
       if (res.ok) {
         setLiked(true);
-        const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
-        likedPosts.push(postId);
-        localStorage.setItem('liked_posts', JSON.stringify(likedPosts));
         setPost(prev => prev ? { ...prev, like_count: prev.like_count + 1 } : null);
       }
     } catch { /* ignore */ }

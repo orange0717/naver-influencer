@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { DashboardApp, AppCategoryMeta, PlanTier } from '@/lib/dashboard-catalog';
 
-const FAV_KEY = 'ninfl:dashboard:favorites:v1';
+const FAV_KEY_ANON = 'ninfl:dashboard:favorites:v1';
+const FAV_KEY_USER_PREFIX = 'ninfl:dashboard:favorites:v1:';
 const FAV_MIGRATED_PREFIX = 'ninfl:dashboard:favorites:migrated:v1:';
+
+/** 로그인 계정별 키 — 계정 전환 시 이전 계정의 캐시를 절대 읽지 않도록 분리 */
+function favKeyFor(syncKey: string | null): string {
+  return syncKey ? `${FAV_KEY_USER_PREFIX}${syncKey}` : FAV_KEY_ANON;
+}
 
 function planLabel(plan: PlanTier): string {
   if (plan === 'influencer') return '인플루언서';
@@ -20,10 +26,10 @@ function ctaForRequiredPlan(plan?: PlanTier): string {
   return '무료플랜';
 }
 
-function loadFavorites(): Set<string> {
+function loadFavorites(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
-    const raw = window.localStorage.getItem(FAV_KEY);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
     return new Set(Array.isArray(arr) ? arr : []);
@@ -32,18 +38,18 @@ function loadFavorites(): Set<string> {
   }
 }
 
-function saveFavorites(next: Set<string>) {
+function saveFavorites(key: string, next: Set<string>) {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(next)));
+    window.localStorage.setItem(key, JSON.stringify(Array.from(next)));
   } catch {
     /* noop */
   }
 }
 
-/** 서버 목록과 기기 localStorage를 합집합 — 빈 응답(비인증·레이스)이 저장분을 지우지 않게 함 */
-function mergeFavoritesWithLocal(serverIds: string[]): Set<string> {
-  const next = new Set(loadFavorites());
+/** 서버 목록과 기기 localStorage(해당 키)를 합집합 — 빈 응답(비인증·레이스)이 저장분을 지우지 않게 함 */
+function mergeFavoritesWithLocal(key: string, serverIds: string[]): Set<string> {
+  const next = new Set(loadFavorites(key));
   for (const id of serverIds) next.add(id);
   return next;
 }
@@ -61,7 +67,7 @@ export function useFavorites() {
 
   useEffect(() => {
     if (!syncKey) {
-      setFavorites(loadFavorites());
+      setFavorites(loadFavorites(FAV_KEY_ANON));
       lastSyncedUserRef.current = null;
       return;
     }
@@ -70,10 +76,12 @@ export function useFavorites() {
 
     let cancelled = false;
     (async () => {
+      const userKey = favKeyFor(syncKey);
       const migratedKey = `${FAV_MIGRATED_PREFIX}${syncKey}`;
       const alreadyMigrated = window.localStorage.getItem(migratedKey) === '1';
       if (!alreadyMigrated) {
-        const local = Array.from(loadFavorites());
+        // 비로그인 상태에서 이 기기에 쌓인 즐겨찾기만 최초 1회 이 계정으로 이전
+        const local = Array.from(loadFavorites(FAV_KEY_ANON));
         if (local.length > 0) {
           await fetch('/api/favorites', {
             method: 'PUT',
@@ -83,6 +91,8 @@ export function useFavorites() {
           }).catch(() => {});
         }
         window.localStorage.setItem(migratedKey, '1');
+        // 이전 후 즉시 비우기 — 다른 계정이 같은 기기에서 로그인할 때 이 데이터를 재사용하지 못하게 함
+        window.localStorage.removeItem(FAV_KEY_ANON);
       }
 
       try {
@@ -91,23 +101,24 @@ export function useFavorites() {
         const j = await r.json();
         if (cancelled) return;
         const serverList = Array.isArray(j?.favorites) ? (j.favorites as string[]) : [];
-        const next = mergeFavoritesWithLocal(serverList);
+        const next = mergeFavoritesWithLocal(userKey, serverList);
         setFavorites(next);
-        saveFavorites(next);
+        saveFavorites(userKey, next);
       } catch {
-        if (!cancelled) setFavorites(loadFavorites());
+        if (!cancelled) setFavorites(loadFavorites(userKey));
       }
     })();
     return () => { cancelled = true; };
   }, [syncKey]);
 
   const toggle = useCallback((id: string) => {
+    const key = favKeyFor(syncKey);
     setFavorites(prev => {
       const next = new Set(prev);
       const adding = !next.has(id);
       if (adding) next.add(id);
       else next.delete(id);
-      saveFavorites(next);
+      saveFavorites(key, next);
 
       if (syncKey) {
         fetch('/api/favorites', {

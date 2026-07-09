@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { clearUserScopedLocalStorage } from '@/lib/clear-user-storage';
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | 'unified' | null;
@@ -65,8 +66,8 @@ export function useAuth() {
     } catch (err) {
       console.warn('[useAuth] 로그아웃 요청 실패:', err);
     }
-    queryClient.setQueryData(['auth', 'me'], defaultUser);
-    queryClient.invalidateQueries({ queryKey: ['auth'] });
+    clearUserScopedLocalStorage();
+    queryClient.clear();
     window.location.href = '/';
   };
 

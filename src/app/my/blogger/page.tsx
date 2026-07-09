@@ -12,6 +12,8 @@ import { filterMissing, calculateMissingRate, countMissing } from '@/lib/missing
 
 interface BloggerProfile {
   blogId: string;
+  /** 로그인 계정 식별자 — 동일 blogId를 다른 계정이 조회해도 로컬 캐시가 섞이지 않도록 키에 포함 */
+  accountId?: string;
   displayName: string;
   isInfluencer: boolean;
   imageUrl?: string;
@@ -112,14 +114,15 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
       subscriptionPlan: data.subscriptionPlan ?? null,
       subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
     };
+    const accountId: string | undefined = data.authId || data.id || undefined;
     if (data.type === 'unified' && (data.blogId || data.id)) {
-      return { blogId: data.blogId || data.id, displayName: data.name || data.blogId || data.id, isInfluencer: true, ...sub };
+      return { blogId: data.blogId || data.id, accountId, displayName: data.name || data.blogId || data.id, isInfluencer: true, ...sub };
     }
     if (data.type === 'blogger' && data.id) {
-      return { blogId: data.id, displayName: data.name || data.id, isInfluencer: false, ...sub };
+      return { blogId: data.id, accountId, displayName: data.name || data.id, isInfluencer: false, ...sub };
     }
     if (data.type === 'influencer' && data.id) {
-      return { blogId: data.blogId || data.id, displayName: data.name || data.id, isInfluencer: true, needsBlogId: !data.blogId, ...sub };
+      return { blogId: data.blogId || data.id, accountId, displayName: data.name || data.id, isInfluencer: true, needsBlogId: !data.blogId, ...sub };
     }
 
     // API 인증 실패 시 URL의 blogId 파라미터 폴백
@@ -393,7 +396,8 @@ export default function BloggerDashboard() {
         }
         return;
       }
-      const customData = localStorage.getItem(`blogger_custom_profile_${p.blogId}`);
+      const customProfileKey = `blogger_custom_profile_${p.accountId || 'anon'}_${p.blogId}`;
+      const customData = localStorage.getItem(customProfileKey);
       if (customData) {
         try {
           const parsed = JSON.parse(customData);
@@ -402,10 +406,10 @@ export default function BloggerDashboard() {
             if (parsed.displayName) p = { ...p, displayName: parsed.displayName };
             if (parsed.imageUrl) p = { ...p, imageUrl: parsed.imageUrl };
           } else {
-            localStorage.removeItem(`blogger_custom_profile_${p.blogId}`);
+            localStorage.removeItem(customProfileKey);
           }
         } catch {
-          localStorage.removeItem(`blogger_custom_profile_${p.blogId}`);
+          localStorage.removeItem(customProfileKey);
         }
       }
       setProfile(p);
@@ -460,7 +464,10 @@ export default function BloggerDashboard() {
   const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
     setCustomProfile(prev => {
       const updated = { ...prev, ...data };
-      if (profile) localStorage.setItem(`blogger_custom_profile_${profile.blogId}`, JSON.stringify(updated));
+      if (profile) {
+        const key = `blogger_custom_profile_${profile.accountId || 'anon'}_${profile.blogId}`;
+        localStorage.setItem(key, JSON.stringify(updated));
+      }
       return updated;
     });
     setProfile(prev => prev ? { ...prev, ...data } : prev);

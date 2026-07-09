@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { clearUserScopedLocalStorage } from '@/lib/clear-user-storage';
 import { useNotificationSettings } from '@/hooks/useNotifications';
 import UsagePeriodCard from '@/components/dashboard/UsagePeriodCard';
 
@@ -438,6 +439,7 @@ export default function ProfilePage() {
       if (res.ok) {
         await supabase.auth.signOut();
         await fetch('/api/auth/logout', { method: 'POST' });
+        clearUserScopedLocalStorage();
         router.push('/');
         router.refresh();
       } else {
