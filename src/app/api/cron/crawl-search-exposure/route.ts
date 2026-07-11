@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, sleep } from '@/lib/crawler';
 import { crawlBlogSearchRank, crawlViewTabRank, extractBlogIdFromInfluencerPage } from '@/lib/search-exposure';
+import {
+  applyExposureRankUpdates,
+  fetchPendingExposureKeywords,
+  mergeExposureUpdates,
+  resolveBlogIdMap,
+  type ExposureRankUpdate,
+} from '@/lib/search-exposure-batch';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -9,10 +17,6 @@ export const maxDuration = 300;
 /**
  * GET /api/cron/crawl-search-exposure
  * 가입자 키워드의 통합검색/블로그탭 순위 배치 크롤링
- *
- * ?batch=0 (기본) → 0~49번째 키워드
- * ?batch=1 → 50~99번째 키워드
- * ...
  */
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
@@ -22,14 +26,13 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const batchNum = parseInt(request.nextUrl.searchParams.get('batch') || '0');
   const targetNaverId = request.nextUrl.searchParams.get('naverId');
-  const forceBlogId = request.nextUrl.searchParams.get('blogId'); // 블로그 ID 직접 지정
+  const forceBlogId = request.nextUrl.searchParams.get('blogId');
   const reset = request.nextUrl.searchParams.get('reset') === '1';
   const BATCH_SIZE = parseInt(request.nextUrl.searchParams.get('size') || '20');
   const start = batchNum * BATCH_SIZE;
 
   const userInfluencerIds = new Set<string>();
 
-  // 특정 인플루언서만 크롤링
   if (targetNaverId) {
     const { data: inf, error: infError } = await supabase
       .from('influencers')
@@ -37,22 +40,20 @@ export async function GET(request: NextRequest) {
       .eq('naver_id', targetNaverId)
       .single();
     if (infError || !inf) {
-      console.error('[crawl-search-exposure] influencer lookup failed:', infError?.message);
+      logger.error('cron/crawl-search-exposure', 'Influencer lookup failed', { err: infError?.message });
     } else {
       userInfluencerIds.add(inf.id);
     }
   } else {
-    // 가입자(users.linked_influencer_id) + 데모체험자
     const { data: users } = await supabase
       .from('users')
       .select('linked_influencer_id')
       .not('linked_influencer_id', 'is', null);
 
-    for (const u of (users || [])) {
+    for (const u of users || []) {
       if (u.linked_influencer_id) userInfluencerIds.add(u.linked_influencer_id);
     }
 
-    // 데모체험 사용자도 포함
     const { data: demoSessions } = await supabase
       .from('demo_sessions')
       .select('naver_id')
@@ -74,63 +75,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: '대상 인플루언서가 없습니다.' });
   }
 
-  // 리셋: 기존 blog_search_rank/view_tab_rank를 NULL로 초기화
+  const infIdList = Array.from(userInfluencerIds);
+
   if (reset && batchNum === 0) {
-    for (const infId of userInfluencerIds) {
-      await supabase
-        .from('keyword_rankings')
-        .update({ blog_search_rank: null, view_tab_rank: null })
-        .eq('influencer_id', infId)
-        .not('blog_search_rank', 'is', null);
-      await supabase
-        .from('keyword_rankings')
-        .update({ blog_search_rank: null, view_tab_rank: null })
-        .eq('influencer_id', infId)
-        .not('view_tab_rank', 'is', null);
-    }
+    await supabase
+      .from('keyword_rankings')
+      .update({ blog_search_rank: null, view_tab_rank: null })
+      .in('influencer_id', infIdList)
+      .or('blog_search_rank.not.is.null,view_tab_rank.not.is.null');
   }
 
-  // 각 가입자의 최신 스냅샷 날짜별 키워드 수집
-  const keywordSet = new Map<string, { keyword: string; influencerIds: string[] }>();
-  const infSnapshotMap = new Map<string, string>(); // influencer_id -> snapshot_date
+  const { keywords: allKeywords, snapshotByInfluencer: infSnapshotMap } =
+    await fetchPendingExposureKeywords(supabase, infIdList);
 
-  for (const infId of userInfluencerIds) {
-    // 각 인플루언서의 최신 스냅샷 날짜 조회
-    const { data: latestRow, error: latestError } = await supabase
-      .from('keyword_rankings')
-      .select('snapshot_date')
-      .eq('influencer_id', infId)
-      .order('snapshot_date', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (latestError || !latestRow) {
-      if (latestError) console.error(`[crawl-search-exposure] latest snapshot lookup failed for ${infId}:`, latestError.message);
-      continue;
-    }
-    const snapshotDate = latestRow.snapshot_date;
-    infSnapshotMap.set(infId, snapshotDate);
-
-    const { data: rankings } = await supabase
-      .from('keyword_rankings')
-      .select('keyword_id, keyword_challenges!inner(keyword)')
-      .eq('influencer_id', infId)
-      .eq('snapshot_date', snapshotDate)
-      .is('blog_search_rank', null); // 아직 크롤링 안 된 키워드만
-
-    for (const r of (rankings || [])) {
-      const kw = r.keyword_challenges as unknown as { keyword: string };
-      if (!kw?.keyword) continue;
-      const existing = keywordSet.get(r.keyword_id);
-      if (existing) {
-        existing.influencerIds.push(infId);
-      } else {
-        keywordSet.set(r.keyword_id, { keyword: kw.keyword, influencerIds: [infId] });
-      }
-    }
-  }
-
-  const allKeywords = Array.from(keywordSet.entries());
   const batch = allKeywords.slice(start, start + BATCH_SIZE);
 
   if (batch.length === 0) {
@@ -146,70 +103,35 @@ export async function GET(request: NextRequest) {
   let blogFound = 0;
   let viewFound = 0;
 
-  // 인플루언서별 블로그 ID 추출
-  const blogIdMap = new Map<string, string>(); // influencer_id -> blog_id
+  const blogIdMap = new Map<string, string>();
   if (forceBlogId && targetNaverId) {
-    // blogId 파라미터가 있으면 직접 사용
     for (const infId of userInfluencerIds) {
       blogIdMap.set(infId, forceBlogId);
     }
   } else {
-    // 인플루언서 페이지에서 블로그 ID 추출
-    for (const infId of userInfluencerIds) {
-      // 1) latest_post_url에서 blog.naver.com 패턴 시도
-      const snapDate = infSnapshotMap.get(infId);
-      if (snapDate) {
-        const { data: postRow, error: postError } = await supabase
-          .from('keyword_rankings')
-          .select('latest_post_url')
-          .eq('influencer_id', infId)
-          .eq('snapshot_date', snapDate)
-          .not('latest_post_url', 'is', null)
-          .limit(1)
-          .single();
-        if (postError) {
-          console.error(`[crawl-search-exposure] post URL lookup failed for ${infId}:`, postError.message);
-        }
-        if (postRow?.latest_post_url) {
-          const blogMatch = postRow.latest_post_url.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
-          if (blogMatch) {
-            blogIdMap.set(infId, blogMatch[1]);
-            continue;
-          }
-        }
-      }
-
-      // 2) blog.naver.com URL이 없으면 인플루언서 페이지에서 블로그 ID 크롤링
-      const { data: inf, error: infLookupError } = await supabase
-        .from('influencers')
-        .select('naver_id')
-        .eq('id', infId)
-        .single();
-      if (infLookupError) {
-        console.error(`[crawl-search-exposure] influencer naver_id lookup failed for ${infId}:`, infLookupError.message);
-      }
-      if (inf?.naver_id) {
-        const blogId = await extractBlogIdFromInfluencerPage(inf.naver_id);
-        if (blogId) {
-          blogIdMap.set(infId, blogId);
-        }
-        await sleep(500);
-      }
-    }
+    const resolved = await resolveBlogIdMap(
+      supabase,
+      infIdList,
+      infSnapshotMap,
+      extractBlogIdFromInfluencerPage,
+      sleep,
+    );
+    for (const [k, v] of resolved) blogIdMap.set(k, v);
   }
 
-  for (const [keywordId, { keyword, influencerIds }] of batch) {
+  const skipView = request.nextUrl.searchParams.get('skipView') === '1';
+  const pendingUpdates: ExposureRankUpdate[] = [];
+
+  for (const { keywordId, keyword, influencerIds } of batch) {
     try {
-      // 해당 키워드에 참여하는 인플루언서의 블로그 ID 수집
       const { data: infData } = await supabase
         .from('influencers')
         .select('id, naver_id')
         .in('id', influencerIds);
 
-      // 블로그 ID 우선, 없으면 naver_id 사용
       const blogIds: string[] = [];
       const blogIdToInfId = new Map<string, string>();
-      for (const inf of (infData || [])) {
+      for (const inf of infData || []) {
         const blogId = blogIdMap.get(inf.id) || inf.naver_id;
         if (blogId) {
           blogIds.push(blogId);
@@ -218,13 +140,10 @@ export async function GET(request: NextRequest) {
       }
       if (blogIds.length === 0) continue;
 
-      // 블로그탭 크롤링 (네이버 검색 API)
       const blogResults = await crawlBlogSearchRank(keyword, blogIds);
       blogFound += blogResults.length;
       await sleep(300);
 
-      // 통합검색 VIEW 크롤링 (skipView=1이면 스킵 - 서버사이드에서 항상 0건)
-      const skipView = request.nextUrl.searchParams.get('skipView') === '1';
       let viewResults: { naver_id: string; rank: number }[] = [];
       if (!skipView) {
         viewResults = await crawlViewTabRank(keyword, blogIds);
@@ -232,17 +151,16 @@ export async function GET(request: NextRequest) {
         await sleep(1500);
       }
 
-      // DB 업데이트 (각 인플루언서의 최신 스냅샷 날짜 기준)
       for (const b of blogResults) {
         const infId = blogIdToInfId.get(b.naver_id.toLowerCase());
         const snapDate = infId ? infSnapshotMap.get(infId) : null;
         if (infId && snapDate) {
-          await supabase
-            .from('keyword_rankings')
-            .update({ blog_search_rank: b.rank })
-            .eq('keyword_id', keywordId)
-            .eq('influencer_id', infId)
-            .eq('snapshot_date', snapDate);
+          pendingUpdates.push({
+            keyword_id: keywordId,
+            influencer_id: infId,
+            snapshot_date: snapDate,
+            blog_search_rank: b.rank,
+          });
         }
       }
 
@@ -250,21 +168,28 @@ export async function GET(request: NextRequest) {
         const infId = blogIdToInfId.get(v.naver_id.toLowerCase());
         const snapDate = infId ? infSnapshotMap.get(infId) : null;
         if (infId && snapDate) {
-          await supabase
-            .from('keyword_rankings')
-            .update({ view_tab_rank: v.rank })
-            .eq('keyword_id', keywordId)
-            .eq('influencer_id', infId)
-            .eq('snapshot_date', snapDate);
+          pendingUpdates.push({
+            keyword_id: keywordId,
+            influencer_id: infId,
+            snapshot_date: snapDate,
+            view_tab_rank: v.rank,
+          });
         }
       }
 
       crawled++;
     } catch (err) {
-      console.error(`[crawl-search-exposure] ${keyword} 실패:`, err);
+      logger.error('cron/crawl-search-exposure', `Keyword crawl failed: ${keyword}`, {
+        err: err instanceof Error ? err.message : String(err),
+      });
       errors++;
     }
   }
+
+  const updatedRows = await applyExposureRankUpdates(
+    supabase,
+    mergeExposureUpdates(pendingUpdates),
+  );
 
   return NextResponse.json({
     message: `배치 ${batchNum} 완료`,
@@ -273,6 +198,7 @@ export async function GET(request: NextRequest) {
     crawled,
     blogFound,
     viewFound,
+    updatedRows,
     blogIdUsed: Array.from(blogIdMap.values()).slice(0, 3),
     errors,
     nextBatch: start + BATCH_SIZE < allKeywords.length ? batchNum + 1 : null,

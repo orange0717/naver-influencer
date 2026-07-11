@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
 import { crawlSearchExposure } from '@/lib/search-exposure';
+import { applyExposureRankUpdates, mergeExposureUpdates } from '@/lib/search-exposure-batch';
+import { getKSTDateString } from '@/lib/kst-date';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -22,7 +24,6 @@ export async function GET(
   const { id: keywordId } = await params;
   const supabase = createServiceClient();
 
-  // 키워드 정보 조회
   const { data: keyword } = await supabase
     .from('keyword_challenges')
     .select('id, keyword')
@@ -33,7 +34,6 @@ export async function GET(
     return NextResponse.json({ error: '키워드를 찾을 수 없습니다.' }, { status: 404 });
   }
 
-  // 이 키워드에 참여하는 인플루언서 naver_id 목록 조회
   const { data: rankings } = await supabase
     .from('keyword_rankings')
     .select('influencer_id, influencers!inner(naver_id)')
@@ -41,7 +41,6 @@ export async function GET(
     .order('snapshot_date', { ascending: false })
     .limit(50);
 
-  // 중복 제거 (최신 스냅샷 기준)
   const naverIdMap = new Map<string, string>();
   for (const r of rankings || []) {
     const inf = r.influencers as unknown as { naver_id: string };
@@ -55,38 +54,31 @@ export async function GET(
     return NextResponse.json({ blog: [], view: [] });
   }
 
-  // 크롤링 실행
   const { blog, view } = await crawlSearchExposure(keyword.keyword, naverIds);
 
-  // keyword_rankings 테이블에 캐시 저장 (오늘 날짜 기준)
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKSTDateString();
   const influencerIdByNaverId = new Map<string, string>();
   for (const [infId, naverId] of naverIdMap) {
     influencerIdByNaverId.set(naverId.toLowerCase(), infId);
   }
 
-  for (const b of blog) {
-    const infId = influencerIdByNaverId.get(b.naver_id.toLowerCase());
-    if (infId) {
-      await supabase
-        .from('keyword_rankings')
-        .update({ blog_search_rank: b.rank })
-        .eq('keyword_id', keywordId)
-        .eq('influencer_id', infId)
-        .eq('snapshot_date', today);
-    }
-  }
+  const updates = mergeExposureUpdates([
+    ...blog.map(b => ({
+      keyword_id: keywordId,
+      influencer_id: influencerIdByNaverId.get(b.naver_id.toLowerCase())!,
+      snapshot_date: today,
+      blog_search_rank: b.rank,
+    })).filter(u => u.influencer_id),
+    ...view.map(v => ({
+      keyword_id: keywordId,
+      influencer_id: influencerIdByNaverId.get(v.naver_id.toLowerCase())!,
+      snapshot_date: today,
+      view_tab_rank: v.rank,
+    })).filter(u => u.influencer_id),
+  ]);
 
-  for (const v of view) {
-    const infId = influencerIdByNaverId.get(v.naver_id.toLowerCase());
-    if (infId) {
-      await supabase
-        .from('keyword_rankings')
-        .update({ view_tab_rank: v.rank })
-        .eq('keyword_id', keywordId)
-        .eq('influencer_id', infId)
-        .eq('snapshot_date', today);
-    }
+  if (updates.length > 0) {
+    await applyExposureRankUpdates(supabase, updates);
   }
 
   return NextResponse.json({ blog, view, keyword: keyword.keyword });

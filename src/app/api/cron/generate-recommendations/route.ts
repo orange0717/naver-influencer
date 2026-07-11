@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 import { logger } from '@/lib/logger';
+import { getKSTDateString } from '@/lib/kst-date';
 
 // 활성 키워드 전체 로드 + 정렬이라 데이터 증가 시 10 초를 초과할 수 있어 확장.
 export const maxDuration = 60;
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
 
   const jobId = await createCrawlJob('generate-recommendations');
   const supabase = createServiceClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKSTDateString();
 
   logger.info('cron/generate-recommendations', 'Started');
 

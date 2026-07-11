@@ -8,18 +8,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendRankChangeEmail, type RankChangeItem } from './email';
 import { sendKakaoRankAlert } from './kakao';
+import { getKSTDateString as getKSTDateStringCore, getKSTDate as getKSTDateCore } from './kst-date';
 
-// ─── KST 헬퍼 ───
+// ─── KST 헬퍼 (kst-date.ts 단일 소스) ───
 
-/** KST 기준 현재 Date 객체 (UTC+9 오프셋 적용) */
+/** @deprecated kst-date.ts 직접 import 권장 */
 export function getKSTDate(): Date {
-  const now = new Date();
-  return new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return getKSTDateCore();
 }
 
 /** KST 기준 오늘 날짜 문자열 (YYYY-MM-DD) */
 export function getKSTDateString(): string {
-  return getKSTDate().toISOString().slice(0, 10);
+  return getKSTDateStringCore();
 }
 
 /** KST 기준 날짜를 한국어 형식으로 포맷 */

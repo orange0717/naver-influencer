@@ -10,6 +10,7 @@ import {
   verifyCronSecret,
 } from '@/lib/crawler';
 import { dailyCrawlQueueOrFilter } from '@/lib/crawl-queue';
+import { getKSTDateString } from '@/lib/kst-date';
 
 export const maxDuration = 300;
 
@@ -23,7 +24,7 @@ const MAX_BATCH_SIZE = 1500;
 const MAX_CONCURRENCY = 15;
 const CRON_LOCK_KEY = 'cron:crawl-challenge-ranks';
 const CRON_LOCK_TTL_SECONDS = 330;
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => getKSTDateString();
 const MAX_RUNTIME_MS = 285_000; // 300초 중 안전 마진 15초
 
 /** keyword를 정규화 (keyword_clean 생성용) */

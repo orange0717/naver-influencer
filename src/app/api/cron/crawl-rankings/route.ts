@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
+import { getKSTDateString } from '@/lib/kst-date';
 import type { ParsedRanking } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +11,7 @@ export const maxDuration = 300;
 
 const NAVER_SEARCH_URL = 'https://search.naver.com/search.naver';
 const BATCH_SIZE = 20; // Vercel 60초 제한 내 안전한 키워드 수
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => getKSTDateString();
 
 // 요일별 카테고리 로테이션 — 전체 20개 균등 배분
 const DAY_CATEGORIES: Record<number, string[]> = {
