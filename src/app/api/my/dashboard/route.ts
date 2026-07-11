@@ -68,22 +68,37 @@ export async function GET(request: NextRequest) {
   const today = new Date().toISOString().slice(0, 10);
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const { data: latestRankings } = await supabase
-    .from('keyword_rankings')
-    .select(`
-      rank_position, previous_rank, rank_change, fan_count, is_integrated_top3,
-      latest_post_title, snapshot_date,
-      keyword_id,
-      keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
-    `)
-    .eq('influencer_id', userProfile.linked_influencer_id)
-    .gte('snapshot_date', thirtyDaysAgo.toISOString().slice(0, 10))
-    .order('snapshot_date', { ascending: false })
-    .limit(500);
 
-  // 최신 날짜의 순위만 추출 (같은 키워드 중복 제거)
-  const latestByKeyword = new Map<string, typeof latestRankings extends (infer T)[] | null ? T : never>();
-  for (const r of (latestRankings || [])) {
+  // .limit(500) 절단 시 키워드 수가 많은 인플루언서는 일부 키워드의 최신 스냅샷이
+  // 통째로 누락될 수 있어(같은 날짜라도 500건을 넘으면 뒤쪽 키워드 손실) 전량을 페이지네이션으로 조회
+  type RankingRow = {
+    rank_position: number; previous_rank: number | null; rank_change: number | null;
+    fan_count: number | null; is_integrated_top3: boolean; latest_post_title: string | null;
+    snapshot_date: string; keyword_id: string; keyword_challenges: unknown;
+  };
+  const allRankings: RankingRow[] = [];
+  const RANKINGS_PAGE = 1000;
+  for (let offset = 0; ; offset += RANKINGS_PAGE) {
+    const { data: page } = await supabase
+      .from('keyword_rankings')
+      .select(`
+        rank_position, previous_rank, rank_change, fan_count, is_integrated_top3,
+        latest_post_title, snapshot_date,
+        keyword_id,
+        keyword_challenges!inner(keyword, category, participant_count, search_volume_monthly)
+      `)
+      .eq('influencer_id', userProfile.linked_influencer_id)
+      .gte('snapshot_date', thirtyDaysAgo.toISOString().slice(0, 10))
+      .order('snapshot_date', { ascending: false })
+      .range(offset, offset + RANKINGS_PAGE - 1);
+    if (!page || page.length === 0) break;
+    allRankings.push(...(page as unknown as RankingRow[]));
+    if (page.length < RANKINGS_PAGE) break;
+  }
+
+  // 최신 날짜의 순위만 추출 (같은 키워드 중복 제거) - 날짜 내림차순 정렬이므로 첫 등장이 최신
+  const latestByKeyword = new Map<string, RankingRow>();
+  for (const r of allRankings) {
     if (!latestByKeyword.has(r.keyword_id)) {
       latestByKeyword.set(r.keyword_id, r);
     }
@@ -97,8 +112,8 @@ export async function GET(request: NextRequest) {
     : 0;
   const top3Count = currentRankings.filter(r => r.rank_position <= 3).length;
   const integratedCount = currentRankings.filter(r => r.is_integrated_top3).length;
-  const rankUpCount = currentRankings.filter(r => r.rank_change > 0).length;
-  const rankDownCount = currentRankings.filter(r => r.rank_change < 0).length;
+  const rankUpCount = currentRankings.filter(r => (r.rank_change ?? 0) > 0).length;
+  const rankDownCount = currentRankings.filter(r => (r.rank_change ?? 0) < 0).length;
 
   const stats = {
     total_keywords: totalKeywords,

@@ -420,9 +420,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // DB 레벨에서 카테고리 필터링 → 단일 쿼리로 순위/총원 계산
   let categoryRank = 0;
   let categoryTotal = 0;
-  if (myCategory) {
-    const myKeywordScore = influencer.keyword_score || 0;
-
+  const myKeywordScore = influencer.keyword_score || 0;
+  // totalCount는 keyword_score > 0인 인플루언서만 집계 대상(=경쟁 풀)으로 삼는다.
+  // 내 점수가 0이면 애초에 그 풀에 속하지 않으므로 순위를 매기지 않는다.
+  // (이전엔 이 가드가 없어 0점 유저가 higherCount+1로 순위에 포함되면서
+  //  totalCount 분모엔 빠져 "56위/55" 같은 분자>분모 오류가 났다.)
+  if (myCategory && myKeywordScore > 0) {
     // 같은 카테고리에서 나보다 점수 높은 사람 수 = 내 순위 - 1
     const { count: higherCount } = await supabase
       .from('influencers')
@@ -430,7 +433,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       .gt('keyword_score', myKeywordScore)
       .or(`my_keyword_category.eq.${myCategory},and(my_keyword_category.is.null,category.eq.${myCategory})`);
 
-    // 같은 카테고리 전체 인원수
+    // 같은 카테고리 전체 인원수 (경쟁 풀 = keyword_score > 0)
     const { count: totalCount } = await supabase
       .from('influencers')
       .select('id', { count: 'exact', head: true })

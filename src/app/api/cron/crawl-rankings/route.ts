@@ -274,19 +274,30 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // 전일 순위 데이터 조회 (rank_change 계산용)
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        // 직전 순위 데이터 조회 (rank_change 계산용)
+        // 기존: snapshot_date === "어제" 한 날만 조회 → 이 크론은 Tier1(상위 100)만
+        // 매일 돌고 나머지 키워드는 요일/월 단위로만 크롤되므로, 어제 크롤 안 된
+        // 키워드는 매번 previous_rank 없음·rank_change 0("변동없음")으로 잘못 표시됨.
+        // crawl-challenge-ranks.ts에서 이미 겪고 고친 것과 동일한 패턴 — 가장 최근
+        // 스냅샷(최근 45일 이내)을 키워드별로 사용하도록 통일한다.
+        const since = new Date();
+        since.setDate(since.getDate() - 45);
+        const sinceStr = since.toISOString().slice(0, 10);
 
         const { data: prevRankings } = await supabase
           .from('keyword_rankings')
-          .select('influencer_id, rank_position')
+          .select('influencer_id, rank_position, snapshot_date')
           .eq('keyword_id', kw.id)
-          .eq('snapshot_date', yesterdayStr);
+          .lt('snapshot_date', snapshotDate)
+          .gte('snapshot_date', sinceStr)
+          .order('snapshot_date', { ascending: false });
 
         const prevRankMap = new Map<string, number>();
-        prevRankings?.forEach(r => prevRankMap.set(r.influencer_id, r.rank_position));
+        for (const r of prevRankings || []) {
+          if (!prevRankMap.has(r.influencer_id)) {
+            prevRankMap.set(r.influencer_id, r.rank_position);
+          }
+        }
 
         // 인플루언서 배치 UPSERT
         // - 팬 수: UI(/api/influencers)는 subscriber_count 우선 — fan_count만 넣으면 화면과 DB가 어긋남

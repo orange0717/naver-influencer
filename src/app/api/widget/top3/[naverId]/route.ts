@@ -70,19 +70,25 @@ export async function GET(
       return widgetResponse(svg);
     }
 
-    const { data: rankings } = await supabase
+    const { data: latestRow } = await supabase
+      .from('keyword_rankings')
+      .select('snapshot_date')
+      .eq('influencer_id', inf.id)
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const latestDate = latestRow?.snapshot_date || formatDate(new Date());
+
+    const { data: latestRankings } = await supabase
       .from('keyword_rankings')
       .select('rank_position, snapshot_date')
       .eq('influencer_id', inf.id)
-      .order('snapshot_date', { ascending: false })
-      .limit(500);
+      .eq('snapshot_date', latestDate);
 
-    const latestDate = rankings?.[0]?.snapshot_date || formatDate(new Date());
-    const latestRankings = rankings?.filter(r => r.snapshot_date === latestDate) || [];
-
-    const top3Count = latestRankings.filter(r => r.rank_position <= 3).length;
+    const top3Count = (latestRankings || []).filter(r => r.rank_position <= 3).length;
     // 대시보드·챌린지 현황과 동일: 분모는 네이버 기준 참여 키워드 수(집계 컬럼), 없을 때만 당일 스냅샷 건수
-    const participatedTotal = Number(inf.total_keywords) > 0 ? Number(inf.total_keywords) : latestRankings.length;
+    const participatedTotal = Number(inf.total_keywords) > 0 ? Number(inf.total_keywords) : (latestRankings || []).length;
     const top3Rate = participatedTotal > 0 ? Math.round((top3Count / participatedTotal) * 100) : 0;
 
     const svg = generateTop3WidgetSVG({
