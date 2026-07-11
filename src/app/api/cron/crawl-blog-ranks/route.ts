@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep } from '@/lib/crawler';
+import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep, fetchWithRetry } from '@/lib/crawler';
 import * as cheerio from 'cheerio';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 // 블로거 1명 내 키워드 동시 처리 수 (네이버 검색 부하 고려 — crawl-challenge-ranks 웨이브 패턴과 동일)
 const KEYWORD_CONCURRENCY = 4;
@@ -31,11 +29,9 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
     const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${(page - 1) * 10 + 1}`;
 
     try {
-      const res = await fetch(pageUrl, {
+      const res = await fetchWithRetry(pageUrl, {
         headers: {
-          'User-Agent': USER_AGENT,
           'Accept': 'text/html,application/xhtml+xml',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
           'Referer': 'https://search.naver.com/',
         },
       });

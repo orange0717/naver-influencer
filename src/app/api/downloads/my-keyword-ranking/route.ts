@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
 import { rowsToCsv, csvResponse, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
+import { dbError } from '@/lib/api-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     .limit(DOWNLOAD_ROW_LIMIT);
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return dbError('downloads/my-keyword-ranking', error);
   }
 
   const headers = ['키워드', '카테고리', '통합검색순위', '블로그탭순위', '이전순위', '변동', 'TOP3', '월간검색량', '최근포스팅제목', '최근포스팅URL', '스냅샷날짜'];

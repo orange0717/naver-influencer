@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, getCookieUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase-server';
+import { dbError, internalError } from '@/lib/api-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,12 +81,11 @@ export async function POST(req: NextRequest) {
       .eq('id', userId);
 
     if (updateErr) {
-      return NextResponse.json({ error: 'DB 저장 실패: ' + updateErr.message }, { status: 500 });
+      return dbError('profile/avatar', updateErr, '프로필 사진 저장에 실패했습니다.');
     }
 
     return NextResponse.json({ url: publicUrl });
   } catch (err) {
-    console.error('[avatar] error:', err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: '업로드 중 오류가 발생했습니다.' }, { status: 500 });
+    return internalError('profile/avatar', err, '업로드 중 오류가 발생했습니다.');
   }
 }

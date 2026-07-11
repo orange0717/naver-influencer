@@ -166,6 +166,9 @@ export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60
 /** Chrome 확장 / 외부 키워드 분석 API */
 export const extKeywordAnalysisLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 
+/** 이미지 변환 (Sharp CPU): 5분에 10회 */
+export const imageConvertLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
+
 /**
  * 전역 기본 API Rate Limiter (안전망) — 개별 라우트에 전용 limiter가 없는 경우를 위한 IP당 기본 상한.
  * 미들웨어(src/middleware.ts)에서 모든 /api/ 요청에 적용되며, 라우트 자체 limiter가 더 엄격하면

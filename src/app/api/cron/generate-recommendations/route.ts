@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
+import { logger } from '@/lib/logger';
 
 // 활성 키워드 전체 로드 + 정렬이라 데이터 증가 시 10 초를 초과할 수 있어 확장.
 export const maxDuration = 60;
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  console.log('[Cron] generate-recommendations started at', new Date().toISOString());
+  logger.info('cron/generate-recommendations', 'Started');
 
   try {
     // 활성 키워드 전체 조회
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true);
 
     if (!keywords || keywords.length === 0) {
-      console.log('[generate-recommendations] No active keywords');
+      logger.info('cron/generate-recommendations', 'No active keywords');
       await updateCrawlJob(jobId, { status: 'success', total_items: 0, processed_items: 0 });
       return NextResponse.json({ success: true, processed: 0 });
     }
@@ -133,17 +134,19 @@ export async function GET(request: NextRequest) {
       is_free: i < FREE_COUNT,
     }));
 
-    const { error } = await supabase
-      .from('daily_recommendations')
-      .upsert(rows, { onConflict: 'recommendation_date,keyword_id' });
-
-    // upsert 성공 후, 오늘 날짜에서 더 이상 top N이 아닌 오래된 행 제거
-    const upsertedKeywordIds = scored.map(kw => kw.id);
-    await supabase
+    // 오늘 추천을 전체 교체 (fragile not.in UUID 필터 대신 delete → insert)
+    const { error: deleteError } = await supabase
       .from('daily_recommendations')
       .delete()
-      .eq('recommendation_date', today)
-      .not('keyword_id', 'in', `(${upsertedKeywordIds.join(',')})`);
+      .eq('recommendation_date', today);
+
+    if (deleteError) {
+      throw new Error(`DB delete error: ${deleteError.message}`);
+    }
+
+    const { error } = await supabase
+      .from('daily_recommendations')
+      .insert(rows);
 
     if (error) {
       throw new Error(`DB insert error: ${error.message}`);
@@ -164,7 +167,10 @@ export async function GET(request: NextRequest) {
       processed_items: scored.length,
     });
 
-    console.log(`[Cron] generate-recommendations done: ${scored.length} recommendations from ${keywords.length} keywords`);
+    logger.info('cron/generate-recommendations', 'Completed', {
+      recommendations: scored.length,
+      totalKeywords: keywords.length,
+    });
 
     return NextResponse.json({
       success: true,
@@ -175,8 +181,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[generate-recommendations] Fatal error:', msg);
+    logger.error('cron/generate-recommendations', 'Fatal error', { err: msg });
     await updateCrawlJob(jobId, { status: 'failed', error_message: msg });
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Recommendation generation failed' }, { status: 500 });
   }
 }

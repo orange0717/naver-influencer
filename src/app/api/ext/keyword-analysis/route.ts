@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { extKeywordAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -13,12 +14,8 @@ const ALLOWED_ORIGINS = [
   'chrome-extension://',
 ];
 
-const EXT_CLIENT_HEADER = 'extension/2.1';
-
-function isAllowedExtClient(request: NextRequest): boolean {
-  const client = request.headers.get('x-ninfle-client') || '';
-  if (client === EXT_CLIENT_HEADER) return true;
-
+/** Chrome 확장 프로그램 origin/referer만 허용 (헤더 스푸핑 방지) */
+function isAllowedExtensionOrigin(request: NextRequest): boolean {
   const origin = request.headers.get('origin') || '';
   const referer = request.headers.get('referer') || '';
   return ALLOWED_ORIGINS.some(o => origin.startsWith(o) || referer.startsWith(o));
@@ -181,7 +178,7 @@ export async function GET(request: NextRequest) {
   }
 
   const authUser = await getAuthUser(request);
-  if (!authUser && !isAllowedExtClient(request)) {
+  if (!authUser && !isAllowedExtensionOrigin(request)) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401, headers: getCorsHeaders(request) });
   }
 
@@ -251,7 +248,9 @@ export async function GET(request: NextRequest) {
     setCache(cacheKey, result);
     return NextResponse.json(result, { headers: getCorsHeaders(request) });
   } catch (err) {
-    console.error('[keyword-analysis] error:', err instanceof Error ? err.message : String(err));
+    logger.error('ext/keyword-analysis', 'Analysis failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json({ error: '분석에 실패했습니다.' }, { status: 500, headers: getCorsHeaders(request) });
   }
 }

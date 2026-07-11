@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyAuthorizationToken } from '@/lib/secure-compare';
+import { dbError, internalError } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,18 +50,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error('[NOTIFICATIONS] RPC failed:', error);
-      return NextResponse.json(
-        { error: `Failed to create notifications: ${error.message}` },
-        { status: 500 },
-      );
+      return dbError('notifications/create', error, '알림 생성에 실패했습니다.');
     }
 
     const row = Array.isArray(data) ? data[0] : data;
     const totalCreated = row?.total_created ?? 0;
     const totalFailed = row?.total_failed ?? 0;
 
-    console.log(`[${notificationType}] Notifications created for ${totalCreated} users`);
+    logger.info('notifications/create', `${notificationType} notifications created`, { totalCreated, totalFailed });
 
     return NextResponse.json({
       success: true,
@@ -69,8 +67,6 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[NOTIFICATIONS] Unexpected error:', error);
-    return NextResponse.json({ error: `Internal error: ${message}` }, { status: 500 });
+    return internalError('notifications/create', error);
   }
 }

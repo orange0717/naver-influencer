@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
 import { rowsToCsv, csvResponse, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
+import { dbError } from '@/lib/api-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await query;
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return dbError('downloads/keywords', error);
   }
 
   const headers = ['키워드', '카테고리', '참여자수', '게시글수', '월간검색량', 'PC검색량', '모바일검색량', '경쟁도', '추천점수'];

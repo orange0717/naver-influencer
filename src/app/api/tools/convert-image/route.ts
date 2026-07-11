@@ -1,35 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
+import { getClientIp, imageConvertLimiter, rateLimitResponse } from '@/lib/rate-limit';
+import { internalError } from '@/lib/api-response';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (await imageConvertLimiter.check(ip)) {
+    return rateLimitResponse();
+  }
+
   try {
     const formData = await request.formData();
     const files = formData.getAll('files') as File[];
 
-    // 파일 개수 검증
     if (files.length === 0) {
       return NextResponse.json(
         { error: '파일을 선택해주세요.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // 결과를 바이너리로 반환하므로 1장씩 처리합니다.
     if (files.length !== 1) {
       return NextResponse.json(
         { error: '안정적인 변환을 위해 한 번에 1개 파일만 변환합니다.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const file = files[0]!;
 
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: '10MB 이하 이미지만 변환할 수 있습니다.' },
+        { status: 400 },
+      );
+    }
+
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: `지원하지 않는 파일 형식입니다: ${file.name}. JPG, PNG만 지원합니다.` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -56,7 +69,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: `파일 변환 중 오류가 발생했습니다: ${file.name}. 유효한 이미지 파일인지 확인하세요.` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -71,10 +84,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Image conversion error:', error);
-    return NextResponse.json(
-      { error: '이미지 변환 중 오류가 발생했습니다. 다시 시도해주세요.' },
-      { status: 500 }
-    );
+    return internalError('tools/convert-image', error, '이미지 변환 중 오류가 발생했습니다. 다시 시도해주세요.');
   }
 }
