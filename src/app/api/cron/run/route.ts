@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const baseUrl = request.nextUrl.origin;
+  // 배포 URL로 내부 fetch하면 커스텀 도메인으로 308 리다이렉트되고, fetch()가
+  // cross-origin 리다이렉트에서 Authorization 헤더를 제거하므로 커스텀 도메인을 직접 호출한다.
+  const baseUrl = 'https://ninfle.kr';
   const cronSecret = process.env.CRON_SECRET;
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
   if (cronSecret) headers['Authorization'] = `Bearer ${cronSecret}`;

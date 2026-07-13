@@ -53,7 +53,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const origin = request.nextUrl.origin;
+  // request.nextUrl.origin은 요청이 들어온 host(배포 URL 등)를 그대로 반영한다.
+  // 배포 URL로 내부 fetch하면 커스텀 도메인으로 308 리다이렉트가 발생하고,
+  // fetch()는 cross-origin 리다이렉트에서 Authorization 헤더를 제거하므로
+  // 항상 커스텀 도메인을 직접 호출해 리다이렉트 자체를 막는다.
+  const origin = 'https://ninfle.kr';
   const shard = request.nextUrl.searchParams.get('shard');
   const shards = request.nextUrl.searchParams.get('shards');
   let path = CRAWL_BASE;
