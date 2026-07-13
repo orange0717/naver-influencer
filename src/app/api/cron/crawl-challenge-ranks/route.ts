@@ -105,8 +105,14 @@ async function fetchOwnerId(naverId: string): Promise<string | null> {
   }
 }
 
-/** REST API로 인플루언서의 전체 참여 키워드+순위 가져오기 */
-async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null }> {
+/** REST API로 인플루언서의 전체 참여 키워드+순위 가져오기.
+ *  failed=true는 "0개 참여"가 아니라 "API 호출 자체가 실패해 확인 못함"을 뜻한다 —
+ *  호출부가 이 둘을 구분해야 API 일시 장애로 total_keywords/top1-3_count가 0으로
+ *  잘못 덮어써지는 사고를 막을 수 있다 (해당 인플루언서가 크롤 큐에서 영구 이탈할 위험).
+ */
+async function fetchAllParticipatedKeywords(
+  ownerId: string,
+): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null; failed: boolean }> {
   const results: ParticipatedKeyword[] = [];
   let cursor: string | undefined;
   let totalFromApi: number | null = null;
@@ -140,11 +146,12 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords
       await sleep(300);
     } catch (err) {
       console.error(`[crawl-challenge-ranks] API error at page ${page}:`, err);
-      break;
+      // 0페이지부터 실패 = 결과를 전혀 확인 못함(진짜 0개와 구분 필요)
+      return { keywords: results, totalFromApi, failed: page === 0 };
     }
   }
 
-  return { keywords: results, totalFromApi };
+  return { keywords: results, totalFromApi, failed: false };
 }
 
 /** DB에 없는 키워드를 keyword_challenges에 생성하고 매핑에 추가 */
@@ -399,7 +406,15 @@ export async function GET(request: NextRequest) {
       }
 
       // 2. 전체 참여 키워드+순위 가져오기
-      const { keywords } = await fetchAllParticipatedKeywords(ownerId);
+      const { keywords, failed: fetchFailed } = await fetchAllParticipatedKeywords(ownerId);
+      if (fetchFailed) {
+        // API 호출 자체가 실패한 것 — "0개 참여"가 아니다. total_keywords/top1-3_count를
+        // 0으로 덮어쓰지 않고 last_crawled_at도 건드리지 않아, 다음 순환 때 최우선으로
+        // 재시도되도록 한다 (여기서 last_crawled_at을 갱신하면 실제로는 아무것도 확인
+        // 못했는데 "방금 확인함"으로 큐에서 밀려나 통계가 영구히 굳어버릴 수 있음).
+        console.warn(`[crawl-challenge-ranks] participated-keywords API 실패, 재시도 보류: ${inf.naver_id}`);
+        return { ok: false, count: 0 };
+      }
       if (keywords.length === 0) {
         console.log(`[crawl-challenge-ranks] No keywords for ${inf.naver_id}`);
         await supabase
