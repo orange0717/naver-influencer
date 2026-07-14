@@ -12,10 +12,6 @@
       "schedule": "0 19 * * *"
     },
     {
-      "path": "/api/cron/crawl-influencers",
-      "schedule": "0 0,6,12,18 * * *"
-    },
-    {
       "path": "/api/cron/update-volumes",
       "schedule": "0 20 * * *"
     },
@@ -54,10 +50,6 @@
     {
       "path": "/api/cron/crawl-blog-visitors",
       "schedule": "30 22 * * *"
-    },
-    {
-      "path": "/api/cron/crawl-selection-dates",
-      "schedule": "0 23 * * *"
     },
     {
       "path": "/api/cron/crawl-naver-mate",
