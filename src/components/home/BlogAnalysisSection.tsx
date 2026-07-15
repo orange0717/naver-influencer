@@ -891,18 +891,9 @@ export default function BlogAnalysisSection() {
         </div>
       )}
 
-      {/* ─── 2. 대시보드 카드 (5열 x 2행) ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* 1행: 방문자 + 이웃 + 발행 */}
-        <AnimatedStatCard label="TODAY 방문자" value={blogStats?.todayVisitor || 0} suffix="명" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} color="accent" delay={0} />
-        <AnimatedStatCard label="30일 방문자수" value={visitorData.totalVisitors} suffix="명" description={(() => {
-          const parts: string[] = [];
-          if (visitorData.avgVisitors > 0) parts.push(`일평균 ${visitorData.avgVisitors.toLocaleString()}`);
-          if (visitorData.trend !== 0) parts.push(`${visitorData.trend > 0 ? '▲' : '▼'}${Math.abs(visitorData.trend)}%`);
-          if (visitorData.collectedDays > 0 && visitorData.collectedDays < 30) parts.push(`수집 ${visitorData.collectedDays}일치`);
-          return parts.join(' · ') || '집계중';
-        })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>} color={visitorData.trend > 0 ? 'up' : visitorData.trend < 0 ? 'down' : 'accent'} delay={50} />
-        <AnimatedStatCard label="이웃수" value={blogStats?.subscriberCount || 0} suffix="명" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} color="accent" delay={100} />
+      {/* ─── 2. 대시보드 카드 ─── */}
+      {/* TODAY 방문자·30일 방문자수·이웃수는 위쪽 KPI 요약(BlogDashboardKpiBar)과 중복되어 제거 (2026-07-15) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <AnimatedStatCard label="이번주 발행" value={publishingStats.weeklyTotal} suffix="회" description={(() => { const now = new Date(); const w = new Date(now.getTime() - 7*24*60*60*1000); return `${w.getMonth()+1}/${w.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>} color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'} delay={150} />
         <AnimatedStatCard label="한달 발행" value={publishingStats.monthlyTotal} suffix="회" description={(() => { const now = new Date(); const m = new Date(now.getTime() - 30*24*60*60*1000); return `${m.getMonth()+1}/${m.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'} delay={200} />
         {/* 2행: 순위 + 누락율 */}
