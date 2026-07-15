@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Script from "next/script";
 import "./globals.css";
 import HeaderWrapper from "@/components/HeaderWrapper";
+import AppSidebar from "@/components/AppSidebar";
 import Footer from "@/components/Footer";
 import VisitTracker from "@/components/VisitTracker";
 import ChatBot from "@/components/ChatBot";
@@ -253,9 +254,12 @@ export default function RootLayout({
           <SubscriptionExpiryStrip />
           <UpdateBanner />
           <Suspense fallback={null}><VisitTracker /></Suspense>
-          <main className="max-w-7xl mx-auto px-4 pt-6 pb-10 flex-1 w-full">
-            {children}
-          </main>
+          <div className="flex flex-1 w-full min-w-0">
+            <AppSidebar />
+            <main className="max-w-[1800px] mx-auto px-4 pt-6 pb-10 flex-1 w-full min-w-0">
+              {children}
+            </main>
+          </div>
           <Footer />
           <FeedbackButton />
           <ChatBot />

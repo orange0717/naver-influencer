@@ -1,136 +1,19 @@
 'use client';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthModal } from '@/contexts/AuthModalContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { isDesktop } from '@/lib/desktop';
+import { SIDEBAR_FOOTER_LINKS } from '@/lib/sidebar-nav';
 import NotificationBell from './NotificationBell';
 import MessageBell from './MessageBell';
+import HeaderSearch from './HeaderSearch';
 
-/* ── 플랜 티어 ── */
-type PlanTier = 'free' | 'blogger' | 'influencer';
-
-const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
-
-function canAccess(required: PlanTier | undefined, current: PlanTier): boolean {
-  if (!required || required === 'free') return true;
-  return PLAN_RANK[current] >= PLAN_RANK[required];
-}
-
-function planBadge(plan: PlanTier): string {
-  if (plan === 'blogger') return '예비 인플루언서';
-  if (plan === 'influencer') return '인플루언서';
-  return '';
-}
-
-function planHighlight(plan: PlanTier): string {
-  return plan === 'influencer' ? 'influencer' : 'blogger';
-}
-
-/* ── 메인 네비게이션 항목 (드롭다운 지원) ── */
-interface NavChild {
-  href: string;
-  label: string;
-  requiredPlan?: PlanTier;
-}
-
-interface NavItem {
-  href?: string;
-  label: string;
-  children?: NavChild[];
-  authOnly?: boolean;
-  requiredPlan?: PlanTier;
-}
-
-// 대시보드(/)가 기능 허브 역할을 하므로 상단 네비는 최소화
-const NAV_ITEMS: NavItem[] = [
-  { href: '/notice', label: '공지사항', authOnly: true },
-  { href: '/community', label: '커뮤니티' },
-  { href: '/stories', label: '성장후기' },
-  { href: '/subscribe', label: '이용권' },
-  { href: '/intro', label: '서비스소개' },
-];
-
-// Electron 데스크탑 앱에서는 커뮤니티·이용권 숨김(키워드 분석 도구로 집중)
-const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
-
-
-function LockBadge({ plan }: { plan: PlanTier }) {
-  return (
-    <span className="inline-flex items-center gap-1 ml-auto text-[10px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-        <rect x="5" y="11" width="14" height="10" rx="2" ry="2"/>
-        <path d="M8 11V7a4 4 0 018 0v4"/>
-      </svg>
-      {planBadge(plan)}
-    </span>
-  );
-}
-
-function NavDropdown({
-  label,
-  items,
-  isActive,
-  currentPlan,
-  onLockedClick,
-}: {
-  label: string;
-  items: NavChild[];
-  isActive: (href: string) => boolean;
-  currentPlan: PlanTier;
-  onLockedClick: (plan: PlanTier) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleEnter = () => { if (timerRef.current) clearTimeout(timerRef.current); setOpen(true); };
-  const handleLeave = () => { timerRef.current = setTimeout(() => setOpen(false), 150); };
-
-  const anyActive = items.some(item => isActive(item.href));
-
-  return (
-    <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
-      <button
-        className={`px-2 py-2 lg:px-2.5 xl:px-3.5 rounded-lg text-base font-semibold transition-colors flex items-center gap-1 cursor-pointer shrink-0 ${
-          anyActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
-        }`}
-      >
-        {label}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-60 bg-surface rounded-xl border border-border shadow-lg py-1.5 z-50">
-          {items.map(item => {
-            const locked = !canAccess(item.requiredPlan, currentPlan);
-            if (locked) {
-              return (
-                <button
-                  key={item.href}
-                  onClick={() => { setOpen(false); onLockedClick(item.requiredPlan!); }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-dim hover:bg-bg transition-colors text-left cursor-pointer"
-                >
-                  <span>{item.label}</span>
-                  <LockBadge plan={item.requiredPlan!} />
-                </button>
-              );
-            }
-            return (
-              <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
-                  isActive(item.href) ? 'text-accent bg-accent/5' : 'text-text hover:bg-bg'
-                }`}>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+// 사이드바는 로그인 사용자에게만 노출되므로, 비로그인 게스트는 헤더에서 직접 하단메뉴 링크로 이동
+const GUEST_NAV_LINKS = SIDEBAR_FOOTER_LINKS.filter((link) => !link.authOnly);
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | 'unified' | null;
@@ -152,9 +35,8 @@ interface HeaderProps {
 }
 
 export default function Header({ serverUser }: HeaderProps) {
-  const pathname = usePathname();
   const router = useRouter();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { mobileOpen, openMobile, closeMobile } = useSidebar();
   const [profileOpen, setProfileOpen] = useState(false);
   const [inDesktopApp, setInDesktopApp] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -192,34 +74,10 @@ export default function Header({ serverUser }: HeaderProps) {
     router.refresh();
   };
 
-  const isActive = (href: string) => pathname.startsWith(href);
-  const isRestricted = !!(user.restricted && user.id);
-
-  // 현재 플랜 판정 (무료/블로거/인플루언서)
-  const currentPlan: PlanTier = (() => {
-    if (!user.subscriptionActive) return 'free';
-    if (user.subscriptionPlan === 'INFLUENCER') return 'influencer';
-    if (user.subscriptionPlan === 'BLOGGER') return 'blogger';
-    return 'free';
-  })();
-
-  const goToSubscribe = (plan: PlanTier) => {
-    router.push(`/subscribe?highlight=${planHighlight(plan)}`);
-  };
-
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
     : (user.id || 'N').charAt(0).toUpperCase();
   const badgeColor = user.type === 'blogger' ? 'bg-[#2DB400]/30' : 'bg-white/20';
-
-  // 표시 가능한 네비 아이템: 제한 사용자는 이용권만, 나머지는 전체 표시 (잠금은 내부에서)
-  // 데스크탑 앱에서는 커뮤니티/이용권 숨김 (단, 제한 사용자는 이용권 결제 안내 필요하므로 예외)
-  const visibleItems = NAV_ITEMS.filter(item => {
-    if (isRestricted) return item.href === '/subscribe';
-    if (item.authOnly && (!user.id || user.isDemo)) return false;
-    if (inDesktopApp && item.href && DESKTOP_HIDDEN_HREFS.has(item.href)) return false;
-    return true;
-  });
 
   return (
     <>
@@ -231,50 +89,25 @@ export default function Header({ serverUser }: HeaderProps) {
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
           </Link>
 
-          {/* ── 데스크탑 네비게이션 (로고 옆, 좁은 화면에선 내부 가로 스크롤) ── */}
-          <nav aria-label="메인 네비게이션" className="hidden lg:flex flex-1 min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide touch-pan-x">
-            {visibleItems.map(item => {
-              if (item.children) {
-                return (
-                  <NavDropdown
-                    key={item.label}
-                    label={item.label}
-                    items={item.children}
-                    isActive={isActive}
-                    currentPlan={currentPlan}
-                    onLockedClick={goToSubscribe}
-                  />
-                );
-              }
-              const locked = !canAccess(item.requiredPlan, currentPlan);
-              if (locked) {
-                return (
-                  <button
-                    key={item.href}
-                    onClick={() => goToSubscribe(item.requiredPlan!)}
-                    className={`px-2 py-2 lg:px-2.5 xl:px-3.5 rounded-lg text-base font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0`}
-                  >
-                    <span>{item.label}</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                      <rect x="5" y="11" width="14" height="10" rx="2" ry="2"/>
-                      <path d="M8 11V7a4 4 0 018 0v4"/>
-                    </svg>
-                  </button>
-                );
-              }
-              return (
-                <Link key={item.href} href={item.href!}
-                  className={`px-2 py-2 lg:px-2.5 xl:px-3.5 rounded-lg text-base font-semibold transition-colors shrink-0 ${
-                    isActive(item.href!) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}>
-                  {item.label}
+          <HeaderSearch />
+
+          {/* ── 비로그인 게스트 전용 데스크탑 네비 (사이드바는 로그인 후에만 노출) ── */}
+          {!authLoading && !user.id && (
+            <nav aria-label="게스트 네비게이션" className="hidden lg:flex items-center gap-1 ml-2">
+              {GUEST_NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="px-2.5 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  {link.label}
                 </Link>
-              );
-            })}
-          </nav>
+              ))}
+            </nav>
+          )}
 
           {/* ── 우측: 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
             {canShowAppDownload &&
               (downloadNavUnlocked ? (
                 <Link
@@ -360,7 +193,7 @@ export default function Header({ serverUser }: HeaderProps) {
             )}
             <button
               className="lg:hidden p-1 text-white/70"
-              onClick={() => setMobileOpen(!mobileOpen)}
+              onClick={() => (mobileOpen ? closeMobile() : openMobile())}
               aria-expanded={mobileOpen}
               aria-controls="mobile-menu"
               aria-label="메뉴 열기">
@@ -370,79 +203,27 @@ export default function Header({ serverUser }: HeaderProps) {
         </div>
       </header>
 
-      {/* ── 모바일 메뉴 ── */}
-      {mobileOpen && (
+      {/* ── 비로그인 게스트 전용 모바일 메뉴 (로그인 사용자는 AppSidebar가 담당) ── */}
+      {mobileOpen && !authLoading && !user.id && (
         <div id="mobile-menu" className="lg:hidden fixed inset-0 top-16 z-40 bg-bg border-t border-border overflow-y-auto">
-          <nav aria-label="모바일 네비게이션" className="flex flex-col p-4 gap-0.5">
-            {visibleItems.map(item => {
-              if (item.children) {
-                return (
-                  <div key={item.label}>
-                    <p className="font-title px-5 py-2 text-xs font-bold text-dim uppercase">{item.label}</p>
-                    {item.children.map(child => {
-                      const locked = !canAccess(child.requiredPlan, currentPlan);
-                      if (locked) {
-                        return (
-                          <button
-                            key={child.href}
-                            onClick={() => { setMobileOpen(false); goToSubscribe(child.requiredPlan!); }}
-                            className="font-title w-full flex items-center gap-3 px-8 py-3 rounded-xl text-sm font-semibold text-dim/70 hover:text-text hover:bg-surface transition-colors text-left cursor-pointer"
-                          >
-                            <span>{child.label}</span>
-                            <LockBadge plan={child.requiredPlan!} />
-                          </button>
-                        );
-                      }
-                      return (
-                        <Link key={child.href} href={child.href} onClick={() => setMobileOpen(false)}
-                          className={`font-title flex items-center gap-3 px-8 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                            isActive(child.href) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
-                          }`}>
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                );
-              }
-              const locked = !canAccess(item.requiredPlan, currentPlan);
-              if (locked) {
-                return (
-                  <button
-                    key={item.href}
-                    onClick={() => { setMobileOpen(false); goToSubscribe(item.requiredPlan!); }}
-                    className="font-title w-full flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-dim/70 hover:text-text hover:bg-surface transition-colors text-left cursor-pointer"
-                  >
-                    <span>{item.label}</span>
-                    <LockBadge plan={item.requiredPlan!} />
-                  </button>
-                );
-              }
-              return (
-                <Link key={item.href} href={item.href!} onClick={() => setMobileOpen(false)}
-                  className={`font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                    isActive(item.href!) ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-surface'
-                  }`}>
-                  {item.label}
-                </Link>
-              );
-            })}
-
-            {/* 로그인/로그아웃 */}
+          <nav aria-label="모바일 게스트 네비게이션" className="flex flex-col p-4 gap-0.5">
+            {GUEST_NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={closeMobile}
+                className="font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-dim hover:text-text hover:bg-surface transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
             <div className="border-t border-border/50 my-3 mx-2" />
-            {user.id ? (
-              <button onClick={() => { handleLogout(); setMobileOpen(false); }}
-                className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-down hover:text-down/80 hover:bg-down/5 transition-colors cursor-pointer">
-                로그아웃
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setMobileOpen(false); openLogin(); }}
-                className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors cursor-pointer text-left w-full">
-                로그인 / 회원가입
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => { closeMobile(); openLogin(); }}
+              className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors cursor-pointer text-left w-full">
+              로그인 / 회원가입
+            </button>
           </nav>
         </div>
       )}

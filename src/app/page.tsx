@@ -6,6 +6,11 @@ import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
+import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
+import AiBriefingSection from '@/components/home/AiBriefingSection';
+import KeywordRankingSection from '@/components/home/KeywordRankingSection';
+import PlanGate from '@/components/home/PlanGate';
+import BlogConnectCta from '@/components/home/BlogConnectCta';
 import type { PlanTier } from '@/lib/dashboard-catalog';
 
 export const dynamic = 'force-dynamic';
@@ -128,6 +133,7 @@ export default async function HomePage() {
   }
 
   const isLoggedIn = !!authUser || !!demoNaverId;
+  const isInfluencerNoBlogId = !!authUser && !!profileResult?.linked_influencer_id && !profileResult?.blog_id;
 
   return (
     <>
@@ -137,18 +143,38 @@ export default async function HomePage() {
           <TrialBanner isDemo />
         </div>
       )}
-      <DashboardGrid
-        currentPlan={currentPlan}
-        isLoggedIn={isLoggedIn}
-        isDemoUser={!!demoNaverId}
-        userName={userName}
-        subscriptionExpiresAt={subscriptionExpiresAt}
-        stats={{
-          myKeywordCount,
-          myBlogRank,
-          unreadNotices,
-        }}
-      />
+      {!isLoggedIn ? (
+        <DashboardGrid
+          currentPlan={currentPlan}
+          isLoggedIn={isLoggedIn}
+          isDemoUser={!!demoNaverId}
+          userName={userName}
+          subscriptionExpiresAt={subscriptionExpiresAt}
+          stats={{
+            myKeywordCount,
+            myBlogRank,
+            unreadNotices,
+          }}
+        />
+      ) : isInfluencerNoBlogId ? (
+        <BlogConnectCta />
+      ) : (
+        <div className="space-y-10">
+          <section id="blog-analysis" className="scroll-mt-24">
+            <BlogAnalysisSection />
+          </section>
+          <PlanGate requiredPlan="influencer" currentPlan={currentPlan} sectionLabel="AI 브리핑·AI 탭">
+            <section id="ai-briefing" className="scroll-mt-24">
+              <AiBriefingSection />
+            </section>
+          </PlanGate>
+          <PlanGate requiredPlan="blogger" currentPlan={currentPlan} sectionLabel="검색 순위">
+            <section id="keyword-ranking" className="scroll-mt-24">
+              <KeywordRankingSection />
+            </section>
+          </PlanGate>
+        </div>
+      )}
       {/* 데모 = 비로그인 사용자만 노출 (가입한 회원은 데모 필요 없음) */}
       {!isLoggedIn && <DemoFloatingButton />}
     </>
