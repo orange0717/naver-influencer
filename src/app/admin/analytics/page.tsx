@@ -56,6 +56,7 @@ interface ReferrerData {
   total: number;
   days: number;
   referrers: { domain: string; count: number }[];
+  channels?: { category: string; label: string; total: number; items: { name: string; count: number }[] }[];
   utm_sources: { source: string; count: number }[];
   devices: { desktop: number; mobile: number; tablet: number };
   pages: { path: string; count: number }[];
@@ -409,6 +410,15 @@ export default function AdminAnalyticsPage() {
           ) : (
             <p className="text-sm text-dim">데이터 없음</p>
           )}
+        </div>
+
+        {/* 채널 자동분류 (검색엔진/AI/SNS/외부/직접) */}
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h2 className="text-sm font-bold mb-3">채널 자동분류</h2>
+          <CrossTabList
+            groups={referrers?.channels?.map(c => ({ device: c.label, total: c.total, items: c.items }))}
+            colorMap={{}}
+          />
         </div>
 
         {/* 기기 비율 (UV 기준) */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/admin';
+import { classifyReferrer, type ReferrerCategory } from '@/lib/referrer-classify';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         total: 0,
         referrers: [],
+        channels: [],
         utm_sources: [],
         devices: {},
         pages: [],
@@ -98,6 +100,31 @@ export async function GET(req: NextRequest) {
       .map(([domain, count]) => ({ domain, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
+
+    // 1-a) 채널 자동분류 (검색엔진 / AI / SNS / 외부 / 직접) — 도메인 목록으로 흩어지던 유입을 채널 단위로 재집계
+    const CHANNEL_LABEL: Record<ReferrerCategory, string> = {
+      search: '검색엔진',
+      ai: 'AI',
+      sns: 'SNS',
+      external: '외부 사이트',
+      direct: '직접 방문',
+    };
+    const CHANNEL_ORDER: ReferrerCategory[] = ['search', 'ai', 'sns', 'external', 'direct'];
+    const channelMap = new Map<ReferrerCategory, Map<string, number>>();
+    for (const log of logs) {
+      const { category, label } = classifyReferrer(log.referrer, log.referrer_domain);
+      if (!channelMap.has(category)) channelMap.set(category, new Map());
+      const inner = channelMap.get(category)!;
+      inner.set(label, (inner.get(label) || 0) + 1);
+    }
+    const channels = CHANNEL_ORDER.filter(cat => channelMap.has(cat)).map(cat => {
+      const inner = channelMap.get(cat)!;
+      const items = [...inner.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+      const total = items.reduce((sum, it) => sum + it.count, 0);
+      return { category: cat, label: CHANNEL_LABEL[cat], total, items };
+    }).sort((a, b) => b.total - a.total);
 
     // 1-b) referrer 전체 URL별 집계 (direct 제외)
     const refUrlMap = new Map<string, number>();
@@ -178,6 +205,7 @@ export async function GET(req: NextRequest) {
       total: logs.length,
       days,
       referrers,
+      channels,
       referrer_urls,
       utm_sources,
       devices: deviceMap,
