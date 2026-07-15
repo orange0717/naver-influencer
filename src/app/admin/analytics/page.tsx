@@ -33,6 +33,7 @@ interface TodayLog {
   utm_medium?: string | null;
   utm_campaign?: string | null;
   device_type?: string | null;
+  country?: string | null;
   browser: string;
   os: string;
   duration_seconds: number | null;
@@ -288,6 +289,7 @@ export default function AdminAnalyticsPage() {
                   <th className="text-left py-2 px-2 font-semibold">페이지</th>
                   <th className="text-left py-2 px-2 font-semibold">유입 (Referer 원본·UTM은 마우스오버)</th>
                   <th className="text-left py-2 px-2 font-semibold w-16">기기</th>
+                  <th className="text-left py-2 px-2 font-semibold w-14">국가</th>
                   <th className="text-left py-2 px-2 font-semibold w-20">체류</th>
                 </tr>
               </thead>
@@ -332,6 +334,7 @@ export default function AdminAnalyticsPage() {
                         )}
                       </td>
                       <td className="py-2 px-2 text-dim">{(log.device_type && TODAY_LOG_DEVICE_LABEL[log.device_type]) || log.device_type || '-'}</td>
+                      <td className="py-2 px-2 text-dim">{log.country || '-'}</td>
                       <td className="py-2 px-2 text-dim font-rank tabular-nums">{formatDuration(log.duration_seconds)}</td>
                     </tr>
                   );

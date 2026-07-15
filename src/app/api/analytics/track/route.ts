@@ -46,7 +46,7 @@ export const dynamic = 'force-dynamic';
 
 const BOT_PATTERNS = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|preview|vercel|uptime|facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Telegram|Yandex|Baidu|DuckDuckBot|Sogou|Bytespider|PetalBot|GPTBot|ChatGPT|ClaudeBot|Applebot|Amazonbot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Rogerbot|DataForSeoBot|archive\.org|Mediapartners|AdsBot|Screaming Frog|CCBot|Barkrowler|Go-http-client|python-requests|curl|wget|axios|node-fetch|undici|httpx/i;
 
-const OPTIONAL_VISIT_LOG_COLUMNS = ['demo_naver_id', 'is_first_visit', 'user_agent', 'user_id'] as const;
+const OPTIONAL_VISIT_LOG_COLUMNS = ['demo_naver_id', 'is_first_visit', 'user_agent', 'user_id', 'country'] as const;
 
 function getMissingColumn(error: { code?: string; message?: string } | null) {
   if (!error) return null;
@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
     const utmSource = typeof body.utm_source === 'string' ? body.utm_source.slice(0, 100) : null;
     const utmMedium = typeof body.utm_medium === 'string' ? body.utm_medium.slice(0, 100) : null;
     const utmCampaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 200) : null;
+    const country = req.headers.get('x-vercel-ip-country') || null;
     const visitLogPayload: Record<string, string | boolean | null> = {
       page_path: pagePath,
       referrer: referrer || null,
@@ -150,6 +151,7 @@ export async function POST(req: NextRequest) {
       user_id: trackedUserId || null,
       demo_naver_id: trackedUserId ? null : demoNaverId,
       is_first_visit: isFirstVisit,
+      country,
     };
 
     let insertedId: number | null = null;
