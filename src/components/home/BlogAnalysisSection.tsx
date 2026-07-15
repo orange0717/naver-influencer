@@ -242,6 +242,8 @@ export default function BlogAnalysisSection() {
   // 저장된 키워드 토글
   const { savedSet, toggle: toggleSaved } = useSavedKeywords();
 
+  /** null=인증 확인 중, false=비로그인(Empty State), true=로그인(실데이터) */
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   const [customProfile, setCustomProfile] = useState<{ displayName?: string; imageUrl?: string }>({});
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -389,13 +391,11 @@ export default function BlogAnalysisSection() {
   useEffect(() => {
     getProfileFromApi().then(async p => {
       if (!p) {
-        // 프로필 조회 실패 시 에러 표시 (무한 리다이렉트 방지)
-        const hasSession = document.cookie.includes('sb-') || localStorage.getItem('sb-') !== null;
-        if (!hasSession) {
-          window.location.href = '/auth/login';
-        }
+        // 비로그인 게스트: 데이터 API 호출 없이 Empty State만 렌더
+        setIsLoggedIn(false);
         return;
       }
+      setIsLoggedIn(true);
       const customProfileKey = `blogger_custom_profile_${p.accountId || 'anon'}_${p.blogId}`;
       const customData = localStorage.getItem(customProfileKey);
       if (customData) {
@@ -741,6 +741,8 @@ export default function BlogAnalysisSection() {
     };
   }, [allBlogPosts, blogPosts]);
 
+  if (isLoggedIn === null) return null; // 인증 확인 중
+  if (isLoggedIn === false) return <GuestBlogAnalysis />;
   if (!profile) return null;
 
   // 블로그 ID 미등록 시
@@ -1142,6 +1144,108 @@ export default function BlogAnalysisSection() {
             })()}
           </>
         )}
+      </GlassCard>
+
+    </div>
+  );
+}
+
+/** 비로그인 게스트용 블로그 분석 대시보드 — 레이아웃은 실데이터 화면과 동일하게 유지하고
+ * KPI 카드·그래프·포스팅 목록은 Empty State, 프로필 영역은 로그인 유도로 대체.
+ * 게스트 상태에서는 어떤 사용자 데이터 API도 호출하지 않는다. */
+function GuestBlogAnalysis() {
+  const loginHref = '/auth/login?redirect=/my/blogger';
+  const features = ['방문자 분석', '키워드 순위', 'AI 브리핑', '포스팅 분석', '인플루언서 분석'];
+  const statCards = [
+    { label: 'TODAY 방문자' },
+    { label: '30일 방문자수' },
+    { label: '이웃수' },
+    { label: '이번주 발행' },
+    { label: '한달 발행' },
+    { label: '통합검색 평균순위' },
+    { label: '블로그탭 평균순위' },
+    { label: '누락율' },
+    { label: '전체 순위' },
+    { label: '카테고리 순위' },
+  ];
+
+  return (
+    <div className="space-y-6">
+
+      {/* ─── CTA 배너: 로그인 후 제공되는 기능 안내 ─── */}
+      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:p-6 text-center space-y-3">
+        <h2 className="font-title text-lg lg:text-xl font-bold text-text">
+          로그인하면 블로그 데이터를 자동으로 분석해드려요
+        </h2>
+        <div className="flex flex-wrap justify-center gap-2">
+          {features.map(f => (
+            <span key={f} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-surface border border-accent/20 text-accent">
+              {f}
+            </span>
+          ))}
+        </div>
+        <div>
+          <Link href={loginHref} className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
+            네이버 로그인
+          </Link>
+        </div>
+      </div>
+
+      {/* ─── 1. 프로필 헤더 (게스트) ─── */}
+      <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center bg-border/30 text-dim ring-2 ring-offset-2 ring-offset-surface ring-border/40 shrink-0">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-extrabold truncate text-text">네이버 블로그를 연결하세요</h1>
+            <p className="text-sm text-dim mt-1">로그인 후 블로그를 연결하면 방문자·순위·포스팅 데이터를 이곳에서 확인할 수 있습니다.</p>
+          </div>
+          <Link href={loginHref} className="ml-auto shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
+            네이버 로그인
+          </Link>
+        </div>
+      </div>
+
+      {/* ─── 2. 대시보드 카드 (5열 x 2행, Empty State) ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {statCards.map((c, i) => (
+          <AnimatedStatCard
+            key={c.label}
+            label={c.label}
+            value={0}
+            placeholder="-"
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/></svg>}
+            color="dim"
+            delay={i * 40}
+          />
+        ))}
+      </div>
+
+      {/* ─── 3. 블로그 방문자수 그래프 (Empty State) ─── */}
+      <GlassCard>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-border/30 flex items-center justify-center text-dim">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3 className="font-bold text-[15px]">블로그 방문자수</h3>
+        </div>
+        <div className="flex items-center justify-center py-12 text-center">
+          <p className="text-sm text-dim">데이터가 없습니다. 로그인 후 자동으로 분석됩니다.</p>
+        </div>
+      </GlassCard>
+
+      {/* ─── 4. 포스팅 목록 (Empty State) ─── */}
+      <GlassCard padding="none">
+        <div className="px-5 py-4 border-b border-border bg-bg/30">
+          <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>
+        </div>
+        <div className="flex flex-col items-center justify-center py-14 gap-3">
+          <p className="text-sm text-dim">연결된 블로그가 없습니다.</p>
+          <Link href={loginHref} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
+            네이버 로그인
+          </Link>
+        </div>
       </GlassCard>
 
     </div>

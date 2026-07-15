@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import { unstable_cache } from 'next/cache';
 import { createRouteHandlerClient, createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
-import DashboardGrid from '@/components/dashboard/DashboardGrid';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
@@ -144,18 +143,11 @@ export default async function HomePage() {
         </div>
       )}
       {!isLoggedIn ? (
-        <DashboardGrid
-          currentPlan={currentPlan}
-          isLoggedIn={isLoggedIn}
-          isDemoUser={!!demoNaverId}
-          userName={userName}
-          subscriptionExpiresAt={subscriptionExpiresAt}
-          stats={{
-            myKeywordCount,
-            myBlogRank,
-            unreadNotices,
-          }}
-        />
+        <div className="space-y-10">
+          <section id="blog-analysis" className="scroll-mt-24">
+            <BlogAnalysisSection />
+          </section>
+        </div>
       ) : isInfluencerNoBlogId ? (
         <BlogConnectCta />
       ) : (
