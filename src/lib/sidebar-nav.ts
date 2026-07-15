@@ -29,24 +29,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '블로그 분석',
     icon: '블',
     items: [
-      { label: '방문자·이웃·포스팅', href: '/#blog-analysis', authOnly: true },
-      { label: '포스팅 분석', href: '/my/post-analysis', requiredPlan: 'blogger', authOnly: true },
+      { label: '통합 대시보드', href: '/#blog-analysis', authOnly: true },
       { label: '내 팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
-    ],
-  },
-  {
-    label: 'AI 브리핑·AI탭',
-    icon: 'AI',
-    items: [
-      { label: '인용·노출 현황', href: '/#ai-briefing', requiredPlan: 'influencer' },
-    ],
-  },
-  {
-    label: '키워드 순위',
-    icon: '#',
-    items: [
-      { label: '내 포스팅 순위(통합·블로그탭)', href: '/#keyword-ranking', requiredPlan: 'blogger', authOnly: true },
-      { label: '키워드별 검색순위', href: '/keywords/blog-ranking', requiredPlan: 'blogger' },
     ],
   },
   {

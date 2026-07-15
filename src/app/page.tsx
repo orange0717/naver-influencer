@@ -5,6 +5,7 @@ import { createRouteHandlerClient, createServiceClient, getUserWithTimeout } fro
 import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
+import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
 import AiBriefingSection from '@/components/home/AiBriefingSection';
 import KeywordRankingSection from '@/components/home/KeywordRankingSection';
@@ -152,6 +153,29 @@ export default async function HomePage() {
         <BlogConnectCta />
       ) : (
         <div className="space-y-10">
+          {/* 섹션 바로가기 탭 — 메뉴 이동 없이 한 화면에서 스크롤 이동 */}
+          <nav className="max-w-7xl mx-auto px-4 pt-4 -mb-4">
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              {[
+                { href: '#dashboard-summary', label: 'KPI 요약' },
+                { href: '#blog-analysis', label: '블로그 분석' },
+                { href: '#ai-briefing', label: 'AI 브리핑·AI탭' },
+                { href: '#keyword-ranking', label: '키워드 순위' },
+              ].map(t => (
+                <a
+                  key={t.href}
+                  href={t.href}
+                  className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface border border-border text-dim hover:text-accent hover:border-accent transition"
+                >
+                  {t.label}
+                </a>
+              ))}
+            </div>
+          </nav>
+
+          <section id="dashboard-summary" className="scroll-mt-24 max-w-7xl mx-auto px-4">
+            <BlogDashboardKpiBar blogId={profileResult?.blog_id ?? null} />
+          </section>
           <section id="blog-analysis" className="scroll-mt-24">
             <BlogAnalysisSection />
           </section>

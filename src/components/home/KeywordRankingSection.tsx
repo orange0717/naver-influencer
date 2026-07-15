@@ -6,6 +6,7 @@ import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
+import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
 
 interface BloggerProfile {
   blogId: string;
@@ -61,6 +62,21 @@ function saveRankResultToDb(blogId: string, postId: string, keyword: string, res
 
 function rankKey(postId: string, keyword: string): string {
   return `${postId}::${keyword}`;
+}
+
+interface AiBriefingResult {
+  hasAiBriefing: boolean | null;
+  exposed: boolean | null;
+  hasAiTab: boolean | null;
+  tabExposed: boolean | null;
+}
+
+// AI 브리핑/AI 탭 노출 상태 (postId::keyword 키) — AiBriefingSection.tsx와 동일 쿼리키를 사용해 캐시 공유
+async function fetchAiBriefingState(blogId: string): Promise<Record<string, AiBriefingResult>> {
+  const res = await fetch(`/api/my/ai-briefing-state?blogId=${encodeURIComponent(blogId)}`);
+  if (!res.ok) throw new Error('AI 브리핑 상태 조회 실패');
+  const data = await res.json();
+  return (data?.briefingResults ?? {}) as Record<string, AiBriefingResult>;
 }
 
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
@@ -198,6 +214,7 @@ export default function KeywordRankingSection() {
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const [errorMessage, setErrorMessage] = useState('');
+  const [showKeywordSearch, setShowKeywordSearch] = useState(false);
   const abortRef = useRef(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -347,6 +364,14 @@ export default function KeywordRankingSection() {
       setRankingResults(syncedState.rankingResults);
     }
   }, [syncedState]);
+
+  // AI 브리핑/AI 탭 포함 여부 — BlogAnalysisSection/AiBriefingSection과 동일 쿼리키로 캐시 공유, 신규 fetch 최소화
+  const { data: aiBriefingByKeyword } = useQuery({
+    queryKey: ['ai-briefing-state', profile?.blogId],
+    queryFn: () => fetchAiBriefingState(profile!.blogId),
+    enabled: !!profile?.blogId,
+    staleTime: 60 * 1000,
+  });
 
   // 포스트 로드 시 키워드 초기화 (저장된 키워드 있으면 사용, 없으면 빈 입력 1개)
   useEffect(() => {
@@ -626,7 +651,7 @@ export default function KeywordRankingSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[1080px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
                     <th className="text-left px-4 py-3 font-semibold w-10">#</th>
@@ -634,7 +659,11 @@ export default function KeywordRankingSection() {
                     <th className="text-left px-3 py-3 font-semibold w-44">검색 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">전일대비</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">7일대비</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">검색량</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">AI브리핑</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">AI탭</th>
                     <th className="text-center px-4 py-3 font-semibold w-16">확인</th>
                   </tr>
                 </thead>
@@ -645,6 +674,7 @@ export default function KeywordRankingSection() {
                     return keywords.map((kw, kwIdx) => {
                       const key = rankKey(post.id, kw.trim());
                       const result = rankingResults[key];
+                      const aiState = aiBriefingByKeyword?.[key];
                       const isFirst = kwIdx === 0;
                       const isLast = kwIdx === rowCount - 1;
                       return (
@@ -725,8 +755,36 @@ export default function KeywordRankingSection() {
                               ) : <span className="text-xs text-dim">-</span>
                             ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
+                          <td className="text-center px-3 py-1.5" title="히스토리 기능은 준비 중입니다">
+                            <span className="text-[10px] text-dim/50">준비중</span>
+                          </td>
+                          <td className="text-center px-3 py-1.5" title="히스토리 기능은 준비 중입니다">
+                            <span className="text-[10px] text-dim/50">준비중</span>
+                          </td>
                           <td className="text-center px-3 py-1.5 text-xs text-dim">
                             {result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}
+                          </td>
+                          <td className="text-center px-3 py-1.5">
+                            {!kw.trim() ? (
+                              <span className="text-[10px] text-dim/50">--</span>
+                            ) : aiState?.exposed === true ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">인용</span>
+                            ) : aiState?.exposed === false ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-bg text-dim">미인용</span>
+                            ) : (
+                              <span className="text-[10px] text-dim/50">--</span>
+                            )}
+                          </td>
+                          <td className="text-center px-3 py-1.5">
+                            {!kw.trim() ? (
+                              <span className="text-[10px] text-dim/50">--</span>
+                            ) : aiState?.tabExposed === true ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">노출</span>
+                            ) : aiState?.tabExposed === false ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-bg text-dim">미노출</span>
+                            ) : (
+                              <span className="text-[10px] text-dim/50">--</span>
+                            )}
                           </td>
                           <td className="text-center px-4 py-1.5">
                             <button
@@ -763,6 +821,7 @@ export default function KeywordRankingSection() {
                           {post.title}
                         </a>
                         <span className="text-[10px] text-dim ml-1">{post.date}</span>
+                        <span className="text-[9px] text-dim/50 ml-1" title="히스토리 기능은 준비 중입니다">(전일·7일대비 준비중)</span>
                       </div>
                     </div>
 
@@ -771,6 +830,7 @@ export default function KeywordRankingSection() {
                       {keywords.map((kw, kwIdx) => {
                         const key = rankKey(post.id, kw.trim());
                         const result = rankingResults[key];
+                        const aiState = aiBriefingByKeyword?.[key];
                         return (
                           <div key={kwIdx} className="space-y-1">
                             <div className="flex items-center gap-1.5">
@@ -822,6 +882,20 @@ export default function KeywordRankingSection() {
                                 ) : null}
                               </div>
                             )}
+                            {kw.trim() && (typeof aiState?.exposed === 'boolean' || typeof aiState?.tabExposed === 'boolean') && (
+                              <div className="flex items-center gap-1.5">
+                                {typeof aiState?.exposed === 'boolean' && (
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${aiState.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'}`}>
+                                    AI브리핑 {aiState.exposed ? '인용' : '미인용'}
+                                  </span>
+                                )}
+                                {typeof aiState?.tabExposed === 'boolean' && (
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${aiState.tabExposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'}`}>
+                                    AI탭 {aiState.tabExposed ? '노출' : '미노출'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -866,6 +940,25 @@ export default function KeywordRankingSection() {
               </div>
             )}
           </>
+        )}
+      </GlassCard>
+
+      {/* 임의 키워드 검색 — 기존 /keywords/blog-ranking 로직을 접이식 박스로 그대로 내장 */}
+      <GlassCard padding="none">
+        <button
+          onClick={() => setShowKeywordSearch(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 cursor-pointer"
+        >
+          <div className="text-left">
+            <h3 className="font-bold text-[15px]">임의 키워드 검색</h3>
+            <p className="text-[11px] text-dim mt-0.5">등록된 포스팅과 무관하게 원하는 키워드의 순위를 바로 조회</p>
+          </div>
+          <span className={`text-dim transition-transform ${showKeywordSearch ? 'rotate-180' : ''}`}>▼</span>
+        </button>
+        {showKeywordSearch && (
+          <div className="border-t border-border/50 p-4">
+            <BlogRankingClient />
+          </div>
         )}
       </GlassCard>
     </div>

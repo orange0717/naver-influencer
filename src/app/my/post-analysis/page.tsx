@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -237,6 +238,15 @@ export default function PostAnalysisPage() {
     fetchBasicAnalysis(profile.blogId);
   }, [profile, fetchAllPosts, fetchBasicAnalysis]);
 
+  // 대시보드에서 "상세분석" 링크로 진입 시 (?postId=) 해당 포스트를 자동으로 펼침
+  useEffect(() => {
+    if (posts.length === 0) return;
+    const postId = new URLSearchParams(window.location.search).get('postId');
+    if (!postId || !posts.some(p => p.id === postId)) return;
+    setExpandedPost(postId);
+    document.getElementById(`post-row-${postId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [posts]);
+
   // AI 심층 분석 (SSE)
   const runAiAnalysis = useCallback(async (logNo: string) => {
     if (!profile || analyzingPost) return;
@@ -403,6 +413,9 @@ export default function PostAnalysisPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+      <Link href="/#blog-analysis" className="inline-flex items-center gap-1 text-xs font-semibold text-dim hover:text-accent transition">
+        ← 블로그 분석 대시보드로
+      </Link>
       {/* 헤더 */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
@@ -497,7 +510,7 @@ export default function PostAnalysisPage() {
                     const isAnalyzingText = analyzingText === post.id;
 
                     return (<>
-                      <tr key={post.id} className="group hover:bg-surface-hover/50 transition-colors cursor-pointer" onClick={() => setExpandedPost(isExpanded ? null : post.id)}>
+                      <tr key={post.id} id={`post-row-${post.id}`} className={`group hover:bg-surface-hover/50 transition-colors cursor-pointer ${isExpanded ? 'bg-accent/5' : ''}`} onClick={() => setExpandedPost(isExpanded ? null : post.id)}>
                         <td className="px-5 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold text-sm hover:text-accent transition-colors line-clamp-1 block"
@@ -922,7 +935,7 @@ export default function PostAnalysisPage() {
                 const isAnalyzingText = analyzingText === post.id;
 
                 return (
-                  <div key={post.id} className="px-4 py-4">
+                  <div key={post.id} id={`post-row-${post.id}`} className="px-4 py-4">
                     <div
                       className="cursor-pointer"
                       onClick={() => setExpandedPost(isExpanded ? null : post.id)}

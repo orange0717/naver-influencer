@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { extractBlogId } from './blog-utils';
+import { createServiceClient } from './supabase-server';
 
 interface ExtractedKeyword {
   keyword: string;
@@ -382,4 +383,115 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
   }
 
   return result;
+}
+
+// ─── 방문자 요약(DB 조회 + stale 시 재크롤링) — /api/blog/visitors, KPI 요약 API 공용 ───
+
+export interface BlogVisitorSummary {
+  visitors: { date: string; count: number }[];
+  todayVisitors: number;
+  avgVisitors: number;
+  totalVisitors: number;
+  trend: number;
+  collectedDays: number;
+  lastCollectedDate: string | null;
+}
+
+export async function getBlogVisitorSummary(blogId: string, days: number): Promise<BlogVisitorSummary> {
+  const supabase = createServiceClient();
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const { data: visitorsInitial, error } = await supabase
+    .from('blog_visitor_history')
+    .select('visit_date, visitor_count')
+    .eq('blog_id', blogId)
+    .gte('visit_date', since.toISOString().slice(0, 10))
+    .order('visit_date', { ascending: true });
+
+  if (error) throw error;
+
+  let visitors = visitorsInitial;
+
+  // KST 기준 오늘 날짜
+  const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  // DB가 비었거나 최신 행이 오늘 미만이면(stale) 다시 크롤링
+  const latestDbDate = visitors && visitors.length > 0
+    ? visitors[visitors.length - 1].visit_date
+    : null;
+  const isStale = !latestDbDate || latestDbDate < todayStr;
+
+  if (isStale) {
+    const crawled = await fetchBlogVisitors(blogId);
+
+    if (crawled.length > 0) {
+      // DB에 저장 (오늘 행 포함)
+      const rows = crawled.map(v => ({
+        blog_id: blogId,
+        visit_date: v.date,
+        visitor_count: v.visitors,
+      }));
+
+      await supabase
+        .from('blog_visitor_history')
+        .upsert(rows, { onConflict: 'blog_id,visit_date' });
+
+      // blog_scores에 최신 방문자수 업데이트
+      const latest = crawled[crawled.length - 1];
+
+      // 다시 days일치 조회해서 추세 계산용으로 사용
+      const { data: refreshed } = await supabase
+        .from('blog_visitor_history')
+        .select('visit_date, visitor_count')
+        .eq('blog_id', blogId)
+        .gte('visit_date', since.toISOString().slice(0, 10))
+        .order('visit_date', { ascending: true });
+
+      const refreshedRows = refreshed || [];
+      const counts = refreshedRows.map(r => r.visitor_count);
+      const avg7d = counts.slice(-7).reduce((s, v) => s + v, 0) / Math.max(1, Math.min(counts.length, 7));
+      const avg30d = counts.length > 0 ? counts.reduce((s, v) => s + v, 0) / counts.length : 0;
+      const crawlTrend = avg30d > 0 ? ((avg7d - avg30d) / avg30d) * 100 : 0;
+
+      await supabase
+        .from('blog_scores')
+        .upsert({
+          blog_id: blogId,
+          latest_visitors: latest.visitors,
+          visitor_trend: Math.round(crawlTrend * 100) / 100,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'blog_id' });
+
+      visitors = refreshedRows;
+    }
+  }
+
+  const items = (visitors || []).map(v => ({
+    date: v.visit_date,
+    count: v.visitor_count,
+  }));
+  const todayVisitors = items.find(v => v.date === todayStr)?.count || 0;
+  const totalVisitors = items.reduce((s, v) => s + v.count, 0);
+  const avgVisitors = items.length > 0 ? Math.round(totalVisitors / items.length) : 0;
+
+  // 트렌드: 최근 7일 평균 vs 전체 평균
+  const recent7 = items.slice(-7);
+  const avg7 = recent7.length > 0 ? recent7.reduce((s, v) => s + v.count, 0) / recent7.length : 0;
+  const trend = avgVisitors > 0 ? Math.round(((avg7 - avgVisitors) / avgVisitors) * 100) : 0;
+
+  // 가장 최근 수집 날짜(차트가 어디서 끊겼는지 진단용)
+  const lastCollectedDate = items.length > 0 ? items[items.length - 1].date : null;
+
+  return {
+    visitors: items,
+    todayVisitors,
+    avgVisitors,
+    totalVisitors,
+    trend,
+    collectedDays: items.length,
+    lastCollectedDate,
+  };
 }

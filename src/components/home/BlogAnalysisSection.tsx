@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
@@ -27,8 +28,48 @@ interface BlogPost {
   title: string;
   url: string;
   commentCount: number;
+  viewCount?: number;
   date: string;
   isPublic: boolean;
+}
+
+interface AiBriefingResult {
+  hasAiBriefing: boolean | null;
+  exposed: boolean | null;
+  hasAiTab: boolean | null;
+  tabExposed: boolean | null;
+}
+
+async function fetchAiBriefingState(blogId: string): Promise<Record<string, AiBriefingResult>> {
+  const res = await fetch(`/api/my/ai-briefing-state?blogId=${encodeURIComponent(blogId)}`);
+  if (!res.ok) throw new Error('AI 브리핑 상태 조회 실패');
+  const data = await res.json();
+  return (data?.briefingResults ?? {}) as Record<string, AiBriefingResult>;
+}
+
+/** "postId::keyword" 키 결과를 postId 단위로 합산 — 하나라도 인용/노출이면 해당 포스트는 인용/노출로 표시 */
+function aggregateByPost(byKeyword: Record<string, AiBriefingResult>): Record<string, { briefing: 'cited' | 'notCited' | 'unchecked'; tab: 'exposed' | 'notExposed' | 'unchecked' }> {
+  const byPost: Record<string, { briefingChecked: boolean; briefingCited: boolean; tabChecked: boolean; tabExposed: boolean }> = {};
+  for (const [key, r] of Object.entries(byKeyword)) {
+    const postId = key.includes('::') ? key.split('::')[0] : key;
+    const entry = byPost[postId] ??= { briefingChecked: false, briefingCited: false, tabChecked: false, tabExposed: false };
+    if (r.exposed !== null) {
+      entry.briefingChecked = true;
+      if (r.exposed) entry.briefingCited = true;
+    }
+    if (r.tabExposed !== null) {
+      entry.tabChecked = true;
+      if (r.tabExposed) entry.tabExposed = true;
+    }
+  }
+  const result: Record<string, { briefing: 'cited' | 'notCited' | 'unchecked'; tab: 'exposed' | 'notExposed' | 'unchecked' }> = {};
+  for (const [postId, e] of Object.entries(byPost)) {
+    result[postId] = {
+      briefing: !e.briefingChecked ? 'unchecked' : e.briefingCited ? 'cited' : 'notCited',
+      tab: !e.tabChecked ? 'unchecked' : e.tabExposed ? 'exposed' : 'notExposed',
+    };
+  }
+  return result;
 }
 
 interface MissingResult {
@@ -266,6 +307,15 @@ export default function BlogAnalysisSection() {
   const [postAnalysis, setPostAnalysis] = useState<{ metrics: BlogAnalysisMetrics; averages: BlogAnalysisAverages } | null>(null);
   const [blogStats, setBlogStats] = useState<{ totalVisitor: number; todayVisitor: number; subscriberCount: number; postCount: number; isOfficialBlog: boolean } | null>(null);
   const [visitorData, setVisitorData] = useState<{ avgVisitors: number; totalVisitors: number; trend: number; collectedDays: number; lastCollectedDate: string | null }>({ avgVisitors: 0, totalVisitors: 0, trend: 0, collectedDays: 0, lastCollectedDate: null });
+
+  // AI 브리핑·AI탭 상태 — AiBriefingSection과 동일 queryKey를 사용해 캐시를 공유(중복 요청 없음)
+  const { data: aiBriefingByKeyword } = useQuery({
+    queryKey: ['ai-briefing-state', profile?.blogId],
+    queryFn: () => fetchAiBriefingState(profile!.blogId),
+    enabled: !!profile?.blogId,
+    staleTime: 60 * 1000,
+  });
+  const aiBriefingByPost = useMemo(() => aggregateByPost(aiBriefingByKeyword ?? {}), [aiBriefingByKeyword]);
 
   // 점수 계산용 ref
   const latestScoresRef = useRef({ total: 0, scores: [0, 0, 0, 0, 0, 0], grade: 'D' });
@@ -881,7 +931,7 @@ export default function BlogAnalysisSection() {
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>
+            <h3 className="font-bold text-[15px]">내 포스팅 · 블로그 누락</h3>
             <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
               {[10, 30, 60, 90, 180].map(n => (
                 <button key={n} onClick={() => {
@@ -943,17 +993,22 @@ export default function BlogAnalysisSection() {
         ) : (
           <>
             {/* 데스크톱 테이블 */}
-            <div className="hidden md:block">
-              <table className="w-full text-sm">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm min-w-[920px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-left px-5 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">색인</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">AI브리핑</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">AI탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">조회</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">댓글</th>
                     <th className="text-right px-3 py-3 font-semibold w-24">작성일</th>
-                    <th className="text-center px-5 py-3 font-semibold w-16">확인</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">확인</th>
+                    <th className="text-center px-5 py-3 font-semibold w-20">상세분석</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -1017,12 +1072,36 @@ export default function BlogAnalysisSection() {
                           )}
                         </td>
                         <td className="text-center px-3 py-3.5">
+                          <span className="text-[10px] text-dim/50" title="색인 여부 확인 기능은 준비 중입니다">—</span>
+                        </td>
+                        <td className="text-center px-3 py-3.5">
+                          {(() => {
+                            const ai = aiBriefingByPost[post.id];
+                            if (!ai || ai.briefing === 'unchecked') return <span className="text-[10px] text-dim/50">—</span>;
+                            return ai.briefing === 'cited'
+                              ? <span className="text-[11px] font-bold text-up">인용</span>
+                              : <span className="text-[11px] font-bold text-down">미인용</span>;
+                          })()}
+                        </td>
+                        <td className="text-center px-3 py-3.5">
+                          {(() => {
+                            const ai = aiBriefingByPost[post.id];
+                            if (!ai || ai.tab === 'unchecked') return <span className="text-[10px] text-dim/50">—</span>;
+                            return ai.tab === 'exposed'
+                              ? <span className="text-[11px] font-bold text-up">노출</span>
+                              : <span className="text-[11px] font-bold text-down">미노출</span>;
+                          })()}
+                        </td>
+                        <td className="text-center px-3 py-3.5 text-xs text-dim">
+                          {typeof post.viewCount === 'number' ? post.viewCount.toLocaleString() : '—'}
+                        </td>
+                        <td className="text-center px-3 py-3.5">
                           {post.commentCount > 0 ? (
                             <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
                           ) : <span className="text-xs text-dim">—</span>}
                         </td>
                         <td className="text-right px-3 py-3.5 text-xs text-dim">{post.date}</td>
-                        <td className="text-center px-5 py-3.5">
+                        <td className="text-center px-3 py-3.5">
                           <button onClick={() => checkMissing(post)}
                             disabled={checkingMissing === post.id || checkingAll}
                             className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50">
@@ -1030,6 +1109,12 @@ export default function BlogAnalysisSection() {
                               <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
                             ) : mr?.status === 'failed' ? '재시도' : mr ? '재확인' : '확인'}
                           </button>
+                        </td>
+                        <td className="text-center px-5 py-3.5">
+                          <Link href={`/my/post-analysis?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}`}
+                            className="text-[11px] text-accent hover:underline font-semibold">
+                            상세분석
+                          </Link>
                         </td>
                       </tr>
                     );
@@ -1096,7 +1181,26 @@ export default function BlogAnalysisSection() {
                           ) : mr?.status === 'failed' ? (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-accent/10 text-accent">검사 실패</span>
                           ) : null}
+                          {(() => {
+                            const ai = aiBriefingByPost[post.id];
+                            if (!ai || ai.briefing === 'unchecked') return null;
+                            return (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${ai.briefing === 'cited' ? 'bg-up/10 text-up' : 'bg-down/10 text-down'}`}>
+                                AI브리핑 {ai.briefing === 'cited' ? '인용' : '미인용'}
+                              </span>
+                            );
+                          })()}
+                          {(() => {
+                            const ai = aiBriefingByPost[post.id];
+                            if (!ai || ai.tab === 'unchecked') return null;
+                            return (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${ai.tab === 'exposed' ? 'bg-up/10 text-up' : 'bg-down/10 text-down'}`}>
+                                AI탭 {ai.tab === 'exposed' ? '노출' : '미노출'}
+                              </span>
+                            );
+                          })()}
                           <span className="text-[11px] text-dim">{post.date}</span>
+                          {typeof post.viewCount === 'number' && <span className="text-[11px] text-dim">조회 {post.viewCount.toLocaleString()}</span>}
                           {post.commentCount > 0 && <span className="text-[11px] text-accent">댓글 {post.commentCount}</span>}
                           <button onClick={() => checkMissing(post)}
                             disabled={checkingMissing === post.id || checkingAll}
@@ -1105,6 +1209,10 @@ export default function BlogAnalysisSection() {
                               <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
                             ) : mr?.status === 'failed' ? '재시도' : mr ? '재확인' : '순위확인'}
                           </button>
+                          <Link href={`/my/post-analysis?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}`}
+                            className="text-[10px] text-accent font-semibold hover:underline">
+                            상세분석 →
+                          </Link>
                         </div>
                       </div>
                     </div>

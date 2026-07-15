@@ -500,6 +500,14 @@ export default function AiBriefingSection() {
 
   const totalPages = Math.ceil(blogPostsTotal / postsPerPage);
 
+  // 확인된 키워드 중 AI 브리핑 또는 AI 탭에 미노출된 항목만 모은 목록 — 신규 fetch 없이 기존 state에서 파생
+  const unexposedEntries = blogPosts.flatMap(post => {
+    const keywords = postKeywords[post.id] || [];
+    return keywords
+      .map(kw => ({ post, keyword: kw, result: briefingResults[rankKey(post.id, kw)] }))
+      .filter(e => e.result && (e.result.exposed === false || e.result.tabExposed === false));
+  });
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {errorMessage && (
@@ -556,6 +564,47 @@ export default function AiBriefingSection() {
         한 번에 한 포스팅씩만 확인해주세요 — 짧은 시간에 반복 확인하면 네이버 측에서 일시적으로 접근이 제한될 수 있습니다.
         같은 키워드라도 검색 시점에 따라 두 서비스 각각의 노출 여부와 출처 목록이 서로 다르게 나타날 수 있습니다.
       </p>
+
+      {/* 미노출 게시글 — AI 브리핑 또는 AI 탭 중 하나라도 미인용으로 확인된 항목만 모아서 보여줌 */}
+      <GlassCard padding="none">
+        <div className="px-5 py-4 border-b border-border bg-bg/30">
+          <h3 className="font-bold text-[15px]">미노출 게시글</h3>
+          <p className="text-[11px] text-dim mt-0.5">AI 브리핑 또는 AI 탭 출처에 아직 포함되지 않은 확인 완료 항목</p>
+        </div>
+        {unexposedEntries.length === 0 ? (
+          <div className="py-8 text-center text-dim text-sm">미노출로 확인된 게시글이 없습니다.</div>
+        ) : (
+          <div className="divide-y divide-border/20">
+            {unexposedEntries.map(({ post, keyword, result }) => (
+              <div key={`${post.id}::${keyword}`} className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <a href={post.url} target="_blank" rel="noopener noreferrer"
+                    className="font-semibold text-sm hover:text-accent transition truncate block max-w-[420px]" title={post.title}>
+                    {post.title}
+                  </a>
+                  <span className="text-[11px] text-dim">키워드: {keyword}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {result?.exposed === false && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-down/10 text-down">AI브리핑 미인용</span>
+                  )}
+                  {result?.tabExposed === false && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-down/10 text-down">AI탭 미인용</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
+
+      {/* 최근 변경 내역 — Phase 2 예정 (일별 스냅샷 히스토리 테이블 필요) */}
+      <GlassCard padding="none">
+        <div className="px-5 py-4 border-b border-border bg-bg/30">
+          <h3 className="font-bold text-[15px]">최근 변경 내역</h3>
+        </div>
+        <div className="py-8 text-center text-dim text-sm">히스토리 기능은 준비 중입니다.</div>
+      </GlassCard>
 
       {/* 포스팅 수 선택 */}
       <div className="flex items-center gap-3">
