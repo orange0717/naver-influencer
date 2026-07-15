@@ -40,6 +40,17 @@ interface AiBriefingResult {
   tabExposed: boolean | null;
 }
 
+/** API가 응답 없이 멈춰도 무한 로딩에 빠지지 않도록 요청마다 타임아웃을 건다 */
+async function fetchWithTimeout(input: string, init?: RequestInit, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchAiBriefingState(blogId: string): Promise<Record<string, AiBriefingResult>> {
   const res = await fetch(`/api/my/ai-briefing-state?blogId=${encodeURIComponent(blogId)}`);
   if (!res.ok) throw new Error('AI 브리핑 상태 조회 실패');
@@ -292,6 +303,7 @@ export default function BlogAnalysisSection() {
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [blogPostsPage, setBlogPostsPage] = useState(1);
   const [blogPostsLoading, setBlogPostsLoading] = useState(false);
+  const [allBlogPostsLoading, setAllBlogPostsLoading] = useState(false);
   const [postsPerPage, setPostsPerPage] = useState(10);
   const [missingResults, setMissingResults] = useState<Record<string, MissingResult>>({});
   // 키워드순위 결과 (postId::keyword) — DB(keyword_rank_lookups)에서 복원, blogScoreCalc 합산용
@@ -323,7 +335,7 @@ export default function BlogAnalysisSection() {
   const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
     setBlogPostsLoading(true);
     try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${postsPerPage}`);
+      const res = await fetchWithTimeout(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${postsPerPage}`);
       if (res.ok) {
         const data = await res.json();
         setBlogPosts(data.posts || []);
@@ -334,40 +346,47 @@ export default function BlogAnalysisSection() {
     finally { setBlogPostsLoading(false); }
   }, [postsPerPage]);
 
-  // 전체 포스트 로드 (모든 페이지 순회)
+  // 전체 포스트 로드 (모든 페이지를 동시 배치로 병렬 조회 — 포스트가 많을수록 순차 조회는
+  // 페이지 수만큼 왕복이 누적되어 계정이 커질수록 로딩이 계속 느려지는 원인이었다)
   const fetchAllBlogPosts = useCallback(async (blogId: string) => {
+    setAllBlogPostsLoading(true);
     try {
-      const allPosts: BlogPost[] = [];
-      let page = 1;
       const perPage = 30;
-      let totalCount = 0;
+      const concurrency = 5;
 
-      // 첫 페이지 로드
-      const firstRes = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=${perPage}`);
+      // 첫 페이지로 총 개수 확인
+      const firstRes = await fetchWithTimeout(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=${perPage}`);
       if (!firstRes.ok) return;
       const firstData = await firstRes.json();
-      allPosts.push(...(firstData.posts || []));
-      totalCount = firstData.totalCount || 0;
+      const totalCount = firstData.totalCount || 0;
       setBlogPostsTotal(totalCount);
 
-      // 나머지 페이지 로드
       const totalPages = Math.ceil(totalCount / perPage);
-      for (page = 2; page <= totalPages; page++) {
-        const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${perPage}`);
-        if (!res.ok) break;
-        const data = await res.json();
-        const posts = data.posts || [];
-        if (posts.length === 0) break;
-        allPosts.push(...posts);
+      const pagePosts: BlogPost[][] = new Array(totalPages);
+      pagePosts[0] = firstData.posts || [];
+
+      // 나머지 페이지를 concurrency개씩 묶어 병렬 조회 (순서는 배열 인덱스로 보존)
+      const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+      for (let i = 0; i < remainingPages.length; i += concurrency) {
+        const batch = remainingPages.slice(i, i + concurrency);
+        await Promise.allSettled(
+          batch.map(async page => {
+            const res = await fetchWithTimeout(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${perPage}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            pagePosts[page - 1] = data.posts || [];
+          })
+        );
       }
 
-      setAllBlogPosts(allPosts);
+      setAllBlogPosts(pagePosts.flat().filter(Boolean));
     } catch { /* ignore */ }
+    finally { setAllBlogPostsLoading(false); }
   }, []);
 
   const fetchScoreData = useCallback(async (blogId: string) => {
     try {
-      const res = await fetch(`/api/blog/score?blogId=${encodeURIComponent(blogId)}`);
+      const res = await fetchWithTimeout(`/api/blog/score?blogId=${encodeURIComponent(blogId)}`);
       if (res.ok) {
         const data = await res.json();
         setScoreData(data);
@@ -378,7 +397,7 @@ export default function BlogAnalysisSection() {
 
   const fetchCategory = useCallback(async (blogId: string) => {
     try {
-      const res = await fetch(`/api/blog/category?blogId=${encodeURIComponent(blogId)}`);
+      const res = await fetchWithTimeout(`/api/blog/category?blogId=${encodeURIComponent(blogId)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.current) setCategory(data.current);
@@ -389,7 +408,7 @@ export default function BlogAnalysisSection() {
 
   const fetchPostAnalysis = useCallback(async (blogId: string) => {
     try {
-      const res = await fetch(`/api/blog/analyze?blogId=${encodeURIComponent(blogId)}&count=10`);
+      const res = await fetchWithTimeout(`/api/blog/analyze?blogId=${encodeURIComponent(blogId)}&count=10`);
       if (res.ok) {
         const data = await res.json();
         if (data.analyzedCount > 0) {
@@ -403,8 +422,8 @@ export default function BlogAnalysisSection() {
     // 두 호출을 독립적으로 처리 — 한쪽이 느리거나 실패해도(Promise.all 이었다면
     // 전체가 함께 실패해 정상 응답까지 버려짐) 나머지 하나는 정상적으로 반영되도록 allSettled 사용
     const [statsResult, visitorsResult] = await Promise.allSettled([
-      fetch(`/api/blog/stats?blogId=${encodeURIComponent(blogId)}`),
-      fetch(`/api/blog/visitors?blogId=${encodeURIComponent(blogId)}&days=30`),
+      fetchWithTimeout(`/api/blog/stats?blogId=${encodeURIComponent(blogId)}`),
+      fetchWithTimeout(`/api/blog/visitors?blogId=${encodeURIComponent(blogId)}&days=30`),
     ]);
 
     if (statsResult.status === 'fulfilled' && statsResult.value.ok) {
@@ -477,10 +496,13 @@ export default function BlogAnalysisSection() {
         }
       }
       setProfile(p);
-      // 키워드순위 결과를 DB에서 불러오기 (postId::keyword → postId별 최고 순위)
-      try {
-        const res = await fetch(`/api/my/keyword-ranking-state?blogId=${encodeURIComponent(p.blogId)}`);
-        if (res.ok) {
+
+      // 아래 두 복원 호출은 서로 의존관계가 없고, 본문 데이터 호출(포스트/점수/카테고리 등)과도
+      // 무관하므로 순차 await로 묶지 않고 전부 동시에 발사한다 (직렬 대기 시간 제거)
+      const restoreKeywordRankingState = async () => {
+        try {
+          const res = await fetchWithTimeout(`/api/my/keyword-ranking-state?blogId=${encodeURIComponent(p!.blogId)}`);
+          if (!res.ok) return;
           const data = await res.json();
           const parsed = (data?.rankingResults ?? {}) as Record<string, MissingResult>;
           setKwRankingResults(parsed);
@@ -505,17 +527,21 @@ export default function BlogAnalysisSection() {
             }
           }
           setMissingResults(prev => ({ ...byPost, ...prev }));
-        }
-      } catch { /* ignore */ }
-      // 포스트별 개별 누락 검사 결과 복원 (DB — 실시간 데이터 기준, 새로고침해도 소실되지 않음)
-      try {
-        const missingRes = await fetch(`/api/my/post-missing-state?blogId=${encodeURIComponent(p.blogId)}`);
-        if (missingRes.ok) {
+        } catch { /* ignore */ }
+      };
+
+      const restorePostMissingState = async () => {
+        try {
+          const missingRes = await fetchWithTimeout(`/api/my/post-missing-state?blogId=${encodeURIComponent(p!.blogId)}`);
+          if (!missingRes.ok) return;
           const data = await missingRes.json();
           const stored = (data?.results ?? {}) as Record<string, MissingResult>;
           setMissingResults(prev => ({ ...prev, ...stored }));
-        }
-      } catch { /* ignore */ }
+        } catch { /* ignore */ }
+      };
+
+      restoreKeywordRankingState();
+      restorePostMissingState();
       fetchBlogPosts(p.blogId, 1);
       fetchAllBlogPosts(p.blogId);
       fetchScoreData(p.blogId);
@@ -988,7 +1014,7 @@ export default function BlogAnalysisSection() {
           </div>
         </div>
 
-        {allBlogPosts.length === 0 && blogPostsLoading ? (
+        {allBlogPosts.length === 0 && (blogPostsLoading || allBlogPostsLoading) ? (
           <div className="flex items-center justify-center py-10 text-dim text-sm">
             <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
             포스트를 불러오는 중...
