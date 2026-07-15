@@ -28,10 +28,21 @@ interface TodayLog {
   demo_naver_id: string | null;
   page_path: string;
   referrer_domain: string;
+  referrer?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  device_type?: string | null;
   browser: string;
   os: string;
   duration_seconds: number | null;
 }
+
+const TODAY_LOG_DEVICE_LABEL: Record<string, string> = {
+  desktop: '데스크톱',
+  mobile: '모바일',
+  tablet: '태블릿',
+};
 
 /** 체류시간(초) → 한국어 라벨 (예: 45초, 2분 30초, 5분, 1시간 12분) */
 function formatDuration(seconds: number | null): string {
@@ -275,7 +286,8 @@ export default function AdminAnalyticsPage() {
                   <th className="text-left py-2 px-2 font-semibold w-16">시간</th>
                   <th className="text-left py-2 px-2 font-semibold">사용자</th>
                   <th className="text-left py-2 px-2 font-semibold">페이지</th>
-                  <th className="text-left py-2 px-2 font-semibold">유입</th>
+                  <th className="text-left py-2 px-2 font-semibold">유입 (Referer 원본·UTM은 마우스오버)</th>
+                  <th className="text-left py-2 px-2 font-semibold w-16">기기</th>
                   <th className="text-left py-2 px-2 font-semibold w-20">체류</th>
                 </tr>
               </thead>
@@ -305,7 +317,21 @@ export default function AdminAnalyticsPage() {
                         )}
                       </td>
                       <td className="py-2 px-2 font-mono text-[11px] truncate max-w-xs">{log.page_path}</td>
-                      <td className="py-2 px-2 text-dim truncate max-w-[140px]">{log.referrer_domain}</td>
+                      <td
+                        className="py-2 px-2 text-dim truncate max-w-[140px]"
+                        title={[
+                          log.referrer ? `Referer: ${log.referrer}` : '',
+                          (log.utm_source || log.utm_medium || log.utm_campaign)
+                            ? `UTM: ${[log.utm_source, log.utm_medium, log.utm_campaign].filter(Boolean).join(' / ')}`
+                            : '',
+                        ].filter(Boolean).join('\n')}
+                      >
+                        {log.referrer_domain}
+                        {log.utm_source && (
+                          <span className="ml-1 text-[9px] font-bold text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded-full leading-none">UTM</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 text-dim">{(log.device_type && TODAY_LOG_DEVICE_LABEL[log.device_type]) || log.device_type || '-'}</td>
                       <td className="py-2 px-2 text-dim font-rank tabular-nums">{formatDuration(log.duration_seconds)}</td>
                     </tr>
                   );

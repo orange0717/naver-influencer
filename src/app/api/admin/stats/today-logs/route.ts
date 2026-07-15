@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
-const OPTIONAL_SELECT_COLUMNS = ['demo_naver_id', 'duration_seconds', 'user_agent', 'user_id'] as const;
+const OPTIONAL_SELECT_COLUMNS = ['demo_naver_id', 'duration_seconds', 'user_agent', 'user_id', 'utm_source', 'utm_medium', 'utm_campaign', 'device_type'] as const;
 
 type VisitLogRow = {
   id?: string | number | null;
@@ -15,6 +15,10 @@ type VisitLogRow = {
   user_agent?: string | null;
   visited_at?: string | null;
   duration_seconds?: number | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  device_type?: string | null;
 };
 
 function getMissingColumn(error: { message?: string } | null) {
@@ -44,7 +48,7 @@ export async function GET(req: NextRequest) {
   const kstMs = now.getTime() + 9 * 60 * 60 * 1000;
   const todayKstMid = new Date(Math.floor(kstMs / 86400000) * 86400000 - 9 * 60 * 60 * 1000);
 
-  const selectColumns = ['id', 'user_id', 'demo_naver_id', 'page_path', 'referrer', 'user_agent', 'visited_at', 'duration_seconds'];
+  const selectColumns = ['id', 'user_id', 'demo_naver_id', 'page_path', 'referrer', 'user_agent', 'visited_at', 'duration_seconds', 'utm_source', 'utm_medium', 'utm_campaign', 'device_type'];
   let logs: VisitLogRow[] = [];
   let error: { message?: string } | null = null;
 
@@ -164,6 +168,11 @@ export async function GET(req: NextRequest) {
       demo_naver_id: log.demo_naver_id ?? null,
       page_path: log.page_path,
       referrer_domain: referrerDomain,
+      referrer: log.referrer || null,
+      utm_source: log.utm_source ?? null,
+      utm_medium: log.utm_medium ?? null,
+      utm_campaign: log.utm_campaign ?? null,
+      device_type: log.device_type ?? null,
       browser,
       os,
       duration_seconds: log.duration_seconds ?? null,
