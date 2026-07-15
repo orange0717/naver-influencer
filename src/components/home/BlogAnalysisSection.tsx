@@ -400,17 +400,27 @@ export default function BlogAnalysisSection() {
   }, []);
 
   const fetchBlogStats = useCallback(async (blogId: string) => {
-    try {
-      const [statsRes, visitorsRes] = await Promise.all([
-        fetch(`/api/blog/stats?blogId=${encodeURIComponent(blogId)}`),
-        fetch(`/api/blog/visitors?blogId=${encodeURIComponent(blogId)}&days=30`),
-      ]);
-      if (statsRes.ok) {
-        const data = await statsRes.json();
+    // 두 호출을 독립적으로 처리 — 한쪽이 느리거나 실패해도(Promise.all 이었다면
+    // 전체가 함께 실패해 정상 응답까지 버려짐) 나머지 하나는 정상적으로 반영되도록 allSettled 사용
+    const [statsResult, visitorsResult] = await Promise.allSettled([
+      fetch(`/api/blog/stats?blogId=${encodeURIComponent(blogId)}`),
+      fetch(`/api/blog/visitors?blogId=${encodeURIComponent(blogId)}&days=30`),
+    ]);
+
+    if (statsResult.status === 'fulfilled' && statsResult.value.ok) {
+      try {
+        const data = await statsResult.value.json();
         setBlogStats(data);
-      }
-      if (visitorsRes.ok) {
-        const data = await visitorsRes.json();
+      } catch (e) { console.error('[fetchBlogStats] stats 파싱 실패:', e); }
+    } else if (statsResult.status === 'rejected') {
+      console.error('[fetchBlogStats] /api/blog/stats 요청 실패:', statsResult.reason);
+    } else if (!statsResult.value.ok) {
+      console.error('[fetchBlogStats] /api/blog/stats 응답 오류:', statsResult.value.status);
+    }
+
+    if (visitorsResult.status === 'fulfilled' && visitorsResult.value.ok) {
+      try {
+        const data = await visitorsResult.value.json();
         setVisitorData({
           avgVisitors: data.avgVisitors || 0,
           totalVisitors: data.totalVisitors || 0,
@@ -418,8 +428,12 @@ export default function BlogAnalysisSection() {
           collectedDays: data.collectedDays || 0,
           lastCollectedDate: data.lastCollectedDate || null,
         });
-      }
-    } catch { /* ignore */ }
+      } catch (e) { console.error('[fetchBlogStats] visitors 파싱 실패:', e); }
+    } else if (visitorsResult.status === 'rejected') {
+      console.error('[fetchBlogStats] /api/blog/visitors 요청 실패:', visitorsResult.reason);
+    } else if (!visitorsResult.value.ok) {
+      console.error('[fetchBlogStats] /api/blog/visitors 응답 오류:', visitorsResult.value.status);
+    }
   }, []);
 
   const saveScoreToServer = useCallback(async () => {
