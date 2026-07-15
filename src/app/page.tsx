@@ -7,10 +7,7 @@ import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
 import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
-import KeywordRankingSection from '@/components/home/KeywordRankingSection';
-import PlanGate from '@/components/home/PlanGate';
 import BlogConnectCta from '@/components/home/BlogConnectCta';
-import type { PlanTier } from '@/lib/dashboard-catalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,16 +33,6 @@ export const metadata = {
   description: '실시간 키워드챌린지 순위 추적, 블루오션 키워드 분석, 경쟁자 비교까지. 내 채널의 모든 데이터를 한눈에.',
   alternates: { canonical: 'https://ninfle.kr/' },
 };
-
-function resolvePlan(subscriptionPlan: string | null, expiresAt: string | null): PlanTier {
-  if (!subscriptionPlan || !expiresAt) return 'free';
-  const now = Date.now();
-  const expires = new Date(expiresAt).getTime();
-  if (Number.isNaN(expires) || expires < now) return 'free';
-  if (subscriptionPlan === 'INFLUENCER') return 'influencer';
-  if (subscriptionPlan === 'BLOGGER') return 'blogger';
-  return 'free';
-}
 
 export default async function HomePage() {
   const supabaseAuth = await createRouteHandlerClient();
@@ -77,8 +64,6 @@ export default async function HomePage() {
   }
 
   let userName: string | null = null;
-  let currentPlan: PlanTier = 'free';
-  let subscriptionExpiresAt: string | null = null;
   let myKeywordCount = 0;
   let isAdminUser = false;
   const myBlogRank: number | null = null;
@@ -120,11 +105,8 @@ export default async function HomePage() {
 
   if (authUser) {
     userName = profileResult?.nickname || profileResult?.blog_id || authUser.email?.split('@')[0] || null;
-    subscriptionExpiresAt = profileResult?.subscription_expires_at || null;
-    currentPlan = resolvePlan(profileResult?.subscription_plan || null, subscriptionExpiresAt);
     if (profileResult?.id && isAdmin(profileResult.id)) {
       isAdminUser = true;
-      currentPlan = 'influencer';
     }
     myKeywordCount = keywordCountResult;
   } else if (demoNaverId) {
@@ -158,7 +140,6 @@ export default async function HomePage() {
               {[
                 { href: '#dashboard-summary', label: 'KPI 요약' },
                 { href: '#blog-analysis', label: '블로그 분석' },
-                { href: '#keyword-ranking', label: '키워드 순위' },
               ].map(t => (
                 <a
                   key={t.href}
@@ -177,11 +158,6 @@ export default async function HomePage() {
           <section id="blog-analysis" className="scroll-mt-24">
             <BlogAnalysisSection />
           </section>
-          <PlanGate requiredPlan="blogger" currentPlan={currentPlan} sectionLabel="검색 순위">
-            <section id="keyword-ranking" className="scroll-mt-24">
-              <KeywordRankingSection />
-            </section>
-          </PlanGate>
         </div>
       )}
       {/* 데모 = 비로그인 사용자만 노출 (가입한 회원은 데모 필요 없음) */}

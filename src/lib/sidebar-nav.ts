@@ -30,6 +30,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '블',
     items: [
       { label: '통합 대시보드', href: '/#blog-analysis', authOnly: true },
+      { label: 'AI 브리핑·AI탭', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true },
       { label: '내 팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
     ],
   },
@@ -40,6 +41,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '키워드 검색', href: '/keywords/blogger' },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
       { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
+      { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
     ],
   },
