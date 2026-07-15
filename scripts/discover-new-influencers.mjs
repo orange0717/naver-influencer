@@ -182,6 +182,9 @@ async function main() {
   console.log(`기존 인플루언서: ${existingIds.size}명`);
 
   // 키워드 조회 (Naver feed API 는 naver_keyword_id 를 기대함)
+  // participant_count 상위만 반복 조회하면 이미 포화된 인기 키워드만 계속 훑게 되어
+  // 115,486개 풀 중 대부분(장기간 미조회)이 영영 발굴 대상에서 빠지는 사각지대가 생김.
+  // → 20%는 인기 키워드(활발한 챌린지 갱신), 80%는 influencer_crawled_at 오래된/미조회 키워드로 로테이션.
   let keywords = [];
   if (onlyKeywordId) {
     const { data } = await supabase.from('keyword_challenges')
@@ -190,16 +193,33 @@ async function main() {
       .limit(1).maybeSingle();
     if (data) keywords = [data];
   } else {
-    const { data } = await supabase.from('keyword_challenges')
+    const tier1Size = Math.max(1, Math.floor(topKeywords * 0.2));
+    const tier2Size = topKeywords - tier1Size;
+
+    const { data: tier1 } = await supabase.from('keyword_challenges')
       .select('id, keyword, participant_count, naver_keyword_id')
       .eq('is_active', true)
       .not('naver_keyword_id', 'is', null)
       .order('participant_count', { ascending: false })
-      .limit(topKeywords);
-    keywords = data || [];
+      .limit(tier1Size);
+
+    const { data: tier2 } = await supabase.from('keyword_challenges')
+      .select('id, keyword, participant_count, naver_keyword_id')
+      .eq('is_active', true)
+      .not('naver_keyword_id', 'is', null)
+      .order('influencer_crawled_at', { ascending: true, nullsFirst: true })
+      .limit(tier2Size);
+
+    const seen = new Set();
+    keywords = [];
+    for (const row of [...(tier1 || []), ...(tier2 || [])]) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      keywords.push(row);
+    }
   }
 
-  console.log(`대상 키워드: ${keywords.length}개`);
+  console.log(`대상 키워드: ${keywords.length}개 (인기 상위 + 장기 미조회 로테이션 혼합)`);
 
   const progress = loadProgress();
   const processed = new Set(progress.processedKeywordIds || []);
@@ -232,6 +252,11 @@ async function main() {
     }
 
     processed.add(kw.id);
+    if (isApply) {
+      await supabase.from('keyword_challenges')
+        .update({ influencer_crawled_at: new Date().toISOString() })
+        .eq('id', kw.id);
+    }
     process.stdout.write(`\r  [${i + 1}/${keywords.length}] "${kw.keyword}" 수집 ${items.length}명 / 신규 ${fresh.length}명 (누적 신규 ${newCount})        `);
 
     if ((i + 1) % 10 === 0) {

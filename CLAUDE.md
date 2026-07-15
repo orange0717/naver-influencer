@@ -79,19 +79,23 @@ src/
 - **환불**: 7일 이내 미이용 시 전액 환불
 - **상세**: src/lib/plans.ts (PlanInfo, PeriodOption, calculatePrice)
 
-## 크론잡 스케줄 (vercel.json) — 9개
+## 크론잡 스케줄 (vercel.json)
 | UTC | KST | 작업 | 설명 |
 |-----|-----|------|------|
 | 18:00 | 03:00 | crawl-keywords | Step 1: 키워드 목록 크롤링 (GraphQL 카테고리 + REST 키워드) |
 | 19:00 | 04:00 | crawl-rankings | Step 2: 검색 순위 크롤링 (Tier 0~3 배치 전략) |
 | 매 5분×2샤드 (UTC) | — | crawl-challenge-ranks-scheduled?shard=0/1&shards=2 | Step 2.5: 챌린지 순위 24h 전 순환 (병렬 큐) |
 | 17:00 UTC (KST 02:00) | — | GitHub `daily-challenge-ranks-drain` | 24h 커버 미달 시 새벽 보충 |
-| 0,6,12,18 | 매 6시간 | crawl-influencers | 인플루언서 수집 (Feed Discover API) |
 | 20:00 | 05:00 | update-volumes | Step 3: 검색량 업데이트 (네이버 검색광고 + DataLab API) |
 | 20:30 | 05:30 | aggregate-influencers | 인플루언서 통계 집계 (total_keywords, avg_rank 등) |
 | 21:00 | 06:00 | generate-recommendations | 추천 키워드 생성 (recommendation_score 배치 업데이트) |
 | 22:00 | 07:00 | crawl-blog-ranks | 블로그 검색 순위 크롤링 (Cheerio HTML 파싱) |
-| 23:00 | 08:00 | crawl-selection-dates | 키워드챌린지 선정일 크롤링 (__PRELOADED_STATE__ 파싱) |
+
+**인플루언서 신규 발굴 + 선정일(naver_created_at) 백필은 Vercel Cron이 아니라 GitHub Actions가 담당** (2026-07-15부터 vercel.json에서 crawl-influencers/crawl-selection-dates 제거 — 각각 2026-05-11/2026-05-22 이후 Vercel에서 죽어있었고 GH Actions가 이미 대체 수행 중이었음):
+- `discover-new-influencers.yml` (매일 KST 04:00): keyword_challenges 참가자 기반 발굴
+- `discover-via-search.yml` (매일 KST 05:00): search.naver.com 인플루언서 탭 기반 발굴 + `bulk-crawl-details.mjs --phase 1`로 신규 등록분 선정일 채우기
+- `refresh-influencer-profiles.yml` (매일 KST 03:00, 3-shard): 전체 인플루언서 프로필 갱신
+- ⚠️ 이 3개 모두 "우리가 이미 추적 중인 키워드에서 검색/참여된 사람"만 신규로 인식하는 프록시 방식 — 어떤 챌린지에도 참여 안 하고 검색 상위에도 안 걸린 신규 선정자는 구조적으로 발견 불가
 
 ## 반응형 전략
 - Desktop (md+): 테이블 형태

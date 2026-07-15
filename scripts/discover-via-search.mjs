@@ -183,25 +183,55 @@ async function main() {
   console.log(`기존 DB: ${existing.size}명`);
 
   // 키워드 풀 (Supabase 1000 row 제한 우회 — range 페이지네이션)
-  let keywords = [];
+  // participant_count 상위만 계속 훑으면 이미 포화된 인기 키워드만 반복 조회하게 되어
+  // 전체 풀 대부분이 발굴 사각지대로 남음 → 20% 인기 + 80% 장기 미조회 로테이션으로 혼합.
+  let keywordRows = [];
   if (onlyKeyword) {
-    keywords = [onlyKeyword];
+    keywordRows = [{ id: null, keyword: onlyKeyword }];
   } else {
+    const tier1Size = Math.max(1, Math.floor(topKeywords * 0.2));
+    const tier2Size = topKeywords - tier1Size;
+
+    const tier1 = [];
     let off = 0;
-    while (keywords.length < topKeywords) {
-      const fetchSize = Math.min(topKeywords - keywords.length, 1000);
+    while (tier1.length < tier1Size) {
+      const fetchSize = Math.min(tier1Size - tier1.length, 1000);
       const { data } = await supabase
         .from('keyword_challenges')
-        .select('keyword, participant_count')
+        .select('id, keyword, participant_count')
         .order('participant_count', { ascending: false })
         .range(off, off + fetchSize - 1);
       if (!data || data.length === 0) break;
-      keywords.push(...data.map(r => r.keyword));
+      tier1.push(...data);
       off += data.length;
       if (data.length < fetchSize) break;
     }
+
+    const tier2 = [];
+    off = 0;
+    while (tier2.length < tier2Size) {
+      const fetchSize = Math.min(tier2Size - tier2.length, 1000);
+      const { data } = await supabase
+        .from('keyword_challenges')
+        .select('id, keyword, participant_count')
+        .order('influencer_crawled_at', { ascending: true, nullsFirst: true })
+        .range(off, off + fetchSize - 1);
+      if (!data || data.length === 0) break;
+      tier2.push(...data);
+      off += data.length;
+      if (data.length < fetchSize) break;
+    }
+
+    const seen = new Set();
+    for (const row of [...tier1, ...tier2]) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      keywordRows.push(row);
+    }
   }
-  console.log(`대상 키워드: ${keywords.length}개\n`);
+  const keywords = keywordRows.map(r => r.keyword);
+  const keywordIdByName = new Map(keywordRows.filter(r => r.id).map(r => [r.keyword, r.id]));
+  console.log(`대상 키워드: ${keywords.length}개 (인기 상위 + 장기 미조회 로테이션 혼합)\n`);
 
   const progress = loadProgress();
   const processed = new Set(isResume ? (progress.processedKeywords || []) : []);
@@ -225,6 +255,12 @@ async function main() {
         }
       }
       processed.add(kw);
+      const kwId = keywordIdByName.get(kw);
+      if (isApply && kwId) {
+        await supabase.from('keyword_challenges')
+          .update({ influencer_crawled_at: new Date().toISOString() })
+          .eq('id', kwId);
+      }
       process.stdout.write(`\r  [${i + 1}/${keywords.length}] "${kw}" 결과 ${handles.length} / 신규후보 ${newOnes} (누적 ${candidates.size})       `);
     } catch (e) {
       process.stdout.write(`\r  [${i + 1}/${keywords.length}] "${kw}" ERR ${e.message?.slice(0, 40)}\n`);

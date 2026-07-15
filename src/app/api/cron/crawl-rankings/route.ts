@@ -351,9 +351,12 @@ export async function GET(request: NextRequest) {
           });
 
         if (rankingRows.length > 0) {
-          await supabase
+          const { error: rankUpsertError } = await supabase
             .from('keyword_rankings')
             .upsert(rankingRows, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
+          if (rankUpsertError) {
+            console.error(`[crawl-rankings] keyword_rankings upsert 실패 (${kw.keyword}):`, rankUpsertError.message);
+          }
         }
 
         totalProcessed++;

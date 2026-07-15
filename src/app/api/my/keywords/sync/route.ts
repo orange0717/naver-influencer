@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { isRestricted } from '@/lib/admin';
 
+export const maxDuration = 120;
+
 const PARTICIPATED_API = 'https://gw.in.naver.com/keyword-challenge/api/v2/participated-keywords';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const PAGE_LIMIT = 50;
@@ -363,38 +365,63 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 배치 upsert (100개씩)
+    // 1차: atomic RPC (crawl-challenge-ranks 크론과 동일 — 단일 트랜잭션, all-or-nothing)
     let rankUpdated = 0;
-    for (let i = 0; i < rankRows.length; i += 100) {
-      const batch = rankRows.slice(i, i + 100);
-      const { error } = await supabase
-        .from('keyword_rankings')
-        .upsert(batch, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
-
-      if (error) {
-        console.error('[keywords/sync] Rank upsert error:', error.message);
+    let rankUpsertOk = true;
+    if (rankRows.length > 0) {
+      const { error: rpcError } = await supabase.rpc('upsert_keyword_rankings_atomic', {
+        p_rows: rankRows,
+      });
+      if (!rpcError) {
+        rankUpdated = rankRows.length;
       } else {
-        rankUpdated += batch.length;
+        // RPC 실패 → 배치 upsert 폴백 (100개씩). 청크 단위로 실패를 추적해
+        // 아래 last_crawled_at 갱신 가드에 정확히 반영한다.
+        console.warn('[keywords/sync] atomic RPC 실패, 배치 upsert로 폴백:', rpcError.message);
+        for (let i = 0; i < rankRows.length; i += 100) {
+          const batch = rankRows.slice(i, i + 100);
+          const { error } = await supabase
+            .from('keyword_rankings')
+            .upsert(batch, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
+
+          if (error) {
+            console.error('[keywords/sync] Rank upsert error:', error.message);
+          } else {
+            rankUpdated += batch.length;
+          }
+        }
       }
+      rankUpsertOk = rankUpdated === rankRows.length;
     }
 
     // 7. influencers 테이블 집계 업데이트
-    const rankedKeywords = apiKeywords.filter(k => k.rank != null && k.rank > 0);
-    await supabase
-      .from('influencers')
-      .update({
-        total_keywords: totalFromApi ?? apiKeywords.length,
-        best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
-        avg_rank: rankedKeywords.length > 0
-          ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
-          : null,
-        integrated_top3_count: rankedKeywords.filter(k => k.rank <= 3).length,
-        last_crawled_at: new Date().toISOString(),
-      })
-      .eq('id', influencer.id);
+    // keyword_rankings 적재가 (부분이라도) 실패하면 last_crawled_at·집계값을 갱신하지 않는다.
+    // 이걸 무조건 갱신하면 last_crawled_at만 "방금 동기화됨"으로 보여 순환 크롤 큐
+    // (oldest first, last_crawled_at 기준)에서 이 인플루언서가 계속 뒤로 밀리고, 정작
+    // keyword_rankings 원자료는 갱신되지 않은 채로 남는다 — crawl-challenge-ranks.ts에서
+    // 2026-05 에 고쳤던 것과 동일한 버그가 이 수동 동기화 경로에는 없었다.
+    if (!rankUpsertOk) {
+      console.error(
+        `[keywords/sync] ${naverId}: keyword_rankings 적재 실패 (${rankUpdated}/${rankRows.length}) — last_crawled_at 갱신 보류`
+      );
+    } else {
+      const rankedKeywords = apiKeywords.filter(k => k.rank != null && k.rank > 0);
+      await supabase
+        .from('influencers')
+        .update({
+          total_keywords: totalFromApi ?? apiKeywords.length,
+          best_rank: rankedKeywords.length > 0 ? Math.min(...rankedKeywords.map(k => k.rank)) : null,
+          avg_rank: rankedKeywords.length > 0
+            ? +(rankedKeywords.reduce((s, k) => s + k.rank, 0) / rankedKeywords.length).toFixed(2)
+            : null,
+          integrated_top3_count: rankedKeywords.filter(k => k.rank <= 3).length,
+          last_crawled_at: new Date().toISOString(),
+        })
+        .eq('id', influencer.id);
+    }
 
     console.log(
-      `[keywords/sync] ${naverId}: ${apiKeywords.length} keywords, ${matched} linked, ${rankUpdated} rankings updated`
+      `[keywords/sync] ${naverId}: ${apiKeywords.length} keywords, ${matched} linked, ${rankUpdated}/${rankRows.length} rankings updated`
     );
 
     return NextResponse.json({
