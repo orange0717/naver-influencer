@@ -111,8 +111,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 
 export async function middleware(request: NextRequest) {
   // Vercel 기본 도메인 차단 — ninfle.kr 외 vercel.app 호스트는 404 응답
+  // /api/cron/*은 예외: Vercel Cron 스케줄러는 배포 전용 *.vercel.app URL로만 호출 가능하므로
+  // (커스텀 도메인 지정 불가) 여기서 막으면 크론이 영구히 실행되지 않는다 (2026-07-13 확인).
   const host = request.headers.get('host') || '';
-  if (host.endsWith('.vercel.app')) {
+  if (host.endsWith('.vercel.app') && !request.nextUrl.pathname.startsWith('/api/cron/')) {
     return new NextResponse('Not Found', { status: 404 });
   }
 
