@@ -168,6 +168,7 @@ export default function AdminAnalyticsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [referrers, setReferrers] = useState<ReferrerData | null>(null);
   const [todayLogs, setTodayLogs] = useState<TodayLogsData | null>(null);
+  const [todayLogsError, setTodayLogsError] = useState(false);
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(true);
 
@@ -189,11 +190,16 @@ export default function AdminAnalyticsPage() {
   }, [days]);
 
   // 오늘 방문 로그 (기간 변경과 무관, 항상 오늘)
-  useEffect(() => {
+  const fetchTodayLogs = () => {
+    setTodayLogsError(false);
     fetch('/api/admin/stats/today-logs', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setTodayLogs(d); })
-      .catch(() => {});
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`today-logs ${r.status}`)))
+      .then(d => setTodayLogs(d))
+      .catch(() => setTodayLogsError(true));
+  };
+
+  useEffect(() => {
+    fetchTodayLogs();
   }, []);
 
   if (loading) {
@@ -260,13 +266,15 @@ export default function AdminAnalyticsPage() {
             <p className="text-[11px] text-dim mt-0.5">
               {todayLogs
                 ? `${todayLogs.total.toLocaleString()}건 · 고유 방문자 ${todayLogs.uniqueVisitors}명 (로그인+익명)`
+                : todayLogsError
+                ? '불러오기 실패 — 새로고침을 눌러주세요.'
                 : '불러오는 중...'}
             </p>
           </div>
           <button
             onClick={() => {
               setTodayLogs(null);
-              fetch('/api/admin/stats/today-logs', { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(d => d && setTodayLogs(d));
+              fetchTodayLogs();
             }}
             className="px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-border text-dim hover:text-accent hover:border-accent/40 cursor-pointer"
           >
@@ -274,7 +282,11 @@ export default function AdminAnalyticsPage() {
           </button>
         </div>
         <div className="max-h-[500px] overflow-y-auto">
-          {!todayLogs ? (
+          {todayLogsError ? (
+            <p className="py-8 text-center text-dim text-sm">
+              오늘 방문 로그를 불러오지 못했습니다. 잠시 후 새로고침을 눌러주세요.
+            </p>
+          ) : !todayLogs ? (
             <div className="py-8 text-center">
               <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
             </div>
