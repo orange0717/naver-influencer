@@ -7,7 +7,6 @@ import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
 import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
-import AiBriefingSection from '@/components/home/AiBriefingSection';
 import KeywordRankingSection from '@/components/home/KeywordRankingSection';
 import PlanGate from '@/components/home/PlanGate';
 import BlogConnectCta from '@/components/home/BlogConnectCta';
@@ -159,7 +158,6 @@ export default async function HomePage() {
               {[
                 { href: '#dashboard-summary', label: 'KPI 요약' },
                 { href: '#blog-analysis', label: '블로그 분석' },
-                { href: '#ai-briefing', label: 'AI 브리핑·AI탭' },
                 { href: '#keyword-ranking', label: '키워드 순위' },
               ].map(t => (
                 <a
@@ -179,11 +177,6 @@ export default async function HomePage() {
           <section id="blog-analysis" className="scroll-mt-24">
             <BlogAnalysisSection />
           </section>
-          <PlanGate requiredPlan="influencer" currentPlan={currentPlan} sectionLabel="AI 브리핑·AI 탭">
-            <section id="ai-briefing" className="scroll-mt-24">
-              <AiBriefingSection />
-            </section>
-          </PlanGate>
           <PlanGate requiredPlan="blogger" currentPlan={currentPlan} sectionLabel="검색 순위">
             <section id="keyword-ranking" className="scroll-mt-24">
               <KeywordRankingSection />
