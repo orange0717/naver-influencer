@@ -154,7 +154,7 @@ export default async function HomePage() {
       ) : (
         <div className="space-y-10">
           {/* 섹션 바로가기 탭 — 메뉴 이동 없이 한 화면에서 스크롤 이동 */}
-          <nav className="max-w-7xl mx-auto px-4 pt-4 -mb-4">
+          <nav className="max-w-7xl mx-auto px-4 pt-4">
             <div className="flex items-center gap-1.5 overflow-x-auto">
               {[
                 { href: '#dashboard-summary', label: 'KPI 요약' },
