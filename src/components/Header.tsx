@@ -89,7 +89,10 @@ export default function Header({ serverUser }: HeaderProps) {
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
-            <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
+            <span className="font-title font-bold text-base text-white hidden sm:flex items-center gap-1.5">
+              N인플
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none bg-white/20 text-white">베타</span>
+            </span>
           </Link>
 
           {/* ── 왼쪽: 공지사항 등 서브 네비 (로고 옆) ── */}
