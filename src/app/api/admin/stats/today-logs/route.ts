@@ -25,9 +25,13 @@ type VisitLogRow = {
 function getMissingColumn(error: { message?: string } | null) {
   if (!error) return null;
   const message = error.message || '';
-  const quoted = message.match(/'([^']+)' column/)?.[1] || message.match(/column "([^"]+)"/)?.[1];
-  if (quoted && OPTIONAL_SELECT_COLUMNS.includes(quoted as typeof OPTIONAL_SELECT_COLUMNS[number])) {
-    return quoted;
+  const raw =
+    message.match(/'([^']+)' column/)?.[1] ||
+    message.match(/column "([^"]+)"/)?.[1] ||
+    message.match(/column ([a-zA-Z_][a-zA-Z0-9_.]*) does not exist/)?.[1];
+  const col = raw?.includes('.') ? raw.split('.').pop() : raw;
+  if (col && OPTIONAL_SELECT_COLUMNS.includes(col as typeof OPTIONAL_SELECT_COLUMNS[number])) {
+    return col;
   }
   return null;
 }
