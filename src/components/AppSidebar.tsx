@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { canAccess, planHighlight } from '@/lib/plan-access';
 import { isDesktop } from '@/lib/desktop';
 import {
@@ -31,14 +32,17 @@ function NavLink({
   item,
   active,
   currentPlan,
+  isGuest,
   onNavigate,
 }: {
   item: SidebarItem;
   active: boolean;
   currentPlan: PlanTier;
+  isGuest: boolean;
   onNavigate: () => void;
 }) {
   const router = useRouter();
+  const { openGate } = useMemberOnlyGate();
 
   if (item.disabled) {
     return (
@@ -46,6 +50,23 @@ function NavLink({
         {item.label}
         <span className="ml-auto text-[10px] font-bold text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
       </span>
+    );
+  }
+
+  // 비회원(로그인·데모 모두 아님): 회원 전용 메뉴는 라우팅 대신 회원 전용 모달로 유도
+  if (item.authOnly && isGuest) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate();
+          openGate(item.href);
+        }}
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-dim hover:bg-bg transition-colors text-left cursor-pointer"
+      >
+        <span className="truncate">{item.label}</span>
+        <span className="ml-auto text-dim/60"><LockIcon /></span>
+      </button>
     );
   }
 
@@ -83,11 +104,13 @@ function NavLink({
 function SidebarContent({
   pathname,
   currentPlan,
+  isGuest,
   isInDesktopApp,
   onNavigate,
 }: {
   pathname: string;
   currentPlan: PlanTier;
+  isGuest: boolean;
   isInDesktopApp: boolean;
   onNavigate: () => void;
 }) {
@@ -102,6 +125,7 @@ function SidebarContent({
           item={SIDEBAR_HOME}
           active={pathname === '/'}
           currentPlan={currentPlan}
+          isGuest={isGuest}
           onNavigate={onNavigate}
         />
         {SIDEBAR_GROUPS.map((group) => (
@@ -114,6 +138,7 @@ function SidebarContent({
                   item={item}
                   active={item.href !== '#' && pathname.startsWith(item.href)}
                   currentPlan={currentPlan}
+                  isGuest={isGuest}
                   onNavigate={onNavigate}
                 />
               ))}
@@ -156,9 +181,11 @@ export default function AppSidebar() {
   }, [pathname]);
 
   const hidden = SIDEBAR_HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-  const loggedInOrDemo = !!user.id || !!user.isDemo;
 
-  if (isLoading || hidden || !loggedInOrDemo) return null;
+  if (isLoading || hidden) return null;
+
+  // 정식 로그인도, 데모 체험 중도 아닌 순수 비회원 — 메뉴는 보이되 회원 전용 항목은 클릭 시 모달로 유도
+  const isGuest = !user.id && !user.isDemo;
 
   const currentPlan: PlanTier = (() => {
     if (!user.subscriptionActive) return 'free';
@@ -202,6 +229,7 @@ export default function AppSidebar() {
           <SidebarContent
             pathname={pathname}
             currentPlan={currentPlan}
+            isGuest={isGuest}
             isInDesktopApp={isInDesktopApp}
             onNavigate={() => {}}
           />
@@ -226,6 +254,7 @@ export default function AppSidebar() {
           <SidebarContent
             pathname={pathname}
             currentPlan={currentPlan}
+            isGuest={isGuest}
             isInDesktopApp={isInDesktopApp}
             onNavigate={closeMobile}
           />

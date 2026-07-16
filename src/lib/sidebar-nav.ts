@@ -31,15 +31,15 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { label: '통합 대시보드', href: '/#blog-analysis', authOnly: true },
       { label: 'AI 브리핑·AI탭', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true },
-      { label: '내 팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
+      { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
     label: '키워드',
     icon: 'K',
     items: [
-      { label: '키워드 검색', href: '/keywords/blogger' },
-      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
+      { label: '키워드 검색', href: '/keywords/blogger', authOnly: true },
+      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true },
       { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
@@ -50,11 +50,11 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: 'I',
     items: [
       { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking' },
-      { label: '공식 순위', href: '/rankings/official', requiredPlan: 'influencer' },
-      { label: '인플루언서 랭킹', href: '/rankings/influencer' },
+      { label: '인플루언서 랭킹', href: '/rankings/influencer', authOnly: true },
+      { label: '공식순위', href: '/rankings/official', requiredPlan: 'influencer', authOnly: true },
       { label: '블로거 랭킹', href: '/rankings/blogger' },
-      { label: '인플루언서 리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
-      { label: '인플루언서 리스트(명단)', href: '/influencers/free-plan', authOnly: true },
+      { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer', authOnly: true },
+      { label: '리스트', href: '/influencers/free-plan', authOnly: true },
     ],
   },
   {
@@ -62,9 +62,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: 'R',
     items: [
       { label: '연도별 선정 현황', href: '/stats' },
-      { label: '경쟁자 분석', href: '/competitor' },
-      { label: 'URL 분석', href: '/decoder' },
-      { label: 'JPG↔PNG 변환기', href: '/image-converter' },
+      { label: '경쟁자 분석', href: '/competitor', authOnly: true },
+      { label: 'URL 분석', href: '/decoder', authOnly: true },
+      { label: 'JPG↔PNG 변환기', href: '/image-converter', authOnly: true },
     ],
   },
   {

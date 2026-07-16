@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { getQueryClient } from '@/lib/query-client';
 import { AuthModalProvider } from '@/contexts/AuthModalContext';
 import { SidebarProvider } from '@/contexts/SidebarContext';
+import { MemberOnlyGateProvider } from '@/contexts/MemberOnlyGateContext';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
@@ -11,7 +12,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthModalProvider>
-        <SidebarProvider>{children}</SidebarProvider>
+        <MemberOnlyGateProvider>
+          <SidebarProvider>{children}</SidebarProvider>
+        </MemberOnlyGateProvider>
       </AuthModalProvider>
     </QueryClientProvider>
   );

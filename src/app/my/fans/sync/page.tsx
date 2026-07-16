@@ -71,7 +71,7 @@ export default function FansSyncPage() {
     <div className="min-h-screen bg-bg">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <Link href="/my/fans" className="text-xs text-dim hover:text-accent transition">← 내 팬 관리로 돌아가기</Link>
+          <Link href="/my/fans" className="text-xs text-dim hover:text-accent transition">← 맞팬관리로 돌아가기</Link>
           <h1 className="text-2xl font-bold text-text mt-2">팬 데이터 동기화</h1>
           <p className="text-sm text-dim mt-1">
             네이버 인플루언서 페이지의 follower/following 데이터를 N인플 대시보드로 가져옵니다.

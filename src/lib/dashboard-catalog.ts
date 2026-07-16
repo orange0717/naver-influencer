@@ -142,7 +142,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'my-fans',
     category: 'my',
-    title: '내 팬 관리',
+    title: '맞팬관리',
     description: '서로 맞팬·일방팬 분석 — 나를 팬한 사람과 내가 팬한 사람의 교집합을 한눈에',
     href: '/my/fans',
     requiredPlan: 'influencer',
@@ -169,7 +169,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'influencers',
     category: 'research',
-    title: '인플루언서 리스트(키챌반영)',
+    title: '리스트(키챌반영)',
     description: '네이버 인플루언서 전체 목록·검색·필터',
     href: '/influencers',
     requiredPlan: 'influencer',
@@ -177,7 +177,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'influencers-free-plan',
     category: 'research',
-    title: '인플루언서 리스트(명단)',
+    title: '리스트',
     description: '이름·프로필 링크·선정일자·주제를 담은 무료 열람 명단 — 팬수·챌린지 데이터는 포함되지 않습니다.',
     href: '/influencers/free-plan',
     authOnly: true,
@@ -186,7 +186,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'rankings-influencer',
     category: 'research',
-    title: '네이버 인플루언서 공식 순위',
+    title: '공식순위',
     description: '네이버가 발표하는 공식 카테고리별 인플루언서 순위 — 주 1회 업데이트',
     href: '/rankings/official',
     requiredPlan: 'influencer',

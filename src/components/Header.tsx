@@ -7,13 +7,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuthModal } from '@/contexts/AuthModalContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { isDesktop } from '@/lib/desktop';
-import { SIDEBAR_FOOTER_LINKS } from '@/lib/sidebar-nav';
 import NotificationBell from './NotificationBell';
 import MessageBell from './MessageBell';
 import HeaderSearch from './HeaderSearch';
-
-// 사이드바는 로그인 사용자에게만 노출되므로, 비로그인 게스트는 헤더에서 직접 하단메뉴 링크로 이동
-const GUEST_NAV_LINKS = SIDEBAR_FOOTER_LINKS.filter((link) => !link.authOnly);
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | 'unified' | null;
@@ -90,21 +86,6 @@ export default function Header({ serverUser }: HeaderProps) {
           </Link>
 
           <HeaderSearch />
-
-          {/* ── 비로그인 게스트 전용 데스크탑 네비 (사이드바는 로그인 후에만 노출) ── */}
-          {!authLoading && !user.id && (
-            <nav aria-label="게스트 네비게이션" className="hidden lg:flex items-center gap-1 ml-2">
-              {GUEST_NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="px-2.5 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-          )}
 
           {/* ── 우측: 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
@@ -202,31 +183,6 @@ export default function Header({ serverUser }: HeaderProps) {
           </div>
         </div>
       </header>
-
-      {/* ── 비로그인 게스트 전용 모바일 메뉴 (로그인 사용자는 AppSidebar가 담당) ── */}
-      {mobileOpen && !authLoading && !user.id && (
-        <div id="mobile-menu" className="lg:hidden fixed inset-0 top-16 z-40 bg-bg border-t border-border overflow-y-auto">
-          <nav aria-label="모바일 게스트 네비게이션" className="flex flex-col p-4 gap-0.5">
-            {GUEST_NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={closeMobile}
-                className="font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-dim hover:text-text hover:bg-surface transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="border-t border-border/50 my-3 mx-2" />
-            <button
-              type="button"
-              onClick={() => { closeMobile(); openLogin(); }}
-              className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors cursor-pointer text-left w-full">
-              로그인 / 회원가입
-            </button>
-          </nav>
-        </div>
-      )}
     </>
   );
 }
