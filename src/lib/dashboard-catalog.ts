@@ -186,7 +186,7 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   {
     id: 'rankings-influencer',
     category: 'research',
-    title: '네이버 인플루언서 공식 순위',
+    title: '네이버 인플루언서 공식순위',
     description: '네이버가 발표하는 공식 카테고리별 인플루언서 순위 — 주 1회 업데이트',
     href: '/rankings/official',
     requiredPlan: 'influencer',
