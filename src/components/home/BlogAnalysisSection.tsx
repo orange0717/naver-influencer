@@ -919,7 +919,7 @@ export default function BlogAnalysisSection() {
 
       {/* ─── 2. 대시보드 카드 ─── */}
       {/* TODAY 방문자·30일 방문자수·이웃수는 위쪽 KPI 요약(BlogDashboardKpiBar)과 중복되어 제거 (2026-07-15) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <AnimatedStatCard label="이번주 발행" value={publishingStats.weeklyTotal} suffix="회" description={(() => { const now = new Date(); const w = new Date(now.getTime() - 7*24*60*60*1000); return `${w.getMonth()+1}/${w.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>} color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'} delay={150} />
         <AnimatedStatCard label="한달 발행" value={publishingStats.monthlyTotal} suffix="회" description={(() => { const now = new Date(); const m = new Date(now.getTime() - 30*24*60*60*1000); return `${m.getMonth()+1}/${m.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'} delay={200} />
         {/* 2행: 순위 + 누락율 */}
@@ -960,8 +960,8 @@ export default function BlogAnalysisSection() {
 
       {/* ─── 7. 포스팅 목록 + 순위 확인 ─── */}
       <GlassCard padding="none">
-        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="px-5 py-4 border-b border-border bg-bg/30 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3 flex-wrap">
             <h3 className="font-bold text-[15px]">내 포스팅 · 블로그 누락</h3>
             <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
               {[10, 30, 60, 90, 180].map(n => (
@@ -977,7 +977,7 @@ export default function BlogAnalysisSection() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex rounded-lg border border-border overflow-hidden text-[11px] shrink-0">
               <button onClick={() => { setPostFilter('all'); setBlogPostsPage(1); }}
                 className={`px-3 py-1.5 font-semibold transition cursor-pointer ${postFilter === 'all' ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'}`}>
@@ -1332,22 +1332,24 @@ function GuestBlogAnalysis() {
 
       {/* ─── 1. 프로필 헤더 (게스트) ─── */}
       <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center bg-border/30 text-dim ring-2 ring-offset-2 ring-offset-surface ring-border/40 shrink-0">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center bg-border/30 text-dim ring-2 ring-offset-2 ring-offset-surface ring-border/40 shrink-0">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-extrabold text-text">네이버 블로그를 연결하세요</h1>
+              <p className="text-sm text-dim mt-1">로그인 후 블로그를 연결하면 방문자·순위·포스팅 데이터를 이곳에서 확인할 수 있습니다.</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-extrabold truncate text-text">네이버 블로그를 연결하세요</h1>
-            <p className="text-sm text-dim mt-1">로그인 후 블로그를 연결하면 방문자·순위·포스팅 데이터를 이곳에서 확인할 수 있습니다.</p>
-          </div>
-          <Link href={loginHref} className="ml-auto shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
+          <Link href={loginHref} className="sm:ml-auto shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
             네이버 로그인
           </Link>
         </div>
       </div>
 
       {/* ─── 2. 대시보드 카드 (5열 x 2행, Empty State) ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {statCards.map((c, i) => (
           <AnimatedStatCard
             key={c.label}

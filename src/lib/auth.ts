@@ -35,11 +35,22 @@ export async function getAuthUser(request: Request) {
   if (!authUser) return null;
 
   const supabase = createServiceClient();
-  const { data: profile, error: profileError } = await supabase
+  let { data: profile, error: profileError } = await supabase
     .from('users')
     .select('id, nickname, blog_id, linked_influencer_id, is_admin')
     .eq('auth_id', authUser.id)
-    .single();
+    .maybeSingle();
+
+  // auth_id 매칭 실패 시 email로 재조회 (auth.users/public.users 동기화 누락 대비)
+  if (!profile && authUser.email) {
+    const { data: byEmail, error: byEmailError } = await supabase
+      .from('users')
+      .select('id, nickname, blog_id, linked_influencer_id, is_admin')
+      .eq('email', authUser.email.toLowerCase())
+      .maybeSingle();
+    profile = byEmail;
+    profileError = byEmailError;
+  }
 
   if (profileError || !profile) {
     if (profileError) console.error('[auth] user profile lookup failed:', profileError.message);

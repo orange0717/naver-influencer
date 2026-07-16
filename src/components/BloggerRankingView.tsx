@@ -132,8 +132,8 @@ export default function BloggerRankingView() {
             value={searchId}
             onChange={(e) => setSearchId(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && searchMyRank()}
-            placeholder="블로그 이름 · ID · 주소 (예: 홍길동, myid, blog.naver.com/myid)"
-            className="flex-1 px-3 py-2 text-sm rounded-lg bg-bg border border-border focus:outline-none focus:border-accent/50"
+            placeholder="블로그 이름 · ID · 주소"
+            className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg bg-bg border border-border focus:outline-none focus:border-accent/50"
           />
           <button
             onClick={searchMyRank}

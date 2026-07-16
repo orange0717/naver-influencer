@@ -26,11 +26,11 @@ export const SIDEBAR_HOME: SidebarItem = { href: '/', label: '홈' };
 
 export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
-    label: '블로그 분석',
+    label: '대시보드',
     icon: '블',
     items: [
-      { label: '통합 대시보드', href: '/#blog-analysis', authOnly: true },
-      { label: '인플루언서 대시보드', href: '/my', requiredPlan: 'influencer', authOnly: true },
+      { label: '블로그', href: '/#blog-analysis', authOnly: true },
+      { label: '인플루언서', href: '/my', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
@@ -45,10 +45,10 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '키워드',
     icon: 'K',
     items: [
-      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
       { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
       { label: '키워드 검색', href: '/keywords/blogger' },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
+      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
       { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
     ],
   },
@@ -56,9 +56,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '네이버 인플루언서',
     icon: 'I',
     items: [
-      { label: '네이버 인플루언서 공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
       { label: '내 팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
       { label: '인플루언서 리스트(명단)', href: '/influencers/free-plan', authOnly: true },
+      { label: '네이버 인플루언서 공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
       { label: '인플루언서 리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
     ],
   },
@@ -66,20 +66,20 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '정보·분석',
     icon: 'R',
     items: [
-      { label: 'JPG↔PNG 변환기', href: '/image-converter' },
       { label: 'URL 분석', href: '/decoder' },
       { label: '경쟁자 분석', href: '/competitor' },
       { label: '연도별 선정 현황', href: '/stats' },
+      { label: 'JPG↔PNG 변환기', href: '/image-converter' },
     ],
   },
   {
     label: '글쓰기',
     icon: 'W',
     items: [
-      { label: 'AI 피드백(클로드)', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
-      { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
       { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
+      { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
       { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
+      { label: 'AI 피드백(클로드)', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
@@ -95,8 +95,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '기타',
     icon: '•',
     items: [
-      { label: 'CSV 다운로드', href: '/keywords/bulk', requiredPlan: 'influencer' },
       { label: '설정', href: '/profile', authOnly: true },
+      { label: 'CSV 다운로드', href: '/keywords/bulk', requiredPlan: 'influencer' },
     ],
   },
 ];
