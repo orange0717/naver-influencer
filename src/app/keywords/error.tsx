@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 export default function KeywordsError({
   error,
@@ -11,6 +12,7 @@ export default function KeywordsError({
 }) {
   useEffect(() => {
     console.error('[keywords] error:', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

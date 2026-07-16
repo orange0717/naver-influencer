@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 export default function InfluencersError({
   error,
@@ -11,6 +12,7 @@ export default function InfluencersError({
 }) {
   useEffect(() => {
     console.error('[influencers] error:', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
