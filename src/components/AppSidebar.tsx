@@ -12,12 +12,16 @@ import {
   SIDEBAR_HOME,
   SIDEBAR_FOOTER_LINKS,
   SIDEBAR_HIDDEN_PREFIXES,
+  getActiveHref,
   type SidebarItem,
 } from '@/lib/sidebar-nav';
 import type { PlanTier } from '@/lib/dashboard-catalog';
 import { useEffect, useState } from 'react';
 
 const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
+
+/** 사이드바 전체 메뉴 href 목록 — 현재 경로와 가장 구체적으로 일치하는 단 하나의 메뉴만 active로 고르기 위함 */
+const ALL_NAV_HREFS = [SIDEBAR_HOME.href, ...SIDEBAR_GROUPS.flatMap((group) => group.items.map((item) => item.href))];
 
 function LockIcon() {
   return (
@@ -120,13 +124,14 @@ function SidebarContent({
   const visibleFooterLinks = SIDEBAR_FOOTER_LINKS.filter(
     (link) => !(isInDesktopApp && DESKTOP_HIDDEN_HREFS.has(link.href)),
   );
+  const activeHref = getActiveHref(pathname, ALL_NAV_HREFS);
 
   return (
     <>
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
         <NavLink
           item={SIDEBAR_HOME}
-          active={pathname === '/'}
+          active={SIDEBAR_HOME.href === activeHref}
           currentPlan={currentPlan}
           isGuest={isGuest}
           onNavigate={onNavigate}
@@ -139,7 +144,7 @@ function SidebarContent({
                 <NavLink
                   key={item.label}
                   item={item}
-                  active={item.href !== '#' && pathname.startsWith(item.href)}
+                  active={item.href !== '#' && item.href === activeHref}
                   currentPlan={currentPlan}
                   isGuest={isGuest}
                   onNavigate={onNavigate}
