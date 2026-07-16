@@ -42,6 +42,16 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     ],
   },
   {
+    label: '네이버 인플루언서',
+    icon: 'I',
+    items: [
+      { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
+      { label: '리스트', href: '/influencers/free-plan', authOnly: true },
+      { label: '공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
+      { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
+    ],
+  },
+  {
     label: '키워드',
     icon: 'K',
     items: [
@@ -50,16 +60,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
       { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
-    ],
-  },
-  {
-    label: '네이버 인플루언서',
-    icon: 'I',
-    items: [
-      { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
-      { label: '리스트', href: '/influencers/free-plan', authOnly: true },
-      { label: '공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
-      { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
     ],
   },
   {
