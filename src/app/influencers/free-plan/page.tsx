@@ -5,7 +5,6 @@ export default function FreePlanInfluencerPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-extrabold">
         리스트
-        <span className="text-sm font-normal text-dim"> (무료)</span>
       </h1>
       <FreePlanInfluencerList />
     </div>

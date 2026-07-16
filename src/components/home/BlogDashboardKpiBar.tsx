@@ -6,7 +6,9 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import type { BlogDashboardSummary } from '@/app/api/my/blog-dashboard-summary/route';
 
 async function fetchSummary(blogId: string): Promise<BlogDashboardSummary> {
-  const res = await fetch(`/api/my/blog-dashboard-summary?blogId=${encodeURIComponent(blogId)}`);
+  const res = await fetch(`/api/my/blog-dashboard-summary?blogId=${encodeURIComponent(blogId)}`, {
+    signal: AbortSignal.timeout(15000),
+  });
   if (!res.ok) throw new Error('KPI 요약 조회 실패');
   return res.json();
 }
@@ -38,6 +40,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
     queryFn: () => fetchSummary(blogId!),
     enabled: !!blogId,
     staleTime: 60 * 1000,
+    retry: 1,
   });
 
   if (!blogId) return null;

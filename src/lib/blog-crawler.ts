@@ -225,6 +225,7 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
         'Accept-Language': 'ko-KR,ko;q=0.9',
         'Referer': `https://blog.naver.com/${blogId}`,
       },
+      signal: AbortSignal.timeout(8000),
     });
 
     // 200 + 본문 있음일 때만 파싱 시도. 204 면 바로 모바일 폴백으로.
@@ -281,6 +282,7 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
             'Accept-Language': 'ko-KR,ko;q=0.9',
           },
+          signal: AbortSignal.timeout(8000),
         });
         if (mobileRes.ok) {
           const html = await mobileRes.text();
@@ -355,6 +357,7 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
         'Accept-Language': 'ko-KR,ko;q=0.9',
       },
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return result;
     const html = await res.text();
@@ -397,6 +400,9 @@ export interface BlogVisitorSummary {
   lastCollectedDate: string | null;
 }
 
+// 오늘자 방문자수는 하루 중 계속 늘어나므로, 이 시간(분)이 지나면 오늘 행이 있어도 재크롤링한다.
+const TODAY_VISITOR_STALE_MINUTES = 20;
+
 export async function getBlogVisitorSummary(blogId: string, days: number): Promise<BlogVisitorSummary> {
   const supabase = createServiceClient();
   const since = new Date();
@@ -404,7 +410,7 @@ export async function getBlogVisitorSummary(blogId: string, days: number): Promi
 
   const { data: visitorsInitial, error } = await supabase
     .from('blog_visitor_history')
-    .select('visit_date, visitor_count')
+    .select('visit_date, visitor_count, updated_at')
     .eq('blog_id', blogId)
     .gte('visit_date', since.toISOString().slice(0, 10))
     .order('visit_date', { ascending: true });
@@ -418,21 +424,29 @@ export async function getBlogVisitorSummary(blogId: string, days: number): Promi
     .toISOString()
     .slice(0, 10);
 
-  // DB가 비었거나 최신 행이 오늘 미만이면(stale) 다시 크롤링
-  const latestDbDate = visitors && visitors.length > 0
-    ? visitors[visitors.length - 1].visit_date
-    : null;
-  const isStale = !latestDbDate || latestDbDate < todayStr;
+  // DB가 비었거나 최신 행이 오늘 미만이면(stale) 다시 크롤링.
+  // 최신 행이 오늘이어도 마지막 갱신이 오래됐으면(하루 중 방문자수가 계속 느는 중) 다시 크롤링한다.
+  const latestRow = visitors && visitors.length > 0 ? visitors[visitors.length - 1] : null;
+  const latestDbDate = latestRow?.visit_date ?? null;
+  const minutesSinceUpdate = latestRow?.updated_at
+    ? (Date.now() - new Date(latestRow.updated_at).getTime()) / 60000
+    : Infinity;
+  const isStale =
+    !latestDbDate ||
+    latestDbDate < todayStr ||
+    (latestDbDate === todayStr && minutesSinceUpdate >= TODAY_VISITOR_STALE_MINUTES);
 
   if (isStale) {
     const crawled = await fetchBlogVisitors(blogId);
 
     if (crawled.length > 0) {
       // DB에 저장 (오늘 행 포함)
+      const nowIso = new Date().toISOString();
       const rows = crawled.map(v => ({
         blog_id: blogId,
         visit_date: v.date,
         visitor_count: v.visitors,
+        updated_at: nowIso,
       }));
 
       await supabase
@@ -445,7 +459,7 @@ export async function getBlogVisitorSummary(blogId: string, days: number): Promi
       // 다시 days일치 조회해서 추세 계산용으로 사용
       const { data: refreshed } = await supabase
         .from('blog_visitor_history')
-        .select('visit_date, visitor_count')
+        .select('visit_date, visitor_count, updated_at')
         .eq('blog_id', blogId)
         .gte('visit_date', since.toISOString().slice(0, 10))
         .order('visit_date', { ascending: true });

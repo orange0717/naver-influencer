@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { withTimeout, TimeoutError } from '@/lib/with-timeout';
 import { login as gaLogin, signUp as gaSignUp } from '@/lib/gtag';
 import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
@@ -179,16 +180,43 @@ export default function AuthModal() {
       setLoginError('비밀번호를 입력해주세요.');
       return;
     }
+    if (loginLoading) return; // 중복 클릭 방지 (버튼 disabled에 더한 이중 안전장치)
 
     setLoginLoading(true);
+    const t0 = performance.now();
+    let stage = 'auth';
+
+    // 콘솔 출력 + 서버 집계(로그인 성공률/실패원인) 동시 기록. 집계 실패가
+    // 로그인 흐름을 막으면 안 되므로 응답을 기다리지 않는다(fire-and-forget).
+    const report = (result: 'success' | 'fail', reason?: string) => {
+      const totalMs = Math.round(performance.now() - t0);
+      const line = `[login] result=${result}${reason ? ` reason=${reason}` : ''} total=${totalMs}ms`;
+      if (result === 'success') console.info(line);
+      else console.error(line);
+      fetch('/api/auth/login-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'main', result, reason, totalMs }),
+      }).catch(() => {});
+    };
 
     try {
       const supabase = createSupabaseBrowserClient();
 
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: loginEmail.trim(),
-        password: loginPassword,
-      });
+      // signInWithPassword가 응답 없이 멈추면 아래 await가 영원히 끝나지 않아
+      // finally도 실행되지 않는다 → 8초 타임아웃으로 강제 종료시켜 버튼이
+      // "로그인 중..."에 무한정 멈추는 것을 방지한다.
+      stage = 'auth';
+      const tAuth = performance.now();
+      const { data: authData, error: authError } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: loginEmail.trim(),
+          password: loginPassword,
+        }),
+        8000,
+        '로그인 인증',
+      );
+      console.info(`[login] auth stage=${Math.round(performance.now() - tAuth)}ms`);
 
       if (authError) {
         setLoginError(
@@ -196,38 +224,62 @@ export default function AuthModal() {
             ? '이메일 또는 비밀번호가 올바르지 않습니다.'
             : authError.message,
         );
+        report('fail', 'auth_error');
         return;
       }
 
-      const { data: userRecord } = await supabase
-        .from('users')
-        .select('id')
-        .eq('auth_id', authData.user?.id)
-        .single();
+      stage = 'user-lookup';
+      const tUser = performance.now();
+      const { data: userRecord } = await withTimeout(
+        supabase.from('users').select('id').eq('auth_id', authData.user?.id).single(),
+        6000,
+        '회원 정보 조회',
+      );
+      console.info(`[login] user-lookup stage=${Math.round(performance.now() - tUser)}ms`);
 
       if (!userRecord) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut().catch(() => {});
         setLoginError('회원가입이 완료되지 않은 계정입니다. 회원가입 탭에서 다시 가입해주세요.');
+        report('fail', 'no_user_record');
         return;
       }
 
+      stage = 'sync-cookies';
+      const tCookie = performance.now();
       await fetch('/api/auth/sync-cookies', { method: 'POST' }).catch(() => {});
+      console.info(`[login] sync-cookies stage=${Math.round(performance.now() - tCookie)}ms`);
 
+      stage = 'session-register';
+      const tSession = performance.now();
       try {
         const { getDeviceId } = await import('@/lib/device-id');
         getDeviceId();
         await fetch('/api/session/register', { method: 'POST' });
       } catch { /* 등록 실패해도 로그인 흐름은 계속 */ }
+      console.info(`[login] session-register stage=${Math.round(performance.now() - tSession)}ms`);
 
       gaLogin('email');
 
+      stage = 'invalidate-queries';
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
 
+      stage = 'redirect';
+      const tRedirect = performance.now();
       handleClose();
       if (redirectTo) router.push(redirectTo);
       router.refresh();
-    } catch {
-      setLoginError('로그인 중 오류가 발생했습니다.');
+      console.info(`[login] redirect stage=${Math.round(performance.now() - tRedirect)}ms`);
+
+      report('success');
+    } catch (err) {
+      const timedOut = err instanceof TimeoutError;
+      setLoginError(
+        timedOut
+          ? '로그인 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.'
+          : '로그인 중 오류가 발생했습니다.',
+      );
+      console.error(`[login] stage=${stage}`, err);
+      report('fail', timedOut ? 'timeout' : 'exception');
     } finally {
       setLoginLoading(false);
     }

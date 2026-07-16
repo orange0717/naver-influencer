@@ -8,11 +8,21 @@ export const dynamic = 'force-dynamic';
 /** Supabase Auth 유저로부터 프로필 + 인플루언서 정보를 조회 */
 async function getUserFromAuth(authUserId: string, email?: string | null) {
   const supabase = createServiceClient();
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('users')
     .select('id, nickname, email, linked_influencer_id, subscription_plan, subscription_expires_at, blog_id, is_admin')
     .eq('auth_id', authUserId)
-    .single();
+    .maybeSingle();
+
+  // auth_id 매칭 실패 시 email로 재조회 (auth.users/public.users 동기화 누락 대비)
+  if (!profile && email) {
+    const { data: byEmail } = await supabase
+      .from('users')
+      .select('id, nickname, email, linked_influencer_id, subscription_plan, subscription_expires_at, blog_id, is_admin')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+    profile = byEmail;
+  }
 
   if (!profile) return null;
 

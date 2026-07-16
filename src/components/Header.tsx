@@ -7,9 +7,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuthModal } from '@/contexts/AuthModalContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { isDesktop } from '@/lib/desktop';
+import { SIDEBAR_FOOTER_LINKS } from '@/lib/sidebar-nav';
 import NotificationBell from './NotificationBell';
 import MessageBell from './MessageBell';
 import HeaderSearch from './HeaderSearch';
+
+// 비로그인 게스트에게는 로그인이 필요한 링크(공지사항)를 숨김
+const GUEST_NAV_LINKS = SIDEBAR_FOOTER_LINKS.filter((link) => !link.authOnly);
 
 type UserInfo = {
   type: 'influencer' | 'blogger' | 'unified' | null;
@@ -70,6 +74,9 @@ export default function Header({ serverUser }: HeaderProps) {
     router.refresh();
   };
 
+  // 공지사항/커뮤니티/성장후기/이용권/서비스소개 — 로그인 사용자는 전체, 게스트는 로그인 필요 링크 제외
+  const headerNavLinks = user.id ? SIDEBAR_FOOTER_LINKS : GUEST_NAV_LINKS;
+
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
     : (user.id || 'N').charAt(0).toUpperCase();
@@ -85,10 +92,24 @@ export default function Header({ serverUser }: HeaderProps) {
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
           </Link>
 
-          <HeaderSearch />
+          {/* ── 왼쪽: 공지사항 등 서브 네비 (로고 옆) ── */}
+          {!authLoading && (
+            <nav aria-label="서브 네비게이션" className="hidden lg:flex items-center gap-1 ml-1">
+              {headerNavLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="px-2.5 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          )}
 
-          {/* ── 우측: 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
+          {/* ── 우측: 검색 · 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+            <HeaderSearch />
             {canShowAppDownload &&
               (downloadNavUnlocked ? (
                 <Link

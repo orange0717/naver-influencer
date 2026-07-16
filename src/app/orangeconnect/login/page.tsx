@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { withTimeout, TimeoutError } from '@/lib/with-timeout';
 
 export default function AdLoginPage() {
   const [email, setEmail] = useState('');
@@ -17,47 +18,94 @@ export default function AdLoginPage() {
     setError('');
     if (!email.trim()) return setError('이메일을 입력해주세요.');
     if (!password) return setError('비밀번호를 입력해주세요.');
+    if (loading) return; // 중복 클릭 방지
 
     setLoading(true);
+    const t0 = performance.now();
+    let stage = 'auth';
+
+    // 콘솔 출력 + 서버 집계(로그인 성공률/실패원인) 동시 기록. 집계 실패가
+    // 로그인 흐름을 막으면 안 되므로 응답을 기다리지 않는다(fire-and-forget).
+    const report = (result: 'success' | 'fail', reason?: string) => {
+      const totalMs = Math.round(performance.now() - t0);
+      const line = `[ad-login] result=${result}${reason ? ` reason=${reason}` : ''} total=${totalMs}ms`;
+      if (result === 'success') console.info(line);
+      else console.error(line);
+      fetch('/api/auth/login-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'ad', result, reason, totalMs }),
+      }).catch(() => {});
+    };
 
     try {
       const supabase = createSupabaseBrowserClient();
 
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      // signInWithPassword가 응답 없이 멈추면 finally가 실행되지 않아 버튼이
+      // "로그인 중..."에 무한정 멈춘다 → 8초 타임아웃으로 강제 종료시킨다.
+      stage = 'auth';
+      const tAuth = performance.now();
+      const { error: authError } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        }),
+        8000,
+        '로그인 인증',
+      );
+      console.info(`[ad-login] auth stage=${Math.round(performance.now() - tAuth)}ms`);
 
       if (authError) {
         setError('이메일 또는 비밀번호가 일치하지 않습니다.');
+        report('fail', 'auth_error');
         return;
       }
 
       // 광고주 계정인지 확인
-      const res = await fetch('/api/ad/auth/me');
+      stage = 'ad-check';
+      const tCheck = performance.now();
+      const res = await withTimeout(fetch('/api/ad/auth/me'), 6000, '광고주 계정 확인');
+      console.info(`[ad-login] ad-check stage=${Math.round(performance.now() - tCheck)}ms`);
       if (!res.ok) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut().catch(() => {});
         setError('광고주 계정이 아닙니다. 일반 회원은 N인플 로그인을 이용해주세요.');
+        report('fail', 'not_ad_account');
         return;
       }
       const data = await res.json();
       if (!data.id) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut().catch(() => {});
         setError('광고주 계정이 아닙니다. 일반 회원은 N인플 로그인을 이용해주세요.');
+        report('fail', 'no_ad_id');
         return;
       }
 
       // 동시 로그인 기기 제한 — 디바이스 등록
+      stage = 'session-register';
+      const tSession = performance.now();
       try {
         const { getDeviceId } = await import('@/lib/device-id');
         getDeviceId();
         await fetch('/api/session/register', { method: 'POST' });
       } catch { /* ignore */ }
+      console.info(`[ad-login] session-register stage=${Math.round(performance.now() - tSession)}ms`);
 
+      stage = 'redirect';
+      const tRedirect = performance.now();
       router.push('/orangeconnect/dashboard');
       router.refresh();
-    } catch {
-      setError('로그인 중 오류가 발생했습니다.');
+      console.info(`[ad-login] redirect stage=${Math.round(performance.now() - tRedirect)}ms`);
+
+      report('success');
+    } catch (err) {
+      const timedOut = err instanceof TimeoutError;
+      setError(
+        timedOut
+          ? '로그인 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.'
+          : '로그인 중 오류가 발생했습니다.',
+      );
+      console.error(`[ad-login] stage=${stage}`, err);
+      report('fail', timedOut ? 'timeout' : 'exception');
     } finally {
       setLoading(false);
     }
