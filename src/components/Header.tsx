@@ -92,23 +92,24 @@ export default function Header({ serverUser }: HeaderProps) {
             <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
           </Link>
 
-          <HeaderSearch />
+          {/* ── 왼쪽: 공지사항 등 서브 네비 (로고 옆) ── */}
+          {!authLoading && (
+            <nav aria-label="서브 네비게이션" className="hidden lg:flex items-center gap-1 ml-1">
+              {headerNavLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="px-2.5 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          )}
 
-          {/* ── 우측: 공지사항 등 서브 네비 · 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
+          {/* ── 우측: 검색 · 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
-            {!authLoading && (
-              <nav aria-label="서브 네비게이션" className="hidden lg:flex items-center gap-1 mr-1">
-                {headerNavLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="px-2.5 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            )}
+            <HeaderSearch />
             {canShowAppDownload &&
               (downloadNavUnlocked ? (
                 <Link
