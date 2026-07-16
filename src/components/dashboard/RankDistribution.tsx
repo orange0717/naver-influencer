@@ -27,8 +27,11 @@ interface RankGroup {
 }
 
 const RANK_GROUPS: RankGroup[] = [
-  { key: '1-3', label: '1-3위', min: 1, max: 3, color: 'text-gold', bg: 'bg-gold/10' },
-  { key: '4-5', label: '4-5위', min: 4, max: 5, color: 'text-accent', bg: 'bg-accent/10' },
+  { key: '1', label: '1위', min: 1, max: 1, color: 'text-gold', bg: 'bg-gold/10' },
+  { key: '2', label: '2위', min: 2, max: 2, color: 'text-gold', bg: 'bg-gold/10' },
+  { key: '3', label: '3위', min: 3, max: 3, color: 'text-gold', bg: 'bg-gold/10' },
+  { key: '4', label: '4위', min: 4, max: 4, color: 'text-accent', bg: 'bg-accent/10' },
+  { key: '5', label: '5위', min: 5, max: 5, color: 'text-accent', bg: 'bg-accent/10' },
   { key: '6-10', label: '6-10위', min: 6, max: 10, color: 'text-accent', bg: 'bg-accent/10' },
   { key: '11-20', label: '11-20위', min: 11, max: 20, color: 'text-dim', bg: 'bg-border/30' },
   { key: '21-30', label: '21-30위', min: 21, max: 30, color: 'text-dim', bg: 'bg-border/30' },
