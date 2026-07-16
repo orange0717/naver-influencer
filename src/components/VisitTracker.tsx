@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { withTimeout } from '@/lib/with-timeout';
 
 // 관리자 이메일 (방문자 카운트 제외)
 const ADMIN_EMAILS = ['orange@orangelibrary.co.kr'];
@@ -76,10 +77,15 @@ async function getVisitorStatus(): Promise<{
 }> {
   try {
     const supabase = createSupabaseBrowserClient();
-    const [{ data: userData }, { data: sessionData }] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.auth.getSession(),
-    ]);
+    // Supabase Auth 클라이언트 호출이 응답 없이 멈추면(모바일/불안정 네트워크에서
+    // 실제 발생 — 로그인 무한 대기 버그와 동일 패턴) 이 await가 영원히 끝나지 않아
+    // 방문 추적 fetch 자체가 호출되지 않는다. 타임아웃으로 감싸 실패 시 즉시
+    // 폴백(쿠키 기반 로그인 판정)으로 넘어가 트래킹이 유실되지 않게 한다.
+    const [{ data: userData }, { data: sessionData }] = await withTimeout(
+      Promise.all([supabase.auth.getUser(), supabase.auth.getSession()]),
+      3000,
+      'VisitTracker 방문자 상태 조회',
+    );
     const email = userData?.user?.email?.toLowerCase();
     return {
       isAdmin: email ? ADMIN_EMAILS.includes(email) : false,
