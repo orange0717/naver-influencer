@@ -30,55 +30,55 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '블',
     items: [
       { label: '통합 대시보드', href: '/#blog-analysis', authOnly: true },
+      { label: '인플루언서 대시보드', href: '/my', requiredPlan: 'influencer', authOnly: true },
+    ],
+  },
+  {
+    label: '네이버 메이트',
+    icon: '메',
+    items: [
       { label: 'AI 브리핑·AI탭', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true },
-      { label: '내 팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
+      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking' },
     ],
   },
   {
     label: '키워드',
     icon: 'K',
     items: [
-      { label: '키워드 검색', href: '/keywords/blogger' },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
-      { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
-      { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
+      { label: '키워드 검색', href: '/keywords/blogger' },
+      { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
+      { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
     ],
   },
   {
-    label: '메이트 랭킹',
-    icon: '메',
-    items: [
-      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking' },
-    ],
-  },
-  {
-    label: '인플루언서',
+    label: '네이버 인플루언서',
     icon: 'I',
     items: [
       { label: '네이버 인플루언서 공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
-      { label: '블로거 랭킹', href: '/rankings/blogger' },
-      { label: '인플루언서 리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
+      { label: '내 팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
       { label: '인플루언서 리스트(명단)', href: '/influencers/free-plan', authOnly: true },
+      { label: '인플루언서 리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
     ],
   },
   {
     label: '정보·분석',
     icon: 'R',
     items: [
-      { label: '연도별 선정 현황', href: '/stats' },
-      { label: '경쟁자 분석', href: '/competitor' },
-      { label: 'URL 분석', href: '/decoder' },
       { label: 'JPG↔PNG 변환기', href: '/image-converter' },
+      { label: 'URL 분석', href: '/decoder' },
+      { label: '경쟁자 분석', href: '/competitor' },
+      { label: '연도별 선정 현황', href: '/stats' },
     ],
   },
   {
     label: '글쓰기',
     icon: 'W',
     items: [
-      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
       { label: 'AI 피드백(클로드)', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
       { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
+      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
       { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
     ],
   },
@@ -86,9 +86,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '성장도구',
     icon: 'G',
     items: [
+      { label: '글감 찾기', href: '#', disabled: true },
       { label: '제목 생성', href: '#', disabled: true },
       { label: '키워드 추천', href: '#', disabled: true },
-      { label: '글감 찾기', href: '#', disabled: true },
     ],
   },
   {
