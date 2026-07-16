@@ -46,10 +46,16 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     ],
   },
   {
+    label: '메이트 랭킹',
+    icon: '메',
+    items: [
+      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking' },
+    ],
+  },
+  {
     label: '인플루언서',
     icon: 'I',
     items: [
-      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking' },
       { label: '네이버 인플루언서 공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
       { label: '블로거 랭킹', href: '/rankings/blogger' },
       { label: '인플루언서 리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },

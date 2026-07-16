@@ -85,11 +85,14 @@ function SidebarContent({
   currentPlan,
   isInDesktopApp,
   onNavigate,
+  showFooterLinks = true,
 }: {
   pathname: string;
   currentPlan: PlanTier;
   isInDesktopApp: boolean;
   onNavigate: () => void;
+  /** 공지사항/커뮤니티/성장후기/이용권/서비스소개 — 데스크탑에서는 헤더 우측 네비로 이동했으므로 숨김 */
+  showFooterLinks?: boolean;
 }) {
   const visibleFooterLinks = SIDEBAR_FOOTER_LINKS.filter(
     (link) => !(isInDesktopApp && DESKTOP_HIDDEN_HREFS.has(link.href)),
@@ -121,20 +124,22 @@ function SidebarContent({
           </div>
         ))}
       </nav>
-      <div className="border-t border-border p-3 space-y-0.5 shrink-0">
-        {visibleFooterLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            onClick={onNavigate}
-            className={`block px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              pathname.startsWith(link.href) ? 'text-accent' : 'text-dim hover:text-text'
-            }`}
-          >
-            {link.label}
-          </Link>
-        ))}
-      </div>
+      {showFooterLinks && (
+        <div className="border-t border-border p-3 space-y-0.5 shrink-0">
+          {visibleFooterLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={onNavigate}
+              className={`block px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                pathname.startsWith(link.href) ? 'text-accent' : 'text-dim hover:text-text'
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -204,6 +209,7 @@ export default function AppSidebar() {
             currentPlan={currentPlan}
             isInDesktopApp={isInDesktopApp}
             onNavigate={() => {}}
+            showFooterLinks={false}
           />
         )}
         <button
