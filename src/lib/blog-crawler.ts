@@ -225,6 +225,7 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
         'Accept-Language': 'ko-KR,ko;q=0.9',
         'Referer': `https://blog.naver.com/${blogId}`,
       },
+      signal: AbortSignal.timeout(8000),
     });
 
     // 200 + 본문 있음일 때만 파싱 시도. 204 면 바로 모바일 폴백으로.
@@ -281,6 +282,7 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
             'Accept-Language': 'ko-KR,ko;q=0.9',
           },
+          signal: AbortSignal.timeout(8000),
         });
         if (mobileRes.ok) {
           const html = await mobileRes.text();
@@ -355,6 +357,7 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
         'Accept-Language': 'ko-KR,ko;q=0.9',
       },
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return result;
     const html = await res.text();
