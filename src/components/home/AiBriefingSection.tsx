@@ -300,8 +300,12 @@ export default function AiBriefingSection() {
 
   useEffect(() => {
     if (syncedState) {
-      setPostKeywords(syncedState.postKeywords);
-      setBriefingResults(syncedState.briefingResults);
+      // syncedState는 외부 fetch 응답(API 응답 캐시/확장프로그램 등 외부 요인에 영향받을 수 있음)이라
+      // 필드가 비어있어도 postKeywords/briefingResults가 undefined가 되지 않도록 방어한다.
+      // (2026-07-17: postKeywords가 undefined가 되면서 "미노출 게시글" 파생 계산이
+      // postKeywords[post.id]에서 TypeError를 던져 /my 전체가 에러 화면으로 죽는 버그 확인)
+      setPostKeywords(syncedState.postKeywords || {});
+      setBriefingResults(syncedState.briefingResults || {});
     }
   }, [syncedState]);
 
@@ -494,9 +498,9 @@ export default function AiBriefingSection() {
 
   // 확인된 키워드 중 AI 브리핑 또는 AI 탭에 미노출된 항목만 모은 목록 — 신규 fetch 없이 기존 state에서 파생
   const unexposedEntries = blogPosts.flatMap(post => {
-    const keywords = postKeywords[post.id] || [];
+    const keywords = (postKeywords || {})[post.id] || [];
     return keywords
-      .map(kw => ({ post, keyword: kw, result: briefingResults[rankKey(post.id, kw)] }))
+      .map(kw => ({ post, keyword: kw, result: (briefingResults || {})[rankKey(post.id, kw)] }))
       .filter(e => e.result && (e.result.exposed === false || e.result.tabExposed === false));
   });
 
