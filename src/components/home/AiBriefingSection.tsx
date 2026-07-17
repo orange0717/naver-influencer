@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
+import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 
@@ -20,6 +21,114 @@ interface BlogPost {
   commentCount: number;
   date: string;
   isPublic: boolean;
+  viewCount?: number;
+}
+
+interface SubScores {
+  sourceUsage: number;
+  faq: number;
+  table: number;
+  image: number;
+  freshness: number;
+  length: number;
+  headings: number;
+  keywordDensity: number;
+  entity: number;
+  internalLink: number;
+  externalLink: number;
+  eeat: number;
+  schema: null;
+}
+
+interface PostScore {
+  postId: string;
+  title: string | null;
+  viewCount: number | null;
+  publishedAt: string | null;
+  representativeKeyword: string | null;
+  aiScore: number;
+  seoScore: number;
+  geoScore: number;
+  aeoScore: number;
+  subScores: SubScores;
+  causeTags: string[];
+  computedAt: string;
+}
+
+const SCORE_API = '/api/blog/analyze-post-score';
+
+const SUB_SCORE_LABELS: Record<keyof Omit<SubScores, 'schema'>, string> = {
+  sourceUsage: '출처 활용',
+  faq: 'FAQ',
+  table: '표',
+  image: '이미지',
+  freshness: '최신성',
+  length: '본문 길이',
+  headings: '소제목',
+  keywordDensity: '키워드 밀도',
+  entity: '엔티티',
+  internalLink: '내부링크',
+  externalLink: '외부링크',
+  eeat: 'E-E-A-T',
+};
+
+const IMPROVEMENT_SUGGESTIONS: Partial<Record<keyof Omit<SubScores, 'schema'>, string>> = {
+  sourceUsage: '뉴스·정부·공공기관 등 공식 출처 링크를 1~2개 추가하세요.',
+  faq: '"자주 묻는 질문" 형태의 FAQ 섹션을 추가하세요.',
+  table: '핵심 정보를 정리한 표를 1개 이상 추가하세요.',
+  image: '사진(직접 촬영 원본 포함)을 3~5장 이상 추가하세요.',
+  freshness: '오래된 정보라면 최신 내용으로 갱신하고 발행일을 새로 올리세요.',
+  length: '본문을 800자 이상으로 보강하세요.',
+  headings: '소제목(H태그)을 2~3개 이상 추가해 구조를 명확히 하세요.',
+  keywordDensity: '대표 키워드를 본문에 자연스럽게 더 포함시키세요(0.5~2.5% 권장).',
+  entity: '주제와 관련된 구체적인 용어·개체명을 더 다양하게 언급하세요.',
+  internalLink: '내 블로그의 관련 포스팅으로 연결되는 링크를 추가하세요.',
+  externalLink: '신뢰할 수 있는 외부 자료로 연결되는 링크를 추가하세요.',
+  eeat: '1인칭 경험(직접 해봤어요 등)과 인용·근거 표기를 추가하세요.',
+};
+
+function scoreColor(score: number): string {
+  if (score >= 70) return 'text-up';
+  if (score >= 40) return 'text-gold';
+  return 'text-down';
+}
+
+function ScoreCell({ score }: { score: number | undefined }) {
+  if (score === undefined) return <span className="text-[10px] text-dim/50">--</span>;
+  return <span className={`text-xs font-bold ${scoreColor(score)}`}>{score}</span>;
+}
+
+/** "개선하기" 패널 — Phase 1은 규칙 기반 sub-score만으로 약점을 나열하는 기초 진단(Claude 미사용). */
+function ImprovePanel({ score }: { score: PostScore }) {
+  const weakItems = (Object.keys(SUB_SCORE_LABELS) as (keyof Omit<SubScores, 'schema'>)[])
+    .filter(key => score.subScores[key] < 50)
+    .sort((a, b) => score.subScores[a] - score.subScores[b]);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-3.5 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3 text-xs">
+          <span>AI <b className={scoreColor(score.aiScore)}>{score.aiScore}</b></span>
+          <span>SEO <b className={scoreColor(score.seoScore)}>{score.seoScore}</b></span>
+          <span>GEO <b className={scoreColor(score.geoScore)}>{score.geoScore}</b></span>
+          <span>AEO <b className={scoreColor(score.aeoScore)}>{score.aeoScore}</b></span>
+        </div>
+        <span className="text-[10px] text-dim">규칙 기반 기초 진단입니다 — AI(Claude) 분석 기능은 준비 중입니다.</span>
+      </div>
+      {weakItems.length === 0 ? (
+        <p className="text-xs text-dim">뚜렷한 약점이 발견되지 않았습니다.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {weakItems.map(key => (
+            <li key={key} className="text-xs flex items-start gap-2">
+              <span className="font-semibold text-down shrink-0">{SUB_SCORE_LABELS[key]}({score.subScores[key]}점)</span>
+              <span className="text-dim">{IMPROVEMENT_SUGGESTIONS[key]}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 interface BriefingResult {
@@ -155,8 +264,17 @@ export default function AiBriefingSection() {
   const [briefingResults, setBriefingResults] = useState<Record<string, BriefingResult>>({});
   const [checkingKey, setCheckingKey] = useState('');
   const [checkingStage, setCheckingStage] = useState('');
+  const [extractingPostId, setExtractingPostId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // postId → 점수 결과 (규칙 기반 AI/SEO/GEO/AEO 점수, Phase 1)
+  const [postScores, setPostScores] = useState<Record<string, PostScore>>({});
+  const [scoringPostId, setScoringPostId] = useState('');
+  const [improvePanelPostId, setImprovePanelPostId] = useState('');
+  const [filter, setFilter] = useState<
+    'all' | 'briefingExposed' | 'briefingUnexposed' | 'tabExposed' | 'tabUnexposed' | 'needsImprovement' | 'highScore' | 'lowScore'
+  >('all');
 
   const showError = useCallback((msg: string, ms = 5000) => {
     setErrorMessage(msg);
@@ -298,6 +416,95 @@ export default function AiBriefingSection() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: syncedScores } = useQuery({
+    queryKey: ['post-ai-scores', profile?.blogId],
+    queryFn: async () => {
+      const res = await fetch(`${SCORE_API}?blogId=${encodeURIComponent(profile!.blogId)}`);
+      if (!res.ok) throw new Error('점수 로드 실패');
+      const data: { scores: Array<{
+        post_id: string; title: string | null; view_count: number | null; published_at: string | null;
+        representative_keyword: string | null;
+        ai_score: number; seo_score: number; geo_score: number; aeo_score: number;
+        sub_scores: SubScores; cause_tags: string[]; computed_at: string;
+      }> } = await res.json();
+      return data.scores;
+    },
+    enabled: !!profile?.blogId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (syncedScores) {
+      const map: Record<string, PostScore> = {};
+      for (const s of syncedScores) {
+        map[s.post_id] = {
+          postId: s.post_id,
+          title: s.title,
+          viewCount: s.view_count,
+          publishedAt: s.published_at,
+          representativeKeyword: s.representative_keyword,
+          aiScore: s.ai_score,
+          seoScore: s.seo_score,
+          geoScore: s.geo_score,
+          aeoScore: s.aeo_score,
+          subScores: s.sub_scores,
+          causeTags: s.cause_tags,
+          computedAt: s.computed_at,
+        };
+      }
+      setPostScores(map);
+    }
+  }, [syncedScores]);
+
+  const handleAnalyzeScore = useCallback(async (post: BlogPost) => {
+    if (!profile) return;
+    setScoringPostId(post.id);
+    try {
+      const res = await fetch(SCORE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blogId: profile.blogId,
+          postId: post.id,
+          title: post.title,
+          date: post.date,
+          viewCount: post.viewCount ?? null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        showError(body?.error || 'AI 점수 분석에 실패했습니다.', 6000);
+        return;
+      }
+      const data: {
+        postId: string; representativeKeyword: string | null;
+        aiScore: number; seoScore: number; geoScore: number; aeoScore: number;
+        subScores: SubScores; causeTags: string[];
+      } = await res.json();
+      setPostScores(prev => ({
+        ...prev,
+        [post.id]: {
+          postId: post.id,
+          title: post.title,
+          viewCount: post.viewCount ?? null,
+          publishedAt: post.date,
+          representativeKeyword: data.representativeKeyword,
+          aiScore: data.aiScore,
+          seoScore: data.seoScore,
+          geoScore: data.geoScore,
+          aeoScore: data.aeoScore,
+          subScores: data.subScores,
+          causeTags: data.causeTags,
+          computedAt: new Date().toISOString(),
+        },
+      }));
+    } catch {
+      showError('네트워크 오류로 AI 점수를 분석하지 못했습니다.', 6000);
+    } finally {
+      setScoringPostId('');
+    }
+  }, [profile, showError]);
+
   useEffect(() => {
     if (syncedState) {
       // syncedState는 외부 fetch 응답(API 응답 캐시/확장프로그램 등 외부 요인에 영향받을 수 있음)이라
@@ -337,6 +544,30 @@ export default function AiBriefingSection() {
     if (kws.length > 0) {
       setPostKeywords(prev => ({ ...prev, [postId]: kws }));
       saveKeywordsToDb(profile.blogId, postId, kws);
+    }
+  };
+
+  // 포스팅 제목/본문을 분석해 대표 키워드를 자동 추출 — 입력칸만 채우고 저장은 사용자가 blur/Enter로 확정
+  const handleAutoExtract = async (post: BlogPost) => {
+    setExtractingPostId(post.id);
+    try {
+      const res = await fetch(
+        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile!.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}`,
+      );
+      if (!res.ok) {
+        showError('대표 키워드 자동 추출에 실패했습니다.', 5000);
+        return;
+      }
+      const data: { keywords?: string[] } = await res.json();
+      if (!data.keywords || data.keywords.length === 0) {
+        showError('이 포스팅에서 대표 키워드를 찾지 못했습니다. 직접 입력해주세요.', 5000);
+        return;
+      }
+      setEditingKeywords(prev => ({ ...prev, [post.id]: data.keywords!.slice(0, 5) }));
+    } catch {
+      showError('네트워크 오류로 대표 키워드를 추출하지 못했습니다.', 5000);
+    } finally {
+      setExtractingPostId('');
     }
   };
 
@@ -504,6 +735,69 @@ export default function AiBriefingSection() {
       .filter(e => e.result && (e.result.exposed === false || e.result.tabExposed === false));
   });
 
+  // 포스트 단위 노출 상태 파생 (해당 포스트에 할당된 키워드 중 하나라도 인용/미인용이면 그 상태로 판정)
+  const postExposureState = (postId: string): { briefing: boolean | null; tab: boolean | null } => {
+    const keywords = (postKeywords || {})[postId] || [];
+    const results = keywords.map(kw => (briefingResults || {})[rankKey(postId, kw)]).filter(Boolean) as BriefingResult[];
+    if (results.length === 0) return { briefing: null, tab: null };
+    return {
+      briefing: results.some(r => r.exposed === true) ? true : results.some(r => r.exposed === false) ? false : null,
+      tab: results.some(r => r.tabExposed === true) ? true : results.some(r => r.tabExposed === false) ? false : null,
+    };
+  };
+
+  const scoredPosts = Object.values(postScores);
+  const kpiAvg = (key: 'aiScore' | 'seoScore' | 'geoScore' | 'aeoScore'): number =>
+    scoredPosts.length === 0 ? 0 : Math.round(scoredPosts.reduce((s, p) => s + p[key], 0) / scoredPosts.length);
+
+  const kpiExposure = blogPosts.reduce(
+    (acc, post) => {
+      const st = postExposureState(post.id);
+      if (st.briefing === true) acc.briefingExposed++;
+      if (st.briefing === false) acc.briefingUnexposed++;
+      if (st.tab === true) acc.tabExposed++;
+      if (st.tab === false) acc.tabUnexposed++;
+      return acc;
+    },
+    { briefingExposed: 0, briefingUnexposed: 0, tabExposed: 0, tabUnexposed: 0 },
+  );
+
+  const FILTER_OPTIONS: { key: typeof filter; label: string }[] = [
+    { key: 'all', label: '전체' },
+    { key: 'briefingExposed', label: 'AI브리핑 노출' },
+    { key: 'briefingUnexposed', label: 'AI브리핑 미노출' },
+    { key: 'tabExposed', label: 'AI탭 노출' },
+    { key: 'tabUnexposed', label: 'AI탭 미노출' },
+    { key: 'needsImprovement', label: '개선필요' },
+    { key: 'highScore', label: '점수높은글' },
+    { key: 'lowScore', label: '점수낮은글' },
+  ];
+
+  const filteredPosts = blogPosts.filter(post => {
+    if (filter === 'all') return true;
+    const st = postExposureState(post.id);
+    const score = postScores[post.id];
+    switch (filter) {
+      case 'briefingExposed': return st.briefing === true;
+      case 'briefingUnexposed': return st.briefing === false;
+      case 'tabExposed': return st.tab === true;
+      case 'tabUnexposed': return st.tab === false;
+      case 'needsImprovement': return !!score && score.aiScore < 60;
+      case 'highScore': return !!score && score.aiScore >= 70;
+      case 'lowScore': return !!score && score.aiScore < 40;
+      default: return true;
+    }
+  });
+
+  // 성공사례: exposed/tabExposed=true 항목을 조회수 내림차순으로
+  const successCases = blogPosts
+    .filter(post => {
+      const st = postExposureState(post.id);
+      return st.briefing === true || st.tab === true;
+    })
+    .sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
+    .slice(0, 5);
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {errorMessage && (
@@ -561,6 +855,19 @@ export default function AiBriefingSection() {
         같은 키워드라도 검색 시점에 따라 두 서비스 각각의 노출 여부와 출처 목록이 서로 다르게 나타날 수 있습니다.
       </p>
 
+      {/* KPI 바 — 현재 페이지 로드된 포스팅 기준(전체 블로그 합산 아님) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <AnimatedStatCard label="전체 포스팅" value={blogPosts.length} description="현재 페이지 기준" color="dim" />
+        <AnimatedStatCard label="AI브리핑 노출" value={kpiExposure.briefingExposed} color="up" />
+        <AnimatedStatCard label="AI브리핑 미노출" value={kpiExposure.briefingUnexposed} color="down" />
+        <AnimatedStatCard label="AI탭 노출" value={kpiExposure.tabExposed} color="up" />
+        <AnimatedStatCard label="AI탭 미노출" value={kpiExposure.tabUnexposed} color="down" />
+        <AnimatedStatCard label="평균 AI점수" value={kpiAvg('aiScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
+        <AnimatedStatCard label="평균 SEO점수" value={kpiAvg('seoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
+        <AnimatedStatCard label="평균 GEO점수" value={kpiAvg('geoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
+        <AnimatedStatCard label="평균 AEO점수" value={kpiAvg('aeoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
+      </div>
+
       {/* 미노출 게시글 — AI 브리핑 또는 AI 탭 중 하나라도 미인용으로 확인된 항목만 모아서 보여줌 */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30">
@@ -594,6 +901,44 @@ export default function AiBriefingSection() {
         )}
       </GlassCard>
 
+      {/* 성공사례 — 인용/노출 확인된 항목을 조회수 내림차순으로 */}
+      <GlassCard padding="none">
+        <div className="px-5 py-4 border-b border-border bg-bg/30">
+          <h3 className="font-bold text-[15px]">성공사례</h3>
+          <p className="text-[11px] text-dim mt-0.5">
+            AI 브리핑 또는 AI 탭에 인용된 게시글 (조회수순). 조회수 증가율·클릭률은 히스토리 기능(준비 중) 완성 후 제공됩니다.
+          </p>
+        </div>
+        {successCases.length === 0 ? (
+          <div className="py-8 text-center text-dim text-sm">아직 확인된 성공사례가 없습니다.</div>
+        ) : (
+          <div className="divide-y divide-border/20">
+            {successCases.map(post => {
+              const st = postExposureState(post.id);
+              return (
+                <div key={post.id} className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+                  <a href={post.url} target="_blank" rel="noopener noreferrer"
+                    className="font-semibold text-sm hover:text-accent transition truncate block max-w-[420px]" title={post.title}>
+                    {post.title}
+                  </a>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {typeof post.viewCount === 'number' && (
+                      <span className="text-[10px] text-dim">조회수 {post.viewCount.toLocaleString()}</span>
+                    )}
+                    {st.briefing === true && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">AI브리핑 인용</span>
+                    )}
+                    {st.tab === true && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">AI탭 노출</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </GlassCard>
+
       {/* 최근 변경 내역 — Phase 2 예정 (일별 스냅샷 히스토리 테이블 필요) */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30">
@@ -620,11 +965,28 @@ export default function AiBriefingSection() {
         </span>
       </div>
 
+      {/* 필터 (현재 로드된 페이지 데이터 기준 클라이언트 사이드 필터) */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {FILTER_OPTIONS.map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => setFilter(opt.key)}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border ${
+              filter === opt.key
+                ? 'bg-accent text-white border-accent'
+                : 'bg-surface text-dim border-border hover:border-accent/50'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* 테이블 */}
       <GlassCard padding="none">
         {postsLoading ? (
           <div className="p-12 text-center text-dim text-sm">포스팅을 불러오는 중...</div>
-        ) : blogPosts.length === 0 ? (
+        ) : filteredPosts.length === 0 ? (
           <div className="p-12 text-center text-dim text-sm">포스팅이 없습니다.</div>
         ) : (
           <>
@@ -635,22 +997,32 @@ export default function AiBriefingSection() {
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
                     <th className="text-left px-4 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-left px-3 py-3 font-semibold w-44">타겟 키워드</th>
-                    <th className="text-center px-3 py-3 font-semibold w-24">AI 브리핑</th>
-                    <th className="text-center px-3 py-3 font-semibold w-32">AI 탭</th>
-                    <th className="text-center px-4 py-3 font-semibold w-16">확인</th>
+                    <th className="text-left px-3 py-3 font-semibold w-28">대표키워드</th>
+                    <th className="text-left px-3 py-3 font-semibold w-40">타겟 키워드</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">AI브리핑</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">AI탭</th>
+                    <th className="text-center px-2 py-3 font-semibold w-12">AI</th>
+                    <th className="text-center px-2 py-3 font-semibold w-12">SEO</th>
+                    <th className="text-center px-2 py-3 font-semibold w-12">GEO</th>
+                    <th className="text-center px-2 py-3 font-semibold w-12">AEO</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">조회수</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">발행일</th>
+                    <th className="text-center px-3 py-3 font-semibold w-14">확인</th>
+                    <th className="text-center px-3 py-3 font-semibold w-24">개선하기</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {blogPosts.map((post, i) => {
+                  {filteredPosts.map((post, i) => {
                     const keywords = editingKeywords[post.id] || [];
                     const rowCount = Math.max(keywords.length, 1);
+                    const score = postScores[post.id];
                     return keywords.map((kw, kwIdx) => {
                       const key = rankKey(post.id, kw.trim());
                       const result = briefingResults[key];
                       const isFirst = kwIdx === 0;
                       const isLast = kwIdx === rowCount - 1;
                       return (
+                        <>
                         <tr key={`${post.id}-${kwIdx}`} className={`hover:bg-surface-hover transition ${!isLast ? '!border-b-0' : ''}`}>
                           {isFirst && (
                             <>
@@ -659,16 +1031,22 @@ export default function AiBriefingSection() {
                               </td>
                               <td className="px-3 py-3 align-top" rowSpan={rowCount}>
                                 <a href={post.url} target="_blank" rel="noopener noreferrer"
-                                  className="font-semibold hover:text-accent transition truncate block max-w-[320px]" title={post.title}>
+                                  className="font-semibold hover:text-accent transition truncate block max-w-[280px]" title={post.title}>
                                   {post.title}
                                 </a>
                                 <div className="flex items-center gap-1.5 mt-1">
-                                  <span className="text-[10px] text-dim">{post.date}</span>
                                   {post.commentCount > 0 && (
                                     <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 mt-1.5">
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  {!keywords.some(k => k.trim()) && (
+                                    <button onClick={() => handleAutoExtract(post)}
+                                      disabled={extractingPostId === post.id}
+                                      className="text-xs text-accent cursor-pointer hover:underline disabled:opacity-50">
+                                      {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
+                                    </button>
+                                  )}
                                   {keywords.length < 5 && (
                                     <button onClick={() => addKeyword(post.id)}
                                       className="text-xs text-accent cursor-pointer hover:underline">
@@ -682,6 +1060,9 @@ export default function AiBriefingSection() {
                                     </button>
                                   )}
                                 </div>
+                              </td>
+                              <td className="px-3 py-3 align-top" rowSpan={rowCount}>
+                                <span className="text-xs text-dim">{score?.representativeKeyword || '—'}</span>
                               </td>
                             </>
                           )}
@@ -716,7 +1097,29 @@ export default function AiBriefingSection() {
                           <td className="text-center px-3 py-1.5">
                             <AiTabBadge result={result} />
                           </td>
-                          <td className="text-center px-4 py-1.5">
+                          {isFirst && (
+                            <>
+                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
+                                <ScoreCell score={score?.aiScore} />
+                              </td>
+                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
+                                <ScoreCell score={score?.seoScore} />
+                              </td>
+                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
+                                <ScoreCell score={score?.geoScore} />
+                              </td>
+                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
+                                <ScoreCell score={score?.aeoScore} />
+                              </td>
+                              <td className="text-center px-3 py-1.5 align-top text-xs text-dim" rowSpan={rowCount}>
+                                {typeof post.viewCount === 'number' ? post.viewCount.toLocaleString() : '—'}
+                              </td>
+                              <td className="text-center px-3 py-1.5 align-top text-[10px] text-dim" rowSpan={rowCount}>
+                                {post.date}
+                              </td>
+                            </>
+                          )}
+                          <td className="text-center px-3 py-1.5">
                             <button
                               onClick={() => checkSingleKeyword(post, kw)}
                               disabled={!!checkingKey || !kw.trim()}
@@ -727,7 +1130,49 @@ export default function AiBriefingSection() {
                               ) : result ? '재확인' : '확인'}
                             </button>
                           </td>
+                          {isFirst && (
+                            <td className="text-center px-3 py-1.5 align-top" rowSpan={rowCount}>
+                              {!score ? (
+                                <button
+                                  onClick={() => handleAnalyzeScore(post)}
+                                  disabled={scoringPostId === post.id}
+                                  className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                                >
+                                  {scoringPostId === post.id ? '분석 중...' : '분석하기'}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
+                                  className="text-[11px] text-accent hover:underline cursor-pointer"
+                                >
+                                  개선하기<br /><span className="text-[9px] text-dim">(기초 진단)</span>
+                                </button>
+                              )}
+                            </td>
+                          )}
                         </tr>
+                        {isFirst && score && score.causeTags.length > 0 && (
+                          <tr key={`${post.id}-causes`} className={!isLast ? '!border-b-0' : ''}>
+                            <td colSpan={2} />
+                            <td colSpan={12} className="px-3 pb-2 pt-0">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {score.causeTags.map(tag => (
+                                  <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-down/10 text-down">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {isFirst && improvePanelPostId === post.id && score && (
+                          <tr key={`${post.id}-improve`} className={!isLast ? '!border-b-0' : ''}>
+                            <td colSpan={14} className="px-4 pb-4 pt-1 bg-bg/30">
+                              <ImprovePanel score={score} />
+                            </td>
+                          </tr>
+                        )}
+                        </>
                       );
                     });
                   })}
@@ -737,8 +1182,9 @@ export default function AiBriefingSection() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {blogPosts.map((post, i) => {
+              {filteredPosts.map((post, i) => {
                 const keywords = editingKeywords[post.id] || [];
+                const score = postScores[post.id];
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
                     <div className="flex items-start gap-2">
@@ -753,6 +1199,32 @@ export default function AiBriefingSection() {
                         <span className="text-[10px] text-dim ml-1">{post.date}</span>
                       </div>
                     </div>
+
+                    <div className="pl-7 flex items-center gap-2 flex-wrap text-[10px] text-dim">
+                      {score?.representativeKeyword && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-bg border border-border">대표키워드: {score.representativeKeyword}</span>
+                      )}
+                      {typeof post.viewCount === 'number' && <span>조회수 {post.viewCount.toLocaleString()}</span>}
+                    </div>
+
+                    {score && (
+                      <div className="pl-7 flex items-center gap-3 text-[11px]">
+                        <span>AI <b className={scoreColor(score.aiScore)}>{score.aiScore}</b></span>
+                        <span>SEO <b className={scoreColor(score.seoScore)}>{score.seoScore}</b></span>
+                        <span>GEO <b className={scoreColor(score.geoScore)}>{score.geoScore}</b></span>
+                        <span>AEO <b className={scoreColor(score.aeoScore)}>{score.aeoScore}</b></span>
+                      </div>
+                    )}
+
+                    {score && score.causeTags.length > 0 && (
+                      <div className="pl-7 flex items-center gap-1 flex-wrap">
+                        {score.causeTags.map(tag => (
+                          <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-down/10 text-down">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="space-y-1.5 pl-7">
                       {keywords.map((kw, kwIdx) => {
@@ -803,7 +1275,14 @@ export default function AiBriefingSection() {
                           </div>
                         );
                       })}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {!keywords.some(k => k.trim()) && (
+                          <button onClick={() => handleAutoExtract(post)}
+                            disabled={extractingPostId === post.id}
+                            className="text-xs text-accent cursor-pointer hover:underline disabled:opacity-50">
+                            {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
+                          </button>
+                        )}
                         {keywords.length < 5 && (
                           <button onClick={() => addKeyword(post.id)}
                             className="text-xs text-accent cursor-pointer hover:underline">
@@ -817,6 +1296,30 @@ export default function AiBriefingSection() {
                           </button>
                         )}
                       </div>
+                    </div>
+
+                    <div className="pl-7 pt-0.5">
+                      {!score ? (
+                        <button
+                          onClick={() => handleAnalyzeScore(post)}
+                          disabled={scoringPostId === post.id}
+                          className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                        >
+                          {scoringPostId === post.id ? 'AI 점수 분석 중...' : 'AI 점수 분석하기'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
+                          className="text-[11px] text-accent hover:underline cursor-pointer"
+                        >
+                          개선하기 <span className="text-dim">(기초 진단)</span>
+                        </button>
+                      )}
+                      {improvePanelPostId === post.id && score && (
+                        <div className="mt-2">
+                          <ImprovePanel score={score} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
