@@ -12,5 +12,9 @@ export function dailyCrawlQueueOrFilter(): string {
 }
 
 export const PRODUCTION_CRAWL_SHARDS = 3;
-export const PRODUCTION_CRAWL_BATCH = 650;
-export const PRODUCTION_CRAWL_CONCURRENCY = 18;
+export const PRODUCTION_CRAWL_BATCH = 400;
+// 3개 샤드가 5분 주기로 1분씩 엇갈려 실행되며 서로 겹치는 구간이 있다.
+// 동시성이 높으면(구 18, MAX_CONCURRENCY=15로 clamp) 겹치는 구간에 최대 ~45개
+// 인플루언서 파이프라인이 동시에 DB에 upsert를 날려 로그인(Auth) 쿼리까지
+// 지연시켰다 (2026-07-17, login_attempt_logs 타임아웃 56% 확인). 낮춰서 완화.
+export const PRODUCTION_CRAWL_CONCURRENCY = 6;
