@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
@@ -72,23 +72,6 @@ function rankKey(postId: string, keyword: string): string {
   return `${postId}::${keyword}`;
 }
 
-async function getProfileFromApi(): Promise<BloggerProfile | null> {
-  try {
-    const res = await fetch('/api/auth/me');
-    const data = await res.json();
-    if (data.type === 'unified' && (data.blogId || data.id)) {
-      return { blogId: data.blogId || data.id, displayName: data.name || data.blogId || data.id, isInfluencer: true };
-    }
-    if (data.type === 'blogger' && data.id) {
-      return { blogId: data.id, displayName: data.name || data.id, isInfluencer: false };
-    }
-    if (data.type === 'influencer' && data.id) {
-      return { blogId: data.blogId || data.id, displayName: data.name || data.id, isInfluencer: true };
-    }
-    return null;
-  } catch { return null; }
-}
-
 /**
  * "AI 브리핑" 컬럼 배지 — 통합검색 인라인 위젯(AI 탭과 무관한 별개 서비스) 결과만 사용.
  * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "인용"/"미인용" 두 가지로만 통일한다.
@@ -157,12 +140,11 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 export default function AiBriefingSection() {
-  const [profile, setProfile] = useState<BloggerProfile | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [postsPerPage, setPostsPerPage] = useState(30);
-  const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
 
   // postId → 타겟 키워드 배열
@@ -186,9 +168,24 @@ export default function AiBriefingSection() {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
   }, []);
 
-  const { user } = useAuth();
   const isLoggedIn = !!(user.id || user.authId);
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+
+  // useAuth()가 이미 불러온 사용자 정보에서 도출 — 별도로 /api/auth/me를 다시 fetch하지 않는다.
+  // (페이지 마운트 시 여러 컴포넌트가 각자 인증 확인을 중복 호출하면 미들웨어에서 동시에
+  // 세션 갱신을 시도해 충돌하는 문제가 있었음 — 2026-07-17)
+  const profile = useMemo<BloggerProfile | null>(() => {
+    if (user.type === 'unified' && (user.blogId || user.id)) {
+      return { blogId: (user.blogId || user.id)!, displayName: user.name || user.blogId || user.id || '', isInfluencer: true };
+    }
+    if (user.type === 'blogger' && user.id) {
+      return { blogId: user.id, displayName: user.name || user.id, isInfluencer: false };
+    }
+    if (user.type === 'influencer' && user.id) {
+      return { blogId: (user.blogId || user.id)!, displayName: user.name || user.id, isInfluencer: true };
+    }
+    return null;
+  }, [user]);
 
   const handleDownload = () => {
     if (!canDownload) return;
@@ -289,15 +286,10 @@ export default function AiBriefingSection() {
   }, [postsPerPage]);
 
   useEffect(() => {
-    (async () => {
-      const p = await getProfileFromApi();
-      setProfile(p);
-      if (p?.blogId) {
-        await fetchBlogPosts(p.blogId, 1);
-      }
-      setLoading(false);
-    })();
-  }, [fetchBlogPosts]);
+    if (profile?.blogId) {
+      fetchBlogPosts(profile.blogId, 1);
+    }
+  }, [profile?.blogId, fetchBlogPosts]);
 
   const { data: syncedState } = useQuery({
     queryKey: ['ai-briefing-state', profile?.blogId],
@@ -448,7 +440,7 @@ export default function AiBriefingSection() {
     }
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="h-8 w-32 bg-border/30 rounded animate-pulse" />

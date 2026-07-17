@@ -107,6 +107,41 @@ function matchesPathPrefix(pathname: string, prefix: string): boolean {
 }
 
 /**
+ * 페이지 하나가 마운트될 때 /api/auth/me, /api/notifications, /api/messages 등
+ * 5~8개 요청이 동시에 이 미들웨어를 거치며 각자 supabase.auth.getUser()를 호출한다.
+ * 액세스 토큰이 만료 시점 근처면 이 병렬 호출들이 동시에 같은 refresh_token 갱신을
+ * 시도하고, Supabase가 나머지를 "Too many concurrent token refresh requests" 409로
+ * 거부하면서 해당 Edge 함수 invocation 자체가 죽는다 (2026-07-17 프로덕션 로그로 확인,
+ * /my/naver-mate 등에서 "내 대시보드를 불러오지 못했습니다" 오류의 실제 원인).
+ * 같은 순간 도착한 요청들이 쿠키(세션)가 같으면 getUser() 호출 자체를 공유해
+ * Supabase로 나가는 동시 갱신 요청 수를 줄인다 — warm 인스턴스 내에서만 유효하지만
+ * 새 인프라 없이 근본 원인(동시 갱신 폭주)을 줄이는 가장 직접적인 조치.
+ */
+const inFlightUserChecks = new Map<string, Promise<{ id: string; email?: string | null } | null>>();
+
+function getUserDeduped(
+  supabase: ReturnType<typeof createServerClient>,
+  cookieHeader: string,
+): Promise<{ id: string; email?: string | null } | null> {
+  const existing = inFlightUserChecks.get(cookieHeader);
+  if (existing) return existing;
+
+  const promise = supabase.auth.getUser()
+    .then((r: Awaited<ReturnType<typeof supabase.auth.getUser>>) => r.data.user)
+    .catch(() => null);
+
+  inFlightUserChecks.set(cookieHeader, promise);
+  promise.finally(() => {
+    // 같은 배치에 도착한 요청들끼리만 공유하고 곧바로 비워, 이후 요청은 최신 세션을 다시 확인한다.
+    if (inFlightUserChecks.get(cookieHeader) === promise) {
+      inFlightUserChecks.delete(cookieHeader);
+    }
+  });
+
+  return promise;
+}
+
+/**
  * Supabase 외부 호출이 hang/지연되어 Edge 미들웨어가 Vercel 제한시간(~25초)을
  * 넘기면 MIDDLEWARE_INVOCATION_TIMEOUT(504)로 사이트 전체가 죽는다. 각 호출을
  * 짧은 타임아웃으로 감싸 지연 시 안전한 fallback 으로 즉시 진행시켜, 일시적
@@ -187,9 +222,9 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // 세션 토큰 갱신 + 사용자 조회 (지연 시 비로그인으로 폴백 — 미들웨어 hang 방지)
+  // 세션 토큰 갱신 + 사용자 조회 (지연/동시 갱신 충돌 시 비로그인으로 폴백 — 미들웨어 hang·crash 방지)
   const user = await withTimeout(
-    supabase.auth.getUser().then((r) => r.data.user),
+    getUserDeduped(supabase, request.headers.get('cookie') || ''),
     8000,
     null,
   );
