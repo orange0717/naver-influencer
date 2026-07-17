@@ -42,6 +42,16 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     ],
   },
   {
+    label: '네이버 인플루언서',
+    icon: 'I',
+    items: [
+      { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
+      { label: '리스트', href: '/influencers/free-plan', authOnly: true },
+      { label: '공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
+      { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
+    ],
+  },
+  {
     label: '키워드',
     icon: 'K',
     items: [
@@ -50,16 +60,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
       { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
-    ],
-  },
-  {
-    label: '네이버 인플루언서',
-    icon: 'I',
-    items: [
-      { label: '내 팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
-      { label: '인플루언서 리스트(명단)', href: '/influencers/free-plan', authOnly: true },
-      { label: '네이버 인플루언서 공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
-      { label: '인플루언서 리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
     ],
   },
   {
@@ -120,3 +120,20 @@ export const SIDEBAR_HIDDEN_PREFIXES = [
   '/notice',
   '/admin',
 ];
+
+/**
+ * 현재 경로와 가장 구체적으로(가장 긴 href로) 일치하는 단 하나의 href를 찾는다.
+ * 여러 메뉴가 서로의 접두사인 경우(예: /my ⊂ /my/naver-mate) 단순 startsWith 매칭만 쓰면
+ * 두 메뉴가 동시에 active가 되므로, 매칭된 href 중 가장 긴 것 하나만 선택한다.
+ */
+export function getActiveHref(pathname: string, hrefs: readonly string[]): string | null {
+  let best: string | null = null;
+  for (const href of hrefs) {
+    if (href === '#') continue;
+    const matches = pathname === href || pathname.startsWith(`${href}/`);
+    if (matches && (best === null || href.length > best.length)) {
+      best = href;
+    }
+  }
+  return best;
+}

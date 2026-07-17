@@ -140,7 +140,7 @@ export default function MyFansPage() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* 헤더 */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-text">내 팬 관리</h1>
+          <h1 className="text-2xl font-bold text-text">맞팬관리</h1>
           <p className="text-sm text-dim mt-1">
             네이버 인플루언서의 팔로우 관계를 분석합니다. 맞팬·일방팬을 한눈에 파악하세요.
           </p>

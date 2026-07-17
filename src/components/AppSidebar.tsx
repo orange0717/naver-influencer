@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { canAccess, planHighlight } from '@/lib/plan-access';
 import { isDesktop } from '@/lib/desktop';
 import {
@@ -11,12 +12,16 @@ import {
   SIDEBAR_HOME,
   SIDEBAR_FOOTER_LINKS,
   SIDEBAR_HIDDEN_PREFIXES,
+  getActiveHref,
   type SidebarItem,
 } from '@/lib/sidebar-nav';
 import type { PlanTier } from '@/lib/dashboard-catalog';
 import { useEffect, useState } from 'react';
 
 const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
+
+/** 사이드바 전체 메뉴 href 목록 — 현재 경로와 가장 구체적으로 일치하는 단 하나의 메뉴만 active로 고르기 위함 */
+const ALL_NAV_HREFS = [SIDEBAR_HOME.href, ...SIDEBAR_GROUPS.flatMap((group) => group.items.map((item) => item.href))];
 
 function LockIcon() {
   return (
@@ -31,14 +36,17 @@ function NavLink({
   item,
   active,
   currentPlan,
+  isGuest,
   onNavigate,
 }: {
   item: SidebarItem;
   active: boolean;
   currentPlan: PlanTier;
+  isGuest: boolean;
   onNavigate: () => void;
 }) {
   const router = useRouter();
+  const { openGate } = useMemberOnlyGate();
 
   if (item.disabled) {
     return (
@@ -46,6 +54,23 @@ function NavLink({
         {item.label}
         <span className="ml-auto text-[10px] font-bold text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
       </span>
+    );
+  }
+
+  // 비회원(로그인·데모 모두 아님): 회원 전용 메뉴는 라우팅 대신 회원 전용 모달로 유도
+  if (item.authOnly && isGuest) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate();
+          openGate(item.href);
+        }}
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-dim hover:bg-bg transition-colors text-left cursor-pointer"
+      >
+        <span className="truncate">{item.label}</span>
+        <span className="ml-auto text-dim/60"><LockIcon /></span>
+      </button>
     );
   }
 
@@ -83,12 +108,14 @@ function NavLink({
 function SidebarContent({
   pathname,
   currentPlan,
+  isGuest,
   isInDesktopApp,
   onNavigate,
   showFooterLinks = true,
 }: {
   pathname: string;
   currentPlan: PlanTier;
+  isGuest: boolean;
   isInDesktopApp: boolean;
   onNavigate: () => void;
   /** 공지사항/커뮤니티/성장후기/이용권/서비스소개 — 데스크탑에서는 헤더 우측 네비로 이동했으므로 숨김 */
@@ -97,14 +124,16 @@ function SidebarContent({
   const visibleFooterLinks = SIDEBAR_FOOTER_LINKS.filter(
     (link) => !(isInDesktopApp && DESKTOP_HIDDEN_HREFS.has(link.href)),
   );
+  const activeHref = getActiveHref(pathname, ALL_NAV_HREFS);
 
   return (
     <>
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
         <NavLink
           item={SIDEBAR_HOME}
-          active={pathname === '/'}
+          active={SIDEBAR_HOME.href === activeHref}
           currentPlan={currentPlan}
+          isGuest={isGuest}
           onNavigate={onNavigate}
         />
         {SIDEBAR_GROUPS.map((group) => (
@@ -115,8 +144,9 @@ function SidebarContent({
                 <NavLink
                   key={item.label}
                   item={item}
-                  active={item.href !== '#' && pathname.startsWith(item.href)}
+                  active={item.href !== '#' && item.href === activeHref}
                   currentPlan={currentPlan}
+                  isGuest={isGuest}
                   onNavigate={onNavigate}
                 />
               ))}
@@ -161,9 +191,11 @@ export default function AppSidebar() {
   }, [pathname]);
 
   const hidden = SIDEBAR_HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-  const loggedInOrDemo = !!user.id || !!user.isDemo;
 
-  if (isLoading || hidden || !loggedInOrDemo) return null;
+  if (isLoading || hidden) return null;
+
+  // 정식 로그인도, 데모 체험 중도 아닌 순수 비회원 — 메뉴는 보이되 회원 전용 항목은 클릭 시 모달로 유도
+  const isGuest = !user.id && !user.isDemo;
 
   const currentPlan: PlanTier = (() => {
     if (!user.subscriptionActive) return 'free';
@@ -207,6 +239,7 @@ export default function AppSidebar() {
           <SidebarContent
             pathname={pathname}
             currentPlan={currentPlan}
+            isGuest={isGuest}
             isInDesktopApp={isInDesktopApp}
             onNavigate={() => {}}
             showFooterLinks={false}
@@ -232,6 +265,7 @@ export default function AppSidebar() {
           <SidebarContent
             pathname={pathname}
             currentPlan={currentPlan}
+            isGuest={isGuest}
             isInDesktopApp={isInDesktopApp}
             onNavigate={closeMobile}
           />

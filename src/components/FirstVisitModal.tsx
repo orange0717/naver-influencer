@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isDesktop } from '@/lib/desktop';
 import DemoModal from './DemoModal';
@@ -11,9 +11,10 @@ const STORAGE_KEY = 'ninfle_first_visit_dismissed';
 // funnel/auth 페이지엔 자체 데모 진입점이 있으므로 모달 중복 방지
 const SKIP_PATHS = ['/auth', '/trial', '/intro'];
 
-export default function FirstVisitModal() {
+function FirstVisitModalInner() {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
 
@@ -24,12 +25,15 @@ export default function FirstVisitModal() {
     // 데스크탑 앱 사용자는 이미 앱을 설치한 상태이므로 처음 방문 안내 불필요
     if (isDesktop()) return;
     if (SKIP_PATHS.some(p => pathname?.startsWith(p))) return;
+    // 회원 전용 모달(memberOnly 쿼리)이 이미 같은 목적의 데모 안내를 띄우므로 중복 방지
+    if (searchParams.get('memberOnly') === '1') return;
     try {
       if (window.localStorage.getItem(STORAGE_KEY) === '1') return;
     } catch {
       return;
     }
     setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id, user.isDemo, isLoading, pathname]);
 
   function dismiss() {
@@ -97,5 +101,13 @@ export default function FirstVisitModal() {
       )}
       <DemoModal open={showDemo} onClose={() => setShowDemo(false)} />
     </>
+  );
+}
+
+export default function FirstVisitModal() {
+  return (
+    <Suspense fallback={null}>
+      <FirstVisitModalInner />
+    </Suspense>
   );
 }

@@ -83,6 +83,25 @@ const DEVICE_ID_BYPASS = [
 /** HTML 문서만: 커뮤니티는 비회원·비데모 접근 불가. 그 외 경로는 레이아웃/페이지에서 세부 제어 */
 const AUTH_REQUIRED_PAGE_PREFIXES = ['/community'];
 
+/**
+ * 좌측 사이드바 "회원 전용" 메뉴 — 비회원(정식 로그인·데모 모두 아님)이 URL 직접 입력·새 탭·
+ * 북마크로 접근해도 사이드바 클릭 차단과 동일하게 막는다 (Route Guard).
+ * /keywords, /community, /notice 는 위 다른 규칙에서 이미 커버되므로 중복 포함하지 않는다.
+ * /influencers/[id] 상세 페이지는 OG 공유용 공개 페이지라 제외 — /influencers(목록)와
+ * /influencers/free-plan(무료 명단)만 별도로 처리한다.
+ */
+const MEMBER_ONLY_GATE_PREFIXES = [
+  '/rankings/influencer',
+  '/rankings/official',
+  '/influencers/free-plan',
+  '/my/naver-mate',
+  '/my/fans',
+  '/my/keyword-ranking',
+  '/decoder',
+  '/competitor',
+  '/image-converter',
+];
+
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
@@ -212,6 +231,19 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    return NextResponse.redirect(url);
+  }
+
+  // 사이드바 "회원 전용" 메뉴 — 비회원의 URL 직접 접근을 사이드바 클릭 차단과 동일하게 막고,
+  // 홈에서 회원 전용 모달(데모 체험/로그인 선택지)을 띄운다.
+  const needsMemberOnlyGate =
+    acceptsHtml &&
+    (pathname === '/influencers' ||
+      MEMBER_ONLY_GATE_PREFIXES.some(p => matchesPathPrefix(pathname, p)));
+  if (needsMemberOnlyGate && !user && !hasDemoSession) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 

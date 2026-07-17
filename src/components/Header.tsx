@@ -89,7 +89,10 @@ export default function Header({ serverUser }: HeaderProps) {
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
-            <span className="font-title font-bold text-base text-white hidden sm:block">N인플</span>
+            <span className="font-title font-bold text-base text-white hidden sm:flex items-center gap-1.5">
+              N인플
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none bg-white/20 text-white">베타</span>
+            </span>
           </Link>
 
           {/* ── 왼쪽: 공지사항 등 서브 네비 (로고 옆) ── */}
@@ -204,31 +207,6 @@ export default function Header({ serverUser }: HeaderProps) {
           </div>
         </div>
       </header>
-
-      {/* ── 비로그인 게스트 전용 모바일 메뉴 (로그인 사용자는 AppSidebar가 담당) ── */}
-      {mobileOpen && !authLoading && !user.id && (
-        <div id="mobile-menu" className="lg:hidden fixed inset-0 top-16 z-40 bg-bg border-t border-border overflow-y-auto">
-          <nav aria-label="모바일 게스트 네비게이션" className="flex flex-col p-4 gap-0.5">
-            {GUEST_NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={closeMobile}
-                className="font-title flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-dim hover:text-text hover:bg-surface transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="border-t border-border/50 my-3 mx-2" />
-            <button
-              type="button"
-              onClick={() => { closeMobile(); openLogin(); }}
-              className="flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold text-accent hover:bg-accent/5 transition-colors cursor-pointer text-left w-full">
-              로그인 / 회원가입
-            </button>
-          </nav>
-        </div>
-      )}
     </>
   );
 }
