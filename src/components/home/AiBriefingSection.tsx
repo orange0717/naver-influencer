@@ -727,14 +727,6 @@ export default function AiBriefingSection() {
 
   const totalPages = Math.ceil(blogPostsTotal / postsPerPage);
 
-  // 확인된 키워드 중 AI 브리핑 또는 AI 탭에 미노출된 항목만 모은 목록 — 신규 fetch 없이 기존 state에서 파생
-  const unexposedEntries = blogPosts.flatMap(post => {
-    const keywords = (postKeywords || {})[post.id] || [];
-    return keywords
-      .map(kw => ({ post, keyword: kw, result: (briefingResults || {})[rankKey(post.id, kw)] }))
-      .filter(e => e.result && (e.result.exposed === false || e.result.tabExposed === false));
-  });
-
   // 포스트 단위 노출 상태 파생 (해당 포스트에 할당된 키워드 중 하나라도 인용/미인용이면 그 상태로 판정)
   const postExposureState = (postId: string): { briefing: boolean | null; tab: boolean | null } => {
     const keywords = (postKeywords || {})[postId] || [];
@@ -867,39 +859,6 @@ export default function AiBriefingSection() {
         <AnimatedStatCard label="평균 GEO점수" value={kpiAvg('geoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
         <AnimatedStatCard label="평균 AEO점수" value={kpiAvg('aeoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
       </div>
-
-      {/* 미노출 게시글 — AI 브리핑 또는 AI 탭 중 하나라도 미인용으로 확인된 항목만 모아서 보여줌 */}
-      <GlassCard padding="none">
-        <div className="px-5 py-4 border-b border-border bg-bg/30">
-          <h3 className="font-bold text-[15px]">미노출 게시글</h3>
-          <p className="text-[11px] text-dim mt-0.5">AI 브리핑 또는 AI 탭 출처에 아직 포함되지 않은 확인 완료 항목</p>
-        </div>
-        {unexposedEntries.length === 0 ? (
-          <div className="py-8 text-center text-dim text-sm">미노출로 확인된 게시글이 없습니다.</div>
-        ) : (
-          <div className="divide-y divide-border/20">
-            {unexposedEntries.map(({ post, keyword, result }) => (
-              <div key={`${post.id}::${keyword}`} className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
-                <div className="min-w-0">
-                  <a href={post.url} target="_blank" rel="noopener noreferrer"
-                    className="font-semibold text-sm hover:text-accent transition truncate block max-w-[420px]" title={post.title}>
-                    {post.title}
-                  </a>
-                  <span className="text-[11px] text-dim">키워드: {keyword}</span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {result?.exposed === false && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-down/10 text-down">AI브리핑 미인용</span>
-                  )}
-                  {result?.tabExposed === false && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-down/10 text-down">AI탭 미인용</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </GlassCard>
 
       {/* 성공사례 — 인용/노출 확인된 항목을 조회수 내림차순으로 */}
       <GlassCard padding="none">
