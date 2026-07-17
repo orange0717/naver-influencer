@@ -24,14 +24,12 @@ const MAX_CONCURRENCY = 15;
 const CRON_LOCK_KEY = 'cron:crawl-challenge-ranks';
 const CRON_LOCK_TTL_SECONDS = 330;
 const TODAY = () => new Date().toISOString().slice(0, 10);
+const MAX_RUNTIME_MS = 285_000; // 300초 중 안전 마진 15초
 // 참여 키워드가 많은 인플루언서 1명이 페이지네이션(최대 100페이지)에 오래 걸리면
 // 같은 웨이브의 나머지 CONCURRENCY-1명까지 발이 묶여 웨이브 전체가 지연된다.
 // concurrency를 18→6으로 낮춘 뒤(2026-07-17) 이 영향이 커져 배치 처리량이
 // 급감하고 함수 자체가 300초를 넘겨 504로 끊기는 사례가 발생해 개별 타임아웃 추가.
 const PER_INFLUENCER_TIMEOUT_MS = 20_000;
-// 웨이브 시작 전 체크되므로, 컷오프 이후 마지막 웨이브가 PER_INFLUENCER_TIMEOUT_MS만큼
-// 더 걸릴 수 있다 (300초 하드 리밋 - 20초 - 여유 15초 = 265초에서 새 웨이브 시작 중단).
-const MAX_RUNTIME_MS = 265_000;
 
 /** keyword를 정규화 (keyword_clean 생성용) */
 function cleanKeyword(keyword: string): string {
