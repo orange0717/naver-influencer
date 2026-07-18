@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireInfluencerPlusPage } from '@/lib/plan-server-guards';
 import Client from './Client';
@@ -77,5 +78,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id } = await params;
   // 인플루언서 구독자(또는 관리자)만 열람 가능 — 상세 포트폴리오도 키챌 데이터 포함
   await requireInfluencerPlusPage(`/influencers/${id}`);
+
+  const supabase = createServiceClient();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id);
+  const { data } = await supabase
+    .from('influencers')
+    .select('id')
+    .eq(isUuid ? 'id' : 'naver_id', decodeURIComponent(id))
+    .single();
+  if (!data) notFound();
+
   return <Client params={params} />;
 }

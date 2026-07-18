@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
 import Client from './Client';
 
@@ -71,6 +72,20 @@ export async function generateMetadata({
   }
 }
 
-export default function Page() {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = createServiceClient();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id);
+  const { data } = await supabase
+    .from('keyword_challenges')
+    .select('id')
+    .eq(isUuid ? 'id' : 'keyword', decodeURIComponent(id))
+    .single();
+  if (!data) notFound();
+
   return <Client />;
 }

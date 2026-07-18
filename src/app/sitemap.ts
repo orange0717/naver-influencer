@@ -4,19 +4,18 @@ const SITE_URL = 'https://ninfle.kr';
 
 /**
  * 정적 페이지 sitemap.
- * 동적(keywords/[id], influencers/[id]) URL 은 수만 건이므로
- * 별도 sitemap-dynamic.ts 에서 Supabase 조회 기반으로 나누어 제공 권장.
+ *
+ * /keywords, /influencers, /community, /notice(상세 포함)는 로그인/데모/구독
+ * 게이트 뒤에 있어 익명 크롤러에게 307로 리다이렉트되므로 제외했다 —
+ * sitemaps/{influencers,keywords,notices}.xml 도 sitemap-index.xml에서 제외됨.
+ * /keywords/blogger, /keywords/blog-ranking은 완전 공개 페이지라 유지.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const entries: MetadataRoute.Sitemap = [
     { url: SITE_URL, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
     { url: `${SITE_URL}/intro`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${SITE_URL}/keywords`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${SITE_URL}/influencers`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${SITE_URL}/rankings`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${SITE_URL}/community`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
-    { url: `${SITE_URL}/notice`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${SITE_URL}/keywords/blogger`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${SITE_URL}/keywords/blog-ranking`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${SITE_URL}/bot-info`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
