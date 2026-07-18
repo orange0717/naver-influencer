@@ -12,7 +12,6 @@ import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
-import KeywordSyncButton from '@/components/dashboard/KeywordSyncButton';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
@@ -192,9 +191,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     }
   }
 
-  // 모든 기능 무료 개방
-  const canAccess = true;
-
   if (!influencer) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -303,34 +299,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     };
   }).sort((a, b) => a.rank_position - b.rank_position);
 
-  // ─── 내 포스팅 리스트 (중복 제거) ───
-  const postMap = new Map<string, {
-    title: string;
-    url: string;
-    keywords: { keyword: string; rank: number; isTop3: boolean }[];
-    bestRank: number;
-    date: string;
-  }>();
-  for (const r of rankings) {
-    if (!r.latest_post_title || !r.latest_post_url) continue;
-    const key = r.latest_post_url;
-    const existing = postMap.get(key);
-    if (existing) {
-      existing.keywords.push({ keyword: r.keyword, rank: r.rank_position, isTop3: r.is_integrated_top3 });
-      if (r.rank_position < existing.bestRank) existing.bestRank = r.rank_position;
-    } else {
-      postMap.set(key, {
-        title: r.latest_post_title,
-        url: r.latest_post_url,
-        keywords: [{ keyword: r.keyword, rank: r.rank_position, isTop3: r.is_integrated_top3 }],
-        bestRank: r.rank_position,
-        date: r.snapshot_date,
-      });
-    }
-  }
-  const myPosts = Array.from(postMap.values())
-    .sort((a, b) => a.bestRank - b.bestRank);
-
   // ─── 토픽 수 크롤링 (3초 타임아웃) ───
   let topicCount = 0;
   try {
@@ -363,9 +331,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   // 통계 계산
   const totalRankedKeywords = rankings.length;
-  const avgRank = totalRankedKeywords > 0
-    ? rankings.reduce((s, r) => s + r.rank_position, 0) / totalRankedKeywords
-    : 0;
   const top3Count = rankings.filter(r => r.rank_position <= 3).length;
   const rank1Count = rankings.filter(r => r.rank_position === 1).length;
   const top10Count = rankings.filter(r => r.rank_position <= 10).length;
@@ -394,26 +359,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     ? `${latestSnapshotDate.slice(5, 7).replace(/^0/, '')}월 ${latestSnapshotDate.slice(8, 10).replace(/^0/, '')}일 기준`
     : '';
 
-  // ─── 순위별 키워드 데이터 (1~5위) ───
-  const rankKeywords = (rank: number) => rankings.filter(r => r.rank_position === rank).map(r => ({
-    keyword_id: r.keyword_id,
-    keyword: r.keyword,
-    rank_position: r.rank_position,
-    rank_change: r.rank_change,
-    category: r.category,
-  }));
-  const rank2Count = rankings.filter(r => r.rank_position === 2).length;
-  const rank3Count = rankings.filter(r => r.rank_position === 3).length;
-  const rank4Count = rankings.filter(r => r.rank_position === 4).length;
-  const rank5Count = rankings.filter(r => r.rank_position === 5).length;
-
-  // ─── 챌린지 경쟁도 분포 ───
   const avgParticipants = rankings.length > 0
     ? Math.round(rankings.reduce((s, r) => s + r.participant_count, 0) / rankings.length)
     : 0;
-  const compLow = rankings.filter(r => r.participant_count <= 30).length;
-  const compMid = rankings.filter(r => r.participant_count > 30 && r.participant_count <= 100).length;
-  const compHigh = rankings.filter(r => r.participant_count > 100).length;
 
   // ─── 1-2. 전체 순위 & 카테고리 순위 계산 (myCategory / topicScope는 순위 구간 위에서 정의)
   // 카테고리 순위 계산 (인플루언서는 카테고리끼리 경쟁)
@@ -875,9 +823,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         top3Count={top3Count}
         integratedTop3Count={integratedCount}
         avgParticipants={avgParticipants}
-        compLow={compLow}
-        compMid={compMid}
-        compHigh={compHigh}
       />
 
       {/* ─── 2-1-1. 주제별 강점 분석 ─── */}
