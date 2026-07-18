@@ -40,7 +40,6 @@ export async function refreshFollowerCount(
   supabase: ReturnType<typeof createServiceClient>,
   influencerId: string,
   naverId: string,
-  _lastCrawledAt: string | null,
 ): Promise<number | null> {
   const fresh = await refreshInfluencerProfile(supabase, influencerId, naverId);
   return fresh?.total_follower_count ?? null;

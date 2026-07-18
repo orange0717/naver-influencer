@@ -10,7 +10,6 @@ import { getPlan, calculateNextChargeAt, type PlanKey } from '@/lib/payment-conf
 import {
   preRegisterPayment,
   chargeWithBillingKey,
-  getBillingKey,
   deleteBillingKey as portoneDeleteBillingKey,
   type BillingChargeResult,
 } from '@/lib/portone';
