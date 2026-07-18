@@ -20,3 +20,16 @@ export function formatDate(d: string | null): string {
   const date = new Date(d);
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
 }
+
+/** 날짜+시각을 "YYYY-MM-DD HH:MM" 형식으로 변환 (값 없으면 '-') */
+export function formatDateTimeShort(iso: string | null): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** 날짜를 "YYYY.MM.DD" 형식으로 변환 */
+export function formatDateDot(input: string | Date): string {
+  const d = typeof input === 'string' ? new Date(input) : input;
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}

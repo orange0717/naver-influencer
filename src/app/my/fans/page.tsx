@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { formatDateTimeShort as formatDate } from '@/lib/format';
 
 interface FanItem {
   urlId: string;
@@ -69,12 +70,6 @@ const TAB_INFO: Record<TabKey, { label: string; description: string }> = {
     description: '상대가 나를 팬했지만 내가 팬하지 않은 인플루언서 (일방)',
   },
 };
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 function formatCount(n: number): string {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만`;

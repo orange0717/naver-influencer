@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatDateTimeShort as formatDate } from '@/lib/format';
 
 interface TrialUser {
   id: number;
@@ -12,12 +13,6 @@ interface TrialUser {
   last_started_at: string;
   start_count: number;
   converted: boolean;
-}
-
-function formatDate(iso: string): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export default function AdminTrialsPage() {

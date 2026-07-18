@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatDateTimeShort as formatDate } from '@/lib/format';
 
 type Plan = 'INFLUENCER' | 'BLOGGER';
 
@@ -15,12 +16,6 @@ interface Coupon {
   used_at: string | null;
   created_at: string;
   created_by: string | null;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 /** 미사용 / 사용중(만료 전) / 만료 3단계 상태 */
