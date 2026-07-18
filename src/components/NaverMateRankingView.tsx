@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatCountK as formatCount } from '@/lib/format';
 
 interface Item {
   id: string;
@@ -35,11 +36,6 @@ const PLATFORM_LABEL: Record<Item['platform'], string> = {
   kin: '지식iN',
   premium: '프리미엄콘텐츠',
 };
-
-function formatCount(n: number): string {
-  if (n >= 10000) return `${(n / 10000).toFixed(1)}만`;
-  return n.toLocaleString();
-}
 
 export default function NaverMateRankingView() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });

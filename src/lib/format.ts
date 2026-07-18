@@ -14,6 +14,13 @@ export function formatScore(n: number): string {
   return n.toLocaleString();
 }
 
+/** 숫자를 만 단위로 축약 (10000 이상만 "1.0만" 표기, 그 미만은 천단위 콤마) */
+export function formatCountK(n: number | null | undefined): string {
+  const v = n || 0;
+  if (v >= 10_000) return `${(v / 10_000).toFixed(1)}만`;
+  return v.toLocaleString();
+}
+
 /** 날짜를 한국어 형식으로 변환 (2026년 3월 21일) */
 export function formatDate(d: string | null): string {
   if (!d) return '';

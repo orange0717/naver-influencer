@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
+import { formatCountK as formatCount } from '@/lib/format';
 
 interface InfluencerRow {
   id: string;
@@ -13,13 +14,6 @@ interface InfluencerRow {
   stopped_manual: boolean;
   last_challenged_at: string | null;
   last_crawled_at: string | null;
-}
-
-function formatCount(n: number | null): string {
-  const v = n || 0;
-  if (v >= 10000) return `${(v / 10000).toFixed(1)}만`;
-  if (v >= 1000) return v.toLocaleString();
-  return String(v);
 }
 
 export default function AdminInfluencersPage() {

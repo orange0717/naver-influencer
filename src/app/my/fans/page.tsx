@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { formatDateTimeShort as formatDate } from '@/lib/format';
+import { formatDateTimeShort as formatDate, formatCountK as formatCount } from '@/lib/format';
 
 interface FanItem {
   urlId: string;
@@ -70,12 +70,6 @@ const TAB_INFO: Record<TabKey, { label: string; description: string }> = {
     description: '상대가 나를 팬했지만 내가 팬하지 않은 인플루언서 (일방)',
   },
 };
-
-function formatCount(n: number): string {
-  if (n >= 10000) return `${(n / 10000).toFixed(1)}만`;
-  if (n >= 1000) return n.toLocaleString();
-  return String(n);
-}
 
 export default function MyFansPage() {
   const router = useRouter();
