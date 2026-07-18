@@ -135,7 +135,7 @@ export default function BlogRankingClient() {
           {/* 결과 헤더 */}
           <div className="flex items-center justify-between">
             <p className="text-sm text-dim">
-              <span className="font-semibold text-text">"{searchedKeyword}"</span> {TABS.find(t => t.key === activeTab)?.label} 결과
+              <span className="font-semibold text-text">&quot;{searchedKeyword}&quot;</span> {TABS.find(t => t.key === activeTab)?.label} 결과
             </p>
             <span className="text-xs text-dim">{currentResults.length}개</span>
           </div>

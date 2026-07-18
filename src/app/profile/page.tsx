@@ -144,7 +144,6 @@ export default function ProfilePage() {
   const [snsYoutube, setSnsYoutube] = useState('');
   const [snsX, setSnsX] = useState('');
   const [snsTiktok, setSnsTiktok] = useState('');
-  const [snsThreads, setSnsThreads] = useState('');
   const [snsSaving, setSnsSaving] = useState(false);
 
   const showToast = (msg: string) => {
@@ -602,7 +601,6 @@ export default function ProfilePage() {
         userCreatedAt={user.created_at}
         subscriptionExpiresAt={user.subscription_expires_at}
         trialStartedTs={null}
-        isDemo={false}
       />
 
       {/* 구독 등급 */}

@@ -1,3 +1,5 @@
+import { formatDateDot as formatDate } from '@/lib/format';
+
 interface Props {
   /** users.created_at — N인플 가입일 */
   userCreatedAt?: string | null;
@@ -5,12 +7,6 @@ interface Props {
   subscriptionExpiresAt?: string | null;
   /** trial_started 쿠키 (timestamp ms 문자열) */
   trialStartedTs?: string | null;
-  /** 체험(7일) */
-  isDemo?: boolean;
-}
-
-function formatDate(d: Date) {
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function daysBetween(a: Date, b: Date) {
@@ -21,7 +17,6 @@ export default function UsagePeriodCard({
   userCreatedAt,
   subscriptionExpiresAt,
   trialStartedTs,
-  isDemo,
 }: Props) {
   const now = new Date();
 

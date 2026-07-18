@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { fetchInfluencersForCategory, fetchAllInfluencersSummary, fetchCategories } from '@/lib/naver-api';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
@@ -49,7 +48,7 @@ async function getInfluencersFromDB(
   supabase: ReturnType<typeof createServiceClient>,
   opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean; showInactive: boolean; sortBy: string; order: string; officialOnly?: boolean; ninflRanking?: boolean },
 ) {
-  const { category, search, page, limit, newOnly, showInactive, sortBy, order, officialOnly, ninflRanking } = opts;
+  const { category, search, page, limit, newOnly, sortBy, order, officialOnly, ninflRanking } = opts;
   const offset = (page - 1) * limit;
 
   // 카테고리 목록: 키워드 페이지와 동일 순서 (상위 주제별 그룹핑)
@@ -255,7 +254,7 @@ async function getInfluencersFromDB(
 
   // foundInKeywords 조인 (인플루언서 ID 리스트로)
   const influencerIds = (influencers || []).map(inf => inf.id);
-  let keywordMap = new Map<string, string[]>();
+  const keywordMap = new Map<string, string[]>();
 
   if (influencerIds.length > 0) {
     const { data: ikData } = await supabase
@@ -381,76 +380,6 @@ async function getInfluencersFromDB(
       page,
       total_pages: totalPages,
       source: 'db',
-    },
-    { headers: LIST_JSON_HEADERS },
-  );
-}
-
-/** 실시간 API 폴백 (DB에 데이터가 없을 때) */
-async function getInfluencersFromAPI(
-  opts: { category?: string; search?: string; page: number; limit: number },
-) {
-  const { category, search, page, limit } = opts;
-
-  if (category) {
-    const result = await fetchInfluencersForCategory(category, page, limit);
-
-    let filtered = result.influencers;
-    if (search?.trim()) {
-      const q = search.trim().toLowerCase();
-      filtered = filtered.filter(inf =>
-        inf.name.toLowerCase().includes(q) ||
-        inf.naverId.toLowerCase().includes(q) ||
-        inf.myKeywordCategory.toLowerCase().includes(q) ||
-        inf.myKeyword.toLowerCase().includes(q) ||
-        inf.categoryMyType.toLowerCase().includes(q),
-      );
-    }
-
-    const categories = await fetchCategories();
-    const categoryNames = ['전체', ...categories.map(c => c.name)];
-
-    return NextResponse.json(
-      {
-        influencers: filtered,
-        categories: categoryNames,
-        total: search ? filtered.length : result.total,
-        page,
-        total_pages: search ? Math.ceil(filtered.length / limit) : result.totalPages,
-        source: 'api',
-      },
-      { headers: LIST_JSON_HEADERS },
-    );
-  }
-
-  const result = await fetchAllInfluencersSummary();
-
-  let filtered = result.influencers;
-  if (search?.trim()) {
-    const q = search.trim().toLowerCase();
-    filtered = filtered.filter(inf =>
-      inf.name.toLowerCase().includes(q) ||
-      inf.naverId.toLowerCase().includes(q) ||
-      inf.myKeywordCategory.toLowerCase().includes(q) ||
-      inf.myKeyword.toLowerCase().includes(q) ||
-      inf.categoryMyType.toLowerCase().includes(q),
-    );
-  }
-
-  const total = filtered.length;
-  const totalPages = Math.ceil(total / limit);
-  const start = (page - 1) * limit;
-  const influencers = filtered.slice(start, start + limit);
-  const categoryNames = ['전체', ...result.categories.map(c => c.name)];
-
-  return NextResponse.json(
-    {
-      influencers,
-      categories: categoryNames,
-      total,
-      page,
-      total_pages: totalPages,
-      source: 'api',
     },
     { headers: LIST_JSON_HEADERS },
   );

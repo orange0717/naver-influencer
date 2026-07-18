@@ -210,7 +210,7 @@ export default function SpellcheckClient() {
             <div className="w-full h-[480px] p-4 border border-border rounded-lg bg-bg overflow-auto">
               {!matches && !loading && (
                 <div className="h-full flex items-center justify-center text-dim text-sm">
-                  좌측에 글을 입력하고 "검사하기"를 누르세요.
+                  좌측에 글을 입력하고 &quot;검사하기&quot;를 누르세요.
                 </div>
               )}
               {loading && (

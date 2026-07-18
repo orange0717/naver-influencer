@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 import {
   PRODUCTION_CRAWL_BATCH,
   PRODUCTION_CRAWL_CONCURRENCY,
-  PRODUCTION_CRAWL_SHARDS,
 } from '@/lib/crawl-queue';
 
 // 일일 전 인플 1회 순환: 5분×3샤드 크론 + 야간 drain.

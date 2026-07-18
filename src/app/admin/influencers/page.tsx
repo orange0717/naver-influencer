@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
+import { formatCountK as formatCount } from '@/lib/format';
 
 interface InfluencerRow {
   id: string;
@@ -13,13 +14,6 @@ interface InfluencerRow {
   stopped_manual: boolean;
   last_challenged_at: string | null;
   last_crawled_at: string | null;
-}
-
-function formatCount(n: number | null): string {
-  const v = n || 0;
-  if (v >= 10000) return `${(v / 10000).toFixed(1)}만`;
-  if (v >= 1000) return v.toLocaleString();
-  return String(v);
 }
 
 export default function AdminInfluencersPage() {
@@ -99,7 +93,7 @@ export default function AdminInfluencersPage() {
       <div>
         <h1 className="text-xl font-extrabold">인플루언서 활동중단 관리</h1>
         <p className="text-xs text-dim mt-1">
-          관리자가 직접 지정한 인플루언서만 순위에서 "활동 중단" 그룹(최하위)으로 이동합니다.
+          관리자가 직접 지정한 인플루언서만 순위에서 &quot;활동 중단&quot; 그룹(최하위)으로 이동합니다.
           자동 분류는 사용하지 않습니다.
         </p>
       </div>

@@ -829,7 +829,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
                           <code className="text-[10px] font-mono text-accent">{row.smCode}</code>
                         )}
                         {row.query && (
-                          <span className="text-[11px] text-text font-semibold">"{row.query}"</span>
+                          <span className="text-[11px] text-text font-semibold">&quot;{row.query}&quot;</span>
                         )}
                       </div>
                       <p className="text-[10px] font-mono text-dim break-all line-clamp-2">{row.raw}</p>

@@ -29,13 +29,6 @@ interface QualityResult {
   };
 }
 
-const GRADE_LABEL: Record<string, string> = {
-  EXCELLENT: '우수',
-  GOOD: '양호',
-  NORMAL: '일반',
-  LOW: '저품질',
-};
-
 const GRADE_COLOR: Record<string, string> = {
   EXCELLENT: 'text-up',
   GOOD: 'text-accent',

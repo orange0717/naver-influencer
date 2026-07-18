@@ -87,7 +87,6 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
   }, [id]);
 
   const keywords = influencer?.keywords || [];
-  const rankedKeywords = keywords.filter(k => k.rank_position);
   const totalKeywords = influencer?.total_keywords || keywords.length;
 
   // 카테고리 목록 추출 (Hooks는 조건부 return 전에 호출)

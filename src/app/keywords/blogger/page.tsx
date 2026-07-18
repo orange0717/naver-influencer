@@ -36,7 +36,6 @@ export default function BloggerKeywordsPage() {
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
   const [savingKeyword, setSavingKeyword] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-  const [showSaved, setShowSaved] = useState(true);
 
   // 로그인 상태 확인 + 저장된 키워드 로드
   useEffect(() => {
@@ -109,18 +108,6 @@ export default function BloggerKeywordsPage() {
     } finally {
       setSavingKeyword(null);
     }
-  };
-
-  const removeSaved = async (keyword: string) => {
-    setSavingKeyword(keyword);
-    try {
-      const res = await fetch(`/api/my/saved-keywords?keyword=${encodeURIComponent(keyword)}`, { method: 'DELETE' });
-      if (res.ok) {
-        setSavedSet(prev => { const next = new Set(prev); next.delete(keyword); return next; });
-        setSavedKeywords(prev => prev.filter(k => k.keyword !== keyword));
-      }
-    } catch { /* ignore */ }
-    finally { setSavingKeyword(null); }
   };
 
   const search = useCallback(async () => {
