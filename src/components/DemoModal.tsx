@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 interface DemoModalProps {
   open: boolean;
@@ -23,7 +22,6 @@ function extractBlogId(input: string): string {
 }
 
 export default function DemoModal({ open, onClose }: DemoModalProps) {
-  const router = useRouter();
   const [naverInput, setNaverInput] = useState('');
   const [blogInput, setBlogInput] = useState('');
   const [loading, setLoading] = useState(false);

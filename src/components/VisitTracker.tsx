@@ -126,7 +126,6 @@ export default function VisitTracker() {
 
     // 페이지별 방문 기록 (visit_logs용) — localStorage로 하루 1회
     const pageKey = `visited_${pathname}`;
-    const alreadyVisitedPage = localStorage.getItem(pageKey);
     localStorage.setItem(pageKey, '1');
 
     // 일별 방문 카운트는 하루 1회만 (순 방문자) — 브라우저당 1회

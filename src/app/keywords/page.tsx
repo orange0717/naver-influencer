@@ -49,14 +49,6 @@ interface TopicGroup {
   total: number;
 }
 
-interface RankingInfo {
-  influencer_name: string;
-  influencer_url: string;
-  rank_position: number;
-  fan_count: number;
-  naver_id: string;
-}
-
 interface RelatedKeyword {
   id: string;
   keyword: string;
@@ -153,7 +145,6 @@ export default function KeywordsPage() {
 
   // TOP3 펼치기 상태
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [rankingsCache, setRankingsCache] = useState<Record<string, RankingInfo[]>>({});
   const [rankingsLoading, setRankingsLoading] = useState<string | null>(null);
 
   // 관련키워드 캐시
@@ -654,7 +645,6 @@ export default function KeywordsPage() {
                 {displayKeywords.map((kw, i) => {
                   const sub = getSubcategory(kw.category, kw.keyword);
                   const isExpanded = expandedId === kw.id;
-                  const rankings = rankingsCache[kw.id];
                   const isLoadingRank = rankingsLoading === kw.id;
                   return (
                   <Fragment key={kw.id}>
