@@ -158,7 +158,6 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
 
   // 폴백: PostTitleListAsync JSON이 HTML에 포함된 경우
   if (posts.length === 0) {
-    const jsonMatch = html.match(/var\s+blogId\s*=\s*["']([^"']+)["']/);
     // PostList 페이지의 script에서 데이터 추출 시도
     const listMatch = html.match(/"postList"\s*:\s*\[([^\]]*)\]/);
     if (listMatch) {

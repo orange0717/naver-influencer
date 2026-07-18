@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
-import { extKeywordAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { extKeywordAnalysisLimiter, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
