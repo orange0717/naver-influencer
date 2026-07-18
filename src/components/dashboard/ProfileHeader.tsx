@@ -47,7 +47,6 @@ export default function ProfileHeader({
   isOfficialBlog,
 }: ProfileHeaderProps) {
   const isInfluencer = type === 'influencer';
-  const accentColor = isInfluencer ? 'accent' : '[#2DB400]';
 
   // 닉네임 편집
   const [editingName, setEditingName] = useState(false);

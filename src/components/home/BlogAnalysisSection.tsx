@@ -9,7 +9,7 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
-import { filterMissing, calculateMissingRate, countMissing } from '@/lib/missing-rate';
+import { filterMissing, countMissing } from '@/lib/missing-rate';
 
 interface BloggerProfile {
   blogId: string;
@@ -755,7 +755,6 @@ export default function BlogAnalysisSection() {
   //   filteredList: 전체(또는 누락 필터) 적용된 페이지네이션 전 리스트
   //   currentViewList: 현재 페이지·postsPerPage 만큼 잘라낸 화면 표시 리스트
   //   missingInView: 화면에 보이는 항목 중 누락(통합 OR 블로그탭 누락) 객체 배열
-  //   missingRateInView: (missingInView.length / currentViewList.length) * 100 정수
   // ══════════════════════════════════════════════════════════
   const filteredList = useMemo(() => {
     const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
@@ -770,11 +769,6 @@ export default function BlogAnalysisSection() {
 
   const missingInView = useMemo(
     () => filterMissing(currentViewList, missingResults),
-    [currentViewList, missingResults]
-  );
-
-  const missingRateInView = useMemo(
-    () => calculateMissingRate(currentViewList, missingResults),
     [currentViewList, missingResults]
   );
 

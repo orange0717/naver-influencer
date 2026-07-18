@@ -273,9 +273,6 @@ export default function MyKeywordList({
     return <span className="text-accent ml-0.5">{sortDir === 'desc' ? '\u25BC' : '\u25B2'}</span>;
   };
 
-  const rankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position !== null).length;
-  const unrankedCount = allKeywords.filter(kw => kw.is_participated && kw.rank_position === null).length;
-
   // 카테고리별 키워드 수 (참여 필터 연동)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};

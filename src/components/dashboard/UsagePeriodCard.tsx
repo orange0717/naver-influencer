@@ -5,8 +5,6 @@ interface Props {
   subscriptionExpiresAt?: string | null;
   /** trial_started 쿠키 (timestamp ms 문자열) */
   trialStartedTs?: string | null;
-  /** 체험(7일) */
-  isDemo?: boolean;
 }
 
 function formatDate(d: Date) {
@@ -21,7 +19,6 @@ export default function UsagePeriodCard({
   userCreatedAt,
   subscriptionExpiresAt,
   trialStartedTs,
-  isDemo,
 }: Props) {
   const now = new Date();
 
