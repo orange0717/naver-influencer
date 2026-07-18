@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
@@ -184,7 +185,7 @@ async function analyzePost(blogId: string, logNo: string): Promise<PostAnalysis>
       '#viewTypeSelector',         // 폴백
     ];
 
-    let $content: cheerio.Cheerio<any> | null = null;
+    let $content: cheerio.Cheerio<AnyNode> | null = null;
     for (const sel of contentSelectors) {
       const found = $(sel);
       if (found.length > 0 && found.text().trim().length > 10) {

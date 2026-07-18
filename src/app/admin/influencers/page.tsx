@@ -99,7 +99,7 @@ export default function AdminInfluencersPage() {
       <div>
         <h1 className="text-xl font-extrabold">인플루언서 활동중단 관리</h1>
         <p className="text-xs text-dim mt-1">
-          관리자가 직접 지정한 인플루언서만 순위에서 "활동 중단" 그룹(최하위)으로 이동합니다.
+          관리자가 직접 지정한 인플루언서만 순위에서 &quot;활동 중단&quot; 그룹(최하위)으로 이동합니다.
           자동 분류는 사용하지 않습니다.
         </p>
       </div>

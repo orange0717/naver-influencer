@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
       page,
       totalPages,
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: '검색 중 오류가 발생했습니다.' },
       { status: 500 },

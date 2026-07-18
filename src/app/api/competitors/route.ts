@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     // 해당 날짜의 전체 키워드 순위 조회 (JOIN 없이 정확한 카운트)
     const PAGE = 1000;
-    let competitorRankings: { rank_position: number; is_integrated_top3: boolean; keyword_id: string }[] = [];
+    const competitorRankings: { rank_position: number; is_integrated_top3: boolean; keyword_id: string }[] = [];
     if (compSnapshotDate) {
       let from = 0;
       let hasMore = true;
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
         const mySnapshotDate = myLatest?.snapshot_date;
 
         // Supabase 1000건 제한 우회
-        let myRankingsList: { rank_position: number; keyword_id: string }[] = [];
+        const myRankingsList: { rank_position: number; keyword_id: string }[] = [];
         if (mySnapshotDate) {
           let from = 0;
           let hasMore = true;

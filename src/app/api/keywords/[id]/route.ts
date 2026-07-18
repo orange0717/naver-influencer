@@ -46,7 +46,7 @@ export async function GET(
         blue_ocean_ratio: 0,
       },
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: '키워드 정보를 불러오지 못했습니다.' },
       { status: 500 },

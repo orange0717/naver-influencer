@@ -255,7 +255,7 @@ async function getInfluencersFromDB(
 
   // foundInKeywords 조인 (인플루언서 ID 리스트로)
   const influencerIds = (influencers || []).map(inf => inf.id);
-  let keywordMap = new Map<string, string[]>();
+  const keywordMap = new Map<string, string[]>();
 
   if (influencerIds.length > 0) {
     const { data: ikData } = await supabase

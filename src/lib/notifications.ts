@@ -246,7 +246,7 @@ export async function processNotifications(
   let notificationsCreated = 0;
   let emailsSent = 0;
   let emailErrors = 0;
-  let kakaoSent = 0;
+  const kakaoSent = 0;
   let pushSent = 0;
 
   for (const recipient of recipients) {

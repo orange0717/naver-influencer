@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { requirePaidPlan } from '@/lib/admin';
 
@@ -131,7 +132,7 @@ async function extractPostText(blogId: string, logNo: string): Promise<string> {
   const $ = cheerio.load(html);
 
   const contentSelectors = ['.se-main-container', '#postViewArea', '.post-view', '#viewTypeSelector'];
-  let $content: cheerio.Cheerio<any> | null = null;
+  let $content: cheerio.Cheerio<AnyNode> | null = null;
   for (const sel of contentSelectors) {
     const found = $(sel);
     if (found.length > 0 && found.text().trim().length > 10) {
