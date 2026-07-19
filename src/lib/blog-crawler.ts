@@ -1,8 +1,6 @@
 import * as cheerio from 'cheerio';
-import type { Browser } from 'puppeteer-core';
 import { extractBlogId } from './blog-utils';
 import { createServiceClient } from './supabase-server';
-import { getBrowser } from './puppeteer-browser';
 
 interface ExtractedKeyword {
   keyword: string;
@@ -211,55 +209,123 @@ interface BlogVisitorData {
 }
 
 /**
- * 네이버 블로그 "오늘 방문자" 수를 크롤링한다.
- *
- * ⚠️ 2026-07-19 실측 확인으로 전면 재작성:
- * - 기존 1차 경로였던 NVisitorgp4Ajax(XML) 엔드포인트는 이제 항상 204를 반환(완전히 막힘, 재확인됨).
- * - 기존 2차 폴백(모바일 페이지 HTML에서 "todayVisitor"/"dayVisitorCount" 등을 정규식으로 추출)은
- *   겉보기엔 매번 성공했지만, 실제로는 페이지 초기 상태에 박혀있는 미로딩 placeholder(예:
- *   `"loading":false,"loaded":false,...,"todayVisitor":0`)를 잡고 있었다 — 진짜 값이 아니라 항상 0을
- *   "정상 크롤링 성공"으로 오인해 DB에 저장하고 있었다(Puppeteer로 실제 렌더링 후에도 이 JSON 필드는
- *   끝까지 0에 머무름 — 별도 AJAX로 채워지는 필드가 아니라 사실상 죽은 필드로 확인됨).
- * - 진짜 오늘 방문자 수는 페이지에 **사람이 읽는 텍스트**로 렌더링되는 방문자 위젯
- *   (`"오늘 1 · 전체 20"` 형태)에만 존재한다. 이 위젯의 CSS 클래스명은 빌드마다 바뀌는 해시라
- *   신뢰할 수 없어(`count__jEvPR` 같은 식), DOM 클래스가 아니라 이 한국어 문구 패턴 자체로 찾는다.
- * - 결론: 단순 fetch()로는 원천적으로 정확한 값을 얻을 수 없어(JS 렌더링이 필요) Puppeteer로 전환.
- *
- * @param blogId 네이버 블로그 ID
- * @param sharedBrowser 배치 크롤링 시 브라우저 프로세스를 재사용하려면 전달(새 탭만 매번 생성).
- *   생략하면 공용 풀에서 하나 가져온다(단발성 호출용).
+ * 네이버 블로그 방문자수를 크롤링한다.
+ * NVisitorgp4Ajax 엔드포인트에서 일별 방문자 데이터를 가져온다.
+ * 2026-04 시점 네이버가 NVisitorgp4Ajax 를 막아 204 만 반환 → 모바일 프로필의 오늘값을 폴백으로 사용.
  */
-export async function fetchBlogVisitors(blogId: string, sharedBrowser?: Browser): Promise<BlogVisitorData[]> {
-  const browser = sharedBrowser ?? await getBrowser();
-  let page: Awaited<ReturnType<Browser['newPage']>> | undefined;
+export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData[]> {
+  const results: BlogVisitorData[] = [];
 
   try {
-    page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15');
-    await page.setViewport({ width: 390, height: 844 });
-    await page.goto(`https://m.blog.naver.com/${blogId}`, {
-      waitUntil: 'networkidle2',
-      timeout: 15000,
+    const url = `https://blog.naver.com/NVisitorgp4Ajax.naver?blogId=${blogId}`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/javascript, */*',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+        'Referer': `https://blog.naver.com/${blogId}`,
+      },
+      signal: AbortSignal.timeout(8000),
     });
 
-    const bodyText = await page.evaluate(() => document.body.innerText);
-    // "오늘 1 · 전체 20" 형태 — "전체" 숫자가 바로 뒤에 와야만 진짜 방문자 위젯으로 인정
-    // (블로그 본문에 "오늘 ~했다" 같은 문장이 흔해 "오늘" 단독 매칭은 오탐 위험이 큼).
-    const match = bodyText.match(/오늘\s+([\d,]+)\s+전체\s+([\d,]+)/);
-    if (!match) return [];
+    // 200 + 본문 있음일 때만 파싱 시도. 204 면 바로 모바일 폴백으로.
+    const text = res.ok && res.status !== 204 ? await res.text() : '';
 
-    const visitors = parseInt(match[1].replace(/,/g, ''), 10);
-    if (!Number.isFinite(visitors)) return [];
+    // 1. XML 형식: <visitorcnt id="20260407" cnt="706" />
+    const xmlMatches = text.matchAll(/visitorcnt\s+id="(\d{8})"\s+cnt="(\d+)"/g);
+    for (const m of xmlMatches) {
+      const dateRaw = m[1];
+      const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+      results.push({ date, visitors: parseInt(m[2]) });
+    }
 
-    // KST 기준 오늘 날짜
-    const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    return [{ date: today, visitors }];
+    // 2. JSON 형식: "cnt": 123, "date": "20260407"
+    if (results.length === 0) {
+      const countMatches = text.match(/"cnt"\s*:\s*(\d+)/g);
+      const dateMatches = text.match(/"date"\s*:\s*"(\d{8})"/g);
+      if (countMatches && dateMatches) {
+        for (let i = 0; i < Math.min(countMatches.length, dateMatches.length); i++) {
+          const cnt = parseInt(countMatches[i].replace(/[^0-9]/g, ''));
+          const dateRaw = dateMatches[i].replace(/[^0-9]/g, '');
+          const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+          results.push({ date, visitors: cnt });
+        }
+      }
+    }
+
+    // 3. JSON 객체 파싱 시도
+    if (results.length === 0) {
+      try {
+        const json = JSON.parse(text.replace(/^[^{[]*/, '').replace(/[^}\]]*$/, ''));
+        const items = json?.visitorcnts || json?.items || json?.result || [];
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            if (item.cnt !== undefined && item.date) {
+              const d = String(item.date);
+              const date = d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
+              results.push({ date, visitors: Number(item.cnt) || 0 });
+            }
+          }
+        }
+      } catch {
+        // JSON 파싱 실패 무시
+      }
+    }
+
+    // 폴백: 모바일 블로그 페이지에서 오늘치 방문자 JSON 추출
+    // (NVisitorgp4Ajax 가 막힌 이후로는 사실상 이 폴백이 주 경로)
+    // 네이버가 키 이름을 종종 바꾸므로 여러 패턴을 순서대로 시도
+    if (results.length === 0) {
+      try {
+        const mobileRes = await fetch(`https://m.blog.naver.com/${blogId}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Accept-Language': 'ko-KR,ko;q=0.9',
+          },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (mobileRes.ok) {
+          const html = await mobileRes.text();
+          const patterns = [
+            /"dayVisitorCount"\s*:\s*(\d+)/,
+            /"todayVisitor"\s*:\s*(\d+)/,
+            /"todayVisitorCount"\s*:\s*(\d+)/,
+            /"todayCnt"\s*:\s*(\d+)/,
+            /"dayVisitor"\s*:\s*(\d+)/,
+            /"visitorCount"\s*:\s*(\d+)/,
+            /dayVisitorCount["'\s:=]+(\d+)/,
+            /todayVisitor["'\s:=]+(\d+)/,
+          ];
+          let visitors: number | null = null;
+          for (const re of patterns) {
+            const m = html.match(re);
+            if (m) {
+              const n = parseInt(m[1]);
+              if (Number.isFinite(n) && n >= 0) {
+                visitors = n;
+                break;
+              }
+            }
+          }
+          if (visitors !== null) {
+            // KST 기준 오늘 날짜
+            const today = new Date(Date.now() + 9 * 60 * 60 * 1000)
+              .toISOString()
+              .slice(0, 10);
+            results.push({ date: today, visitors });
+          } else if (process.env.NODE_ENV !== 'production') {
+            console.warn(`[blog-crawler] mobile fallback: no visitor pattern matched for ${blogId}`);
+          }
+        }
+      } catch {
+        // 폴백 실패 무시
+      }
+    }
   } catch (err) {
     console.error(`[blog-crawler] fetchBlogVisitors error for ${blogId}:`, err instanceof Error ? err.message : err);
-    return [];
-  } finally {
-    await page?.close().catch(() => {});
   }
+
+  return results.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ─── 블로그 프로필 정보 크롤링 (전체방문자, 이웃수, 공식블로그) ───

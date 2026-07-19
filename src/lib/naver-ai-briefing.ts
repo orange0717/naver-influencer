@@ -1,5 +1,4 @@
-import { type Browser, type Page, type HTTPRequest } from 'puppeteer-core';
-import { getBrowser, invalidateBrowserCache, isBrowserDeadError } from './puppeteer-browser';
+import puppeteer, { type Browser, type Page, type HTTPRequest } from 'puppeteer-core';
 
 /**
  * 네이버 "AI 브리핑"(통합검색 인라인 위젯) + "AI 탭"(ssc=tab.ait.all) 노출 여부 확인
@@ -321,6 +320,56 @@ function toSurfaceResult(evalResult: SurfaceEvalResult, blogId: string, postId: 
 }
 
 /**
+ * Vercel(서버리스)에서는 @sparticuz/chromium 바이너리를, 로컬 개발에서는 시스템 Chrome을 사용한다.
+ * 로컬 Chrome 경로가 다르면 LOCAL_CHROME_EXECUTABLE_PATH 환경변수로 지정.
+ */
+async function launchBrowser(): Promise<Browser> {
+  const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+  if (isServerless) {
+    // ⚠️ 2026-07-04 실측 확인: Vercel의 Node 서버리스 함수는 실제로 AWS Lambda 위에서 돌지만
+    // @sparticuz/chromium이 환경 감지에 쓰는 AWS_EXECUTION_ENV/AWS_LAMBDA_JS_RUNTIME 값을
+    // 노출하지 않는다. 그 결과 라이브러리가 al2023.tar.br(공유 라이브러리 묶음, libnss3.so 포함)를
+    // 추출하지 않아 "libnss3.so: cannot open shared object file" 로 브라우저 실행 자체가 실패했다
+    // (프로덕션에서 500 즉시 실패로 재현·확인됨). import 전에 신호를 직접 주입해 추출을 강제한다.
+    process.env.AWS_LAMBDA_JS_RUNTIME ??= 'nodejs22.x';
+    const chromium = (await import('@sparticuz/chromium')).default;
+    return puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+
+  const localPath = process.env.LOCAL_CHROME_EXECUTABLE_PATH
+    || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  return puppeteer.launch({ executablePath: localPath, headless: true });
+}
+
+// 서버리스 컨테이너가 warm 상태로 재사용될 때 Chromium 프로세스 자체를 재사용해 기동 비용을 절감.
+// 페이지(탭)는 매 요청마다 새로 열고 닫는다 — 브라우저 프로세스만 공유.
+let cachedBrowserPromise: Promise<Browser> | null = null;
+
+async function getBrowser(forceNew = false): Promise<Browser> {
+  if (!forceNew && cachedBrowserPromise) {
+    try {
+      const browser = await cachedBrowserPromise;
+      if (browser.isConnected()) return browser;
+    } catch {
+      // 캐시된 launch 자체가 실패한 경우 — 아래에서 새로 재시도
+    }
+  }
+  cachedBrowserPromise = launchBrowser();
+  return cachedBrowserPromise;
+}
+
+/** Puppeteer/Chromium 프로세스 자체가 죽어서 발생하는 에러인지 판별 — 이 경우만 캐시 무효화 후 재시도 */
+function isBrowserDeadError(message: string): boolean {
+  return /Protocol error|Target closed|Session closed|Connection closed|WebSocket is (not open|closed)/i.test(message);
+}
+
+/**
  * 일반 통합검색 결과 페이지(이미 로드되어 있음)에서 "AI 브리핑" 인라인 위젯을 확인한다.
  * 위젯이 렌더링되면 "펼쳐서 더보기" 버튼을 클릭해 전체 콘텐츠 + 출처 목록을 펼친 뒤 평가한다.
  */
@@ -430,7 +479,7 @@ export async function checkAiBriefingExposure(
 
   // 브라우저 프로세스 자체가 죽어서 실패한 경우 — 캐시를 무효화하고 한 번만 새로 띄워 재시도
   if (result.error && isBrowserDeadError(result.error)) {
-    invalidateBrowserCache();
+    cachedBrowserPromise = null;
     try {
       const freshBrowser = await getBrowser(true);
       return await checkOne(freshBrowser, keyword, blogId, postId, onStage);
