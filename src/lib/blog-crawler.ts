@@ -296,12 +296,18 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
             /dayVisitorCount["'\s:=]+(\d+)/,
             /todayVisitor["'\s:=]+(\d+)/,
           ];
+          // ⚠️ 2026-07-19 실측 확인: 이 JSON 필드들은 페이지 초기 상태에 박혀있는 미로딩
+          // placeholder일 때가 있고, 이 경우 값이 항상 0으로 나온다("loaded":false 옆에 위치,
+          // 실제 방문자수를 반영하는 별도 AJAX로 채워지는 필드가 아님 — Puppeteer로 완전히
+          // 렌더링해도 끝까지 0에 머무름). 0을 "정상 크롤링된 진짜 값"으로 오인해 저장하지
+          // 않도록 n > 0(0 제외)일 때만 채택 — 0이 매칭되면 다음 패턴을 계속 시도하고, 전부
+          // 0/불일치면 크롤링 실패로 처리해 잘못된 값이 DB에 쌓이는 것을 막는다.
           let visitors: number | null = null;
           for (const re of patterns) {
             const m = html.match(re);
             if (m) {
               const n = parseInt(m[1]);
-              if (Number.isFinite(n) && n >= 0) {
+              if (Number.isFinite(n) && n > 0) {
                 visitors = n;
                 break;
               }
