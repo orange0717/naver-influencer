@@ -40,7 +40,11 @@ export async function GET(request: NextRequest) {
     // 이름(display_name) + 프로필 링크(profile_url) + 선정일자(naver_created_at) + 주제(my_keyword_category/category)만 셀렉트
     const SELECT_COLS = 'display_name, profile_url, naver_created_at, first_seen_at, my_keyword_category, category';
 
-    let query = supabase.from('influencers').select(SELECT_COLS, { count: 'exact' });
+    // ⚠️ 2026-07-19 실측 확인: count:'exact'는 naver_created_at/first_seen_at에 인덱스가 없는
+    // 상태에서 정렬+정확한 전체 개수 세기를 매번 강제해 대량 테이블에서 통계 timeout
+    // ("canceling statement due to statement timeout")을 유발하고 있었다(프로덕션 로그로 확인).
+    // 페이지네이션 UI는 정확한 총합이 필요 없으므로 훨씬 가벼운 estimated로 전환.
+    let query = supabase.from('influencers').select(SELECT_COLS, { count: 'estimated' });
 
     if (category && category !== '전체') {
       const safeCategory = category.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s·/&.]/g, '');
