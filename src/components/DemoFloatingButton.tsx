@@ -13,7 +13,7 @@ export default function DemoFloatingButton() {
         onClick={() => setOpen(true)}
         aria-label="7일 데모체험 시작"
         title="7일 데모체험 시작"
-        className="fixed bottom-24 right-6 z-50 flex items-center justify-center font-bold cursor-pointer transition-all hover:scale-105"
+        className="fixed bottom-36 right-6 z-50 flex items-center justify-center font-bold cursor-pointer transition-all hover:scale-105"
         style={{
           backgroundColor: '#FFFFFF',
           color: '#BF8984',
