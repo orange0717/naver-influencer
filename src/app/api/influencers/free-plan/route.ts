@@ -3,6 +3,14 @@ import { createServiceClient, createRouteHandlerClient, getUserWithTimeout } fro
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
+import { cacheGet, cacheSet } from '@/lib/kv-cache';
+
+// ⚠️ 2026-07-19: naver_created_at/first_seen_at에 인덱스가 없어 DB 쿼리가 간헐적으로
+// "canceling statement due to statement timeout"로 실패한다(마이그레이션 113 적용 전까지
+// 임시 완화). 명단은 자주 안 바뀌므로 결과를 짧게 캐싱해 같은 조합(category/page/order)의
+// 반복 요청이 매번 무거운 쿼리를 다시 타지 않도록 한다 — 실패율을 줄이는 것이지 근본 해결은
+// 아니다(캐시가 비어있는 최초 요청은 여전히 타임아웃 위험 있음).
+const CACHE_TTL_SECONDS = 300;
 
 /** 무료 플랜 명단 전용 — 이름·프로필 링크·선정일자·주제만 조회/응답한다 (팬수·챌린지 데이터는 미포함) */
 const LIST_JSON_HEADERS = {
@@ -31,6 +39,12 @@ export async function GET(request: NextRequest) {
   const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
   const ascending = order === 'asc';
   const offset = (page - 1) * limit;
+
+  const cacheKey = `influencers-free-plan:${category || '전체'}:${page}:${limit}:${order}`;
+  const cached = await cacheGet<{ items: unknown[]; categories: string[]; total: number; total_pages: number }>(cacheKey);
+  if (cached) {
+    return NextResponse.json({ ...cached, page }, { headers: LIST_JSON_HEADERS });
+  }
 
   const supabase = createServiceClient();
 
@@ -71,14 +85,11 @@ export async function GET(request: NextRequest) {
       subject: inf.my_keyword_category || inf.category || '',
     }));
 
+    const responseBody = { items, categories, total, total_pages: totalPages };
+    await cacheSet(cacheKey, responseBody, CACHE_TTL_SECONDS);
+
     return NextResponse.json(
-      {
-        items,
-        categories,
-        total,
-        page,
-        total_pages: totalPages,
-      },
+      { ...responseBody, page },
       { headers: LIST_JSON_HEADERS },
     );
   } catch (err) {
