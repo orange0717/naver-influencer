@@ -49,6 +49,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '리스트', href: '/influencers/free-plan', authOnly: true },
       { label: '공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
       { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
+      { label: '연도별 선정 현황', href: '/stats' },
     ],
   },
   {
@@ -68,7 +69,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { label: 'URL 분석', href: '/decoder' },
       { label: '경쟁자 분석', href: '/competitor' },
-      { label: '연도별 선정 현황', href: '/stats' },
       { label: 'JPG↔PNG 변환기', href: '/image-converter' },
     ],
   },
