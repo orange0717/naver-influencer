@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { unstable_cache } from 'next/cache';
 import { createRouteHandlerClient, createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
-import { isRestricted, getPaywallContext, isAdmin } from '@/lib/admin';
+import { isRestricted, getPaywallContext } from '@/lib/admin';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
 import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
@@ -10,23 +9,6 @@ import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
 import BlogConnectCta from '@/components/home/BlogConnectCta';
 
 export const dynamic = 'force-dynamic';
-
-const getRecentNoticesCount = unstable_cache(
-  async () => {
-    try {
-      const supabase = createServiceClient();
-      const { count } = await supabase
-        .from('notices')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
-      return count || 0;
-    } catch {
-      return 0;
-    }
-  },
-  ['home-recent-notices-count'],
-  { revalidate: 60, tags: ['notices'] },
-);
 
 export const metadata = {
   title: 'N인플 - 네이버 인플루언서 키워드챌린지 대시보드',
@@ -63,11 +45,6 @@ export default async function HomePage() {
     }
   }
 
-  let userName: string | null = null;
-  let myKeywordCount = 0;
-  let isAdminUser = false;
-  const myBlogRank: number | null = null;
-
   const supabase = createServiceClient();
 
   const fetchProfile = async () => {
@@ -84,34 +61,7 @@ export default async function HomePage() {
     }
   };
 
-  const fetchKeywordCount = async (userId: string | null) => {
-    if (!userId) return 0;
-    try {
-      const { count } = await supabase
-        .from('saved_search_keywords')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId);
-      return count || 0;
-    } catch {
-      return 0;
-    }
-  };
-
   const profileResult = await fetchProfile();
-  const [keywordCountResult, unreadNotices] = await Promise.all([
-    fetchKeywordCount(profileResult?.id || null),
-    getRecentNoticesCount(),
-  ]);
-
-  if (authUser) {
-    userName = profileResult?.nickname || profileResult?.blog_id || authUser.email?.split('@')[0] || null;
-    if (profileResult?.id && isAdmin(profileResult.id)) {
-      isAdminUser = true;
-    }
-    myKeywordCount = keywordCountResult;
-  } else if (demoNaverId) {
-    userName = demoNaverId;
-  }
 
   const isLoggedIn = !!authUser || !!demoNaverId;
   const isInfluencerNoBlogId = !!authUser && !!profileResult?.linked_influencer_id && !profileResult?.blog_id;

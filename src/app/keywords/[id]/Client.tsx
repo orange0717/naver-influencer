@@ -210,7 +210,6 @@ export default function KeywordDetailPage() {
   }
 
   const top3Rankings = rankings.filter(r => r.rank_position <= 3);
-  const otherRankings = rankings.filter(r => r.rank_position > 3);
 
   return (
     <div className="space-y-6">

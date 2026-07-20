@@ -260,8 +260,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // 키워드 분석 UI·데이터: 정식 로그인 또는 데모 체험 쿠키 (완전 비회원 공개 아님)
+  // 단, /keywords/blogger·/keywords/blog-ranking은 완전 공개 마케팅/SEO 페이지라 예외
+  // (각자 generateMetadata까지 갖춰져 있었는데 이 게이트에 막혀 크롤러가 도달 못 하고 있었음)
+  const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger', '/keywords/blog-ranking'];
   const needsKeywordsLogin =
-    acceptsHtml && matchesPathPrefix(pathname, '/keywords');
+    acceptsHtml &&
+    matchesPathPrefix(pathname, '/keywords') &&
+    !PUBLIC_KEYWORDS_PATHS.some(p => matchesPathPrefix(pathname, p));
   if (needsKeywordsLogin && !user && !hasDemoSession) {
     const url = request.nextUrl.clone();
     url.pathname = '/';

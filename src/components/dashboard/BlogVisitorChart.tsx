@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { CHART } from '@/lib/chart-colors';
 import GlassCard from './GlassCard';
 
@@ -147,8 +148,7 @@ export default function BlogVisitorChart({ blogId }: Props) {
               fontSize: 12,
             }}
             labelStyle={{ color: CHART.labelFill }}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(value: any) => [Number(value).toLocaleString() + '명', '방문자']}
+            formatter={(value: ValueType | undefined) => [Number(value).toLocaleString() + '명', '방문자']}
           />
           <Area
             type="monotone"

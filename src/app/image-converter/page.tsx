@@ -127,7 +127,7 @@ export default function ImageConverterPage() {
     });
   };
 
-  const handleDownloadSingle = (file: ConvertedFile, index: number) => {
+  const handleDownloadSingle = (file: ConvertedFile) => {
     const a = document.createElement('a');
     a.href = file.url;
     a.download = file.name;
@@ -293,7 +293,7 @@ export default function ImageConverterPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDownloadSingle(file, idx)}
+                  onClick={() => handleDownloadSingle(file)}
                   className="px-3 py-1.5 bg-accent/10 text-accent text-xs font-bold rounded hover:bg-accent hover:text-white transition whitespace-nowrap"
                 >
                   다운로드

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { requirePaidPlan } from '@/lib/admin';
@@ -41,7 +42,7 @@ async function extractPostText(blogId: string, logNo: string): Promise<{ title: 
 
   // 본문 영역 찾기
   const contentSelectors = ['.se-main-container', '#postViewArea', '.post-view', '#viewTypeSelector'];
-  let $content: cheerio.Cheerio<any> | null = null;
+  let $content: cheerio.Cheerio<AnyNode> | null = null;
   for (const sel of contentSelectors) {
     const found = $(sel);
     if (found.length > 0 && found.text().trim().length > 10) {

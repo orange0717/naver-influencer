@@ -1,6 +1,7 @@
 'use client';
 
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { CHART, DIRECTION_COLORS } from '@/lib/chart-colors';
 
 interface TrendPoint {
@@ -47,8 +48,7 @@ export default function TrendAreaChart({ data, direction = 'stable' }: Props) {
             fontSize: 12,
           }}
           labelStyle={{ color: CHART.labelFill }}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any) => [Number(value).toLocaleString(), '검색량']}
+          formatter={(value: ValueType | undefined) => [Number(value).toLocaleString(), '검색량']}
         />
         <Area
           type="monotone"

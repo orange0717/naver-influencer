@@ -9,9 +9,6 @@ interface ChallengeStatsProps {
   top3Count: number;
   integratedTop3Count: number;
   avgParticipants: number;
-  compLow: number;
-  compMid: number;
-  compHigh: number;
 }
 
 function AnimatedNumber({ value, suffix = '' }: { value: number; suffix?: string }) {
@@ -53,9 +50,6 @@ export default function ChallengeStatsSection({
   top3Count,
   integratedTop3Count,
   avgParticipants,
-  compLow,
-  compMid,
-  compHigh,
 }: ChallengeStatsProps) {
   const top3Rate = totalKeywords > 0 ? Math.round((top3Count / totalKeywords) * 100) : 0;
 

@@ -91,15 +91,6 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
 
-/* 가로 스크롤 영역에서 스크롤바 숨김 (대시보드 칩바·헤더 등) */
-.scrollbar-hide {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
 /* ═══════════════════════════════════════════════════════════════
    마이크로 인터랙션 — 통합 디자인 시스템 실제 적용
    ═══════════════════════════════════════════════════════════════ */
@@ -167,12 +158,6 @@ a:hover:not(.btn) {
   animation: fadeInUp 0.5s ease-out forwards;
   opacity: 0;
 }
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.10s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.20s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.30s; }
 
 @keyframes softPulse {
   0%, 100% { opacity: 1; }
@@ -182,14 +167,6 @@ a:hover:not(.btn) {
   animation: softPulse 2s ease-in-out infinite;
 }
 
-@keyframes gaugeProgress {
-  from { stroke-dashoffset: var(--gauge-circumference); }
-  to { stroke-dashoffset: var(--gauge-offset); }
-}
-.animate-gauge {
-  animation: gaugeProgress 1.2s ease-out forwards;
-}
-
 /* 가로 스크롤 스냅 (모바일 추천 카드) */
 .snap-x-mandatory {
   scroll-snap-type: x mandatory;
@@ -197,18 +174,4 @@ a:hover:not(.btn) {
 }
 .snap-x-mandatory > * {
   scroll-snap-align: start;
-}
-
-/* 타임라인 연결선 */
-.timeline-line {
-  position: relative;
-}
-.timeline-line::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 32px;
-  bottom: 0;
-  width: 2px;
-  background: var(--color-border);
 }

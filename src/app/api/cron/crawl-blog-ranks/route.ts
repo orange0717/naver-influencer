@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep } from '@/lib/crawler';
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -52,8 +53,7 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
         '.total_wrap li',
       ];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let items: cheerio.Cheerio<any> | null = null;
+      let items: cheerio.Cheerio<AnyNode> | null = null;
       for (const sel of resultSelectors) {
         const found = $(sel);
         if (found.length > 0) {

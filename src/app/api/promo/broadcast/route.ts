@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   // 인플루언서 naver_id 매핑
   const infIds = (users || []).map(u => u.linked_influencer_id).filter(Boolean);
-  let infMap = new Map<string, string>();
+  const infMap = new Map<string, string>();
   if (infIds.length > 0) {
     const { data: infs } = await supabase.from('influencers').select('id, naver_id, display_name').in('id', infIds);
     for (const inf of (infs || [])) {
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       .in('id', userIds);
 
     const infIds = (users || []).map(u => u.linked_influencer_id).filter(Boolean);
-    let infMap = new Map<string, string>();
+    const infMap = new Map<string, string>();
     if (infIds.length > 0) {
       const { data: infs } = await supabase.from('influencers').select('id, naver_id').in('id', infIds);
       for (const inf of (infs || [])) infMap.set(inf.id, inf.naver_id);

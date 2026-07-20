@@ -29,7 +29,6 @@ export default function WidgetSection({ naverId, displayName }: WidgetSectionPro
       {/* 위젯 미리보기 */}
       <div className="flex justify-center mb-4">
         <div className="flex flex-col items-center p-4 bg-bg rounded-xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <button
             type="button"
             onClick={() => setShowHtml((v) => !v)}

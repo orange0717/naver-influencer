@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
       .eq('snapshot_date', snapshotDate);
 
     // 전일 데이터가 없으면 가장 최근 데이터로 비교
-    let prevRankMap = new Map<string, number>();
+    const prevRankMap = new Map<string, number>();
     if (prevRankings && prevRankings.length > 0) {
       prevRankings.forEach(r => prevRankMap.set(r.keyword_id, r.rank_position));
     } else {

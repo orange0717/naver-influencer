@@ -129,7 +129,7 @@ export async function GET(
 
   // 1) influencer_keywords 테이블에서 참여 키워드 조회 (전체)
   interface KwChallenge { id: string; keyword: string; category: string; participant_count: number; search_volume_monthly: number }
-  let ikKeywords: { keyword_id: string; keyword_challenges: KwChallenge | KwChallenge[] | null }[] = [];
+  const ikKeywords: { keyword_id: string; keyword_challenges: KwChallenge | KwChallenge[] | null }[] = [];
   {
     const PAGE = 500;
     let from = 0;

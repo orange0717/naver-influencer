@@ -86,14 +86,28 @@ export default function InfluencersListClient() {
       params.set('_ts', String(Date.now()));
 
       const res = await fetch(`/api/influencers?${params}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      setInfluencers(data.influencers || []);
-      setCategories(data.categories || ['전체']);
-      setTotal(data.total || 0);
-      setActiveTotal(data.activeTotal || 0);
-      setTotalPages(data.total_pages || 1);
+      if (!res.ok) {
+        console.error('[InfluencersListClient] API 실패', {
+          url: res.url,
+          status: res.status,
+          body: data,
+        });
+        const serverMessage = data && typeof data.error === 'string' ? data.error : null;
+        throw new Error(
+          serverMessage
+          || (res.status === 401 ? '로그인이 만료되었습니다. 다시 로그인해 주세요.'
+            : res.status === 429 ? '요청이 많아 잠시 후 다시 시도해 주세요.'
+              : '데이터를 불러오지 못했습니다.'),
+        );
+      }
+
+      setInfluencers(data?.influencers || []);
+      setCategories(data?.categories || ['전체']);
+      setTotal(data?.total || 0);
+      setActiveTotal(data?.activeTotal || 0);
+      setTotalPages(data?.total_pages || 1);
     } catch (err) {
       console.error('인플루언서 로드 실패:', err);
       setError(err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.');
