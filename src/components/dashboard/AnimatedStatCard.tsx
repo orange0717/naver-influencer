@@ -14,6 +14,7 @@ interface AnimatedStatCardProps {
   color?: 'accent' | 'up' | 'down' | 'gold' | 'dim';
   sparklineData?: number[];
   delay?: number;
+  className?: string; // grid 내 col-span 등 배치 오버라이드용
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -55,6 +56,7 @@ export default function AnimatedStatCard({
   color = 'accent',
   sparklineData,
   delay = 0,
+  className = '',
 }: AnimatedStatCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -92,29 +94,33 @@ export default function AnimatedStatCard({
     <div
       ref={ref}
       className={`
+        h-48 flex flex-col
         bg-gradient-to-br ${c.bg} bg-surface
-        rounded-2xl border border-border p-4
+        rounded-[20px] border border-border p-6
         shadow-[0_1px_3px_rgba(0,0,0,0.04)]
         transition-all duration-500 ease-out
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
+        ${className}
       `}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-8 h-8 rounded-xl ${c.icon} flex items-center justify-center`}>
+      <div className="flex items-start justify-between mb-3 shrink-0">
+        <div className={`w-8 h-8 rounded-xl ${c.icon} flex items-center justify-center shrink-0`}>
           {icon}
         </div>
         {sparklineData && sparklineData.length > 1 && (
           <Sparkline data={sparklineData} color={c.spark} />
         )}
       </div>
-      <p className="text-[11px] text-dim mb-0.5">{label}</p>
-      {description && <p className="text-[10px] text-dim/60 mb-0.5">{description}</p>}
-      <div className="flex items-baseline gap-1.5">
-        <span className={`text-2xl font-black font-rank ${c.text}`}>
+      <p className="text-[11px] font-semibold text-dim mb-1 leading-tight shrink-0">{label}</p>
+      <p className="text-[10px] text-dim/60 leading-snug line-clamp-2 min-h-[28px] shrink-0">
+        {description || ' '}
+      </p>
+      <div className="mt-auto flex items-baseline gap-1.5 pt-2 shrink-0">
+        <span className={`text-2xl font-black font-rank ${c.text} truncate`}>
           {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
         </span>
         {trend && trend.value !== 0 && (
-          <span className={`text-xs font-bold ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
+          <span className={`text-xs font-bold shrink-0 ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
             {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}
           </span>
         )}
