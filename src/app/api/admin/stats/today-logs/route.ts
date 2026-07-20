@@ -156,12 +156,18 @@ export async function GET(req: NextRequest) {
     const userInfo = log.user_id ? userMap.get(log.user_id) : null;
     const demoInfo = !log.user_id && log.demo_naver_id ? demoMap.get(log.demo_naver_id) : null;
 
-    // visitor_type: member(정식 회원) / demo(데모 체험자) / anonymous(비로그인)
-    const visitorType: 'member' | 'demo' | 'anonymous' = log.user_id
+    // visitor_type: member(정식 회원) / demo(데모 체험자) / guest(비로그인 허용 페이지 조회) / anonymous(그 외 비로그인)
+    // /my, /my/blogger는 로그인 없이도 보이도록 설계된 게스트 빈 상태·공개 도구라
+    // "권한 없는 접근"이 아니라 정상 조회임을 로그에서 바로 구분할 수 있도록 별도 태그를 붙인다.
+    const path = log.page_path || '';
+    const isGuestAllowedPage = path === '/my' || path === '/my/blogger' || path.startsWith('/my/blogger?') || path.startsWith('/my?');
+    const visitorType: 'member' | 'demo' | 'guest' | 'anonymous' = log.user_id
       ? 'member'
       : log.demo_naver_id
         ? 'demo'
-        : 'anonymous';
+        : isGuestAllowedPage
+          ? 'guest'
+          : 'anonymous';
 
     return {
       id: log.id,
