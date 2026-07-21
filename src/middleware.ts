@@ -94,6 +94,7 @@ const MEMBER_ONLY_GATE_PREFIXES = [
   '/rankings/influencer',
   '/rankings/official',
   '/influencers/free-plan',
+  '/naver-mate-ranking',
   '/my/naver-mate',
   '/my/fans',
   '/my/keyword-ranking',
@@ -304,6 +305,12 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith('/api/influencers/list') &&
     !pathname.startsWith('/api/influencers/free-plan');
   if (isInfluencersRankingApi && !user && !hasDemoSession) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
+  // 네이버메이트 랭킹 API: 회원 전용 페이지(/naver-mate-ranking)와 동일하게 보호
+  const isNaverMateRankingApi = pathname.startsWith('/api/rankings/naver-mate');
+  if (isNaverMateRankingApi && !user && !hasDemoSession) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 

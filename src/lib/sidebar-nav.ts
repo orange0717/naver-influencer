@@ -38,7 +38,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '메',
     items: [
       { label: 'AI 브리핑·AI탭', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true },
-      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking' },
+      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking', authOnly: true },
     ],
   },
   {
