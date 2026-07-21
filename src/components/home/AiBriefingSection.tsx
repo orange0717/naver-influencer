@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
+import NaverAiQualityPanel from '@/components/NaverAiQualityPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
+import type { NaverAiQualityEvaluation } from '@/lib/naver-ai-quality-evaluator';
 
 interface BloggerProfile {
   blogId: string;
@@ -272,6 +274,11 @@ export default function AiBriefingSection() {
   const [postScores, setPostScores] = useState<Record<string, PostScore>>({});
   const [scoringPostId, setScoringPostId] = useState('');
   const [improvePanelPostId, setImprovePanelPostId] = useState('');
+
+  // 네이버 AI 검색 품질평가 (Claude Sonnet 기반 정밀 진단)
+  const [qualityResults, setQualityResults] = useState<Record<string, NaverAiQualityEvaluation>>({});
+  const [evaluatingQualityId, setEvaluatingQualityId] = useState('');
+  const [qualityPanelPostId, setQualityPanelPostId] = useState('');
   const [filter, setFilter] = useState<
     'all' | 'briefingExposed' | 'briefingUnexposed' | 'tabExposed' | 'tabUnexposed' | 'needsImprovement' | 'highScore' | 'lowScore'
   >('all');
@@ -504,6 +511,37 @@ export default function AiBriefingSection() {
       setScoringPostId('');
     }
   }, [profile, showError]);
+
+  // 네이버 AI 검색 품질평가 실행 (이미 결과가 있으면 패널만 토글)
+  const handleEvaluateQuality = useCallback(async (post: BlogPost) => {
+    if (!profile) return;
+    if (qualityResults[post.id]) {
+      setQualityPanelPostId(prev => prev === post.id ? '' : post.id);
+      return;
+    }
+    setEvaluatingQualityId(post.id);
+    setQualityPanelPostId(post.id);
+    try {
+      const res = await fetch('/api/blog/quality-evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, postId: post.id }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        showError(errBody?.error || 'AI 품질평가에 실패했습니다.', 6000);
+        setQualityPanelPostId('');
+        return;
+      }
+      const data: NaverAiQualityEvaluation = await res.json();
+      setQualityResults(prev => ({ ...prev, [post.id]: data }));
+    } catch {
+      showError('네트워크 오류로 AI 품질평가를 하지 못했습니다.', 6000);
+      setQualityPanelPostId('');
+    } finally {
+      setEvaluatingQualityId('');
+    }
+  }, [profile, qualityResults, showError]);
 
   useEffect(() => {
     if (syncedState) {
@@ -1091,22 +1129,35 @@ export default function AiBriefingSection() {
                           </td>
                           {isFirst && (
                             <td className="text-center px-3 py-1.5 align-top" rowSpan={rowCount}>
-                              {!score ? (
+                              <div className="flex flex-col gap-1 items-center">
+                                {!score ? (
+                                  <button
+                                    onClick={() => handleAnalyzeScore(post)}
+                                    disabled={scoringPostId === post.id}
+                                    className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                                  >
+                                    {scoringPostId === post.id ? '분석 중...' : '분석하기'}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
+                                    className="text-[11px] text-accent hover:underline cursor-pointer"
+                                  >
+                                    개선하기<br /><span className="text-[9px] text-dim">(기초 진단)</span>
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => handleAnalyzeScore(post)}
-                                  disabled={scoringPostId === post.id}
-                                  className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                                  onClick={() => handleEvaluateQuality(post)}
+                                  disabled={evaluatingQualityId === post.id}
+                                  className="text-[11px] text-down hover:underline cursor-pointer disabled:opacity-50"
                                 >
-                                  {scoringPostId === post.id ? '분석 중...' : '분석하기'}
+                                  {evaluatingQualityId === post.id ? (
+                                    <span className="w-3 h-3 border-2 border-down/30 border-t-down rounded-full animate-spin inline-block" />
+                                  ) : (
+                                    <>AI 정밀진단<br /><span className="text-[9px] text-dim">(품질평가)</span></>
+                                  )}
                                 </button>
-                              ) : (
-                                <button
-                                  onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
-                                  className="text-[11px] text-accent hover:underline cursor-pointer"
-                                >
-                                  개선하기<br /><span className="text-[9px] text-dim">(기초 진단)</span>
-                                </button>
-                              )}
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -1128,6 +1179,20 @@ export default function AiBriefingSection() {
                           <tr key={`${post.id}-improve`} className={!isLast ? '!border-b-0' : ''}>
                             <td colSpan={14} className="px-4 pb-4 pt-1 bg-bg/30">
                               <ImprovePanel score={score} />
+                            </td>
+                          </tr>
+                        )}
+                        {isFirst && qualityPanelPostId === post.id && (
+                          <tr key={`${post.id}-quality`} className={!isLast ? '!border-b-0' : ''}>
+                            <td colSpan={14} className="px-4 pb-4 pt-1 bg-bg/30">
+                              {evaluatingQualityId === post.id ? (
+                                <div className="flex items-center gap-2 text-sm text-dim py-4">
+                                  <span className="animate-spin inline-block w-4 h-4 border-2 border-down/30 border-t-down rounded-full" />
+                                  AI 품질평가 중... (최대 1분 소요)
+                                </div>
+                              ) : qualityResults[post.id] ? (
+                                <NaverAiQualityPanel result={qualityResults[post.id]} />
+                              ) : null}
                             </td>
                           </tr>
                         )}
@@ -1257,7 +1322,7 @@ export default function AiBriefingSection() {
                       </div>
                     </div>
 
-                    <div className="pl-7 pt-0.5">
+                    <div className="pl-7 pt-0.5 flex items-center gap-3 flex-wrap">
                       {!score ? (
                         <button
                           onClick={() => handleAnalyzeScore(post)}
@@ -1274,12 +1339,35 @@ export default function AiBriefingSection() {
                           개선하기 <span className="text-dim">(기초 진단)</span>
                         </button>
                       )}
-                      {improvePanelPostId === post.id && score && (
-                        <div className="mt-2">
-                          <ImprovePanel score={score} />
-                        </div>
-                      )}
+                      <button
+                        onClick={() => handleEvaluateQuality(post)}
+                        disabled={evaluatingQualityId === post.id}
+                        className="text-[11px] text-down hover:underline cursor-pointer disabled:opacity-50"
+                      >
+                        {evaluatingQualityId === post.id ? (
+                          <span className="w-3 h-3 border-2 border-down/30 border-t-down rounded-full animate-spin inline-block" />
+                        ) : (
+                          <>AI 정밀진단 <span className="text-dim">(품질평가)</span></>
+                        )}
+                      </button>
                     </div>
+                    {improvePanelPostId === post.id && score && (
+                      <div className="mt-2">
+                        <ImprovePanel score={score} />
+                      </div>
+                    )}
+                    {qualityPanelPostId === post.id && (
+                      <div className="mt-2">
+                        {evaluatingQualityId === post.id ? (
+                          <div className="flex items-center gap-2 text-sm text-dim py-3">
+                            <span className="animate-spin inline-block w-4 h-4 border-2 border-down/30 border-t-down rounded-full" />
+                            AI 품질평가 중... (최대 1분 소요)
+                          </div>
+                        ) : qualityResults[post.id] ? (
+                          <NaverAiQualityPanel result={qualityResults[post.id]} />
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 );
               })}
