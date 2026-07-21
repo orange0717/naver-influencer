@@ -122,6 +122,19 @@ export const SIDEBAR_HIDDEN_PREFIXES = [
 ];
 
 /**
+ * authOnly로 선언된 모든 href를 모은다 (해시 앵커·비활성 메뉴 제외).
+ * middleware.ts가 이 목록과 실제 서버측 차단 목록을 대조해, 사이드바에는
+ * "회원 전용"으로 선언해놓고 정작 어디서도 막지 않는 누락을 개발 중 자동으로 잡아낸다.
+ * (2026-07-21 /naver-mate-ranking, /my/blogger, /my/saved-keywords, /profile 누락 발견 계기로 추가)
+ */
+export function getAllAuthOnlyHrefs(): string[] {
+  const items = [...SIDEBAR_GROUPS.flatMap(g => g.items), ...SIDEBAR_FOOTER_LINKS];
+  return items
+    .filter(item => item.authOnly && item.href !== '#' && !item.href.startsWith('/#'))
+    .map(item => item.href);
+}
+
+/**
  * 현재 경로와 가장 구체적으로(가장 긴 href로) 일치하는 단 하나의 href를 찾는다.
  * 여러 메뉴가 서로의 접두사인 경우(예: /my ⊂ /my/naver-mate) 단순 startsWith 매칭만 쓰면
  * 두 메뉴가 동시에 active가 되므로, 매칭된 href 중 가장 긴 것 하나만 선택한다.

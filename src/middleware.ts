@@ -6,6 +6,7 @@ import { isTrialExpired } from '@/lib/trial';
 import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 import { isRestricted } from '@/lib/admin';
 import { defaultApiLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { getAllAuthOnlyHrefs } from '@/lib/sidebar-nav';
 
 /**
  * 점검 모드: 켜면 모든 HTML 페이지 요청을 점검 안내 화면으로 즉시 응답한다.
@@ -108,6 +109,38 @@ const MEMBER_ONLY_GATE_PREFIXES = [
 
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/**
+ * sidebar-nav.ts에서 authOnly로 선언됐지만 MEMBER_ONLY_GATE_PREFIXES가 아닌
+ * 다른 방식으로 이미 보호되고 있어 이 목록에 넣지 않는 경로 — 반드시 "왜"를 남길 것.
+ * 아래 목록에도 MEMBER_ONLY_GATE_PREFIXES에도 없는 authOnly 경로는 실제로 새는 것이니
+ * getAllAuthOnlyHrefs() 감사 로직이 잡아낸다.
+ */
+const GATE_HANDLED_ELSEWHERE = new Set([
+  '/my', // 비로그인 시 리다이렉트 대신 GuestDashboard 빈 상태를 의도적으로 렌더 (src/app/my/page.tsx)
+  '/notice', // needsNoticeLogin — 데모 세션도 차단하는 더 엄격한 별도 규칙 (아래)
+  // AI 호출 비용 발생 기능 — 데모 세션도 명시적으로 제외해야 해서 페이지 자체 서버 체크로 처리
+  '/dashboard/writing/spellcheck',
+  '/dashboard/writing/rewrite',
+  '/dashboard/youtube-stt',
+  '/dashboard/claude', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts)
+]);
+
+function isAuthOnlyHrefAccounted(href: string): boolean {
+  if (GATE_HANDLED_ELSEWHERE.has(href)) return true;
+  if (href === '/influencers') return true; // 아래 needsMemberOnlyGate에서 exact match로 별도 처리
+  return MEMBER_ONLY_GATE_PREFIXES.some(p => matchesPathPrefix(href, p));
+}
+
+// 모듈 로드 시 1회만 실행 — sidebar-nav.ts와 middleware.ts가 어긋나면 즉시 로그로 드러낸다.
+// (2026-07-21: /naver-mate-ranking, /my/blogger, /my/saved-keywords, /profile 4곳이
+//  authOnly로 선언만 되고 실제 차단은 어디에도 없어 비회원에게 그대로 노출됐던 사고 재발 방지용)
+const unaccountedAuthOnlyHrefs = getAllAuthOnlyHrefs().filter(href => !isAuthOnlyHrefAccounted(href));
+if (unaccountedAuthOnlyHrefs.length > 0) {
+  console.warn(
+    `[member-gate-audit] sidebar-nav.ts에 authOnly로 선언됐지만 middleware.ts 어디에도 실제 차단이 없는 경로: ${unaccountedAuthOnlyHrefs.join(', ')} — MEMBER_ONLY_GATE_PREFIXES 또는 GATE_HANDLED_ELSEWHERE에 등록 필요`,
+  );
 }
 
 /**
