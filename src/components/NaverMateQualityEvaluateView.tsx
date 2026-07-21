@@ -17,10 +17,25 @@ interface BlogPost {
   date: string;
 }
 
+/** API가 응답 없이 멈춰도 무한 로딩에 빠지지 않도록 요청마다 타임아웃을 건다 (BlogAnalysisSection.tsx와 동일 패턴) */
+async function fetchWithTimeout(input: string, init?: RequestInit, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default function NaverMateQualityEvaluateView() {
   const { user, isLoading: authLoading } = useAuth();
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  // 목록 조회 자체가 실패한 경우(401/403/500/네트워크 오류 등) — "포스팅이 없습니다"와
+  // 구분해서 실제 원인을 화면에 보여준다 (전에는 !res.ok/catch를 그냥 무시해서
+  // 진짜 오류인데도 "분석할 포스팅이 없습니다"로 뭉개져 보였음)
+  const [postsError, setPostsError] = useState('');
   const [qualityResults, setQualityResults] = useState<Record<string, NaverAiQualityEvaluation>>({});
   const [evaluatingId, setEvaluatingId] = useState('');
   const [openPanelId, setOpenPanelId] = useState('');
@@ -42,14 +57,29 @@ export default function NaverMateQualityEvaluateView() {
 
   const fetchBlogPosts = useCallback(async (blogId: string) => {
     setPostsLoading(true);
+    setPostsError('');
     try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=30`);
-      if (res.ok) {
-        const data = await res.json();
-        setBlogPosts(data.posts || []);
+      const res = await fetchWithTimeout(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=30`);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        const msg = errBody?.error || `포스팅 목록을 불러오지 못했습니다. (HTTP ${res.status})`;
+        console.error('[quality-evaluate] /api/blog/posts 실패:', res.status, errBody);
+        setPostsError(msg);
+        setBlogPosts([]);
+        return;
       }
-    } catch { /* ignore */ }
-    finally { setPostsLoading(false); }
+      const data = await res.json();
+      setBlogPosts(data.posts || []);
+    } catch (err) {
+      const msg = err instanceof Error && err.name === 'AbortError'
+        ? '포스팅 목록 조회가 시간 초과되었습니다. 잠시 후 다시 시도해주세요.'
+        : '네트워크 오류로 포스팅 목록을 불러오지 못했습니다.';
+      console.error('[quality-evaluate] fetchBlogPosts 오류:', err);
+      setPostsError(msg);
+      setBlogPosts([]);
+    } finally {
+      setPostsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -73,13 +103,15 @@ export default function NaverMateQualityEvaluateView() {
       });
       if (!res.ok) {
         const errBody = await res.json().catch(() => null);
-        setErrorMessage(errBody?.error || 'AI 품질평가에 실패했습니다.');
+        console.error('[quality-evaluate] /api/blog/quality-evaluate 실패:', res.status, errBody);
+        setErrorMessage(errBody?.error || `AI 품질평가에 실패했습니다. (HTTP ${res.status})`);
         setOpenPanelId('');
         return;
       }
       const data: NaverAiQualityEvaluation = await res.json();
       setQualityResults(prev => ({ ...prev, [post.id]: data }));
-    } catch {
+    } catch (err) {
+      console.error('[quality-evaluate] handleEvaluate 오류:', err);
       setErrorMessage('네트워크 오류로 AI 품질평가를 하지 못했습니다.');
       setOpenPanelId('');
     } finally {
@@ -102,8 +134,26 @@ export default function NaverMateQualityEvaluateView() {
       )}
       {postsLoading ? (
         <div className="text-sm text-dim py-10 text-center">포스팅 목록을 불러오는 중...</div>
+      ) : postsError ? (
+        <div className="text-sm text-down bg-down/10 border border-down/20 rounded-xl px-4 py-6 text-center space-y-3">
+          <p>{postsError}</p>
+          <button
+            onClick={() => profile && fetchBlogPosts(profile.blogId)}
+            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-down/10 text-down hover:bg-down/20 cursor-pointer"
+          >
+            다시 시도
+          </button>
+        </div>
       ) : blogPosts.length === 0 ? (
-        <div className="text-sm text-dim py-10 text-center">분석할 포스팅이 없습니다.</div>
+        <div className="text-sm text-dim py-10 text-center space-y-3">
+          <p>분석할 포스팅이 없습니다.</p>
+          <button
+            onClick={() => profile && fetchBlogPosts(profile.blogId)}
+            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-border/20 text-dim hover:bg-border/30 cursor-pointer"
+          >
+            다시 불러오기
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
           {blogPosts.map(post => (
