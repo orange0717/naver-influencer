@@ -22,7 +22,7 @@ interface TodayLog {
   id: string;
   visited_at: string;
   user_id: string | null;
-  visitor_type: 'member' | 'demo' | 'anonymous';
+  visitor_type: 'member' | 'demo' | 'guest' | 'anonymous';
   nickname: string | null;
   email: string | null;
   demo_naver_id: string | null;
@@ -322,6 +322,11 @@ export default function AdminAnalyticsPage() {
                           <span className="inline-flex items-center gap-1.5">
                             <span className="text-[9px] font-bold text-white bg-emerald-500 px-1.5 py-0.5 rounded-full leading-none">데모</span>
                             <span className="font-semibold">{log.nickname || log.demo_naver_id || '(데모)'}</span>
+                          </span>
+                        ) : log.visitor_type === 'guest' ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-white bg-sky-500 px-1.5 py-0.5 rounded-full leading-none">게스트</span>
+                            <span className="text-dim">{log.browser} · {log.os}</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5">
