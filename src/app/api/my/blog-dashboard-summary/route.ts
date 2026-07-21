@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     fetchBlogProfileStats(blogId).catch(() => null),
     supabase
       .from('ai_briefing_exposures')
-      .select('exposed, tab_exposed')
+      .select('post_id, exposed, tab_exposed')
       .eq('user_id', auth.userId)
       .eq('blog_id', blogId)
       .then(({ data }) => data ?? []),
@@ -53,8 +53,14 @@ export async function GET(request: NextRequest) {
       .then(({ data }) => data ?? []),
   ]);
 
-  const aiBriefingCitedCount = briefingRows.filter(r => r.exposed === true).length;
-  const aiTabExposedCount = briefingRows.filter(r => r.tab_exposed === true).length;
+  // 포스트당 여러 키워드가 각각 행으로 저장되므로, 포스트 단위(distinct post_id)로 롤업해서 센다.
+  // (한 포스트가 키워드 3개로 모두 인용되어도 "1건"으로 집계 — 2026-07-17 중복집계 버그 수정)
+  const aiBriefingCitedCount = new Set(
+    briefingRows.filter(r => r.exposed === true).map(r => r.post_id),
+  ).size;
+  const aiTabExposedCount = new Set(
+    briefingRows.filter(r => r.tab_exposed === true).map(r => r.post_id),
+  ).size;
 
   const bestRanks = rankRows
     .map(r => {
