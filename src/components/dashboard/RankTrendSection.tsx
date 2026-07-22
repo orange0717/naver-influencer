@@ -127,7 +127,7 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
   };
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="bg-surface rounded-2xl border border-border p-5 shadow-xs">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <div>

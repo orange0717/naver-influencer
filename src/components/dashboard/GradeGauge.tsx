@@ -42,7 +42,7 @@ export default function GradeGauge({ score, label, description, color, delay = 0
   return (
     <div className={`
       bg-surface rounded-2xl border border-border p-4 text-center
-      shadow-[0_1px_3px_rgba(0,0,0,0.04)]
+      shadow-xs
       transition-all duration-500 ease-out
       ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
     `}>

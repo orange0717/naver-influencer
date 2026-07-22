@@ -669,7 +669,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
 
       {/* ─── 체험/데모 배너 ─── */}
       {!isLoggedIn && isTrial && <TrialBanner isDemo={isDemo} />}
@@ -721,7 +721,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       )}
 
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
-      <div className="space-y-6">
+      <div className="space-y-10">
 
       {/* 상세 통계 바 */}
       {categoryRank > 0 && (
@@ -742,29 +742,25 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {/* ─── 2. 통계 카드 ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {categoryRank > 0 && (
-          <AnimatedStatCard
-            label="카테고리 순위"
-            value={categoryRank}
-            suffix={categoryTotal > 0 ? `위/${categoryTotal}` : '위'}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
-            color="accent"
-            delay={80}
-          />
-        )}
-        {aiVisibility && (
-          <AnimatedStatCard
-            label="AI브리핑 인용"
-            value={aiVisibility.exposedCount}
-            suffix="건"
-            description={`확인 ${aiVisibility.checkedCount}건 중`}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>}
-            color={aiVisibility.exposedCount > 0 ? 'up' : 'dim'}
-            delay={120}
-          />
-        )}
+      {/* ─── 2. 통계 카드 ─── 항상 6장 고정: 조건부 렌더링을 없애 그리드 마지막 행이 깨지지 않게 함 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <AnimatedStatCard
+          label="카테고리 순위"
+          value={categoryRank}
+          suffix={categoryRank > 0 && categoryTotal > 0 ? `위/${categoryTotal}` : '위'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+          color="accent"
+          delay={80}
+        />
+        <AnimatedStatCard
+          label="AI브리핑 인용"
+          value={aiVisibility?.exposedCount ?? 0}
+          suffix="건"
+          description={aiVisibility ? `확인 ${aiVisibility.checkedCount}건 중` : '확인 전'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>}
+          color={aiVisibility && aiVisibility.exposedCount > 0 ? 'up' : 'dim'}
+          delay={120}
+        />
         <AnimatedStatCard
           label="참여 키워드"
           value={participatedCount}
@@ -877,9 +873,9 @@ function GuestDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {/* ─── 로그인 유도 배너 ─── */}
-      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:p-6">
+      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1.5">
             <h1 className="font-title text-lg lg:text-xl font-bold text-text">내 대시보드</h1>
@@ -905,11 +901,13 @@ function GuestDashboard() {
       </div>
 
       {/* ─── 빈 상태 통계 카드 (레이아웃 미리보기) ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {placeholderStats.map((c) => (
-          <div key={c.label} className="bg-surface border border-border rounded-2xl p-4 text-center">
-            <p className="text-xs text-dim mb-1">{c.label}</p>
-            <p className="text-xl font-black text-dim font-rank">-{c.suffix}</p>
+          <div key={c.label} className="h-48 flex flex-col bg-surface rounded-2xl border border-border shadow-xs p-6">
+            <div className="w-8 h-8 rounded-xl bg-border/30 shrink-0" />
+            <p className="stat-title mt-3 mb-1 shrink-0">{c.label}</p>
+            <p className="stat-desc min-h-[28px] shrink-0"> </p>
+            <p className="stat-value text-dim mt-auto">{`-${c.suffix}`}</p>
           </div>
         ))}
       </div>

@@ -96,8 +96,8 @@ export default function AnimatedStatCard({
       className={`
         h-48 flex flex-col
         bg-gradient-to-br ${c.bg} bg-surface
-        rounded-[20px] border border-border p-6
-        shadow-[0_1px_3px_rgba(0,0,0,0.04)]
+        rounded-2xl border border-border p-6
+        shadow-xs
         transition-all duration-500 ease-out
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
         ${className}
@@ -111,12 +111,12 @@ export default function AnimatedStatCard({
           <Sparkline data={sparklineData} color={c.spark} />
         )}
       </div>
-      <p className="text-[11px] font-semibold text-dim mb-1 leading-tight shrink-0">{label}</p>
-      <p className="text-[10px] text-dim/60 leading-snug line-clamp-2 min-h-[28px] shrink-0">
+      <p className="stat-title mb-1 shrink-0">{label}</p>
+      <p className="stat-desc line-clamp-2 min-h-[28px] shrink-0">
         {description || ' '}
       </p>
       <div className="mt-auto flex items-baseline gap-1.5 pt-2 shrink-0">
-        <span className={`text-2xl font-black font-rank ${c.text} truncate`}>
+        <span className={`stat-value ${c.text} truncate`}>
           {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
         </span>
         {trend && trend.value !== 0 && (
