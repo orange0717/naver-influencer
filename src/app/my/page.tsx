@@ -25,6 +25,11 @@ import { after } from 'next/server';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export const dynamic = 'force-dynamic';
+// DB 쿼리(특히 keyword_rankings 1.5억 행 스캔)가 10~24초까지 걸릴 수 있어,
+// Vercel 기본 함수 타임아웃(10초)에 걸려 응답이 중간에 끊기고 로딩 화면에서
+// 멈춰버리는 문제(오렌지 리포트: "데이터가 안 뜹니다")를 막기 위한 안전장치.
+// 근본 해결은 migration-114 인덱스 적용.
+export const maxDuration = 30;
 
 export default async function MyDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const supabase = createServiceClient();
