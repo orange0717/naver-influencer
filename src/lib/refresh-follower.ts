@@ -51,14 +51,12 @@ export async function refreshInfluencerProfile(
   influencerId: string,
   naverId: string,
 ): Promise<FreshProfile | null> {
-  const __t0 = Date.now();
   // updated_at 기반: KST 6시간 고정 창(0·6·12·18시 경계)당 최대 1회
   const { data: infRow, error: infRowError } = await supabase
     .from('influencers')
     .select('updated_at')
     .eq('id', influencerId)
     .single();
-  console.log(`[refresh-follower-perf] updated_at lookup: ${Date.now() - __t0}ms`);
 
   if (infRowError || !infRow) {
     if (infRowError) console.error(`[refresh-follower] influencer lookup failed for ${influencerId}:`, infRowError.message);
@@ -66,12 +64,8 @@ export async function refreshInfluencerProfile(
   }
 
   if (infRow?.updated_at) {
-    if (!profileRefreshAllowedSinceLastUpdate(infRow.updated_at)) {
-      console.log(`[refresh-follower-perf] gated (skip): ${Date.now() - __t0}ms`);
-      return null;
-    }
+    if (!profileRefreshAllowedSinceLastUpdate(infRow.updated_at)) return null;
   }
-  console.log(`[refresh-follower-perf] gate passed, starting in.naver.com fetch: ${Date.now() - __t0}ms`);
 
   try {
     const controller = new AbortController();
@@ -81,11 +75,9 @@ export async function refreshInfluencerProfile(
       headers: { 'User-Agent': PROFILE_UA, 'Accept-Language': 'ko-KR,ko;q=0.9', Referer: 'https://in.naver.com/' },
     });
     clearTimeout(timeout);
-    console.log(`[refresh-follower-perf] in.naver.com fetch done: ${Date.now() - __t0}ms (status ${res.status})`);
 
     if (!res.ok) return null;
     const html = await res.text();
-    console.log(`[refresh-follower-perf] html read: ${Date.now() - __t0}ms`);
 
     const idx = html.indexOf('__PRELOADED_STATE__');
     if (idx === -1) return null;
@@ -122,7 +114,6 @@ export async function refreshInfluencerProfile(
           const total = kwJson?.paging?.total;
           if (typeof total === 'number' && total >= 0) totalKeywords = total;
         }
-        console.log(`[refresh-follower-perf] participated-keywords fetch done: ${Date.now() - __t0}ms`);
       } catch (err) {
         console.warn(`[refresh-follower] participated-keywords ${naverId} 실패:`, err instanceof Error ? err.message : err);
       }
@@ -144,7 +135,6 @@ export async function refreshInfluencerProfile(
     if (Object.keys(updateData).length <= 1) return null;
 
     await supabase.from('influencers').update(updateData).eq('id', influencerId);
-    console.log(`[refresh-follower-perf] DB update done (total): ${Date.now() - __t0}ms`);
 
     return {
       total_follower_count: followerCount ?? null,
@@ -152,7 +142,6 @@ export async function refreshInfluencerProfile(
       total_keywords: totalKeywords,
     };
   } catch (err) {
-    console.log(`[refresh-follower-perf] threw at ${Date.now() - __t0}ms`);
     console.warn(`[refresh-follower] ${naverId} 실패:`, err instanceof Error ? err.message : err);
   }
   return null;
