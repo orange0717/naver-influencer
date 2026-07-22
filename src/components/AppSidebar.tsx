@@ -138,7 +138,7 @@ function SidebarContent({
         />
         {SIDEBAR_GROUPS.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-1 text-[11px] font-bold text-dim/70 uppercase tracking-wide">{group.label}</p>
+            <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#BF8888' }}>{group.label}</p>
             <div className="space-y-0.5">
               {group.items.map((item) => (
                 <NavLink
