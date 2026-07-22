@@ -21,6 +21,7 @@ import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
 import SubscriptionExpiryBanner from '@/components/SubscriptionExpiryBanner';
+import { after } from 'next/server';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export const dynamic = 'force-dynamic';
@@ -239,25 +240,14 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       })()
     : Promise.resolve(null);
 
-  // 인플루언서 정보 + 팬수 갱신(KST 6시간 창당 최대 1회, refresh-follower)을 병렬로 실행.
-  // refreshFollowerCount는 influencerId/naverId만 필요해 influencer row와 데이터 의존성 없음.
-  const [{ data: influencer }, refreshResult] = await Promise.all([
-    supabase.from('influencers').select('*').eq('id', influencerId).single(),
-    refreshFollowerCount(supabase, influencerId, naverId!),
-  ]);
-
-  if (influencer && refreshResult !== null) {
-    // DB 갱신 후 현재 객체에도 반영
-    const { data: refreshed } = await supabase
-      .from('influencers')
-      .select('subscriber_count, total_follower_count')
-      .eq('id', influencerId)
-      .single();
-    if (refreshed) {
-      influencer.subscriber_count = refreshed.subscriber_count;
-      influencer.total_follower_count = refreshed.total_follower_count;
-    }
-  }
+  // 인플루언서 정보를 먼저 조회해 페이지 렌더는 절대 기다리지 않게 하고,
+  // 팬수 갱신(KST 6시간 창당 최대 1회, refresh-follower)은 응답 전송 후 백그라운드에서 처리.
+  // in.naver.com 외부 fetch(최대 8초+5초)가 이 요청의 렌더링을 막지 않는다 — 갱신된 값은
+  // DB에는 반영되고, 화면에는 다음 방문 때부터 보인다(최대 6시간 창 지연은 기존과 동일한 정책).
+  const { data: influencer } = await supabase.from('influencers').select('*').eq('id', influencerId).single();
+  after(() => {
+    refreshFollowerCount(supabase, influencerId, naverId!).catch(() => {});
+  });
 
   if (!influencer) {
     return (
