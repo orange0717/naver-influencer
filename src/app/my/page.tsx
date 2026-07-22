@@ -26,6 +26,8 @@ import { refreshFollowerCount } from '@/lib/refresh-follower';
 export const dynamic = 'force-dynamic';
 
 export default async function MyDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
+  const __t0 = Date.now();
+  const __mark = (label: string) => console.log(`[my-perf] ${label}: ${Date.now() - __t0}ms`);
   const supabase = createServiceClient();
   let naverId: string | undefined;
   let internalUserId: string | undefined;
@@ -38,6 +40,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const cookieStore = await cookies();
   const supabaseAuth = await createRouteHandlerClient();
   const authUser = await getUserWithTimeout(supabaseAuth);
+  __mark('auth');
 
   let isLoggedIn = false;
 
@@ -166,6 +169,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   }
 
   const influencerId = influencerData.id;
+  __mark('influencerId resolved');
 
   // ─── 병렬 프리페치: naverId/internalUserId만 있으면 되고 rankings·keywords 계산과
   // 데이터 의존성이 없는 것들을 여기서 미리 시작해, 아래 refreshFollowerCount(최대 13초)와
@@ -258,6 +262,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       influencer.total_follower_count = refreshed.total_follower_count;
     }
   }
+  __mark('influencer+refreshFollowerCount done');
 
   if (!influencer) {
     return (
@@ -334,6 +339,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     .eq('influencer_id', influencerId);
 
   const [recentRows, { data: myKeywords }] = await Promise.all([recentRowsPromise, myKeywordsPromise]);
+  __mark('recentRows+myKeywords done');
 
   const seenKw = new Set<string>();
   let latestRankings = recentRows.filter(r => {
@@ -379,6 +385,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   // ─── 토픽 수 (컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수) ───
   const topicCount = await topicCountPromise;
+  __mark('topicCount done');
 
   // 통계 계산
   const totalRankedKeywords = rankings.length;
@@ -442,6 +449,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     categoryRank = (higherCount || 0) + 1;
     categoryTotal = totalCount || 0;
   }
+  __mark('categoryRank done');
 
   // ─── 2. 내 키워드 전체 목록 (myKeywords는 위 recentRowsPromise와 병렬로 이미 조회됨) ───
   const rankedMap = new Map(rankings.map(r => [r.keyword_id, r]));
@@ -528,6 +536,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       }
     }
   }
+  __mark('categoryAllKeywords done');
 
   // 페이지네이션 경계 중복 제거
   const seenIds = new Set<string>();
@@ -675,6 +684,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // AI 가시성: 네이버메이트에서 실제로 확인(checked_at 존재)한 건만 집계 — 한 번도 안 썼으면 null(측정 불가)
   // 네이버 메이트 선정 여부(블로그 홈 경로 = naverId 로 매칭) 포함, 둘 다 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
   const [aiVisibility, mateStatus] = await Promise.all([aiVisibilityPromise, mateStatusPromise]);
+  __mark('aiVisibility+mateStatus done (total)');
 
   return (
     <div className="space-y-10">
