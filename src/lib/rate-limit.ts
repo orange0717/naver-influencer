@@ -166,6 +166,21 @@ export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60
 /** Chrome 확장 / 외부 키워드 분석 API */
 export const extKeywordAnalysisLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 
+/** 구글 색인등록: URL 등록(단건/대량) — 5분에 20회 */
+export const googleIndexingRegisterLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
+
+/** 구글 색인등록: 수동 재확인 — GSC API 쿼터 보호를 위해 URL당 사실상 1시간 1회 수준으로 강하게 제한 */
+export const googleIndexingRecheckLimiter = createRateLimiter({ limit: 5, windowMs: 60 * 60 * 1000 });
+
+/** 구글 색인등록: 실패원인 AI진단(Claude 호출) — 5분에 5회 */
+export const googleIndexingDiagnoseLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
+/** 구글 계정 연결(OAuth) 시작/해제 — 15분에 5회 */
+export const googleOAuthLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
+
+/** 구글 색인등록: 공개 사이트맵 라우트(비인증, Google 크롤러가 호출) — IP당 1분 30회 */
+export const googleIndexingSitemapLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });
+
 /**
  * 전역 기본 API Rate Limiter (안전망) — 개별 라우트에 전용 limiter가 없는 경우를 위한 IP당 기본 상한.
  * 미들웨어(src/middleware.ts)에서 모든 /api/ 요청에 적용되며, 라우트 자체 limiter가 더 엄격하면

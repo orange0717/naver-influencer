@@ -70,6 +70,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: 'URL 분석', href: '/decoder' },
       { label: '경쟁자 분석', href: '/competitor' },
       { label: 'JPG↔PNG 변환기', href: '/image-converter' },
+      // TODO: migration-114 실행 + GOOGLE_CLIENT_ID/SECRET 등 Vercel 환경변수 설정 후 disabled 제거
+      { label: '구글 색인등록', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true, disabled: true },
     ],
   },
   {

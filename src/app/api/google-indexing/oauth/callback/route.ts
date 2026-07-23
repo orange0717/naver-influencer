@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
+import { verifyOAuthState, exchangeCodeForTokens, saveSiteUrl } from '@/lib/google-oauth';
+import { listSites } from '@/lib/google-search-console';
+import { getValidAccessToken } from '@/lib/google-oauth';
+
+export const dynamic = 'force-dynamic';
+
+const DASHBOARD_PATH = '/dashboard/google-indexing';
+
+function redirectWithParam(request: NextRequest, key: string, value: string) {
+  const url = new URL(DASHBOARD_PATH, request.url);
+  url.searchParams.set(key, value);
+  return NextResponse.redirect(url);
+}
+
+/** GET /api/google-indexing/oauth/callback — Google 동의화면에서 돌아오는 콜백 */
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get('code');
+  const state = searchParams.get('state');
+  const errorParam = searchParams.get('error');
+
+  if (errorParam) {
+    return redirectWithParam(request, 'gerror', 'denied');
+  }
+  if (!code || !state) {
+    return redirectWithParam(request, 'gerror', 'invalid_request');
+  }
+
+  const stateUserId = verifyOAuthState(state);
+  if (!stateUserId) {
+    return redirectWithParam(request, 'gerror', 'invalid_state');
+  }
+
+  // 현재 로그인된 세션이 state를 발급받은 유저와 같은지 확인 (CSRF 방어 이중화)
+  const authUser = await getAuthUser(request);
+  if (!authUser || authUser.userId !== stateUserId) {
+    return redirectWithParam(request, 'gerror', 'session_mismatch');
+  }
+
+  try {
+    await exchangeCodeForTokens(stateUserId, code);
+
+    // 연결된 계정이 이 유저의 네이버 블로그(blog.naver.com/{blogId}/) 속성을
+    // GSC에서 소유권 확인했는지 자동 매칭 시도
+    const blogId = (authUser.user as { blog_id?: string | null }).blog_id;
+    if (blogId) {
+      const conn = await getValidAccessToken(stateUserId);
+      if (conn) {
+        const sites = await listSites(conn.accessToken);
+        const matched = sites.find((s) => s.siteUrl.includes(`blog.naver.com/${blogId}`));
+        if (matched) {
+          await saveSiteUrl(stateUserId, matched.siteUrl);
+        }
+      }
+    }
+
+    return redirectWithParam(request, 'connected', '1');
+  } catch (err) {
+    console.error('[google-indexing/oauth/callback] error:', err);
+    return redirectWithParam(request, 'gerror', 'exchange_failed');
+  }
+}
