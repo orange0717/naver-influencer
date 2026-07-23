@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,15 +28,21 @@ interface RankingResult {
   viewTab: { exposed: boolean; rank: number | null };
   query: string;
   searchVolume?: number;
+  checkedAt?: string | null;
 }
 
-const STATE_API = '/api/my/keyword-ranking-state';
-
-// 서버(DB)에서 저장된 키워드/순위 상태를 복원한다. (기기 간 동기화의 핵심)
-async function fetchRankingState(blogId: string): Promise<{
+type SyncedState = {
   postKeywords: Record<string, string[]>;
   rankingResults: Record<string, RankingResult>;
-}> {
+};
+
+const STATE_API = '/api/my/keyword-ranking-state';
+// 네이버 요청 최소화: 최근 10분 이내 갱신된 순위는 재조회하지 않고 그대로 표시
+const STALE_MS = 10 * 60 * 1000;
+const FLASH_MS = 1400;
+
+// 서버(DB)에서 저장된 키워드/순위 상태를 복원한다. (기기 간 동기화의 핵심)
+async function fetchRankingState(blogId: string): Promise<SyncedState> {
   const res = await fetch(`${STATE_API}?blogId=${encodeURIComponent(blogId)}`);
   if (!res.ok) throw new Error('상태 로드 실패');
   return res.json();
@@ -62,6 +68,25 @@ function saveRankResultToDb(blogId: string, postId: string, keyword: string, res
 
 function rankKey(postId: string, keyword: string): string {
   return `${postId}::${keyword}`;
+}
+
+// 마지막 확인이 10분보다 오래됐거나 아예 없으면 갱신 대상
+function isStale(result: RankingResult | undefined): boolean {
+  if (!result?.checkedAt) return true;
+  return Date.now() - new Date(result.checkedAt).getTime() > STALE_MS;
+}
+
+function timeAgo(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return '방금 전';
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}일 전`;
+  return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
 interface AiBriefingResult {
@@ -97,6 +122,7 @@ async function getProfileFromApi(): Promise<BloggerProfile | null> {
 }
 
 export default function KeywordRankingSection() {
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
@@ -111,13 +137,23 @@ export default function KeywordRankingSection() {
   const [editingKeywords, setEditingKeywords] = useState<Record<string, string[]>>({});
   // "postId::keyword" → RankingResult
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
+  const [stateReady, setStateReady] = useState(false);
   const [checkingKey, setCheckingKey] = useState('');
+  // 자동/수동 백그라운드 일괄 갱신 진행 여부 (화면을 막지 않는 작은 표시용)
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState('');
   const [showKeywordSearch, setShowKeywordSearch] = useState(false);
   const abortRef = useRef(false);
+  const refreshingRef = useRef(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const rankingResultsRef = useRef<Record<string, RankingResult>>({});
+  const postKeywordsRef = useRef<Record<string, string[]>>({});
+
+  useEffect(() => { rankingResultsRef.current = rankingResults; }, [rankingResults]);
+  useEffect(() => { postKeywordsRef.current = postKeywords; }, [postKeywords]);
 
   const showError = useCallback((msg: string, ms = 5000) => {
     setErrorMessage(msg);
@@ -127,6 +163,25 @@ export default function KeywordRankingSection() {
 
   useEffect(() => () => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    Object.values(flashTimersRef.current).forEach(clearTimeout);
+    abortRef.current = true;
+  }, []);
+
+  const flashCell = useCallback((key: string) => {
+    setFlashKeys(prev => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    if (flashTimersRef.current[key]) clearTimeout(flashTimersRef.current[key]);
+    flashTimersRef.current[key] = setTimeout(() => {
+      setFlashKeys(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      delete flashTimersRef.current[key];
+    }, FLASH_MS);
   }, []);
 
   const { user } = useAuth();
@@ -184,6 +239,7 @@ export default function KeywordRankingSection() {
       setPostKeywords({});
       // 2. 모든 순위 결과 초기화 (로컬 상태)
       setRankingResults({});
+      queryClient.setQueryData(['keyword-ranking-state', profile.blogId], { postKeywords: {}, rankingResults: {} });
 
       // 3. DB: 키워드순위 상태 + 저장된 검색 키워드 테이블 모두 초기화
       await Promise.all([
@@ -199,7 +255,7 @@ export default function KeywordRankingSection() {
       showError('초기화 중 오류가 발생했습니다.', 3000);
       console.error('Reset error:', err);
     }
-  }, [profile, blogPosts, showError]);
+  }, [profile, blogPosts, showError, queryClient]);
 
   const handleClearPostKeywords = (postId: string) => {
     if (!profile) return;
@@ -263,6 +319,7 @@ export default function KeywordRankingSection() {
     if (syncedState) {
       setPostKeywords(syncedState.postKeywords);
       setRankingResults(syncedState.rankingResults);
+      setStateReady(true);
     }
   }, [syncedState]);
 
@@ -296,14 +353,128 @@ export default function KeywordRankingSection() {
     });
   };
 
-  const handleKeywordSave = (postId: string) => {
+  const checkSingleKeyword = useCallback(async (
+    post: BlogPost,
+    keyword: string,
+    force = false,
+  ): Promise<{ ok: boolean; status: number; cached: boolean }> => {
+    if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false };
+    const key = rankKey(post.id, keyword.trim());
+    setCheckingKey(key);
+    try {
+      const res = await fetch('/api/blog/check-missing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blogId: profile.blogId,
+          postTitle: post.title,
+          postId: post.id,
+          keyword: keyword.trim(),
+          force,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const nextResult: RankingResult = {
+          blogTab: data.blogTab,
+          viewTab: data.viewTab,
+          query: data.query,
+          searchVolume: data.searchVolume,
+          checkedAt: data.checkedAt || new Date().toISOString(),
+        };
+
+        // 순위/노출 상태가 실제로 바뀐 셀만 애니메이션으로 표시
+        const prevResult = rankingResultsRef.current[key];
+        if (prevResult && (
+          prevResult.viewTab.rank !== nextResult.viewTab.rank ||
+          prevResult.viewTab.exposed !== nextResult.viewTab.exposed ||
+          prevResult.blogTab.rank !== nextResult.blogTab.rank ||
+          prevResult.blogTab.exposed !== nextResult.blogTab.exposed
+        )) {
+          flashCell(key);
+        }
+
+        setRankingResults(prev => ({ ...prev, [key]: nextResult }));
+        // 변경된 항목만 React Query 캐시에 반영 (재마운트 시 즉시 최신 데이터 노출, 불필요한 전체 refetch 방지)
+        queryClient.setQueryData(
+          ['keyword-ranking-state', profile.blogId],
+          (old: SyncedState | undefined) => old ? { ...old, rankingResults: { ...old.rankingResults, [key]: nextResult } } : old,
+        );
+        // DB에 순위 결과 갱신 (기기 간 동기화)
+        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), nextResult);
+        // 저장된 키워드라면 saved_search_keywords 최신 순위 캐시도 갱신 (실패 무시)
+        fetch('/api/my/saved-keywords', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            keyword: keyword.trim(),
+            view_rank: nextResult.viewTab.rank ?? null,
+            blog_rank: nextResult.blogTab.rank ?? null,
+            view_exposed: nextResult.viewTab.exposed ?? null,
+            blog_exposed: nextResult.blogTab.exposed ?? null,
+            post_id: post.id,
+          }),
+        }).catch(() => { /* ignore */ });
+        return { ok: true, status: res.status, cached: data?.cached === true };
+      }
+      if (res.status === 429) {
+        showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
+      } else {
+        showError(`순위 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`);
+      }
+      return { ok: false, status: res.status, cached: false };
+    } catch {
+      showError('네트워크 오류로 순위를 확인하지 못했습니다.');
+      return { ok: false, status: 0, cached: false };
+    } finally { setCheckingKey(''); }
+  }, [profile, showError, flashCell, queryClient]);
+
+  // 자동 백그라운드 갱신 + 관리자 수동 강제 새로고침이 공유하는 순차 실행기
+  const runBatch = useCallback(async (
+    pairs: { post: BlogPost; keyword: string }[],
+    opts: { force?: boolean } = {},
+  ) => {
+    if (pairs.length === 0 || refreshingRef.current) return;
+    refreshingRef.current = true;
+    abortRef.current = false;
+    setCheckingAll(true);
+    setCheckProgress({ current: 0, total: pairs.length });
+
+    for (let i = 0; i < pairs.length; i++) {
+      if (abortRef.current) break;
+      setCheckProgress({ current: i + 1, total: pairs.length });
+      const r = await checkSingleKeyword(pairs[i].post, pairs[i].keyword, !!opts.force);
+      if (r.status === 429) {
+        showError(`요청 한도 초과로 ${i + 1}/${pairs.length}에서 중단했습니다. 5분 후 다시 시도해주세요.`, 8000);
+        break;
+      }
+      // 캐시 히트는 네이버를 치지 않았으므로 대기 불필요 → 재조회 시 거의 즉시 완료
+      if (i < pairs.length - 1 && !r.cached) {
+        await new Promise(res => setTimeout(res, 7000));
+      }
+    }
+
+    setCheckingAll(false);
+    setCheckProgress({ current: 0, total: 0 });
+    refreshingRef.current = false;
+  }, [checkSingleKeyword, showError]);
+
+  const handleKeywordSave = useCallback((postId: string) => {
     if (!profile) return;
     const kws = (editingKeywords[postId] || []).map(k => k.trim()).filter(Boolean);
     if (kws.length > 0) {
       setPostKeywords(prev => ({ ...prev, [postId]: kws }));
       saveKeywordsToDb(profile.blogId, postId, kws);
+      // 신규/변경된 키워드는 최근 확인 기록이 없거나 10분 이상 지났을 때만 즉시 백그라운드로 확인
+      const post = blogPosts.find(p => p.id === postId);
+      if (post) {
+        const pairs = kws
+          .filter(kw => isStale(rankingResultsRef.current[rankKey(postId, kw)]))
+          .map(kw => ({ post, keyword: kw }));
+        if (pairs.length > 0) runBatch(pairs);
+      }
     }
-  };
+  }, [profile, blogPosts, editingKeywords, runBatch]);
 
   const addKeyword = (postId: string) => {
     setEditingKeywords(prev => {
@@ -324,90 +495,50 @@ export default function KeywordRankingSection() {
     setTimeout(() => handleKeywordSave(postId), 0);
   };
 
-  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean }> => {
-    if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false };
-    const key = rankKey(post.id, keyword.trim());
-    setCheckingKey(key);
-    try {
-      const res = await fetch('/api/blog/check-missing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          blogId: profile.blogId,
-          postTitle: post.title,
-          postId: post.id,
-          keyword: keyword.trim(),
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRankingResults(prev => ({ ...prev, [key]: data }));
-        // DB에 순위 결과 갱신 (기기 간 동기화)
-        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), data);
-        // 저장된 키워드라면 saved_search_keywords 최신 순위 캐시도 갱신 (실패 무시)
-        fetch('/api/my/saved-keywords', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            keyword: keyword.trim(),
-            view_rank: data?.viewTab?.rank ?? null,
-            blog_rank: data?.blogTab?.rank ?? null,
-            view_exposed: data?.viewTab?.exposed ?? null,
-            blog_exposed: data?.blogTab?.exposed ?? null,
-            post_id: post.id,
-          }),
-        }).catch(() => { /* ignore */ });
-        return { ok: true, status: res.status, cached: data?.cached === true };
-      }
-      if (res.status === 429) {
-        showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
-      } else {
-        showError(`순위 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`);
-      }
-      return { ok: false, status: res.status, cached: false };
-    } catch {
-      showError('네트워크 오류로 순위를 확인하지 못했습니다.');
-      return { ok: false, status: 0, cached: false };
-    } finally { setCheckingKey(''); }
-  };
-
-  const checkAllRankings = async () => {
-    if (!profile || blogPosts.length === 0) return;
-    abortRef.current = false;
-    setCheckingAll(true);
-
-    // 모든 포스트의 모든 키워드 쌍 수집
-    const pairs: { post: BlogPost; keyword: string }[] = [];
-    for (const post of blogPosts) {
-      const kws = (editingKeywords[post.id] || []).filter(k => k.trim());
-      for (const kw of kws) {
-        pairs.push({ post, keyword: kw.trim() });
-      }
-    }
-
-    setCheckProgress({ current: 0, total: pairs.length });
-
-    for (let i = 0; i < pairs.length; i++) {
-      if (abortRef.current) break;
-      setCheckProgress({ current: i + 1, total: pairs.length });
-      const r = await checkSingleKeyword(pairs[i].post, pairs[i].keyword);
-      if (r.status === 429) {
-        showError(`요청 한도 초과로 ${i + 1}/${pairs.length}에서 중단했습니다. 5분 후 다시 시도해주세요.`, 8000);
-        break;
-      }
-      // 캐시 히트는 네이버를 치지 않았으므로 대기 불필요 → 재조회 시 거의 즉시 완료
-      if (i < pairs.length - 1 && !r.cached) {
-        await new Promise(r => setTimeout(r, 7000));
-      }
-    }
-
-    setCheckingAll(false);
-    setCheckProgress({ current: 0, total: 0 });
-  };
-
   const stopChecking = () => {
     abortRef.current = true;
   };
+
+  // 화면을 막지 않는 자동 새로고침: 저장된 키워드 중 10분 이상 지났거나 아직 확인 안 된 것만 백그라운드로 조회
+  const scanAndRefresh = useCallback(() => {
+    if (refreshingRef.current) return;
+    const pairs: { post: BlogPost; keyword: string }[] = [];
+    for (const post of blogPosts) {
+      const kws = (postKeywordsRef.current[post.id] || []).map(k => k.trim()).filter(Boolean);
+      for (const kw of kws) {
+        const key = rankKey(post.id, kw);
+        if (isStale(rankingResultsRef.current[key])) pairs.push({ post, keyword: kw });
+      }
+    }
+    if (pairs.length > 0) runBatch(pairs);
+  }, [blogPosts, runBatch]);
+
+  useEffect(() => {
+    if (!profile || !stateReady || blogPosts.length === 0) return;
+    scanAndRefresh();
+    const id = setInterval(scanAndRefresh, 60 * 1000);
+    return () => clearInterval(id);
+  }, [profile, stateReady, blogPosts, scanAndRefresh]);
+
+  // 관리자 전용: 캐시 무시하고 현재 페이지 전체를 강제로 다시 조회
+  const handleAdminForceRefreshAll = () => {
+    if (!profile || blogPosts.length === 0 || refreshingRef.current) return;
+    const pairs: { post: BlogPost; keyword: string }[] = [];
+    for (const post of blogPosts) {
+      const kws = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
+      for (const kw of kws) pairs.push({ post, keyword: kw });
+    }
+    if (pairs.length > 0) runBatch(pairs, { force: true });
+  };
+
+  // 헤더에 보여줄 전체 데이터의 마지막 갱신 시각 (가장 최근 checkedAt)
+  const overallLastUpdated = useMemo(() => {
+    let latest: string | null = null;
+    for (const r of Object.values(rankingResults)) {
+      if (r.checkedAt && (!latest || r.checkedAt > latest)) latest = r.checkedAt;
+    }
+    return latest;
+  }, [rankingResults]);
 
   // 로딩
   if (loading) {
@@ -487,40 +618,55 @@ export default function KeywordRankingSection() {
             포스팅별 검색 키워드를 수정하고 정확한 순위를 확인하세요
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {canDownload && (
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex items-center gap-2">
+            {canDownload && (
+              <button
+                onClick={handleDownload}
+                disabled={blogPosts.length === 0}
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
+                title="현재 페이지 포스팅의 키워드 순위 결과를 CSV 다운로드 (최대 500건)"
+              >
+                CSV 다운로드
+              </button>
+            )}
             <button
-              onClick={handleDownload}
-              disabled={blogPosts.length === 0}
+              onClick={handleResetResults}
               className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
-              title="현재 페이지 포스팅의 키워드 순위 결과를 CSV 다운로드 (최대 500건)"
+              title="모든 키워드와 순위 데이터 초기화"
             >
-              CSV 다운로드
+              초기화
             </button>
-          )}
-          <button
-            onClick={handleResetResults}
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
-            title="모든 키워드와 순위 데이터 초기화"
-          >
-            초기화
-          </button>
-          {checkingAll ? (
-            <button
-              onClick={stopChecking}
-              className="px-4 py-2 bg-down/10 text-down font-bold rounded-xl text-sm cursor-pointer hover:bg-down/20 transition"
-            >
-              중지 {checkProgress.current}/{checkProgress.total}
-            </button>
-          ) : (
-            <button
-              onClick={checkAllRankings}
-              disabled={postsLoading || blogPosts.length === 0}
-              className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
-            >
-              전체 확인
-            </button>
-          )}
+            {user.isAdmin && (
+              checkingAll ? (
+                <button
+                  onClick={stopChecking}
+                  className="px-4 py-2 bg-down/10 text-down font-bold rounded-xl text-sm cursor-pointer hover:bg-down/20 transition"
+                >
+                  중지 {checkProgress.current}/{checkProgress.total}
+                </button>
+              ) : (
+                <button
+                  onClick={handleAdminForceRefreshAll}
+                  disabled={postsLoading || blogPosts.length === 0}
+                  className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
+                  title="관리자 전용: 캐시를 무시하고 전체를 강제로 다시 조회합니다"
+                >
+                  전체 새로고침
+                </button>
+              )
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-dim h-4">
+            {checkingAll && (
+              <span className="w-2.5 h-2.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block shrink-0" />
+            )}
+            {overallLastUpdated ? (
+              <span>마지막 업데이트: {timeAgo(overallLastUpdated)}</span>
+            ) : checkingAll ? (
+              <span>최신 순위 확인 중...</span>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -565,7 +711,7 @@ export default function KeywordRankingSection() {
                     <th className="text-center px-3 py-3 font-semibold w-16">검색량</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">AI브리핑</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">AI탭</th>
-                    <th className="text-center px-4 py-3 font-semibold w-16">확인</th>
+                    <th className="text-center px-4 py-3 font-semibold w-20">업데이트</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -578,6 +724,7 @@ export default function KeywordRankingSection() {
                       const aiState = aiBriefingByKeyword?.[key];
                       const isFirst = kwIdx === 0;
                       const isLast = kwIdx === rowCount - 1;
+                      const flashing = flashKeys.has(key);
                       return (
                         <tr key={`${post.id}-${kwIdx}`} className={`hover:bg-surface-hover transition ${!isLast ? '!border-b-0' : ''}`}>
                           {isFirst && (
@@ -624,7 +771,6 @@ export default function KeywordRankingSection() {
                                   if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                                     e.preventDefault();
                                     handleKeywordSave(post.id);
-                                    checkSingleKeyword(post, kw);
                                   }
                                 }}
                                 className="flex-1 px-2 py-1.5 text-xs bg-bg border border-border rounded-lg focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition"
@@ -638,7 +784,7 @@ export default function KeywordRankingSection() {
                               )}
                             </div>
                           </td>
-                          <td className="text-center px-3 py-1.5">
+                          <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
                             {result ? (
                               result.viewTab.exposed ? (
                                 <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
@@ -647,7 +793,7 @@ export default function KeywordRankingSection() {
                               ) : <span className="text-xs text-dim">-</span>
                             ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
-                          <td className="text-center px-3 py-1.5">
+                          <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
                             {result ? (
                               result.blogTab.exposed ? (
                                 <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
@@ -688,15 +834,28 @@ export default function KeywordRankingSection() {
                             )}
                           </td>
                           <td className="text-center px-4 py-1.5">
-                            <button
-                              onClick={() => checkSingleKeyword(post, kw)}
-                              disabled={checkingKey === key || checkingAll || !kw.trim()}
-                              className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
-                            >
-                              {checkingKey === key ? (
-                                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                              ) : result ? '재확인' : '확인'}
-                            </button>
+                            {checkingKey === key ? (
+                              <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                <span
+                                  className="text-[10px] text-dim"
+                                  title={result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : ''}
+                                >
+                                  {result?.checkedAt ? timeAgo(result.checkedAt) : '--'}
+                                </span>
+                                {user.isAdmin && kw.trim() && (
+                                  <button
+                                    onClick={() => checkSingleKeyword(post, kw, true)}
+                                    disabled={checkingAll}
+                                    className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs"
+                                    title="관리자 전용: 캐시 무시하고 강제 재조회"
+                                  >
+                                    ⟳
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -732,6 +891,7 @@ export default function KeywordRankingSection() {
                         const key = rankKey(post.id, kw.trim());
                         const result = rankingResults[key];
                         const aiState = aiBriefingByKeyword?.[key];
+                        const flashing = flashKeys.has(key);
                         return (
                           <div key={kwIdx} className="space-y-1">
                             <div className="flex items-center gap-1.5">
@@ -744,30 +904,40 @@ export default function KeywordRankingSection() {
                                   if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                                     e.preventDefault();
                                     handleKeywordSave(post.id);
-                                    checkSingleKeyword(post, kw);
                                   }
                                 }}
                                 className="flex-1 px-2.5 py-1.5 text-sm bg-bg border border-border rounded-lg focus:border-accent outline-none"
                                 placeholder="키워드"
                               />
-                              <button
-                                onClick={() => checkSingleKeyword(post, kw)}
-                                disabled={checkingKey === key || checkingAll || !kw.trim()}
-                                className="px-2.5 py-1.5 text-[11px] text-accent border border-accent/30 rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
-                              >
-                                {checkingKey === key ? (
-                                  <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                                ) : result ? '재확인' : '확인'}
-                              </button>
+                              {checkingKey === key ? (
+                                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block shrink-0" />
+                              ) : (
+                                <span
+                                  className="text-[10px] text-dim shrink-0"
+                                  title={result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : ''}
+                                >
+                                  {result?.checkedAt ? timeAgo(result.checkedAt) : '--'}
+                                </span>
+                              )}
+                              {user.isAdmin && kw.trim() && checkingKey !== key && (
+                                <button
+                                  onClick={() => checkSingleKeyword(post, kw, true)}
+                                  disabled={checkingAll}
+                                  className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs shrink-0 px-1"
+                                  title="관리자 전용: 캐시 무시하고 강제 재조회"
+                                >
+                                  ⟳
+                                </button>
+                              )}
                               {keywords.length > 1 && (
                                 <button onClick={() => removeKeyword(post.id, kwIdx)}
-                                  className="text-dim hover:text-down text-xs cursor-pointer px-1">
+                                  className="text-dim hover:text-down text-xs cursor-pointer px-1 shrink-0">
                                   x
                                 </button>
                               )}
                             </div>
                             {result && (
-                              <div className="flex items-center gap-2">
+                              <div className={`flex items-center gap-2 rounded-lg transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                                   result.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
                                 }`}>
