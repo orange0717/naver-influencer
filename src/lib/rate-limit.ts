@@ -166,6 +166,9 @@ export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60
 /** Chrome 확장 / 외부 키워드 분석 API */
 export const extKeywordAnalysisLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 
+/** 네이버 AI 검색 품질평가(Claude Sonnet, 무거운 분석): 5분에 5회 */
+export const qualityEvaluateLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
 /** 구글 색인등록: URL 등록(단건/대량) — 5분에 20회 */
 export const googleIndexingRegisterLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 

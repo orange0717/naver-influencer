@@ -37,40 +37,33 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '네이버 메이트',
     icon: '메',
     items: [
+      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking', authOnly: true },
+      { label: 'AI글 적합도', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true },
       { label: 'AI 브리핑·AI탭', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true },
-      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking' },
     ],
   },
   {
     label: '네이버 인플루언서',
     icon: 'I',
     items: [
-      { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
       { label: '리스트', href: '/influencers/free-plan', authOnly: true },
+      { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
       { label: '공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
       { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
       { label: '연도별 선정 현황', href: '/stats' },
+      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer' },
     ],
   },
   {
     label: '키워드',
     icon: 'K',
     items: [
+      { label: '키워드 추천', href: '#', disabled: true },
       { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
       { label: '키워드 검색', href: '/keywords/blogger' },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
-      { label: '키워드챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
-    ],
-  },
-  {
-    label: '정보·분석',
-    icon: 'R',
-    items: [
-      { label: 'URL 분석', href: '/decoder' },
-      { label: '경쟁자 분석', href: '/competitor' },
-      { label: 'JPG↔PNG 변환기', href: '/image-converter' },
-      // TODO: migration-114 실행 + GOOGLE_CLIENT_ID/SECRET 등 Vercel 환경변수 설정 후 disabled 제거
+      // TODO: migration-117 실행 + GOOGLE_CLIENT_ID/SECRET 등 Vercel 환경변수 설정 후 disabled 제거
       { label: '구글 색인등록', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true, disabled: true },
     ],
   },
@@ -78,19 +71,12 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '글쓰기',
     icon: 'W',
     items: [
-      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
-      { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
-      { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
-      { label: 'AI 피드백(클로드)', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
-    ],
-  },
-  {
-    label: '성장도구',
-    icon: 'G',
-    items: [
       { label: '글감 찾기', href: '#', disabled: true },
       { label: '제목 생성', href: '#', disabled: true },
-      { label: '키워드 추천', href: '#', disabled: true },
+      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
+      { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
+      { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
+      { label: '블로그 글 심층피드백', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
@@ -122,6 +108,19 @@ export const SIDEBAR_HIDDEN_PREFIXES = [
   '/notice',
   '/admin',
 ];
+
+/**
+ * authOnly로 선언된 모든 href를 모은다 (해시 앵커·비활성 메뉴 제외).
+ * middleware.ts가 이 목록과 실제 서버측 차단 목록을 대조해, 사이드바에는
+ * "회원 전용"으로 선언해놓고 정작 어디서도 막지 않는 누락을 개발 중 자동으로 잡아낸다.
+ * (2026-07-21 /naver-mate-ranking, /my/blogger, /my/saved-keywords, /profile 누락 발견 계기로 추가)
+ */
+export function getAllAuthOnlyHrefs(): string[] {
+  const items = [...SIDEBAR_GROUPS.flatMap(g => g.items), ...SIDEBAR_FOOTER_LINKS];
+  return items
+    .filter(item => item.authOnly && item.href !== '#' && !item.href.startsWith('/#'))
+    .map(item => item.href);
+}
 
 /**
  * 현재 경로와 가장 구체적으로(가장 긴 href로) 일치하는 단 하나의 href를 찾는다.

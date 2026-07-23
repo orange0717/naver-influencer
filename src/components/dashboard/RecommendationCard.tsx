@@ -45,7 +45,7 @@ export default function RecommendationCard({
   return (
     <Link
       href={`/keywords/${keyword_id}`}
-      className="group block bg-surface rounded-2xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(204,148,134,0.12)] hover:border-accent/30 hover:-translate-y-0.5 transition-all duration-300"
+      className="group block bg-surface rounded-2xl border border-border p-4 shadow-xs hover:shadow-[0_4px_12px_rgba(204,148,134,0.12)] hover:border-accent/30 hover:-translate-y-0.5 transition-all duration-300"
     >
       {/* 상단: 순위 뱃지 + 트렌드 + 카테고리 */}
       <div className="flex items-center justify-between mb-3">

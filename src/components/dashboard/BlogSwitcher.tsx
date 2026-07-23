@@ -47,7 +47,7 @@ export default function BlogSwitcher({
   };
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="bg-surface rounded-2xl border border-border p-4 shadow-xs">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">

@@ -21,9 +21,15 @@ import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
 import TrialBanner from '@/components/TrialBanner';
 import SubscriptionExpiryBanner from '@/components/SubscriptionExpiryBanner';
+import { after } from 'next/server';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 export const dynamic = 'force-dynamic';
+// DB 쿼리(특히 keyword_rankings 1.5억 행 스캔)가 10~24초까지 걸릴 수 있어,
+// Vercel 기본 함수 타임아웃(10초)에 걸려 응답이 중간에 끊기고 로딩 화면에서
+// 멈춰버리는 문제(오렌지 리포트: "데이터가 안 뜹니다")를 막기 위한 안전장치.
+// 근본 해결은 migration-114 인덱스 적용.
+export const maxDuration = 30;
 
 export default async function MyDashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const supabase = createServiceClient();
@@ -167,29 +173,86 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   const influencerId = influencerData.id;
 
-  // 인플루언서 정보
-  const { data: influencer } = await supabase
-    .from('influencers')
-    .select('*')
-    .eq('id', influencerId)
-    .single();
-
-  // 팬수 갱신 (KST 6시간 창당 최대 1회, refresh-follower)
-  if (influencer) {
-    const updated = await refreshFollowerCount(supabase, influencerId, naverId!);
-    if (updated !== null) {
-      // DB 갱신 후 현재 객체에도 반영
-      const { data: refreshed } = await supabase
-        .from('influencers')
-        .select('subscriber_count, total_follower_count')
-        .eq('id', influencerId)
-        .single();
-      if (refreshed) {
-        influencer.subscriber_count = refreshed.subscriber_count;
-        influencer.total_follower_count = refreshed.total_follower_count;
+  // ─── 병렬 프리페치: naverId/internalUserId만 있으면 되고 rankings·keywords 계산과
+  // 데이터 의존성이 없는 것들을 여기서 미리 시작해, 아래 refreshFollowerCount(최대 13초)와
+  // 겹쳐서 실행되게 한다. 실제 await은 각자 원래 쓰이던 위치에서 한다. ───
+  const topicCountPromise: Promise<number> = (async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const inRes = await fetch(`https://in.naver.com/${naverId}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+        },
+        signal: controller.signal,
+        next: { revalidate: 3600 },
+      });
+      clearTimeout(timeout);
+      if (inRes.ok) {
+        const html = await inRes.text();
+        const topicMatch = html.match(/토픽\s*(\d+)/);
+        if (topicMatch) return parseInt(topicMatch[1]);
+        const jsonMatch = html.match(/"topicCount"\s*:\s*(\d+)/);
+        if (jsonMatch) return parseInt(jsonMatch[1]);
       }
+    } catch {
+      // 토픽 크롤링 실패 무시
     }
-  }
+    return 0;
+  })();
+
+  const aiVisibilityPromise: Promise<{ exposedCount: number; tabExposedCount: number; checkedCount: number } | null> =
+    (internalUserId && naverId)
+      ? (async () => {
+          const { data: briefingRows } = await supabase
+            .from('ai_briefing_exposures')
+            .select('exposed, tab_exposed, checked_at')
+            .eq('user_id', internalUserId)
+            .eq('blog_id', naverId)
+            .not('checked_at', 'is', null);
+          if (briefingRows && briefingRows.length > 0) {
+            return {
+              checkedCount: briefingRows.length,
+              exposedCount: briefingRows.filter((r) => r.exposed === true).length,
+              tabExposedCount: briefingRows.filter((r) => r.tab_exposed === true).length,
+            };
+          }
+          return null;
+        })()
+      : Promise.resolve(null);
+
+  const mateStatusPromise: Promise<{ selected: boolean; expertiseValue: string | null } | null> = naverId
+    ? (async () => {
+        const { data: mateRow } = await supabase
+          .from('naver_mates')
+          .select('id')
+          .eq('platform', 'blog')
+          .eq('platform_key', naverId)
+          .maybeSingle();
+        if (mateRow) {
+          const { data: monthlyRow } = await supabase
+            .from('naver_mate_monthly')
+            .select('expertise_value')
+            .eq('mate_id', mateRow.id)
+            .order('year', { ascending: false })
+            .order('month', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return { selected: true, expertiseValue: monthlyRow?.expertise_value || null };
+        }
+        return { selected: false, expertiseValue: null };
+      })()
+    : Promise.resolve(null);
+
+  // 인플루언서 정보를 먼저 조회해 페이지 렌더는 절대 기다리지 않게 하고,
+  // 팬수 갱신(KST 6시간 창당 최대 1회, refresh-follower)은 응답 전송 후 백그라운드에서 처리.
+  // in.naver.com 외부 fetch(최대 8초+5초)가 이 요청의 렌더링을 막지 않는다 — 갱신된 값은
+  // DB에는 반영되고, 화면에는 다음 방문 때부터 보인다(최대 6시간 창 지연은 기존과 동일한 정책).
+  const { data: influencer } = await supabase.from('influencers').select('*').eq('id', influencerId).single();
+  after(() => {
+    refreshFollowerCount(supabase, influencerId, naverId!).catch(() => {});
+  });
 
   if (!influencer) {
     return (
@@ -201,6 +264,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       </div>
     );
   }
+
+  // TEMP DEBUG (원인 특정 후 제거 예정): 렌더 도중 예외가 스트리밍 커밋 이후 발생하면
+  // Next가 error.tsx로 전환하지 못하고 loading.tsx에 무한히 멈추는 문제(오렌지 리포트)를
+  // 진단하기 위해 예외를 화면에 직접 노출한다.
+  try {
 
   // ─── 1. 최신 순위 데이터 (keyword_rankings) ───
   // crawl-challenge-ranks가 부분 적재로 끊기면 오늘 snapshot_date에 일부만 들어가,
@@ -233,8 +301,10 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     return d.toISOString().slice(0, 10);
   })();
 
-  const recentRows: RankingRow[] = [];
-  {
+  // recentRows 페이지네이션 루프와 myKeywords 조회는 둘 다 influencerId만 필요해
+  // 데이터 의존성이 없으므로 병렬로 실행한다 (myKeywords는 원래 아래쪽에서 쓰임).
+  const recentRowsPromise: Promise<RankingRow[]> = (async () => {
+    const rows: RankingRow[] = [];
     const PAGE = 1000;
     let from = 0;
     while (true) {
@@ -251,11 +321,19 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         .order('snapshot_date', { ascending: false })
         .range(from, from + PAGE - 1);
       if (!batch || batch.length === 0) break;
-      recentRows.push(...(batch as unknown as RankingRow[]));
+      rows.push(...(batch as unknown as RankingRow[]));
       if (batch.length < PAGE) break;
       from += PAGE;
     }
-  }
+    return rows;
+  })();
+
+  const myKeywordsPromise = supabase
+    .from('influencer_keywords')
+    .select(`keyword_id, keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)`)
+    .eq('influencer_id', influencerId);
+
+  const [recentRows, { data: myKeywords }] = await Promise.all([recentRowsPromise, myKeywordsPromise]);
 
   const seenKw = new Set<string>();
   let latestRankings = recentRows.filter(r => {
@@ -299,35 +377,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     };
   }).sort((a, b) => a.rank_position - b.rank_position);
 
-  // ─── 토픽 수 크롤링 (3초 타임아웃) ───
-  let topicCount = 0;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const inRes = await fetch(`https://in.naver.com/${naverId}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept-Language': 'ko-KR,ko;q=0.9',
-      },
-      signal: controller.signal,
-      next: { revalidate: 3600 },
-    });
-    clearTimeout(timeout);
-    if (inRes.ok) {
-      const html = await inRes.text();
-      // "토픽 N" 또는 토픽 카운트 패턴 매칭
-      const topicMatch = html.match(/토픽\s*(\d+)/);
-      if (topicMatch) {
-        topicCount = parseInt(topicMatch[1]);
-      } else {
-        // JSON 데이터에서 topicCount 추출 시도
-        const jsonMatch = html.match(/"topicCount"\s*:\s*(\d+)/);
-        if (jsonMatch) topicCount = parseInt(jsonMatch[1]);
-      }
-    }
-  } catch {
-    // 토픽 크롤링 실패 무시
-  }
+  // ─── 토픽 수 (컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수) ───
+  const topicCount = await topicCountPromise;
 
   // 통계 계산
   const totalRankedKeywords = rankings.length;
@@ -374,30 +425,25 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // (이전엔 이 가드가 없어 0점 유저가 higherCount+1로 순위에 포함되면서
   //  totalCount 분모엔 빠져 "56위/55" 같은 분자>분모 오류가 났다.)
   if (myCategory && myKeywordScore > 0) {
-    // 같은 카테고리에서 나보다 점수 높은 사람 수 = 내 순위 - 1
-    const { count: higherCount } = await supabase
-      .from('influencers')
-      .select('id', { count: 'exact', head: true })
-      .gt('keyword_score', myKeywordScore)
-      .or(`my_keyword_category.eq.${myCategory},and(my_keyword_category.is.null,category.eq.${myCategory})`);
-
-    // 같은 카테고리 전체 인원수 (경쟁 풀 = keyword_score > 0)
-    const { count: totalCount } = await supabase
-      .from('influencers')
-      .select('id', { count: 'exact', head: true })
-      .gt('keyword_score', 0)
-      .or(`my_keyword_category.eq.${myCategory},and(my_keyword_category.is.null,category.eq.${myCategory})`);
+    // 같은 카테고리에서 나보다 점수 높은 사람 수 = 내 순위 - 1 / 전체 인원수(경쟁 풀) 를 병렬로 조회
+    const [{ count: higherCount }, { count: totalCount }] = await Promise.all([
+      supabase
+        .from('influencers')
+        .select('id', { count: 'exact', head: true })
+        .gt('keyword_score', myKeywordScore)
+        .or(`my_keyword_category.eq.${myCategory},and(my_keyword_category.is.null,category.eq.${myCategory})`),
+      supabase
+        .from('influencers')
+        .select('id', { count: 'exact', head: true })
+        .gt('keyword_score', 0)
+        .or(`my_keyword_category.eq.${myCategory},and(my_keyword_category.is.null,category.eq.${myCategory})`),
+    ]);
 
     categoryRank = (higherCount || 0) + 1;
     categoryTotal = totalCount || 0;
   }
 
-  // ─── 2. 내 키워드 전체 목록 ───
-  const { data: myKeywords } = await supabase
-    .from('influencer_keywords')
-    .select(`keyword_id, keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)`)
-    .eq('influencer_id', influencerId);
-
+  // ─── 2. 내 키워드 전체 목록 (myKeywords는 위 recentRowsPromise와 병렬로 이미 조회됨) ───
   const rankedMap = new Map(rankings.map(r => [r.keyword_id, r]));
   const ikKeywordIds = new Set((myKeywords || []).map(ik => ik.keyword_id));
 
@@ -627,49 +673,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   // ─── 6. NGI(Ninfle Growth Index) 계산용 데이터 수집 ───
   // AI 가시성: 네이버메이트에서 실제로 확인(checked_at 존재)한 건만 집계 — 한 번도 안 썼으면 null(측정 불가)
-  let aiVisibility: { exposedCount: number; tabExposedCount: number; checkedCount: number } | null = null;
-  if (internalUserId && naverId) {
-    const { data: briefingRows } = await supabase
-      .from('ai_briefing_exposures')
-      .select('exposed, tab_exposed, checked_at')
-      .eq('user_id', internalUserId)
-      .eq('blog_id', naverId)
-      .not('checked_at', 'is', null);
-    if (briefingRows && briefingRows.length > 0) {
-      aiVisibility = {
-        checkedCount: briefingRows.length,
-        exposedCount: briefingRows.filter((r) => r.exposed === true).length,
-        tabExposedCount: briefingRows.filter((r) => r.tab_exposed === true).length,
-      };
-    }
-  }
-
-  // 네이버 메이트 선정 여부 (블로그 홈 경로 = naverId 로 매칭)
-  let mateStatus: { selected: boolean; expertiseValue: string | null } | null = null;
-  if (naverId) {
-    const { data: mateRow } = await supabase
-      .from('naver_mates')
-      .select('id')
-      .eq('platform', 'blog')
-      .eq('platform_key', naverId)
-      .maybeSingle();
-    if (mateRow) {
-      const { data: monthlyRow } = await supabase
-        .from('naver_mate_monthly')
-        .select('expertise_value')
-        .eq('mate_id', mateRow.id)
-        .order('year', { ascending: false })
-        .order('month', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      mateStatus = { selected: true, expertiseValue: monthlyRow?.expertise_value || null };
-    } else {
-      mateStatus = { selected: false, expertiseValue: null };
-    }
-  }
+  // 네이버 메이트 선정 여부(블로그 홈 경로 = naverId 로 매칭) 포함, 둘 다 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
+  const [aiVisibility, mateStatus] = await Promise.all([aiVisibilityPromise, mateStatusPromise]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
 
       {/* ─── 체험/데모 배너 ─── */}
       {!isLoggedIn && isTrial && <TrialBanner isDemo={isDemo} />}
@@ -721,7 +729,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       )}
 
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
-      <div className="space-y-6">
+      <div className="space-y-10">
 
       {/* 상세 통계 바 */}
       {categoryRank > 0 && (
@@ -742,29 +750,25 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {/* ─── 2. 통계 카드 ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {categoryRank > 0 && (
-          <AnimatedStatCard
-            label="카테고리 순위"
-            value={categoryRank}
-            suffix={categoryTotal > 0 ? `위/${categoryTotal}` : '위'}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
-            color="accent"
-            delay={80}
-          />
-        )}
-        {aiVisibility && (
-          <AnimatedStatCard
-            label="AI브리핑 인용"
-            value={aiVisibility.exposedCount}
-            suffix="건"
-            description={`확인 ${aiVisibility.checkedCount}건 중`}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>}
-            color={aiVisibility.exposedCount > 0 ? 'up' : 'dim'}
-            delay={120}
-          />
-        )}
+      {/* ─── 2. 통계 카드 ─── 항상 6장 고정: 조건부 렌더링을 없애 그리드 마지막 행이 깨지지 않게 함 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <AnimatedStatCard
+          label="카테고리 순위"
+          value={categoryRank}
+          suffix={categoryRank > 0 && categoryTotal > 0 ? `위/${categoryTotal}` : '위'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+          color="accent"
+          delay={80}
+        />
+        <AnimatedStatCard
+          label="AI브리핑 인용"
+          value={aiVisibility?.exposedCount ?? 0}
+          suffix="건"
+          description={aiVisibility ? `확인 ${aiVisibility.checkedCount}건 중` : '확인 전'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>}
+          color={aiVisibility && aiVisibility.exposedCount > 0 ? 'up' : 'dim'}
+          delay={120}
+        />
         <AnimatedStatCard
           label="참여 키워드"
           value={participatedCount}
@@ -863,6 +867,18 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       </div>
     </div>
   );
+  } catch (err) {
+    // TEMP DEBUG: 위 try와 짝. 원인 특정 후 제거 예정.
+    console.error('[my-dashboard-error]', err);
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16">
+        <h1 className="font-title text-xl font-bold text-down mb-3">대시보드 로딩 중 오류 (임시 디버그)</h1>
+        <pre className="text-left text-xs bg-surface border border-border rounded-xl p-4 overflow-auto whitespace-pre-wrap">
+          {err instanceof Error ? `${err.name}: ${err.message}\n\n${err.stack || ''}` : String(err)}
+        </pre>
+      </div>
+    );
+  }
 }
 
 /** 비로그인 게스트용 MY 대시보드 빈 상태 — 레이아웃은 유지하되 데이터 자리는 플레이스홀더로 채우고 로그인 CTA 노출 */
@@ -877,9 +893,9 @@ function GuestDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {/* ─── 로그인 유도 배너 ─── */}
-      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:p-6">
+      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1.5">
             <h1 className="font-title text-lg lg:text-xl font-bold text-text">내 대시보드</h1>
@@ -905,11 +921,13 @@ function GuestDashboard() {
       </div>
 
       {/* ─── 빈 상태 통계 카드 (레이아웃 미리보기) ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {placeholderStats.map((c) => (
-          <div key={c.label} className="bg-surface border border-border rounded-2xl p-4 text-center">
-            <p className="text-xs text-dim mb-1">{c.label}</p>
-            <p className="text-xl font-black text-dim font-rank">-{c.suffix}</p>
+          <div key={c.label} className="h-48 flex flex-col bg-surface rounded-2xl border border-border shadow-xs p-6">
+            <div className="w-8 h-8 rounded-xl bg-border/30 shrink-0" />
+            <p className="stat-title mt-3 mb-1 shrink-0">{c.label}</p>
+            <p className="stat-desc min-h-[28px] shrink-0"> </p>
+            <p className="stat-value text-dim mt-auto">{`-${c.suffix}`}</p>
           </div>
         ))}
       </div>

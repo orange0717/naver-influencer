@@ -155,7 +155,7 @@ function PaginatedList({ events, label, icon, emptyText }: {
 export default function ActivityFeed({ events }: ActivityFeedProps) {
   if (events.length === 0) {
     return (
-      <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="bg-surface rounded-2xl border border-border p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <h3 className="font-bold text-[15px]">순위 변동</h3>
           <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">
@@ -175,7 +175,7 @@ export default function ActivityFeed({ events }: ActivityFeedProps) {
   const downEvents = events.filter(e => e.type === 'rank_down');
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="bg-surface rounded-2xl border border-border p-5 shadow-xs">
       <div className="flex items-center gap-2 mb-4">
         <h3 className="font-bold text-[15px]">순위 변동</h3>
         <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">

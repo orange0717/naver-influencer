@@ -50,7 +50,7 @@ function NavLink({
 
   if (item.disabled) {
     return (
-      <span className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dim/50 cursor-not-allowed">
+      <span className="flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm text-dim/50 border-l-2 border-transparent cursor-not-allowed">
         {item.label}
         <span className="ml-auto text-[10px] font-bold text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
       </span>
@@ -66,7 +66,7 @@ function NavLink({
           onNavigate();
           openGate(item.href);
         }}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-dim hover:bg-bg transition-colors text-left cursor-pointer"
+        className="w-full flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer"
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-dim/60"><LockIcon /></span>
@@ -84,7 +84,7 @@ function NavLink({
           onNavigate();
           router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
         }}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-dim hover:bg-bg transition-colors text-left cursor-pointer"
+        className="w-full flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer"
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-accent"><LockIcon /></span>
@@ -96,12 +96,35 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-        active ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-bg'
+      className={`flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm font-semibold border-l-2 transition-colors ${
+        active
+          ? 'bg-accent/15 text-accent border-accent'
+          : 'text-dim border-transparent hover:text-text hover:bg-bg'
       }`}
     >
       <span className="truncate">{item.label}</span>
     </Link>
+  );
+}
+
+const SIDEBAR_ACCORDION_KEY = 'ninfl:sidebar:expanded:v1';
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }
 
@@ -126,9 +149,35 @@ function SidebarContent({
   );
   const activeHref = getActiveHref(pathname, ALL_NAV_HREFS);
 
+  // 그룹별 접기/펼치기 상태 — 사용자가 직접 조작한 그룹만 localStorage에 override로 남긴다.
+  // 명시적으로 건드리지 않은 그룹은 현재 페이지가 속한 그룹만 기본적으로 펼쳐진다.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SIDEBAR_ACCORDION_KEY);
+      if (raw) setOverrides(JSON.parse(raw));
+    } catch {
+      // localStorage 접근 불가 시 기본값(현재 페이지 그룹만 펼침) 유지
+    }
+  }, []);
+
+  const toggleGroup = (label: string, defaultOpen: boolean) => {
+    setOverrides((prev) => {
+      const current = prev[label] ?? defaultOpen;
+      const next = { ...prev, [label]: !current };
+      try {
+        localStorage.setItem(SIDEBAR_ACCORDION_KEY, JSON.stringify(next));
+      } catch {
+        // 저장 실패는 무시 — 다음 세션에 기본값으로 복원될 뿐
+      }
+      return next;
+    });
+  };
+
   return (
     <>
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
         <NavLink
           item={SIDEBAR_HOME}
           active={SIDEBAR_HOME.href === activeHref}
@@ -136,23 +185,40 @@ function SidebarContent({
           isGuest={isGuest}
           onNavigate={onNavigate}
         />
-        {SIDEBAR_GROUPS.map((group) => (
-          <div key={group.label}>
-            <p className="px-3 pb-1 text-[11px] font-bold text-dim/70 uppercase tracking-wide">{group.label}</p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavLink
-                  key={item.label}
-                  item={item}
-                  active={item.href !== '#' && item.href === activeHref}
-                  currentPlan={currentPlan}
-                  isGuest={isGuest}
-                  onNavigate={onNavigate}
-                />
-              ))}
+        {SIDEBAR_GROUPS.map((group) => {
+          const hasActiveItem = group.items.some((item) => item.href !== '#' && item.href === activeHref);
+          const isOpen = overrides[group.label] ?? hasActiveItem;
+          return (
+            <div key={group.label}>
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.label, hasActiveItem)}
+                aria-expanded={isOpen}
+                className="w-full flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide hover:bg-bg transition-colors cursor-pointer"
+                style={{ color: '#BF8888' }}
+              >
+                <span className="truncate">{group.label}</span>
+                <span className="ml-auto text-dim/60"><ChevronIcon open={isOpen} /></span>
+              </button>
+              <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-0.5 pt-0.5">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.label}
+                        item={item}
+                        active={item.href !== '#' && item.href === activeHref}
+                        currentPlan={currentPlan}
+                        isGuest={isGuest}
+                        onNavigate={onNavigate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
       {showFooterLinks && (
         <div className="border-t border-border p-3 space-y-0.5 shrink-0">

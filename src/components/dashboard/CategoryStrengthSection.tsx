@@ -30,13 +30,13 @@ export default function CategoryStrengthSection({ categoryStats }: Props) {
   if (!categoryStats || categoryStats.length === 0) return null;
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-5">
+    <div className="bg-surface rounded-2xl border border-border shadow-xs p-6">
       <h3 className="text-sm font-extrabold text-text mb-4">주제별 강점 분석</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-fr">
         {categoryStats.map((cat) => (
           <div
             key={cat.category}
-            className="border border-border rounded-xl p-4 hover:bg-surface-hover transition"
+            className="h-[124px] flex flex-col justify-between border border-border rounded-xl p-4 hover:bg-surface-hover transition"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-bold text-text truncate">{cat.category}</span>

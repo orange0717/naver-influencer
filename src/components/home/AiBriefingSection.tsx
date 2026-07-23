@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
+import SectionHeader from '@/components/dashboard/SectionHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 
@@ -145,6 +146,10 @@ interface BriefingResult {
   tabSourceTotal: number | null;
   tabMatchedTitle: string | null;
   error?: string;
+  searchVolumeMonthly?: number | null;
+  competition?: string | null;
+  relatedKeywordCount?: number | null;
+  checkedAt?: string | null;
 }
 
 const STATE_API = '/api/my/ai-briefing-state';
@@ -239,6 +244,24 @@ function AiTabBadge({ result }: { result?: BriefingResult }) {
   );
 }
 
+/** 키워드 검색 결과 카드 — AnimatedStatCard와 동일한 톤이지만 ○/X·텍스트 값(경쟁도 등)도 표시 가능 */
+function ResultStatCard({
+  label, value, color = 'accent', spinning,
+}: { label: string; value: ReactNode; color?: 'accent' | 'up' | 'down' | 'gold' | 'dim'; spinning?: boolean }) {
+  const colorMap: Record<string, string> = {
+    accent: 'text-accent', up: 'text-up', down: 'text-down', gold: 'text-gold', dim: 'text-dim',
+  };
+  return (
+    <div className="relative h-28 flex flex-col justify-between bg-surface rounded-2xl border border-border p-4 shadow-xs">
+      {spinning && (
+        <span className="absolute top-2 right-2 w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      )}
+      <p className="stat-title">{label}</p>
+      <span className={`text-xl font-extrabold ${colorMap[color]} truncate`}>{value}</span>
+    </div>
+  );
+}
+
 /** 확인 진행 단계 → 사용자에게 보여줄 문구 (2026-07-04(6차) 진행 상태 UI) */
 const STAGE_LABELS: Record<string, string> = {
   searching: '검색 중...',
@@ -247,6 +270,28 @@ const STAGE_LABELS: Record<string, string> = {
   comparing: '출처 비교 중...',
   done: '완료',
 };
+
+function timeAgo(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return '방금 전';
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}일 전`;
+  return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+}
+
+interface AnalysisEntry {
+  keyword: string;
+  post: BlogPost;
+  briefing: BriefingResult;
+  searchVolume: { total: number | string; competition: string } | null;
+  relatedCount: number | null;
+  checkedAt: string;
+}
 
 export default function AiBriefingSection() {
   const { user, isLoading: authLoading } = useAuth();
@@ -275,6 +320,16 @@ export default function AiBriefingSection() {
   const [filter, setFilter] = useState<
     'all' | 'briefingExposed' | 'briefingUnexposed' | 'tabExposed' | 'tabUnexposed' | 'needsImprovement' | 'highScore' | 'lowScore'
   >('all');
+
+  // 상단 키워드 검색 + 자동 분석
+  const [analyzeKeyword, setAnalyzeKeyword] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [activeAnalysis, setActiveAnalysis] = useState<AnalysisEntry | null>(null);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisEntry[]>([]);
+  const [pendingPostPick, setPendingPostPick] = useState<string | null>(null);
+  const [postPickSearch, setPostPickSearch] = useState('');
+  const [historyPage, setHistoryPage] = useState(1);
+  const HISTORY_PER_PAGE = 10;
 
   const showError = useCallback((msg: string, ms = 5000) => {
     setErrorMessage(msg);
@@ -592,8 +647,8 @@ export default function AiBriefingSection() {
   // 2026-07-04(6차) 오렌지 지시: 진행 단계를 실시간으로 보여주기 위해 NDJSON 스트리밍 응답을 소비.
   // 캐시 적중/검증 실패/접근 거부 등은 서버가 여전히 일반 JSON으로 즉시 응답하므로
   // content-type으로 분기해서 두 경로 모두 처리한다.
-  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean }> => {
-    if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false };
+  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean; result: BriefingResult | null }> => {
+    if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false, result: null };
     const key = rankKey(post.id, keyword.trim());
     setCheckingKey(key);
     setCheckingStage('searching');
@@ -615,7 +670,7 @@ export default function AiBriefingSection() {
           const body = await res.json().catch(() => null);
           showError(body?.error || `AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`, 8000);
         }
-        return { ok: false, status: res.status, cached: false };
+        return { ok: false, status: res.status, cached: false, result: null };
       }
 
       const isStream = res.headers.get('content-type')?.includes('application/x-ndjson') && res.body;
@@ -624,7 +679,7 @@ export default function AiBriefingSection() {
         const data = await res.json();
         setBriefingResults(prev => ({ ...prev, [key]: data }));
         saveBriefingResultToDb(profile.blogId, post.id, keyword.trim(), data);
-        return { ok: true, status: res.status, cached: data?.cached === true };
+        return { ok: true, status: res.status, cached: data?.cached === true, result: data };
       }
 
       // NDJSON 스트림: 줄 단위로 진행 단계({stage}) 및 최종 결과({stage:'done'|'error', ...})를 수신
@@ -657,23 +712,131 @@ export default function AiBriefingSection() {
 
       if (streamError) {
         showError(streamError, 8000);
-        return { ok: false, status: res.status, cached: false };
+        return { ok: false, status: res.status, cached: false, result: null };
       }
       if (finalData) {
-        setBriefingResults(prev => ({ ...prev, [key]: finalData as unknown as BriefingResult }));
-        saveBriefingResultToDb(profile.blogId, post.id, keyword.trim(), finalData as unknown as BriefingResult);
-        return { ok: true, status: res.status, cached: false };
+        const parsed = finalData as unknown as BriefingResult;
+        setBriefingResults(prev => ({ ...prev, [key]: parsed }));
+        saveBriefingResultToDb(profile.blogId, post.id, keyword.trim(), parsed);
+        return { ok: true, status: res.status, cached: false, result: parsed };
       }
       showError('AI 브리핑 확인 결과를 받지 못했습니다. 잠시 후 다시 시도해주세요.', 8000);
-      return { ok: false, status: res.status, cached: false };
+      return { ok: false, status: res.status, cached: false, result: null };
     } catch {
       showError('네트워크 오류로 AI 브리핑을 확인하지 못했습니다.');
-      return { ok: false, status: 0, cached: false };
+      return { ok: false, status: 0, cached: false, result: null };
     } finally {
       setCheckingKey('');
       setCheckingStage('');
     }
   };
+
+  // 입력한 키워드가 이미 어떤 게시물의 타겟 키워드로 등록돼 있으면 그 게시물로 자동 매칭
+  function matchPostForKeyword(kw: string): BlogPost | null {
+    const norm = kw.trim().toLowerCase();
+    if (!norm) return null;
+    const matches = blogPosts.filter(p =>
+      (postKeywords[p.id] || []).some(k => k.trim().toLowerCase() === norm),
+    );
+    if (matches.length === 0) return null;
+    return matches.sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))[0];
+  }
+
+  const runFullAnalysis = async (post: BlogPost, kw: string) => {
+    if (!profile) return;
+    setAnalyzing(true);
+    try {
+      const [briefingRes, volumeRes, relatedRes] = await Promise.all([
+        checkSingleKeyword(post, kw),
+        fetch(`/api/search-volume?keyword=${encodeURIComponent(kw)}`)
+          .then(r => (r.ok ? r.json() : null)).catch(() => null),
+        fetch('/api/related-keywords', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keyword: kw, limit: 50 }),
+        }).then(r => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
+      if (!briefingRes.ok || !briefingRes.result) return;
+
+      const volMatch = volumeRes?.keywords?.find((k: { keyword: string }) => k.keyword === kw) ?? volumeRes?.keywords?.[0];
+      const entry: AnalysisEntry = {
+        keyword: kw,
+        post,
+        briefing: briefingRes.result,
+        searchVolume: volMatch ? { total: volMatch.monthlyTotal, competition: volMatch.competition } : null,
+        relatedCount: typeof relatedRes?.total === 'number' ? relatedRes.total : null,
+        checkedAt: new Date().toISOString(),
+      };
+      setActiveAnalysis(entry);
+      setAnalysisHistory(prev => [entry, ...prev.filter(h => !(h.post.id === post.id && h.keyword === kw))]);
+
+      fetch(STATE_API, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blogId: profile.blogId, postId: post.id, keyword: kw, result: briefingRes.result,
+          searchVolume: entry.searchVolume, relatedKeywordCount: entry.relatedCount,
+        }),
+      }).catch(() => {});
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    const kw = analyzeKeyword.trim();
+    if (!kw || analyzing) return;
+    setPendingPostPick(null);
+    const post = matchPostForKeyword(kw);
+    if (!post) { setPendingPostPick(kw); setPostPickSearch(''); return; }
+    await runFullAnalysis(post, kw);
+  };
+
+  const handlePickPost = async (post: BlogPost) => {
+    if (!profile || !pendingPostPick) return;
+    const kw = pendingPostPick;
+    const kws = [...new Set([...(postKeywords[post.id] || []), kw])];
+    setPostKeywords(prev => ({ ...prev, [post.id]: kws }));
+    saveKeywordsToDb(profile.blogId, post.id, kws);
+    setPendingPostPick(null);
+    await runFullAnalysis(post, kw);
+  };
+
+  // 30분 경과 시 SWR 방식으로 딱 1번만 백그라운드 재확인 (연속 polling 아님 — 크롤링 비용/네이버 차단 위험 때문)
+  useEffect(() => {
+    if (!activeAnalysis) return;
+    const CHECK_INTERVAL_MS = 60_000;
+    const STALE_MS = 30 * 60 * 1000;
+    const id = setInterval(() => {
+      if (analyzing) return;
+      const age = Date.now() - new Date(activeAnalysis.checkedAt).getTime();
+      if (age > STALE_MS) runFullAnalysis(activeAnalysis.post, activeAnalysis.keyword);
+    }, CHECK_INTERVAL_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAnalysis, analyzing]);
+
+  // 결과 히스토리를 서버(DB) 상태에서 하이드레이션
+  useEffect(() => {
+    if (!syncedState) return;
+    const results = syncedState.briefingResults || {};
+    const entries: AnalysisEntry[] = Object.entries(results).map(([k, r]) => {
+      const sep = k.indexOf('::');
+      const postId = k.slice(0, sep);
+      const keyword = k.slice(sep + 2);
+      const post = blogPosts.find(p => p.id === postId) || {
+        id: postId, title: postId, url: '', commentCount: 0, date: '', isPublic: true,
+      };
+      return {
+        keyword,
+        post,
+        briefing: r,
+        searchVolume: typeof r.searchVolumeMonthly === 'number'
+          ? { total: r.searchVolumeMonthly, competition: r.competition || '' } : null,
+        relatedCount: r.relatedKeywordCount ?? null,
+        checkedAt: r.checkedAt || new Date().toISOString(),
+      };
+    }).sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+    setAnalysisHistory(entries);
+  }, [syncedState, blogPosts]);
 
   if (authLoading) {
     return (
@@ -781,15 +944,6 @@ export default function AiBriefingSection() {
     }
   });
 
-  // 성공사례: exposed/tabExposed=true 항목을 조회수 내림차순으로
-  const successCases = blogPosts
-    .filter(post => {
-      const st = postExposureState(post.id);
-      return st.briefing === true || st.tab === true;
-    })
-    .sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
-    .slice(0, 5);
-
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {errorMessage && (
@@ -847,6 +1001,211 @@ export default function AiBriefingSection() {
         같은 키워드라도 검색 시점에 따라 두 서비스 각각의 노출 여부와 출처 목록이 서로 다르게 나타날 수 있습니다.
       </p>
 
+      {/* 키워드 검색 + 자동 분석 */}
+      <GlassCard padding="none">
+        <div className="px-5 pt-5">
+          <SectionHeader title="AI 브리핑 · AI탭" subtitle="키워드를 입력하면 노출 여부·순위·검색량·경쟁도·관련 키워드를 자동으로 분석합니다" />
+        </div>
+        <form
+          onSubmit={e => { e.preventDefault(); handleAnalyze(); }}
+          className="px-5 pb-5 flex flex-col sm:flex-row gap-2"
+        >
+          <input
+            type="text"
+            value={analyzeKeyword}
+            onChange={e => setAnalyzeKeyword(e.target.value)}
+            placeholder="예: 천안맛집"
+            className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition text-sm"
+          />
+          <button
+            type="submit"
+            disabled={!analyzeKeyword.trim() || analyzing}
+            className="px-6 py-3 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            {analyzing ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                {STAGE_LABELS[checkingStage] || '분석 중...'}
+              </span>
+            ) : '분석하기'}
+          </button>
+        </form>
+
+        {pendingPostPick && (
+          <div className="mx-5 mb-5 p-4 rounded-xl border border-accent/30 bg-accent/5 space-y-2.5">
+            <p className="text-xs text-dim">
+              &ldquo;<b className="text-text">{pendingPostPick}</b>&rdquo;가 아직 어떤 게시물에도 타겟 키워드로 등록되어 있지 않습니다.
+              분석할 게시물을 선택하면 이 키워드가 해당 게시물에 자동 등록됩니다.
+            </p>
+            <input
+              type="text"
+              value={postPickSearch}
+              onChange={e => setPostPickSearch(e.target.value)}
+              placeholder="게시물 제목 검색"
+              className="w-full px-3 py-2 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none transition"
+            />
+            <div className="max-h-52 overflow-y-auto space-y-1">
+              {blogPosts
+                .filter(p => !postPickSearch.trim() || p.title.toLowerCase().includes(postPickSearch.trim().toLowerCase()))
+                .slice(0, 30)
+                .map(post => (
+                  <button
+                    key={post.id}
+                    onClick={() => handlePickPost(post)}
+                    disabled={analyzing}
+                    className="w-full text-left px-3 py-2 text-xs bg-surface hover:bg-accent/10 border border-border rounded-lg cursor-pointer transition disabled:opacity-50 truncate"
+                    title={post.title}
+                  >
+                    {post.title}
+                  </button>
+                ))}
+            </div>
+            <button
+              onClick={() => setPendingPostPick(null)}
+              className="text-[11px] text-dim hover:text-text cursor-pointer"
+            >
+              취소
+            </button>
+          </div>
+        )}
+
+        {(activeAnalysis || analyzing) && (
+          <div className="px-5 pb-5">
+            {!activeAnalysis && analyzing ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-28 bg-border/20 rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            ) : activeAnalysis && (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <ResultStatCard label="AI브리핑 노출" value={activeAnalysis.briefing.exposed ? '○' : 'X'} color={activeAnalysis.briefing.exposed ? 'up' : 'down'} spinning={analyzing} />
+                  <ResultStatCard label="AI탭 노출" value={activeAnalysis.briefing.tabExposed ? '○' : 'X'} color={activeAnalysis.briefing.tabExposed ? 'up' : 'down'} spinning={analyzing} />
+                  <ResultStatCard
+                    label="노출 순위"
+                    value={
+                      activeAnalysis.briefing.sourceIndex ?? activeAnalysis.briefing.tabSourceIndex
+                        ? `${activeAnalysis.briefing.sourceIndex ?? activeAnalysis.briefing.tabSourceIndex}위`
+                        : '—'
+                    }
+                    spinning={analyzing}
+                  />
+                  <ResultStatCard
+                    label="검색량"
+                    value={activeAnalysis.searchVolume ? `${typeof activeAnalysis.searchVolume.total === 'number' ? activeAnalysis.searchVolume.total.toLocaleString() : activeAnalysis.searchVolume.total}회` : '—'}
+                    spinning={analyzing}
+                  />
+                  <ResultStatCard
+                    label="경쟁도"
+                    value={activeAnalysis.searchVolume?.competition || '—'}
+                    color={activeAnalysis.searchVolume?.competition === '낮음' ? 'up' : activeAnalysis.searchVolume?.competition === '높음' ? 'down' : 'gold'}
+                    spinning={analyzing}
+                  />
+                  <ResultStatCard
+                    label="관련 키워드"
+                    value={activeAnalysis.relatedCount != null ? `${activeAnalysis.relatedCount}개` : '—'}
+                    spinning={analyzing}
+                  />
+                </div>
+                <p className="text-[11px] text-dim mt-2">
+                  마지막 업데이트: {timeAgo(activeAnalysis.checkedAt)} · {activeAnalysis.post.title}
+                </p>
+              </>
+            )}
+          </div>
+        )}
+      </GlassCard>
+
+      {/* 결과 히스토리 */}
+      {analysisHistory.length > 0 && (
+        <GlassCard padding="none">
+          <div className="px-5 py-4 border-b border-border bg-bg/30">
+            <h3 className="font-bold text-[15px]">분석 히스토리</h3>
+          </div>
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
+                  <th className="text-left px-4 py-3 font-semibold">키워드</th>
+                  <th className="text-center px-3 py-3 font-semibold">AI브리핑</th>
+                  <th className="text-center px-3 py-3 font-semibold">AI탭</th>
+                  <th className="text-center px-3 py-3 font-semibold">노출순위</th>
+                  <th className="text-center px-3 py-3 font-semibold">검색량</th>
+                  <th className="text-center px-3 py-3 font-semibold">경쟁도</th>
+                  <th className="text-center px-3 py-3 font-semibold">관련키워드</th>
+                  <th className="text-right px-4 py-3 font-semibold">조회시간</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/20">
+                {analysisHistory.slice((historyPage - 1) * HISTORY_PER_PAGE, historyPage * HISTORY_PER_PAGE).map((h, idx) => (
+                  <tr key={`${h.post.id}-${h.keyword}-${idx}`} className="hover:bg-surface-hover transition">
+                    <td className="px-4 py-3 font-semibold">{h.keyword}</td>
+                    <td className="text-center px-3 py-3"><BriefingLabelBadge result={h.briefing} /></td>
+                    <td className="text-center px-3 py-3"><AiTabBadge result={h.briefing} /></td>
+                    <td className="text-center px-3 py-3 text-xs text-dim">
+                      {h.briefing.sourceIndex ?? h.briefing.tabSourceIndex ? `${h.briefing.sourceIndex ?? h.briefing.tabSourceIndex}위` : '—'}
+                    </td>
+                    <td className="text-center px-3 py-3 text-xs text-dim">
+                      {h.searchVolume ? `${typeof h.searchVolume.total === 'number' ? h.searchVolume.total.toLocaleString() : h.searchVolume.total}` : '—'}
+                    </td>
+                    <td className="text-center px-3 py-3 text-xs text-dim">{h.searchVolume?.competition || '—'}</td>
+                    <td className="text-center px-3 py-3 text-xs text-dim">{h.relatedCount != null ? `${h.relatedCount}개` : '—'}</td>
+                    <td className="text-right px-4 py-3 text-[10px] text-dim">{timeAgo(h.checkedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="md:hidden divide-y divide-border/20">
+            {analysisHistory.slice((historyPage - 1) * HISTORY_PER_PAGE, historyPage * HISTORY_PER_PAGE).map((h, idx) => (
+              <div key={`${h.post.id}-${h.keyword}-${idx}`} className="px-4 py-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-sm">{h.keyword}</span>
+                  <span className="text-[10px] text-dim">{timeAgo(h.checkedAt)}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap text-[11px] text-dim">
+                  <span>브리핑</span><BriefingLabelBadge result={h.briefing} />
+                  <span>탭</span><AiTabBadge result={h.briefing} />
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-dim">
+                  <span>검색량 {h.searchVolume ? (typeof h.searchVolume.total === 'number' ? h.searchVolume.total.toLocaleString() : h.searchVolume.total) : '—'}</span>
+                  <span>경쟁도 {h.searchVolume?.competition || '—'}</span>
+                  <span>관련 {h.relatedCount != null ? `${h.relatedCount}개` : '—'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {analysisHistory.length > HISTORY_PER_PAGE && (
+            <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                disabled={historyPage === 1}
+                className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
+              >
+                이전
+              </button>
+              <span className="text-xs text-dim">{historyPage} / {Math.ceil(analysisHistory.length / HISTORY_PER_PAGE)}</span>
+              <button
+                onClick={() => setHistoryPage(p => Math.min(Math.ceil(analysisHistory.length / HISTORY_PER_PAGE), p + 1))}
+                disabled={historyPage === Math.ceil(analysisHistory.length / HISTORY_PER_PAGE)}
+                className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
+              >
+                다음
+              </button>
+            </div>
+          )}
+        </GlassCard>
+      )}
+
+      {/* 게시물별 키워드 관리 — 자동 매칭의 근거 데이터(타겟 키워드 등록)이자, 개별 게시물 단위로 직접 확인하고 싶을 때 사용 */}
+      <details className="group">
+        <summary className="cursor-pointer select-none px-4 py-3 rounded-xl border border-border bg-surface text-sm font-bold flex items-center justify-between hover:border-accent/50 transition">
+          게시물별 키워드 관리
+          <span className="text-dim text-xs group-open:rotate-180 transition-transform">▾</span>
+        </summary>
+        <div className="mt-4 space-y-4">
+
       {/* KPI 바 — 현재 페이지 로드된 포스팅 기준(전체 블로그 합산 아님) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <AnimatedStatCard label="전체 포스팅" value={blogPosts.length} description="현재 페이지 기준" color="dim" />
@@ -859,52 +1218,6 @@ export default function AiBriefingSection() {
         <AnimatedStatCard label="평균 GEO점수" value={kpiAvg('geoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
         <AnimatedStatCard label="평균 AEO점수" value={kpiAvg('aeoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
       </div>
-
-      {/* 성공사례 — 인용/노출 확인된 항목을 조회수 내림차순으로 */}
-      <GlassCard padding="none">
-        <div className="px-5 py-4 border-b border-border bg-bg/30">
-          <h3 className="font-bold text-[15px]">성공사례</h3>
-          <p className="text-[11px] text-dim mt-0.5">
-            AI 브리핑 또는 AI 탭에 인용된 게시글 (조회수순). 조회수 증가율·클릭률은 히스토리 기능(준비 중) 완성 후 제공됩니다.
-          </p>
-        </div>
-        {successCases.length === 0 ? (
-          <div className="py-8 text-center text-dim text-sm">아직 확인된 성공사례가 없습니다.</div>
-        ) : (
-          <div className="divide-y divide-border/20">
-            {successCases.map(post => {
-              const st = postExposureState(post.id);
-              return (
-                <div key={post.id} className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
-                  <a href={post.url} target="_blank" rel="noopener noreferrer"
-                    className="font-semibold text-sm hover:text-accent transition truncate block max-w-[420px]" title={post.title}>
-                    {post.title}
-                  </a>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {typeof post.viewCount === 'number' && (
-                      <span className="text-[10px] text-dim">조회수 {post.viewCount.toLocaleString()}</span>
-                    )}
-                    {st.briefing === true && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">AI브리핑 인용</span>
-                    )}
-                    {st.tab === true && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">AI탭 노출</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </GlassCard>
-
-      {/* 최근 변경 내역 — Phase 2 예정 (일별 스냅샷 히스토리 테이블 필요) */}
-      <GlassCard padding="none">
-        <div className="px-5 py-4 border-b border-border bg-bg/30">
-          <h3 className="font-bold text-[15px]">최근 변경 내역</h3>
-        </div>
-        <div className="py-8 text-center text-dim text-sm">히스토리 기능은 준비 중입니다.</div>
-      </GlassCard>
 
       {/* 포스팅 수 선택 */}
       <div className="flex items-center gap-3">
@@ -1091,22 +1404,24 @@ export default function AiBriefingSection() {
                           </td>
                           {isFirst && (
                             <td className="text-center px-3 py-1.5 align-top" rowSpan={rowCount}>
-                              {!score ? (
-                                <button
-                                  onClick={() => handleAnalyzeScore(post)}
-                                  disabled={scoringPostId === post.id}
-                                  className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
-                                >
-                                  {scoringPostId === post.id ? '분석 중...' : '분석하기'}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
-                                  className="text-[11px] text-accent hover:underline cursor-pointer"
-                                >
-                                  개선하기<br /><span className="text-[9px] text-dim">(기초 진단)</span>
-                                </button>
-                              )}
+                              <div className="flex flex-col gap-1 items-center">
+                                {!score ? (
+                                  <button
+                                    onClick={() => handleAnalyzeScore(post)}
+                                    disabled={scoringPostId === post.id}
+                                    className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                                  >
+                                    {scoringPostId === post.id ? '분석 중...' : '분석하기'}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
+                                    className="text-[11px] text-accent hover:underline cursor-pointer"
+                                  >
+                                    개선하기<br /><span className="text-[9px] text-dim">(기초 진단)</span>
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -1257,7 +1572,7 @@ export default function AiBriefingSection() {
                       </div>
                     </div>
 
-                    <div className="pl-7 pt-0.5">
+                    <div className="pl-7 pt-0.5 flex items-center gap-3 flex-wrap">
                       {!score ? (
                         <button
                           onClick={() => handleAnalyzeScore(post)}
@@ -1274,12 +1589,12 @@ export default function AiBriefingSection() {
                           개선하기 <span className="text-dim">(기초 진단)</span>
                         </button>
                       )}
-                      {improvePanelPostId === post.id && score && (
-                        <div className="mt-2">
-                          <ImprovePanel score={score} />
-                        </div>
-                      )}
                     </div>
+                    {improvePanelPostId === post.id && score && (
+                      <div className="mt-2">
+                        <ImprovePanel score={score} />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1308,6 +1623,9 @@ export default function AiBriefingSection() {
           </>
         )}
       </GlassCard>
+
+        </div>
+      </details>
     </div>
   );
 }

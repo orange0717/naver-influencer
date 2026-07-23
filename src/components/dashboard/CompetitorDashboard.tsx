@@ -169,7 +169,7 @@ export default function CompetitorDashboard({
   };
 
   return (
-    <div className="bg-surface rounded-2xl border border-border shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
+    <div className="bg-surface rounded-2xl border border-border shadow-xs p-5">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-[15px]">경쟁자 분석</h3>

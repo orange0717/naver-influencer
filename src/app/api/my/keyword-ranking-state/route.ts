@@ -11,6 +11,7 @@ type RankingResult = {
   viewTab: { exposed: boolean | null; rank: number | null };
   query: string;
   searchVolume?: number;
+  checkedAt?: string | null;
 };
 
 async function guard(request: NextRequest): Promise<{ res: NextResponse } | { userId: string }> {
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
         viewTab: { exposed: r.view_exposed, rank: r.view_rank },
         blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
         searchVolume: r.search_volume ?? undefined,
+        checkedAt: r.checked_at,
       };
     }
   }
@@ -136,7 +138,8 @@ export async function PATCH(request: NextRequest) {
       blog_rank: typeof r.blogTab?.rank === 'number' ? r.blogTab.rank : null,
       blog_exposed: typeof r.blogTab?.exposed === 'boolean' ? r.blogTab.exposed : null,
       search_volume: typeof r.searchVolume === 'number' ? r.searchVolume : null,
-      checked_at: new Date().toISOString(),
+      // 캐시 히트로 받은 결과는 실제 조회 시각(checkedAt)이 과거일 수 있으므로 그대로 보존
+      checked_at: typeof r.checkedAt === 'string' && r.checkedAt ? r.checkedAt : new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,post_id,keyword' });
 

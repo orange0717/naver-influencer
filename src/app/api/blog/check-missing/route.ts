@@ -12,11 +12,23 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || '';
 const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
 
-// 순위 결과 공유 캐시 (Redis, 인스턴스·기기 간 공유 / 30분)
-const CACHE_TTL_SEC = 30 * 60;
+// 순위 결과 공유 캐시 (Redis, 인스턴스·기기 간 공유 / 10분 — 자동 새로고침 주기와 일치)
+const CACHE_TTL_SEC = 10 * 60;
 
 // 검색량 공유 캐시 (24시간)
 const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
+
+// 동일 인스턴스 내 동시 요청 공유: 같은 cacheKey를 여러 사용자가 동시에 조회해도
+// 진행 중인 크롤링 하나만 수행하고 결과를 나눠 갖는다 (네이버 요청 중복 방지)
+const inFlight = new Map<string, Promise<RankCheckResult>>();
+
+type RankCheckResult = {
+  blogTab: { exposed: boolean; rank: number | null };
+  viewTab: { exposed: boolean; rank: number | null };
+  query: string;
+  searchVolume: number;
+  checkedAt: string;
+};
 
 // displayName 캐시 (30분, 프로세스 로컬 — DB 조회가 이미 빠름)
 const nameCache = new Map<string, { name: string; expires: number }>();
@@ -347,7 +359,7 @@ export async function POST(request: NextRequest) {
     if (await blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
     const body = await request.json();
-    const { blogId, postTitle, postId, keyword } = body;
+    const { blogId, postTitle, postId, keyword, force } = body;
 
     if (!blogId || (!postTitle && !keyword)) {
       return NextResponse.json({ error: 'blogId, postTitle 또는 keyword 필수' }, { status: 400 });
@@ -356,103 +368,117 @@ export async function POST(request: NextRequest) {
     const denied = await assertBlogResourceAccess(request, String(blogId));
     if (denied) return denied;
 
-    // 캐시 확인 (Redis 공유 — 다른 인스턴스/기기가 확인한 결과도 재사용)
+    // 캐시 확인 (Redis 공유 — 다른 인스턴스/기기가 확인한 결과도 재사용). force=true면 건너뛰고 강제 재조회.
     const cacheKey = keyword
       ? `rank:${blogId}:${postId || ''}:kw:${keyword.trim()}`
       : `rank:${blogId}:${postId || postTitle.slice(0, 30)}`;
-    const cached = await cacheGet<Record<string, unknown>>(cacheKey);
-    if (cached !== null) {
-      // 캐시 히트는 네이버를 치지 않으므로 클라이언트가 대기 없이 다음 키워드로 넘어갈 수 있다.
-      return NextResponse.json({ ...cached, cached: true });
+    if (!force) {
+      const cached = await cacheGet<RankCheckResult>(cacheKey);
+      if (cached !== null) {
+        // 캐시 히트는 네이버를 치지 않으므로 클라이언트가 대기 없이 다음 키워드로 넘어갈 수 있다.
+        return NextResponse.json({ ...cached, cached: true });
+      }
     }
 
-    // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 자동 추출
-    const displayName = await getDisplayName(blogId);
-    let query: string;
-    if (keyword && keyword.trim()) {
-      query = keyword.trim();
-    } else {
-      query = extractKeywords(postTitle, blogId, displayName);
-    }
+    // 같은 키에 대해 이미 진행 중인 조회가 있으면 그 결과를 공유 (동시 접속 사용자 간 중복 크롤링 방지)
+    let promise = inFlight.get(cacheKey);
+    if (!promise) {
+      promise = (async (): Promise<RankCheckResult> => {
+        // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 자동 추출
+        const displayName = await getDisplayName(blogId);
+        let query: string;
+        if (keyword && keyword.trim()) {
+          query = keyword.trim();
+        } else {
+          query = extractKeywords(postTitle, blogId, displayName);
+        }
 
-    // 블로그탭 + 통합검색 동시 확인
-    let [blogTab, viewTab] = await Promise.all([
-      checkBlogTab(query, blogId, postId || ''),
-      checkViewTab(query, blogId, postId || ''),
-    ]);
-
-    // 폴백: 사용자 키워드가 아닌 경우 여러 쿼리 조합으로 재시도
-    if (!keyword && (!blogTab.exposed || !viewTab.exposed)) {
-      // 원본 제목에서 추가 후보 쿼리 생성
-      const fallbackCandidates: string[] = [];
-
-      // 후보 1: 단어 2개 (가장 긴 단어 2개 조합 — 더 구체적)
-      let cleaned = postTitle;
-      if (displayName && displayName.length >= 2) {
-        cleaned = cleaned.replace(new RegExp(displayName, 'gi'), ' ');
-      }
-      cleaned = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-      const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
-      const words2 = cleaned.split(/\s+/).filter((w: string) => w.length >= 2 && !stop.has(w) && !/^\d+$/.test(w));
-      const byLength = [...words2].sort((a, b) => b.length - a.length);
-      if (byLength.length >= 2) fallbackCandidates.push(byLength.slice(0, 2).join(' '));
-      if (byLength.length >= 1) fallbackCandidates.push(byLength[0]);
-
-      // 후보 2: 원본 제목 앞 30자
-      const rawTitle = postTitle.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-      if (rawTitle.length >= 4 && rawTitle !== query) {
-        fallbackCandidates.push(rawTitle.length > 30 ? rawTitle.slice(0, 30) : rawTitle);
-      }
-
-      for (const fb of fallbackCandidates) {
-        if (fb === query || fb.length < 2) continue;
-        if (blogTab.exposed && viewTab.exposed) break;
-        const [fbBlog, fbView] = await Promise.all([
-          !blogTab.exposed ? checkBlogTab(fb, blogId, postId || '') : Promise.resolve(blogTab),
-          !viewTab.exposed ? checkViewTab(fb, blogId, postId || '') : Promise.resolve(viewTab),
+        // 블로그탭 + 통합검색 동시 확인
+        let [blogTab, viewTab] = await Promise.all([
+          checkBlogTab(query, blogId, postId || ''),
+          checkViewTab(query, blogId, postId || ''),
         ]);
-        if (fbBlog.exposed) blogTab = fbBlog;
-        if (fbView.exposed) viewTab = fbView;
-        if (blogTab.exposed && viewTab.exposed) break;
-        await new Promise(r => setTimeout(r, 300));
-      }
-    }
 
-    // 검색량 조회 (순위 공식용)
-    const searchVolume = await getSearchVolume(query);
+        // 폴백: 사용자 키워드가 아닌 경우 여러 쿼리 조합으로 재시도
+        if (!keyword && (!blogTab.exposed || !viewTab.exposed)) {
+          // 원본 제목에서 추가 후보 쿼리 생성
+          const fallbackCandidates: string[] = [];
 
-    const result = {
-      blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },
-      viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
-      query,
-      searchVolume,
-    };
+          // 후보 1: 단어 2개 (가장 긴 단어 2개 조합 — 더 구체적)
+          let cleaned = postTitle;
+          if (displayName && displayName.length >= 2) {
+            cleaned = cleaned.replace(new RegExp(displayName, 'gi'), ' ');
+          }
+          cleaned = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+          const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
+          const words2 = cleaned.split(/\s+/).filter((w: string) => w.length >= 2 && !stop.has(w) && !/^\d+$/.test(w));
+          const byLength = [...words2].sort((a, b) => b.length - a.length);
+          if (byLength.length >= 2) fallbackCandidates.push(byLength.slice(0, 2).join(' '));
+          if (byLength.length >= 1) fallbackCandidates.push(byLength[0]);
 
-    // 캐시 저장 (공유)
-    await cacheSet(cacheKey, result, CACHE_TTL_SEC);
+          // 후보 2: 원본 제목 앞 30자
+          const rawTitle = postTitle.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+          if (rawTitle.length >= 4 && rawTitle !== query) {
+            fallbackCandidates.push(rawTitle.length > 30 ? rawTitle.slice(0, 30) : rawTitle);
+          }
 
-    // 검사 결과 즉시 DB 반영 (포스트 1개 검사 → 저장, 전체 일괄 계산 방지)
-    if (postId) {
-      try {
-        const supabase = createServiceClient();
-        await supabase.from('post_missing_checks').upsert({
-          blog_id: blogId,
-          post_id: String(postId),
-          post_title: postTitle || null,
+          for (const fb of fallbackCandidates) {
+            if (fb === query || fb.length < 2) continue;
+            if (blogTab.exposed && viewTab.exposed) break;
+            const [fbBlog, fbView] = await Promise.all([
+              !blogTab.exposed ? checkBlogTab(fb, blogId, postId || '') : Promise.resolve(blogTab),
+              !viewTab.exposed ? checkViewTab(fb, blogId, postId || '') : Promise.resolve(viewTab),
+            ]);
+            if (fbBlog.exposed) blogTab = fbBlog;
+            if (fbView.exposed) viewTab = fbView;
+            if (blogTab.exposed && viewTab.exposed) break;
+            await new Promise(r => setTimeout(r, 300));
+          }
+        }
+
+        // 검색량 조회 (순위 공식용)
+        const searchVolume = await getSearchVolume(query);
+
+        const freshResult: RankCheckResult = {
+          blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },
+          viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
           query,
-          view_exposed: viewTab.exposed,
-          view_rank: viewTab.rank,
-          blog_exposed: blogTab.exposed,
-          blog_rank: blogTab.rank,
-          search_volume: searchVolume,
-          status: 'ok',
-          fail_count: 0,
-          checked_at: new Date().toISOString(),
-        }, { onConflict: 'blog_id,post_id' });
-      } catch { /* DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) */ }
+          searchVolume,
+          checkedAt: new Date().toISOString(),
+        };
+
+        // 캐시 저장 (공유)
+        await cacheSet(cacheKey, freshResult, CACHE_TTL_SEC);
+
+        // 검사 결과 즉시 DB 반영 (포스트 1개 검사 → 저장, 전체 일괄 계산 방지)
+        if (postId) {
+          try {
+            const supabase = createServiceClient();
+            await supabase.from('post_missing_checks').upsert({
+              blog_id: blogId,
+              post_id: String(postId),
+              post_title: postTitle || null,
+              query,
+              view_exposed: viewTab.exposed,
+              view_rank: viewTab.rank,
+              blog_exposed: blogTab.exposed,
+              blog_rank: blogTab.rank,
+              search_volume: searchVolume,
+              status: 'ok',
+              fail_count: 0,
+              checked_at: freshResult.checkedAt,
+            }, { onConflict: 'blog_id,post_id' });
+          } catch { /* DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) */ }
+        }
+
+        return freshResult;
+      })();
+      inFlight.set(cacheKey, promise);
+      promise.finally(() => inFlight.delete(cacheKey));
     }
 
-    return NextResponse.json(result);
+    const result = await promise;
+    return NextResponse.json({ ...result, cached: false });
   } catch {
     return NextResponse.json({ error: '누락 확인 중 오류' }, { status: 500 });
   }

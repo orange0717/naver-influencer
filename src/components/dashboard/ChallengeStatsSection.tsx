@@ -54,7 +54,7 @@ export default function ChallengeStatsSection({
   const top3Rate = totalKeywords > 0 ? Math.round((top3Count / totalKeywords) * 100) : 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-5 space-y-5">
+    <div className="rounded-2xl border border-border bg-surface shadow-xs p-6 space-y-5">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
@@ -145,16 +145,16 @@ function StatBox({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl bg-bg border border-border/50 p-3.5 space-y-1">
+    <div className="h-[76px] rounded-xl bg-bg border border-border/50 p-4 flex flex-col justify-between">
       <div className="flex items-center gap-1.5 text-dim">
         {icon}
-        <span className="text-[11px] font-medium">{label}</span>
+        <span className="text-[11px] font-semibold">{label}</span>
       </div>
       <div className="flex items-baseline gap-1">
         <span className={`text-xl font-black ${color}`}>
           <AnimatedNumber value={value} suffix={suffix} />
         </span>
-        {sub && <span className="text-[10px] text-dim">({sub})</span>}
+        {sub && <span className="text-[11px] text-dim">({sub})</span>}
       </div>
     </div>
   );

@@ -17,6 +17,10 @@ type BriefingResult = {
   tabSourceIndex: number | null;
   tabSourceTotal: number | null;
   tabMatchedTitle: string | null;
+  searchVolumeMonthly?: number | null;
+  competition?: string | null;
+  relatedKeywordCount?: number | null;
+  checkedAt?: string | null;
 };
 
 async function guard(request: NextRequest): Promise<{ res: NextResponse } | { userId: string }> {
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('ai_briefing_exposures')
-    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, checked_at')
+    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, checked_at, search_volume_monthly, competition, related_keyword_count')
     .eq('user_id', g.userId)
     .eq('blog_id', blogId);
 
@@ -58,6 +62,7 @@ export async function GET(request: NextRequest) {
     tab_source_index: number | null; tab_source_total: number | null;
     tab_matched_title: string | null;
     checked_at: string | null;
+    search_volume_monthly: number | null; competition: string | null; related_keyword_count: number | null;
   }>) {
     (postKeywords[r.post_id] ??= []).push(r.keyword);
     if (r.checked_at) {
@@ -72,6 +77,10 @@ export async function GET(request: NextRequest) {
         tabSourceIndex: r.tab_source_index,
         tabSourceTotal: r.tab_source_total,
         tabMatchedTitle: r.tab_matched_title,
+        searchVolumeMonthly: r.search_volume_monthly,
+        competition: r.competition,
+        relatedKeywordCount: r.related_keyword_count,
+        checkedAt: r.checked_at,
       };
     }
   }
@@ -132,12 +141,13 @@ export async function PATCH(request: NextRequest) {
   const g = await guard(request);
   if ('res' in g) return g.res;
 
-  const { blogId, postId, keyword, result } = await request.json();
+  const { blogId, postId, keyword, result, searchVolume, relatedKeywordCount } = await request.json();
   if (typeof blogId !== 'string' || typeof postId !== 'string' || typeof keyword !== 'string' || !keyword.trim()) {
     return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
 
   const r = (result ?? {}) as Partial<BriefingResult>;
+  const sv = (searchVolume ?? null) as { total?: number | string; competition?: string } | null;
   const supabase = createServiceClient();
   const { error } = await supabase
     .from('ai_briefing_exposures')
@@ -156,6 +166,9 @@ export async function PATCH(request: NextRequest) {
       tab_source_index: typeof r.tabSourceIndex === 'number' ? r.tabSourceIndex : null,
       tab_source_total: typeof r.tabSourceTotal === 'number' ? r.tabSourceTotal : null,
       tab_matched_title: typeof r.tabMatchedTitle === 'string' ? r.tabMatchedTitle : null,
+      // 검색량/관련키워드는 이번 PATCH에 값이 없으면(예: 개별 게시물 테이블의 기존 확인 흐름) 기존 값을 지우지 않도록 undefined로 두어 upsert에서 컬럼 자체를 생략
+      ...(sv && typeof sv.total === 'number' ? { search_volume_monthly: sv.total, competition: sv.competition ?? null } : {}),
+      ...(typeof relatedKeywordCount === 'number' ? { related_keyword_count: relatedKeywordCount } : {}),
       checked_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,post_id,keyword' });

@@ -83,7 +83,7 @@ export default function ProfileHeader({
   };
 
   return (
-    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-6 shadow-xs">
       <div className="flex items-center gap-4">
         {/* 프로필 이미지 */}
         <div className="relative group">
@@ -227,11 +227,11 @@ export default function ProfileHeader({
             className="ml-auto shrink-0 text-center bg-accent/[0.07] rounded-xl px-4 py-3 border border-accent/15 cursor-pointer hover:bg-accent/[0.12] transition"
             title="클릭하면 블로그 삽입 코드를 확인할 수 있습니다"
           >
-            <p className="text-[10px] text-accent font-bold tracking-wide mb-1">TOP 3 달성률</p>
-            <p className="text-2xl font-black font-rank text-accent leading-none">
+            <p className="stat-title text-accent mb-1">TOP 3 달성률</p>
+            <p className="stat-value text-accent leading-none">
               {Math.round((top3Count / totalKeywords) * 100)}<span className="text-sm font-bold">%</span>
             </p>
-            <p className="text-[10px] text-dim mt-1">{top3Count}/{totalKeywords}개</p>
+            <p className="stat-desc mt-1">{top3Count}/{totalKeywords}개</p>
           </button>
         )}
       </div>

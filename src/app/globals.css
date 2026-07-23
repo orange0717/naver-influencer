@@ -175,3 +175,27 @@ a:hover:not(.btn) {
 .snap-x-mandatory > * {
   scroll-snap-align: start;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   대시보드 카드 디자인 시스템 — 타이포그래피 토큰
+   모든 통계/KPI 카드가 이 3단계 위계(제목/값/설명)를 공유한다.
+   ═══════════════════════════════════════════════════════════════ */
+.stat-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-dim);
+  line-height: 1.3;
+}
+.stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.stat-desc {
+  font-size: 11px;
+  color: var(--color-dim);
+  opacity: 0.75;
+  line-height: 1.4;
+}

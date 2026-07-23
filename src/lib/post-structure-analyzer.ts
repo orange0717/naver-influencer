@@ -157,15 +157,25 @@ export async function analyzePost(blogId: string, logNo: string): Promise<PostAn
 
   try {
     // PostView.naver로 직접 접근하면 iframe 없이 본문 HTML을 받을 수 있음
+    // 네이버 응답이 지연될 때 품질평가 전체가 무한정 늘어지지 않도록 타임아웃을 건다
+    // (quality-evaluate에서 "진단 중..."이 오래 걸리던 문제의 원인 중 하나 — 2026-07-21)
     const url = `https://blog.naver.com/PostView.naver?blogId=${encodeURIComponent(blogId)}&logNo=${logNo}&directAccess=false`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
-        'Referer': `https://blog.naver.com/${blogId}`,
-      },
-    });
+    const pageController = new AbortController();
+    const pageTimeout = setTimeout(() => pageController.abort(), 15000);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
+          'Referer': `https://blog.naver.com/${blogId}`,
+        },
+        signal: pageController.signal,
+      });
+    } finally {
+      clearTimeout(pageTimeout);
+    }
 
     if (!res.ok) return result;
 
