@@ -225,6 +225,15 @@ export const DASHBOARD_APPS: DashboardApp[] = [
     href: '/image-converter',
     ctaLabel: '무료플랜',
   },
+  {
+    id: 'google-indexing',
+    category: 'research',
+    title: '구글 색인등록',
+    description: '네이버 블로그를 Google 검색에 등록 요청하고 색인 상태를 자동으로 추적 (Search Console API 기반)',
+    href: '/dashboard/google-indexing',
+    requiredPlan: 'blogger',
+    authOnly: true,
+  },
 
   // ── 키워드 ──
   {

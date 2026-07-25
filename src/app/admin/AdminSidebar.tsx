@@ -19,6 +19,7 @@ const MENU_ITEMS = [
   { href: '/admin/influencers', label: '인플루언서 관리', icon: 'I' },
   { href: '/admin/official-rankings', label: '공식 순위 업로드', icon: 'N' },
   { href: '/admin/crawler', label: '크롤러 상태', icon: 'C' },
+  { href: '/admin/google-indexing', label: '구글 색인등록', icon: 'G' },
 ];
 
 export default function AdminSidebar() {

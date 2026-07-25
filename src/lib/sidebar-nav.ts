@@ -63,6 +63,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '키워드 검색', href: '/keywords/blogger' },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
+      // TODO: migration-117 실행 + GOOGLE_CLIENT_ID/SECRET 등 Vercel 환경변수 설정 후 disabled 제거
+      { label: '구글 색인등록', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true, disabled: true },
     ],
   },
   {
