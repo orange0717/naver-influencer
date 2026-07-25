@@ -76,6 +76,10 @@
       "schedule": "30 23 * * *"
     },
     {
+      "path": "/api/cron/curate-blog-topics",
+      "schedule": "15 23 * * *"
+    },
+    {
       "path": "/api/cron/refresh-stats",
       "schedule": "45 * * * *"
     },

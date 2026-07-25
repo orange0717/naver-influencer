@@ -125,6 +125,7 @@ const GATE_HANDLED_ELSEWHERE = new Set([
   '/dashboard/writing/rewrite',
   '/dashboard/youtube-stt',
   '/dashboard/claude', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts)
+  '/topics', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts) — AI 토픽 큐레이션, dashboard/claude와 동일 패턴
 ]);
 
 function isAuthOnlyHrefAccounted(href: string): boolean {

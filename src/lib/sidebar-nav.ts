@@ -69,6 +69,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '글쓰기',
     icon: 'W',
     items: [
+      { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true },
       { label: '글감 찾기', href: '#', disabled: true },
       { label: '제목 생성', href: '#', disabled: true },
       { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
