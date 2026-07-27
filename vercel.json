@@ -80,6 +80,10 @@
       "schedule": "15 23 * * *"
     },
     {
+      "path": "/api/cron/crawl-naver-topics",
+      "schedule": "45 23 * * *"
+    },
+    {
       "path": "/api/cron/refresh-stats",
       "schedule": "45 * * * *"
     },
