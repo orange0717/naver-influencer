@@ -1,4 +1,4 @@
-# Vercel Cron 보조(10분×2샤드, vercel.json과 동일 파티션). 시크릿: .github/GITHUB_ACTIONS_SECRETS.md
+# Vercel Cron 보조(10분×2샤드 병렬 실행, vercel.json과 동일 파티션). 시크릿: .github/GITHUB_ACTIONS_SECRETS.md
 name: N인플 챌린지 순위 크롤링 안전망
 
 on:
@@ -21,13 +21,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trigger scheduled crawler (2 shards)
+      - name: Trigger scheduled crawler (2 shards, parallel)
         run: |
           set -euo pipefail
           source .github/scripts/ninfle-cron-auth.sh
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
+
+          # (2026-07-30) 순차 실행 시 1회 총 소요가 최대 640초(샤드당 최대 320초×2)까지
+          # 걸려서, concurrency(cancel-in-progress:false) 대기열에 다음 스케줄 트리거가
+          # 쌓이다 못해 상당수가 조용히 유실되는 문제를 발견함. 샤드를 병렬 실행해
+          # 워크플로 총 소요를 절반(~320초)으로 줄여 다음 크론(10분 간격) 전에 끝나게 함.
+          PIDS=()
           for SHARD in 0 1; do
-            curl --fail --show-error --silent --max-time 320 \
+            (curl --fail --show-error --silent --max-time 320 \
               "${NINFLE_CRON_AUTH[@]}" \
-              "$BASE/api/cron/crawl-challenge-ranks-scheduled?shard=$SHARD&shards=2"
+              "$BASE/api/cron/crawl-challenge-ranks-scheduled?shard=$SHARD&shards=2" \
+              > "/tmp/shard-$SHARD.log" 2>&1) &
+            PIDS+=("$!")
           done
+
+          FAIL=0
+          for SHARD in 0 1; do
+            if ! wait "${PIDS[$SHARD]}"; then
+              echo "::error::shard $SHARD failed"
+              FAIL=1
+            fi
+            echo "--- shard $SHARD output ---"
+            cat "/tmp/shard-$SHARD.log"
+          done
+          exit "$FAIL"
