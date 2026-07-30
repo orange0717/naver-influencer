@@ -7,6 +7,7 @@ import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 import { filterMissing, countMissing } from '@/lib/missing-rate';
@@ -1287,7 +1288,7 @@ export default function BlogAnalysisSection() {
  * KPI 카드·그래프·포스팅 목록은 Empty State, 프로필 영역은 로그인 유도로 대체.
  * 게스트 상태에서는 어떤 사용자 데이터 API도 호출하지 않는다. */
 function GuestBlogAnalysis() {
-  const loginHref = '/auth/login?redirect=/my/blogger';
+  const loginRedirect = '/my/blogger';
   const features = ['방문자 분석', '키워드 순위', 'AI 브리핑', '포스팅 분석', '인플루언서 분석'];
   const statCards = [
     { label: 'TODAY 방문자' },
@@ -1308,7 +1309,8 @@ function GuestBlogAnalysis() {
       {/* ─── CTA 배너: 로그인 후 제공되는 기능 안내 ─── */}
       <div className="rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:p-6 text-center space-y-3">
         <h2 className="font-title text-lg lg:text-xl font-bold text-text">
-          로그인하면 블로그 데이터를 자동으로 분석해드려요
+          Google 계정으로 로그인하면 <br className="hidden sm:block" />
+          블로그 데이터를 자동으로 분석해드립니다.
         </h2>
         <div className="flex flex-wrap justify-center gap-2">
           {features.map(f => (
@@ -1317,10 +1319,8 @@ function GuestBlogAnalysis() {
             </span>
           ))}
         </div>
-        <div>
-          <Link href={loginHref} className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
-            네이버 로그인
-          </Link>
+        <div className="flex justify-center">
+          <GoogleLoginButton redirectTo={loginRedirect} />
         </div>
       </div>
 
@@ -1332,13 +1332,11 @@ function GuestBlogAnalysis() {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-extrabold text-text">네이버 블로그를 연결하세요</h1>
-              <p className="text-sm text-dim mt-1">로그인 후 블로그를 연결하면 방문자·순위·포스팅 데이터를 이곳에서 확인할 수 있습니다.</p>
+              <h1 className="text-xl font-extrabold text-text">블로그를 연결하세요</h1>
+              <p className="text-sm text-dim mt-1">Google 계정으로 로그인한 후 블로그를 연결하면 방문자, 순위, 발행 데이터 등을 자동으로 분석합니다.</p>
             </div>
           </div>
-          <Link href={loginHref} className="sm:ml-auto shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
-            네이버 로그인
-          </Link>
+          <GoogleLoginButton redirectTo={loginRedirect} className="sm:ml-auto shrink-0" />
         </div>
       </div>
 
@@ -1378,9 +1376,7 @@ function GuestBlogAnalysis() {
         </div>
         <div className="flex flex-col items-center justify-center py-14 gap-3">
           <p className="text-sm text-dim">연결된 블로그가 없습니다.</p>
-          <Link href={loginHref} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
-            네이버 로그인
-          </Link>
+          <GoogleLoginButton redirectTo={loginRedirect} />
         </div>
       </GlassCard>
 
