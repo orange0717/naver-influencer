@@ -49,12 +49,19 @@ async function fetchRankingState(blogId: string): Promise<SyncedState> {
 }
 
 // 포스트별 키워드 할당을 DB에 저장 (제거된 키워드 삭제 포함)
-function saveKeywordsToDb(blogId: string, postId: string, keywords: string[]): void {
-  fetch(STATE_API, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blogId, postId, keywords }),
-  }).catch(() => { /* 낙관적 UI — 실패는 다음 동작에서 재시도됨 */ });
+// keepalive: 저장 직후 새로고침/탭이동으로 페이지가 언로드돼도 요청이 취소되지 않고 전송되도록 보장
+async function saveKeywordsToDb(blogId: string, postId: string, keywords: string[]): Promise<boolean> {
+  try {
+    const res = await fetch(STATE_API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blogId, postId, keywords }),
+      keepalive: true,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 // 단일 (post, keyword) 순위 결과를 DB에 갱신
@@ -63,6 +70,7 @@ function saveRankResultToDb(blogId: string, postId: string, keyword: string, res
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ blogId, postId, keyword, result }),
+    keepalive: true,
   }).catch(() => { /* ignore */ });
 }
 
@@ -151,9 +159,15 @@ export default function KeywordRankingSection() {
   const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const rankingResultsRef = useRef<Record<string, RankingResult>>({});
   const postKeywordsRef = useRef<Record<string, string[]>>({});
+  const editingKeywordsRef = useRef<Record<string, string[]>>({});
+  // postId → 디바운스 자동저장 타이머 (블러/엔터를 기다리지 않고도 입력 후 일정 시간 뒤 자동 저장)
+  const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // handleKeywordSave의 최신 버전을 항상 가리키는 ref (디바운스 타이머가 오래된 클로저를 호출하지 않도록)
+  const handleKeywordSaveRef = useRef<(postId: string) => void>(() => {});
 
   useEffect(() => { rankingResultsRef.current = rankingResults; }, [rankingResults]);
   useEffect(() => { postKeywordsRef.current = postKeywords; }, [postKeywords]);
+  useEffect(() => { editingKeywordsRef.current = editingKeywords; }, [editingKeywords]);
 
   const showError = useCallback((msg: string, ms = 5000) => {
     setErrorMessage(msg);
@@ -164,6 +178,7 @@ export default function KeywordRankingSection() {
   useEffect(() => () => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     Object.values(flashTimersRef.current).forEach(clearTimeout);
+    Object.values(saveTimersRef.current).forEach(clearTimeout);
     abortRef.current = true;
   }, []);
 
@@ -351,6 +366,12 @@ export default function KeywordRankingSection() {
       kws[kwIndex] = value;
       return { ...prev, [postId]: kws };
     });
+    // 블러/엔터 없이도 입력이 멈추면 잠시 후 자동 저장 (탭 전환·닫기로 블러가 안 걸리는 경우 대비)
+    if (saveTimersRef.current[postId]) clearTimeout(saveTimersRef.current[postId]);
+    saveTimersRef.current[postId] = setTimeout(() => {
+      delete saveTimersRef.current[postId];
+      handleKeywordSaveRef.current(postId);
+    }, 800);
   };
 
   const checkSingleKeyword = useCallback(async (
@@ -461,10 +482,25 @@ export default function KeywordRankingSection() {
 
   const handleKeywordSave = useCallback((postId: string) => {
     if (!profile) return;
-    const kws = (editingKeywords[postId] || []).map(k => k.trim()).filter(Boolean);
+    if (saveTimersRef.current[postId]) {
+      clearTimeout(saveTimersRef.current[postId]);
+      delete saveTimersRef.current[postId];
+    }
+    // ref를 사용해 최신 편집 상태를 읽는다 (디바운스 타이머가 오래된 렌더의 값을 저장하는 것을 방지)
+    const kws = (editingKeywordsRef.current[postId] || []).map(k => k.trim()).filter(Boolean);
     if (kws.length > 0) {
       setPostKeywords(prev => ({ ...prev, [postId]: kws }));
-      saveKeywordsToDb(profile.blogId, postId, kws);
+      saveKeywordsToDb(profile.blogId, postId, kws).then(ok => {
+        if (ok) {
+          // 저장 성공분을 쿼리 캐시에도 즉시 반영 (백그라운드 refetch로 되돌아가는 경합 방지)
+          queryClient.setQueryData(
+            ['keyword-ranking-state', profile.blogId],
+            (old: SyncedState | undefined) => old ? { ...old, postKeywords: { ...old.postKeywords, [postId]: kws } } : old,
+          );
+        } else {
+          showError('키워드 저장에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.');
+        }
+      });
       // 신규/변경된 키워드는 최근 확인 기록이 없거나 10분 이상 지났을 때만 즉시 백그라운드로 확인
       const post = blogPosts.find(p => p.id === postId);
       if (post) {
@@ -474,7 +510,9 @@ export default function KeywordRankingSection() {
         if (pairs.length > 0) runBatch(pairs);
       }
     }
-  }, [profile, blogPosts, editingKeywords, runBatch]);
+  }, [profile, blogPosts, runBatch, queryClient, showError]);
+
+  useEffect(() => { handleKeywordSaveRef.current = handleKeywordSave; }, [handleKeywordSave]);
 
   const addKeyword = (postId: string) => {
     setEditingKeywords(prev => {
