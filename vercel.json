@@ -110,6 +110,10 @@
     {
       "path": "/api/cron/google-indexing-resubmit-sitemaps",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-personal-keyword-ranks",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
