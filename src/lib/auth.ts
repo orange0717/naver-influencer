@@ -52,6 +52,18 @@ export async function getAuthUser(request: Request) {
     profileError = byEmailError;
   }
 
+  // 그래도 실패 시 google_auth_id로 재조회 — 기존 회원이 Google 로그인을
+  // 자동매칭으로 연결한 경우, auth_id/email 둘 다 원래 계정과 달라 여기로 온다.
+  if (!profile) {
+    const { data: byGoogle, error: byGoogleError } = await supabase
+      .from('users')
+      .select('id, nickname, blog_id, linked_influencer_id, is_admin')
+      .eq('google_auth_id', authUser.id)
+      .maybeSingle();
+    profile = byGoogle;
+    profileError = byGoogleError;
+  }
+
   if (profileError || !profile) {
     if (profileError) console.error('[auth] user profile lookup failed:', profileError.message);
     return null;

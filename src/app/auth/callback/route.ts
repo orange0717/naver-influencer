@@ -53,10 +53,13 @@ export async function GET(request: NextRequest) {
         //   연결)를 완료시킨다. 온보딩 미완료 상태는 /api/auth/me 가 그대로
         //   비로그인처럼 취급하므로 별도 미들웨어 처리가 필요 없다.
         const admin = createServiceClient();
+        // auth_id(비밀번호 로그인) 또는 google_auth_id(자동매칭으로 연결된 계정)
+        // 둘 중 하나만 맞아도 기존 회원 — 안 그러면 매칭된 회원이 Google
+        // 재로그인할 때마다 온보딩 루프에 빠진다.
         const { data: existingUser } = await admin
           .from('users')
           .select('id')
-          .eq('auth_id', user.id)
+          .or(`auth_id.eq.${user.id},google_auth_id.eq.${user.id}`)
           .maybeSingle();
 
         let deviceId = cookieStore.get(DEVICE_ID_COOKIE)?.value;
