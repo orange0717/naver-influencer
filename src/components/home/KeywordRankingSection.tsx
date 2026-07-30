@@ -64,14 +64,24 @@ async function saveKeywordsToDb(blogId: string, postId: string, keywords: string
   }
 }
 
-// 단일 (post, keyword) 순위 결과를 DB에 갱신
-function saveRankResultToDb(blogId: string, postId: string, keyword: string, result: RankingResult): void {
-  fetch(STATE_API, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blogId, postId, keyword, result }),
-    keepalive: true,
-  }).catch(() => { /* ignore */ });
+// 단일 (post, keyword) 순위 결과를 DB에 갱신. 화면엔 이미 최신 결과가 표시된 뒤 백그라운드로 저장하므로,
+// 실패 시에도 화면을 되돌리진 않되 반드시 로그를 남겨 "화면엔 보이는데 DB엔 없는" 상태를 진단할 수 있게 한다.
+async function saveRankResultToDb(blogId: string, postId: string, keyword: string, result: RankingResult): Promise<boolean> {
+  try {
+    const res = await fetch(STATE_API, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blogId, postId, keyword, result }),
+      keepalive: true,
+    });
+    if (!res.ok) {
+      console.error(`[keyword-ranking] 순위 DB 저장 실패 (status=${res.status}) postId=${postId} keyword=${keyword}`);
+    }
+    return res.ok;
+  } catch (err) {
+    console.error(`[keyword-ranking] 순위 DB 저장 중 네트워크 오류 postId=${postId} keyword=${keyword}`, err);
+    return false;
+  }
 }
 
 function rankKey(postId: string, keyword: string): string {
@@ -272,11 +282,17 @@ export default function KeywordRankingSection() {
     }
   }, [profile, blogPosts, showError, queryClient]);
 
-  const handleClearPostKeywords = (postId: string) => {
+  const handleClearPostKeywords = async (postId: string) => {
     if (!profile) return;
     if (!confirm('이 포스팅의 모든 키워드를 삭제하시겠습니까?')) return;
 
-    // 키워드 초기화
+    // DB 삭제가 확인된 뒤에만 화면 상태를 반영한다 (DB 반영 실패 시 화면만 비어보이는 것을 방지)
+    const ok = await saveKeywordsToDb(profile.blogId, postId, []);
+    if (!ok) {
+      showError('삭제에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.', 4000);
+      return;
+    }
+
     setEditingKeywords(prev => ({ ...prev, [postId]: [''] }));
     const updated = { ...postKeywords };
     delete updated[postId];
@@ -291,8 +307,19 @@ export default function KeywordRankingSection() {
     }
     setRankingResults(newResults);
 
-    // DB: 빈 키워드 목록 저장 = 해당 포스트의 모든 행(키워드+순위) 삭제
-    saveKeywordsToDb(profile.blogId, postId, []);
+    queryClient.setQueryData(
+      ['keyword-ranking-state', profile.blogId],
+      (old: SyncedState | undefined) => {
+        if (!old) return old;
+        const nextResults = { ...old.rankingResults };
+        for (const key of Object.keys(nextResults)) {
+          if (key.startsWith(`${postId}::`)) delete nextResults[key];
+        }
+        const nextKeywords = { ...old.postKeywords };
+        delete nextKeywords[postId];
+        return { postKeywords: nextKeywords, rankingResults: nextResults };
+      },
+    );
 
     showError('포스팅의 키워드가 초기화되었습니다.', 3000);
   };
@@ -335,6 +362,16 @@ export default function KeywordRankingSection() {
       setPostKeywords(syncedState.postKeywords);
       setRankingResults(syncedState.rankingResults);
       setStateReady(true);
+      // 서버 상태가 도착한 시점에만 편집 중 입력을 서버 값으로 맞춘다.
+      // (postKeywords를 의존성으로 두면 다른 포스트 저장 시마다 전체가 재초기화되어
+      //  사용자가 다른 필드에 입력 중인 값을 덮어써버리는 문제가 있었음)
+      setEditingKeywords(prev => {
+        const next = { ...prev };
+        for (const [postId, kws] of Object.entries(syncedState.postKeywords)) {
+          next[postId] = kws.length > 0 ? [...kws] : [''];
+        }
+        return next;
+      });
     }
   }, [syncedState]);
 
@@ -346,19 +383,23 @@ export default function KeywordRankingSection() {
     staleTime: 60 * 1000,
   });
 
-  // 포스트 로드 시 키워드 초기화 (저장된 키워드 있으면 사용, 없으면 빈 입력 1개)
+  // 새 포스트(페이지 전환 등)가 나타났을 때만 초기값을 채운다. 이미 존재하는 편집 상태는 건드리지 않음
+  // (postKeywords 변경(다른 포스트 저장 등)에 반응하지 않도록 ref로 읽어 재실행 트리거에서 제외)
   useEffect(() => {
     if (!profile || blogPosts.length === 0) return;
-    const initial: Record<string, string[]> = {};
-    for (const post of blogPosts) {
-      if (postKeywords[post.id] && postKeywords[post.id].length > 0) {
-        initial[post.id] = [...postKeywords[post.id]];
-      } else {
-        initial[post.id] = [''];
+    setEditingKeywords(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const post of blogPosts) {
+        if (next[post.id] === undefined) {
+          const saved = postKeywordsRef.current[post.id];
+          next[post.id] = saved && saved.length > 0 ? [...saved] : [''];
+          changed = true;
+        }
       }
-    }
-    setEditingKeywords(prev => ({ ...prev, ...initial }));
-  }, [profile, blogPosts, postKeywords]);
+      return changed ? next : prev;
+    });
+  }, [profile, blogPosts]);
 
   const handleKeywordChange = (postId: string, kwIndex: number, value: string) => {
     setEditingKeywords(prev => {
@@ -421,8 +462,11 @@ export default function KeywordRankingSection() {
           ['keyword-ranking-state', profile.blogId],
           (old: SyncedState | undefined) => old ? { ...old, rankingResults: { ...old.rankingResults, [key]: nextResult } } : old,
         );
-        // DB에 순위 결과 갱신 (기기 간 동기화)
-        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), nextResult);
+        // DB에 순위 결과 갱신 (기기 간 동기화). 저장 실패 시 화면에 표시된 값이 DB와 어긋나므로
+        // 캐시를 무효화해 다음 조회 시점에 DB 실제 값으로 다시 맞춘다.
+        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), nextResult).then(ok => {
+          if (!ok) queryClient.invalidateQueries({ queryKey: ['keyword-ranking-state', profile.blogId] });
+        });
         // 저장된 키워드라면 saved_search_keywords 최신 순위 캐시도 갱신 (실패 무시)
         fetch('/api/my/saved-keywords', {
           method: 'PATCH',
@@ -488,20 +532,42 @@ export default function KeywordRankingSection() {
     }
     // ref를 사용해 최신 편집 상태를 읽는다 (디바운스 타이머가 오래된 렌더의 값을 저장하는 것을 방지)
     const kws = (editingKeywordsRef.current[postId] || []).map(k => k.trim()).filter(Boolean);
+    // 실제로 저장된 값과 다를 때만 저장을 호출한다 (빈 입력창을 그냥 blur만 해도 매번 PUT이 나가는 것 방지).
+    // 단, kws.length === 0(입력창을 지워 전부 빈 값이 된 경우)은 이전에 저장된 키워드가 있었다면
+    // 반드시 DB에도 반영해야 한다 — 과거엔 이 경우 저장 호출 자체를 건너뛰어, 사용자가 키워드를 지워도
+    // DB엔 예전 값이 남아있다가 새로고침하면 지운 키워드가 다시 나타나는 것처럼 보이는 버그가 있었음.
+    const prevSaved = postKeywordsRef.current[postId] || [];
+    const unchanged = prevSaved.length === kws.length && prevSaved.every((k, i) => k === kws[i]);
+    if (unchanged) return;
+    setPostKeywords(prev => {
+      if (kws.length === 0) {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      }
+      return { ...prev, [postId]: kws };
+    });
+    saveKeywordsToDb(profile.blogId, postId, kws).then(ok => {
+      if (ok) {
+        // 저장 성공분을 쿼리 캐시에도 즉시 반영 (백그라운드 refetch로 되돌아가는 경합 방지)
+        queryClient.setQueryData(
+          ['keyword-ranking-state', profile.blogId],
+          (old: SyncedState | undefined) => {
+            if (!old) return old;
+            const nextKeywords = { ...old.postKeywords };
+            if (kws.length === 0) delete nextKeywords[postId];
+            else nextKeywords[postId] = kws;
+            return { ...old, postKeywords: nextKeywords };
+          },
+        );
+      } else {
+        showError('키워드 저장에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.');
+        // 화면과 DB가 어긋났을 수 있으므로 다음 조회 시점에 DB 실제 값으로 재동기화
+        queryClient.invalidateQueries({ queryKey: ['keyword-ranking-state', profile.blogId] });
+      }
+    });
+    // 신규/변경된 키워드는 최근 확인 기록이 없거나 10분 이상 지났을 때만 즉시 백그라운드로 확인
     if (kws.length > 0) {
-      setPostKeywords(prev => ({ ...prev, [postId]: kws }));
-      saveKeywordsToDb(profile.blogId, postId, kws).then(ok => {
-        if (ok) {
-          // 저장 성공분을 쿼리 캐시에도 즉시 반영 (백그라운드 refetch로 되돌아가는 경합 방지)
-          queryClient.setQueryData(
-            ['keyword-ranking-state', profile.blogId],
-            (old: SyncedState | undefined) => old ? { ...old, postKeywords: { ...old.postKeywords, [postId]: kws } } : old,
-          );
-        } else {
-          showError('키워드 저장에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.');
-        }
-      });
-      // 신규/변경된 키워드는 최근 확인 기록이 없거나 10분 이상 지났을 때만 즉시 백그라운드로 확인
       const post = blogPosts.find(p => p.id === postId);
       if (post) {
         const pairs = kws

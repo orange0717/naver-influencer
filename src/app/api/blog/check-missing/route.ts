@@ -65,7 +65,10 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
           'Referer': 'https://search.naver.com/',
         },
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        console.warn(`[check-missing] checkBlogTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
+        continue;
+      }
 
       const html = await res.text();
 
@@ -113,11 +116,15 @@ async function checkBlogTab(query: string, blogId: string, postId: string): Prom
           }
         }
       }
-    } catch { continue; }
+    } catch (err) {
+      console.error(`[check-missing] checkBlogTab 예외 query="${query}" blogId=${blogId} postId=${postId} page=${page}:`, err);
+      continue;
+    }
 
     if (page < 3) await new Promise(r => setTimeout(r, 500));
   }
 
+  console.info(`[check-missing] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음)`);
   return { exposed: false, rank: null };
 }
 
@@ -151,7 +158,10 @@ async function checkViewTab(query: string, blogId: string, postId?: string): Pro
           'Referer': 'https://search.naver.com/',
         },
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        console.warn(`[check-missing] checkViewTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
+        continue;
+      }
 
       const html = await res.text();
 
@@ -196,13 +206,19 @@ async function checkViewTab(query: string, blogId: string, postId?: string): Pro
               }
             }
           }
-        } catch { /* ignore */ }
+        } catch (err) {
+          console.error(`[check-missing] checkViewTab webkr API 폴백 실패 query="${query}":`, err);
+        }
       }
-    } catch { continue; }
+    } catch (err) {
+      console.error(`[check-missing] checkViewTab 예외 query="${query}" blogId=${blogId} postId=${postId} page=${page}:`, err);
+      continue;
+    }
 
     if (page < 3) await new Promise(r => setTimeout(r, 500));
   }
 
+  console.info(`[check-missing] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
   return { exposed: false, rank: null };
 }
 
@@ -300,7 +316,10 @@ async function getSearchVolume(keyword: string): Promise<number> {
   const secretKey = process.env.NAVER_SECRET_KEY?.trim();
   const customerId = process.env.NAVER_CUSTOMER_ID?.trim();
 
-  if (!apiKey || !secretKey || !customerId) return 0;
+  if (!apiKey || !secretKey || !customerId) {
+    console.warn(`[check-missing] 검색량 조회 불가: 네이버 검색광고 API 환경변수 미설정 (keyword="${keyword}") — 순위와 별개로 항상 0/--로 표시됨`);
+    return 0;
+  }
 
   try {
     const timestamp = String(Date.now());
@@ -318,7 +337,10 @@ async function getSearchVolume(keyword: string): Promise<number> {
       },
     });
 
-    if (!res.ok) return 0;
+    if (!res.ok) {
+      console.warn(`[check-missing] 검색량 조회 실패 status=${res.status} keyword="${keyword}" — 네이버 검색광고 API 응답 비정상`);
+      return 0;
+    }
     const data = await res.json();
     const keywords = data.keywordList || [];
 
@@ -344,7 +366,8 @@ async function getSearchVolume(keyword: string): Promise<number> {
     await cacheSet(`vol:${cacheKey}`, volume, VOLUME_CACHE_TTL_SEC);
 
     return volume;
-  } catch {
+  } catch (err) {
+    console.error(`[check-missing] 검색량 조회 예외 keyword="${keyword}":`, err);
     return 0;
   }
 }
@@ -468,7 +491,10 @@ export async function POST(request: NextRequest) {
               fail_count: 0,
               checked_at: freshResult.checkedAt,
             }, { onConflict: 'blog_id,post_id' });
-          } catch { /* DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) */ }
+          } catch (err) {
+            // DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) — 다만 원인 추적을 위해 로그는 남긴다
+            console.error(`[check-missing] post_missing_checks 저장 실패 blogId=${blogId} postId=${postId} query="${query}":`, err);
+          }
         }
 
         return freshResult;
@@ -479,7 +505,8 @@ export async function POST(request: NextRequest) {
 
     const result = await promise;
     return NextResponse.json({ ...result, cached: false });
-  } catch {
+  } catch (err) {
+    console.error('[check-missing] 요청 처리 중 예외:', err);
     return NextResponse.json({ error: '누락 확인 중 오류' }, { status: 500 });
   }
 }
