@@ -19,7 +19,6 @@ const RequiredMark = () => <span className="text-down ml-0.5">*</span>;
 
 const REASON_MESSAGES: Record<string, string> = {
   session_taken: '다른 기기에서 로그인되어 자동 로그아웃되었습니다. 다시 로그인해 주세요.',
-  oauth_no_account: '가입되지 않은 구글 계정입니다. 먼저 회원가입을 완료해주세요.',
 };
 
 // blog.naver.com/foo, https://blog.naver.com/foo?bar 등에서 'foo' 만 추출
@@ -652,10 +651,6 @@ export default function AuthModal() {
                   </span>
                 ) : '가입하기'}
               </button>
-
-              <p className="text-center text-[11px] leading-relaxed text-dim">
-                구글 로그인은 회원가입 완료 후 사용 가능합니다.
-              </p>
 
               <p className="text-center text-sm text-dim">
                 이미 계정이 있으신가요?{' '}
