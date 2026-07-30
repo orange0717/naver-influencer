@@ -203,6 +203,7 @@ export interface DiscoverFeedItem {
   thumbnailUrl: string | null;
   publishedAt: string | null;
   url: string | null;
+  topicSubject: string | null;
 }
 
 export interface DiscoverCategorySnapshot {
@@ -230,6 +231,7 @@ function toFeedItems(state: Record<string, unknown>, feeds: unknown): DiscoverFe
         thumbnailUrl: (content.thumbnailUrl as string) || null,
         publishedAt: (content.publishedAt as string) || null,
         url: (content.url as string) || null,
+        topicSubject: (content.topicSubject as string) || null,
       });
     }
   }
