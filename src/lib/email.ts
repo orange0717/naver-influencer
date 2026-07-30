@@ -15,38 +15,6 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/** 데모 인증번호 이메일 */
-export async function sendDemoVerificationEmail(to: string, code: string) {
-  const { error } = await getResend().emails.send({
-    from: FROM_EMAIL,
-    to,
-    subject: `[N인플] 데모 체험 인증번호: ${code}`,
-    html: `
-      <div style="max-width:520px;margin:0 auto;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#333">
-        <div style="background:#c8816b;padding:24px 20px;border-radius:12px 12px 0 0;text-align:center">
-          <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
-        </div>
-        <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
-          <p style="font-size:16px;font-weight:bold;margin:0 0 16px">데모 체험 인증번호</p>
-          <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
-            아래 인증번호를 입력하면 7일간 무료 데모 체험이 시작됩니다.
-          </p>
-          <div style="text-align:center;margin:24px 0;padding:20px;background:#f8f4f2;border-radius:12px">
-            <p style="font-size:32px;font-weight:900;letter-spacing:8px;color:#c8816b;margin:0">${code}</p>
-          </div>
-          <p style="font-size:12px;color:#999;text-align:center;margin:16px 0 0">
-            인증번호는 10분간 유효합니다.
-          </p>
-        </div>
-      </div>
-    `,
-  });
-  if (error) {
-    console.error('[email] 데모 인증번호 발송 실패:', error);
-    throw new Error(error.message || '이메일 발송 실패');
-  }
-}
-
 /** 데모 만료 알림 이메일 */
 export async function sendDemoExpiredEmail(to: string, displayName: string) {
   const { error } = await getResend().emails.send({

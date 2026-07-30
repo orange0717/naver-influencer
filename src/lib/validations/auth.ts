@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { naverIdSchema, blogIdSchema } from './index';
 import { keywordChallengeCategorySchema } from '@/lib/keyword-challenge-categories';
 
 /**
@@ -35,22 +34,3 @@ export const signupSchema = z.object({
     .transform((v) => v.trim().toLowerCase())
     .optional(),
 });
-
-/** POST /api/auth/blogger-login */
-export const bloggerLoginSchema = z.object({
-  blogId: blogIdSchema,
-});
-
-/** POST /api/auth/influencer-login */
-export const influencerLoginSchema = z.object({
-  naverId: naverIdSchema,
-});
-
-/** POST /api/auth/unified-login */
-export const unifiedLoginSchema = z.object({
-  blogId: z.string().optional(),
-  naverId: z.string().optional(),
-}).refine(
-  (data) => data.blogId || data.naverId,
-  { message: '블로그 또는 인플루언서 중 하나 이상 입력해주세요.' },
-);
