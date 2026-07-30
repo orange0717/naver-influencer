@@ -3,7 +3,7 @@ import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-l
 import { createServiceClient } from '@/lib/supabase-server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
-import { checkBlogTab, checkViewTab, getSearchVolume, CACHE_TTL_SEC, type RankCheckResult } from '@/lib/keyword-rank-check';
+import { checkBlogTab, checkViewTab, checkInfluencerTab, getSearchVolume, CACHE_TTL_SEC, type RankCheckResult } from '@/lib/keyword-rank-check';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,11 +140,16 @@ export async function POST(request: NextRequest) {
           query = extractKeywords(postTitle, blogId, displayName);
         }
 
-        // 블로그탭 + 통합검색 동시 확인
-        let [blogTab, viewTab] = await Promise.all([
+        // 블로그탭 + 통합검색 + (사용자 지정 키워드인 경우만) 인플루언서탭 동시 확인
+        // 인플루언서탭은 /my/keyword-ranking(사용자 키워드 지정) 전용 — 자동추출 제목 기반 확인(경쟁분석 등)에는 불필요
+        const hasKeyword = Boolean(keyword && keyword.trim());
+        const [blogTabResult, viewTabResult, influencerTab] = await Promise.all([
           checkBlogTab(query, blogId, postId || ''),
           checkViewTab(query, blogId, postId || ''),
+          hasKeyword ? checkInfluencerTab(query, blogId, postId || '') : Promise.resolve({ exposed: false, rank: null }),
         ]);
+        let blogTab = blogTabResult;
+        let viewTab = viewTabResult;
 
         // 폴백: 사용자 키워드가 아닌 경우 여러 쿼리 조합으로 재시도
         if (!keyword && (!blogTab.exposed || !viewTab.exposed)) {
@@ -189,6 +194,7 @@ export async function POST(request: NextRequest) {
         const freshResult: RankCheckResult = {
           blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },
           viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
+          influencerTab: { exposed: influencerTab.exposed, rank: influencerTab.rank },
           query,
           searchVolume,
           checkedAt: new Date().toISOString(),

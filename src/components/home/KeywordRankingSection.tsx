@@ -28,14 +28,24 @@ interface BlogPost {
 interface RankingResult {
   blogTab: { exposed: boolean; rank: number | null };
   viewTab: { exposed: boolean; rank: number | null };
+  influencerTab: { exposed: boolean; rank: number | null };
   query: string;
   searchVolume?: number;
   checkedAt?: string | null;
 }
 
+// 전일대비/7일대비 계산 근거 (get_keyword_rank_deltas RPC, 통합검색 순위 기준 — 오렌지 확정)
+type RankDelta = {
+  prevRank: number | null;
+  prevCheckedAt: string | null;
+  weekRank: number | null;
+  weekCheckedAt: string | null;
+};
+
 type SyncedState = {
   postKeywords: Record<string, string[]>;
   rankingResults: Record<string, RankingResult>;
+  rankDeltas: Record<string, RankDelta>;
 };
 
 const STATE_API = '/api/my/keyword-ranking-state';
@@ -98,6 +108,8 @@ interface KeywordRankLookupRow {
   view_exposed: boolean | null;
   blog_rank: number | null;
   blog_exposed: boolean | null;
+  influencer_rank: number | null;
+  influencer_exposed: boolean | null;
   search_volume: number | null;
   checked_at: string | null;
 }
@@ -121,19 +133,32 @@ function timeAgo(dateStr?: string | null): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
-interface AiBriefingResult {
-  hasAiBriefing: boolean | null;
-  exposed: boolean | null;
-  hasAiTab: boolean | null;
-  tabExposed: boolean | null;
-}
+type DeltaDisplay = { label: string; colorClass: string; tooltip: string };
 
-// AI 브리핑/AI 탭 노출 상태 (postId::keyword 키) — AiBriefingSection.tsx와 동일 쿼리키를 사용해 캐시 공유
-async function fetchAiBriefingState(blogId: string): Promise<Record<string, AiBriefingResult>> {
-  const res = await fetch(`/api/my/ai-briefing-state?blogId=${encodeURIComponent(blogId)}`);
-  if (!res.ok) throw new Error('AI 브리핑 상태 조회 실패');
-  const data = await res.json();
-  return (data?.briefingResults ?? {}) as Record<string, AiBriefingResult>;
+// 전일대비/7일대비 표시 계산 — 통합검색(viewTab) 순위 기준 (오렌지 확정 결정)
+// refCheckedAt이 없으면 비교할 이력 자체가 없는 것이므로 "-"로 표시 (신규진입 NEW와는 구분)
+function computeDeltaDisplay(
+  currentExposed: boolean,
+  currentRank: number | null,
+  refRank: number | null,
+  refCheckedAt: string | null | undefined,
+): DeltaDisplay {
+  if (!refCheckedAt) {
+    return { label: '-', colorClass: 'text-dim', tooltip: '비교할 이전 데이터가 없습니다' };
+  }
+  if (currentExposed && refRank != null && currentRank != null) {
+    const delta = refRank - currentRank;
+    if (delta > 0) return { label: `▲${delta}`, colorClass: 'text-up', tooltip: `${refRank}위 → ${currentRank}위 (▲${delta})` };
+    if (delta < 0) return { label: `▼${Math.abs(delta)}`, colorClass: 'text-down', tooltip: `${refRank}위 → ${currentRank}위 (▼${Math.abs(delta)})` };
+    return { label: '-', colorClass: 'text-dim', tooltip: `${refRank}위 → ${currentRank}위 (변동 없음)` };
+  }
+  if (currentExposed && refRank == null) {
+    return { label: 'NEW', colorClass: 'text-blue-600', tooltip: '이전에는 미노출, 현재 신규 진입' };
+  }
+  if (!currentExposed && refRank != null) {
+    return { label: 'OUT', colorClass: 'text-orange-600', tooltip: `${refRank}위 → 순위 이탈` };
+  }
+  return { label: '-', colorClass: 'text-dim', tooltip: '미노출 상태 유지' };
 }
 
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
@@ -169,6 +194,8 @@ export default function KeywordRankingSection() {
   const [editingKeywords, setEditingKeywords] = useState<Record<string, string[]>>({});
   // "postId::keyword" → RankingResult
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
+  // "postId::keyword" → RankDelta (전일대비/7일대비 계산 근거, get_keyword_rank_deltas RPC)
+  const [rankDeltas, setRankDeltas] = useState<Record<string, RankDelta>>({});
   const [stateReady, setStateReady] = useState(false);
   const [checkingKey, setCheckingKey] = useState('');
   // 자동/수동 백그라운드 일괄 갱신 진행 여부 (화면을 막지 않는 작은 표시용)
@@ -229,22 +256,28 @@ export default function KeywordRankingSection() {
 
   const handleDownload = () => {
     if (!canDownload) return;
-    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '키워드', '통합검색 순위', '블로그탭 순위', '검색량'];
+    const headers = ['제목', '검색 키워드', '통합검색', '블로그', '인플루언서', '전일대비', '7일대비', '검색량', '업데이트'];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
       const kws = postKeywords[post.id] || [];
       if (kws.length === 0) continue;
       for (const kw of kws) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
-        const result = rankingResults[rankKey(post.id, kw)];
+        const key = rankKey(post.id, kw);
+        const result = rankingResults[key];
+        const delta = rankDeltas[key];
+        const prevDelta = computeDeltaDisplay(result?.viewTab.exposed ?? false, result?.viewTab.rank ?? null, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null);
+        const weekDelta = computeDeltaDisplay(result?.viewTab.exposed ?? false, result?.viewTab.rank ?? null, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null);
         rows.push([
           post.title,
-          post.url,
-          post.date,
           kw,
-          result?.viewTab?.rank ?? '',
-          result?.blogTab?.rank ?? '',
+          result?.viewTab?.exposed ? `${result.viewTab.rank}위` : '-',
+          result?.blogTab?.exposed ? `${result.blogTab.rank}위` : '-',
+          result?.influencerTab?.exposed ? `${result.influencerTab.rank}위` : '-',
+          result ? prevDelta.label : '-',
+          result ? weekDelta.label : '-',
           result?.searchVolume ?? '',
+          result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : '',
         ]);
       }
       if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
@@ -278,7 +311,8 @@ export default function KeywordRankingSection() {
       setPostKeywords({});
       // 2. 모든 순위 결과 초기화 (로컬 상태)
       setRankingResults({});
-      queryClient.setQueryData(['keyword-ranking-state', profile.blogId], { postKeywords: {}, rankingResults: {} });
+      setRankDeltas({});
+      queryClient.setQueryData(['keyword-ranking-state', profile.blogId], { postKeywords: {}, rankingResults: {}, rankDeltas: {} });
 
       // 3. DB: 키워드순위 상태 + 저장된 검색 키워드 테이블 모두 초기화
       await Promise.all([
@@ -375,6 +409,7 @@ export default function KeywordRankingSection() {
     if (syncedState) {
       setPostKeywords(syncedState.postKeywords);
       setRankingResults(syncedState.rankingResults);
+      setRankDeltas(syncedState.rankDeltas || {});
       setStateReady(true);
       // 서버 상태가 도착한 시점에만 편집 중 입력을 서버 값으로 맞춘다.
       // (postKeywords를 의존성으로 두면 다른 포스트 저장 시마다 전체가 재초기화되어
@@ -388,14 +423,6 @@ export default function KeywordRankingSection() {
       });
     }
   }, [syncedState]);
-
-  // AI 브리핑/AI 탭 포함 여부 — BlogAnalysisSection/AiBriefingSection과 동일 쿼리키로 캐시 공유, 신규 fetch 최소화
-  const { data: aiBriefingByKeyword } = useQuery({
-    queryKey: ['ai-briefing-state', profile?.blogId],
-    queryFn: () => fetchAiBriefingState(profile!.blogId),
-    enabled: !!profile?.blogId,
-    staleTime: 60 * 1000,
-  });
 
   // 새 포스트(페이지 전환 등)가 나타났을 때만 초기값을 채운다. 이미 존재하는 편집 상태는 건드리지 않음
   // (postKeywords 변경(다른 포스트 저장 등)에 반응하지 않도록 ref로 읽어 재실행 트리거에서 제외)
@@ -454,6 +481,7 @@ export default function KeywordRankingSection() {
         const nextResult: RankingResult = {
           blogTab: data.blogTab,
           viewTab: data.viewTab,
+          influencerTab: data.influencerTab,
           query: data.query,
           searchVolume: data.searchVolume,
           checkedAt: data.checkedAt || new Date().toISOString(),
@@ -465,7 +493,9 @@ export default function KeywordRankingSection() {
           prevResult.viewTab.rank !== nextResult.viewTab.rank ||
           prevResult.viewTab.exposed !== nextResult.viewTab.exposed ||
           prevResult.blogTab.rank !== nextResult.blogTab.rank ||
-          prevResult.blogTab.exposed !== nextResult.blogTab.exposed
+          prevResult.blogTab.exposed !== nextResult.blogTab.exposed ||
+          prevResult.influencerTab?.rank !== nextResult.influencerTab?.rank ||
+          prevResult.influencerTab?.exposed !== nextResult.influencerTab?.exposed
         )) {
           flashCell(key);
         }
@@ -654,6 +684,7 @@ export default function KeywordRankingSection() {
           const nextResult: RankingResult = {
             viewTab: { exposed: row.view_exposed ?? false, rank: row.view_rank },
             blogTab: { exposed: row.blog_exposed ?? false, rank: row.blog_rank },
+            influencerTab: { exposed: row.influencer_exposed ?? false, rank: row.influencer_rank },
             query: row.keyword,
             searchVolume: row.search_volume ?? undefined,
             checkedAt: row.checked_at,
@@ -784,6 +815,15 @@ export default function KeywordRankingSection() {
                 CSV 다운로드
               </button>
             )}
+            {canDownload && profile && (
+              <a
+                href={`/api/downloads/my-keyword-ranking?blogId=${encodeURIComponent(profile.blogId)}`}
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer"
+                title="전체 포스팅(페이지 무관)의 키워드 순위 결과를 CSV로 다운로드"
+              >
+                전체 리포트
+              </a>
+            )}
             <button
               onClick={handleResetResults}
               className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
@@ -852,19 +892,18 @@ export default function KeywordRankingSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[1080px]">
+              <table className="w-full text-sm min-w-[1040px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
                     <th className="text-left px-4 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-left px-3 py-3 font-semibold w-44">검색 키워드</th>
+                    <th className="text-left px-3 py-3 font-semibold w-48">검색 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">블로그</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">인플루언서</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">전일대비</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">7일대비</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">검색량</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">AI브리핑</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">AI탭</th>
                     <th className="text-center px-4 py-3 font-semibold w-20">업데이트</th>
                   </tr>
                 </thead>
@@ -875,7 +914,9 @@ export default function KeywordRankingSection() {
                     return keywords.map((kw, kwIdx) => {
                       const key = rankKey(post.id, kw.trim());
                       const result = rankingResults[key];
-                      const aiState = aiBriefingByKeyword?.[key];
+                      const delta = rankDeltas[key];
+                      const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
+                      const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                       const isFirst = kwIdx === 0;
                       const isLast = kwIdx === rowCount - 1;
                       const flashing = flashKeys.has(key);
@@ -956,36 +997,31 @@ export default function KeywordRankingSection() {
                               ) : <span className="text-xs text-dim">-</span>
                             ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
-                          <td className="text-center px-3 py-1.5" title="히스토리 기능은 준비 중입니다">
-                            <span className="text-[10px] text-dim/50">준비중</span>
+                          <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
+                            {result ? (
+                              result.influencerTab?.exposed ? (
+                                <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                  {result.influencerTab.rank}위
+                                </span>
+                              ) : <span className="text-xs text-dim">-</span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
-                          <td className="text-center px-3 py-1.5" title="히스토리 기능은 준비 중입니다">
-                            <span className="text-[10px] text-dim/50">준비중</span>
+                          <td className="text-center px-3 py-1.5">
+                            {prevDelta ? (
+                              <span className={`text-xs font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>
+                                {prevDelta.label}
+                              </span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
+                          </td>
+                          <td className="text-center px-3 py-1.5">
+                            {weekDelta ? (
+                              <span className={`text-xs font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>
+                                {weekDelta.label}
+                              </span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
                           <td className="text-center px-3 py-1.5 text-xs text-dim">
                             {result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}
-                          </td>
-                          <td className="text-center px-3 py-1.5">
-                            {!kw.trim() ? (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            ) : aiState?.exposed === true ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">인용</span>
-                            ) : aiState?.exposed === false ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-bg text-dim">미인용</span>
-                            ) : (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            )}
-                          </td>
-                          <td className="text-center px-3 py-1.5">
-                            {!kw.trim() ? (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            ) : aiState?.tabExposed === true ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">노출</span>
-                            ) : aiState?.tabExposed === false ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-bg text-dim">미노출</span>
-                            ) : (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            )}
                           </td>
                           <td className="text-center px-4 py-1.5">
                             {checkingKey === key ? (
@@ -1035,7 +1071,6 @@ export default function KeywordRankingSection() {
                           {post.title}
                         </a>
                         <span className="text-[10px] text-dim ml-1">{post.date}</span>
-                        <span className="text-[9px] text-dim/50 ml-1" title="히스토리 기능은 준비 중입니다">(전일·7일대비 준비중)</span>
                       </div>
                     </div>
 
@@ -1044,7 +1079,9 @@ export default function KeywordRankingSection() {
                       {keywords.map((kw, kwIdx) => {
                         const key = rankKey(post.id, kw.trim());
                         const result = rankingResults[key];
-                        const aiState = aiBriefingByKeyword?.[key];
+                        const delta = rankDeltas[key];
+                        const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
+                        const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                         const flashing = flashKeys.has(key);
                         return (
                           <div key={kwIdx} className="space-y-1">
@@ -1091,7 +1128,7 @@ export default function KeywordRankingSection() {
                               )}
                             </div>
                             {result && (
-                              <div className={`flex items-center gap-2 rounded-lg transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
+                              <div className={`flex items-center gap-2 flex-wrap rounded-lg transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                                   result.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
                                 }`}>
@@ -1102,23 +1139,20 @@ export default function KeywordRankingSection() {
                                 }`}>
                                   블로그 {result.blogTab.exposed ? `${result.blogTab.rank}위` : '-'}
                                 </span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  result.influencerTab?.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                                }`}>
+                                  인플루언서 {result.influencerTab?.exposed ? `${result.influencerTab.rank}위` : '-'}
+                                </span>
                                 {result.searchVolume ? (
                                   <span className="text-[10px] text-dim">{result.searchVolume.toLocaleString()}</span>
                                 ) : null}
                               </div>
                             )}
-                            {kw.trim() && (typeof aiState?.exposed === 'boolean' || typeof aiState?.tabExposed === 'boolean') && (
-                              <div className="flex items-center gap-1.5">
-                                {typeof aiState?.exposed === 'boolean' && (
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${aiState.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'}`}>
-                                    AI브리핑 {aiState.exposed ? '인용' : '미인용'}
-                                  </span>
-                                )}
-                                {typeof aiState?.tabExposed === 'boolean' && (
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${aiState.tabExposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'}`}>
-                                    AI탭 {aiState.tabExposed ? '노출' : '미노출'}
-                                  </span>
-                                )}
+                            {result && prevDelta && weekDelta && (
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <span className={`font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>전일 {prevDelta.label}</span>
+                                <span className={`font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>7일 {weekDelta.label}</span>
                               </div>
                             )}
                           </div>

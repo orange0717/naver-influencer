@@ -16,6 +16,7 @@ export const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
 export type RankCheckResult = {
   blogTab: { exposed: boolean; rank: number | null };
   viewTab: { exposed: boolean; rank: number | null };
+  influencerTab: { exposed: boolean; rank: number | null };
   query: string;
   searchVolume: number;
   checkedAt: string;
@@ -112,6 +113,97 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
   }
 
   console.info(`[keyword-rank-check] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음)`);
+  return { exposed: false, rank: null };
+}
+
+/**
+ * 네이버 인플루언서탭에서 포스팅 노출 여부 확인
+ * data-cr-on="r=순위" 속성에서 네이버 공식 순위를 추출 (정확도 높음)
+ * 폴백: <a> href에서 blog.naver.com 링크 수동 카운트
+ * (URL 구조·파싱 로직은 /api/keywords/blog-top의 crawlInfluencerTab과 동일 사이트 렌더링을 사용)
+ */
+export async function checkInfluencerTab(query: string, blogId: string, postId: string): Promise<{
+  exposed: boolean;
+  rank: number | null;
+}> {
+  if (!blogId || !postId) {
+    return { exposed: false, rank: null };
+  }
+
+  const blogIdLower = blogId.toLowerCase();
+  const postIdStr = String(postId);
+  const baseUrl = `https://search.naver.com/search.naver?ssc=tab.influencer.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
+
+  for (let page = 1; page <= 3; page++) {
+    const start = (page - 1) * 10 + 1;
+    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
+
+    try {
+      const res = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+          'Accept-Encoding': 'gzip, deflate',
+          'Referer': 'https://search.naver.com/',
+        },
+      });
+      if (!res.ok) {
+        console.warn(`[keyword-rank-check] checkInfluencerTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
+        continue;
+      }
+
+      const html = await res.text();
+
+      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+      const seen = new Set<string>();
+      let match;
+
+      while ((match = rankRegex.exec(html)) !== null) {
+        const [, linkBlogId, linkPostId, rankStr] = match;
+        const key = `${linkBlogId}/${linkPostId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+          const absoluteRank = start + parseInt(rankStr) - 1;
+          return { exposed: true, rank: absoluteRank };
+        }
+      }
+
+      // 2순위 폴백: <a> href에서 수동 카운트 (data-cr-on 없는 경우)
+      if (seen.size === 0) {
+        const $ = cheerio.load(html);
+        const blogLinks: { blogId: string; postId: string }[] = [];
+        const seenFb = new Set<string>();
+        let globalRank = (page - 1) * 10;
+
+        $('a').each((_, el) => {
+          const href = $(el).attr('href') || '';
+          const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+          if (!m) return;
+          const key = `${m[1]}/${m[2]}`;
+          if (seenFb.has(key)) return;
+          seenFb.add(key);
+          blogLinks.push({ blogId: m[1], postId: m[2] });
+        });
+
+        for (const link of blogLinks) {
+          globalRank++;
+          if (link.blogId.toLowerCase() === blogIdLower && link.postId === postIdStr) {
+            return { exposed: true, rank: globalRank };
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[keyword-rank-check] checkInfluencerTab 예외 query="${query}" blogId=${blogId} postId=${postId} page=${page}:`, err);
+      continue;
+    }
+
+    if (page < 3) await new Promise(r => setTimeout(r, 500));
+  }
+
+  console.info(`[keyword-rank-check] checkInfluencerTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음)`);
   return { exposed: false, rank: null };
 }
 
