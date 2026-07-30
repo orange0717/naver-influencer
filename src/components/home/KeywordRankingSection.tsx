@@ -7,6 +7,8 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface BloggerProfile {
   blogId: string;
@@ -86,6 +88,18 @@ async function saveRankResultToDb(blogId: string, postId: string, keyword: strin
 
 function rankKey(postId: string, keyword: string): string {
   return `${postId}::${keyword}`;
+}
+
+// keyword_rank_lookups Realtime 페이로드 (migration-121로 publication 등록, migration-122로 RLS 정정)
+interface KeywordRankLookupRow {
+  post_id: string;
+  keyword: string;
+  view_rank: number | null;
+  view_exposed: boolean | null;
+  blog_rank: number | null;
+  blog_exposed: boolean | null;
+  search_volume: number | null;
+  checked_at: string | null;
 }
 
 // 마지막 확인이 10분보다 오래됐거나 아예 없으면 갱신 대상
@@ -623,6 +637,42 @@ export default function KeywordRankingSection() {
     const id = setInterval(scanAndRefresh, 60 * 1000);
     return () => clearInterval(id);
   }, [profile, stateReady, blogPosts, scanAndRefresh]);
+
+  // 백그라운드 큐(refresh-personal-keyword-ranks cron)가 DB를 갱신하면 60초 폴링을 기다리지 않고 즉시 반영
+  useEffect(() => {
+    if (!profile?.blogId) return;
+    const supabase = createSupabaseBrowserClient();
+    const channel = supabase
+      .channel(`keyword-rank-lookups-${profile.blogId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'keyword_rank_lookups', filter: `blog_id=eq.${profile.blogId}` },
+        (payload: RealtimePostgresChangesPayload<KeywordRankLookupRow>) => {
+          const row = payload.new as KeywordRankLookupRow;
+          if (!row?.post_id || !row?.keyword || !row?.checked_at) return;
+          const key = rankKey(row.post_id, row.keyword);
+          const nextResult: RankingResult = {
+            viewTab: { exposed: row.view_exposed ?? false, rank: row.view_rank },
+            blogTab: { exposed: row.blog_exposed ?? false, rank: row.blog_rank },
+            query: row.keyword,
+            searchVolume: row.search_volume ?? undefined,
+            checkedAt: row.checked_at,
+          };
+          const prevResult = rankingResultsRef.current[key];
+          if (!prevResult || prevResult.checkedAt !== nextResult.checkedAt) {
+            flashCell(key);
+          }
+          setRankingResults(prev => ({ ...prev, [key]: nextResult }));
+          queryClient.setQueryData(
+            ['keyword-ranking-state', profile.blogId],
+            (old: SyncedState | undefined) => old ? { ...old, rankingResults: { ...old.rankingResults, [key]: nextResult } } : old,
+          );
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [profile?.blogId, flashCell, queryClient]);
 
   // 관리자 전용: 캐시 무시하고 현재 페이지 전체를 강제로 다시 조회
   const handleAdminForceRefreshAll = () => {
