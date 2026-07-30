@@ -30,9 +30,12 @@ jobs:
       NINFLE_CRON_AUTH_LABEL: github-actions-drain
       MAX_ROUNDS: ${{ github.event.inputs.max_rounds || '40' }}
       STALE_THRESHOLD: ${{ github.event.inputs.stale_threshold || '0' }}
-      SHARDS: '3'
-      BATCH: '800'
-      CONCURRENCY: '18'
+      # src/lib/crawl-queue.ts의 PRODUCTION_CRAWL_* 값과 동일하게 유지할 것
+      # (2026-07-30: 과거 concurrency=18/batch=800이 login_attempt_logs 지연·
+      # DB 리소스 경고를 유발한 적 있어 6/400/2로 하향 동기화)
+      SHARDS: '2'
+      BATCH: '400'
+      CONCURRENCY: '6'
 
     steps:
       - uses: actions/checkout@v4
