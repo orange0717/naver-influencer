@@ -143,7 +143,10 @@ async function fetchAllParticipatedKeywords(
       cursor = json?.paging?.nextCursor;
       if (!cursor || items.length < PAGE_LIMIT) break;
 
-      await sleep(300);
+      // (2026-07-30) 300ms→120ms: 활동 많은 인플루언서(최대 40페이지)가 페이지네이션만으로
+      // 17~18초씩 걸려 concurrency=6 웨이브가 300초 함수 제한을 넘기는 주 원인이었음.
+      // fetchWithRetry의 429 백오프(4s×2^n)가 있어 레이트리밋 위험은 안전망으로 남아있음.
+      await sleep(120);
     } catch (err) {
       console.error(`[crawl-challenge-ranks] API error at page ${page}:`, err);
       // 0페이지부터 실패 = 결과를 전혀 확인 못함(진짜 0개와 구분 필요)
