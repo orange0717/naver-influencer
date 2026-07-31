@@ -6,7 +6,9 @@ import GlassCard from '@/components/dashboard/GlassCard';
 interface Props {
   disabled: boolean;
   onRegister: (url: string) => Promise<{ success: boolean; error?: string }>;
-  onBulkRegister: (mode: 'recent50' | 'all') => Promise<{ success: boolean; requested?: number; error?: string }>;
+  onBulkRegister: (
+    mode: 'recent50' | 'all',
+  ) => Promise<{ success: boolean; requested?: number; totalCount?: number; queued?: boolean; error?: string }>;
 }
 
 export default function RegisterUrlForm({ disabled, onRegister, onBulkRegister }: Props) {
@@ -43,7 +45,9 @@ export default function RegisterUrlForm({ disabled, onRegister, onBulkRegister }
       if (result.success) {
         setMessage({
           type: 'success',
-          text: `블로그 주소를 입력하셔서 전체 글 ${result.requested ?? 0}건을 한 번에 등록 요청했어요. 순차적으로 확인이 진행됩니다.`,
+          text: result.queued
+            ? `블로그 주소를 입력하셔서 총 ${result.totalCount ?? '?'}개 중 ${result.requested ?? 0}건을 우선 등록했어요. 나머지는 백그라운드에서 자동으로 이어서 등록됩니다.`
+            : `블로그 주소를 입력하셔서 전체 글 ${result.requested ?? 0}건을 한 번에 등록 요청했어요. 순차적으로 확인이 진행됩니다.`,
         });
         setUrl('');
       } else {
@@ -69,7 +73,12 @@ export default function RegisterUrlForm({ disabled, onRegister, onBulkRegister }
     const result = await onBulkRegister(mode);
     setBulkLoading(null);
     if (result.success) {
-      setMessage({ type: 'success', text: `${result.requested ?? 0}건 등록 요청을 접수했어요. 순차적으로 확인이 진행됩니다.` });
+      setMessage({
+        type: 'success',
+        text: result.queued
+          ? `총 ${result.totalCount ?? '?'}개 중 ${result.requested ?? 0}건을 우선 등록했어요. 나머지는 백그라운드에서 자동으로 이어서 등록됩니다.`
+          : `${result.requested ?? 0}건 등록 요청을 접수했어요. 순차적으로 확인이 진행됩니다.`,
+      });
     } else {
       setMessage({ type: 'error', text: result.error || '대량 등록에 실패했어요.' });
     }

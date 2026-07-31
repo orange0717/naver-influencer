@@ -112,6 +112,10 @@
       "schedule": "0 18 * * *"
     },
     {
+      "path": "/api/cron/google-indexing-bulk-continue",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/refresh-personal-keyword-ranks",
       "schedule": "*/10 * * * *"
     }
