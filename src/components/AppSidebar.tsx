@@ -109,6 +109,9 @@ function NavLink({
 
 const SIDEBAR_ACCORDION_KEY = 'ninfl:sidebar:expanded:v1';
 
+// 현재 페이지와 무관하게 기본적으로 펼쳐둘 그룹 (오렌지 요청 — 구글 색인등록 노출 강화)
+const DEFAULT_OPEN_GROUPS = new Set(['구글']);
+
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
@@ -187,12 +190,13 @@ function SidebarContent({
         />
         {SIDEBAR_GROUPS.map((group) => {
           const hasActiveItem = group.items.some((item) => item.href !== '#' && item.href === activeHref);
-          const isOpen = overrides[group.label] ?? hasActiveItem;
+          const defaultOpen = hasActiveItem || DEFAULT_OPEN_GROUPS.has(group.label);
+          const isOpen = overrides[group.label] ?? defaultOpen;
           return (
             <div key={group.label}>
               <button
                 type="button"
-                onClick={() => toggleGroup(group.label, hasActiveItem)}
+                onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
                 className="w-full flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide hover:bg-bg transition-colors cursor-pointer"
                 style={{ color: '#BF8888' }}
