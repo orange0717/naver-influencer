@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface Message {
   id: string;
@@ -102,7 +103,7 @@ export default function MessagesPage() {
       {/* 메시지 목록 */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full" />
+          <LoadingSpinner size="xl" color="border-accent border-t-transparent" />
         </div>
       ) : messages.length === 0 ? (
         <div className="text-center py-20">
