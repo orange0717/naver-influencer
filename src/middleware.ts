@@ -126,6 +126,8 @@ const GATE_HANDLED_ELSEWHERE = new Set([
   '/dashboard/youtube-stt',
   '/dashboard/claude', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts)
   '/topics', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts) — AI 토픽 큐레이션, dashboard/claude와 동일 패턴
+  '/dashboard/google-indexing', // page.tsx 자체에서 getPaywallContext로 미인증/미결제 redirect 처리
+  '/discover/influencers', // requireBloggerPlusPage (src/lib/plan-server-guards.ts)
 ]);
 
 function isAuthOnlyHrefAccounted(href: string): boolean {
