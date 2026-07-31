@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
-import { fetchBlogPostList } from '@/lib/blog-post-list';
+import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 
 export const dynamic = 'force-dynamic';
 

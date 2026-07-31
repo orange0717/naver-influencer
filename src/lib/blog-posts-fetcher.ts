@@ -5,6 +5,22 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 
 const WORKER_PROXY = 'https://ninfl-proxy.orange-e65.workers.dev';
 
+// 캐시 (5분, 최대 200개) — fetchBlogPostList 전용
+const MAX_CACHE_SIZE = 200;
+const cache = new Map<string, { data: BlogPostListResult; expires: number }>();
+
+function setPostCache(key: string, data: BlogPostListResult) {
+  const now = Date.now();
+  for (const [k, v] of cache) {
+    if (v.expires < now) cache.delete(k);
+  }
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldest = cache.keys().next().value;
+    if (oldest) cache.delete(oldest);
+  }
+  cache.set(key, { data, expires: now + 5 * 60 * 1000 });
+}
+
 interface NaverPostItem {
   logNo: string;
   title: string;
@@ -31,6 +47,11 @@ export interface BlogPostsPage {
   totalCount: number;
   blogId: string;
   source: 'api' | 'page' | 'rss' | 'none';
+}
+
+export interface BlogPostListResult extends BlogPostsPage {
+  page: number;
+  countPerPage: number;
 }
 
 /**
@@ -257,6 +278,25 @@ export async function fetchBlogPostsPage(blogId: string, page: number, count: nu
   } catch { /* RSS도 실패 */ }
 
   return { posts: [], totalCount: 0, blogId, source: 'none' };
+}
+
+/**
+ * 네이버 블로그 포스트 목록을 가져온다 (5분 캐시, page/countPerPage 포함).
+ * fetchBlogPostsPage와 동일한 3단계 폴백을 사용하되 결과를 캐싱한다.
+ */
+export async function fetchBlogPostList(blogId: string, page: number, count: number): Promise<BlogPostListResult> {
+  const cacheKey = `posts-${blogId}-${page}-${count}`;
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached.data;
+
+  const pageData = await fetchBlogPostsPage(blogId, page, count);
+  const result: BlogPostListResult = { ...pageData, page, countPerPage: count };
+
+  if (result.posts.length > 0) {
+    setPostCache(cacheKey, result);
+  }
+
+  return result;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 import { createServiceClient } from '@/lib/supabase-server';
-import { fetchBlogPostList } from '@/lib/blog-post-list';
+import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 import { submitSitemapForUser } from '@/lib/sitemap-builder';
 
 export const maxDuration = 120;
