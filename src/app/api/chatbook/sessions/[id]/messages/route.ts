@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getChatbookUser, trimContext, CHATBOOK_SAFETY_SUFFIX, CHATBOOK_MESSAGE_LIMIT } from '@/lib/chatbook';
 import { chatbookMessageLimiter, getClientIp } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
-const MODEL = 'claude-haiku-4-5-20251001';
 
 /**
  * GET /api/chatbook/sessions/[id]/messages
@@ -71,8 +69,10 @@ export async function POST(
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
   }
 
@@ -141,9 +141,8 @@ export async function POST(
   let usageIn: number | null = null;
   let usageOut: number | null = null;
   try {
-    const anthropic = new Anthropic({ apiKey });
     const result = await anthropic.messages.create({
-      model: MODEL,
+      model: CLAUDE_MODEL_HAIKU,
       max_tokens: 1024,
       system: character.system_prompt + CHATBOOK_SAFETY_SUFFIX,
       messages: contextMessages,

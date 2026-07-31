@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob, tryAcquireCronLock, releaseCronLock } from '@/lib/crawler';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonArrayFromClaudeText } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -9,7 +10,6 @@ export const maxDuration = 300;
 const CRON_LOCK_KEY = 'cron:analyze-topic-insights';
 const CRON_LOCK_TTL_SECONDS = 660;
 const TIME_BUDGET_MS = 270_000;
-const MODEL = 'claude-haiku-4-5-20251001';
 // 프롬프트 토큰 예산 통제 — 대형 블로그도 최근 글 위주로만 분석
 const MAX_POSTS_PER_USER = 300;
 
@@ -84,7 +84,7 @@ async function analyzeClusters(
       : '(없음)';
 
     const message = await anthropic.messages.create({
-      model: MODEL,
+      model: CLAUDE_MODEL_HAIKU,
       max_tokens: 4000,
       system: `당신은 네이버 인플루언서 블로그 글 목록을 분석해 "토픽"(같은 주제를 다루는 글 묶음, 최소 2개 이상 글)을 찾아내는 분석가입니다.
 
@@ -118,14 +118,7 @@ async function analyzeClusters(
     });
 
     const rawText = message.content[0]?.type === 'text' ? message.content[0].text : '';
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      const m = rawText.match(/\[[\s\S]*\]/);
-      if (!m) return null;
-      parsed = JSON.parse(m[0]);
-    }
+    const parsed = parseJsonArrayFromClaudeText<unknown>(rawText);
     if (!Array.isArray(parsed)) return null;
 
     return parsed.map((c: Record<string, unknown>) => ({
@@ -148,8 +141,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic: Anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' }, { status: 503 });
   }
 
@@ -161,7 +156,6 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   const jobId = await createCrawlJob('analyze-topic-insights');
   const supabase = createServiceClient();
-  const anthropic = new Anthropic({ apiKey });
 
   let totalUsers = 0;
   let totalFailed = 0;

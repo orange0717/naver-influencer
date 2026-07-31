@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAdvertiserUser } from '@/lib/ad-auth';
 import { parseQueryToFilters, matchPowerContentKeyword } from '@/lib/ai-search';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -23,8 +23,10 @@ export async function POST(request: NextRequest) {
   const auth = await getAdvertiserUser(request);
   if (!auth) return Response.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return Response.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
   }
 
@@ -142,10 +144,8 @@ export async function POST(request: NextRequest) {
     }).join('\n\n');
 
     // 4) Claude API 스트리밍 호출
-    const anthropic = new Anthropic({ apiKey });
-
     const stream = await anthropic.messages.stream({
-      model: 'claude-haiku-4-5-20251001',
+      model: CLAUDE_MODEL_HAIKU,
       max_tokens: 800,
       system: `당신은 N인플(네이버 인플루언서 분석 플랫폼)의 AI 어시스턴트입니다.
 광고주가 인플루언서를 찾으면 검색된 데이터를 기반으로 추천합니다.

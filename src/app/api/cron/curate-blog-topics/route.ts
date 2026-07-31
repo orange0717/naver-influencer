@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep, tryAcquireCronLock, releaseCronLock } from '@/lib/crawler';
 import { fetchAllBlogPosts } from '@/lib/blog-posts-fetcher';
 import { extractPostText } from '@/lib/blog-post-content';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonObjectFromClaudeText } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -16,7 +17,6 @@ const TIME_BUDGET_MS = 270_000;
 // 최초 백필 시 대형 블로그가 하루 만에 수백 건을 분석해 비용이 튀는 것을 방지.
 // 초과분은 blog_post_contents에 없는 글로 남아 다음날 크론이 이어서 처리한다.
 const PER_USER_NEW_POST_CAP = 50;
-const MODEL = 'claude-haiku-4-5-20251001';
 
 type SupabaseClient = ReturnType<typeof createServiceClient>;
 
@@ -48,7 +48,7 @@ async function classifyPost(
 ): Promise<ClassifyResult | null> {
   try {
     const message = await anthropic.messages.create({
-      model: MODEL,
+      model: CLAUDE_MODEL_HAIKU,
       max_tokens: 600,
       system: `당신은 네이버 블로그 글을 의미 단위로 분류해 "토픽"으로 그룹핑하는 분석가입니다.
 
@@ -76,14 +76,7 @@ async function classifyPost(
     });
 
     const rawText = message.content[0]?.type === 'text' ? message.content[0].text : '';
-    let parsed: Partial<ClassifyResult>;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      const m = rawText.match(/\{[\s\S]*\}/);
-      if (!m) return null;
-      parsed = JSON.parse(m[0]);
-    }
+    const parsed = parseJsonObjectFromClaudeText<Partial<ClassifyResult>>(rawText);
 
     return {
       entities: parsed.entities || {},
@@ -143,8 +136,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic: Anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' }, { status: 503 });
   }
 
@@ -156,7 +151,6 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   const jobId = await createCrawlJob('curate-blog-topics');
   const supabase = createServiceClient();
-  const anthropic = new Anthropic({ apiKey });
 
   let totalUsers = 0;
   let totalNewPosts = 0;

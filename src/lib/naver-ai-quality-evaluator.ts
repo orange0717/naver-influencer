@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText } from '@/lib/claude-client';
 
 export const QUALITY_CATEGORY_DEFS = [
   { key: 'experience', label: '실제 경험', max: 20 },
@@ -126,10 +126,10 @@ export async function evaluateNaverAiSearchQuality(
   text: string,
   hints: StructuralHints,
 ): Promise<NaverAiQualityEvaluation> {
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = getAnthropicClient(apiKey);
 
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: CLAUDE_MODEL_SONNET,
     max_tokens: 4096,
     system: SYSTEM_PROMPT,
     messages: [{
@@ -152,13 +152,5 @@ ${text}`,
   });
 
   const rawText = message.content[0]?.type === 'text' ? message.content[0].text : '';
-  let parsed: NaverAiQualityEvaluation;
-  try {
-    parsed = JSON.parse(rawText);
-  } catch {
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI 응답 파싱 실패');
-    parsed = JSON.parse(jsonMatch[0]);
-  }
-  return parsed;
+  return parseJsonObjectFromClaudeText<NaverAiQualityEvaluation>(rawText);
 }

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import {
   getClaudeFeedbackUser,
@@ -10,6 +9,7 @@ import {
 } from '@/lib/claude-feedback';
 import { chatbookMessageLimiter, getClientIp } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU as MODEL_HAIKU, CLAUDE_MODEL_OPUS as MODEL_OPUS } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 90; // Opus 응답이 더 느리므로 여유
@@ -19,8 +19,6 @@ export const maxDuration = 90; // Opus 응답이 더 느리므로 여유
 //   그 외(무료 체험·admin 부여 INFLUENCER 포함) → Haiku 4.5 (비용 절감)
 //   admin(관리자) 는 결제 여부와 무관 — 결제했으면 Opus, 아니면 Haiku.
 //   원가 차이: Opus ≈ 640원/회, Haiku ≈ 80원/회.
-const MODEL_HAIKU = 'claude-haiku-4-5-20251001';
-const MODEL_OPUS = 'claude-opus-4-6';
 
 /**
  * GET /api/dashboard/claude/conversations/[id]/messages
@@ -88,8 +86,10 @@ export async function POST(
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
   }
 
@@ -162,7 +162,6 @@ export async function POST(
   let usageIn: number | null = null;
   let usageOut: number | null = null;
   try {
-    const anthropic = new Anthropic({ apiKey });
     const result = await anthropic.messages.create({
       model,
       max_tokens: 1024,

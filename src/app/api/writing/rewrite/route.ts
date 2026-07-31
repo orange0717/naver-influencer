@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { requireInfluencerPlan } from '@/lib/admin';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -76,15 +76,16 @@ export async function POST(request: NextRequest) {
   const style: Style =
     body.style === 'formal' ? 'formal' : body.style === 'concise' ? 'concise' : 'natural';
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return NextResponse.json({ error: 'AI 서비스를 사용할 수 없습니다.' }, { status: 503 });
   }
 
   try {
-    const anthropic = new Anthropic({ apiKey });
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: CLAUDE_MODEL_HAIKU,
       max_tokens: 4096,
       messages: [{ role: 'user', content: buildPrompt(text, style) }],
     });

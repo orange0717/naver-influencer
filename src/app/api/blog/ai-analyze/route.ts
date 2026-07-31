@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { requirePaidPlan } from '@/lib/admin';
 import { extractPostText } from '@/lib/blog-post-content';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonObjectFromClaudeText } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -26,8 +26,10 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return Response.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
   }
 
@@ -68,9 +70,8 @@ export async function POST(request: NextRequest) {
         // 2) Claude 분석
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', data: 'AI 분석 중...' })}\n\n`));
 
-        const anthropic = new Anthropic({ apiKey });
         const message = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
+          model: CLAUDE_MODEL_HAIKU,
           max_tokens: 1500,
           system: `당신은 AI 생성 텍스트 탐지 전문가입니다. 네이버 블로그 글을 분석하여 AI 작성 여부를 판별합니다.
 
@@ -132,18 +133,7 @@ AI 작성 텍스트의 특징 (높은 확률):
 
         // 응답 파싱
         const rawText = message.content[0]?.type === 'text' ? message.content[0].text : '';
-        let result;
-        try {
-          result = JSON.parse(rawText);
-        } catch {
-          // JSON 파싱 실패 시 코드블록 안의 JSON 추출 시도
-          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            result = JSON.parse(jsonMatch[0]);
-          } else {
-            throw new Error('AI 응답 파싱 실패');
-          }
-        }
+        const result = parseJsonObjectFromClaudeText<Record<string, unknown>>(rawText);
 
         result.textLength = charCount;
 
