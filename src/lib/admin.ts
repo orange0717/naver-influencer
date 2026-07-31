@@ -204,6 +204,43 @@ export async function requirePaidAccess(request: NextRequest): Promise<
 }
 
 /**
+ * userId 기준 활성 유료 플랜(BLOGGER 이상) 보유 여부의 단일 판정 함수.
+ *
+ * 결제(구독 활성화)와 관리자 지급(PATCH /api/admin/members/[id],
+ * /api/admin/coupons/grant-now, /api/admin/bulk-grant-plan) 모두
+ * users.subscription_plan + subscription_expires_at 를 동일하게 갱신하므로,
+ * 이 함수 하나로 결제/관리자 지급 여부를 구분 없이 동일하게 판정한다.
+ * 유료 기능 게이팅이 필요한 곳은 반드시 이 함수(또는 이를 사용하는
+ * requirePaidPlan/requireInfluencerPlan)만 사용할 것 — 개별 라우트에서
+ * subscription_plan 을 직접 재조회/재판정하지 않는다.
+ *
+ * @param requiredPlan 'INFLUENCER' 지정 시 인플루언서 플랜만 통과, 기본은 BLOGGER 이상 전부 통과
+ */
+export async function hasActivePaidPlanByUserId(
+  userId: string,
+  requiredPlan: 'BLOGGER' | 'INFLUENCER' = 'BLOGGER'
+): Promise<boolean> {
+  if (isAdmin(userId)) return true; // 부트스트랩 폴백
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('users')
+      .select('subscription_plan, subscription_expires_at, is_admin')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!data) return false;
+    if (isAdminFromProfile({ id: userId, is_admin: data.is_admin })) return true;
+    if (!hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) return false;
+    if (requiredPlan === 'INFLUENCER') return data.subscription_plan === 'INFLUENCER';
+    return data.subscription_plan === 'INFLUENCER' || data.subscription_plan === 'BLOGGER';
+  } catch (err) {
+    console.error('[hasActivePaidPlanByUserId] unexpected error:', err);
+    return false; // fail-secure
+  }
+}
+
+/**
  * 유료 플랜(BLOGGER+) 보유자 또는 관리자만 통과시키는 API 가드.
  * 커뮤니티 등 plan 게이팅 필요한 라우트에서 사용.
  */
@@ -221,8 +258,7 @@ export async function requirePaidPlan(request: NextRequest): Promise<
   if (await isRestrictedByUserId(authUser.userId)) {
     return { error: NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 }) };
   }
-  const ctx = await getPaywallContext(authUser.userId);
-  if (!ctx.hasActivePaidPlan) {
+  if (!(await hasActivePaidPlanByUserId(authUser.userId))) {
     return { error: NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 }) };
   }
   return { authUser };
@@ -304,33 +340,23 @@ export async function requireInfluencerPlan(request: NextRequest): Promise<
   if (authUser.user.is_admin === true || isAdmin(authUser.userId)) {
     return { authUser };
   }
+  if (await hasActivePaidPlanByUserId(authUser.userId, 'INFLUENCER')) {
+    return { authUser };
+  }
+  // 실패 사유(플랜 없음 vs 블로거 플랜 보유) 안내를 위한 현재 플랜 조회
   try {
     const supabase = createServiceClient();
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('users')
-      .select('subscription_plan, subscription_expires_at')
+      .select('subscription_plan')
       .eq('id', authUser.userId)
-      .single();
-    if (error || !data) {
-      return { error: NextResponse.json({ error: '구독 정보를 확인할 수 없습니다.' }, { status: 403 }) };
-    }
-    if (!hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) {
-      return {
-        error: NextResponse.json(
-          { error: '인플루언서 플랜 이상에서 이용 가능합니다.', code: 'PLAN_REQUIRED', requiredPlan: 'INFLUENCER' },
-          { status: 403 }
-        ),
-      };
-    }
-    if (data.subscription_plan !== 'INFLUENCER') {
-      return {
-        error: NextResponse.json(
-          { error: '인플루언서 플랜 이상에서 이용 가능합니다.', code: 'PLAN_REQUIRED', requiredPlan: 'INFLUENCER', currentPlan: data.subscription_plan },
-          { status: 403 }
-        ),
-      };
-    }
-    return { authUser };
+      .maybeSingle();
+    return {
+      error: NextResponse.json(
+        { error: '인플루언서 플랜 이상에서 이용 가능합니다.', code: 'PLAN_REQUIRED', requiredPlan: 'INFLUENCER', currentPlan: data?.subscription_plan ?? null },
+        { status: 403 }
+      ),
+    };
   } catch (err) {
     console.error('[requireInfluencerPlan] unexpected error:', err);
     return { error: NextResponse.json({ error: '구독 정보를 확인할 수 없습니다.' }, { status: 500 }) };
