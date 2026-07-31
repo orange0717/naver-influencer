@@ -6,19 +6,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { signUp as gaSignUp } from '@/lib/gtag';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
+import { extractBlogId } from '@/lib/blog-utils';
 import LegalModal from '@/components/legal/LegalModal';
 import TermsContent from '@/components/legal/TermsContent';
 import PrivacyContent from '@/components/legal/PrivacyContent';
 
 const RequiredMark = () => <span className="text-down ml-0.5">*</span>;
-
-// blog.naver.com/foo, https://blog.naver.com/foo?bar 등에서 'foo' 만 추출
-function extractBlogId(input: string): string {
-  const trimmed = input.trim();
-  if (!trimmed) return '';
-  const m = trimmed.match(/blog\.naver\.com\/([^/?#]+)/i);
-  return (m ? m[1] : trimmed).toLowerCase();
-}
 
 // next 파라미터를 같은 origin 의 내부 경로로만 허용 (open redirect 방지) — auth/callback과 동일 규칙.
 function sanitizeNext(raw: string | null): string {
