@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp } from '@/lib/rate-limit';
 import { getAuthUser, getCookieUser } from '@/lib/auth';
-import { isAdmin } from '@/lib/admin';
+import { isAdminAsync, isAdminFromProfile } from '@/lib/admin';
 
 /**
  * Supabase Auth 실패 시 쿠키 세션(데모/블로거)을 users.id로 매핑한다.
@@ -108,8 +108,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 관리자는 집계 제외 (본인 유입 자료 왜곡 방지)
-    if (trackedUserId && isAdmin(trackedUserId)) {
-      return NextResponse.json({ ok: true, skipped: 'admin' });
+    // authUser 가 있으면 이미 로드된 is_admin 필드를 사용, 없으면(쿠키 세션) DB 조회로 확인.
+    if (trackedUserId) {
+      const trackedIsAdmin = authUser
+        ? isAdminFromProfile({ id: trackedUserId, is_admin: authUser.user.is_admin })
+        : await isAdminAsync(trackedUserId);
+      if (trackedIsAdmin) {
+        return NextResponse.json({ ok: true, skipped: 'admin' });
+      }
     }
 
     const body = await req.json().catch(() => ({}));
