@@ -41,9 +41,15 @@ export async function GET(request: NextRequest) {
 
   try {
     await exchangeCodeForTokens(stateUserId, code);
+  } catch (err) {
+    console.error('[google-indexing/oauth/callback] token exchange error:', err);
+    return redirectWithParam(request, 'gerror', 'exchange_failed');
+  }
 
-    // 연결된 계정이 이 유저의 네이버 블로그(blog.naver.com/{blogId}/) 속성을
-    // GSC에서 소유권 확인했는지 자동 매칭 시도
+  // 연결된 계정이 이 유저의 네이버 블로그(blog.naver.com/{blogId}/) 속성을
+  // GSC에서 소유권 확인했는지 자동 매칭 시도 — 이건 부가 기능이라 실패해도
+  // 계정 연결 자체(위에서 이미 성공)를 실패로 취급하지 않는다.
+  try {
     const blogId = (authUser.user as { blog_id?: string | null }).blog_id;
     if (blogId) {
       const conn = await getValidAccessToken(stateUserId);
@@ -55,10 +61,9 @@ export async function GET(request: NextRequest) {
         }
       }
     }
-
-    return redirectWithParam(request, 'connected', '1');
   } catch (err) {
-    console.error('[google-indexing/oauth/callback] error:', err);
-    return redirectWithParam(request, 'gerror', 'exchange_failed');
+    console.warn('[google-indexing/oauth/callback] site auto-match 실패(계속 진행):', err instanceof Error ? err.message : err);
   }
+
+  return redirectWithParam(request, 'connected', '1');
 }
