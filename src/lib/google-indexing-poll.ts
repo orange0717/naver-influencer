@@ -1,15 +1,43 @@
 import { createServiceClient } from './supabase-server';
 import { getValidAccessToken } from './google-oauth';
-import { inspectUrl, type UrlInspectionResult } from './google-search-console';
+import { inspectUrl, GoogleApiError, type UrlInspectionResult } from './google-search-console';
 
 const RECHECK_SCHEDULE_MS = [12 * 60 * 60 * 1000, 24 * 60 * 60 * 1000]; // 1차 확인 후 +12h, 2차 확인 후 +24h
 const MAX_CHECKS = 3;
+const RETRYABLE_HTTP_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 interface IndexedUrlRow {
   id: string;
   user_id: string;
   url: string;
   check_count: number;
+}
+
+interface ClassifiedError {
+  errorCode: string;
+  httpStatus: number | null;
+  retryable: boolean;
+  message: string;
+  rawBody: string | null;
+}
+
+/**
+ * 예외를 프론트에 노출 가능한 형태(에러코드/HTTP상태/재시도가능여부)로 분류한다.
+ * GoogleApiError는 실제 Google 응답의 HTTP 상태코드를 갖고 있으므로 그대로 사용하고,
+ * 그 외(네트워크 타임아웃 등)는 재시도로 해결될 가능성이 있다고 본다.
+ */
+function classifyError(err: unknown): ClassifiedError {
+  if (err instanceof GoogleApiError) {
+    return {
+      errorCode: `HTTP_${err.httpStatus}`,
+      httpStatus: err.httpStatus,
+      retryable: RETRYABLE_HTTP_STATUS.has(err.httpStatus),
+      message: err.message,
+      rawBody: err.responseBody,
+    };
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  return { errorCode: 'NETWORK', httpStatus: null, retryable: true, message, rawBody: null };
 }
 
 /**
@@ -39,13 +67,62 @@ export async function inspectAndUpdate(row: IndexedUrlRow): Promise<void> {
   const supabase = createServiceClient();
   const now = new Date().toISOString();
 
-  const conn = await getValidAccessToken(row.user_id);
-  if (!conn || !conn.siteUrl) {
+  let conn;
+  try {
+    conn = await getValidAccessToken(row.user_id);
+  } catch (err) {
+    // refresh_token으로 access token 갱신 자체가 실패한 경우(예: 사용자가 Google 쪽에서 앱 연결을 해제함)
+    const classified = classifyError(err);
+    console.error('[google-indexing-poll] getValidAccessToken 실패:', row.id, classified);
+    await supabase.from('indexed_url_checks').insert({
+      indexed_url_id: row.id,
+      user_id: row.user_id,
+      api_call_success: false,
+      error_message: classified.message,
+      raw_response: classified.rawBody ? { body: classified.rawBody } : null,
+    });
     await supabase
       .from('indexed_urls')
       .update({
         status: 'error',
-        error_message: 'Google 계정이 연결되지 않았거나 GSC 속성이 확인되지 않았습니다.',
+        error_code: classified.errorCode,
+        http_status: classified.httpStatus,
+        retryable: classified.retryable,
+        error_message: classified.message,
+        last_checked_at: now,
+        next_check_at: null,
+        updated_at: now,
+      })
+      .eq('id', row.id);
+    return;
+  }
+
+  if (!conn) {
+    await supabase
+      .from('indexed_urls')
+      .update({
+        status: 'error',
+        error_code: 'NOT_CONNECTED',
+        http_status: null,
+        retryable: false,
+        error_message: 'Google 계정이 연결되어 있지 않습니다. 대시보드에서 Google 계정을 연결해주세요.',
+        last_checked_at: now,
+        next_check_at: null,
+        updated_at: now,
+      })
+      .eq('id', row.id);
+    return;
+  }
+
+  if (!conn.siteUrl) {
+    await supabase
+      .from('indexed_urls')
+      .update({
+        status: 'error',
+        error_code: 'SITE_NOT_VERIFIED',
+        http_status: null,
+        retryable: false,
+        error_message: 'Google 계정은 연결되었지만 이 블로그의 GSC(Search Console) 속성 소유권이 아직 확인되지 않았습니다.',
         last_checked_at: now,
         next_check_at: null,
         updated_at: now,
@@ -58,25 +135,35 @@ export async function inspectAndUpdate(row: IndexedUrlRow): Promise<void> {
   try {
     result = await inspectUrl(conn.accessToken, conn.siteUrl, row.url);
   } catch (err) {
+    const classified = classifyError(err);
+    console.error('[google-indexing-poll] inspectUrl 실패:', row.id, classified);
     await supabase
       .from('indexed_url_checks')
       .insert({
         indexed_url_id: row.id,
         user_id: row.user_id,
         api_call_success: false,
-        error_message: err instanceof Error ? err.message : String(err),
+        error_message: classified.message,
+        raw_response: classified.rawBody ? { body: classified.rawBody } : null,
       });
     await supabase
       .from('indexed_urls')
       .update({
+        status: 'error',
+        error_code: classified.errorCode,
+        http_status: classified.httpStatus,
+        retryable: classified.retryable,
         last_checked_at: now,
+        next_check_at: classified.retryable ? new Date(Date.now() + RECHECK_SCHEDULE_MS[0]).toISOString() : null,
         retry_count: (row.check_count ?? 0) + 1,
-        error_message: err instanceof Error ? err.message : String(err),
+        error_message: classified.message,
         updated_at: now,
       })
       .eq('id', row.id);
     return;
   }
+
+  console.log('[google-indexing-poll] inspectUrl 성공:', row.id, 'verdict:', result.verdict, 'coverageState:', result.coverageState);
 
   await supabase.from('indexed_url_checks').insert({
     indexed_url_id: row.id,
@@ -105,6 +192,9 @@ export async function inspectAndUpdate(row: IndexedUrlRow): Promise<void> {
       last_checked_at: now,
       next_check_at: nextCheckAt,
       error_message: null,
+      error_code: null,
+      http_status: null,
+      retryable: null,
       updated_at: now,
     })
     .eq('id', row.id);

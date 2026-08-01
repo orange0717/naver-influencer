@@ -3,7 +3,21 @@
 import { Fragment, useState } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 import UrlDetailDrawer from './UrlDetailDrawer';
-import { STATUS_ICON, STATUS_LABEL, type IndexedUrl } from '@/lib/google-indexing-types';
+import { STATUS_ICON, STATUS_LABEL, ERROR_CODE_LABEL, type IndexedUrl } from '@/lib/google-indexing-types';
+
+function StatusCell({ row }: { row: IndexedUrl }) {
+  return (
+    <div>
+      <div>{STATUS_ICON[row.status]} {STATUS_LABEL[row.status]}</div>
+      {row.status === 'error' && row.error_code && (
+        <div className="text-[10px] mt-0.5 space-x-1">
+          <span className="font-semibold text-down">{ERROR_CODE_LABEL[row.error_code] || row.error_code}</span>
+          <span className="text-dim">{row.retryable ? '· 재시도 가능' : '· 조치 필요'}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   urls: IndexedUrl[];
@@ -53,7 +67,7 @@ export default function IndexedUrlsTable({ urls, onRecheck, onDelete, onDiagnose
                 </td>
                 <td className="px-4 py-3 text-dim whitespace-nowrap">{formatDate(row.registered_at)}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  {STATUS_ICON[row.status]} {STATUS_LABEL[row.status]}
+                  <StatusCell row={row} />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2 text-xs font-semibold">
@@ -90,7 +104,7 @@ export default function IndexedUrlsTable({ urls, onRecheck, onDelete, onDiagnose
             </a>
             <div className="flex items-center justify-between mt-2 text-xs text-dim">
               <span>{formatDate(row.registered_at)}</span>
-              <span>{STATUS_ICON[row.status]} {STATUS_LABEL[row.status]}</span>
+              <StatusCell row={row} />
             </div>
             <div className="flex items-center gap-3 mt-2 text-xs font-semibold">
               <button onClick={() => onRecheck(row.id)} disabled={recheckingId === row.id} className="text-accent disabled:opacity-50">

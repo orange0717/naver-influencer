@@ -25,6 +25,9 @@ export interface IndexedUrl {
   seo_sub_scores: Record<string, number> | null;
   retry_count: number;
   error_message: string | null;
+  error_code: string | null;
+  http_status: number | null;
+  retryable: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +58,20 @@ export const STATUS_ICON: Record<IndexedUrlStatus, string> = {
   indexed: '🟢',
   not_indexed: '🔴',
   error: '🔴',
+};
+
+/** error_code → 사용자에게 보여줄 짧은 설명. 미리 정의되지 않은 HTTP_xxx 코드는 프론트에서 그대로 코드값을 보여준다. */
+export const ERROR_CODE_LABEL: Record<string, string> = {
+  NOT_CONNECTED: 'Google 계정 미연결',
+  SITE_NOT_VERIFIED: 'GSC 속성 미확인',
+  NETWORK: '네트워크 오류',
+  HTTP_401: '인증 만료 (401)',
+  HTTP_403: '권한 없음 (403)',
+  HTTP_404: '속성/URL 없음 (404)',
+  HTTP_429: '요청 한도 초과 (429)',
+  HTTP_500: 'Google 서버 오류 (500)',
+  HTTP_502: 'Google 서버 오류 (502)',
+  HTTP_503: 'Google 서버 오류 (503)',
 };
 
 export const FAILURE_REASON_LABEL: Record<string, string> = {

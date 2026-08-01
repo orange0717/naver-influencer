@@ -1,6 +1,17 @@
 'use client';
 
-import { FAILURE_REASON_LABEL, type IndexedUrl, type IndexedUrlProgressStage } from '@/lib/google-indexing-types';
+import { useState } from 'react';
+import { FAILURE_REASON_LABEL, ERROR_CODE_LABEL, type IndexedUrl, type IndexedUrlProgressStage } from '@/lib/google-indexing-types';
+
+interface CheckHistoryItem {
+  id: string;
+  checked_at: string;
+  verdict: string | null;
+  coverage_state: string | null;
+  raw_response: unknown;
+  api_call_success: boolean;
+  error_message: string | null;
+}
 
 interface Props {
   row: IndexedUrl;
@@ -48,6 +59,25 @@ function ProgressBar({ stage }: { stage: IndexedUrlProgressStage }) {
 
 export default function UrlDetailDrawer({ row, onDiagnose, diagnosing }: Props) {
   const canDiagnose = (row.status === 'not_indexed' || row.status === 'error') && !row.ai_diagnosis;
+  const [checks, setChecks] = useState<CheckHistoryItem[] | null>(null);
+  const [loadingChecks, setLoadingChecks] = useState(false);
+
+  async function loadChecks() {
+    if (checks) {
+      setChecks(null); // 토글: 다시 누르면 접기
+      return;
+    }
+    setLoadingChecks(true);
+    try {
+      const res = await fetch(`/api/google-indexing/urls/${row.id}/checks`);
+      if (res.ok) {
+        const data = await res.json();
+        setChecks(data.checks);
+      }
+    } finally {
+      setLoadingChecks(false);
+    }
+  }
 
   return (
     <div className="bg-bg rounded-lg p-4 mt-2 space-y-3">
@@ -65,8 +95,45 @@ export default function UrlDetailDrawer({ row, onDiagnose, diagnosing }: Props) 
         <p>마지막 확인: {row.last_checked_at ? new Date(row.last_checked_at).toLocaleString('ko-KR') : '아직 확인 전'}</p>
         {row.google_verdict && <p>구글 판정: {row.google_verdict}</p>}
         {row.google_coverage_state && <p>커버리지 상태: {row.google_coverage_state}</p>}
-        {row.error_message && <p className="text-down">오류: {row.error_message}</p>}
+        {row.error_code && (
+          <p className="text-down">
+            오류코드: {ERROR_CODE_LABEL[row.error_code] || row.error_code}
+            {row.http_status ? ` (HTTP ${row.http_status})` : ''}
+            {' — '}
+            {row.retryable ? '재시도 가능(자동/수동 재시도로 해결될 수 있어요)' : '조치 필요(사용자 설정 확인이 필요해요)'}
+          </p>
+        )}
+        {row.error_message && <p className="text-down">오류 메시지: {row.error_message}</p>}
       </div>
+
+      {(row.status === 'error' || row.status === 'not_indexed' || row.status === 'indexed') && (
+        <div>
+          <button
+            type="button"
+            onClick={loadChecks}
+            disabled={loadingChecks}
+            className="text-xs font-bold text-accent hover:underline disabled:opacity-50"
+          >
+            {loadingChecks ? '불러오는 중...' : checks ? 'Raw Response 접기' : 'Raw Response 보기'}
+          </button>
+          {checks && (
+            <div className="mt-2 space-y-2">
+              {checks.length === 0 && <p className="text-xs text-dim">확인 이력이 없어요.</p>}
+              {checks.map((c) => (
+                <div key={c.id} className="bg-surface border border-border rounded-lg p-2">
+                  <p className="text-[10px] text-dim mb-1">
+                    {new Date(c.checked_at).toLocaleString('ko-KR')} · {c.api_call_success ? '성공' : '실패'}
+                  </p>
+                  {c.error_message && <p className="text-[10px] text-down mb-1">{c.error_message}</p>}
+                  <pre className="text-[10px] whitespace-pre-wrap break-all text-dim max-h-40 overflow-y-auto">
+                    {JSON.stringify(c.raw_response ?? {}, null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {row.seo_score !== null && row.seo_sub_scores && (
         <div>

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { createServiceClient } from './supabase-server';
 import { encryptSecret, decryptSecret } from './crypto-secrets';
+import { GoogleApiError } from './google-search-console';
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const REVOKE_ENDPOINT = 'https://oauth2.googleapis.com/revoke';
@@ -103,11 +104,12 @@ export async function exchangeCodeForTokens(userId: string, code: string): Promi
       grant_type: 'authorization_code',
     }),
   });
+  const exchangeText = await res.text().catch(() => '');
+  console.log('[google-oauth] exchangeCodeForTokens status:', res.status, 'body:', exchangeText);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Google 토큰 교환 실패: HTTP ${res.status} ${text}`);
+    throw new GoogleApiError('Google 토큰 교환 실패', res.status, exchangeText);
   }
-  const tokens = (await res.json()) as GoogleTokenResponse;
+  const tokens = JSON.parse(exchangeText) as GoogleTokenResponse;
   if (!tokens.refresh_token) {
     throw new Error('Google이 refresh_token을 발급하지 않았습니다. (이미 연결된 계정은 최초 연결 시에만 발급되므로, 연결 해제 후 다시 연결해야 합니다)');
   }
@@ -147,11 +149,12 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
       grant_type: 'refresh_token',
     }),
   });
+  const refreshText = await res.text().catch(() => '');
+  console.log('[google-oauth] refreshAccessToken status:', res.status, 'body:', refreshText);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Google 토큰 갱신 실패: HTTP ${res.status} ${text}`);
+    throw new GoogleApiError('Google 토큰 갱신 실패', res.status, refreshText);
   }
-  const tokens = (await res.json()) as GoogleTokenResponse;
+  const tokens = JSON.parse(refreshText) as GoogleTokenResponse;
   return {
     accessToken: tokens.access_token,
     expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
