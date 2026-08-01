@@ -80,8 +80,6 @@ export default async function HomePage() {
             <BlogAnalysisSection />
           </section>
         </div>
-      ) : isInfluencerNoBlogId ? (
-        <BlogConnectCta />
       ) : (
         <div className="space-y-10">
           {/* 섹션 바로가기 탭 — 메뉴 이동 없이 한 화면에서 스크롤 이동 */}
@@ -106,7 +104,7 @@ export default async function HomePage() {
             <BlogDashboardKpiBar blogId={profileResult?.blog_id ?? null} />
           </section>
           <section id="blog-analysis" className="scroll-mt-24">
-            <BlogAnalysisSection />
+            {isInfluencerNoBlogId ? <BlogConnectCta /> : <BlogAnalysisSection />}
           </section>
         </div>
       )}

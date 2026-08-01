@@ -3,6 +3,7 @@
 import { Fragment, useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { extractBlogId, isValidBlogId } from '@/lib/blog-utils';
 
 type AnalysisTab = 'challenge' | 'blog' | 'posting';
@@ -659,7 +660,7 @@ export default function CompetitorPage() {
                 >
                   {aiBatchRunning ? (
                     <span className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                      <LoadingSpinner size="xs" color="border-white/40 border-t-white" />
                       검사 중 ({aiCheckedCount}/{competitorPosts.length})
                     </span>
                   ) : '전체 AI 검사'}
@@ -722,7 +723,7 @@ export default function CompetitorPage() {
                           ) : post.aiError ? (
                             <span className="text-[10px] text-down" title={post.aiError}>오류</span>
                           ) : isAiAnalyzing ? (
-                            <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                            <LoadingSpinner size="xs" />
                           ) : <span className="text-[10px] text-dim/50">&mdash;</span>}
                         </td>
                         <td className="text-right px-3 py-3.5 text-xs text-dim">{post.date}</td>
@@ -734,7 +735,7 @@ export default function CompetitorPage() {
                               className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
                             >
                               {checkingPostId === post.id ? (
-                                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                                <LoadingSpinner size="xs" />
                               ) : post.blogTab ? '재확인' : '순위'}
                             </button>
                             {!post.ai && !isAiAnalyzing && (
@@ -877,7 +878,7 @@ export default function CompetitorPage() {
                             className="text-[10px] text-accent cursor-pointer disabled:opacity-50"
                           >
                             {checkingPostId === post.id ? (
-                              <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                              <LoadingSpinner size="xs" />
                             ) : post.blogTab ? '재확인' : '순위확인'}
                           </button>
                           {!post.ai && (
@@ -887,7 +888,7 @@ export default function CompetitorPage() {
                               className="text-[10px] text-down cursor-pointer disabled:opacity-50"
                             >
                               {isAiAnalyzing ? (
-                                <span className="w-3 h-3 border-2 border-down/30 border-t-down rounded-full animate-spin inline-block" />
+                                <LoadingSpinner size="xs" color="border-down/30 border-t-down" />
                               ) : 'AI 검사'}
                             </button>
                           )}

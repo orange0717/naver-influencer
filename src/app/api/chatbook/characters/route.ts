@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getChatbookUser } from '@/lib/chatbook';
 import { chatbookCreateLimiter, getClientIp } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonObjectFromClaudeText } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_USER_CHARACTERS = 20; // 사용자당 최대 보유 수
 const MAX_INPUT_LENGTH = 400;   // 한 줄 설정 최대 길이
 
@@ -74,8 +73,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 1시간 후 다시 시도해주세요.' }, { status: 429 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  let anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch {
     return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
   }
 
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
   "reason": "(정중한 한국어로 1문장, 50자 이내)"
 }`;
 
-  let parsed: {
+  type GeneratedCharacter = {
     verdict: 'ok' | 'reject';
     system_prompt?: string;
     greeting?: string;
@@ -156,11 +157,11 @@ export async function POST(request: NextRequest) {
     tags?: string[];
     reason?: string;
   };
+  let parsed: GeneratedCharacter;
 
   try {
-    const anthropic = new Anthropic({ apiKey });
     const result = await anthropic.messages.create({
-      model: MODEL,
+      model: CLAUDE_MODEL_HAIKU,
       max_tokens: 1500,
       messages: [{ role: 'user', content: generatorPrompt }],
     });
@@ -169,12 +170,7 @@ export async function POST(request: NextRequest) {
     if (!text) {
       return NextResponse.json({ error: '캐릭터 생성에 실패했습니다. 다시 시도해주세요.' }, { status: 502 });
     }
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart < 0 || jsonEnd < 0) {
-      return NextResponse.json({ error: '캐릭터 생성에 실패했습니다. 다시 시도해주세요.' }, { status: 502 });
-    }
-    parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+    parsed = parseJsonObjectFromClaudeText<GeneratedCharacter>(text);
   } catch (err) {
     console.error('[chatbook] character generate failed:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: '캐릭터 생성에 실패했습니다. 다시 시도해주세요.' }, { status: 502 });

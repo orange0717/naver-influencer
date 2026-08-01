@@ -16,6 +16,14 @@ interface ConnectStatus {
   siteVerified: boolean;
 }
 
+interface BulkJob {
+  status: 'running' | 'completed' | 'failed';
+  total_count: number | null;
+  registered_count: number;
+  updated_at: string;
+  error_message: string | null;
+}
+
 export default function GoogleIndexingSection() {
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null);
   const [summary, setSummary] = useState<IndexingSummary | null>(null);
@@ -26,6 +34,7 @@ export default function GoogleIndexingSection() {
   const [autoWatchEnabled, setAutoWatchEnabled] = useState(false);
   const [autoWatchLoading, setAutoWatchLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [bulkJob, setBulkJob] = useState<BulkJob | null>(null);
 
   const showToast = useCallback((text: string) => {
     setToast(text);
@@ -58,12 +67,32 @@ export default function GoogleIndexingSection() {
     }
   }, []);
 
+  const loadBulkJob = useCallback(async () => {
+    const res = await fetch('/api/google-indexing/bulk-status');
+    if (res.ok) {
+      const data = await res.json();
+      setBulkJob(data.job ?? null);
+    }
+  }, []);
+
   useEffect(() => {
     loadStatus();
     loadSummary();
     loadUrls();
     loadAutoWatch();
-  }, [loadStatus, loadSummary, loadUrls, loadAutoWatch]);
+    loadBulkJob();
+  }, [loadStatus, loadSummary, loadUrls, loadAutoWatch, loadBulkJob]);
+
+  // 백그라운드 "전체 포스트 등록" 잡이 진행 중이면 주기적으로 상태를 폴링한다.
+  useEffect(() => {
+    if (bulkJob?.status !== 'running') return;
+    const timer = setInterval(() => {
+      loadBulkJob();
+      loadUrls();
+      loadSummary();
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [bulkJob?.status, loadBulkJob, loadUrls, loadSummary]);
 
   // OAuth 콜백에서 돌아온 직후 쿼리스트링 처리
   useEffect(() => {
@@ -133,11 +162,12 @@ export default function GoogleIndexingSection() {
       if (res.ok) {
         loadUrls();
         loadSummary();
-        return { success: true, requested: data.requested };
+        if (data.queued) loadBulkJob();
+        return { success: true, requested: data.requested, totalCount: data.totalCount, queued: data.queued };
       }
       return { success: false, error: data.error };
     },
-    [loadUrls, loadSummary],
+    [loadUrls, loadSummary, loadBulkJob],
   );
 
   const handleDiagnose = useCallback(
@@ -233,6 +263,37 @@ export default function GoogleIndexingSection() {
       />
 
       <RegisterUrlForm disabled={!connectStatus?.connected} onRegister={handleRegister} onBulkRegister={handleBulkRegister} />
+
+      {bulkJob && bulkJob.status === 'running' && (
+        <div className="bg-surface border border-accent/50 rounded-xl px-5 py-4">
+          <div className="flex items-center justify-between text-sm font-semibold text-text">
+            <span>전체 포스트 등록 진행 중</span>
+            <span>
+              {bulkJob.registered_count}
+              {bulkJob.total_count ? ` / ${bulkJob.total_count}` : ''}
+            </span>
+          </div>
+          {bulkJob.total_count ? (
+            <div className="mt-2 h-2 w-full bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Math.round((bulkJob.registered_count / bulkJob.total_count) * 100))}%`,
+                }}
+              />
+            </div>
+          ) : null}
+          <p className="mt-2 text-xs text-dim">
+            블로그 글이 많아 백그라운드에서 자동으로 이어서 등록하고 있어요. 페이지를 벗어나도 계속 진행돼요.
+          </p>
+        </div>
+      )}
+      {bulkJob && bulkJob.status === 'failed' && (
+        <div className="bg-surface border border-red-300 rounded-xl px-5 py-4">
+          <p className="text-sm font-semibold text-red-500">전체 포스트 등록 중 오류가 발생했어요.</p>
+          {bulkJob.error_message && <p className="mt-1 text-xs text-dim">{bulkJob.error_message}</p>}
+        </div>
+      )}
 
       <AutoWatchToggle
         enabled={autoWatchEnabled}

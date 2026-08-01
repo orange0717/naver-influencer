@@ -1,8 +1,11 @@
 import * as cheerio from 'cheerio';
+import { sleep } from '@/lib/crawler';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
-// 캐시 (5분, 최대 200개)
+const WORKER_PROXY = 'https://ninfl-proxy.orange-e65.workers.dev';
+
+// 캐시 (5분, 최대 200개) — fetchBlogPostList 전용
 const MAX_CACHE_SIZE = 200;
 const cache = new Map<string, { data: BlogPostListResult; expires: number }>();
 
@@ -39,16 +42,22 @@ export interface BlogPostResult {
   category?: string;
 }
 
-export interface BlogPostListResult {
+export interface BlogPostsPage {
   posts: BlogPostResult[];
   totalCount: number;
-  page: number;
-  countPerPage: number;
   blogId: string;
   source: 'api' | 'page' | 'rss' | 'none';
 }
 
-/** URL 인코딩 문자가 있으면 디코딩, 없으면 원본 반환 (Worker proxy가 이미 디코딩된 텍스트를 줄 수도 있음) */
+export interface BlogPostListResult extends BlogPostsPage {
+  page: number;
+  countPerPage: number;
+}
+
+/**
+ * URL 인코딩 문자가 있으면 디코딩, 없으면 원본 반환
+ * Worker proxy는 이미 디코딩된 텍스트를 반환할 수 있음
+ */
 function decodeIfUrlEncoded(text: string): string {
   if (!text) return text;
   if (/%[0-9A-Fa-f]{2}/.test(text)) {
@@ -61,12 +70,14 @@ function decodeIfUrlEncoded(text: string): string {
   return text;
 }
 
-/** 방법 1: Cloudflare Worker 프록시를 통한 PostTitleListAsync API (한국 엣지 — 해외 Vercel에서도 작동) */
-const WORKER_PROXY = 'https://ninfl-proxy.orange-e65.workers.dev';
-
+/**
+ * 방법 1: Cloudflare Worker 프록시를 통한 PostTitleListAsync API
+ * Worker가 한국 엣지에서 네이버 API를 호출 — 해외 Vercel에서도 작동
+ */
 async function fetchFromPostListApi(blogId: string, page: number, count: number) {
   const url = `${WORKER_PROXY}/blog-posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${count}`;
   const res = await fetch(url);
+
   if (!res.ok) return null;
 
   const data = await res.json();
@@ -82,10 +93,16 @@ async function fetchFromPostListApi(blogId: string, page: number, count: number)
     isPublic: post.openType === '2',
   }));
 
-  return { posts, totalCount: parseInt(data.totalCount || '0', 10), blogId: data.blog?.blogId || blogId };
+  return {
+    posts,
+    totalCount: parseInt(data.totalCount || '0', 10),
+    blogId: data.blog?.blogId || blogId,
+  };
 }
 
-/** 방법 2: PostList.naver HTML 크롤링 (해외 서버에서도 작동, 페이지네이션 지원) */
+/**
+ * 방법 2: PostList.naver HTML 크롤링 (해외 서버에서도 작동, 페이지네이션 지원)
+ */
 async function fetchFromPostListPage(blogId: string, page: number, count: number) {
   const url = `https://blog.naver.com/PostList.naver?blogId=${encodeURIComponent(blogId)}&from=postList&categoryNo=0&currentPage=${page}&countPerPage=${count}`;
   const res = await fetch(url, {
@@ -96,6 +113,7 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
       'Referer': `https://blog.naver.com/${blogId}`,
     },
   });
+
   if (!res.ok) return null;
 
   const html = await res.text();
@@ -104,7 +122,9 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
   let totalCount = 0;
   const countText = $('.blog2_totalcount, .category_title .count, #listTopForm .count').text();
   const countMatch = countText.match(/(\d[\d,]*)/);
-  if (countMatch) totalCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
+  if (countMatch) {
+    totalCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
+  }
 
   const posts: BlogPostResult[] = [];
   $('table.blog2_list tr, .lst_total .item, .post-item, .blog2_post_list tr').each((_, el) => {
@@ -160,10 +180,14 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
   }
 
   if (posts.length === 0) return null;
+
   return { posts, totalCount: totalCount || posts.length, blogId };
 }
 
-/** 방법 3: RSS 피드 (최후 폴백, 최신 글 약 20~30개만 제공하고 페이지네이션 없음) */
+/**
+ * 방법 3: RSS 피드 (최후 폴백)
+ * RSS는 최신 글 약 20~30개만 제공하고 페이지네이션 없음
+ */
 async function fetchFromRss(blogId: string) {
   const url = `https://rss.blog.naver.com/${encodeURIComponent(blogId)}.xml`;
   const res = await fetch(url, {
@@ -173,6 +197,7 @@ async function fetchFromRss(blogId: string) {
       'Accept-Language': 'ko-KR,ko;q=0.9',
     },
   });
+
   if (!res.ok) return null;
 
   const xml = await res.text();
@@ -212,59 +237,82 @@ async function fetchFromRss(blogId: string) {
     }
   });
 
-  return { posts, totalCount: posts.length, blogId };
+  return {
+    posts,
+    totalCount: posts.length,
+    blogId,
+  };
 }
 
 /**
- * 네이버 블로그 포스트 목록을 가져온다.
- * 1) PostTitleListAsync API(Worker 프록시) 시도 → 2) PostList.naver HTML 크롤링 → 3) RSS 폴백
+ * 네이버 블로그 포스트 목록 1페이지를 가져온다.
+ * 1) PostTitleListAsync API 시도 → 2) PostList.naver HTML 크롤링 → 3) RSS 폴백
+ */
+export async function fetchBlogPostsPage(blogId: string, page: number, count: number): Promise<BlogPostsPage> {
+  try {
+    const apiResult = await fetchFromPostListApi(blogId, page, count);
+    if (apiResult && apiResult.posts.length > 0) {
+      return { ...apiResult, source: 'api' };
+    }
+  } catch { /* PostTitleListAsync 실패 - 다음 방법 시도 */ }
+
+  try {
+    const pageResult = await fetchFromPostListPage(blogId, page, count);
+    if (pageResult && pageResult.posts.length > 0) {
+      return { ...pageResult, source: 'page' };
+    }
+  } catch { /* PostList 실패 - 다음 방법 시도 */ }
+
+  try {
+    const rssResult = await fetchFromRss(blogId);
+    if (rssResult && rssResult.posts.length > 0) {
+      const startIdx = (page - 1) * count;
+      const pagedPosts = rssResult.posts.slice(startIdx, startIdx + count);
+      return {
+        posts: pagedPosts,
+        totalCount: rssResult.posts.length,
+        blogId: rssResult.blogId,
+        source: 'rss',
+      };
+    }
+  } catch { /* RSS도 실패 */ }
+
+  return { posts: [], totalCount: 0, blogId, source: 'none' };
+}
+
+/**
+ * 네이버 블로그 포스트 목록을 가져온다 (5분 캐시, page/countPerPage 포함).
+ * fetchBlogPostsPage와 동일한 3단계 폴백을 사용하되 결과를 캐싱한다.
  */
 export async function fetchBlogPostList(blogId: string, page: number, count: number): Promise<BlogPostListResult> {
   const cacheKey = `posts-${blogId}-${page}-${count}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expires > Date.now()) return cached.data;
 
-  let apiResult = null;
-  try {
-    apiResult = await fetchFromPostListApi(blogId, page, count);
-  } catch { /* PostTitleListAsync 실패 - RSS 폴백 */ }
+  const pageData = await fetchBlogPostsPage(blogId, page, count);
+  const result: BlogPostListResult = { ...pageData, page, countPerPage: count };
 
-  if (apiResult && apiResult.posts.length > 0) {
-    const result: BlogPostListResult = { ...apiResult, page, countPerPage: count, source: 'api' };
+  if (result.posts.length > 0) {
     setPostCache(cacheKey, result);
-    return result;
   }
 
-  let pageResult = null;
-  try {
-    pageResult = await fetchFromPostListPage(blogId, page, count);
-  } catch { /* PostList 실패 */ }
+  return result;
+}
 
-  if (pageResult && pageResult.posts.length > 0) {
-    const result: BlogPostListResult = { ...pageResult, page, countPerPage: count, source: 'page' };
-    setPostCache(cacheKey, result);
-    return result;
+/**
+ * 블로그 전체 포스팅을 끝까지 페이지네이션하며 가져온다 (curate-blog-topics 크론 전용).
+ * RSS 폴백은 페이지네이션이 없어(최신 ~20~30개) 1페이지에서 자연히 종료된다.
+ */
+export async function fetchAllBlogPosts(blogId: string, maxPages = 50): Promise<BlogPostResult[]> {
+  const all: BlogPostResult[] = [];
+  const count = 30;
+  for (let page = 1; page <= maxPages; page++) {
+    const { posts, source } = await fetchBlogPostsPage(blogId, page, count);
+    if (posts.length === 0) break;
+    all.push(...posts);
+    if (source === 'rss') break; // RSS는 페이지네이션 미지원
+    if (posts.length < count) break; // 마지막 페이지
+    await sleep(300);
   }
-
-  let rssResult = null;
-  try {
-    rssResult = await fetchFromRss(blogId);
-  } catch { /* RSS도 실패 */ }
-
-  if (rssResult && rssResult.posts.length > 0) {
-    const startIdx = (page - 1) * count;
-    const pagedPosts = rssResult.posts.slice(startIdx, startIdx + count);
-    const result: BlogPostListResult = {
-      posts: pagedPosts,
-      totalCount: rssResult.posts.length,
-      page,
-      countPerPage: count,
-      blogId: rssResult.blogId,
-      source: 'rss',
-    };
-    setPostCache(cacheKey, result);
-    return result;
-  }
-
-  return { posts: [], totalCount: 0, page, countPerPage: count, blogId, source: 'none' };
+  return all;
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireAdmin, isAdmin, isRestricted } from '@/lib/admin';
+import { requireAdmin, isAdminFromProfile, isRestricted } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   // 회원 목록 쿼리
   let query = supabase
     .from('users')
-    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, subscription_plan, subscription_expires_at, created_at, total_visit_count, total_session_count, last_visited_at', { count: 'exact' });
+    .select('id, auth_id, email, nickname, blog_id, linked_influencer_id, point_balance, subscription_plan, subscription_expires_at, created_at, total_visit_count, total_session_count, last_visited_at, is_admin', { count: 'exact' });
 
   if (search) {
     query = query.or(`nickname.ilike.%${search}%,email.ilike.%${search}%,blog_id.ilike.%${search}%`);
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     influencer_name: u.linked_influencer_id ? infMap.get(u.linked_influencer_id) || null : null,
     session_count: u.total_session_count || 0,
     pageview_count: u.total_visit_count || 0,
-    is_admin: isAdmin(u.id),
+    is_admin: isAdminFromProfile(u),
     is_restricted: restrictedFlags[idx],
   }));
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
-import { isAdmin, requireAdmin } from '@/lib/admin';
+import { isAdminFromProfile, requireAdmin } from '@/lib/admin';
 import { validateBody } from '@/lib/validations';
 import { patchStorySchema } from '@/lib/validations/stories';
 import { getClientIp } from '@/lib/rate-limit';
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if (story.status !== 'approved') {
       const authUser = await getAuthUser(req);
       const isOwner = !!authUser && authUser.userId === story.author_id;
-      const isAdminUser = !!authUser && isAdmin(authUser.userId);
+      const isAdminUser = !!authUser && isAdminFromProfile({ id: authUser.userId, is_admin: authUser.user.is_admin });
       if (!isOwner && !isAdminUser) {
         return NextResponse.json({ error: '후기를 찾을 수 없습니다.' }, { status: 404 });
       }

@@ -50,6 +50,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
       { label: '공식순위', href: '/rankings/official', requiredPlan: 'influencer' },
       { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
+      { label: '토픽', href: '/discover/influencers', requiredPlan: 'blogger', authOnly: true },
       { label: '연도별 선정 현황', href: '/stats' },
       { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer' },
     ],
@@ -63,14 +64,20 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '키워드 검색', href: '/keywords/blogger' },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
-      // TODO: migration-117 실행 + GOOGLE_CLIENT_ID/SECRET 등 Vercel 환경변수 설정 후 disabled 제거
-      { label: '구글 색인등록', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true, disabled: true },
+    ],
+  },
+  {
+    label: '구글',
+    icon: 'G',
+    items: [
+      { label: '구글 색인등록', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true },
     ],
   },
   {
     label: '글쓰기',
     icon: 'W',
     items: [
+      { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true },
       { label: '글감 찾기', href: '#', disabled: true },
       { label: '제목 생성', href: '#', disabled: true },
       { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },

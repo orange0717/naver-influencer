@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePaidPlan } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
-import { fetchBlogPostList } from '@/lib/blog-post-list';
+import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';

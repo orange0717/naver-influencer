@@ -7,6 +7,8 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface BloggerProfile {
   blogId: string;
@@ -26,14 +28,24 @@ interface BlogPost {
 interface RankingResult {
   blogTab: { exposed: boolean; rank: number | null };
   viewTab: { exposed: boolean; rank: number | null };
+  influencerTab: { exposed: boolean; rank: number | null };
   query: string;
   searchVolume?: number;
   checkedAt?: string | null;
 }
 
+// 전일대비/7일대비 계산 근거 (get_keyword_rank_deltas RPC, 통합검색 순위 기준 — 오렌지 확정)
+type RankDelta = {
+  prevRank: number | null;
+  prevCheckedAt: string | null;
+  weekRank: number | null;
+  weekCheckedAt: string | null;
+};
+
 type SyncedState = {
   postKeywords: Record<string, string[]>;
   rankingResults: Record<string, RankingResult>;
+  rankDeltas: Record<string, RankDelta>;
 };
 
 const STATE_API = '/api/my/keyword-ranking-state';
@@ -49,25 +61,57 @@ async function fetchRankingState(blogId: string): Promise<SyncedState> {
 }
 
 // 포스트별 키워드 할당을 DB에 저장 (제거된 키워드 삭제 포함)
-function saveKeywordsToDb(blogId: string, postId: string, keywords: string[]): void {
-  fetch(STATE_API, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blogId, postId, keywords }),
-  }).catch(() => { /* 낙관적 UI — 실패는 다음 동작에서 재시도됨 */ });
+// keepalive: 저장 직후 새로고침/탭이동으로 페이지가 언로드돼도 요청이 취소되지 않고 전송되도록 보장
+async function saveKeywordsToDb(blogId: string, postId: string, keywords: string[]): Promise<boolean> {
+  try {
+    const res = await fetch(STATE_API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blogId, postId, keywords }),
+      keepalive: true,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
-// 단일 (post, keyword) 순위 결과를 DB에 갱신
-function saveRankResultToDb(blogId: string, postId: string, keyword: string, result: RankingResult): void {
-  fetch(STATE_API, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blogId, postId, keyword, result }),
-  }).catch(() => { /* ignore */ });
+// 단일 (post, keyword) 순위 결과를 DB에 갱신. 화면엔 이미 최신 결과가 표시된 뒤 백그라운드로 저장하므로,
+// 실패 시에도 화면을 되돌리진 않되 반드시 로그를 남겨 "화면엔 보이는데 DB엔 없는" 상태를 진단할 수 있게 한다.
+async function saveRankResultToDb(blogId: string, postId: string, keyword: string, result: RankingResult): Promise<boolean> {
+  try {
+    const res = await fetch(STATE_API, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blogId, postId, keyword, result }),
+      keepalive: true,
+    });
+    if (!res.ok) {
+      console.error(`[keyword-ranking] 순위 DB 저장 실패 (status=${res.status}) postId=${postId} keyword=${keyword}`);
+    }
+    return res.ok;
+  } catch (err) {
+    console.error(`[keyword-ranking] 순위 DB 저장 중 네트워크 오류 postId=${postId} keyword=${keyword}`, err);
+    return false;
+  }
 }
 
 function rankKey(postId: string, keyword: string): string {
   return `${postId}::${keyword}`;
+}
+
+// keyword_rank_lookups Realtime 페이로드 (migration-121로 publication 등록, migration-122로 RLS 정정)
+interface KeywordRankLookupRow {
+  post_id: string;
+  keyword: string;
+  view_rank: number | null;
+  view_exposed: boolean | null;
+  blog_rank: number | null;
+  blog_exposed: boolean | null;
+  influencer_rank: number | null;
+  influencer_exposed: boolean | null;
+  search_volume: number | null;
+  checked_at: string | null;
 }
 
 // 마지막 확인이 10분보다 오래됐거나 아예 없으면 갱신 대상
@@ -89,19 +133,32 @@ function timeAgo(dateStr?: string | null): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
-interface AiBriefingResult {
-  hasAiBriefing: boolean | null;
-  exposed: boolean | null;
-  hasAiTab: boolean | null;
-  tabExposed: boolean | null;
-}
+type DeltaDisplay = { label: string; colorClass: string; tooltip: string };
 
-// AI 브리핑/AI 탭 노출 상태 (postId::keyword 키) — AiBriefingSection.tsx와 동일 쿼리키를 사용해 캐시 공유
-async function fetchAiBriefingState(blogId: string): Promise<Record<string, AiBriefingResult>> {
-  const res = await fetch(`/api/my/ai-briefing-state?blogId=${encodeURIComponent(blogId)}`);
-  if (!res.ok) throw new Error('AI 브리핑 상태 조회 실패');
-  const data = await res.json();
-  return (data?.briefingResults ?? {}) as Record<string, AiBriefingResult>;
+// 전일대비/7일대비 표시 계산 — 통합검색(viewTab) 순위 기준 (오렌지 확정 결정)
+// refCheckedAt이 없으면 비교할 이력 자체가 없는 것이므로 "-"로 표시 (신규진입 NEW와는 구분)
+function computeDeltaDisplay(
+  currentExposed: boolean,
+  currentRank: number | null,
+  refRank: number | null,
+  refCheckedAt: string | null | undefined,
+): DeltaDisplay {
+  if (!refCheckedAt) {
+    return { label: '-', colorClass: 'text-dim', tooltip: '비교할 이전 데이터가 없습니다' };
+  }
+  if (currentExposed && refRank != null && currentRank != null) {
+    const delta = refRank - currentRank;
+    if (delta > 0) return { label: `▲${delta}`, colorClass: 'text-up', tooltip: `${refRank}위 → ${currentRank}위 (▲${delta})` };
+    if (delta < 0) return { label: `▼${Math.abs(delta)}`, colorClass: 'text-down', tooltip: `${refRank}위 → ${currentRank}위 (▼${Math.abs(delta)})` };
+    return { label: '-', colorClass: 'text-dim', tooltip: `${refRank}위 → ${currentRank}위 (변동 없음)` };
+  }
+  if (currentExposed && refRank == null) {
+    return { label: 'NEW', colorClass: 'text-blue-600', tooltip: '이전에는 미노출, 현재 신규 진입' };
+  }
+  if (!currentExposed && refRank != null) {
+    return { label: 'OUT', colorClass: 'text-orange-600', tooltip: `${refRank}위 → 순위 이탈` };
+  }
+  return { label: '-', colorClass: 'text-dim', tooltip: '미노출 상태 유지' };
 }
 
 async function getProfileFromApi(): Promise<BloggerProfile | null> {
@@ -137,6 +194,8 @@ export default function KeywordRankingSection() {
   const [editingKeywords, setEditingKeywords] = useState<Record<string, string[]>>({});
   // "postId::keyword" → RankingResult
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
+  // "postId::keyword" → RankDelta (전일대비/7일대비 계산 근거, get_keyword_rank_deltas RPC)
+  const [rankDeltas, setRankDeltas] = useState<Record<string, RankDelta>>({});
   const [stateReady, setStateReady] = useState(false);
   const [checkingKey, setCheckingKey] = useState('');
   // 자동/수동 백그라운드 일괄 갱신 진행 여부 (화면을 막지 않는 작은 표시용)
@@ -151,9 +210,15 @@ export default function KeywordRankingSection() {
   const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const rankingResultsRef = useRef<Record<string, RankingResult>>({});
   const postKeywordsRef = useRef<Record<string, string[]>>({});
+  const editingKeywordsRef = useRef<Record<string, string[]>>({});
+  // postId → 디바운스 자동저장 타이머 (블러/엔터를 기다리지 않고도 입력 후 일정 시간 뒤 자동 저장)
+  const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // handleKeywordSave의 최신 버전을 항상 가리키는 ref (디바운스 타이머가 오래된 클로저를 호출하지 않도록)
+  const handleKeywordSaveRef = useRef<(postId: string) => void>(() => {});
 
   useEffect(() => { rankingResultsRef.current = rankingResults; }, [rankingResults]);
   useEffect(() => { postKeywordsRef.current = postKeywords; }, [postKeywords]);
+  useEffect(() => { editingKeywordsRef.current = editingKeywords; }, [editingKeywords]);
 
   const showError = useCallback((msg: string, ms = 5000) => {
     setErrorMessage(msg);
@@ -164,6 +229,7 @@ export default function KeywordRankingSection() {
   useEffect(() => () => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     Object.values(flashTimersRef.current).forEach(clearTimeout);
+    Object.values(saveTimersRef.current).forEach(clearTimeout);
     abortRef.current = true;
   }, []);
 
@@ -190,22 +256,28 @@ export default function KeywordRankingSection() {
 
   const handleDownload = () => {
     if (!canDownload) return;
-    const headers = ['포스팅 제목', '포스팅 URL', '작성일', '키워드', '통합검색 순위', '블로그탭 순위', '검색량'];
+    const headers = ['제목', '검색 키워드', '통합검색', '블로그', '인플루언서', '전일대비', '7일대비', '검색량', '업데이트'];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
       const kws = postKeywords[post.id] || [];
       if (kws.length === 0) continue;
       for (const kw of kws) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
-        const result = rankingResults[rankKey(post.id, kw)];
+        const key = rankKey(post.id, kw);
+        const result = rankingResults[key];
+        const delta = rankDeltas[key];
+        const prevDelta = computeDeltaDisplay(result?.viewTab.exposed ?? false, result?.viewTab.rank ?? null, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null);
+        const weekDelta = computeDeltaDisplay(result?.viewTab.exposed ?? false, result?.viewTab.rank ?? null, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null);
         rows.push([
           post.title,
-          post.url,
-          post.date,
           kw,
-          result?.viewTab?.rank ?? '',
-          result?.blogTab?.rank ?? '',
+          result?.viewTab?.exposed ? `${result.viewTab.rank}위` : '-',
+          result?.blogTab?.exposed ? `${result.blogTab.rank}위` : '-',
+          result?.influencerTab?.exposed ? `${result.influencerTab.rank}위` : '-',
+          result ? prevDelta.label : '-',
+          result ? weekDelta.label : '-',
           result?.searchVolume ?? '',
+          result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : '',
         ]);
       }
       if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
@@ -239,7 +311,8 @@ export default function KeywordRankingSection() {
       setPostKeywords({});
       // 2. 모든 순위 결과 초기화 (로컬 상태)
       setRankingResults({});
-      queryClient.setQueryData(['keyword-ranking-state', profile.blogId], { postKeywords: {}, rankingResults: {} });
+      setRankDeltas({});
+      queryClient.setQueryData(['keyword-ranking-state', profile.blogId], { postKeywords: {}, rankingResults: {}, rankDeltas: {} });
 
       // 3. DB: 키워드순위 상태 + 저장된 검색 키워드 테이블 모두 초기화
       await Promise.all([
@@ -257,11 +330,17 @@ export default function KeywordRankingSection() {
     }
   }, [profile, blogPosts, showError, queryClient]);
 
-  const handleClearPostKeywords = (postId: string) => {
+  const handleClearPostKeywords = async (postId: string) => {
     if (!profile) return;
     if (!confirm('이 포스팅의 모든 키워드를 삭제하시겠습니까?')) return;
 
-    // 키워드 초기화
+    // DB 삭제가 확인된 뒤에만 화면 상태를 반영한다 (DB 반영 실패 시 화면만 비어보이는 것을 방지)
+    const ok = await saveKeywordsToDb(profile.blogId, postId, []);
+    if (!ok) {
+      showError('삭제에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.', 4000);
+      return;
+    }
+
     setEditingKeywords(prev => ({ ...prev, [postId]: [''] }));
     const updated = { ...postKeywords };
     delete updated[postId];
@@ -276,8 +355,19 @@ export default function KeywordRankingSection() {
     }
     setRankingResults(newResults);
 
-    // DB: 빈 키워드 목록 저장 = 해당 포스트의 모든 행(키워드+순위) 삭제
-    saveKeywordsToDb(profile.blogId, postId, []);
+    queryClient.setQueryData(
+      ['keyword-ranking-state', profile.blogId],
+      (old: SyncedState | undefined) => {
+        if (!old) return old;
+        const nextResults = { ...old.rankingResults };
+        for (const key of Object.keys(nextResults)) {
+          if (key.startsWith(`${postId}::`)) delete nextResults[key];
+        }
+        const nextKeywords = { ...old.postKeywords };
+        delete nextKeywords[postId];
+        return { postKeywords: nextKeywords, rankingResults: nextResults };
+      },
+    );
 
     showError('포스팅의 키워드가 초기화되었습니다.', 3000);
   };
@@ -319,31 +409,38 @@ export default function KeywordRankingSection() {
     if (syncedState) {
       setPostKeywords(syncedState.postKeywords);
       setRankingResults(syncedState.rankingResults);
+      setRankDeltas(syncedState.rankDeltas || {});
       setStateReady(true);
+      // 서버 상태가 도착한 시점에만 편집 중 입력을 서버 값으로 맞춘다.
+      // (postKeywords를 의존성으로 두면 다른 포스트 저장 시마다 전체가 재초기화되어
+      //  사용자가 다른 필드에 입력 중인 값을 덮어써버리는 문제가 있었음)
+      setEditingKeywords(prev => {
+        const next = { ...prev };
+        for (const [postId, kws] of Object.entries(syncedState.postKeywords)) {
+          next[postId] = kws.length > 0 ? [...kws] : [''];
+        }
+        return next;
+      });
     }
   }, [syncedState]);
 
-  // AI 브리핑/AI 탭 포함 여부 — BlogAnalysisSection/AiBriefingSection과 동일 쿼리키로 캐시 공유, 신규 fetch 최소화
-  const { data: aiBriefingByKeyword } = useQuery({
-    queryKey: ['ai-briefing-state', profile?.blogId],
-    queryFn: () => fetchAiBriefingState(profile!.blogId),
-    enabled: !!profile?.blogId,
-    staleTime: 60 * 1000,
-  });
-
-  // 포스트 로드 시 키워드 초기화 (저장된 키워드 있으면 사용, 없으면 빈 입력 1개)
+  // 새 포스트(페이지 전환 등)가 나타났을 때만 초기값을 채운다. 이미 존재하는 편집 상태는 건드리지 않음
+  // (postKeywords 변경(다른 포스트 저장 등)에 반응하지 않도록 ref로 읽어 재실행 트리거에서 제외)
   useEffect(() => {
     if (!profile || blogPosts.length === 0) return;
-    const initial: Record<string, string[]> = {};
-    for (const post of blogPosts) {
-      if (postKeywords[post.id] && postKeywords[post.id].length > 0) {
-        initial[post.id] = [...postKeywords[post.id]];
-      } else {
-        initial[post.id] = [''];
+    setEditingKeywords(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const post of blogPosts) {
+        if (next[post.id] === undefined) {
+          const saved = postKeywordsRef.current[post.id];
+          next[post.id] = saved && saved.length > 0 ? [...saved] : [''];
+          changed = true;
+        }
       }
-    }
-    setEditingKeywords(prev => ({ ...prev, ...initial }));
-  }, [profile, blogPosts, postKeywords]);
+      return changed ? next : prev;
+    });
+  }, [profile, blogPosts]);
 
   const handleKeywordChange = (postId: string, kwIndex: number, value: string) => {
     setEditingKeywords(prev => {
@@ -351,6 +448,12 @@ export default function KeywordRankingSection() {
       kws[kwIndex] = value;
       return { ...prev, [postId]: kws };
     });
+    // 블러/엔터 없이도 입력이 멈추면 잠시 후 자동 저장 (탭 전환·닫기로 블러가 안 걸리는 경우 대비)
+    if (saveTimersRef.current[postId]) clearTimeout(saveTimersRef.current[postId]);
+    saveTimersRef.current[postId] = setTimeout(() => {
+      delete saveTimersRef.current[postId];
+      handleKeywordSaveRef.current(postId);
+    }, 800);
   };
 
   const checkSingleKeyword = useCallback(async (
@@ -378,6 +481,7 @@ export default function KeywordRankingSection() {
         const nextResult: RankingResult = {
           blogTab: data.blogTab,
           viewTab: data.viewTab,
+          influencerTab: data.influencerTab,
           query: data.query,
           searchVolume: data.searchVolume,
           checkedAt: data.checkedAt || new Date().toISOString(),
@@ -389,7 +493,9 @@ export default function KeywordRankingSection() {
           prevResult.viewTab.rank !== nextResult.viewTab.rank ||
           prevResult.viewTab.exposed !== nextResult.viewTab.exposed ||
           prevResult.blogTab.rank !== nextResult.blogTab.rank ||
-          prevResult.blogTab.exposed !== nextResult.blogTab.exposed
+          prevResult.blogTab.exposed !== nextResult.blogTab.exposed ||
+          prevResult.influencerTab?.rank !== nextResult.influencerTab?.rank ||
+          prevResult.influencerTab?.exposed !== nextResult.influencerTab?.exposed
         )) {
           flashCell(key);
         }
@@ -400,8 +506,11 @@ export default function KeywordRankingSection() {
           ['keyword-ranking-state', profile.blogId],
           (old: SyncedState | undefined) => old ? { ...old, rankingResults: { ...old.rankingResults, [key]: nextResult } } : old,
         );
-        // DB에 순위 결과 갱신 (기기 간 동기화)
-        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), nextResult);
+        // DB에 순위 결과 갱신 (기기 간 동기화). 저장 실패 시 화면에 표시된 값이 DB와 어긋나므로
+        // 캐시를 무효화해 다음 조회 시점에 DB 실제 값으로 다시 맞춘다.
+        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), nextResult).then(ok => {
+          if (!ok) queryClient.invalidateQueries({ queryKey: ['keyword-ranking-state', profile.blogId] });
+        });
         // 저장된 키워드라면 saved_search_keywords 최신 순위 캐시도 갱신 (실패 무시)
         fetch('/api/my/saved-keywords', {
           method: 'PATCH',
@@ -461,11 +570,48 @@ export default function KeywordRankingSection() {
 
   const handleKeywordSave = useCallback((postId: string) => {
     if (!profile) return;
-    const kws = (editingKeywords[postId] || []).map(k => k.trim()).filter(Boolean);
+    if (saveTimersRef.current[postId]) {
+      clearTimeout(saveTimersRef.current[postId]);
+      delete saveTimersRef.current[postId];
+    }
+    // ref를 사용해 최신 편집 상태를 읽는다 (디바운스 타이머가 오래된 렌더의 값을 저장하는 것을 방지)
+    const kws = (editingKeywordsRef.current[postId] || []).map(k => k.trim()).filter(Boolean);
+    // 실제로 저장된 값과 다를 때만 저장을 호출한다 (빈 입력창을 그냥 blur만 해도 매번 PUT이 나가는 것 방지).
+    // 단, kws.length === 0(입력창을 지워 전부 빈 값이 된 경우)은 이전에 저장된 키워드가 있었다면
+    // 반드시 DB에도 반영해야 한다 — 과거엔 이 경우 저장 호출 자체를 건너뛰어, 사용자가 키워드를 지워도
+    // DB엔 예전 값이 남아있다가 새로고침하면 지운 키워드가 다시 나타나는 것처럼 보이는 버그가 있었음.
+    const prevSaved = postKeywordsRef.current[postId] || [];
+    const unchanged = prevSaved.length === kws.length && prevSaved.every((k, i) => k === kws[i]);
+    if (unchanged) return;
+    setPostKeywords(prev => {
+      if (kws.length === 0) {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      }
+      return { ...prev, [postId]: kws };
+    });
+    saveKeywordsToDb(profile.blogId, postId, kws).then(ok => {
+      if (ok) {
+        // 저장 성공분을 쿼리 캐시에도 즉시 반영 (백그라운드 refetch로 되돌아가는 경합 방지)
+        queryClient.setQueryData(
+          ['keyword-ranking-state', profile.blogId],
+          (old: SyncedState | undefined) => {
+            if (!old) return old;
+            const nextKeywords = { ...old.postKeywords };
+            if (kws.length === 0) delete nextKeywords[postId];
+            else nextKeywords[postId] = kws;
+            return { ...old, postKeywords: nextKeywords };
+          },
+        );
+      } else {
+        showError('키워드 저장에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.');
+        // 화면과 DB가 어긋났을 수 있으므로 다음 조회 시점에 DB 실제 값으로 재동기화
+        queryClient.invalidateQueries({ queryKey: ['keyword-ranking-state', profile.blogId] });
+      }
+    });
+    // 신규/변경된 키워드는 최근 확인 기록이 없거나 10분 이상 지났을 때만 즉시 백그라운드로 확인
     if (kws.length > 0) {
-      setPostKeywords(prev => ({ ...prev, [postId]: kws }));
-      saveKeywordsToDb(profile.blogId, postId, kws);
-      // 신규/변경된 키워드는 최근 확인 기록이 없거나 10분 이상 지났을 때만 즉시 백그라운드로 확인
       const post = blogPosts.find(p => p.id === postId);
       if (post) {
         const pairs = kws
@@ -474,7 +620,9 @@ export default function KeywordRankingSection() {
         if (pairs.length > 0) runBatch(pairs);
       }
     }
-  }, [profile, blogPosts, editingKeywords, runBatch]);
+  }, [profile, blogPosts, runBatch, queryClient, showError]);
+
+  useEffect(() => { handleKeywordSaveRef.current = handleKeywordSave; }, [handleKeywordSave]);
 
   const addKeyword = (postId: string) => {
     setEditingKeywords(prev => {
@@ -519,6 +667,43 @@ export default function KeywordRankingSection() {
     const id = setInterval(scanAndRefresh, 60 * 1000);
     return () => clearInterval(id);
   }, [profile, stateReady, blogPosts, scanAndRefresh]);
+
+  // 백그라운드 큐(refresh-personal-keyword-ranks cron)가 DB를 갱신하면 60초 폴링을 기다리지 않고 즉시 반영
+  useEffect(() => {
+    if (!profile?.blogId) return;
+    const supabase = createSupabaseBrowserClient();
+    const channel = supabase
+      .channel(`keyword-rank-lookups-${profile.blogId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'keyword_rank_lookups', filter: `blog_id=eq.${profile.blogId}` },
+        (payload: RealtimePostgresChangesPayload<KeywordRankLookupRow>) => {
+          const row = payload.new as KeywordRankLookupRow;
+          if (!row?.post_id || !row?.keyword || !row?.checked_at) return;
+          const key = rankKey(row.post_id, row.keyword);
+          const nextResult: RankingResult = {
+            viewTab: { exposed: row.view_exposed ?? false, rank: row.view_rank },
+            blogTab: { exposed: row.blog_exposed ?? false, rank: row.blog_rank },
+            influencerTab: { exposed: row.influencer_exposed ?? false, rank: row.influencer_rank },
+            query: row.keyword,
+            searchVolume: row.search_volume ?? undefined,
+            checkedAt: row.checked_at,
+          };
+          const prevResult = rankingResultsRef.current[key];
+          if (!prevResult || prevResult.checkedAt !== nextResult.checkedAt) {
+            flashCell(key);
+          }
+          setRankingResults(prev => ({ ...prev, [key]: nextResult }));
+          queryClient.setQueryData(
+            ['keyword-ranking-state', profile.blogId],
+            (old: SyncedState | undefined) => old ? { ...old, rankingResults: { ...old.rankingResults, [key]: nextResult } } : old,
+          );
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [profile?.blogId, flashCell, queryClient]);
 
   // 관리자 전용: 캐시 무시하고 현재 페이지 전체를 강제로 다시 조회
   const handleAdminForceRefreshAll = () => {
@@ -630,6 +815,15 @@ export default function KeywordRankingSection() {
                 CSV 다운로드
               </button>
             )}
+            {canDownload && profile && (
+              <a
+                href={`/api/downloads/my-keyword-ranking?blogId=${encodeURIComponent(profile.blogId)}`}
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer"
+                title="전체 포스팅(페이지 무관)의 키워드 순위 결과를 CSV로 다운로드"
+              >
+                전체 리포트
+              </a>
+            )}
             <button
               onClick={handleResetResults}
               className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
@@ -698,19 +892,18 @@ export default function KeywordRankingSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[1080px]">
+              <table className="w-full text-sm min-w-[1040px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
                     <th className="text-left px-4 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-left px-3 py-3 font-semibold w-44">검색 키워드</th>
+                    <th className="text-left px-3 py-3 font-semibold w-48">검색 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">블로그</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">인플루언서</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">전일대비</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">7일대비</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">검색량</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">AI브리핑</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">AI탭</th>
                     <th className="text-center px-4 py-3 font-semibold w-20">업데이트</th>
                   </tr>
                 </thead>
@@ -721,7 +914,9 @@ export default function KeywordRankingSection() {
                     return keywords.map((kw, kwIdx) => {
                       const key = rankKey(post.id, kw.trim());
                       const result = rankingResults[key];
-                      const aiState = aiBriefingByKeyword?.[key];
+                      const delta = rankDeltas[key];
+                      const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
+                      const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                       const isFirst = kwIdx === 0;
                       const isLast = kwIdx === rowCount - 1;
                       const flashing = flashKeys.has(key);
@@ -802,36 +997,31 @@ export default function KeywordRankingSection() {
                               ) : <span className="text-xs text-dim">-</span>
                             ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
-                          <td className="text-center px-3 py-1.5" title="히스토리 기능은 준비 중입니다">
-                            <span className="text-[10px] text-dim/50">준비중</span>
+                          <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
+                            {result ? (
+                              result.influencerTab?.exposed ? (
+                                <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                  {result.influencerTab.rank}위
+                                </span>
+                              ) : <span className="text-xs text-dim">-</span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
-                          <td className="text-center px-3 py-1.5" title="히스토리 기능은 준비 중입니다">
-                            <span className="text-[10px] text-dim/50">준비중</span>
+                          <td className="text-center px-3 py-1.5">
+                            {prevDelta ? (
+                              <span className={`text-xs font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>
+                                {prevDelta.label}
+                              </span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
+                          </td>
+                          <td className="text-center px-3 py-1.5">
+                            {weekDelta ? (
+                              <span className={`text-xs font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>
+                                {weekDelta.label}
+                              </span>
+                            ) : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
                           <td className="text-center px-3 py-1.5 text-xs text-dim">
                             {result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}
-                          </td>
-                          <td className="text-center px-3 py-1.5">
-                            {!kw.trim() ? (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            ) : aiState?.exposed === true ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">인용</span>
-                            ) : aiState?.exposed === false ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-bg text-dim">미인용</span>
-                            ) : (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            )}
-                          </td>
-                          <td className="text-center px-3 py-1.5">
-                            {!kw.trim() ? (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            ) : aiState?.tabExposed === true ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-up/10 text-up">노출</span>
-                            ) : aiState?.tabExposed === false ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-bg text-dim">미노출</span>
-                            ) : (
-                              <span className="text-[10px] text-dim/50">--</span>
-                            )}
                           </td>
                           <td className="text-center px-4 py-1.5">
                             {checkingKey === key ? (
@@ -881,7 +1071,6 @@ export default function KeywordRankingSection() {
                           {post.title}
                         </a>
                         <span className="text-[10px] text-dim ml-1">{post.date}</span>
-                        <span className="text-[9px] text-dim/50 ml-1" title="히스토리 기능은 준비 중입니다">(전일·7일대비 준비중)</span>
                       </div>
                     </div>
 
@@ -890,7 +1079,9 @@ export default function KeywordRankingSection() {
                       {keywords.map((kw, kwIdx) => {
                         const key = rankKey(post.id, kw.trim());
                         const result = rankingResults[key];
-                        const aiState = aiBriefingByKeyword?.[key];
+                        const delta = rankDeltas[key];
+                        const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
+                        const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                         const flashing = flashKeys.has(key);
                         return (
                           <div key={kwIdx} className="space-y-1">
@@ -937,7 +1128,7 @@ export default function KeywordRankingSection() {
                               )}
                             </div>
                             {result && (
-                              <div className={`flex items-center gap-2 rounded-lg transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
+                              <div className={`flex items-center gap-2 flex-wrap rounded-lg transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                                   result.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
                                 }`}>
@@ -948,23 +1139,20 @@ export default function KeywordRankingSection() {
                                 }`}>
                                   블로그 {result.blogTab.exposed ? `${result.blogTab.rank}위` : '-'}
                                 </span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  result.influencerTab?.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                                }`}>
+                                  인플루언서 {result.influencerTab?.exposed ? `${result.influencerTab.rank}위` : '-'}
+                                </span>
                                 {result.searchVolume ? (
                                   <span className="text-[10px] text-dim">{result.searchVolume.toLocaleString()}</span>
                                 ) : null}
                               </div>
                             )}
-                            {kw.trim() && (typeof aiState?.exposed === 'boolean' || typeof aiState?.tabExposed === 'boolean') && (
-                              <div className="flex items-center gap-1.5">
-                                {typeof aiState?.exposed === 'boolean' && (
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${aiState.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'}`}>
-                                    AI브리핑 {aiState.exposed ? '인용' : '미인용'}
-                                  </span>
-                                )}
-                                {typeof aiState?.tabExposed === 'boolean' && (
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${aiState.tabExposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'}`}>
-                                    AI탭 {aiState.tabExposed ? '노출' : '미노출'}
-                                  </span>
-                                )}
+                            {result && prevDelta && weekDelta && (
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <span className={`font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>전일 {prevDelta.label}</span>
+                                <span className={`font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>7일 {weekDelta.label}</span>
                               </div>
                             )}
                           </div>

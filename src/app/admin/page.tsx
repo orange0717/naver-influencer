@@ -13,6 +13,12 @@ interface DashboardData {
   dailySignups: { date: string; count: number }[];
   recentUsers: { nickname: string; email: string; created_at: string }[];
   recentReports: { id: string; reason: string; status: string; created_at: string }[];
+  recentMatchLogs: {
+    id: string;
+    match_method: string;
+    created_at: string;
+    matched_user: { id: string; nickname: string } | null;
+  }[];
 }
 
 export default function AdminDashboardPage() {
@@ -107,6 +113,33 @@ export default function AdminDashboardPage() {
                 <tr key={report.id} className="border-t border-border hover:bg-surface-hover transition">
                   <td className="px-5 py-3 font-medium">{report.reason || '-'}</td>
                   <td className="px-5 py-3 text-dim text-right">{new Date(report.created_at).toLocaleDateString('ko-KR')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Google 자동매칭 로그 */}
+      <div className="bg-surface rounded-xl border border-border">
+        <h2 className="text-sm font-bold p-5 pb-3">Google 자동매칭 로그</h2>
+        {data.recentMatchLogs.length === 0 ? (
+          <div className="text-center py-8 text-dim text-xs border-t border-border">매칭 기록이 없습니다.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-t border-border text-xs text-dim">
+                <th className="text-left px-5 py-2.5 font-semibold">회원</th>
+                <th className="text-left px-5 py-2.5 font-semibold">매칭 방식</th>
+                <th className="text-right px-5 py-2.5 font-semibold">시간</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.recentMatchLogs.map(log => (
+                <tr key={log.id} className="border-t border-border hover:bg-surface-hover transition">
+                  <td className="px-5 py-3 font-medium">{log.matched_user?.nickname || log.matched_user?.id || '-'}</td>
+                  <td className="px-5 py-3 text-dim">{log.match_method === 'blog_id' ? '블로그 주소' : '닉네임'}</td>
+                  <td className="px-5 py-3 text-dim text-right">{new Date(log.created_at).toLocaleString('ko-KR')}</td>
                 </tr>
               ))}
             </tbody>

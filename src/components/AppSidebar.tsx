@@ -109,6 +109,8 @@ function NavLink({
 
 const SIDEBAR_ACCORDION_KEY = 'ninfl:sidebar:expanded:v1';
 
+// 모든 그룹을 페이지와 무관하게 기본적으로 펼쳐둔다 (오렌지 요청, 2026-07-31)
+
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
@@ -150,7 +152,7 @@ function SidebarContent({
   const activeHref = getActiveHref(pathname, ALL_NAV_HREFS);
 
   // 그룹별 접기/펼치기 상태 — 사용자가 직접 조작한 그룹만 localStorage에 override로 남긴다.
-  // 명시적으로 건드리지 않은 그룹은 현재 페이지가 속한 그룹만 기본적으로 펼쳐진다.
+  // 명시적으로 건드리지 않은 그룹은 모두 기본적으로 펼쳐진다 (오렌지 요청, 2026-07-31).
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -158,7 +160,7 @@ function SidebarContent({
       const raw = localStorage.getItem(SIDEBAR_ACCORDION_KEY);
       if (raw) setOverrides(JSON.parse(raw));
     } catch {
-      // localStorage 접근 불가 시 기본값(현재 페이지 그룹만 펼침) 유지
+      // localStorage 접근 불가 시 기본값(전체 펼침) 유지
     }
   }, []);
 
@@ -186,13 +188,13 @@ function SidebarContent({
           onNavigate={onNavigate}
         />
         {SIDEBAR_GROUPS.map((group) => {
-          const hasActiveItem = group.items.some((item) => item.href !== '#' && item.href === activeHref);
-          const isOpen = overrides[group.label] ?? hasActiveItem;
+          const defaultOpen = true;
+          const isOpen = overrides[group.label] ?? defaultOpen;
           return (
             <div key={group.label}>
               <button
                 type="button"
-                onClick={() => toggleGroup(group.label, hasActiveItem)}
+                onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
                 className="w-full flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide hover:bg-bg transition-colors cursor-pointer"
                 style={{ color: '#BF8888' }}

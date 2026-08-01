@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { requirePaidPlan } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
 import { analyzePost } from '@/lib/post-structure-analyzer';
@@ -7,6 +6,7 @@ import { computeContentScore, type SubScores } from '@/lib/post-content-scorer';
 import { AI_DISABLED } from '@/lib/ai-disabled';
 import { googleIndexingDiagnoseLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { FAILURE_REASON_LABEL } from '@/lib/google-indexing-types';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -85,9 +85,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (needsNarrative && !AI_DISABLED && apiKey && analysis?.success) {
     try {
-      const anthropic = new Anthropic({ apiKey });
+      const anthropic = getAnthropicClient(apiKey);
       const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: CLAUDE_MODEL_HAIKU,
         max_tokens: 400,
         system: `당신은 네이버 블로그의 구글 색인 실패 원인을 진단하는 SEO 전문가입니다.
 아래 정보를 보고 왜 이 글이 구글에 색인되지 않았을지 2~3문장으로 한국어로 설명하고,

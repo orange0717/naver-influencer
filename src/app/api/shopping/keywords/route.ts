@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import { checkToolAnonQuota } from '@/lib/anon-quota';
 
 export const dynamic = 'force-dynamic';
+
+// 비회원/미인증 남용 방지 (네이버 검색광고 유료 API + 크롤링 보호)
+// search-volume 라우트와 동일한 IP+UA 일일 캡 패턴 적용
+const ANON_DAILY_LIMIT = 30;
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -173,6 +178,18 @@ async function fetchShoppingKeywordVolume(keyword: string): Promise<{
 
 export async function GET(request: NextRequest) {
   try {
+    // 인증 없는 공개 엔드포인트 — IP+UA 일일 캡으로 네이버 API/크롤링 남용 차단
+    const quota = await checkToolAnonQuota(request, 'shopping-keywords', ANON_DAILY_LIMIT);
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: `오늘 조회 한도(${ANON_DAILY_LIMIT}회)를 모두 사용했습니다.`,
+          limitExceeded: true,
+        },
+        { status: 429 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const keyword = searchParams.get('keyword');
     const action = searchParams.get('action') || 'search';

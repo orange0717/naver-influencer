@@ -47,26 +47,20 @@ export async function GET(request: NextRequest) {
       // 동시 로그인 기기 제한 — 세션 등록 (device_id 쿠키 없으면 신규 발급)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // 정책: 구글 등 OAuth 는 "이미 회원가입한 계정만" 로그인 허용.
-        //   public.users 레코드가 없으면 = 신규 OAuth 가입 시도이므로
-        //   세션을 폐기하고 로그인 페이지로 안내한다. auth.users 레코드도
-        //   삭제해 같은 이메일로 추후 정상 가입할 수 있게 한다.
+        // 정책: 구글 로그인은 최초 1회에 한해 그 자리에서 신규 가입을 허용한다.
+        //   public.users 레코드가 없으면 = 최초 Google 로그인이므로 세션은
+        //   유지한 채 온보딩 페이지로 보내 닉네임/약관 동의(+선택적 블로그
+        //   연결)를 완료시킨다. 온보딩 미완료 상태는 /api/auth/me 가 그대로
+        //   비로그인처럼 취급하므로 별도 미들웨어 처리가 필요 없다.
         const admin = createServiceClient();
+        // auth_id(비밀번호 로그인) 또는 google_auth_id(자동매칭으로 연결된 계정)
+        // 둘 중 하나만 맞아도 기존 회원 — 안 그러면 매칭된 회원이 Google
+        // 재로그인할 때마다 온보딩 루프에 빠진다.
         const { data: existingUser } = await admin
           .from('users')
           .select('id')
-          .eq('auth_id', user.id)
+          .or(`auth_id.eq.${user.id},google_auth_id.eq.${user.id}`)
           .maybeSingle();
-
-        if (!existingUser) {
-          await supabase.auth.signOut();
-          try {
-            await admin.auth.admin.deleteUser(user.id);
-          } catch (e) {
-            console.error('[oauth-callback] cleanup deleteUser failed:', e);
-          }
-          return NextResponse.redirect(`${origin}/?authModal=login&reason=oauth_no_account`);
-        }
 
         let deviceId = cookieStore.get(DEVICE_ID_COOKIE)?.value;
         if (!deviceId) {
@@ -85,6 +79,12 @@ export async function GET(request: NextRequest) {
           ?? request.headers.get('x-real-ip')
           ?? null;
         await registerSession(user.id, deviceId, { userAgent, ip });
+
+        if (!existingUser) {
+          const res = NextResponse.redirect(`${origin}/auth/onboard?next=${encodeURIComponent(next)}`);
+          clearPostAuthDemoCookies(res);
+          return res;
+        }
       }
       const res = NextResponse.redirect(`${origin}${next}`);
       clearPostAuthDemoCookies(res);

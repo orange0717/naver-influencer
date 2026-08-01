@@ -1,9 +1,17 @@
-# Vercel Cron 보조(5분×3샤드). 시크릿: .github/GITHUB_ACTIONS_SECRETS.md
+# Vercel Cron 보조(10분×2샤드 병렬 실행, vercel.json과 동일 파티션). 시크릿: .github/GITHUB_ACTIONS_SECRETS.md
+#
+# 알려진 한계 (2026-07-30 조사, 워크플로 코드로 해결 불가):
+# GitHub Actions의 schedule(cron) 트리거는 고빈도(10분 이하) 설정 시 플랫폼 자체적으로
+# 지연·드롭될 수 있음(GitHub 공식 문서에 명시된 best-effort 특성). 실측 결과 이 워크플로의
+# 스케줄 트리거가 3시간 넘게 한 번도 발동하지 않은 사례가 있었으나, 실제 크롤링의 주 트리거는
+# Vercel Cron(vercel.json, 별도 인프라)이라 이 워크플로가 안 도는 동안에도 데이터 수집 자체는
+# 끊기지 않았음. 이 워크플로는 어디까지나 "안전망(보조)"이며, 발동이 뜸해져도 실데이터에 미치는
+# 영향은 daily-challenge-ranks-drain.yml(새벽 보충)이 흡수함.
 name: N인플 챌린지 순위 크롤링 안전망
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -19,15 +27,88 @@ jobs:
       NINFL_BASE_URL: ${{ vars.NINFL_BASE_URL || 'https://ninfle.kr' }}
       NINFLE_CRON_AUTH_LABEL: github-actions-safety-net
     steps:
-      - uses: actions/checkout@v4
+      - name: STEP 1 - Checkout
+        uses: actions/checkout@v4
 
-      - name: Trigger scheduled crawler (3 shards)
+      - name: STEP 2 - Trigger scheduled crawler (2 shards, parallel, retry on transient failure)
         run: |
-          set -euo pipefail
+          set -uo pipefail
+
+          echo "::group::STEP 2a - Verify secrets"
           source .github/scripts/ninfle-cron-auth.sh
+          set -uo pipefail  # ninfle-cron-auth.sh sets -e internally; restore our own flags for the retry loop below
+          echo "CRON_SECRET present, auth header ready"
+          echo "::endgroup::"
+
           BASE="${NINFL_BASE_URL:-https://ninfle.kr}"
-          for SHARD in 0 1 2; do
-            curl --fail --show-error --silent --max-time 320 \
-              "${NINFLE_CRON_AUTH[@]}" \
-              "$BASE/api/cron/crawl-challenge-ranks-scheduled?shard=$SHARD&shards=3"
+
+          # (2026-07-30) 순차 실행 시 1회 총 소요가 최대 640초(샤드당 최대 320초×2)까지
+          # 걸려서, concurrency(cancel-in-progress:false) 대기열에 다음 스케줄 트리거가
+          # 쌓이다 못해 상당수가 조용히 유실되는 문제를 발견함. 샤드를 병렬 실행해
+          # 워크플로 총 소요를 절반(~320초)으로 줄여 다음 크론(10분 간격) 전에 끝나게 함.
+          run_shard() {
+            local shard="$1"
+            local url="$BASE/api/cron/crawl-challenge-ranks-scheduled?shard=$shard&shards=2"
+            local attempt=1
+            local max_attempts=3
+            local delay=5
+
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "[shard $shard] STEP 2b - attempt $attempt/$max_attempts: GET $url"
+              local start
+              start=$(date +%s)
+              if curl --fail --show-error --silent --max-time 320 \
+                  "${NINFLE_CRON_AUTH[@]}" "$url" \
+                  > "/tmp/shard-$shard.log" 2> "/tmp/shard-$shard.err"; then
+                echo "[shard $shard] OK ($(( $(date +%s) - start ))s, attempt $attempt)"
+                return 0
+              fi
+
+              local elapsed=$(( $(date +%s) - start ))
+              echo "[shard $shard] FAIL after ${elapsed}s (attempt $attempt): $(cat "/tmp/shard-$shard.err")"
+
+              # 320s 근처까지 걸렸다면 서버측 처리 자체가 오래 걸린 것(예: 504) —
+              # 같은 작업을 즉시 재시도해도 다시 오래 걸릴 뿐이고 10분 job timeout을
+              # 넘길 위험만 커지므로 재시도하지 않고 다음 10분 크론에 맡긴다.
+              if [ "$elapsed" -ge 60 ]; then
+                echo "[shard $shard] elapsed >=60s — server-side slow response, not transient. Skipping retry (next cron tick within 10min will resume the queue)."
+                return 1
+              fi
+
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                echo "[shard $shard] transient failure (network/429/5xx) — retrying in ${delay}s (exponential backoff)"
+                sleep "$delay"
+                delay=$((delay * 2))
+              fi
+              attempt=$((attempt + 1))
+            done
+            return 1
+          }
+
+          PIDS=()
+          for SHARD in 0 1; do
+            run_shard "$SHARD" &
+            PIDS+=("$!")
           done
+
+          FAIL=0
+          for i in 0 1; do
+            if ! wait "${PIDS[$i]}"; then
+              echo "::error::shard $i failed after retries"
+              FAIL=1
+            fi
+          done
+
+          echo "::group::STEP 2c - Shard output"
+          for SHARD in 0 1; do
+            echo "--- shard $SHARD output ---"
+            cat "/tmp/shard-$SHARD.log" 2>/dev/null || true
+          done
+          echo "::endgroup::"
+
+          if [ "$FAIL" -eq 0 ]; then
+            echo "STEP 3 - Both shards completed successfully"
+          else
+            echo "::error::STEP 3 - One or more shards failed (see STEP 2b/2c logs above for reason)"
+          fi
+          exit "$FAIL"

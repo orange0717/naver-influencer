@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidAccess, isAdmin } from '@/lib/admin';
-import { createServiceClient } from '@/lib/supabase-server';
+import { requirePaidAccess, hasActivePaidPlanByUserId } from '@/lib/admin';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -8,28 +7,6 @@ export const maxDuration = 60;
 
 const WORKER_URL = 'https://jolly-term-4055.orange-e65.workers.dev';
 const MAX_TEXT_LENGTH = 10_000;
-
-/**
- * 사용자의 구독 플랜 확인 (blogger+ 또는 influencer 만 허용)
- */
-async function hasActivePaidPlan(userId: string): Promise<boolean> {
-  if (isAdmin(userId)) return true;
-  try {
-    const supabase = createServiceClient();
-    const { data } = await supabase
-      .from('users')
-      .select('subscription_plan, subscription_expires_at')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (!data?.subscription_plan || !data?.subscription_expires_at) return false;
-    const expires = new Date(data.subscription_expires_at).getTime();
-    if (Number.isNaN(expires) || expires < Date.now()) return false;
-    return data.subscription_plan === 'INFLUENCER' || data.subscription_plan === 'BLOGGER';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * 맞춤법 검사 — OrangeRefine Worker /api/spacing-ai 프록시
@@ -42,7 +19,7 @@ export async function POST(request: NextRequest) {
   const auth = await requirePaidAccess(request);
   if (auth.error) return auth.error;
 
-  if (!(await hasActivePaidPlan(auth.authUser.userId))) {
+  if (!(await hasActivePaidPlanByUserId(auth.authUser.userId))) {
     return NextResponse.json(
       { error: '구독 플랜이 필요합니다. 블로거+ 또는 인플루언서 플랜으로 업그레이드해주세요.' },
       { status: 402 },

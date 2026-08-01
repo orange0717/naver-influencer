@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
-import { isAdmin } from '@/lib/admin';
+import { isAdminFromProfile } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +34,7 @@ export async function DELETE(
     }
 
     const isOwner = comment.author_id === authUser.userId;
-    const isAdminUser = isAdmin(authUser.userId);
+    const isAdminUser = isAdminFromProfile({ id: authUser.userId, is_admin: authUser.user.is_admin });
     if (!isOwner && !isAdminUser) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }

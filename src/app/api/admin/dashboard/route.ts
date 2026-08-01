@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
     dailySignupsResult,
     recentUsersResult,
     recentReportsResult,
+    recentMatchLogsResult,
   ] = await Promise.all([
     // 총 회원수
     supabase.from('users').select('*', { count: 'exact', head: true }),
@@ -54,6 +55,12 @@ export async function GET(req: NextRequest) {
     supabase.from('users').select('nickname, email, created_at').order('created_at', { ascending: false }).limit(5),
     // 최근 대기 신고 5건
     supabase.from('community_reports').select('id, reason, status, created_at').eq('status', 'pending').order('created_at', { ascending: false }).limit(5),
+    // 최근 Google 자동매칭 로그 20건
+    supabase
+      .from('account_match_logs')
+      .select('id, match_method, created_at, matched_user:matched_user_id(id, nickname)')
+      .order('created_at', { ascending: false })
+      .limit(20),
   ]);
 
   // 총 결제금액 계산
@@ -83,5 +90,6 @@ export async function GET(req: NextRequest) {
     dailySignups,
     recentUsers: recentUsersResult.data || [],
     recentReports: recentReportsResult.data || [],
+    recentMatchLogs: recentMatchLogsResult.data || [],
   });
 }

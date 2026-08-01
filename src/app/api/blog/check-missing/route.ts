@@ -1,210 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
-import { createHmac } from 'crypto';
 import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { createServiceClient } from '@/lib/supabase-server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
+import { checkBlogTab, checkViewTab, checkInfluencerTab, getSearchVolume, CACHE_TTL_SEC, type RankCheckResult } from '@/lib/keyword-rank-check';
 
 export const dynamic = 'force-dynamic';
-
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || '';
-const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
-
-// 순위 결과 공유 캐시 (Redis, 인스턴스·기기 간 공유 / 10분 — 자동 새로고침 주기와 일치)
-const CACHE_TTL_SEC = 10 * 60;
-
-// 검색량 공유 캐시 (24시간)
-const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
 
 // 동일 인스턴스 내 동시 요청 공유: 같은 cacheKey를 여러 사용자가 동시에 조회해도
 // 진행 중인 크롤링 하나만 수행하고 결과를 나눠 갖는다 (네이버 요청 중복 방지)
 const inFlight = new Map<string, Promise<RankCheckResult>>();
 
-type RankCheckResult = {
-  blogTab: { exposed: boolean; rank: number | null };
-  viewTab: { exposed: boolean; rank: number | null };
-  query: string;
-  searchVolume: number;
-  checkedAt: string;
-};
-
 // displayName 캐시 (30분, 프로세스 로컬 — DB 조회가 이미 빠름)
 const nameCache = new Map<string, { name: string; expires: number }>();
 const NAME_CACHE_TTL = 30 * 60 * 1000;
-
-/**
- * 네이버 블로그탭에서 포스팅 노출 여부 확인
- * data-cr-on="r=순위" 속성에서 네이버 공식 순위를 추출 (정확도 높음)
- * 폴백: <a> href에서 blog.naver.com 링크 수동 카운트
- */
-async function checkBlogTab(query: string, blogId: string, postId: string): Promise<{
-  exposed: boolean;
-  rank: number | null;
-}> {
-  if (!blogId || !postId) {
-    return { exposed: false, rank: null };
-  }
-
-  const blogIdLower = blogId.toLowerCase();
-  const postIdStr = String(postId);
-  const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
-
-  for (let page = 1; page <= 3; page++) {
-    const start = (page - 1) * 10 + 1;
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
-
-    try {
-      const res = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          'Accept-Encoding': 'gzip, deflate',
-          'Referer': 'https://search.naver.com/',
-        },
-      });
-      if (!res.ok) continue;
-
-      const html = await res.text();
-
-      // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
-      // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
-      // 주의: r= 값은 페이지 내 상대 순위이므로, 페이지 번호를 반영해 절대 순위로 변환
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
-      const seen = new Set<string>();
-      let match;
-
-      while ((match = rankRegex.exec(html)) !== null) {
-        const [, linkBlogId, linkPostId, rankStr] = match;
-        const key = `${linkBlogId}/${linkPostId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-          // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
-          const absoluteRank = start + parseInt(rankStr) - 1;
-          return { exposed: true, rank: absoluteRank };
-        }
-      }
-
-      // 2순위 폴백: <a> href에서 수동 카운트 (data-cr-on 없는 경우)
-      if (seen.size === 0) {
-        const $ = cheerio.load(html);
-        const blogLinks: { blogId: string; postId: string }[] = [];
-        const seenFb = new Set<string>();
-        let globalRank = (page - 1) * 10;
-
-        $('a').each((_, el) => {
-          const href = $(el).attr('href') || '';
-          const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-          if (!m) return;
-          const key = `${m[1]}/${m[2]}`;
-          if (seenFb.has(key)) return;
-          seenFb.add(key);
-          blogLinks.push({ blogId: m[1], postId: m[2] });
-        });
-
-        for (const link of blogLinks) {
-          globalRank++;
-          if (link.blogId.toLowerCase() === blogIdLower && link.postId === postIdStr) {
-            return { exposed: true, rank: globalRank };
-          }
-        }
-      }
-    } catch { continue; }
-
-    if (page < 3) await new Promise(r => setTimeout(r, 500));
-  }
-
-  return { exposed: false, rank: null };
-}
-
-/**
- * 네이버 통합검색(VIEW) — 검색 결과 페이지 직접 파싱
- * data-cr-on="r=순위" 속성에서 네이버 공식 순위 추출
- */
-async function checkViewTab(query: string, blogId: string, postId?: string): Promise<{
-  exposed: boolean;
-  rank: number | null;
-}> {
-  if (!blogId || !postId) {
-    return { exposed: false, rank: null };
-  }
-
-  const blogIdLower = blogId.toLowerCase();
-  const postIdStr = String(postId);
-  const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
-
-  for (let page = 1; page <= 3; page++) {
-    const start = (page - 1) * 10 + 1;
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
-
-    try {
-      const res = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          'Accept-Encoding': 'gzip, deflate',
-          'Referer': 'https://search.naver.com/',
-        },
-      });
-      if (!res.ok) continue;
-
-      const html = await res.text();
-
-      // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..."
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
-      const seen = new Set<string>();
-      let match;
-
-      while ((match = rankRegex.exec(html)) !== null) {
-        const [, linkBlogId, linkPostId, rankStr] = match;
-        const key = `${linkBlogId}/${linkPostId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-          const absoluteRank = start + parseInt(rankStr) - 1;
-          return { exposed: true, rank: absoluteRank };
-        }
-      }
-
-      // 2순위 폴백: webkr API 사용
-      if (seen.size === 0 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
-        try {
-          const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
-          const apiRes = await fetch(apiUrl, {
-            headers: {
-              'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
-              'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
-            },
-          });
-          if (apiRes.ok) {
-            const apiData = await apiRes.json();
-            const items = apiData.items || [];
-            let rank = 0;
-            for (const item of items) {
-              const link = item.link || '';
-              const blogMatch = link.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-              if (!blogMatch) continue;
-              rank++;
-              if (blogMatch[1].toLowerCase() === blogIdLower && blogMatch[2] === postIdStr) {
-                return { exposed: true, rank };
-              }
-            }
-          }
-        } catch { /* ignore */ }
-      }
-    } catch { continue; }
-
-    if (page < 3) await new Promise(r => setTimeout(r, 500));
-  }
-
-  return { exposed: false, rank: null };
-}
 
 /**
  * 서버에서 blogId로 displayName(blog_name) 직접 조회
@@ -288,68 +97,6 @@ function extractKeywords(title: string, blogId: string, displayName?: string): s
 }
 
 /**
- * 키워드 검색량 조회 (네이버 Search Ads API)
- * 24시간 캐시로 불필요한 호출 최소화
- */
-async function getSearchVolume(keyword: string): Promise<number> {
-  const cacheKey = keyword.trim().toLowerCase();
-  const cached = await cacheGet<number>(`vol:${cacheKey}`);
-  if (cached !== null) return cached;
-
-  const apiKey = process.env.NAVER_API_KEY?.trim();
-  const secretKey = process.env.NAVER_SECRET_KEY?.trim();
-  const customerId = process.env.NAVER_CUSTOMER_ID?.trim();
-
-  if (!apiKey || !secretKey || !customerId) return 0;
-
-  try {
-    const timestamp = String(Date.now());
-    const message = `${timestamp}.GET./keywordstool`;
-    const signature = createHmac('sha256', secretKey).update(message).digest('base64');
-
-    const url = `https://api.searchad.naver.com/keywordstool?hintKeywords=${encodeURIComponent(keyword)}&showDetail=1`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'X-Timestamp': timestamp,
-        'X-API-KEY': apiKey,
-        'X-Customer': customerId,
-        'X-Signature': signature,
-      },
-    });
-
-    if (!res.ok) return 0;
-    const data = await res.json();
-    const keywords = data.keywordList || [];
-
-    // 정확히 일치하는 키워드의 검색량 찾기
-    const exact = keywords.find((kw: Record<string, unknown>) =>
-      String(kw.relKeyword).trim().toLowerCase() === cacheKey
-    );
-
-    let volume = 0;
-    if (exact) {
-      const pc = typeof exact.monthlyPcQcCnt === 'number' ? exact.monthlyPcQcCnt : 0;
-      const mobile = typeof exact.monthlyMobileQcCnt === 'number' ? exact.monthlyMobileQcCnt : 0;
-      volume = pc + mobile;
-    } else if (keywords.length > 0) {
-      // 정확히 일치하지 않으면 첫 번째 결과 사용
-      const first = keywords[0];
-      const pc = typeof first.monthlyPcQcCnt === 'number' ? first.monthlyPcQcCnt : 0;
-      const mobile = typeof first.monthlyMobileQcCnt === 'number' ? first.monthlyMobileQcCnt : 0;
-      volume = pc + mobile;
-    }
-
-    // 캐시 저장 (24시간, 공유)
-    await cacheSet(`vol:${cacheKey}`, volume, VOLUME_CACHE_TTL_SEC);
-
-    return volume;
-  } catch {
-    return 0;
-  }
-}
-
-/**
  * POST /api/blog/check-missing
  * 포스팅의 블로그탭 + 통합검색 노출/누락 여부 확인
  */
@@ -393,11 +140,16 @@ export async function POST(request: NextRequest) {
           query = extractKeywords(postTitle, blogId, displayName);
         }
 
-        // 블로그탭 + 통합검색 동시 확인
-        let [blogTab, viewTab] = await Promise.all([
+        // 블로그탭 + 통합검색 + (사용자 지정 키워드인 경우만) 인플루언서탭 동시 확인
+        // 인플루언서탭은 /my/keyword-ranking(사용자 키워드 지정) 전용 — 자동추출 제목 기반 확인(경쟁분석 등)에는 불필요
+        const hasKeyword = Boolean(keyword && keyword.trim());
+        const [blogTabResult, viewTabResult, influencerTab] = await Promise.all([
           checkBlogTab(query, blogId, postId || ''),
           checkViewTab(query, blogId, postId || ''),
+          hasKeyword ? checkInfluencerTab(query, blogId, postId || '') : Promise.resolve({ exposed: false, rank: null }),
         ]);
+        let blogTab = blogTabResult;
+        let viewTab = viewTabResult;
 
         // 폴백: 사용자 키워드가 아닌 경우 여러 쿼리 조합으로 재시도
         if (!keyword && (!blogTab.exposed || !viewTab.exposed)) {
@@ -442,6 +194,7 @@ export async function POST(request: NextRequest) {
         const freshResult: RankCheckResult = {
           blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },
           viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
+          influencerTab: { exposed: influencerTab.exposed, rank: influencerTab.rank },
           query,
           searchVolume,
           checkedAt: new Date().toISOString(),
@@ -468,7 +221,10 @@ export async function POST(request: NextRequest) {
               fail_count: 0,
               checked_at: freshResult.checkedAt,
             }, { onConflict: 'blog_id,post_id' });
-          } catch { /* DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) */ }
+          } catch (err) {
+            // DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) — 다만 원인 추적을 위해 로그는 남긴다
+            console.error(`[check-missing] post_missing_checks 저장 실패 blogId=${blogId} postId=${postId} query="${query}":`, err);
+          }
         }
 
         return freshResult;
@@ -479,7 +235,8 @@ export async function POST(request: NextRequest) {
 
     const result = await promise;
     return NextResponse.json({ ...result, cached: false });
-  } catch {
+  } catch (err) {
+    console.error('[check-missing] 요청 처리 중 예외:', err);
     return NextResponse.json({ error: '누락 확인 중 오류' }, { status: 500 });
   }
 }

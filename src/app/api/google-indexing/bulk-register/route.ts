@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePaidPlan } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
-import { fetchBlogPostList } from '@/lib/blog-post-list';
+import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 import { submitSitemapForUser } from '@/lib/sitemap-builder';
 import { googleIndexingRegisterLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -36,9 +36,13 @@ export async function POST(request: NextRequest) {
 
   const collected: { id: string; title: string; url: string }[] = [];
   const maxPages = mode === 'all' ? ALL_MAX_PAGES : Math.ceil(RECENT_TARGET / PAGE_SIZE);
+  let lastPage = 0;
+  let totalCount = 0;
 
   for (let page = 1; page <= maxPages; page++) {
     const result = await fetchBlogPostList(blogId, page, PAGE_SIZE);
+    lastPage = page;
+    totalCount = result.totalCount;
     if (result.posts.length === 0) break;
     collected.push(...result.posts);
     if (mode === 'recent50' && collected.length >= RECENT_TARGET) break;
@@ -79,5 +83,33 @@ export async function POST(request: NextRequest) {
     console.warn('[google-indexing/bulk-register] sitemap submit 실패:', err instanceof Error ? err.message : err);
   });
 
-  return NextResponse.json({ success: true, requested: posts.length, truncated: mode === 'all' && collected.length >= PAGE_SIZE * ALL_MAX_PAGES });
+  // 'all' 모드에서 이번 요청으로 못 가져온 나머지가 있으면 백그라운드 잡을 큐잉해
+  // cron(google-indexing-bulk-continue)이 이어서 마저 등록하게 한다 (300개 캡 실질 해제).
+  const remaining = mode === 'all' && totalCount > collected.length;
+  if (remaining) {
+    const { error: jobError } = await supabase.from('bulk_index_jobs').upsert(
+      {
+        user_id: paid.authUser.userId,
+        blog_id: blogId,
+        page_size: PAGE_SIZE,
+        next_page: lastPage + 1,
+        total_count: totalCount,
+        registered_count: collected.length,
+        status: 'running',
+        error_message: null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' },
+    );
+    if (jobError) {
+      console.error('[google-indexing/bulk-register] bulk_index_jobs upsert error:', jobError.message);
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    requested: posts.length,
+    totalCount: mode === 'all' ? totalCount : undefined,
+    queued: remaining,
+  });
 }

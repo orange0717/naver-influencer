@@ -9,9 +9,17 @@ export const dynamic = 'force-dynamic';
 type RankingResult = {
   blogTab: { exposed: boolean | null; rank: number | null };
   viewTab: { exposed: boolean | null; rank: number | null };
+  influencerTab: { exposed: boolean | null; rank: number | null };
   query: string;
   searchVolume?: number;
   checkedAt?: string | null;
+};
+
+type RankDelta = {
+  prevRank: number | null;
+  prevCheckedAt: string | null;
+  weekRank: number | null;
+  weekCheckedAt: string | null;
 };
 
 async function guard(request: NextRequest): Promise<{ res: NextResponse } | { userId: string }> {
@@ -33,13 +41,18 @@ export async function GET(request: NextRequest) {
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
 
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from('keyword_rank_lookups')
-    .select('post_id, keyword, view_rank, view_exposed, blog_rank, blog_exposed, search_volume, checked_at')
-    .eq('user_id', g.userId)
-    .eq('blog_id', blogId);
+  const [{ data, error }, { data: deltaRows, error: deltaError }] = await Promise.all([
+    supabase
+      .from('keyword_rank_lookups')
+      .select('post_id, keyword, view_rank, view_exposed, blog_rank, blog_exposed, influencer_rank, influencer_exposed, search_volume, checked_at')
+      .eq('user_id', g.userId)
+      .eq('blog_id', blogId),
+    supabase.rpc('get_keyword_rank_deltas', { p_user_id: g.userId, p_blog_id: blogId }),
+  ]);
 
   if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
+  // 이력 RPC는 부가 정보(전일/7일대비)이므로 실패해도 나머지 응답은 그대로 반환
+  if (deltaError) console.error('[keyword-ranking-state] get_keyword_rank_deltas 실패:', deltaError);
 
   // 클라이언트 모델로 정리: postKeywords(postId→키워드[]) + rankingResults("postId::keyword"→결과)
   const postKeywords: Record<string, string[]> = {};
@@ -48,6 +61,7 @@ export async function GET(request: NextRequest) {
     post_id: string; keyword: string;
     view_rank: number | null; view_exposed: boolean | null;
     blog_rank: number | null; blog_exposed: boolean | null;
+    influencer_rank: number | null; influencer_exposed: boolean | null;
     search_volume: number | null; checked_at: string | null;
   }>) {
     (postKeywords[r.post_id] ??= []).push(r.keyword);
@@ -56,13 +70,30 @@ export async function GET(request: NextRequest) {
         query: r.keyword,
         viewTab: { exposed: r.view_exposed, rank: r.view_rank },
         blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
+        influencerTab: { exposed: r.influencer_exposed, rank: r.influencer_rank },
         searchVolume: r.search_volume ?? undefined,
         checkedAt: r.checked_at,
       };
     }
   }
 
-  return NextResponse.json({ postKeywords, rankingResults });
+  // 전일대비/7일대비는 통합검색(integrated) 순위 기준으로만 계산 (오렌지 확정 결정)
+  const rankDeltas: Record<string, RankDelta> = {};
+  for (const d of (deltaRows ?? []) as Array<{
+    post_id: string; keyword: string; search_type: string;
+    prev_rank: number | null; prev_checked_at: string | null;
+    week_rank: number | null; week_checked_at: string | null;
+  }>) {
+    if (d.search_type !== 'integrated') continue;
+    rankDeltas[`${d.post_id}::${d.keyword}`] = {
+      prevRank: d.prev_rank,
+      prevCheckedAt: d.prev_checked_at,
+      weekRank: d.week_rank,
+      weekCheckedAt: d.week_checked_at,
+    };
+  }
+
+  return NextResponse.json({ postKeywords, rankingResults, rankDeltas });
 }
 
 /** PUT: 한 포스트의 키워드 할당을 저장 (신규 upsert + 제거된 키워드 삭제). 기존 순위는 보존. */
@@ -126,24 +157,54 @@ export async function PATCH(request: NextRequest) {
 
   const r = (result ?? {}) as Partial<RankingResult>;
   const supabase = createServiceClient();
+  const trimmedKeyword = keyword.trim();
+  const checkedAt = typeof r.checkedAt === 'string' && r.checkedAt ? r.checkedAt : new Date().toISOString();
   const { error } = await supabase
     .from('keyword_rank_lookups')
     .upsert({
       user_id: g.userId,
       blog_id: blogId,
       post_id: postId,
-      keyword: keyword.trim(),
+      keyword: trimmedKeyword,
       view_rank: typeof r.viewTab?.rank === 'number' ? r.viewTab.rank : null,
       view_exposed: typeof r.viewTab?.exposed === 'boolean' ? r.viewTab.exposed : null,
       blog_rank: typeof r.blogTab?.rank === 'number' ? r.blogTab.rank : null,
       blog_exposed: typeof r.blogTab?.exposed === 'boolean' ? r.blogTab.exposed : null,
+      influencer_rank: typeof r.influencerTab?.rank === 'number' ? r.influencerTab.rank : null,
+      influencer_exposed: typeof r.influencerTab?.exposed === 'boolean' ? r.influencerTab.exposed : null,
       search_volume: typeof r.searchVolume === 'number' ? r.searchVolume : null,
       // 캐시 히트로 받은 결과는 실제 조회 시각(checkedAt)이 과거일 수 있으므로 그대로 보존
-      checked_at: typeof r.checkedAt === 'string' && r.checkedAt ? r.checkedAt : new Date().toISOString(),
+      checked_at: checkedAt,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,post_id,keyword' });
 
   if (error) return NextResponse.json({ error: '갱신에 실패했습니다.' }, { status: 500 });
+
+  // 순위 이력 적재 (전일대비/7일대비 계산의 근거) — 동일 checked_at으로 재요청되면 자연키 충돌로 무시됨(캐시 히트 재저장 대비)
+  const historyRows = [
+    { search_type: 'integrated', rank: typeof r.viewTab?.rank === 'number' ? r.viewTab.rank : null, exposed: r.viewTab?.exposed },
+    { search_type: 'blog', rank: typeof r.blogTab?.rank === 'number' ? r.blogTab.rank : null, exposed: r.blogTab?.exposed },
+    { search_type: 'influencer', rank: typeof r.influencerTab?.rank === 'number' ? r.influencerTab.rank : null, exposed: r.influencerTab?.exposed },
+  ]
+    .filter(row => typeof row.exposed === 'boolean')
+    .map(row => ({
+      user_id: g.userId,
+      blog_id: blogId,
+      post_id: postId,
+      keyword: trimmedKeyword,
+      search_type: row.search_type,
+      rank: row.rank,
+      checked_at: checkedAt,
+    }));
+
+  if (historyRows.length > 0) {
+    const { error: historyError } = await supabase
+      .from('keyword_rank_history')
+      .upsert(historyRows, { onConflict: 'user_id,post_id,keyword,search_type,checked_at', ignoreDuplicates: true });
+    // 이력 저장 실패는 순위 자체 저장(위)에 영향 없음 — 전일/7일대비만 못 채워질 뿐이므로 로그만 남기고 응답은 성공 유지
+    if (historyError) console.error('[keyword-ranking-state] keyword_rank_history 저장 실패:', historyError);
+  }
+
   return NextResponse.json({ success: true });
 }
 

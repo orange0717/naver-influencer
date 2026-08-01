@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
-import { isAdmin } from '@/lib/admin';
+import { isAdminFromProfile } from '@/lib/admin';
 import { validateBody } from '@/lib/validations';
 import { editMessageSchema } from '@/lib/validations/chat';
 import { detectProfanity } from '@/lib/profanity';
@@ -112,11 +112,11 @@ export async function DELETE(
     : `naver_id.eq.${cookieUser.id}`;
   const { data: userRow } = await supabase
     .from('users')
-    .select('id')
+    .select('id, is_admin')
     .or(orClause)
     .limit(1)
     .maybeSingle();
-  const userIsAdmin = userRow?.id ? isAdmin(userRow.id) : false;
+  const userIsAdmin = userRow?.id ? isAdminFromProfile(userRow) : false;
 
   if (msg.author_id !== cookieUser.id && !userIsAdmin) {
     return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });

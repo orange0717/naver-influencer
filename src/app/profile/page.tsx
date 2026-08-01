@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { clearUserScopedLocalStorage } from '@/lib/clear-user-storage';
 import { useNotificationSettings } from '@/hooks/useNotifications';
 import UsagePeriodCard from '@/components/dashboard/UsagePeriodCard';
+import { extractBlogId } from '@/lib/blog-utils';
 
 interface UserProfile {
   id: string;
@@ -251,10 +252,7 @@ export default function ProfilePage() {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
 
     // URL에서 blog ID 추출
-    let blogId = blogIdInput.trim();
-    const urlMatch = blogId.match(/(?:https?:\/\/)?(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9._-]+)/);
-    if (urlMatch) blogId = urlMatch[1].toLowerCase();
-    blogId = blogId.replace(/^@/, '').toLowerCase();
+    const blogId = extractBlogId(blogIdInput);
 
     if (!blogId) {
       showToast('블로그 아이디를 입력해주세요.');

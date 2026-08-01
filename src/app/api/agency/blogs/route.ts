@@ -4,6 +4,7 @@ import { getCookieUser } from '@/lib/auth';
 import { isAllowedUrl } from '@/lib/crawler';
 import { validateBody } from '@/lib/validations';
 import { blogIdSchema } from '@/lib/validations';
+import { extractBlogId } from '@/lib/blog-utils';
 import { z } from 'zod';
 import { communityLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -86,6 +87,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    if (body && typeof body.blog_id === 'string') {
+      body.blog_id = extractBlogId(body.blog_id);
+    }
     const v = validateBody(addBlogSchema, body);
     if (!v.success) return v.response;
 
@@ -195,6 +199,9 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const body = await req.json();
+    if (body && typeof body.blog_id === 'string') {
+      body.blog_id = extractBlogId(body.blog_id);
+    }
     const v = validateBody(deleteBlogSchema, body);
     if (!v.success) return v.response;
 

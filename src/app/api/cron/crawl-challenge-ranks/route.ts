@@ -143,7 +143,10 @@ async function fetchAllParticipatedKeywords(
       cursor = json?.paging?.nextCursor;
       if (!cursor || items.length < PAGE_LIMIT) break;
 
-      await sleep(300);
+      // (2026-07-30) 300ms→120ms: 활동 많은 인플루언서(최대 40페이지)가 페이지네이션만으로
+      // 17~18초씩 걸려 concurrency=6 웨이브가 300초 함수 제한을 넘기는 주 원인이었음.
+      // fetchWithRetry의 429 백오프(4s×2^n)가 있어 레이트리밋 위험은 안전망으로 남아있음.
+      await sleep(120);
     } catch (err) {
       console.error(`[crawl-challenge-ranks] API error at page ${page}:`, err);
       // 0페이지부터 실패 = 결과를 전혀 확인 못함(진짜 0개와 구분 필요)
@@ -164,9 +167,13 @@ async function ensureKeywordsExist(
   const missing = keywords.filter(k => !keywordMap.has(k.id));
   if (missing.length === 0) return;
 
-  // 배치로 삽입 (50개씩)
-  for (let i = 0; i < missing.length; i += 50) {
-    const batch = missing.slice(i, i + 50);
+  // 배치로 삽입 (50개씩) — 청크 간 순차 대기가 헤비 인플루언서(참여 키워드 최대 2000개 = 40청크)에서
+  // 유의미한 지연을 만들어 병렬 처리 (2026-07-30, crawl_jobs 실측: 큐 앞쪽 헤비 계정 클러스터가
+  // 300초 함수 제한을 넘기는 주 원인으로 확인됨)
+  const chunks: (typeof missing)[] = [];
+  for (let i = 0; i < missing.length; i += 50) chunks.push(missing.slice(i, i + 50));
+
+  await Promise.all(chunks.map(async batch => {
     const rows = batch.map(kw => ({
       keyword: kw.name,
       keyword_clean: cleanKeyword(kw.name),
@@ -182,7 +189,7 @@ async function ensureKeywordsExist(
       .select('id, naver_keyword_id');
 
     if (error) {
-      // 에러 시 개별 삽입
+      // 에러 시 개별 삽입 (이 경로는 드물게만 타므로 순차 유지)
       for (const row of rows) {
         try {
           const { data: single, error: singleError } = await supabase
@@ -202,7 +209,7 @@ async function ensureKeywordsExist(
         if (kw.naver_keyword_id) keywordMap.set(kw.naver_keyword_id, kw.id);
       });
     }
-  }
+  }));
 
   // keyword_clean으로 존재하지만 naver_keyword_id가 없던 키워드 재매칭
   for (const kw of missing) {
@@ -437,14 +444,15 @@ export async function GET(request: NextRequest) {
       // 3. naver_keyword_id로 keyword_challenges 매칭
       const naverKeywordIds = keywords.map(k => k.id);
       const keywordMap = new Map<number, string>();
-      for (let i = 0; i < naverKeywordIds.length; i += 500) {
-        const batch = naverKeywordIds.slice(i, i + 500);
+      const idChunks: number[][] = [];
+      for (let i = 0; i < naverKeywordIds.length; i += 500) idChunks.push(naverKeywordIds.slice(i, i + 500));
+      await Promise.all(idChunks.map(async batch => {
         const { data: dbKeywords } = await supabase
           .from('keyword_challenges')
           .select('id, naver_keyword_id')
           .in('naver_keyword_id', batch);
         dbKeywords?.forEach(kw => { if (kw.naver_keyword_id) keywordMap.set(kw.naver_keyword_id, kw.id); });
-      }
+      }));
 
       const categoryFallback = inf.my_keyword_category || inf.category || '';
       await ensureKeywordsExist(supabase, keywords, keywordMap, categoryFallback);
@@ -454,10 +462,11 @@ export async function GET(request: NextRequest) {
         const kwId = keywordMap.get(kw.id);
         if (kwId) linkRows.push({ influencer_id: inf.id, keyword_id: kwId });
       }
-      for (let i = 0; i < linkRows.length; i += 100) {
-        const batch = linkRows.slice(i, i + 100);
-        await supabase.from('influencer_keywords').upsert(batch, { onConflict: 'influencer_id,keyword_id', ignoreDuplicates: true });
-      }
+      const linkChunks: (typeof linkRows)[] = [];
+      for (let i = 0; i < linkRows.length; i += 100) linkChunks.push(linkRows.slice(i, i + 100));
+      await Promise.all(linkChunks.map(batch =>
+        supabase.from('influencer_keywords').upsert(batch, { onConflict: 'influencer_id,keyword_id', ignoreDuplicates: true }),
+      ));
 
       // 4. 직전 스냅샷 순위 조회 (rank_change 계산용)
       // 기존: snapshot_date === "어제" 한 날만 조회 → 크롤이 하루 비거나 부분 적재되면
@@ -524,14 +533,16 @@ export async function GET(request: NextRequest) {
             `[crawl-challenge-ranks] atomic RPC failed for ${inf.naver_id}, ` +
             `falling back to batch upsert: ${rpcError.message}`
           );
-          for (let i = 0; i < validRows.length; i += 100) {
-            const batch = validRows.slice(i, i + 100);
+          const rankChunks: (typeof validRows)[] = [];
+          for (let i = 0; i < validRows.length; i += 100) rankChunks.push(validRows.slice(i, i + 100));
+          const chunkResults = await Promise.all(rankChunks.map(async batch => {
             const { error } = await supabase
               .from('keyword_rankings')
               .upsert(batch, { onConflict: 'keyword_id,influencer_id,snapshot_date' });
-            if (error) console.error(`[crawl-challenge-ranks] Upsert error:`, error.message);
-            else batchCount += batch.length;
-          }
+            if (error) { console.error(`[crawl-challenge-ranks] Upsert error:`, error.message); return 0; }
+            return batch.length;
+          }));
+          batchCount += chunkResults.reduce((s, n) => s + n, 0);
         }
       }
 
