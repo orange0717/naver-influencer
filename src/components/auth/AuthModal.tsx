@@ -343,16 +343,22 @@ export default function AuthModal() {
     try {
       const supabase = createSupabaseBrowserClient();
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-      });
+      // signUp이 응답 없이 멈추면(느린 SMTP 발송 등) 아래 await가 끝나지 않아
+      // 버튼이 "계정 생성 중..."에 무한정 멈춘다 → 15초 타임아웃으로 강제 종료.
+      const { data: authData, error: authError } = await withTimeout(
+        supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        }),
+        15000,
+        '회원가입',
+      );
 
       if (authError) {
         setSignupError(
-          authError.message.includes('already registered')
+          authError.message?.includes('already registered')
             ? '이미 가입된 이메일입니다. 로그인해주세요.'
-            : authError.message,
+            : authError.message || '회원가입 중 오류가 발생했습니다.',
         );
         return;
       }
@@ -384,7 +390,7 @@ export default function AuthModal() {
       if (!res.ok) {
         const data = await res.json();
         await supabase.auth.signOut();
-        setSignupError(data.error || '프로필 생성에 실패했습니다.');
+        setSignupError(typeof data.error === 'string' && data.error ? data.error : '프로필 생성에 실패했습니다.');
         return;
       }
 
@@ -403,8 +409,12 @@ export default function AuthModal() {
         router.push('/my/blogger');
       }
       router.refresh();
-    } catch {
-      setSignupError('회원가입 중 오류가 발생했습니다.');
+    } catch (err) {
+      setSignupError(
+        err instanceof TimeoutError
+          ? '회원가입 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.'
+          : '회원가입 중 오류가 발생했습니다.',
+      );
     } finally {
       setSignupLoading(false);
       setSignupLoadingStep('');

@@ -42,11 +42,21 @@ export async function POST(request: NextRequest) {
   // 이미 존재하는지 확인 (멱등성: signUp 재시도 등)
   const { data: existing } = await supabase
     .from('users')
-    .select('id')
+    .select('id, nickname, blog_id, signup_keyword_category')
     .eq('auth_id', authUser.id)
     .single();
 
   if (existing) {
+    // signUp 응답 지연(느린 SMTP 등)으로 클라이언트가 재시도하면 인증 계정만
+    // 먼저 만들어진 채 프로필이 비어 있을 수 있다 — 누락된 필드만 백필한다.
+    const backfill: Record<string, unknown> = {};
+    if (!existing.nickname) backfill.nickname = nickname;
+    if (!existing.blog_id && blogId) backfill.blog_id = blogId;
+    if (!existing.signup_keyword_category) backfill.signup_keyword_category = keywordCategory;
+    if (Object.keys(backfill).length > 0) {
+      await supabase.from('users').update(backfill).eq('id', existing.id);
+    }
+
     const res = NextResponse.json({ success: true, userId: existing.id });
     clearPostAuthDemoCookies(res);
     return res;
