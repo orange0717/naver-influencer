@@ -76,6 +76,10 @@
       "schedule": "15 23 * * *"
     },
     {
+      "path": "/api/cron/classify-content-categories",
+      "schedule": "35 23 * * *"
+    },
+    {
       "path": "/api/cron/crawl-naver-topics",
       "schedule": "45 23 * * *"
     },

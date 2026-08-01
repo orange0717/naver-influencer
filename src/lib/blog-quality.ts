@@ -7,6 +7,7 @@
  */
 
 import * as cheerio from 'cheerio';
+import { parseNaverPostDate } from '@/lib/naver-date';
 
 const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || process.env.NAVER_DATALAB_CLIENT_ID || '';
 const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || process.env.NAVER_DATALAB_CLIENT_SECRET || '';
@@ -203,20 +204,13 @@ function computeActivityScore(posts: BlogPost[]): { score: number; postingPerMon
   const thirtyDaysAgo = now - 30 * 86400000;
   let recentCount = 0;
   for (const p of posts) {
-    const parsed = Date.parse(p.date) || parseKoreanDate(p.date);
+    const parsed = parseNaverPostDate(p.date);
     if (parsed && parsed >= thirtyDaysAgo) recentCount++;
   }
   // 샘플은 최대 10개이므로, "최근 30일 내 포스팅 비율"로 산정
   const monthRatio = Math.min(recentCount / posts.length, 1);
   const score = Math.round(monthRatio * 100);
   return { score, postingPerMonth: recentCount };
-}
-
-function parseKoreanDate(s: string): number | null {
-  // "2026. 4. 19." 같은 형식
-  const m = s.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
-  if (m) return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return null;
 }
 
 /**

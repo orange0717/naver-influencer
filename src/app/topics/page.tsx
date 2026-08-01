@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { formatCountK } from '@/lib/format';
+import CategoryYearlyBarChart from '@/components/CategoryYearlyBarChart';
 
 interface NaverTopicItem {
   id: string;
@@ -35,13 +36,40 @@ interface SummaryResponse {
   recommendations: Recommendation[];
 }
 
+interface CategoryPostRef {
+  postId: string;
+  title: string;
+  url: string;
+  viewCount?: number;
+}
+
+interface CategoryProfile {
+  id: string;
+  name: string;
+  totalCount: number;
+  recent30Count: number;
+  avgViews: number;
+  expertiseScore: number;
+  yearly: { year: number; count: number }[];
+  recentPosts: CategoryPostRef[];
+  topPosts: CategoryPostRef[];
+  children: { id: string; name: string; totalCount: number }[];
+}
+
+interface CategoriesResponse {
+  totalPublished: number;
+  categories: CategoryProfile[];
+}
+
 export default function TopicsPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [naverTopics, setNaverTopics] = useState<NaverTopicItem[]>([]);
+  const [categories, setCategories] = useState<CategoriesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -53,9 +81,10 @@ export default function TopicsPage() {
           return;
         }
         const headers = { authorization: `Bearer ${session.access_token}` };
-        const [summaryRes, naverRes] = await Promise.all([
+        const [summaryRes, naverRes, categoriesRes] = await Promise.all([
           fetch('/api/blog/topics/summary', { headers }),
           fetch('/api/naver-topics', { headers }),
+          fetch('/api/blog/topics/categories', { headers }),
         ]);
         if (!summaryRes.ok) {
           const j = await summaryRes.json().catch(() => ({}));
@@ -68,6 +97,7 @@ export default function TopicsPage() {
         setSummary(await summaryRes.json());
         const naverJson = await naverRes.json();
         setNaverTopics(naverJson.topics || []);
+        if (categoriesRes.ok) setCategories(await categoriesRes.json());
       } catch (e) {
         setError(e instanceof Error ? e.message : '데이터를 불러오지 못했습니다.');
       } finally {
@@ -137,6 +167,93 @@ export default function TopicsPage() {
             {summary.aiPossibleCount > 0 && (
               <div className="mb-8 p-4 rounded-xl bg-accent/5 border border-accent/20 text-sm text-text">
                 💡 아직 활용하지 않은 토픽이 <span className="font-bold">{unusedCount}개</span> 있습니다.
+              </div>
+            )}
+
+            {/* 콘텐츠 자산 프로필 — 대분류별 누적 발행량/성장/전문성 점수 */}
+            {categories && categories.categories.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-baseline justify-between mb-3">
+                  <h2 className="text-sm font-bold text-dim">콘텐츠 자산 프로필</h2>
+                  <p className="text-xs text-dim">총 발행 글 {formatCountK(categories.totalPublished)}개</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {categories.categories.map(cat => {
+                    const expanded = expandedCategoryId === cat.id;
+                    return (
+                      <div key={cat.id} className="p-4 rounded-2xl bg-surface border border-border">
+                        <button
+                          onClick={() => setExpandedCategoryId(expanded ? null : cat.id)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-bold text-text">{cat.name}</h3>
+                            <span className="flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full bg-accent/10 text-accent">
+                              전문성 {cat.expertiseScore}점
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-dim">
+                            <span>발행글 {formatCountK(cat.totalCount)}개</span>
+                            <span>최근 30일 {cat.recent30Count}개</span>
+                            <span>평균 조회수 {formatCountK(cat.avgViews)}</span>
+                          </div>
+                        </button>
+
+                        {cat.yearly.length > 0 && (
+                          <div className="mt-2">
+                            <CategoryYearlyBarChart data={cat.yearly} />
+                          </div>
+                        )}
+
+                        {expanded && (
+                          <div className="mt-3 pt-3 border-t border-border space-y-3">
+                            {cat.children.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-dim mb-1">소분류</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {cat.children.map(child => (
+                                    <span key={child.id} className="text-xs px-2 py-1 rounded-full bg-bg border border-border text-text">
+                                      {child.name} {formatCountK(child.totalCount)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {cat.topPosts.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-dim mb-1">대표글</p>
+                                <ul className="space-y-1">
+                                  {cat.topPosts.map(p => (
+                                    <li key={p.postId} className="text-xs">
+                                      <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-text hover:text-accent hover:underline">
+                                        {p.title}
+                                      </a>
+                                      {typeof p.viewCount === 'number' && <span className="text-dim"> · 조회 {formatCountK(p.viewCount)}</span>}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {cat.recentPosts.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-dim mb-1">최근 발행</p>
+                                <ul className="space-y-1">
+                                  {cat.recentPosts.map(p => (
+                                    <li key={p.postId} className="text-xs">
+                                      <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-text hover:text-accent hover:underline">
+                                        {p.title}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
