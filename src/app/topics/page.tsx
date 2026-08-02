@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { formatCountK } from '@/lib/format';
-import CategoryYearlyBarChart from '@/components/CategoryYearlyBarChart';
+import { formatCountK, formatDate } from '@/lib/format';
 
 interface NaverTopicItem {
   id: string;
@@ -36,40 +35,54 @@ interface SummaryResponse {
   recommendations: Recommendation[];
 }
 
-interface CategoryPostRef {
-  postId: string;
-  title: string;
-  url: string;
-  viewCount?: number;
-}
+type TopicType = 'genre' | 'author' | 'publisher' | 'brand' | 'business' | 'region' | 'keyword';
 
-interface CategoryProfile {
+const TOPIC_TYPE_TABS: { value: TopicType | 'all'; label: string }[] = [
+  { value: 'all', label: '전체' },
+  { value: 'genre', label: '장르' },
+  { value: 'author', label: '작가/인물' },
+  { value: 'publisher', label: '출판사' },
+  { value: 'brand', label: '브랜드' },
+  { value: 'business', label: '업체' },
+  { value: 'region', label: '지역' },
+  { value: 'keyword', label: '키워드' },
+];
+
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'latest', label: '최신순' },
+  { value: 'posts', label: '게시글 많은순' },
+  { value: 'views', label: '조회수순' },
+  { value: 'name', label: '이름순' },
+];
+
+interface AiTopicItem {
   id: string;
+  topicType: TopicType;
   name: string;
-  totalCount: number;
-  recent30Count: number;
-  avgViews: number;
-  expertiseScore: number;
-  yearly: { year: number; count: number }[];
-  recentPosts: CategoryPostRef[];
-  topPosts: CategoryPostRef[];
-  children: { id: string; name: string; totalCount: number }[];
-}
-
-interface CategoriesResponse {
-  totalPublished: number;
-  categories: CategoryProfile[];
+  representativeKeywords: string[];
+  thumbnailUrl: string | null;
+  postCount: number;
+  totalViewCount: number;
+  lastPostAt: string | null;
+  expertiseScore?: number | null;
+  childCount?: number;
 }
 
 export default function TopicsPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [naverTopics, setNaverTopics] = useState<NaverTopicItem[]>([]);
-  const [categories, setCategories] = useState<CategoriesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
-  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
+  const [authHeaders, setAuthHeaders] = useState<Record<string, string> | null>(null);
+
+  const [aiTopics, setAiTopics] = useState<AiTopicItem[]>([]);
+  const [aiTopicsLoading, setAiTopicsLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<TopicType | 'all'>('all');
+  const [sort, setSort] = useState('latest');
+  const [qInput, setQInput] = useState('');
+  const [q, setQ] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -81,10 +94,10 @@ export default function TopicsPage() {
           return;
         }
         const headers = { authorization: `Bearer ${session.access_token}` };
-        const [summaryRes, naverRes, categoriesRes] = await Promise.all([
+        setAuthHeaders(headers);
+        const [summaryRes, naverRes] = await Promise.all([
           fetch('/api/blog/topics/summary', { headers }),
           fetch('/api/naver-topics', { headers }),
-          fetch('/api/blog/topics/categories', { headers }),
         ]);
         if (!summaryRes.ok) {
           const j = await summaryRes.json().catch(() => ({}));
@@ -97,7 +110,6 @@ export default function TopicsPage() {
         setSummary(await summaryRes.json());
         const naverJson = await naverRes.json();
         setNaverTopics(naverJson.topics || []);
-        if (categoriesRes.ok) setCategories(await categoriesRes.json());
       } catch (e) {
         setError(e instanceof Error ? e.message : '데이터를 불러오지 못했습니다.');
       } finally {
@@ -106,6 +118,34 @@ export default function TopicsPage() {
     };
     load();
   }, [router]);
+
+  // 검색어 입력 디바운스
+  useEffect(() => {
+    const t = setTimeout(() => setQ(qInput.trim()), 400);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  useEffect(() => {
+    if (!authHeaders) return;
+    const load = async () => {
+      setAiTopicsLoading(true);
+      try {
+        const params = new URLSearchParams({ sort });
+        if (typeFilter !== 'all') params.set('type', typeFilter);
+        if (q) params.set('q', q);
+        const res = await fetch(`/api/blog/topics?${params.toString()}`, { headers: authHeaders });
+        if (res.ok) {
+          const json = await res.json();
+          setAiTopics(json.topics || []);
+        }
+      } catch {
+        // 목록 갱신 실패는 조용히 무시(요약/발행 토픽 섹션은 이미 표시됨)
+      } finally {
+        setAiTopicsLoading(false);
+      }
+    };
+    load();
+  }, [authHeaders, typeFilter, sort, q]);
 
   const utilizationPercent = useMemo(() => {
     if (!summary) return 0;
@@ -170,95 +210,102 @@ export default function TopicsPage() {
               </div>
             )}
 
-            {/* 콘텐츠 자산 프로필 — 대분류별 누적 발행량/성장/전문성 점수 */}
-            {categories && categories.categories.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-baseline justify-between mb-3">
-                  <h2 className="text-sm font-bold text-dim">콘텐츠 자산 프로필</h2>
-                  <p className="text-xs text-dim">총 발행 글 {formatCountK(categories.totalPublished)}개</p>
+            {/* AI 자동 생성 토픽 — 장르/작가/출판사/브랜드/업체/지역/키워드 다차원 클러스터링 */}
+            <div className="mb-8">
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-sm font-bold text-dim">AI가 자동 생성한 토픽</h2>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {TOPIC_TYPE_TABS.map(tab => (
+                    <button
+                      key={tab.value}
+                      onClick={() => setTypeFilter(tab.value)}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition ${
+                        typeFilter === tab.value
+                          ? 'bg-accent text-white border-accent'
+                          : 'bg-surface border-border text-dim hover:border-accent/40'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
+                <div className="flex-1" />
+                <input
+                  type="text"
+                  value={qInput}
+                  onChange={e => setQInput(e.target.value)}
+                  placeholder="토픽 검색"
+                  className="text-sm px-3 py-1.5 rounded-full border border-border bg-surface text-text placeholder:text-dim focus:outline-none focus:border-accent/50 w-40"
+                />
+                <select
+                  value={sort}
+                  onChange={e => setSort(e.target.value)}
+                  className="text-sm px-3 py-1.5 rounded-full border border-border bg-surface text-text focus:outline-none focus:border-accent/50"
+                >
+                  {SORT_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {aiTopicsLoading ? (
+                <div className="p-8 text-center text-dim text-sm rounded-xl bg-surface border border-border">불러오는 중…</div>
+              ) : aiTopics.length === 0 ? (
+                <div className="p-8 text-center text-dim text-sm rounded-xl bg-surface border border-border">
+                  아직 생성된 토픽이 없습니다. 매일 자동으로 분석하니 하루 정도 기다려 주세요.
+                </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {categories.categories.map(cat => {
-                    const expanded = expandedCategoryId === cat.id;
-                    return (
-                      <div key={cat.id} className="p-4 rounded-2xl bg-surface border border-border">
-                        <button
-                          onClick={() => setExpandedCategoryId(expanded ? null : cat.id)}
-                          className="w-full text-left"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="font-bold text-text">{cat.name}</h3>
+                  {aiTopics.map(t => (
+                    <Link
+                      key={t.id}
+                      href={`/topics/${t.id}`}
+                      className="group p-4 rounded-2xl bg-surface border border-border hover:border-accent/40 hover:shadow-sm transition-all flex gap-4"
+                    >
+                      {t.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={t.thumbnailUrl}
+                          alt=""
+                          className="w-20 h-20 rounded-xl object-cover border border-border flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-bg border border-border flex items-center justify-center text-dim text-2xl flex-shrink-0">
+                          🏷️
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="font-bold text-text group-hover:text-accent transition truncate">{t.name}</h3>
+                          {typeof t.expertiseScore === 'number' && (
                             <span className="flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full bg-accent/10 text-accent">
-                              전문성 {cat.expertiseScore}점
+                              전문성 {t.expertiseScore}점
                             </span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-dim">
-                            <span>발행글 {formatCountK(cat.totalCount)}개</span>
-                            <span>최근 30일 {cat.recent30Count}개</span>
-                            <span>평균 조회수 {formatCountK(cat.avgViews)}</span>
-                          </div>
-                        </button>
-
-                        {cat.yearly.length > 0 && (
-                          <div className="mt-2">
-                            <CategoryYearlyBarChart data={cat.yearly} />
-                          </div>
-                        )}
-
-                        {expanded && (
-                          <div className="mt-3 pt-3 border-t border-border space-y-3">
-                            {cat.children.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-dim mb-1">소분류</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {cat.children.map(child => (
-                                    <span key={child.id} className="text-xs px-2 py-1 rounded-full bg-bg border border-border text-text">
-                                      {child.name} {formatCountK(child.totalCount)}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {cat.topPosts.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-dim mb-1">대표글</p>
-                                <ul className="space-y-1">
-                                  {cat.topPosts.map(p => (
-                                    <li key={p.postId} className="text-xs">
-                                      <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-text hover:text-accent hover:underline">
-                                        {p.title}
-                                      </a>
-                                      {typeof p.viewCount === 'number' && <span className="text-dim"> · 조회 {formatCountK(p.viewCount)}</span>}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            {cat.recentPosts.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-dim mb-1">최근 발행</p>
-                                <ul className="space-y-1">
-                                  {cat.recentPosts.map(p => (
-                                    <li key={p.postId} className="text-xs">
-                                      <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-text hover:text-accent hover:underline">
-                                        {p.title}
-                                      </a>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-dim mt-1">
+                          {TOPIC_TYPE_TABS.find(tab => tab.value === t.topicType)?.label || t.topicType}
+                          {t.childCount ? ` · 소분류 ${t.childCount}개` : ''}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-dim">
+                          <span>게시글 {formatCountK(t.postCount)}개</span>
+                          {t.lastPostAt && <span>최근 발행 {formatDate(t.lastPostAt)}</span>}
+                        </div>
+                        {t.representativeKeywords.length > 0 && (
+                          <p className="text-xs text-dim mt-1.5 truncate">{t.representativeKeywords.slice(0, 4).join(' · ')}</p>
                         )}
                       </div>
-                    );
-                  })}
+                    </Link>
+                  ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* 실제 발행 토픽 카드 */}
-            <h2 className="text-sm font-bold text-dim mb-3">발행된 토픽</h2>
+            {/* 네이버에 실제 발행된 토픽 */}
+            <h2 className="text-sm font-bold text-dim mb-3">네이버에 실제 발행된 토픽</h2>
             {naverTopics.length === 0 ? (
               <div className="p-8 mb-8 text-center text-dim text-sm rounded-xl bg-surface border border-border">
                 아직 수집된 발행 토픽이 없습니다. 매일 자동으로 수집하니 하루 정도 기다려 주세요.
