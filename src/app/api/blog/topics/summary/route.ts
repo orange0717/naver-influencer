@@ -39,11 +39,29 @@ export async function GET(request: NextRequest) {
     recommendationsQuery,
   ]);
 
-  if (summaryError || recError) {
-    return NextResponse.json({ error: '요약 조회 중 오류가 발생했습니다.' }, { status: 500 });
+  if (summaryError) {
+    console.error({
+      endpoint: '/api/blog/topics/summary',
+      query: 'topic_insight_summaries',
+      userId,
+      blogId,
+      error: summaryError,
+    });
+  }
+  if (recError) {
+    console.error({
+      endpoint: '/api/blog/topics/summary',
+      query: 'topic_ai_recommendations',
+      userId,
+      blogId,
+      error: recError,
+    });
   }
 
-  const summary = (summaries || [])[0] || null;
+  // 배치 분석이 아직 한 번도 안 돈 사용자(집계 테이블에 행 없음)도 정상 상태 —
+  // 조회 자체가 실패한 경우(테이블/컬럼 오류 등)도 페이지를 막지 않고 빈 요약으로 폴백한다.
+  const summary = summaryError ? null : (summaries || [])[0] || null;
+  const safeRecommendations = recError ? [] : recommendations || [];
 
   return NextResponse.json({
     myTopicCount: summary?.my_topic_count ?? 0,
@@ -56,6 +74,6 @@ export async function GET(request: NextRequest) {
       avg: summary?.competitor_avg_topic_count ?? null,
       top: summary?.competitor_top_topic_count ?? null,
     },
-    recommendations: recommendations || [],
+    recommendations: safeRecommendations,
   });
 }

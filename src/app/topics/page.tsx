@@ -99,13 +99,17 @@ export default function TopicsPage() {
           fetch('/api/blog/topics/summary', { headers }),
           fetch('/api/naver-topics', { headers }),
         ]);
+        if (summaryRes.status === 401 || naverRes.status === 401) {
+          router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
+          return;
+        }
         if (!summaryRes.ok) {
           const j = await summaryRes.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${summaryRes.status}`);
+          throw new Error(j.error || `요약 정보를 불러오지 못했습니다. (HTTP ${summaryRes.status})`);
         }
         if (!naverRes.ok) {
           const j = await naverRes.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${naverRes.status}`);
+          throw new Error(j.error || `발행 토픽을 불러오지 못했습니다. (HTTP ${naverRes.status})`);
         }
         setSummary(await summaryRes.json());
         const naverJson = await naverRes.json();

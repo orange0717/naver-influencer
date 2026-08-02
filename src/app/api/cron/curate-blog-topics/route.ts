@@ -51,6 +51,12 @@ function normalizeTopicName(name: string): string {
   return name.trim().replace(/\s+/g, ' ');
 }
 
+/** ANTHROPIC_API_KEY가 무효/만료된 경우 — 이 경우 나머지 글도 전부 실패할 것이 확실하므로
+ *  개별 글 실패로 조용히 넘기지 않고 크론 전체를 즉시 중단해 API 호출 낭비를 막는다. */
+function isAnthropicAuthError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'status' in err && (err as { status?: unknown }).status === 401;
+}
+
 /** 사용자 순회 순서를 매 실행마다 섞어, 시간 예산 초과로 뒤쪽 사용자가
  *  영원히 후순위로 밀리는 것(aggregate-influencers에서 겪었던 구조적 결함)을 완화한다. */
 function shuffle<T>(arr: T[]): T[] {
@@ -130,6 +136,7 @@ async function classifyPostIntoTopics(
         && typeof t.confidence === 'number')
       .map(t => ({ type: t.type, name: normalizeTopicName(t.name), isNew: !!t.isNew, confidence: t.confidence }));
   } catch (err) {
+    if (isAnthropicAuthError(err)) throw err;
     console.error('[curate-blog-topics] classify error:', err);
     return null;
   }
@@ -168,6 +175,7 @@ async function splitGenreTopic(
       .filter((c): c is SplitChild => !!c && typeof c.name === 'string' && Array.isArray(c.postIndices))
       .map(c => ({ name: normalizeTopicName(c.name), postIndices: c.postIndices }));
   } catch (err) {
+    if (isAnthropicAuthError(err)) throw err;
     console.error('[curate-blog-topics] splitGenreTopic error:', err);
     return null;
   }
@@ -363,6 +371,7 @@ export async function GET(request: NextRequest) {
   let totalUsers = 0;
   let totalNewPosts = 0;
   let totalFailed = 0;
+  let authFailed = false;
 
   try {
     const { data: users, error: usersError } = await supabase
@@ -398,7 +407,7 @@ export async function GET(request: NextRequest) {
       .filter(t => t.blogId);
 
     for (const { userId, blogId } of targets) {
-      if (Date.now() - startedAt > TIME_BUDGET_MS) break;
+      if (authFailed || Date.now() - startedAt > TIME_BUDGET_MS) break;
       totalUsers++;
 
       try {
@@ -432,7 +441,7 @@ export async function GET(request: NextRequest) {
         }
 
         for (const post of newPosts) {
-          if (Date.now() - startedAt > TIME_BUDGET_MS) break;
+          if (authFailed || Date.now() - startedAt > TIME_BUDGET_MS) break;
 
           try {
             const { title, text, charCount, thumbnailUrl } = await extractPostText(blogId, post.id);
@@ -520,28 +529,46 @@ export async function GET(request: NextRequest) {
               }
             }
           } catch (postErr) {
-            totalFailed++;
-            console.error(`[curate-blog-topics] post ${blogId}/${post.id} failed:`, postErr);
+            if (isAnthropicAuthError(postErr)) {
+              authFailed = true;
+              console.error('[curate-blog-topics] ANTHROPIC_API_KEY 인증 실패 — 크론을 중단합니다:', postErr);
+            } else {
+              totalFailed++;
+              console.error(`[curate-blog-topics] post ${blogId}/${post.id} failed:`, postErr);
+            }
           }
 
           await sleep(500);
         }
 
-        if (Date.now() - startedAt < TIME_BUDGET_MS) {
+        if (!authFailed && Date.now() - startedAt < TIME_BUDGET_MS) {
           await trySplitOversizedGenres(supabase, anthropic, userId, blogId, topicIdByKey);
         }
       } catch (userErr) {
-        totalFailed++;
-        console.error(`[curate-blog-topics] user ${userId} (${blogId}) failed:`, userErr);
+        if (isAnthropicAuthError(userErr)) {
+          authFailed = true;
+          console.error('[curate-blog-topics] ANTHROPIC_API_KEY 인증 실패 — 크론을 중단합니다:', userErr);
+        } else {
+          totalFailed++;
+          console.error(`[curate-blog-topics] user ${userId} (${blogId}) failed:`, userErr);
+        }
       }
     }
 
     await updateCrawlJob(jobId, {
-      status: 'success',
+      status: authFailed ? 'failed' : 'success',
       total_items: totalUsers,
       processed_items: totalNewPosts,
       failed_items: totalFailed,
+      ...(authFailed ? { error_message: 'ANTHROPIC_API_KEY 인증 실패(401) — 콘솔에서 키를 재발급하고 Vercel 환경변수를 갱신하세요.' } : {}),
     });
+
+    if (authFailed) {
+      return NextResponse.json(
+        { success: false, error: 'ANTHROPIC_API_KEY 인증 실패(401)', users: totalUsers, newPosts: totalNewPosts, failed: totalFailed },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ success: true, users: totalUsers, newPosts: totalNewPosts, failed: totalFailed });
   } catch (err) {

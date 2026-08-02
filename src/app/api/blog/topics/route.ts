@@ -70,7 +70,8 @@ export async function GET(request: NextRequest) {
 
   const { data: topics, error } = await query;
   if (error) {
-    return NextResponse.json({ error: '토픽 조회 중 오류가 발생했습니다.' }, { status: 500 });
+    console.error({ endpoint: '/api/blog/topics', userId, blogId, type, sort, q, error });
+    return NextResponse.json({ topics: [], totalCount: 0 });
   }
 
   const rows = topics || [];
