@@ -1,28 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { useAuthModal } from '@/contexts/AuthModalContext';
 import DemoModal from './DemoModal';
+import Modal from '@/components/ui/Modal';
 
 export default function MemberOnlyModal() {
   const { open, redirectTo, close } = useMemberOnlyGate();
   const { openLogin } = useAuthModal();
   const [showDemo, setShowDemo] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, close]);
 
   function startDemo() {
     close();
@@ -36,19 +23,17 @@ export default function MemberOnlyModal() {
 
   return (
     <>
-      {open && (
-        <div
-          className="fixed inset-0 z-[150] flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,.45)' }}
-          onClick={close}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="member-only-title"
-        >
-          <div
-            className="relative bg-bg rounded-2xl border border-border shadow-xl w-full max-w-[480px] sm:w-[90%] p-8"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        open={open}
+        onClose={close}
+        closeOnEscape
+        lockBodyScroll
+        role="dialog"
+        ariaModal
+        ariaLabelledBy="member-only-title"
+        overlayClassName="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/45"
+      >
+        <div className="relative bg-bg rounded-2xl border border-border shadow-xl w-full max-w-[480px] sm:w-[90%] p-8">
             <button
               type="button"
               onClick={close}
@@ -96,9 +81,8 @@ export default function MemberOnlyModal() {
                 닫기
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
       <DemoModal open={showDemo} onClose={() => setShowDemo(false)} />
     </>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Modal from '@/components/ui/Modal';
 
 interface MessageModalProps {
   receiverNaverId: string;
@@ -13,8 +14,6 @@ export default function MessageModal({ receiverNaverId, receiverName, isOpen, on
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  if (!isOpen) return null;
 
   const handleSend = async () => {
     if (!content.trim()) return;
@@ -55,11 +54,8 @@ export default function MessageModal({ receiverNaverId, receiverName, isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={handleClose}>
-      <div
-        className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-md mx-4 p-6"
-        onClick={e => e.stopPropagation()}
-      >
+    <Modal open={isOpen} onClose={handleClose} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+      <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-md mx-4 p-6">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-base">쪽지 보내기</h3>
@@ -106,6 +102,6 @@ export default function MessageModal({ receiverNaverId, receiverName, isOpen, on
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
