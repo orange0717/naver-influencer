@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const { data: existingActive } = await supabase
       .from('licenses')
-      .select('*')
+      .select('expires_at')
       .eq('buyer_id', user.id)
       .eq('is_used', true)
       .gt('expires_at', now.toISOString())

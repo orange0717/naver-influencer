@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('coupons')
-    .select('*')
+    .select('id, code, name, target_email, plan, duration_days, used, used_at, created_at, created_by')
     .order('created_at', { ascending: false })
     .limit(limit);
 

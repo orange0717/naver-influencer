@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('blog_keywords')
-      .select('*')
+      .select('id, blog_id, keyword, is_auto, frequency, post_count, is_active, created_at, updated_at')
       .eq('blog_id', blogId)
       .eq('is_active', true)
       .order('created_at');

@@ -19,7 +19,7 @@ export async function GET(
     // 게시글 조회
     const { data: post, error } = await supabase
       .from('community_posts')
-      .select('*')
+      .select('id, category, title, content, author_id, author_name, author_type, view_count, like_count, created_at, updated_at')
       .eq('id', id)
       .eq('is_deleted', false)
       .single();

@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
   await supabase.from('indexed_urls').update({ status: 'checking', progress_stage: 'checking' }).eq('id', row.id);
   await inspectAndUpdate(row);
 
-  const { data: updated } = await supabase.from('indexed_urls').select('*').eq('id', row.id).single();
+  const { data: updated } = await supabase
+    .from('indexed_urls')
+    .select('id, user_id, blog_id, url, title, status, failure_reason_code, error_code, http_status, retryable, error_message, updated_at')
+    .eq('id', row.id)
+    .single();
   return NextResponse.json({ success: true, url: updated });
 }

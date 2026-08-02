@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   let query = supabase
     .from('campaign_applications')
-    .select('*')
+    .select('id, naver_id, message, status, applied_at, accepted_at')
     .eq('campaign_id', id)
     .order('applied_at', { ascending: false });
 

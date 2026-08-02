@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('restricted_users')
-    .select('*')
+    .select('id, email, nickname, reason, created_at')
     .order('created_at', { ascending: false });
 
   if (error) {
