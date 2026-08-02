@@ -1,83 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireInfluencerPlan } from '@/lib/admin';
-import { parseNaverPostDate } from '@/lib/naver-date';
 
 export const dynamic = 'force-dynamic';
 
+const ID_RE = /^[0-9a-fA-F-]{36}$/;
+
 /**
- * GET /api/blog/topics/[id]?sort=latest|views
- * [id]는 네이버 블로그 카테고리명(URL 인코딩됨). 해당 카테고리에 속한 글 목록을 정렬해 반환한다.
- * AI 분류 없이 blog_post_contents.category 그대로 사용 — 본인 소유 글만 조회 가능.
+ * GET /api/blog/topics/[id]
+ * AI가 찾아낸 "미발행 토픽 후보"(topic_ai_recommendations) 1건의 상세 — 매칭된 글 목록을 반환한다.
+ * "토픽 만들기" 클릭 시 사용자가 네이버에서 직접 토픽을 만들 때 참고할 글 목록/링크를 보여주기 위함.
+ * 본인 소유 추천만 조회 가능.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const category = decodeURIComponent(id).trim();
-  if (!category) {
-    return NextResponse.json({ error: '잘못된 카테고리입니다.' }, { status: 400 });
+  if (!ID_RE.test(id)) {
+    return NextResponse.json({ error: '잘못된 추천 토픽 ID입니다.' }, { status: 400 });
   }
 
   const gate = await requireInfluencerPlan(request);
   if ('error' in gate) return gate.error;
   const { userId } = gate.authUser;
 
-  const { searchParams } = new URL(request.url);
-  const sort = searchParams.get('sort') || 'latest';
-
   const supabase = createServiceClient();
 
-  const { data: rows, error } = await supabase
-    .from('blog_post_contents')
-    .select('post_id, blog_id, title, thumbnail_url, view_count, published_at, category')
+  const { data: recommendation, error: recError } = await supabase
+    .from('topic_ai_recommendations')
+    .select('id, blog_id, suggested_name, topic_subject_category, representative_keywords, matched_post_ids, estimated_post_count, reasoning, generated_at')
+    .eq('id', id)
     .eq('user_id', userId)
-    .eq('category', category);
+    .maybeSingle();
 
-  if (error) {
-    return NextResponse.json({ error: '카테고리 조회 중 오류가 발생했습니다.' }, { status: 500 });
+  if (recError) {
+    console.error({ endpoint: '/api/blog/topics/[id]', userId, id, error: recError });
+    return NextResponse.json({ error: '추천 토픽 조회 중 오류가 발생했습니다.' }, { status: 500 });
   }
-  if (!rows || rows.length === 0) {
-    return NextResponse.json({ error: '카테고리를 찾을 수 없습니다.' }, { status: 404 });
-  }
-
-  const blogId = rows[0].blog_id;
-  const enriched = rows.map(p => ({
-    post_id: p.post_id,
-    title: p.title,
-    thumbnail_url: p.thumbnail_url,
-    view_count: p.view_count,
-    published_at: p.published_at,
-    category: p.category,
-    url: `https://blog.naver.com/${p.blog_id}/${p.post_id}`,
-    publishedAtMs: p.published_at ? parseNaverPostDate(p.published_at) || 0 : 0,
-  }));
-
-  switch (sort) {
-    case 'views':
-      enriched.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
-      break;
-    case 'latest':
-    default:
-      enriched.sort((a, b) => b.publishedAtMs - a.publishedAtMs);
-      break;
+  if (!recommendation) {
+    return NextResponse.json({ error: '추천 토픽을 찾을 수 없습니다.' }, { status: 404 });
   }
 
-  const totalViewCount = enriched.reduce((sum, p) => sum + (p.view_count || 0), 0);
-  const withThumb = [...enriched].filter(p => p.thumbnail_url).sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
+  const postIds = recommendation.matched_post_ids || [];
+  let posts: { post_id: string; title: string | null; url: string; view_count: number | null; published_at: string | null }[] = [];
 
-  return NextResponse.json({
-    topic: {
-      id: category,
-      name: category,
-      blogId,
-      postCount: enriched.length,
-      totalViewCount,
-      thumbnailUrl: withThumb[0]?.thumbnail_url || null,
-      lastPostAt: enriched.length ? new Date(Math.max(...enriched.map(p => p.publishedAtMs))).toISOString() : null,
-    },
-    posts: enriched,
-    sort,
-  });
+  if (postIds.length > 0) {
+    const { data: rows, error: postsError } = await supabase
+      .from('blog_post_contents')
+      .select('post_id, title, blog_id, view_count, published_at')
+      .eq('user_id', userId)
+      .in('post_id', postIds);
+
+    if (postsError) {
+      console.error({ endpoint: '/api/blog/topics/[id]', userId, id, error: postsError });
+    } else {
+      posts = (rows || []).map(p => ({
+        post_id: p.post_id,
+        title: p.title,
+        url: `https://blog.naver.com/${p.blog_id}/${p.post_id}`,
+        view_count: p.view_count,
+        published_at: p.published_at,
+      }));
+    }
+  }
+
+  return NextResponse.json({ recommendation, posts });
 }

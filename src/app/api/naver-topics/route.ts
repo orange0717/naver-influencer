@@ -30,8 +30,43 @@ export async function GET(request: NextRequest) {
 
   const { data: topics, error } = await query;
   if (error) {
-    return NextResponse.json({ error: '토픽 조회 중 오류가 발생했습니다.' }, { status: 500 });
+    console.error({ endpoint: '/api/naver-topics', userId, blogId, error });
+    return NextResponse.json({ topics: [] });
   }
 
-  return NextResponse.json({ topics: topics || [] });
+  const rows = topics || [];
+  const topicIds = rows.map(t => t.id);
+  const viewCountByTopic = new Map<string, number>();
+
+  if (topicIds.length > 0) {
+    const { data: links, error: linksError } = await supabase
+      .from('naver_influencer_topic_posts')
+      .select('topic_pk, content_id')
+      .in('topic_pk', topicIds);
+
+    if (linksError) {
+      console.error({ endpoint: '/api/naver-topics', userId, blogId, step: 'topic_posts', error: linksError });
+    } else if (links && links.length > 0) {
+      const contentIds = Array.from(new Set(links.map(l => l.content_id)));
+      const { data: contents, error: contentsError } = await supabase
+        .from('blog_post_contents')
+        .select('post_id, view_count')
+        .eq('user_id', userId)
+        .in('post_id', contentIds);
+
+      if (contentsError) {
+        console.error({ endpoint: '/api/naver-topics', userId, blogId, step: 'blog_post_contents', error: contentsError });
+      } else {
+        const viewCountByPost = new Map((contents || []).map(c => [c.post_id, c.view_count || 0]));
+        for (const link of links) {
+          const current = viewCountByTopic.get(link.topic_pk) || 0;
+          viewCountByTopic.set(link.topic_pk, current + (viewCountByPost.get(link.content_id) || 0));
+        }
+      }
+    }
+  }
+
+  const result = rows.map(t => ({ ...t, total_view_count: viewCountByTopic.get(t.id) || 0 }));
+
+  return NextResponse.json({ topics: result });
 }
