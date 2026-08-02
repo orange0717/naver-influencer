@@ -65,29 +65,27 @@ export async function GET(
     influencerIdByNaverId.set(naverId.toLowerCase(), infId);
   }
 
-  for (const b of blog) {
+  await Promise.all(blog.map(b => {
     const infId = influencerIdByNaverId.get(b.naver_id.toLowerCase());
-    if (infId) {
-      await supabase
-        .from('keyword_rankings')
-        .update({ blog_search_rank: b.rank })
-        .eq('keyword_id', keywordId)
-        .eq('influencer_id', infId)
-        .eq('snapshot_date', today);
-    }
-  }
+    if (!infId) return null;
+    return supabase
+      .from('keyword_rankings')
+      .update({ blog_search_rank: b.rank })
+      .eq('keyword_id', keywordId)
+      .eq('influencer_id', infId)
+      .eq('snapshot_date', today);
+  }));
 
-  for (const v of view) {
+  await Promise.all(view.map(v => {
     const infId = influencerIdByNaverId.get(v.naver_id.toLowerCase());
-    if (infId) {
-      await supabase
-        .from('keyword_rankings')
-        .update({ view_tab_rank: v.rank })
-        .eq('keyword_id', keywordId)
-        .eq('influencer_id', infId)
-        .eq('snapshot_date', today);
-    }
-  }
+    if (!infId) return null;
+    return supabase
+      .from('keyword_rankings')
+      .update({ view_tab_rank: v.rank })
+      .eq('keyword_id', keywordId)
+      .eq('influencer_id', infId)
+      .eq('snapshot_date', today);
+  }));
 
   return NextResponse.json({ blog, view, keyword: keyword.keyword });
 }
