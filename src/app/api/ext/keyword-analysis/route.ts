@@ -216,11 +216,12 @@ export async function GET(request: NextRequest) {
     // 경쟁도: DB 가중 점수 시도, 실패 시 compIdx 폴백
     let competition = await fetchCompetitionScore(keyword, total);
     if (!competition) {
+      // 계정에 따라 compIdx가 영문 enum(HIGH/MEDIUM) 대신 한글 문자열을 그대로 내려주기도 함(실측 확인) — 둘 다 처리
       const comp = main.compIdx as string;
       let level = '낮음';
       let score = 20;
-      if (comp === 'HIGH') { level = '높음'; score = 75; }
-      else if (comp === 'MEDIUM') { level = '중간'; score = 45; }
+      if (comp === 'HIGH' || comp === '높음') { level = '높음'; score = 75; }
+      else if (comp === 'MEDIUM' || comp === '중간') { level = '중간'; score = 45; }
       competition = { level, score, participants: 0 };
     }
 
@@ -230,8 +231,8 @@ export async function GET(request: NextRequest) {
       const kwMobile = typeof kw.monthlyMobileQcCnt === 'number' ? kw.monthlyMobileQcCnt : 0;
       const comp = kw.compIdx as string;
       let kwLevel = '낮음';
-      if (comp === 'HIGH') kwLevel = '높음';
-      else if (comp === 'MEDIUM') kwLevel = '중간';
+      if (comp === 'HIGH' || comp === '높음') kwLevel = '높음';
+      else if (comp === 'MEDIUM' || comp === '중간') kwLevel = '중간';
 
       return {
         keyword: kw.relKeyword,

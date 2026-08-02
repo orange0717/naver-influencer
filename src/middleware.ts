@@ -123,6 +123,9 @@ const GATE_HANDLED_ELSEWHERE = new Set([
   // AI 호출 비용 발생 기능 — 데모 세션도 명시적으로 제외해야 해서 페이지 자체 서버 체크로 처리
   '/dashboard/writing/spellcheck',
   '/dashboard/writing/rewrite',
+  '/dashboard/writing/content-angles',
+  '/dashboard/writing/titles',
+  '/dashboard/writing/body',
   '/dashboard/youtube-stt',
   '/dashboard/claude', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts)
   '/topics', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts) — AI 토픽 큐레이션, dashboard/claude와 동일 패턴

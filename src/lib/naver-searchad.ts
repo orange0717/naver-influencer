@@ -56,9 +56,10 @@ export function mapNaverKeywordToResult(item: NaverKeyword): KeywordResult {
   const mobile = typeof item.monthlyMobileQcCnt === 'number' ? item.monthlyMobileQcCnt : 0;
   const total = pc + mobile;
 
+  // 계정에 따라 compIdx가 영문 enum(HIGH/MEDIUM) 대신 한글 문자열을 그대로 내려주기도 함(실측 확인) — 둘 다 처리
   let competition = '낮음';
-  if (item.compIdx === 'HIGH') competition = '높음';
-  else if (item.compIdx === 'MEDIUM') competition = '중간';
+  if (item.compIdx === 'HIGH' || item.compIdx === '높음') competition = '높음';
+  else if (item.compIdx === 'MEDIUM' || item.compIdx === '중간') competition = '중간';
 
   return {
     keyword: (item.relKeyword || '').trim(),

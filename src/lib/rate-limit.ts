@@ -166,6 +166,9 @@ export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60
 /** Chrome 확장 / 외부 키워드 분석 API */
 export const extKeywordAnalysisLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 
+/** 키워드 추천: 연관키워드 1건당 검색광고+데이터랩+블로그검색 API를 여러 번 호출하므로 5분에 10회로 제한 */
+export const keywordRecommendLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
+
 /** 네이버 AI 검색 품질평가(Claude Sonnet, 무거운 분석): 5분에 5회 */
 export const qualityEvaluateLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
 
@@ -177,6 +180,15 @@ export const googleIndexingRecheckLimiter = createRateLimiter({ limit: 5, window
 
 /** 구글 색인등록: 실패원인 AI진단(Claude 호출) — 5분에 5회 */
 export const googleIndexingDiagnoseLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
+/** 글감찾기: 네이버 신호 수집 + Claude 합성(Sonnet) — 5분에 5회 */
+export const contentAngleLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
+/** 제목 생성: 제목 20개 + 4개 지표 채점(Claude Sonnet, 토큰 큼) — 5분에 5회 */
+export const titleGenerateLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
+/** 본문 생성: Claude Sonnet 1,800~2,500자 초안(가장 무거운 호출) — 5분에 5회 */
+export const bodyGenerateLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
 
 /** 구글 계정 연결(OAuth) 시작/해제 — 15분에 5회 */
 export const googleOAuthLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });

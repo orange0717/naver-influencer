@@ -80,6 +80,10 @@
       "schedule": "45 23 * * *"
     },
     {
+      "path": "/api/cron/analyze-topic-insights",
+      "schedule": "10 0 * * *"
+    },
+    {
       "path": "/api/cron/crawl-discover-snapshots",
       "schedule": "55 23 * * *"
     },
