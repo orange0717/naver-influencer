@@ -84,10 +84,6 @@
       "schedule": "55 23 * * *"
     },
     {
-      "path": "/api/cron/analyze-topic-insights",
-      "schedule": "10 0 * * *"
-    },
-    {
       "path": "/api/cron/refresh-stats",
       "schedule": "45 * * * *"
     },
