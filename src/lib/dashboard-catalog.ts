@@ -237,6 +237,14 @@ export const DASHBOARD_APPS: DashboardApp[] = [
 
   // ── 키워드 ──
   {
+    id: 'keywords-recommend',
+    category: 'keyword',
+    title: '키워드 추천',
+    description: 'AI가 검색량·경쟁도·트렌드·블로그 발행량·AI브리핑 노출까지 분석해 지금 써야 하는 키워드를 추천',
+    href: '/keywords/recommend',
+    requiredPlan: 'influencer',
+  },
+  {
     id: 'keywords-blogger',
     category: 'keyword',
     title: '키워드 검색',
@@ -269,6 +277,33 @@ export const DASHBOARD_APPS: DashboardApp[] = [
   },
 
   // ── 글쓰기 ──
+  {
+    id: 'writing-body',
+    category: 'writing',
+    title: '본문 생성',
+    description: 'E-E-A-T와 AI검색 최적화를 반영한 블로그 본문 초안을 AI가 작성 · 데모 체험 제외, 가입 후 이용',
+    href: '/dashboard/writing/body',
+    requiredPlan: 'influencer',
+    authOnly: true,
+  },
+  {
+    id: 'writing-titles',
+    category: 'writing',
+    title: '제목 생성',
+    description: 'SEO·AEO·GEO를 고려한 제목 후보 20개를 AI가 생성하고 4개 지표로 채점 · 데모 체험 제외, 가입 후 이용',
+    href: '/dashboard/writing/titles',
+    requiredPlan: 'influencer',
+    authOnly: true,
+  },
+  {
+    id: 'writing-content-angles',
+    category: 'writing',
+    title: '글감찾기',
+    description: '키워드 하나로 사람들이 궁금해하는 질문과 추천 글감을 AI가 찾아드립니다 · 데모 체험 제외, 가입 후 이용',
+    href: '/dashboard/writing/content-angles',
+    requiredPlan: 'influencer',
+    authOnly: true,
+  },
   {
     id: 'writing-spellcheck',
     category: 'writing',
