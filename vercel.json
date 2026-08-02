@@ -72,6 +72,10 @@
       "schedule": "30 23 * * *"
     },
     {
+      "path": "/api/cron/scrape-blog-posts",
+      "schedule": "15 23 * * *"
+    },
+    {
       "path": "/api/cron/crawl-naver-topics",
       "schedule": "45 23 * * *"
     },

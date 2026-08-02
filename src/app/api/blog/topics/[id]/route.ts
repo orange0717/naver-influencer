@@ -5,21 +5,19 @@ import { parseNaverPostDate } from '@/lib/naver-date';
 
 export const dynamic = 'force-dynamic';
 
-const ID_RE = /^[0-9a-fA-F-]{36}$/;
-const RELATED_LIMIT = 6;
-
 /**
- * GET /api/blog/topics/[id]?sort=recommended|latest|views
- * 토픽 상세: 통계 + 소속 글 목록(정렬) + 소분류(장르만) + 관련 토픽(글을 공유하는 다른 토픽).
- * 본인 소유 토픽만 조회 가능.
+ * GET /api/blog/topics/[id]?sort=latest|views
+ * [id]는 네이버 블로그 카테고리명(URL 인코딩됨). 해당 카테고리에 속한 글 목록을 정렬해 반환한다.
+ * AI 분류 없이 blog_post_contents.category 그대로 사용 — 본인 소유 글만 조회 가능.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  if (!ID_RE.test(id)) {
-    return NextResponse.json({ error: '잘못된 토픽 ID입니다.' }, { status: 400 });
+  const category = decodeURIComponent(id).trim();
+  if (!category) {
+    return NextResponse.json({ error: '잘못된 카테고리입니다.' }, { status: 400 });
   }
 
   const gate = await requireInfluencerPlan(request);
@@ -27,141 +25,59 @@ export async function GET(
   const { userId } = gate.authUser;
 
   const { searchParams } = new URL(request.url);
-  const sort = searchParams.get('sort') || 'recommended';
+  const sort = searchParams.get('sort') || 'latest';
 
   const supabase = createServiceClient();
 
-  const { data: topic, error: topicError } = await supabase
-    .from('topics')
-    .select('id, blog_id, topic_type, name, description, representative_keywords, thumbnail_url, post_count, total_view_count, first_post_at, last_post_at, confidence, parent_id')
-    .eq('id', id)
+  const { data: rows, error } = await supabase
+    .from('blog_post_contents')
+    .select('post_id, blog_id, title, thumbnail_url, view_count, published_at, category')
     .eq('user_id', userId)
-    .maybeSingle();
+    .eq('category', category);
 
-  if (topicError) {
-    return NextResponse.json({ error: '토픽 조회 중 오류가 발생했습니다.' }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: '카테고리 조회 중 오류가 발생했습니다.' }, { status: 500 });
   }
-  if (!topic) {
-    return NextResponse.json({ error: '토픽을 찾을 수 없습니다.' }, { status: 404 });
-  }
-
-  const { data: links, error: linksError } = await supabase
-    .from('topic_posts')
-    .select('post_id, relevance_score')
-    .eq('topic_id', id);
-  if (linksError) {
-    return NextResponse.json({ error: '토픽 조회 중 오류가 발생했습니다.' }, { status: 500 });
+  if (!rows || rows.length === 0) {
+    return NextResponse.json({ error: '카테고리를 찾을 수 없습니다.' }, { status: 404 });
   }
 
-  const postIds = (links || []).map(l => l.post_id);
-  const relevanceByPostId = new Map((links || []).map(l => [l.post_id, l.relevance_score]));
-
-  let posts: {
-    post_id: string;
-    title: string | null;
-    thumbnail_url: string | null;
-    view_count: number | null;
-    published_at: string | null;
-    category: string | null;
-  }[] = [];
-
-  if (postIds.length > 0) {
-    const { data: contents, error: contentsError } = await supabase
-      .from('blog_post_contents')
-      .select('post_id, title, thumbnail_url, view_count, published_at, category')
-      .eq('user_id', userId)
-      .in('post_id', postIds);
-    if (contentsError) {
-      return NextResponse.json({ error: '토픽 조회 중 오류가 발생했습니다.' }, { status: 500 });
-    }
-    posts = contents || [];
-  }
-
-  const enriched = posts.map(p => ({
-    ...p,
-    url: `https://blog.naver.com/${topic.blog_id}/${p.post_id}`,
-    relevanceScore: relevanceByPostId.get(p.post_id) ?? 0,
+  const blogId = rows[0].blog_id;
+  const enriched = rows.map(p => ({
+    post_id: p.post_id,
+    title: p.title,
+    thumbnail_url: p.thumbnail_url,
+    view_count: p.view_count,
+    published_at: p.published_at,
+    category: p.category,
+    url: `https://blog.naver.com/${p.blog_id}/${p.post_id}`,
     publishedAtMs: p.published_at ? parseNaverPostDate(p.published_at) || 0 : 0,
   }));
 
   switch (sort) {
-    case 'latest':
-      enriched.sort((a, b) => b.publishedAtMs - a.publishedAtMs);
-      break;
     case 'views':
       enriched.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
       break;
-    case 'recommended':
+    case 'latest':
     default:
-      enriched.sort((a, b) => b.relevanceScore - a.relevanceScore);
+      enriched.sort((a, b) => b.publishedAtMs - a.publishedAtMs);
       break;
   }
 
-  // 소분류(장르 대분류인 경우만)
-  let children: { id: string; name: string; postCount: number }[] = [];
-  if (topic.topic_type === 'genre' && !topic.parent_id) {
-    const { data: childRows } = await supabase
-      .from('topics')
-      .select('id, name, post_count')
-      .eq('parent_id', id)
-      .order('post_count', { ascending: false });
-    children = (childRows || []).map(c => ({ id: c.id, name: c.name, postCount: c.post_count }));
-  }
-
-  // 관련 토픽: 같은 글을 공유하는 다른 토픽을 겹치는 글 수 기준으로 정렬(라이브 집계, 별도 캐시 없음)
-  let relatedTopics: { id: string; topicType: string; name: string; sharedPostCount: number }[] = [];
-  if (postIds.length > 0) {
-    const { data: overlapLinks } = await supabase
-      .from('topic_posts')
-      .select('topic_id, post_id')
-      .in('post_id', postIds)
-      .neq('topic_id', id);
-
-    const sharedCountByTopicId = new Map<string, number>();
-    for (const l of overlapLinks || []) {
-      sharedCountByTopicId.set(l.topic_id, (sharedCountByTopicId.get(l.topic_id) || 0) + 1);
-    }
-
-    const topRelatedIds = Array.from(sharedCountByTopicId.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, RELATED_LIMIT)
-      .map(([topicId]) => topicId);
-
-    if (topRelatedIds.length > 0) {
-      const { data: relatedRows } = await supabase
-        .from('topics')
-        .select('id, topic_type, name')
-        .in('id', topRelatedIds)
-        .eq('user_id', userId);
-
-      const relatedById = new Map((relatedRows || []).map(r => [r.id, r]));
-      relatedTopics = topRelatedIds
-        .map(topicId => {
-          const r = relatedById.get(topicId);
-          if (!r) return null;
-          return { id: r.id, topicType: r.topic_type, name: r.name, sharedPostCount: sharedCountByTopicId.get(topicId) || 0 };
-        })
-        .filter((r): r is { id: string; topicType: string; name: string; sharedPostCount: number } => r != null);
-    }
-  }
+  const totalViewCount = enriched.reduce((sum, p) => sum + (p.view_count || 0), 0);
+  const withThumb = [...enriched].filter(p => p.thumbnail_url).sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
 
   return NextResponse.json({
     topic: {
-      id: topic.id,
-      topicType: topic.topic_type,
-      name: topic.name,
-      description: topic.description,
-      representativeKeywords: topic.representative_keywords || [],
-      thumbnailUrl: topic.thumbnail_url,
-      postCount: topic.post_count,
-      totalViewCount: topic.total_view_count,
-      firstPostAt: topic.first_post_at,
-      lastPostAt: topic.last_post_at,
-      confidence: topic.confidence,
+      id: category,
+      name: category,
+      blogId,
+      postCount: enriched.length,
+      totalViewCount,
+      thumbnailUrl: withThumb[0]?.thumbnail_url || null,
+      lastPostAt: enriched.length ? new Date(Math.max(...enriched.map(p => p.publishedAtMs))).toISOString() : null,
     },
     posts: enriched,
-    children,
-    relatedTopics,
     sort,
   });
 }

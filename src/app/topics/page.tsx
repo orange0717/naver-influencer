@@ -35,19 +35,6 @@ interface SummaryResponse {
   recommendations: Recommendation[];
 }
 
-type TopicType = 'genre' | 'author' | 'publisher' | 'brand' | 'business' | 'region' | 'keyword';
-
-const TOPIC_TYPE_TABS: { value: TopicType | 'all'; label: string }[] = [
-  { value: 'all', label: '전체' },
-  { value: 'genre', label: '장르' },
-  { value: 'author', label: '작가/인물' },
-  { value: 'publisher', label: '출판사' },
-  { value: 'brand', label: '브랜드' },
-  { value: 'business', label: '업체' },
-  { value: 'region', label: '지역' },
-  { value: 'keyword', label: '키워드' },
-];
-
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'latest', label: '최신순' },
   { value: 'posts', label: '게시글 많은순' },
@@ -55,17 +42,14 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'name', label: '이름순' },
 ];
 
-interface AiTopicItem {
+interface CategoryGroup {
   id: string;
-  topicType: TopicType;
   name: string;
-  representativeKeywords: string[];
   thumbnailUrl: string | null;
   postCount: number;
   totalViewCount: number;
   lastPostAt: string | null;
   expertiseScore?: number | null;
-  childCount?: number;
 }
 
 export default function TopicsPage() {
@@ -77,9 +61,8 @@ export default function TopicsPage() {
   const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
   const [authHeaders, setAuthHeaders] = useState<Record<string, string> | null>(null);
 
-  const [aiTopics, setAiTopics] = useState<AiTopicItem[]>([]);
-  const [aiTopicsLoading, setAiTopicsLoading] = useState(true);
-  const [typeFilter, setTypeFilter] = useState<TopicType | 'all'>('all');
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
+  const [categoryGroupsLoading, setCategoryGroupsLoading] = useState(true);
   const [sort, setSort] = useState('latest');
   const [qInput, setQInput] = useState('');
   const [q, setQ] = useState('');
@@ -132,24 +115,23 @@ export default function TopicsPage() {
   useEffect(() => {
     if (!authHeaders) return;
     const load = async () => {
-      setAiTopicsLoading(true);
+      setCategoryGroupsLoading(true);
       try {
         const params = new URLSearchParams({ sort });
-        if (typeFilter !== 'all') params.set('type', typeFilter);
         if (q) params.set('q', q);
         const res = await fetch(`/api/blog/topics?${params.toString()}`, { headers: authHeaders });
         if (res.ok) {
           const json = await res.json();
-          setAiTopics(json.topics || []);
+          setCategoryGroups(json.topics || []);
         }
       } catch {
         // 목록 갱신 실패는 조용히 무시(요약/발행 토픽 섹션은 이미 표시됨)
       } finally {
-        setAiTopicsLoading(false);
+        setCategoryGroupsLoading(false);
       }
     };
     load();
-  }, [authHeaders, typeFilter, sort, q]);
+  }, [authHeaders, sort, q]);
 
   const utilizationPercent = useMemo(() => {
     if (!summary) return 0;
@@ -167,7 +149,7 @@ export default function TopicsPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-text">토픽</h1>
           <p className="text-sm text-dim mt-1">
-            네이버에 발행한 토픽과 AI 분석 결과를 함께 보여줘요. 매일 자동으로 수집·분석해 반영합니다.
+            네이버에 발행한 토픽과, 글 쓸 때 지정한 카테고리로 모아본 내 글을 함께 보여줘요. 매일 자동으로 수집해 반영합니다.
           </p>
         </div>
 
@@ -214,34 +196,19 @@ export default function TopicsPage() {
               </div>
             )}
 
-            {/* AI 자동 생성 토픽 — 장르/작가/출판사/브랜드/업체/지역/키워드 다차원 클러스터링 */}
+            {/* 카테고리별 모아보기 — 글 쓸 때 지정한 네이버 블로그 카테고리 기준(AI 미사용) */}
             <div className="mb-8">
               <div className="flex items-baseline justify-between mb-3">
-                <h2 className="text-sm font-bold text-dim">AI가 자동 생성한 토픽</h2>
+                <h2 className="text-sm font-bold text-dim">카테고리별 모아보기</h2>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 mb-4">
-                <div className="flex flex-wrap gap-1.5">
-                  {TOPIC_TYPE_TABS.map(tab => (
-                    <button
-                      key={tab.value}
-                      onClick={() => setTypeFilter(tab.value)}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition ${
-                        typeFilter === tab.value
-                          ? 'bg-accent text-white border-accent'
-                          : 'bg-surface border-border text-dim hover:border-accent/40'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
                 <div className="flex-1" />
                 <input
                   type="text"
                   value={qInput}
                   onChange={e => setQInput(e.target.value)}
-                  placeholder="토픽 검색"
+                  placeholder="카테고리 검색"
                   className="text-sm px-3 py-1.5 rounded-full border border-border bg-surface text-text placeholder:text-dim focus:outline-none focus:border-accent/50 w-40"
                 />
                 <select
@@ -255,24 +222,24 @@ export default function TopicsPage() {
                 </select>
               </div>
 
-              {aiTopicsLoading ? (
+              {categoryGroupsLoading ? (
                 <div className="p-8 text-center text-dim text-sm rounded-xl bg-surface border border-border">불러오는 중…</div>
-              ) : aiTopics.length === 0 ? (
+              ) : categoryGroups.length === 0 ? (
                 <div className="p-8 text-center text-dim text-sm rounded-xl bg-surface border border-border">
-                  아직 생성된 토픽이 없습니다. 매일 자동으로 분석하니 하루 정도 기다려 주세요.
+                  같은 카테고리로 쓴 글이 2개 이상 모이면 여기에 표시됩니다. 매일 자동으로 수집하니 하루 정도 기다려 주세요.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {aiTopics.map(t => (
+                  {categoryGroups.map(g => (
                     <Link
-                      key={t.id}
-                      href={`/topics/${t.id}`}
+                      key={g.id}
+                      href={`/topics/${encodeURIComponent(g.id)}`}
                       className="group p-4 rounded-2xl bg-surface border border-border hover:border-accent/40 hover:shadow-sm transition-all flex gap-4"
                     >
-                      {t.thumbnailUrl ? (
+                      {g.thumbnailUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={t.thumbnailUrl}
+                          src={g.thumbnailUrl}
                           alt=""
                           className="w-20 h-20 rounded-xl object-cover border border-border flex-shrink-0"
                         />
@@ -283,24 +250,18 @@ export default function TopicsPage() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-bold text-text group-hover:text-accent transition truncate">{t.name}</h3>
-                          {typeof t.expertiseScore === 'number' && (
+                          <h3 className="font-bold text-text group-hover:text-accent transition truncate">{g.name}</h3>
+                          {typeof g.expertiseScore === 'number' && (
                             <span className="flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full bg-accent/10 text-accent">
-                              전문성 {t.expertiseScore}점
+                              전문성 {g.expertiseScore}점
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-dim mt-1">
-                          {TOPIC_TYPE_TABS.find(tab => tab.value === t.topicType)?.label || t.topicType}
-                          {t.childCount ? ` · 소분류 ${t.childCount}개` : ''}
-                        </p>
                         <div className="flex items-center gap-3 mt-2 text-xs text-dim">
-                          <span>게시글 {formatCountK(t.postCount)}개</span>
-                          {t.lastPostAt && <span>최근 발행 {formatDate(t.lastPostAt)}</span>}
+                          <span>게시글 {formatCountK(g.postCount)}개</span>
+                          <span>조회 {formatCountK(g.totalViewCount)}</span>
+                          {g.lastPostAt && <span>최근 발행 {formatDate(g.lastPostAt)}</span>}
                         </div>
-                        {t.representativeKeywords.length > 0 && (
-                          <p className="text-xs text-dim mt-1.5 truncate">{t.representativeKeywords.slice(0, 4).join(' · ')}</p>
-                        )}
                       </div>
                     </Link>
                   ))}

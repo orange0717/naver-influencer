@@ -5,11 +5,9 @@ import { parseNaverPostDate } from '@/lib/naver-date';
 
 export const dynamic = 'force-dynamic';
 
-const TOPIC_TYPES = ['genre', 'author', 'publisher', 'brand', 'business', 'region', 'keyword'] as const;
-type TopicType = (typeof TOPIC_TYPES)[number];
-
+const MIN_POSTS_PER_CATEGORY = 2;
 const RECENT_DAYS_MS = 30 * 86400000;
-// 전문성 점수(v1 휴리스틱, genre 타입 전용) — 발행량 40 + 최근활동 30 + 평균조회수 30, 합산 최대 100.
+// 전문성 점수(휴리스틱, AI 미사용) — 발행량 40 + 최근활동 30 + 평균조회수 30, 합산 최대 100.
 const VOLUME_SCORE_MAX = 40;
 const RECENCY_SCORE_MAX = 30;
 const RECENCY_TARGET_COUNT = 5;
@@ -24,10 +22,10 @@ function computeExpertiseScore(totalCount: number, recentCount30: number, avgVie
 }
 
 /**
- * GET /api/blog/topics?type=&sort=&q=&blogId=
- * 로그인한 INFLUENCER 플랜 사용자의 다차원 토픽(장르/작가/출판사/브랜드/업체/지역/키워드) 목록.
- * type: 특정 topic_type 필터(생략 시 전체), sort: latest|posts|views|name, q: 이름 검색어.
- * 게시글이 2개 이상인 토픽만 노출된다(크론이 애초에 그렇게만 생성함).
+ * GET /api/blog/topics?sort=&q=&blogId=
+ * 로그인한 INFLUENCER 플랜 사용자의 글을, 글 쓸 때 지정한 네이버 블로그 자체 카테고리 기준으로
+ * 묶어서 보여준다. AI 호출 없이 blog_post_contents.category를 라이브 집계(캐시 테이블 없음).
+ * 글이 2개 이상인 카테고리만 노출. sort: latest|posts|views|name, q: 카테고리명 검색어.
  */
 export async function GET(request: NextRequest) {
   const gate = await requireInfluencerPlan(request);
@@ -36,114 +34,98 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const blogId = searchParams.get('blogId')?.trim();
-  const typeParam = searchParams.get('type')?.trim();
-  const type = typeParam && (TOPIC_TYPES as readonly string[]).includes(typeParam) ? (typeParam as TopicType) : null;
   const sort = searchParams.get('sort') || 'latest';
-  const q = searchParams.get('q')?.trim();
+  const q = searchParams.get('q')?.trim().toLowerCase();
 
   const supabase = createServiceClient();
 
   let query = supabase
-    .from('topics')
-    .select('id, topic_type, name, description, representative_keywords, thumbnail_url, post_count, total_view_count, first_post_at, last_post_at, confidence')
+    .from('blog_post_contents')
+    .select('post_id, category, thumbnail_url, view_count, published_at')
     .eq('user_id', userId)
-    .is('parent_id', null);
+    .not('category', 'is', null);
   if (blogId) query = query.eq('blog_id', blogId);
-  if (type) query = query.eq('topic_type', type);
-  if (q) query = query.ilike('name', `%${q}%`);
 
-  switch (sort) {
-    case 'posts':
-      query = query.order('post_count', { ascending: false });
-      break;
-    case 'views':
-      query = query.order('total_view_count', { ascending: false });
-      break;
-    case 'name':
-      query = query.order('name', { ascending: true });
-      break;
-    case 'latest':
-    default:
-      query = query.order('last_post_at', { ascending: false, nullsFirst: false });
-      break;
-  }
-
-  const { data: topics, error } = await query;
+  const { data: posts, error } = await query;
   if (error) {
-    console.error({ endpoint: '/api/blog/topics', userId, blogId, type, sort, q, error });
+    console.error({ endpoint: '/api/blog/topics', userId, blogId, error });
     return NextResponse.json({ topics: [], totalCount: 0 });
   }
 
-  const rows = topics || [];
-  const genreIds = rows.filter(t => t.topic_type === 'genre').map(t => t.id);
+  interface Bucket {
+    postCount: number;
+    totalViewCount: number;
+    recentCount30: number;
+    lastPostAt: number | null;
+    firstPostAt: number | null;
+    thumbnailUrl: string | null;
+    thumbnailViewCount: number;
+  }
+  const byCategory = new Map<string, Bucket>();
+  const now = Date.now();
 
-  const childCountByParent = new Map<string, number>();
-  const expertiseById = new Map<string, number>();
+  for (const p of posts || []) {
+    const category = (p.category || '').trim();
+    if (!category) continue;
 
-  if (genreIds.length > 0) {
-    const [{ data: children }, { data: links }] = await Promise.all([
-      supabase.from('topics').select('parent_id').in('parent_id', genreIds),
-      supabase.from('topic_posts').select('topic_id, post_id').in('topic_id', genreIds),
-    ]);
+    const bucket = byCategory.get(category) || {
+      postCount: 0,
+      totalViewCount: 0,
+      recentCount30: 0,
+      lastPostAt: null,
+      firstPostAt: null,
+      thumbnailUrl: null,
+      thumbnailViewCount: -1,
+    };
 
-    for (const c of children || []) {
-      if (!c.parent_id) continue;
-      childCountByParent.set(c.parent_id, (childCountByParent.get(c.parent_id) || 0) + 1);
+    const viewCount = p.view_count || 0;
+    const publishedAtMs = p.published_at ? parseNaverPostDate(p.published_at) : null;
+
+    bucket.postCount++;
+    bucket.totalViewCount += viewCount;
+    if (publishedAtMs && now - publishedAtMs <= RECENT_DAYS_MS) bucket.recentCount30++;
+    if (publishedAtMs) {
+      if (bucket.lastPostAt == null || publishedAtMs > bucket.lastPostAt) bucket.lastPostAt = publishedAtMs;
+      if (bucket.firstPostAt == null || publishedAtMs < bucket.firstPostAt) bucket.firstPostAt = publishedAtMs;
+    }
+    if (p.thumbnail_url && viewCount > bucket.thumbnailViewCount) {
+      bucket.thumbnailUrl = p.thumbnail_url;
+      bucket.thumbnailViewCount = viewCount;
     }
 
-    const postIdsByTopic = new Map<string, string[]>();
-    const allPostIds = new Set<string>();
-    for (const l of links || []) {
-      const arr = postIdsByTopic.get(l.topic_id) || [];
-      arr.push(l.post_id);
-      postIdsByTopic.set(l.topic_id, arr);
-      allPostIds.add(l.post_id);
-    }
-
-    if (allPostIds.size > 0) {
-      const { data: contents } = await supabase
-        .from('blog_post_contents')
-        .select('post_id, view_count, published_at')
-        .eq('user_id', userId)
-        .in('post_id', Array.from(allPostIds));
-
-      const contentByPostId = new Map((contents || []).map(c => [c.post_id, c]));
-      const now = Date.now();
-
-      for (const topicId of genreIds) {
-        const postIds = postIdsByTopic.get(topicId) || [];
-        if (postIds.length === 0) continue;
-        let totalViews = 0;
-        let recentCount30 = 0;
-        for (const pid of postIds) {
-          const content = contentByPostId.get(pid);
-          if (!content) continue;
-          totalViews += content.view_count || 0;
-          const publishedAtMs = content.published_at ? parseNaverPostDate(content.published_at) : null;
-          if (publishedAtMs && now - publishedAtMs <= RECENT_DAYS_MS) recentCount30++;
-        }
-        const avgViews = postIds.length > 0 ? totalViews / postIds.length : 0;
-        expertiseById.set(topicId, computeExpertiseScore(postIds.length, recentCount30, avgViews));
-      }
-    }
+    byCategory.set(category, bucket);
   }
 
-  const result = rows.map(t => ({
-    id: t.id,
-    topicType: t.topic_type,
-    name: t.name,
-    description: t.description,
-    representativeKeywords: t.representative_keywords || [],
-    thumbnailUrl: t.thumbnail_url,
-    postCount: t.post_count,
-    totalViewCount: t.total_view_count,
-    firstPostAt: t.first_post_at,
-    lastPostAt: t.last_post_at,
-    confidence: t.confidence,
-    ...(t.topic_type === 'genre'
-      ? { expertiseScore: expertiseById.get(t.id) ?? null, childCount: childCountByParent.get(t.id) || 0 }
-      : {}),
-  }));
+  let result = Array.from(byCategory.entries())
+    .filter(([, b]) => b.postCount >= MIN_POSTS_PER_CATEGORY)
+    .map(([category, b]) => ({
+      id: category,
+      name: category,
+      postCount: b.postCount,
+      totalViewCount: b.totalViewCount,
+      firstPostAt: b.firstPostAt ? new Date(b.firstPostAt).toISOString() : null,
+      lastPostAt: b.lastPostAt ? new Date(b.lastPostAt).toISOString() : null,
+      thumbnailUrl: b.thumbnailUrl,
+      expertiseScore: computeExpertiseScore(b.postCount, b.recentCount30, b.postCount > 0 ? b.totalViewCount / b.postCount : 0),
+    }));
+
+  if (q) result = result.filter(r => r.name.toLowerCase().includes(q));
+
+  switch (sort) {
+    case 'posts':
+      result.sort((a, b) => b.postCount - a.postCount);
+      break;
+    case 'views':
+      result.sort((a, b) => b.totalViewCount - a.totalViewCount);
+      break;
+    case 'name':
+      result.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+      break;
+    case 'latest':
+    default:
+      result.sort((a, b) => (b.lastPostAt ? Date.parse(b.lastPostAt) : 0) - (a.lastPostAt ? Date.parse(a.lastPostAt) : 0));
+      break;
+  }
 
   return NextResponse.json({ topics: result, totalCount: result.length });
 }

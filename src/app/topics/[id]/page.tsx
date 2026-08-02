@@ -6,27 +6,12 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { formatCountK, formatDateDot } from '@/lib/format';
 
-type TopicType = 'genre' | 'author' | 'publisher' | 'brand' | 'business' | 'region' | 'keyword';
-
-const TOPIC_TYPE_LABEL: Record<TopicType, string> = {
-  genre: '장르',
-  author: '작가/인물',
-  publisher: '출판사',
-  brand: '브랜드',
-  business: '업체',
-  region: '지역',
-  keyword: '키워드',
-};
-
 interface TopicDetail {
   id: string;
-  topicType: TopicType;
   name: string;
-  description: string | null;
-  representativeKeywords: string[];
-  thumbnailUrl: string | null;
   postCount: number;
   totalViewCount: number;
+  thumbnailUrl: string | null;
   lastPostAt: string | null;
 }
 
@@ -38,27 +23,12 @@ interface TopicPost {
   published_at: string | null;
   category: string | null;
   url: string;
-  relevanceScore: number;
   publishedAtMs: number;
 }
 
-interface TopicChild {
-  id: string;
-  name: string;
-  postCount: number;
-}
-
-interface RelatedTopic {
-  id: string;
-  topicType: TopicType;
-  name: string;
-  sharedPostCount: number;
-}
-
-type SortKey = 'recommended' | 'latest' | 'views';
+type SortKey = 'latest' | 'views';
 
 const SORT_TABS: { key: SortKey; label: string }[] = [
-  { key: 'recommended', label: 'AI추천순' },
   { key: 'latest', label: '최신순' },
   { key: 'views', label: '조회순' },
 ];
@@ -68,9 +38,7 @@ export default function TopicDetailPage() {
   const router = useRouter();
   const [topic, setTopic] = useState<TopicDetail | null>(null);
   const [posts, setPosts] = useState<TopicPost[]>([]);
-  const [children, setChildren] = useState<TopicChild[]>([]);
-  const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
-  const [sort, setSort] = useState<SortKey>('recommended');
+  const [sort, setSort] = useState<SortKey>('latest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,8 +61,6 @@ export default function TopicDetailPage() {
         const json = await res.json();
         setTopic(json.topic);
         setPosts(json.posts || []);
-        setChildren(json.children || []);
-        setRelatedTopics(json.relatedTopics || []);
       } catch (e) {
         setError(e instanceof Error ? e.message : '데이터를 불러오지 못했습니다.');
       } finally {
@@ -116,7 +82,7 @@ export default function TopicDetailPage() {
 
         {!loading && !error && topic && (
           <>
-            <div className="mt-3 mb-4 flex items-start gap-4">
+            <div className="mt-3 mb-6 flex items-start gap-4">
               {topic.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -130,63 +96,14 @@ export default function TopicDetailPage() {
                 </div>
               )}
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-                    {TOPIC_TYPE_LABEL[topic.topicType]}
-                  </span>
-                  <h1 className="text-xl font-bold text-text">{topic.name}</h1>
-                </div>
-                {topic.description && <p className="text-sm text-dim mt-1">{topic.description}</p>}
-                {topic.representativeKeywords.length > 0 && (
-                  <p className="text-xs text-dim mt-1">{topic.representativeKeywords.join(' · ')}</p>
-                )}
+                <h1 className="text-xl font-bold text-text">{topic.name}</h1>
                 <div className="flex items-center gap-3 mt-2 text-xs text-dim">
                   <span>글 {topic.postCount}개</span>
                   <span>·</span>
                   <span>조회 {formatCountK(topic.totalViewCount)}</span>
-                  {topic.lastPostAt && (
-                    <>
-                      <span>·</span>
-                      <span>최근 발행 {formatDateDot(new Date(topic.lastPostAt))}</span>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
-
-            {children.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs font-semibold text-dim mb-1.5">소분류</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {children.map(child => (
-                    <Link
-                      key={child.id}
-                      href={`/topics/${child.id}`}
-                      className="text-xs px-2.5 py-1 rounded-full bg-surface border border-border text-text hover:border-accent/40 transition"
-                    >
-                      {child.name} {formatCountK(child.postCount)}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {relatedTopics.length > 0 && (
-              <div className="mb-6">
-                <p className="text-xs font-semibold text-dim mb-1.5">관련 토픽</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {relatedTopics.map(rt => (
-                    <Link
-                      key={rt.id}
-                      href={`/topics/${rt.id}`}
-                      className="text-xs px-2.5 py-1 rounded-full bg-accent/5 border border-accent/20 text-text hover:border-accent/40 transition"
-                    >
-                      {TOPIC_TYPE_LABEL[rt.topicType]} · {rt.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="flex gap-1 mb-4 border-b border-border">
               {SORT_TABS.map(t => (
@@ -203,7 +120,7 @@ export default function TopicDetailPage() {
             </div>
 
             {posts.length === 0 ? (
-              <div className="p-12 text-center text-dim text-sm">이 토픽에 연결된 글이 없습니다.</div>
+              <div className="p-12 text-center text-dim text-sm">이 카테고리에 연결된 글이 없습니다.</div>
             ) : (
               <ul className="space-y-2">
                 {posts.map(p => (
@@ -227,8 +144,6 @@ export default function TopicDetailPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-text truncate">{p.title || '(제목 없음)'}</p>
                         <p className="text-[11px] text-dim mt-1">
-                          {p.category && <span>{p.category}</span>}
-                          {p.category && <span className="mx-1">·</span>}
                           <span>조회 {formatCountK(p.view_count)}</span>
                           {p.publishedAtMs > 0 && (
                             <>
