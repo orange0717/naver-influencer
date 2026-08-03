@@ -74,11 +74,11 @@ export default function AnimatedStatCard({
     dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
-  const heightClass = size === 'stat' ? 'h-40' : 'h-[130px]';
+  const heightClass = size === 'stat' ? 'h-[174px]' : 'h-[142px]';
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
-  // KPI 카드(130px)는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
-  // 160px짜리 Statistics 카드 전용 여백(mb-3/min-h-28px/pt-2)을 그대로 쓰면 130px 안에 다 안 들어가
-  // 숫자 줄이 카드 테두리 밖으로 흘러넘치던 문제를 해결.
+  // KPI 카드(142px)는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
+  // 174px짜리 Statistics 카드 전용 여백(mb-3/min-h-28px/pt-2)을 그대로 쓰면 142px 안에 다 안 들어가
+  // 숫자 줄이 카드 테두리 밖으로 흘러넘치던 문제를 해결. (글자크기 상향 후에도 여유 있도록 카드 높이 +12~14px)
   const isKpi = size === 'kpi';
 
   useEffect(() => {

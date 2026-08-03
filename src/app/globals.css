@@ -181,7 +181,7 @@ a:hover:not(.btn) {
    모든 통계/KPI 카드가 이 3단계 위계(제목/값/설명)를 공유한다.
    ═══════════════════════════════════════════════════════════════ */
 .stat-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #666;
   line-height: 1.3;
@@ -195,11 +195,11 @@ a:hover:not(.btn) {
 }
 /* KPI 카드(대시보드 상단 요약 8칸/6칸) 숫자 — 카드가 좁아 숫자가 절대 넘치면 안 되는 구간 */
 .stat-value-kpi {
-  font-size: 18px;
+  font-size: 22px;
 }
 /* Statistics 카드(발행/순위/누락율 등 3칸 그리드) 숫자 — KPI보다 한 단계 큰 강조 구간 */
 .stat-value-stat {
-  font-size: 20px;
+  font-size: 24px;
 }
 .stat-desc {
   font-size: 11px;

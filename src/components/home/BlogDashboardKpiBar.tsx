@@ -49,7 +49,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-[130px] animate-pulse" />
+          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-[142px] animate-pulse" />
         ))}
       </div>
     );

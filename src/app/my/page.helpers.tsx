@@ -72,7 +72,7 @@ export function GuestDashboard() {
       {/* ─── 빈 상태 통계 카드 (레이아웃 미리보기) ─── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {placeholderStats.map((c) => (
-          <div key={c.label} className="h-[130px] flex flex-col bg-surface rounded-2xl border border-border shadow-xs p-5">
+          <div key={c.label} className="h-[142px] flex flex-col bg-surface rounded-2xl border border-border shadow-xs p-5">
             <div className="w-8 h-8 rounded-full bg-[#FAF4F2] shrink-0" />
             <p className="stat-title mt-2 mb-0.5 shrink-0">{c.label}</p>
             <p className="stat-value stat-value-kpi text-dim mt-auto pt-1">{`-${c.suffix}`}</p>
