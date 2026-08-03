@@ -288,7 +288,7 @@ export function GuestBlogAnalysis() {
   const loginRedirect = '/my/blogger';
   const features = ['방문자 분석', '키워드 순위', 'AI 브리핑', '포스팅 분석', '인플루언서 분석'];
   const statCards = [
-    { label: 'TODAY 방문자' },
+    { label: '오늘 방문자' },
     { label: '30일 방문자수' },
     { label: '이웃수' },
     { label: '이번주 발행' },

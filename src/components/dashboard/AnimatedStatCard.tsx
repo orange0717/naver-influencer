@@ -63,11 +63,11 @@ export default function AnimatedStatCard({
   const ref = useRef<HTMLDivElement>(null);
 
   const colorMap = {
-    accent: { text: 'text-accent', bg: 'from-accent/5 to-accent/[0.02]', icon: 'bg-accent/10 text-accent', spark: '#CC9486' },
-    up: { text: 'text-up', bg: 'from-up/5 to-up/[0.02]', icon: 'bg-up/10 text-up', spark: '#2E8B57' },
-    down: { text: 'text-down', bg: 'from-down/5 to-down/[0.02]', icon: 'bg-down/10 text-down', spark: '#D94848' },
-    gold: { text: 'text-gold', bg: 'from-gold/5 to-gold/[0.02]', icon: 'bg-gold/10 text-gold', spark: '#D4A017' },
-    dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', icon: 'bg-border/30 text-dim', spark: '#999' },
+    accent: { text: 'text-accent', bg: 'from-accent/5 to-accent/[0.02]', icon: 'bg-accent/10 text-accent', spark: '#CC9486', hoverBorder: 'hover:border-accent/40' },
+    up: { text: 'text-up', bg: 'from-up/5 to-up/[0.02]', icon: 'bg-up/10 text-up', spark: '#2E8B57', hoverBorder: 'hover:border-up/40' },
+    down: { text: 'text-down', bg: 'from-down/5 to-down/[0.02]', icon: 'bg-down/10 text-down', spark: '#D94848', hoverBorder: 'hover:border-down/40' },
+    gold: { text: 'text-gold', bg: 'from-gold/5 to-gold/[0.02]', icon: 'bg-gold/10 text-gold', spark: '#D4A017', hoverBorder: 'hover:border-gold/40' },
+    dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', icon: 'bg-border/30 text-dim', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
 
@@ -94,11 +94,12 @@ export default function AnimatedStatCard({
     <div
       ref={ref}
       className={`
-        h-48 flex flex-col
+        h-44 flex flex-col
         bg-gradient-to-br ${c.bg} bg-surface
-        rounded-2xl border border-border p-6
+        rounded-2xl border border-border p-7
         shadow-xs
         transition-all duration-500 ease-out
+        hover:-translate-y-0.5 hover:shadow-lg ${c.hoverBorder}
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
         ${className}
       `}

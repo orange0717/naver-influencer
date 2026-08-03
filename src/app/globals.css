@@ -189,8 +189,8 @@ a:hover:not(.btn) {
 .stat-value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 28px;
-  font-weight: 900;
+  font-size: 48px;
+  font-weight: 700;
   line-height: 1.1;
 }
 .stat-desc {

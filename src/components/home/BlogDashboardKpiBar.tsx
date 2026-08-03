@@ -47,10 +47,13 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-48 animate-pulse" />
-        ))}
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-44 animate-pulse" />
+          ))}
+        </div>
+        <div className="bg-surface border border-border rounded-2xl shadow-xs h-11 animate-pulse" />
       </div>
     );
   }
@@ -63,30 +66,44 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
     );
   }
 
-  const cards: { label: string; value: number; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim' }[] = [
-    { label: 'TODAY 방문자', value: data.todayVisitors, suffix: '명', icon: ICONS.visitor, color: 'accent' },
-    { label: '30일 방문자', value: data.thirtyDayVisitors, suffix: '명', icon: ICONS.visitor, color: 'accent' },
-    { label: '이웃수', value: data.neighborCount, suffix: '명', icon: ICONS.neighbor, color: 'accent' },
-    { label: '발행 수', value: data.postCount, suffix: '개', icon: ICONS.post, color: 'accent' },
-    { label: 'AI 브리핑 인용', value: data.aiBriefingCitedCount, suffix: '건', icon: ICONS.ai, color: data.aiBriefingCitedCount > 0 ? 'up' : 'dim' },
-    { label: 'AI 탭 노출', value: data.aiTabExposedCount, suffix: '건', icon: ICONS.ai, color: data.aiTabExposedCount > 0 ? 'up' : 'dim' },
-    { label: 'TOP10 키워드', value: data.top10KeywordCount, suffix: '개', icon: ICONS.keyword, color: data.top10KeywordCount > 0 ? 'gold' : 'dim' },
+  const primaryCards: { label: string; value: number; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim' }[] = [
+    { label: '오늘 방문자', value: data.todayVisitors, suffix: '명', icon: ICONS.visitor, color: 'accent' },
     { label: '평균 검색순위', value: data.avgRank ?? 0, suffix: '위', icon: ICONS.rank, color: 'accent' },
+    { label: 'AI 탭 노출', value: data.aiTabExposedCount, suffix: '건', icon: ICONS.ai, color: data.aiTabExposedCount > 0 ? 'up' : 'dim' },
+    { label: 'AI 브리핑 인용', value: data.aiBriefingCitedCount, suffix: '건', icon: ICONS.ai, color: data.aiBriefingCitedCount > 0 ? 'up' : 'dim' },
+  ];
+
+  const secondaryCards: { label: string; value: number; suffix: string }[] = [
+    { label: '30일 방문자', value: data.thirtyDayVisitors, suffix: '명' },
+    { label: '이웃수', value: data.neighborCount, suffix: '명' },
+    { label: '발행 수', value: data.postCount, suffix: '개' },
+    { label: 'TOP10 키워드', value: data.top10KeywordCount, suffix: '개' },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-      {cards.map((c, i) => (
-        <AnimatedStatCard
-          key={c.label}
-          label={c.label}
-          value={c.value}
-          suffix={c.suffix}
-          icon={c.icon}
-          color={c.color}
-          delay={i * 40}
-        />
-      ))}
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {primaryCards.map((c, i) => (
+          <AnimatedStatCard
+            key={c.label}
+            label={c.label}
+            value={c.value}
+            suffix={c.suffix}
+            icon={c.icon}
+            color={c.color}
+            delay={i * 40}
+          />
+        ))}
+      </div>
+      <div className="bg-surface border border-border rounded-2xl px-5 py-3 shadow-xs">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
+          {secondaryCards.map(c => (
+            <span key={c.label} className="text-dim">
+              {c.label} <strong className="text-text font-rank">{c.value}</strong>{c.suffix}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
