@@ -47,9 +47,9 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-5">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-44 animate-pulse" />
+          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-40 animate-pulse" />
         ))}
       </div>
     );
@@ -75,7 +75,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-5">
       {cards.map((c, i) => (
         <AnimatedStatCard
           key={c.label}

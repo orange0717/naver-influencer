@@ -94,9 +94,9 @@ export default function AnimatedStatCard({
     <div
       ref={ref}
       className={`
-        h-44 flex flex-col
+        h-40 flex flex-col min-w-0
         bg-gradient-to-br ${c.bg} bg-surface
-        rounded-2xl border border-border p-7
+        rounded-2xl border border-border p-6
         shadow-xs
         transition-all duration-500 ease-out
         hover:-translate-y-0.5 hover:shadow-lg ${c.hoverBorder}
