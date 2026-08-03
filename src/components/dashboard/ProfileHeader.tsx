@@ -83,7 +83,7 @@ export default function ProfileHeader({
   };
 
   return (
-    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-6 shadow-xs">
+    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-7 shadow-xs">
       <div className="flex items-center gap-4">
         {/* 프로필 이미지 */}
         <div className="relative group">
