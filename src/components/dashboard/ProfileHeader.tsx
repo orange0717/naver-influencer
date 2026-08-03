@@ -83,16 +83,16 @@ export default function ProfileHeader({
   };
 
   return (
-    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-7 shadow-xs">
-      <div className="flex items-center gap-4">
+    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-4 shadow-xs">
+      <div className="flex items-center gap-3">
         {/* 프로필 이미지 */}
         <div className="relative group">
           {imageUrl ? (
-            <div className={`relative w-16 h-16 rounded-full ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'ring-accent/30' : 'ring-[#2DB400]/30'}`}>
-              <img src={imageUrl} alt={displayName} className="w-16 h-16 rounded-full object-cover" />
+            <div className={`relative w-12 h-12 rounded-full ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'ring-accent/30' : 'ring-[#2DB400]/30'}`}>
+              <img src={imageUrl} alt={displayName} className="w-12 h-12 rounded-full object-cover" />
             </div>
           ) : (
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'bg-accent/15 text-accent ring-accent/20' : 'bg-[#2DB400]/15 text-[#2DB400] ring-[#2DB400]/20'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'bg-accent/15 text-accent ring-accent/20' : 'bg-[#2DB400]/15 text-[#2DB400] ring-[#2DB400]/20'}`}>
               {displayName[0]}
             </div>
           )}
@@ -130,7 +130,7 @@ export default function ProfileHeader({
                   value={tempName}
                   onChange={e => setTempName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleNameSave(); if (e.key === 'Escape') setEditingName(false); }}
-                  className="text-xl font-extrabold bg-bg border border-accent rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-accent/30 w-48"
+                  className="text-base font-extrabold bg-bg border border-accent rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-accent/30 w-40"
                   autoFocus
                   maxLength={20}
                 />
@@ -139,7 +139,7 @@ export default function ProfileHeader({
               </div>
             ) : (
               <>
-                <h1 className="text-xl font-extrabold truncate">{displayName}</h1>
+                <h1 className="text-base font-extrabold truncate">{displayName}</h1>
                 {editable && (
                   <button
                     onClick={() => { setTempName(displayName); setEditingName(true); }}
@@ -181,28 +181,28 @@ export default function ProfileHeader({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
             {category && (
-              <span className="text-sm text-dim flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+              <span className="text-xs text-dim flex items-center gap-1">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
                 {category}
               </span>
             )}
             {myKeyword && (
-              <span className="text-sm text-dim flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <span className="text-xs text-dim flex items-center gap-1">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                 {myKeyword}
               </span>
             )}
             {subscriberCount !== undefined && subscriberCount > 0 && (
-              <span className="text-sm text-dim flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span className="text-xs text-dim flex items-center gap-1">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 팬 {formatCount(subscriberCount)}
               </span>
             )}
             {firstSeenAt && (
-              <span className="text-sm text-dim flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span className="text-xs text-dim flex items-center gap-1">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 선정일 {formatDate(firstSeenAt)}
               </span>
             )}
@@ -211,9 +211,9 @@ export default function ProfileHeader({
                 href={`https://blog.naver.com/${blogId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-dim hover:text-accent transition flex items-center gap-1"
+                className="text-xs text-dim hover:text-accent transition flex items-center gap-1"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                 blog.naver.com/{blogId}
               </a>
             )}
@@ -224,14 +224,14 @@ export default function ProfileHeader({
         {top3Count !== undefined && totalKeywords !== undefined && totalKeywords > 0 && (
           <button
             onClick={() => naverId && setShowWidgetCode(true)}
-            className="ml-auto shrink-0 text-center bg-accent/[0.07] rounded-xl px-4 py-3 border border-accent/15 cursor-pointer hover:bg-accent/[0.12] transition"
+            className="ml-auto shrink-0 text-center bg-accent/[0.07] rounded-xl px-3 py-2 border border-accent/15 cursor-pointer hover:bg-accent/[0.12] transition"
             title="클릭하면 블로그 삽입 코드를 확인할 수 있습니다"
           >
-            <p className="stat-title text-accent mb-1">TOP 3 달성률</p>
-            <p className="stat-value text-accent leading-none">
-              {Math.round((top3Count / totalKeywords) * 100)}<span className="text-sm font-bold">%</span>
+            <p className="stat-title text-accent mb-0.5">TOP 3 달성률</p>
+            <p className="stat-value stat-value-kpi text-accent leading-none">
+              {Math.round((top3Count / totalKeywords) * 100)}<span className="text-xs font-bold">%</span>
             </p>
-            <p className="stat-desc mt-1">{top3Count}/{totalKeywords}개</p>
+            <p className="stat-desc">{top3Count}/{totalKeywords}개</p>
           </button>
         )}
       </div>

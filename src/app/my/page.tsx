@@ -725,6 +725,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       {/* ─── 2. 통계 카드 ─── 항상 6장 고정: 조건부 렌더링을 없애 그리드 마지막 행이 깨지지 않게 함 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <AnimatedStatCard
+          size="kpi"
           label="카테고리 순위"
           value={categoryRank}
           suffix={categoryRank > 0 && categoryTotal > 0 ? `위/${categoryTotal}` : '위'}
@@ -733,6 +734,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           delay={80}
         />
         <AnimatedStatCard
+          size="kpi"
           label="AI브리핑 인용"
           value={aiVisibility?.exposedCount ?? 0}
           suffix="건"
@@ -742,6 +744,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           delay={120}
         />
         <AnimatedStatCard
+          size="kpi"
           label="참여 키워드"
           value={participatedCount}
           suffix="개"
@@ -750,6 +753,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           delay={100}
         />
         <AnimatedStatCard
+          size="kpi"
           label="TOP 3 키워드"
           value={top3Count}
           suffix="개"
@@ -758,6 +762,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           delay={150}
         />
         <AnimatedStatCard
+          size="kpi"
           label="순위 변동"
           value={rankUpCount + rankDownCount}
           suffix="건"
@@ -767,6 +772,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           delay={200}
         />
         <AnimatedStatCard
+          size="kpi"
           label="토픽"
           value={topicCount}
           suffix="개"

@@ -287,17 +287,19 @@ export function extractKeywords(title: string, blogId: string, displayName?: str
 export function GuestBlogAnalysis() {
   const loginRedirect = '/my/blogger';
   const features = ['방문자 분석', '키워드 순위', 'AI 브리핑', '포스팅 분석', '인플루언서 분석'];
-  const statCards = [
-    { label: '오늘 방문자' },
-    { label: '30일 방문자수' },
-    { label: '이웃수' },
-    { label: '이번주 발행' },
-    { label: '한달 발행' },
-    { label: '통합검색 평균순위' },
-    { label: '블로그탭 평균순위' },
-    { label: '누락율' },
-    { label: '전체 순위' },
-    { label: '카테고리 순위' },
+  // 오늘 방문자·30일 방문자수·이웃수는 실데이터 화면에서 상단 KPI 요약(BlogDashboardKpiBar)에 속하고,
+  // 나머지는 이 섹션의 Statistics 3칸 그리드에 속함 — 게스트 빈 상태도 같은 사이즈 체계를 따른다.
+  const statCards: { label: string; size: 'kpi' | 'stat' }[] = [
+    { label: '오늘 방문자', size: 'kpi' },
+    { label: '30일 방문자수', size: 'kpi' },
+    { label: '이웃수', size: 'kpi' },
+    { label: '이번주 발행', size: 'stat' },
+    { label: '한달 발행', size: 'stat' },
+    { label: '통합검색 평균순위', size: 'stat' },
+    { label: '블로그탭 평균순위', size: 'stat' },
+    { label: '누락율', size: 'stat' },
+    { label: '전체 순위', size: 'stat' },
+    { label: '카테고리 순위', size: 'stat' },
   ];
 
   return (
@@ -338,7 +340,7 @@ export function GuestBlogAnalysis() {
       </div>
 
       {/* ─── 2. 대시보드 카드 (Empty State) ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {statCards.map((c, i) => (
           <AnimatedStatCard
             key={c.label}
@@ -348,6 +350,7 @@ export function GuestBlogAnalysis() {
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/></svg>}
             color="dim"
             delay={i * 40}
+            size={c.size}
             className={i === statCards.length - 1 ? 'lg:col-span-3' : undefined}
           />
         ))}
