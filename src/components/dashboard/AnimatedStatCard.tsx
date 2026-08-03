@@ -76,6 +76,10 @@ export default function AnimatedStatCard({
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
   const heightClass = size === 'stat' ? 'h-40' : 'h-[130px]';
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
+  // KPI 카드(130px)는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
+  // 160px짜리 Statistics 카드 전용 여백(mb-3/min-h-28px/pt-2)을 그대로 쓰면 130px 안에 다 안 들어가
+  // 숫자 줄이 카드 테두리 밖으로 흘러넘치던 문제를 해결.
+  const isKpi = size === 'kpi';
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), delay);
@@ -110,7 +114,7 @@ export default function AnimatedStatCard({
         ${className}
       `}
     >
-      <div className="flex items-start justify-between mb-3 shrink-0">
+      <div className={`flex items-start justify-between ${isKpi ? 'mb-2' : 'mb-3'} shrink-0`}>
         <div className={`w-8 h-8 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
           {icon}
         </div>
@@ -118,11 +122,13 @@ export default function AnimatedStatCard({
           <Sparkline data={sparklineData} color={c.spark} />
         )}
       </div>
-      <p className="stat-title mb-1 shrink-0">{label}</p>
-      <p className="stat-desc line-clamp-2 min-h-[28px] shrink-0">
-        {description || ' '}
-      </p>
-      <div className="mt-auto flex items-baseline gap-1.5 pt-2 shrink-0">
+      <p className={`stat-title ${isKpi ? 'mb-0.5' : 'mb-1'} shrink-0`}>{label}</p>
+      {!isKpi && (
+        <p className="stat-desc line-clamp-2 min-h-[28px] shrink-0">
+          {description || ' '}
+        </p>
+      )}
+      <div className={`mt-auto flex items-baseline gap-1.5 ${isKpi ? 'pt-1' : 'pt-2'} shrink-0`}>
         <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
           {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
         </span>

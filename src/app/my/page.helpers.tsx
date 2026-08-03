@@ -74,9 +74,8 @@ export function GuestDashboard() {
         {placeholderStats.map((c) => (
           <div key={c.label} className="h-[130px] flex flex-col bg-surface rounded-2xl border border-border shadow-xs p-5">
             <div className="w-8 h-8 rounded-full bg-[#FAF4F2] shrink-0" />
-            <p className="stat-title mt-3 mb-1 shrink-0">{c.label}</p>
-            <p className="stat-desc min-h-[28px] shrink-0"> </p>
-            <p className="stat-value stat-value-kpi text-dim mt-auto">{`-${c.suffix}`}</p>
+            <p className="stat-title mt-2 mb-0.5 shrink-0">{c.label}</p>
+            <p className="stat-value stat-value-kpi text-dim mt-auto pt-1">{`-${c.suffix}`}</p>
           </div>
         ))}
       </div>
