@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep, tryAcquireCronLock, releaseCronLock } from '@/lib/crawler';
-import {
-  NAVER_DOMAIN_CATEGORIES,
-  fetchInfluencerTopicCards,
-  fetchTopicDetail,
-  fetchDiscoverCategory,
-} from '@/lib/naver-topic-crawler';
+import { fetchInfluencerTopicCards, fetchTopicDetail } from '@/lib/naver-topic-crawler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -181,43 +176,6 @@ export async function GET(request: NextRequest) {
       } catch (err) {
         totalFailed++;
         console.error(`[crawl-naver-topics] target failed (${target.blogId}):`, err);
-      }
-
-      await sleep(300);
-    }
-
-    // Discover 스냅샷 — 20개 도메인, 1일 1회 (snapshot_date UNIQUE 제약으로 중복 실행 방지)
-    const today = new Date().toISOString().slice(0, 10);
-    for (const category of NAVER_DOMAIN_CATEGORIES) {
-      if (Date.now() - startedAt > TIME_BUDGET_MS) break;
-
-      const { count } = await supabase
-        .from('naver_discover_snapshots')
-        .select('id', { count: 'exact', head: true })
-        .eq('category_id', category.id)
-        .eq('snapshot_date', today);
-      if (count && count > 0) continue;
-
-      try {
-        const snapshot = await fetchDiscoverCategory(category);
-        const rows = [
-          { collection_type: 'LATEST' as const, pool_id: '', pool_name: null, items: snapshot.latest },
-          { collection_type: 'POPULAR' as const, pool_id: snapshot.popular.poolId, pool_name: snapshot.popular.poolName, items: snapshot.popular.items },
-          { collection_type: 'EXPERT' as const, pool_id: snapshot.expert.poolId, pool_name: snapshot.expert.poolName, items: snapshot.expert.items },
-          { collection_type: 'SPECIALTY' as const, pool_id: snapshot.specialty.poolId, pool_name: snapshot.specialty.poolName, items: snapshot.specialty.items },
-        ].map(r => ({
-          category_id: category.id,
-          category_name: category.name,
-          collection_type: r.collection_type,
-          pool_id: r.pool_id,
-          pool_name: r.pool_name,
-          items: r.items,
-          snapshot_date: today,
-        }));
-
-        await supabase.from('naver_discover_snapshots').upsert(rows, { onConflict: 'category_id,collection_type,pool_id,snapshot_date' });
-      } catch (err) {
-        console.error(`[crawl-naver-topics] discover snapshot failed (${category.name}):`, err);
       }
 
       await sleep(300);

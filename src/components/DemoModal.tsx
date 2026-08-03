@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Modal from '@/components/ui/Modal';
 
 interface DemoModalProps {
   open: boolean;
@@ -57,18 +58,13 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
     window.location.href = `/api/auth/demo/start?${params.toString()}`;
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={handleClose}>
+    <Modal open={open} onClose={handleClose} overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* 백드롭 */}
       <div className="absolute inset-0 bg-black/50" />
 
       {/* 모달 */}
-      <div
-        className="relative bg-bg rounded-2xl border border-border shadow-xl w-full max-w-md p-8"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="relative bg-bg rounded-2xl border border-border shadow-xl w-full max-w-md p-8">
         <form onSubmit={handleStart}>
           {/* 배지 */}
           <div className="text-center mb-6">
@@ -144,6 +140,6 @@ export default function DemoModal({ open, onClose }: DemoModalProps) {
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

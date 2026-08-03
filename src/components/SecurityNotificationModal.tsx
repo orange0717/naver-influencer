@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import Modal from '@/components/ui/Modal';
 
 interface Notification {
   id: string;
@@ -21,20 +21,6 @@ export function SecurityNotificationModal({
   onClose,
   onAction,
 }: Props) {
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Focus management & ESC key
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
   const handleAction = () => {
     if (onAction) {
       onAction();
@@ -52,9 +38,14 @@ export function SecurityNotificationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <Modal
+      open
+      onClose={onClose}
+      closeOnBackdrop={false}
+      closeOnEscape
+      overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+    >
       <div
-        ref={modalRef}
         className="bg-surface/90 backdrop-blur-md border border-border/50 rounded-2xl shadow-lg max-w-md w-full p-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
         role="alertdialog"
         aria-labelledby="modal-title"
@@ -112,7 +103,7 @@ export function SecurityNotificationModal({
           </span>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

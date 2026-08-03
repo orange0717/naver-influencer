@@ -14,6 +14,7 @@ interface NaverTopicItem {
   content_count: number;
   topic_subject: string | null;
   topic_subject_category: string | null;
+  total_view_count: number;
 }
 
 interface Recommendation {
@@ -35,13 +36,25 @@ interface SummaryResponse {
   recommendations: Recommendation[];
 }
 
+interface MatchedPost {
+  post_id: string;
+  title: string | null;
+  url: string;
+  view_count: number | null;
+  published_at: string | null;
+}
+
 export default function TopicsPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [naverTopics, setNaverTopics] = useState<NaverTopicItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authHeaders, setAuthHeaders] = useState<Record<string, string> | null>(null);
+
   const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
+  const [loadingRecId, setLoadingRecId] = useState<string | null>(null);
+  const [matchedPostsByRecId, setMatchedPostsByRecId] = useState<Record<string, MatchedPost[]>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -53,17 +66,22 @@ export default function TopicsPage() {
           return;
         }
         const headers = { authorization: `Bearer ${session.access_token}` };
+        setAuthHeaders(headers);
         const [summaryRes, naverRes] = await Promise.all([
           fetch('/api/blog/topics/summary', { headers }),
           fetch('/api/naver-topics', { headers }),
         ]);
+        if (summaryRes.status === 401 || naverRes.status === 401) {
+          router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
+          return;
+        }
         if (!summaryRes.ok) {
           const j = await summaryRes.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${summaryRes.status}`);
+          throw new Error(j.error || `요약 정보를 불러오지 못했습니다. (HTTP ${summaryRes.status})`);
         }
         if (!naverRes.ok) {
           const j = await naverRes.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${naverRes.status}`);
+          throw new Error(j.error || `발행 토픽을 불러오지 못했습니다. (HTTP ${naverRes.status})`);
         }
         setSummary(await summaryRes.json());
         const naverJson = await naverRes.json();
@@ -87,13 +105,34 @@ export default function TopicsPage() {
     return Math.max(0, summary.aiPossibleCount - summary.publishedCount);
   }, [summary]);
 
+  const handleToggleRec = async (recId: string) => {
+    if (expandedRecId === recId) {
+      setExpandedRecId(null);
+      return;
+    }
+    setExpandedRecId(recId);
+    if (matchedPostsByRecId[recId] || !authHeaders) return;
+    setLoadingRecId(recId);
+    try {
+      const res = await fetch(`/api/blog/topics/${recId}`, { headers: authHeaders });
+      if (res.ok) {
+        const json = await res.json();
+        setMatchedPostsByRecId(prev => ({ ...prev, [recId]: json.posts || [] }));
+      }
+    } catch {
+      // 매칭 글 목록 조회 실패는 조용히 무시 — 카드 자체(이름/개수)는 이미 표시돼 있음
+    } finally {
+      setLoadingRecId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-text">토픽</h1>
           <p className="text-sm text-dim mt-1">
-            네이버에 발행한 토픽과 AI 분석 결과를 함께 보여줘요. 매일 자동으로 수집·분석해 반영합니다.
+            네이버에 실제 발행한 토픽과, 아직 토픽으로 묶이지 않은 글을 AI가 찾아 추천해드려요. 매일 자동으로 수집·분석해 반영합니다.
           </p>
         </div>
 
@@ -140,8 +179,8 @@ export default function TopicsPage() {
               </div>
             )}
 
-            {/* 실제 발행 토픽 카드 */}
-            <h2 className="text-sm font-bold text-dim mb-3">발행된 토픽</h2>
+            {/* ① 내 토픽 — 네이버에 실제 발행됨 */}
+            <h2 className="text-sm font-bold text-dim mb-3">내 토픽 — 네이버에 실제 발행됨</h2>
             {naverTopics.length === 0 ? (
               <div className="p-8 mb-8 text-center text-dim text-sm rounded-xl bg-surface border border-border">
                 아직 수집된 발행 토픽이 없습니다. 매일 자동으로 수집하니 하루 정도 기다려 주세요.
@@ -173,6 +212,7 @@ export default function TopicsPage() {
                       )}
                       <div className="flex items-center gap-3 mt-2 text-xs text-dim">
                         <span>글 {formatCountK(topic.content_count)}개</span>
+                        <span>조회 {formatCountK(topic.total_view_count)}</span>
                       </div>
                     </div>
                   </Link>
@@ -180,35 +220,73 @@ export default function TopicsPage() {
               </div>
             )}
 
-            {/* AI 추천 토픽 */}
-            {summary.recommendations.length > 0 && (
-              <div>
-                <h2 className="text-sm font-bold text-dim mb-3">AI 추천 토픽 (아직 발행하지 않음)</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {summary.recommendations.map(rec => (
-                    <button
-                      key={rec.id}
-                      onClick={() => setExpandedRecId(expandedRecId === rec.id ? null : rec.id)}
-                      className="text-left p-4 rounded-xl bg-accent/5 border border-accent/20 text-sm text-text hover:border-accent/40 transition"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span>
-                          ✨ <span className="font-semibold">{rec.suggested_name}</span>
-                          {rec.topic_subject_category && <span className="text-xs text-dim ml-1">({rec.topic_subject_category})</span>}
-                        </span>
-                        <span className="text-xs text-dim flex-shrink-0">글 {rec.estimated_post_count}개</span>
-                      </div>
-                      {rec.representative_keywords.length > 0 && (
-                        <p className="text-xs text-dim mt-1">{rec.representative_keywords.slice(0, 5).join(' · ')}</p>
-                      )}
-                      {expandedRecId === rec.id && rec.reasoning && (
-                        <p className="text-xs text-dim mt-2 border-t border-accent/20 pt-2">{rec.reasoning}</p>
-                      )}
-                    </button>
-                  ))}
+            {/* ② AI 추천 토픽 — 아직 토픽으로 묶이지 않은 글 */}
+            <div>
+              <h2 className="text-sm font-bold text-dim mb-3">AI 추천 토픽 — 아직 토픽으로 묶이지 않은 글</h2>
+              {summary.recommendations.length === 0 ? (
+                <div className="p-8 text-center text-dim text-sm rounded-xl bg-surface border border-border">
+                  아직 추천할 토픽이 없습니다. 매일 자동으로 분석하니 하루 정도 기다려 주세요.
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {summary.recommendations.map(rec => {
+                    const isExpanded = expandedRecId === rec.id;
+                    const matchedPosts = matchedPostsByRecId[rec.id];
+                    return (
+                      <div
+                        key={rec.id}
+                        className="p-4 rounded-xl bg-accent/5 border border-accent/20 text-sm text-text"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span>
+                            ✨ <span className="font-semibold">{rec.suggested_name}</span>
+                            {rec.topic_subject_category && <span className="text-xs text-dim ml-1">({rec.topic_subject_category})</span>}
+                          </span>
+                          <span className="text-xs text-dim flex-shrink-0">예상 콘텐츠 {rec.estimated_post_count}개</span>
+                        </div>
+                        {rec.representative_keywords.length > 0 && (
+                          <p className="text-xs text-dim mt-1">{rec.representative_keywords.slice(0, 5).join(' · ')}</p>
+                        )}
+                        <button
+                          onClick={() => handleToggleRec(rec.id)}
+                          className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-accent text-white hover:bg-accent/90 transition"
+                        >
+                          {isExpanded ? '접기' : '토픽 만들기'}
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-3 border-t border-accent/20 pt-3">
+                            {rec.reasoning && <p className="text-xs text-dim mb-2">{rec.reasoning}</p>}
+                            {loadingRecId === rec.id ? (
+                              <p className="text-xs text-dim">글 목록 불러오는 중…</p>
+                            ) : matchedPosts && matchedPosts.length > 0 ? (
+                              <>
+                                <p className="text-xs text-dim mb-1.5">아래 글들을 네이버에서 토픽으로 묶어 발행해보세요.</p>
+                                <ul className="space-y-1">
+                                  {matchedPosts.map(p => (
+                                    <li key={p.post_id}>
+                                      <a
+                                        href={p.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-accent hover:underline truncate block"
+                                      >
+                                        {p.title || p.url}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            ) : (
+                              <p className="text-xs text-dim">매칭된 글을 찾지 못했습니다.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

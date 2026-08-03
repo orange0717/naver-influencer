@@ -138,10 +138,10 @@ export async function GET(
   try {
     const supabase = createServiceClient();
 
-    // 블로그 점수 데이터
+    // 블로그 점수 데이터 (SVG 렌더링에 쓰이는 컬럼만)
     const { data: score } = await supabase
       .from('blog_scores')
-      .select('*')
+      .select('blog_name, grade, total_score, crank_score, dia_score, diaplus_score, keyword_count, top10_count, avg_rank, scored_at')
       .eq('blog_id', blogId)
       .single();
 

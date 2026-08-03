@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
 
 interface Props {
   open: boolean;
@@ -10,31 +10,15 @@ interface Props {
 }
 
 export default function LegalModal({ open, title, onClose, children }: Props) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
+    <Modal
+      open={open}
+      onClose={onClose}
+      closeOnEscape
+      lockBodyScroll
+      overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
     >
-      <div
-        className="bg-surface w-full max-w-2xl max-h-[85vh] rounded-2xl border border-border shadow-xl flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="bg-surface w-full max-w-2xl max-h-[85vh] rounded-2xl border border-border shadow-xl flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 className="text-lg font-extrabold">{title}</h2>
           <button
@@ -61,6 +45,6 @@ export default function LegalModal({ open, title, onClose, children }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

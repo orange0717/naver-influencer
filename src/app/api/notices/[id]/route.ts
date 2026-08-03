@@ -25,7 +25,7 @@ export async function GET(
 
     const { data: notice, error } = await supabase
       .from('notices')
-      .select('*')
+      .select('id, title, content, tag, author_name, view_count, comment_count, like_count, is_pinned, show_on_banner, created_at')
       .eq('id', id)
       .eq('is_deleted', false)
       .single();

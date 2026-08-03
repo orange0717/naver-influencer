@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('blog_scores')
-      .select('*')
+      .select('total_score, grade, category')
       .eq('blog_id', blogId)
       .single();
 

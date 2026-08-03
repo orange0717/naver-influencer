@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const { data: campaign, error } = await supabase
     .from('campaigns')
-    .select('*')
+    .select('id, title, description, category, region, campaign_type, budget, fee_per_post, max_participants, deadline, posting_deadline, requirements, status, created_at')
     .eq('id', id)
     .eq('advertiser_id', auth.advertiserId)
     .single();

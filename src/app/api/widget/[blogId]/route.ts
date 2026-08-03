@@ -122,7 +122,7 @@ export async function GET(
     const supabase = createServiceClient();
     const { data } = await supabase
       .from('blog_scores')
-      .select('*')
+      .select('blog_name, exposure_grade, exposure_score, keyword_count, ranked_count, avg_rank, top5_count, top10_count, scored_at')
       .eq('blog_id', blogId)
       .single();
 

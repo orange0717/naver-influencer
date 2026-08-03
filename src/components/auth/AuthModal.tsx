@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import TermsContent from '@/components/legal/TermsContent';
 import PrivacyContent from '@/components/legal/PrivacyContent';
 import { useAuthModal } from '@/contexts/AuthModalContext';
+import Modal from '@/components/ui/Modal';
 
 const RequiredMark = () => <span className="text-down ml-0.5">*</span>;
 
@@ -42,7 +43,6 @@ export default function AuthModal() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const open = mode !== null;
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // ── 로그인 폼 상태 ──
   const [loginEmail, setLoginEmail] = useState('');
@@ -75,49 +75,6 @@ export default function AuthModal() {
       setLoginError(REASON_MESSAGES[reason]);
     }
   }, [mode, reason]);
-
-  // ESC 닫기 + 배경 스크롤 잠금 + 최초 포커스 + Tab 포커스 트랩
-  useEffect(() => {
-    if (!open) return;
-    const container = containerRef.current;
-
-    const getFocusable = () =>
-      container
-        ? Array.from(container.querySelectorAll<HTMLElement>('input, button, select, textarea, a[href]'))
-            .filter((el) => !el.hasAttribute('disabled') && el.tabIndex !== -1)
-        : [];
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        close();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const focusables = getFocusable();
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const firstInput = container?.querySelector<HTMLElement>('input');
-    firstInput?.focus();
-
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, mode, close]);
 
   function resetLoginForm() {
     setLoginEmail('');
@@ -343,16 +300,22 @@ export default function AuthModal() {
     try {
       const supabase = createSupabaseBrowserClient();
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-      });
+      // signUp이 응답 없이 멈추면(느린 SMTP 발송 등) 아래 await가 끝나지 않아
+      // 버튼이 "계정 생성 중..."에 무한정 멈춘다 → 15초 타임아웃으로 강제 종료.
+      const { data: authData, error: authError } = await withTimeout(
+        supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        }),
+        15000,
+        '회원가입',
+      );
 
       if (authError) {
         setSignupError(
-          authError.message.includes('already registered')
+          authError.message?.includes('already registered')
             ? '이미 가입된 이메일입니다. 로그인해주세요.'
-            : authError.message,
+            : authError.message || '회원가입 중 오류가 발생했습니다.',
         );
         return;
       }
@@ -384,7 +347,7 @@ export default function AuthModal() {
       if (!res.ok) {
         const data = await res.json();
         await supabase.auth.signOut();
-        setSignupError(data.error || '프로필 생성에 실패했습니다.');
+        setSignupError(typeof data.error === 'string' && data.error ? data.error : '프로필 생성에 실패했습니다.');
         return;
       }
 
@@ -403,29 +366,34 @@ export default function AuthModal() {
         router.push('/my/blogger');
       }
       router.refresh();
-    } catch {
-      setSignupError('회원가입 중 오류가 발생했습니다.');
+    } catch (err) {
+      setSignupError(
+        err instanceof TimeoutError
+          ? '회원가입 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.'
+          : '회원가입 중 오류가 발생했습니다.',
+      );
     } finally {
       setSignupLoading(false);
       setSignupLoadingStep('');
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/50 p-4 py-8 backdrop-blur-sm sm:items-center"
+    <Modal
+      open={open}
+      onClose={handleClose}
+      closeOnEscape
+      trapFocus
+      lockBodyScroll
+      autoFocusFirstInput
       role="presentation"
-      onClick={handleClose}
+      overlayClassName="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/50 p-4 py-8 backdrop-blur-sm sm:items-center"
     >
       <div
-        ref={containerRef}
         role="dialog"
         aria-modal="true"
         aria-label={mode === 'login' ? '로그인' : '회원가입'}
         className="relative w-full max-w-md rounded-2xl border border-border bg-surface shadow-xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
@@ -669,6 +637,6 @@ export default function AuthModal() {
       <LegalModal open={showPrivacy} title="개인정보처리방침" onClose={() => setShowPrivacy(false)}>
         <PrivacyContent />
       </LegalModal>
-    </div>
+    </Modal>
   );
 }

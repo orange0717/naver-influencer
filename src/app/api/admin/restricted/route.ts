@@ -12,8 +12,9 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('restricted_users')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('id, email, nickname, reason, created_at')
+    .order('created_at', { ascending: false })
+    .limit(1000);
 
   if (error) {
     return NextResponse.json({ error: '조회 실패' }, { status: 500 });

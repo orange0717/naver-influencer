@@ -39,9 +39,46 @@ async function uploadFans(payload) {
   return json;
 }
 
+async function uploadCenterStats(payload) {
+  const { ninfleToken } = await chrome.storage.local.get('ninfleToken');
+  if (!ninfleToken) {
+    return { ok: false, error: 'NOT_AUTHENTICATED' };
+  }
+
+  const base = await getApiBase();
+  const res = await fetch(`${base}/api/my/influencer-center/upload`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${ninfleToken}`,
+      'X-Ninfle-Source': 'extension',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let json;
+  try {
+    json = await res.json();
+  } catch {
+    return { ok: false, error: `HTTP ${res.status}` };
+  }
+
+  if (!res.ok) {
+    if (res.status === 401) return { ok: false, error: 'NOT_AUTHENTICATED' };
+    return { ok: false, error: json?.error || `HTTP ${res.status}` };
+  }
+  return json;
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === 'UPLOAD_FANS' && msg.payload) {
     uploadFans(msg.payload)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: e?.message || String(e) }));
+    return true; // async response
+  }
+  if (msg?.type === 'UPLOAD_CENTER_STATS' && msg.payload) {
+    uploadCenterStats(msg.payload)
       .then(sendResponse)
       .catch((e) => sendResponse({ ok: false, error: e?.message || String(e) }));
     return true; // async response

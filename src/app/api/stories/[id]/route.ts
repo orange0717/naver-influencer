@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const supabase = createServiceClient();
     const { data: story, error } = await supabase
       .from('growth_stories')
-      .select('*')
+      .select('id, title, content, short_excerpt, author_id, author_name, is_anonymous, metric_before, metric_after, period, view_count, like_count, comment_count, status, reject_reason, images, created_at')
       .eq('id', id)
       .eq('is_deleted', false)
       .single();

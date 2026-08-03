@@ -72,7 +72,7 @@
       "schedule": "30 23 * * *"
     },
     {
-      "path": "/api/cron/curate-blog-topics",
+      "path": "/api/cron/scrape-blog-posts",
       "schedule": "15 23 * * *"
     },
     {
@@ -82,6 +82,10 @@
     {
       "path": "/api/cron/analyze-topic-insights",
       "schedule": "10 0 * * *"
+    },
+    {
+      "path": "/api/cron/crawl-discover-snapshots",
+      "schedule": "55 23 * * *"
     },
     {
       "path": "/api/cron/refresh-stats",

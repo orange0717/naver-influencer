@@ -22,6 +22,9 @@ interface Failure {
   title: string | null;
   status: string;
   failure_reason_code: string | null;
+  error_code: string | null;
+  http_status: number | null;
+  retryable: boolean | null;
   error_message: string | null;
   updated_at: string;
 }
@@ -33,6 +36,18 @@ interface PerUserUsage {
   count: number;
 }
 
+interface OauthDiagnostic {
+  userId: string;
+  email: string | null;
+  blogId: string | null;
+  googleEmail: string | null;
+  siteUrl: string | null;
+  siteVerified: boolean;
+  updatedAt: string;
+  liveSites: { siteUrl: string; permissionLevel: string }[] | null;
+  liveSitesError: string | null;
+}
+
 interface Data {
   recentJobs: Job[];
   statusCounts: Record<string, number>;
@@ -40,6 +55,7 @@ interface Data {
   apiCallsLast20Jobs: number;
   failures: Failure[];
   perUserUsage: PerUserUsage[];
+  oauthDiagnostics: OauthDiagnostic[];
 }
 
 function formatRelative(iso: string | null | undefined): string {
@@ -171,6 +187,7 @@ export default function AdminGoogleIndexingPage() {
                   <tr>
                     <th className="text-left px-4 py-2">URL</th>
                     <th className="text-left px-4 py-2">상태</th>
+                    <th className="text-left px-4 py-2">오류코드</th>
                     <th className="text-left px-4 py-2">원인</th>
                     <th className="text-left px-4 py-2">업데이트</th>
                     <th className="text-right px-4 py-2">재시도</th>
@@ -185,7 +202,17 @@ export default function AdminGoogleIndexingPage() {
                         </a>
                       </td>
                       <td className="px-4 py-2 text-dim">{f.status}</td>
-                      <td className="px-4 py-2 text-dim text-xs">{f.failure_reason_code || f.error_message || '-'}</td>
+                      <td className="px-4 py-2 text-xs">
+                        {f.error_code && (
+                          <span className={`font-bold px-1.5 py-0.5 rounded ${f.retryable ? 'bg-accent/15 text-accent' : 'bg-down/15 text-down'}`}>
+                            {f.error_code}{f.http_status ? ` (${f.http_status})` : ''}
+                          </span>
+                        )}
+                        {f.error_code && (
+                          <span className="ml-1 text-dim">{f.retryable ? '재시도가능' : '조치필요'}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-dim text-xs max-w-xs truncate" title={f.error_message || ''}>{f.failure_reason_code || f.error_message || '-'}</td>
                       <td className="px-4 py-2 text-dim text-xs">{formatRelative(f.updated_at)}</td>
                       <td className="px-4 py-2 text-right">
                         <button
@@ -200,7 +227,59 @@ export default function AdminGoogleIndexingPage() {
                   ))}
                   {data.failures.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-dim">실패 건이 없습니다.</td>
+                      <td colSpan={6} className="px-4 py-6 text-center text-dim">실패 건이 없습니다.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-base font-bold mb-3">Google 계정 연결 · GSC 속성 진단</h2>
+            <p className="text-xs text-dim mb-3">
+              site_verified가 false인 계정은 지금 이 순간 실제 Google API(listSites)를 호출해 그 계정에 보이는 GSC 속성 목록을 그대로 보여줍니다.
+              목록이 비어 있으면 해당 Google 계정이 blog.naver.com/블로그ID/ 속성의 소유권을 GSC에서 아직 확인하지 않은 것이고,
+              liveSitesError가 있으면 API 호출 자체가 실패한 것입니다.
+            </p>
+            <div className="bg-surface border border-border rounded-lg overflow-x-auto">
+              <table className="w-full text-sm min-w-[700px]">
+                <thead className="bg-surface-hover text-xs text-dim">
+                  <tr>
+                    <th className="text-left px-4 py-2">이메일 / 블로그</th>
+                    <th className="text-left px-4 py-2">Google 계정</th>
+                    <th className="text-left px-4 py-2">저장된 site_url</th>
+                    <th className="text-left px-4 py-2">실시간 GSC 속성 목록</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.oauthDiagnostics.map((d) => (
+                    <tr key={d.userId} className="border-t border-border align-top">
+                      <td className="px-4 py-2">
+                        <p>{d.email || '-'}</p>
+                        <p className="text-dim text-xs">{d.blogId || '-'}</p>
+                      </td>
+                      <td className="px-4 py-2 text-dim text-xs">{d.googleEmail || '(email 조회 실패)'}</td>
+                      <td className="px-4 py-2 text-xs">
+                        {d.siteVerified && d.siteUrl ? <span className="text-up">{d.siteUrl}</span> : <span className="text-down">미확인</span>}
+                      </td>
+                      <td className="px-4 py-2 text-xs">
+                        {d.liveSitesError && <p className="text-down">호출 실패: {d.liveSitesError}</p>}
+                        {d.liveSites && d.liveSites.length === 0 && <p className="text-down">이 Google 계정엔 소유권 확인된 GSC 속성이 하나도 없음</p>}
+                        {d.liveSites && d.liveSites.length > 0 && (
+                          <ul className="space-y-0.5">
+                            {d.liveSites.map((s) => (
+                              <li key={s.siteUrl}>{s.siteUrl} <span className="text-dim">({s.permissionLevel})</span></li>
+                            ))}
+                          </ul>
+                        )}
+                        {!d.liveSitesError && !d.liveSites && <span className="text-dim">이미 확인됨 (재조회 안 함)</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {data.oauthDiagnostics.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-6 text-center text-dim">연결된 Google 계정이 없습니다.</td>
                     </tr>
                   )}
                 </tbody>

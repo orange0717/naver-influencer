@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   // 24시간 캐시 우선
   const { data: cached } = await supabase
     .from('blog_quality_checks')
-    .select('*')
+    .select('score, grade, exposure_score, activity_score, topic_score, details, checked_at')
     .eq('blog_id', blogId)
     .gte('checked_at', new Date(now - CACHE_MS).toISOString())
     .order('checked_at', { ascending: false })

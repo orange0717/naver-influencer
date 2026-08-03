@@ -76,18 +76,18 @@ export async function GET(request: NextRequest) {
 
   // 리셋: 기존 blog_search_rank/view_tab_rank를 NULL로 초기화
   if (reset && batchNum === 0) {
-    for (const infId of userInfluencerIds) {
-      await supabase
+    await Promise.all(Array.from(userInfluencerIds).flatMap(infId => [
+      supabase
         .from('keyword_rankings')
         .update({ blog_search_rank: null, view_tab_rank: null })
         .eq('influencer_id', infId)
-        .not('blog_search_rank', 'is', null);
-      await supabase
+        .not('blog_search_rank', 'is', null),
+      supabase
         .from('keyword_rankings')
         .update({ blog_search_rank: null, view_tab_rank: null })
         .eq('influencer_id', infId)
-        .not('view_tab_rank', 'is', null);
-    }
+        .not('view_tab_rank', 'is', null),
+    ]));
   }
 
   // 각 가입자의 최신 스냅샷 날짜별 키워드 수집
@@ -233,31 +233,29 @@ export async function GET(request: NextRequest) {
       }
 
       // DB 업데이트 (각 인플루언서의 최신 스냅샷 날짜 기준)
-      for (const b of blogResults) {
+      await Promise.all(blogResults.map(b => {
         const infId = blogIdToInfId.get(b.naver_id.toLowerCase());
         const snapDate = infId ? infSnapshotMap.get(infId) : null;
-        if (infId && snapDate) {
-          await supabase
-            .from('keyword_rankings')
-            .update({ blog_search_rank: b.rank })
-            .eq('keyword_id', keywordId)
-            .eq('influencer_id', infId)
-            .eq('snapshot_date', snapDate);
-        }
-      }
+        if (!infId || !snapDate) return null;
+        return supabase
+          .from('keyword_rankings')
+          .update({ blog_search_rank: b.rank })
+          .eq('keyword_id', keywordId)
+          .eq('influencer_id', infId)
+          .eq('snapshot_date', snapDate);
+      }));
 
-      for (const v of viewResults) {
+      await Promise.all(viewResults.map(v => {
         const infId = blogIdToInfId.get(v.naver_id.toLowerCase());
         const snapDate = infId ? infSnapshotMap.get(infId) : null;
-        if (infId && snapDate) {
-          await supabase
-            .from('keyword_rankings')
-            .update({ view_tab_rank: v.rank })
-            .eq('keyword_id', keywordId)
-            .eq('influencer_id', infId)
-            .eq('snapshot_date', snapDate);
-        }
-      }
+        if (!infId || !snapDate) return null;
+        return supabase
+          .from('keyword_rankings')
+          .update({ view_tab_rank: v.rank })
+          .eq('keyword_id', keywordId)
+          .eq('influencer_id', infId)
+          .eq('snapshot_date', snapDate);
+      }));
 
       crawled++;
     } catch (err) {

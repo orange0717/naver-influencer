@@ -10,6 +10,19 @@
 const WEBMASTERS_BASE = 'https://www.googleapis.com/webmasters/v3';
 const SEARCHCONSOLE_BASE = 'https://searchconsole.googleapis.com/v1';
 
+/** Google API가 non-2xx로 응답했을 때 던지는 구조화된 에러. HTTP 상태코드와 원본 응답 바디를 그대로 보존한다. */
+export class GoogleApiError extends Error {
+  readonly httpStatus: number;
+  readonly responseBody: string;
+
+  constructor(context: string, httpStatus: number, responseBody: string) {
+    super(`${context}: HTTP ${httpStatus} ${responseBody}`);
+    this.name = 'GoogleApiError';
+    this.httpStatus = httpStatus;
+    this.responseBody = responseBody;
+  }
+}
+
 async function googleApiFetch(url: string, accessToken: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
@@ -36,10 +49,12 @@ export interface GscSite {
 /** 이 계정이 소유권을 확인받은 GSC 속성(사이트) 목록 */
 export async function listSites(accessToken: string): Promise<GscSite[]> {
   const res = await googleApiFetch(`${WEBMASTERS_BASE}/sites`, accessToken);
+  const text = await res.text().catch(() => '');
+  console.log('[gsc] listSites status:', res.status, 'body:', text);
   if (!res.ok) {
-    throw new Error(`GSC listSites 실패: HTTP ${res.status}`);
+    throw new GoogleApiError('GSC listSites 실패', res.status, text);
   }
-  const data = await res.json();
+  const data = text ? JSON.parse(text) : {};
   return data.siteEntry ?? [];
 }
 
@@ -47,9 +62,10 @@ export async function listSites(accessToken: string): Promise<GscSite[]> {
 export async function submitSitemap(accessToken: string, siteUrl: string, feedpath: string): Promise<void> {
   const url = `${WEBMASTERS_BASE}/sites/${encodeURIComponent(siteUrl)}/sitemaps/${encodeURIComponent(feedpath)}`;
   const res = await googleApiFetch(url, accessToken, { method: 'PUT' });
+  const text = await res.text().catch(() => '');
+  console.log('[gsc] submitSitemap status:', res.status, 'body:', text);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`GSC submitSitemap 실패: HTTP ${res.status} ${text}`);
+    throw new GoogleApiError('GSC submitSitemap 실패', res.status, text);
   }
 }
 
@@ -77,11 +93,12 @@ export async function inspectUrl(
     method: 'POST',
     body: JSON.stringify({ inspectionUrl, siteUrl }),
   });
+  const text = await res.text().catch(() => '');
+  console.log('[gsc] inspectUrl', inspectionUrl, 'status:', res.status, 'body:', text);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`GSC inspectUrl 실패: HTTP ${res.status} ${text}`);
+    throw new GoogleApiError('GSC inspectUrl 실패', res.status, text);
   }
-  const data = await res.json();
+  const data = text ? JSON.parse(text) : {};
   const indexResult = data.inspectionResult?.indexStatusResult ?? {};
   return {
     verdict: indexResult.verdict,

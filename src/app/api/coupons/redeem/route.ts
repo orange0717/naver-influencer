@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   const { data: coupon, error: couponError } = await supabase
     .from('coupons')
-    .select('*')
+    .select('id, used, target_email')
     .eq('code', code)
     .maybeSingle();
 

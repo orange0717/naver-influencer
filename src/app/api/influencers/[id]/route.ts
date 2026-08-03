@@ -104,7 +104,7 @@ export async function GET(
 
   const { data: influencer } = await supabase
     .from('influencers')
-    .select('*')
+    .select('id, naver_id, display_name, category, sub_category, image_url, total_follower_count, subscriber_count, total_keywords, avg_rank, best_rank, integrated_top3_count, keyword_score, ad_fee_amount, ad_fee_text, ad_process, last_crawled_at, last_challenged_at')
     .eq(isUuid ? 'id' : 'naver_id', decodeURIComponent(id))
     .single();
 
