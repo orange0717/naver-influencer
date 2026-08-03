@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import BillingButton from '@/components/BillingButton';
 import { useAuth } from '@/hooks/useAuth';
+import { CONTACT_EMAIL } from '@/lib/site-contact';
 
 const CHECK = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-up shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
@@ -133,8 +134,8 @@ export default function SubscribeClient() {
         </div>
       </div>
 
-      {/* 3열 플랜 카드 */}
-      <div className="grid md:grid-cols-3 gap-5">
+      {/* 플랜 카드 */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* 무료 */}
         <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
           <div>
@@ -246,6 +247,31 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (무제한)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 데이터 다운로드 (1회 500건)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
+          </ul>
+        </div>
+
+        {/* 기업 */}
+        <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
+          <div>
+            <p className="text-xs text-dim font-semibold">기업</p>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="text-2xl font-black">Customizing</span>
+            </div>
+            <p className="text-[11px] text-accent font-semibold">별도협의</p>
+          </div>
+          <p className="text-sm text-dim leading-relaxed">
+            대량 계정, 맞춤 리포트 등 기업 맞춤 이용은 별도 협의해 드립니다.
+          </p>
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="block text-center py-3 bg-bg border border-border text-text font-bold text-sm rounded-xl hover:border-accent/40 transition"
+          >
+            문의하기
+          </a>
+          <ul className="space-y-2.5 text-sm">
+            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 플랜 전체 포함</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>맞춤 Customizing</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>별도협의</span></li>
           </ul>
         </div>
       </div>
