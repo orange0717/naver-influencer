@@ -93,7 +93,6 @@ const AUTH_REQUIRED_PAGE_PREFIXES = ['/community'];
  */
 const MEMBER_ONLY_GATE_PREFIXES = [
   '/rankings/influencer',
-  '/rankings/official',
   '/influencers/free-plan',
   '/naver-mate-ranking',
   '/my/naver-mate',
