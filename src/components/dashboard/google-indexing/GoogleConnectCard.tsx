@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 
+interface GscSite {
+  siteUrl: string;
+  permissionLevel: string;
+}
+
 interface Props {
   connected: boolean;
   googleEmail: string | null;
@@ -10,6 +15,7 @@ interface Props {
   siteVerified: boolean;
   loading: boolean;
   onDisconnect: () => void;
+  onSiteResolved: () => void;
 }
 
 function GoogleConnectGuideModal({ onClose }: { onClose: () => void }) {
@@ -48,7 +54,83 @@ function GoogleConnectGuideModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function GoogleConnectCard({ connected, googleEmail, siteUrl, siteVerified, loading, onDisconnect }: Props) {
+function SiteResolver({ onResolved }: { onResolved: () => void }) {
+  const [matching, setMatching] = useState(false);
+  const [sites, setSites] = useState<GscSite[] | null>(null);
+  const [selecting, setSelecting] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleRetryMatch() {
+    setMatching(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/google-indexing/oauth/match', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.matched) {
+        onResolved();
+        return;
+      }
+      setSites(data.sites ?? []);
+      setMessage(data.error || '일치하는 속성을 찾지 못했습니다.');
+    } finally {
+      setMatching(false);
+    }
+  }
+
+  async function handleSelect(siteUrlToSet: string) {
+    setSelecting(siteUrlToSet);
+    try {
+      const res = await fetch('/api/google-indexing/oauth/site', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteUrl: siteUrlToSet }),
+      });
+      if (res.ok) {
+        onResolved();
+      } else {
+        const data = await res.json();
+        setMessage(data.error || '속성 지정에 실패했어요.');
+      }
+    } finally {
+      setSelecting(null);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <button
+        type="button"
+        onClick={handleRetryMatch}
+        disabled={matching}
+        className="text-xs font-semibold text-accent hover:underline disabled:opacity-50 cursor-pointer"
+      >
+        {matching ? '속성 찾는 중...' : 'GSC 속성 다시 찾기'}
+      </button>
+
+      {message && <p className="text-xs text-dim">{message}</p>}
+
+      {sites && sites.length > 0 && (
+        <div className="bg-bg rounded-lg p-3 space-y-1.5">
+          <p className="text-xs font-semibold text-text">이 Google 계정에서 발견된 속성 — 직접 선택하세요</p>
+          {sites.map((s) => (
+            <button
+              key={s.siteUrl}
+              type="button"
+              onClick={() => handleSelect(s.siteUrl)}
+              disabled={selecting === s.siteUrl}
+              className="w-full flex items-center justify-between text-left text-xs bg-surface border border-border hover:border-accent/50 rounded-lg px-3 py-2 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <span className="text-text">{s.siteUrl}</span>
+              <span className="text-dim">{selecting === s.siteUrl ? '지정 중...' : `(${s.permissionLevel})`}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function GoogleConnectCard({ connected, googleEmail, siteUrl, siteVerified, loading, onDisconnect, onSiteResolved }: Props) {
   const [showGuide, setShowGuide] = useState(false);
 
   if (!connected) {
@@ -86,10 +168,13 @@ export default function GoogleConnectCard({ connected, googleEmail, siteUrl, sit
           {siteVerified && siteUrl ? (
             <p className="text-sm text-dim">GSC 속성 확인됨: {siteUrl}</p>
           ) : (
-            <p className="text-sm text-down">
-              이 블로그의 GSC 속성을 아직 찾지 못했어요. Search Console에서 blog.naver.com/내블로그ID/ 속성을
-              먼저 소유권 확인해주세요.
-            </p>
+            <>
+              <p className="text-sm text-down">
+                이 블로그의 GSC 속성을 아직 찾지 못했어요. Search Console에서 blog.naver.com/내블로그ID/ 속성을
+                먼저 소유권 확인한 뒤 아래에서 다시 찾거나 직접 선택해주세요.
+              </p>
+              <SiteResolver onResolved={onSiteResolved} />
+            </>
           )}
         </div>
         <button

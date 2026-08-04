@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { createServiceClient } from './supabase-server';
 import { encryptSecret, decryptSecret } from './crypto-secrets';
-import { GoogleApiError } from './google-search-console';
+import { GoogleApiError, listSites, type GscSite } from './google-search-console';
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const REVOKE_ENDPOINT = 'https://oauth2.googleapis.com/revoke';
@@ -207,13 +207,66 @@ export async function getValidAccessToken(userId: string): Promise<GoogleConnect
   return { accessToken, siteUrl: data.site_url, googleEmail: data.google_email };
 }
 
-/** 사용자의 GSC 속성(site_url)을 확정 저장 (OAuth 콜백에서 listSites 이후 호출) */
+/** 사용자의 GSC 속성(site_url)을 확정 저장 (OAuth 콜백/수동선택에서 listSites 이후 호출) */
 export async function saveSiteUrl(userId: string, siteUrl: string): Promise<void> {
   const supabase = createServiceClient();
   await supabase
     .from('google_oauth_tokens')
     .update({ site_url: siteUrl, site_verified: true, updated_at: new Date().toISOString() })
     .eq('user_id', userId);
+}
+
+function normalizeSiteUrl(url: string): string {
+  return url.trim().toLowerCase().replace(/\/+$/, '');
+}
+
+/** blog_id 하나로부터 GSC에 등록됐을 법한 property URL 후보를 생성한다 (URL-prefix + Domain 타입 모두). */
+export function buildSiteUrlCandidates(blogId: string): string[] {
+  const id = blogId.trim();
+  return [
+    `https://blog.naver.com/${id}/`,
+    `https://blog.naver.com/${id}`,
+    `http://blog.naver.com/${id}/`,
+    `http://blog.naver.com/${id}`,
+    `sc-domain:blog.naver.com`,
+  ];
+}
+
+/**
+ * 이 Google 계정이 소유권 확인한 GSC 속성 목록(sites) 중에서 사용자의 네이버 블로그와
+ * 일치하는 속성을 찾는다. 1) 정규화된 후보 목록과 완전 일치 → 2) blog.naver.com/{id} 포함 검사 순으로 시도.
+ */
+export async function findMatchingSite(
+  accessToken: string,
+  blogId: string,
+): Promise<{ matched: GscSite | null; sites: GscSite[] }> {
+  const sites = await listSites(accessToken);
+  const candidates = new Set(buildSiteUrlCandidates(blogId).map(normalizeSiteUrl));
+
+  let matched = sites.find((s) => candidates.has(normalizeSiteUrl(s.siteUrl))) ?? null;
+  if (!matched) {
+    const idLower = blogId.trim().toLowerCase();
+    matched = sites.find((s) => normalizeSiteUrl(s.siteUrl).includes(`blog.naver.com/${idLower}`)) ?? null;
+  }
+  return { matched, sites };
+}
+
+/**
+ * 현재 저장된 access token으로 GSC 속성 자동매칭을 (재)시도하고, 찾으면 site_url을 저장한다.
+ * OAuth 콜백과 "다시 찾기" 버튼(수동 재시도) 양쪽에서 공유하는 로직.
+ */
+export async function autoMatchAndSaveSiteUrl(
+  userId: string,
+  blogId: string,
+): Promise<{ matched: string | null; sites: GscSite[] }> {
+  const conn = await getValidAccessToken(userId);
+  if (!conn) return { matched: null, sites: [] };
+
+  const { matched, sites } = await findMatchingSite(conn.accessToken, blogId);
+  if (matched) {
+    await saveSiteUrl(userId, matched.siteUrl);
+  }
+  return { matched: matched?.siteUrl ?? null, sites };
 }
 
 /** 연결 해제 — Google에 토큰 revoke 요청 후 DB row 삭제 */

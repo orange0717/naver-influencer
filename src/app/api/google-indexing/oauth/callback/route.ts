@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
-import { verifyOAuthState, exchangeCodeForTokens, saveSiteUrl } from '@/lib/google-oauth';
-import { listSites } from '@/lib/google-search-console';
-import { getValidAccessToken } from '@/lib/google-oauth';
+import { verifyOAuthState, exchangeCodeForTokens, autoMatchAndSaveSiteUrl } from '@/lib/google-oauth';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,22 +46,27 @@ export async function GET(request: NextRequest) {
 
   // 연결된 계정이 이 유저의 네이버 블로그(blog.naver.com/{blogId}/) 속성을
   // GSC에서 소유권 확인했는지 자동 매칭 시도 — 이건 부가 기능이라 실패해도
-  // 계정 연결 자체(위에서 이미 성공)를 실패로 취급하지 않는다.
+  // 계정 연결 자체(위에서 이미 성공)를 실패로 취급하지 않는다. 매칭 실패 시에도
+  // 대시보드에서 수동 선택(/oauth/sites, /oauth/site) 또는 재시도(/oauth/match)로 복구 가능.
+  let siteMatched = false;
   try {
     const blogId = (authUser.user as { blog_id?: string | null }).blog_id;
     if (blogId) {
-      const conn = await getValidAccessToken(stateUserId);
-      if (conn) {
-        const sites = await listSites(conn.accessToken);
-        const matched = sites.find((s) => s.siteUrl.includes(`blog.naver.com/${blogId}`));
-        if (matched) {
-          await saveSiteUrl(stateUserId, matched.siteUrl);
-        }
+      const { matched, sites } = await autoMatchAndSaveSiteUrl(stateUserId, blogId);
+      siteMatched = !!matched;
+      if (!matched) {
+        console.warn(
+          '[google-indexing/oauth/callback] site auto-match 실패: blogId=%s, 발견된 GSC 속성=%o',
+          blogId,
+          sites.map((s) => s.siteUrl),
+        );
       }
+    } else {
+      console.warn('[google-indexing/oauth/callback] site auto-match 스킵: user.blog_id 없음', stateUserId);
     }
   } catch (err) {
     console.warn('[google-indexing/oauth/callback] site auto-match 실패(계속 진행):', err instanceof Error ? err.message : err);
   }
 
-  return redirectWithParam(request, 'connected', '1');
+  return redirectWithParam(request, siteMatched ? 'connected' : 'connected_needs_site', '1');
 }

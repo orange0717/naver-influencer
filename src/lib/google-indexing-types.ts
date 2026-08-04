@@ -36,6 +36,9 @@ export interface IndexingSummary {
   userId: string;
   todayCount: number;
   weekCount: number;
+  indexedCount: number;
+  failedCount: number;
+  processingCount: number;
   successRate: number;
   notIndexedCount: number;
   avgProcessingHours: number | null;

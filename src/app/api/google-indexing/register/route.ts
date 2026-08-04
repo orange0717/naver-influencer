@@ -48,6 +48,19 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const now = new Date();
 
+  // 이미 등록된 URL이면 진행 중/완료 상태를 덮어써 초기화하지 않는다.
+  // 재시도가 필요한 상태(error/not_indexed)일 때만 새로 제출한다.
+  const { data: existing } = await supabase
+    .from('indexed_urls')
+    .select('*')
+    .eq('user_id', paid.authUser.userId)
+    .eq('url', parsed.url)
+    .maybeSingle();
+
+  if (existing && !['error', 'not_indexed'].includes(existing.status)) {
+    return NextResponse.json({ success: true, alreadyRegistered: true, url: existing });
+  }
+
   const { data: row, error } = await supabase
     .from('indexed_urls')
     .upsert(

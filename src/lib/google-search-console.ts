@@ -23,11 +23,30 @@ export class GoogleApiError extends Error {
   }
 }
 
-async function googleApiFetch(url: string, accessToken: string, init: RequestInit = {}): Promise<Response> {
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+const MAX_ATTEMPTS = 3;
+const BASE_BACKOFF_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 일시적 오류(429/5xx 등)는 호출부에 노출하기 전에 짧은 backoff를 두고 최대 3회까지 자체 재시도한다.
+ * 이렇게 하면 매일 12h/24h 간격으로 도는 재확인 스케줄과 별개로, 순간적인 rate limit이나
+ * Google 서버 일시 장애는 같은 요청 안에서 바로 해소된다. 429는 Retry-After 헤더를 우선 존중한다.
+ */
+async function googleApiFetch(
+  url: string,
+  accessToken: string,
+  init: RequestInit = {},
+  attempt = 1,
+): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
+  let res: Response;
   try {
-    return await fetch(url, {
+    res = await fetch(url, {
       ...init,
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -39,6 +58,17 @@ async function googleApiFetch(url: string, accessToken: string, init: RequestIni
   } finally {
     clearTimeout(timeout);
   }
+
+  if (!res.ok && RETRYABLE_STATUS.has(res.status) && attempt < MAX_ATTEMPTS) {
+    const retryAfterHeader = res.headers.get('Retry-After');
+    const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : NaN;
+    const delay = Number.isFinite(retryAfterMs) ? retryAfterMs : BASE_BACKOFF_MS * 2 ** (attempt - 1);
+    console.warn(`[gsc] ${url} HTTP ${res.status} — ${delay}ms 후 재시도 (${attempt}/${MAX_ATTEMPTS - 1})`);
+    await sleep(delay);
+    return googleApiFetch(url, accessToken, init, attempt + 1);
+  }
+
+  return res;
 }
 
 export interface GscSite {

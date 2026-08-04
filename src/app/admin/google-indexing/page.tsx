@@ -82,6 +82,7 @@ export default function AdminGoogleIndexingPage() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [assigningKey, setAssigningKey] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -108,6 +109,26 @@ export default function AdminGoogleIndexingPage() {
       if (res.ok) load();
     } finally {
       setRetryingId(null);
+    }
+  }
+
+  async function handleAssignSite(userId: string, siteUrl: string) {
+    const key = `${userId}:${siteUrl}`;
+    setAssigningKey(key);
+    try {
+      const res = await fetch('/api/admin/google-indexing/site', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, siteUrl }),
+      });
+      if (res.ok) {
+        load();
+      } else {
+        const err = await res.json();
+        alert(err.error || '속성 지정에 실패했습니다.');
+      }
+    } finally {
+      setAssigningKey(null);
     }
   }
 
@@ -267,10 +288,22 @@ export default function AdminGoogleIndexingPage() {
                         {d.liveSitesError && <p className="text-down">호출 실패: {d.liveSitesError}</p>}
                         {d.liveSites && d.liveSites.length === 0 && <p className="text-down">이 Google 계정엔 소유권 확인된 GSC 속성이 하나도 없음</p>}
                         {d.liveSites && d.liveSites.length > 0 && (
-                          <ul className="space-y-0.5">
-                            {d.liveSites.map((s) => (
-                              <li key={s.siteUrl}>{s.siteUrl} <span className="text-dim">({s.permissionLevel})</span></li>
-                            ))}
+                          <ul className="space-y-1">
+                            {d.liveSites.map((s) => {
+                              const key = `${d.userId}:${s.siteUrl}`;
+                              return (
+                                <li key={s.siteUrl} className="flex items-center gap-2">
+                                  <span>{s.siteUrl} <span className="text-dim">({s.permissionLevel})</span></span>
+                                  <button
+                                    onClick={() => handleAssignSite(d.userId, s.siteUrl)}
+                                    disabled={assigningKey === key}
+                                    className="text-[10px] font-semibold text-accent border border-accent/40 hover:bg-accent/10 rounded px-1.5 py-0.5 disabled:opacity-50"
+                                  >
+                                    {assigningKey === key ? '지정 중...' : '이 속성으로 지정'}
+                                  </button>
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                         {!d.liveSitesError && !d.liveSites && <span className="text-dim">이미 확인됨 (재조회 안 함)</span>}

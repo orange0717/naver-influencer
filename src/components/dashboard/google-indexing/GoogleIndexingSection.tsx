@@ -125,7 +125,7 @@ export default function GoogleIndexingSection() {
       if (res.ok) {
         loadUrls();
         loadSummary();
-        return { success: true };
+        return { success: true, alreadyRegistered: !!data.alreadyRegistered };
       }
       return { success: false, error: data.error };
     },
@@ -260,6 +260,10 @@ export default function GoogleIndexingSection() {
         siteVerified={connectStatus?.siteVerified ?? false}
         loading={disconnecting}
         onDisconnect={handleDisconnect}
+        onSiteResolved={() => {
+          showToast('GSC 속성을 연결했어요.');
+          loadStatus();
+        }}
       />
 
       <RegisterUrlForm disabled={!connectStatus?.connected} onRegister={handleRegister} onBulkRegister={handleBulkRegister} />

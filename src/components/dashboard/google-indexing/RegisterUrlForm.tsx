@@ -5,7 +5,7 @@ import GlassCard from '@/components/dashboard/GlassCard';
 
 interface Props {
   disabled: boolean;
-  onRegister: (url: string) => Promise<{ success: boolean; error?: string }>;
+  onRegister: (url: string) => Promise<{ success: boolean; alreadyRegistered?: boolean; error?: string }>;
   onBulkRegister: (
     mode: 'recent50' | 'all',
   ) => Promise<{ success: boolean; requested?: number; totalCount?: number; queued?: boolean; error?: string }>;
@@ -59,7 +59,12 @@ export default function RegisterUrlForm({ disabled, onRegister, onBulkRegister }
     const result = await onRegister(trimmed);
     setSubmitting(false);
     if (result.success) {
-      setMessage({ type: 'success', text: '등록 요청을 접수했어요. 잠시 후 상태가 업데이트됩니다.' });
+      setMessage({
+        type: 'success',
+        text: result.alreadyRegistered
+          ? '이미 등록된 URL이에요. 진행 상태는 아래 목록에서 확인할 수 있어요.'
+          : '등록 요청을 접수했어요. 잠시 후 상태가 업데이트됩니다.',
+      });
       setUrl('');
     } else {
       setMessage({ type: 'error', text: result.error || '등록에 실패했어요.' });

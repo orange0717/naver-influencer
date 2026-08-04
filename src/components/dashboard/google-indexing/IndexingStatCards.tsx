@@ -7,11 +7,12 @@ export default function IndexingStatCards({ summary }: { summary: IndexingSummar
   if (!summary) return null;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       <AnimatedStatCard label="오늘 등록" value={summary.todayCount} suffix="건" color="accent" />
       <AnimatedStatCard label="이번주 등록" value={summary.weekCount} suffix="건" color="accent" />
-      <AnimatedStatCard label="색인 성공률" value={summary.successRate} suffix="%" color="up" />
-      <AnimatedStatCard label="미색인" value={summary.notIndexedCount} suffix="건" color="down" />
+      <AnimatedStatCard label="색인 성공" value={summary.indexedCount} suffix="건" color="up" />
+      <AnimatedStatCard label="색인 실패" value={summary.failedCount} suffix="건" color="down" />
+      <AnimatedStatCard label="처리 중" value={summary.processingCount} suffix="건" color="gold" />
       <AnimatedStatCard
         label="평균 처리시간"
         value={summary.avgProcessingHours ?? 0}
