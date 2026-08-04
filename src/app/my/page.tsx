@@ -30,7 +30,6 @@ import { parseNaverPostDate } from '@/lib/naver-date';
 import { calculateMissingRate, countMissing, type MissingResultsMap, type PostLike } from '@/lib/missing-rate';
 
 import { classifyKeyword, GuestDashboard } from './page.helpers';
-import type { CompositeRankSnapshot } from '@/lib/types';
 
 /** 외부 크롤링(방문자/포스트 목록)이 오래 걸려도 대시보드 전체 렌더가 막히지 않도록 상한을 둔다 */
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -325,24 +324,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         return { count: topics.length, topName, topics };
       })()
     : Promise.resolve({ count: 0, topName: null, topics: [] });
-
-  /** 대시보드 허브 — 인플루언서 순위 카드: N인플 회원 풀 안에서만 산정하는 자체 종합 순위(공식 아님).
-   *  aggregate-ninfl-member-ranks 크론이 매일 적재하는 스냅샷 중 최신값 + 7일 이전 값(변동 계산용)을 조회 */
-  const compositeRankPromise: Promise<{ latest: CompositeRankSnapshot; rankChange: number } | null> = influencerId
-    ? (async () => {
-        const { data: rows } = await supabase
-          .from('influencer_composite_rank_snapshots')
-          .select('rank, composite_score, member_pool_size, top3_count, avg_integrated_rank, avg_blog_rank, ai_briefing_count, ai_tab_count, posting_count, missing_rate, snapshot_date')
-          .eq('influencer_id', influencerId)
-          .order('snapshot_date', { ascending: false })
-          .limit(14);
-        if (!rows || rows.length === 0) return null;
-        const latest = rows[0] as CompositeRankSnapshot;
-        const weekAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
-        const prior = (rows.slice(1) as CompositeRankSnapshot[]).find(r => new Date(r.snapshot_date).getTime() <= weekAgoMs);
-        return { latest, rankChange: prior ? prior.rank - latest.rank : 0 };
-      })()
-    : Promise.resolve(null);
 
   const mateStatusPromise: Promise<{ selected: boolean; expertiseValue: string | null } | null> = naverId
     ? (async () => {
@@ -771,14 +752,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // AI 가시성: 네이버메이트에서 실제로 확인(checked_at 존재)한 건만 집계 — 한 번도 안 썼으면 null(측정 불가)
   // 네이버 메이트 선정 여부(블로그 홈 경로 = naverId 로 매칭) 포함, 둘 다 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
   // ─── 7. 대시보드 허브 KPI (누락률/방문자/전체 포스팅) — 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
-  const [aiVisibility, mateStatus, missingSummary, visitorSummary, postSummary, topicSummary, compositeRank] = await Promise.all([
+  const [aiVisibility, mateStatus, missingSummary, visitorSummary, postSummary, topicSummary] = await Promise.all([
     aiVisibilityPromise,
     mateStatusPromise,
     missingSummaryPromise,
     visitorSummaryPromise,
     postSummaryPromise,
     topicSummaryPromise,
-    compositeRankPromise,
   ]);
 
   return (
@@ -859,19 +839,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 2. 대시보드 허브 KPI ─── 각 메뉴의 핵심 지표를 요약하고, 클릭하면 해당 메뉴로 이동 */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <AnimatedStatCard
-          size="stat"
-          label="인플루언서 순위"
-          value={compositeRank?.latest.rank ?? 0}
-          suffix="위"
-          placeholder="—"
-          description={compositeRank ? `N인플 회원 ${compositeRank.latest.member_pool_size}명 중` : '순위 산정 전(내일 갱신 예정)'}
-          trend={compositeRank && compositeRank.rankChange !== 0 ? { direction: compositeRank.rankChange > 0 ? 'up' : 'down', value: Math.abs(compositeRank.rankChange) } : undefined}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"/><path d="M8.21 13.89L7 23l5-3 5 3-1.21-9.12"/></svg>}
-          color={compositeRank ? 'gold' : 'dim'}
-          delay={20}
-          href="/my/rank"
-        />
         <AnimatedStatCard
           size="stat"
           label="누락률"
