@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { STOPWORDS } from './blog-crawler';
+import { createServiceClient } from './supabase-server';
 
 export interface RepresentativeKeywordResult {
   keywords: string[];
@@ -193,4 +194,57 @@ function rankByTitleOnly(titleCandidates: string[]): string[] {
     if (picked.length >= 5) break;
   }
   return picked;
+}
+
+export interface PersistedRepresentativeKeyword {
+  representativeKeyword: string | null;
+  candidates: string[];
+  source: RepresentativeKeywordResult['source'];
+  cached: boolean;
+}
+
+// 포스팅 발행 후 내용이 거의 바뀌지 않는다는 전제 + 매번 네이버 포스트 본문을 크롤링하는 비용을 피하기 위해
+// 30일간은 저장된 대표 키워드를 그대로 재사용한다(post_representative_keywords, migration-130).
+const REP_KEYWORD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * 대표 키워드를 (blog_id, post_id) 기준으로 조회 → 없거나 오래됐으면 추출 후 저장.
+ * 미노출/키워드순위/AI브리핑·탭 메뉴가 모두 이 함수를 통해 동일한 대표 키워드를 공유한다.
+ */
+export async function getOrPersistRepresentativeKeyword(
+  blogId: string,
+  postId: string,
+  title: string,
+): Promise<PersistedRepresentativeKeyword> {
+  const supabase = createServiceClient();
+  const { data: existing } = await supabase
+    .from('post_representative_keywords')
+    .select('representative_keyword, candidates, keyword_source, extracted_at')
+    .eq('blog_id', blogId)
+    .eq('post_id', postId)
+    .maybeSingle();
+
+  if (existing?.extracted_at && Date.now() - new Date(existing.extracted_at).getTime() < REP_KEYWORD_TTL_MS) {
+    return {
+      representativeKeyword: existing.representative_keyword,
+      candidates: existing.candidates || [],
+      source: (existing.keyword_source as RepresentativeKeywordResult['source']) || 'none',
+      cached: true,
+    };
+  }
+
+  const result = await extractRepresentativeKeywords(blogId, postId, title);
+  const representativeKeyword = result.keywords[0] || null;
+
+  await supabase.from('post_representative_keywords').upsert({
+    blog_id: blogId,
+    post_id: postId,
+    post_title: title || null,
+    representative_keyword: representativeKeyword,
+    candidates: result.keywords,
+    keyword_source: result.source,
+    extracted_at: new Date().toISOString(),
+  }, { onConflict: 'blog_id,post_id' });
+
+  return { representativeKeyword, candidates: result.keywords, source: result.source, cached: false };
 }
