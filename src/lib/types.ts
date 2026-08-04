@@ -1,3 +1,18 @@
+/** influencer_composite_rank_snapshots 1개 행 — "인플루언서 순위"(N인플 자체 산정) 스냅샷 */
+export interface CompositeRankSnapshot {
+  rank: number;
+  composite_score: number;
+  member_pool_size: number;
+  top3_count: number;
+  avg_integrated_rank: number | null;
+  avg_blog_rank: number | null;
+  ai_briefing_count: number;
+  ai_tab_count: number;
+  posting_count: number;
+  missing_rate: number;
+  snapshot_date: string;
+}
+
 export interface Keyword {
   id: string;
   db_id?: string | null;

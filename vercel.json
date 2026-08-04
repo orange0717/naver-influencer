@@ -126,6 +126,10 @@
     {
       "path": "/api/cron/refresh-personal-keyword-ranks",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/aggregate-ninfl-member-ranks",
+      "schedule": "0 23 * * *"
     }
   ]
 }
