@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
   const showInactive = searchParams.get('inactive') === 'true';
   const sortBy = searchParams.get('sort') || 'first_seen_at';
   const order = searchParams.get('order') || 'desc';
-  const officialOnly = searchParams.get('official') === 'true';
   const ninflRanking = searchParams.get('ninfl') === 'true';
 
   // service client 사용 (RLS 우회 — 인플루언서 테이블은 공개 데이터)
@@ -33,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // DB 기반 조회
-    return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly, showInactive, sortBy, order, officialOnly, ninflRanking });
+    return await getInfluencersFromDB(supabase, { category, search, page, limit, newOnly, showInactive, sortBy, order, ninflRanking });
   } catch (err) {
     logger.error('influencers', 'data fetch error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
@@ -46,9 +45,9 @@ export async function GET(request: NextRequest) {
 /** DB 기반 인플루언서 조회 */
 async function getInfluencersFromDB(
   supabase: ReturnType<typeof createServiceClient>,
-  opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean; showInactive: boolean; sortBy: string; order: string; officialOnly?: boolean; ninflRanking?: boolean },
+  opts: { category?: string; search?: string; page: number; limit: number; newOnly: boolean; showInactive: boolean; sortBy: string; order: string; ninflRanking?: boolean },
 ) {
-  const { category, search, page, limit, newOnly, sortBy, order, officialOnly, ninflRanking } = opts;
+  const { category, search, page, limit, newOnly, sortBy, order, ninflRanking } = opts;
   const offset = (page - 1) * limit;
 
   // 카테고리 목록: 키워드 페이지와 동일 순서 (상위 주제별 그룹핑)
@@ -56,7 +55,7 @@ async function getInfluencersFromDB(
   const categories = ['전체', ...INFLUENCER_CATEGORIES];
 
   // stopped_manual 은 migration-062 적용 전에는 존재하지 않으므로 별도 쿼리로 조회 (fallback 지원)
-  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, official_naver_rank, official_rank_category, keyword_score, best_rank, avg_rank, ninfl_rank';
+  const SELECT_COLS = 'id, naver_id, display_name, profile_url, image_url, introduction, category, my_keyword_category, my_keyword, category_my_type, subscriber_count, total_follower_count, total_keywords, top1_count, top2_count, top3_count, integrated_top3_count, naver_created_at, first_seen_at, created_at, last_crawled_at, last_challenged_at, keyword_score, best_rank, avg_rank, ninfl_rank';
 
   // 공통 필터 적용 헬퍼 (배치 페치 때 재사용)
   const applyFilters = <T extends { or: (f: string) => T; not: (c: string, op: string, v: unknown) => T; gt: (c: string, v: unknown) => T; gte: (c: string, v: unknown) => T }>(q: T): T => {
@@ -74,9 +73,6 @@ async function getInfluencersFromDB(
         );
       }
     }
-    if (officialOnly) {
-      q = q.not('official_naver_rank', 'is', null);
-    }
     // ninflRanking: 전체 포함, 비활성(1년 이상 미활동)은 UI에서 배지로 표시하고 뒤로 정렬
     if (newOnly) {
       const sevenDaysAgo = new Date();
@@ -93,7 +89,6 @@ async function getInfluencersFromDB(
 
   // 정렬 + 페이지네이션
   const allowedSorts: Record<string, string> = {
-    official_naver_rank: 'official_naver_rank',
     subscriber_count: 'subscriber_count',
     first_seen_at: 'naver_created_at',
     last_crawled_at: 'last_crawled_at',
@@ -344,8 +339,6 @@ async function getInfluencersFromDB(
     })(),
     // 활동중단 판정: 관리자 수동 지정(stopped_manual)만 사용 — 자동 분류 없음
     isStopped: stoppedSet.has(inf.id as string),
-    officialNaverRank: inf.official_naver_rank || null,
-    officialRankCategory: inf.official_rank_category || null,
     keywordScore: Number(inf.keyword_score) || 0,
     // DB 의 ninfl_rank 컬럼(전체 순위)을 우선 사용, 없으면 subset 기반 fallback
     ninflRank: (inf.ninfl_rank != null ? Number(inf.ninfl_rank) : null) ?? ninflRankMap.get(inf.id as string) ?? null,
