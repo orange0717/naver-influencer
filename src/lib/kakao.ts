@@ -17,7 +17,7 @@ interface KakaoAlimtalkParams {
  * 카카오 알림톡 발송
  * API 키가 설정되지 않으면 건너뛰고 로그만 남김
  */
-export async function sendKakaoAlimtalk(params: KakaoAlimtalkParams): Promise<boolean> {
+async function sendKakaoAlimtalk(params: KakaoAlimtalkParams): Promise<boolean> {
   const apiKey = process.env.KAKAO_REST_API_KEY;
   const senderKey = process.env.KAKAO_SENDER_KEY;
 

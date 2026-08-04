@@ -10,7 +10,7 @@
 import { createServiceClient } from './supabase-server';
 import { isRestricted } from './admin';
 
-export async function getActiveSanction(userId: string): Promise<
+async function getActiveSanction(userId: string): Promise<
   { type: 'mute' | 'ban'; expires_at: string | null; reason: string | null } | null
 > {
   const supabase = createServiceClient();

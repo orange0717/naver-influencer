@@ -27,7 +27,7 @@ export function pageview(url: string) {
 }
 
 /** 일반 이벤트 전송 */
-export function event(name: string, params: Record<string, unknown> = {}) {
+function event(name: string, params: Record<string, unknown> = {}) {
   if (!isGaEnabled() || !window.gtag) return;
   window.gtag('event', name, params);
 }
@@ -43,7 +43,7 @@ export function login(method: string = 'email') {
 }
 
 /** 결제 완료 — GA4 전자상거래 권장 이벤트 */
-export function purchase(params: {
+function purchase(params: {
   transactionId: string;
   value: number;
   currency?: string;

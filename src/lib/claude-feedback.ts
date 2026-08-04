@@ -10,7 +10,7 @@ import { createServiceClient } from './supabase-server';
 import { getAuthUser } from './auth';
 import { isAdmin, isRestrictedByUserId } from './admin';
 
-export const CLAUDE_FEEDBACK_MAX_CONTEXT = 30;
+const CLAUDE_FEEDBACK_MAX_CONTEXT = 30;
 export const CLAUDE_FEEDBACK_MESSAGE_LIMIT = 8000;
 export const CLAUDE_FEEDBACK_TITLE_LIMIT = 80;
 
@@ -46,16 +46,16 @@ export const CLAUDE_FEEDBACK_SYSTEM_PROMPT = `당신은 네이버 블로그 글�
 - 실존 인물 비방, 개인 사생활 추측 요청은 거절하세요.`;
 
 /** 무료 체험 메시지 한도 (회원가입한 회원 한정) */
-export const CLAUDE_FREE_TRIAL_LIMIT = 3;
+const CLAUDE_FREE_TRIAL_LIMIT = 3;
 
-export type ClaudeFeedbackPlan = 'admin' | 'influencer';
+type ClaudeFeedbackPlan = 'admin' | 'influencer';
 
 export type ClaudeFeedbackUser = {
   id: string;          // 'auth:' + userId (Supabase Auth 회원만 허용)
   userId: string;      // users.id
   displayLabel: string;
   plan: ClaudeFeedbackPlan;
-  /** 하위 호환 — 응답 JSON 필드 유지용 (항상 0) */
+  /** 무료 체험(비결제 INFLUENCER) 사용자만 실제 값, 결제자/관리자는 집행 대상 아님 */
   freeTrialUsed: number;
   freeTrialLimit: number;
   /** PortOne 결제 이력 보유 여부. true → 모델 분기에서 Opus 사용 가능. admin 수동 부여 INFLUENCER 는 false. */
@@ -117,7 +117,7 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
     userId: authUser.userId,
     displayLabel,
     plan: 'influencer',
-    freeTrialUsed: 0,
+    freeTrialUsed,
     freeTrialLimit: CLAUDE_FREE_TRIAL_LIMIT,
     isPaid,
   };

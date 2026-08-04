@@ -5,7 +5,7 @@
  * 일반 브라우저에서는 정의되지 않으며, 함수들은 안전하게 폴백합니다.
  */
 
-export type DesktopNotifyPayload = {
+type DesktopNotifyPayload = {
   title: string;
   body: string;
   /** true이면 소리 없이 표시 */
@@ -45,7 +45,7 @@ export function getDesktopPlatform(): DesktopPlatform | null {
  * - 데스크탑 앱이면 네이티브 OS 알림 (DND, 알림센터에 누적)
  * - 일반 브라우저면 표준 Web Notification API (권한 필요)
  */
-export async function notify(payload: DesktopNotifyPayload): Promise<boolean> {
+async function notify(payload: DesktopNotifyPayload): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
   if (isDesktop()) {
@@ -73,7 +73,7 @@ export async function notify(payload: DesktopNotifyPayload): Promise<boolean> {
 }
 
 /** 외부 URL을 시스템 기본 브라우저로 열기 (데스크탑 전용, 그 외엔 window.open 폴백) */
-export async function openExternal(url: string): Promise<boolean> {
+async function openExternal(url: string): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   if (isDesktop()) {
     try {
@@ -87,7 +87,7 @@ export async function openExternal(url: string): Promise<boolean> {
 }
 
 /** Dock(macOS)/오버레이(Windows) 배지 카운트 설정. 다른 환경에선 무시. */
-export async function setBadge(count: number): Promise<boolean> {
+async function setBadge(count: number): Promise<boolean> {
   if (!isDesktop()) return false;
   try {
     return await window.ninfl!.setBadge(count);

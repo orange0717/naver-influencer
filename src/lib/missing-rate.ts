@@ -1,4 +1,4 @@
-export interface MissingState {
+interface MissingState {
   blogTab: { exposed: boolean | null; rank: number | null };
   viewTab: { exposed: boolean | null; rank: number | null };
 }

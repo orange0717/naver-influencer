@@ -12,7 +12,7 @@ import { sendKakaoRankAlert } from './kakao';
 // ─── KST 헬퍼 ───
 
 /** KST 기준 현재 Date 객체 (UTC+9 오프셋 적용) */
-export function getKSTDate(): Date {
+function getKSTDate(): Date {
   const now = new Date();
   return new Date(now.getTime() + 9 * 60 * 60 * 1000);
 }
@@ -23,7 +23,7 @@ export function getKSTDateString(): string {
 }
 
 /** KST 기준 날짜를 한국어 형식으로 포맷 */
-export function formatKSTDate(date?: Date): string {
+function formatKSTDate(date?: Date): string {
   const d = date || new Date();
   return d.toLocaleDateString('ko-KR', {
     timeZone: 'Asia/Seoul',
@@ -44,7 +44,7 @@ export interface NotificationRecipient {
   settings: NotificationSettings | null; // null = 기본값 사용
 }
 
-export interface NotificationSettings {
+interface NotificationSettings {
   email_enabled: boolean;
   kakao_enabled: boolean;
   in_app_enabled: boolean;
@@ -159,7 +159,7 @@ export async function getNotificationRecipients(
 
 // ─── 알림 생성 ───
 
-export function buildNotifications(
+function buildNotifications(
   recipient: NotificationRecipient,
   rankChanges: RankChangeRow[],
 ): NotificationInsert[] {

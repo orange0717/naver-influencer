@@ -5,8 +5,8 @@
  * 가격 변경 시 SubscribeClient.tsx 와 함께 업데이트할 것.
  */
 
-export type PlanTier = 'blogger' | 'influencer';
-export type BillingPeriod = 'monthly' | '3m' | '6m' | '9m' | 'annual';
+type PlanTier = 'blogger' | 'influencer';
+type BillingPeriod = 'monthly' | '3m' | '6m' | '9m' | 'annual';
 
 export type PlanKey =
   | 'BLOGGER_MONTHLY' | 'BLOGGER_3M' | 'BLOGGER_6M' | 'BLOGGER_9M' | 'BLOGGER_ANNUAL'
@@ -22,7 +22,7 @@ export interface PlanDef {
   name: string;            // 결제창 표시명
 }
 
-export const PLANS: Record<PlanKey, PlanDef> = {
+const PLANS: Record<PlanKey, PlanDef> = {
   BLOGGER_MONTHLY:    { key: 'BLOGGER_MONTHLY',    tier: 'blogger',    period: 'monthly', amount: 5500,   months: 1,  name: '예비 인플루언서 1개월' },
   BLOGGER_3M:         { key: 'BLOGGER_3M',         tier: 'blogger',    period: '3m',      amount: 15700,  months: 3,  name: '예비 인플루언서 3개월' },
   BLOGGER_6M:         { key: 'BLOGGER_6M',         tier: 'blogger',    period: '6m',      amount: 29700,  months: 6,  name: '예비 인플루언서 6개월' },

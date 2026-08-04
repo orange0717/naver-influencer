@@ -19,7 +19,7 @@ export function buildSitemapXml(entries: { url: string; updatedAt: string }[]): 
 }
 
 /** ninfl.kr이 호스팅하는 사용자별 프록시 sitemap URL */
-export function getUserSitemapUrl(userId: string): string {
+function getUserSitemapUrl(userId: string): string {
   return `${BASE_URL}/api/google-indexing/sitemap/${userId}`;
 }
 

@@ -108,7 +108,7 @@ export async function fetchCategories(): Promise<NaverCategory[]> {
 
 // ─── 키워드 목록 (단일 카테고리, 커서 기반) ───
 
-export async function fetchKeywordsByCategory(
+async function fetchKeywordsByCategory(
   categoryId: number,
   limit = 50,
   cursor?: string,

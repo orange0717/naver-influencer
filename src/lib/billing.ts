@@ -148,7 +148,7 @@ export async function completeBillingKeyIssue(opts: {
 }
 
 /* ── 빌링키로 1회 자동청구 + 구독 상태 갱신 ──────────────────────────── */
-export async function chargePlan(opts: {
+async function chargePlan(opts: {
   subscriptionId: string;
   userId: string;
   planKey: string;

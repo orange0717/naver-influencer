@@ -24,7 +24,7 @@ export interface UpdateItem {
  * 최신 업데이트가 맨 위에 오도록 정렬
  * 첫 번째 항목만 배너로 표시됨
  */
-export const UPDATES: UpdateItem[] = [
+const UPDATES: UpdateItem[] = [
   {
     version: '2026-04-11',
     date: '2026.04.11',

@@ -15,9 +15,9 @@ export const QUALITY_CATEGORY_DEFS = [
 
 export type QualityCategoryKey = typeof QUALITY_CATEGORY_DEFS[number]['key'];
 
-export const EXPOSURE_LEVELS = ['매우 높음', '높음', '보통', '낮음', '매우 낮음'] as const;
+const EXPOSURE_LEVELS = ['매우 높음', '높음', '보통', '낮음', '매우 낮음'] as const;
 
-export interface QualityCategoryResult {
+interface QualityCategoryResult {
   key: QualityCategoryKey;
   score: number;
   good: string;

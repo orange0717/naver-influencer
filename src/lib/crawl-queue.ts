@@ -1,5 +1,5 @@
 /** UI 비활성(1년)과 동일 — 일일 크롤 큐·커버리지 분모 */
-export const CRAWL_CHALLENGE_RECENCY_DAYS = 365;
+const CRAWL_CHALLENGE_RECENCY_DAYS = 365;
 
 export function challengeRecencyCutoffIso(): string {
   return new Date(Date.now() - CRAWL_CHALLENGE_RECENCY_DAYS * 86_400_000).toISOString();

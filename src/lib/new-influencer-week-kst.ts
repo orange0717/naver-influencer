@@ -22,7 +22,7 @@ export function recentNewInfluencersSinceIso(atMs: number = Date.now()): string 
 }
 
 /** `recentNewInfluencersSinceIso` 값이 달라지는 첫 시각(대략 1분 단위). 주간 자동 갱신 타이머용. */
-export function nextNewInfluencerSinceChangeAt(atMs: number = Date.now()): Date {
+function nextNewInfluencerSinceChangeAt(atMs: number = Date.now()): Date {
   const cur = recentNewInfluencersSinceIso(atMs);
   const horizon = atMs + 10 * 24 * 60 * 60 * 1000;
   for (let t = atMs + WEEK_SCAN_STEP_MS; t <= horizon; t += WEEK_SCAN_STEP_MS) {

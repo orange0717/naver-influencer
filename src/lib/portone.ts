@@ -68,7 +68,7 @@ export async function getPayment(paymentId: string): Promise<PortOnePayment | nu
 }
 
 /* ── 빌링키 조회 ─────────────────────────────────────────────────────── */
-export interface PortOneBillingKey {
+interface PortOneBillingKey {
   billingKey: string;
   status: 'ISSUED' | 'DELETED';
   channels?: Array<{ key: string }>;
@@ -77,7 +77,7 @@ export interface PortOneBillingKey {
   deletedAt?: string;
 }
 
-export async function getBillingKey(billingKey: string): Promise<PortOneBillingKey | null> {
+async function getBillingKey(billingKey: string): Promise<PortOneBillingKey | null> {
   const res = await fetch(
     `${PORTONE_API_BASE}/billing-keys/${encodeURIComponent(billingKey)}`,
     { headers: authHeader() }

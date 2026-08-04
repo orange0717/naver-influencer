@@ -14,7 +14,7 @@ const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || pro
 const USER_AGENT = 'Mozilla/5.0 (compatible; OrangerefineBot/1.0; +https://n-influencer.vercel.app/bot-info)';
 const WORKER_PROXY = 'https://ninfl-proxy.orange-e65.workers.dev';
 
-export const SAMPLE_POST_COUNT = 10;
+const SAMPLE_POST_COUNT = 10;
 
 // 한국어 조사/불용어 (검색 키워드에서 제거)
 const STOPWORDS = new Set([
@@ -59,7 +59,7 @@ export interface QualityBreakdown {
 /**
  * 블로그 최근 포스트 가져오기 (API → 페이지 → RSS 순)
  */
-export async function fetchRecentPosts(blogId: string, count: number = SAMPLE_POST_COUNT): Promise<BlogPost[]> {
+async function fetchRecentPosts(blogId: string, count: number = SAMPLE_POST_COUNT): Promise<BlogPost[]> {
   // 1) Worker 프록시 PostTitleListAsync
   try {
     const url = `${WORKER_PROXY}/blog-posts?blogId=${encodeURIComponent(blogId)}&page=1&count=${count}`;
@@ -125,7 +125,7 @@ function decodeHtmlEntities(s: string): string {
  * 제목에서 검색 키워드 추출 (MVP: 규칙 기반)
  * - HTML 엔티티 디코딩 → 괄호/특수문자 제거 → 공백 분할 → 조사·불용어 제거 → 길이 2+ 단어 앞 2~3개 선택
  */
-export function extractSearchKeyword(title: string): string {
+function extractSearchKeyword(title: string): string {
   const cleaned = decodeHtmlEntities(title)
     .replace(/[\[\](){}<>「」『』“”‘’"'.,!?~…·•\-_=+/\\|#@$%^&*]/g, ' ')
     .replace(/\s+/g, ' ')

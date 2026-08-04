@@ -20,7 +20,7 @@ function getEnv(name: string): string {
  * OAuth 콜백 CSRF 방지용 서명된 state 값을 생성한다.
  * payload: `${userId}.${issuedAt}` + HMAC-SHA256 서명 (base64url).
  */
-export function createOAuthState(userId: string): string {
+function createOAuthState(userId: string): string {
   const secret = getEnv('GOOGLE_OAUTH_STATE_SECRET');
   const payload = `${userId}.${Date.now()}`;
   const sig = createHmac('sha256', secret).update(payload).digest('base64url');
@@ -221,7 +221,7 @@ function normalizeSiteUrl(url: string): string {
 }
 
 /** blog_id 하나로부터 GSC에 등록됐을 법한 property URL 후보를 생성한다 (URL-prefix + Domain 타입 모두). */
-export function buildSiteUrlCandidates(blogId: string): string[] {
+function buildSiteUrlCandidates(blogId: string): string[] {
   const id = blogId.trim();
   return [
     `https://blog.naver.com/${id}/`,
@@ -236,7 +236,7 @@ export function buildSiteUrlCandidates(blogId: string): string[] {
  * 이 Google 계정이 소유권 확인한 GSC 속성 목록(sites) 중에서 사용자의 네이버 블로그와
  * 일치하는 속성을 찾는다. 1) 정규화된 후보 목록과 완전 일치 → 2) blog.naver.com/{id} 포함 검사 순으로 시도.
  */
-export async function findMatchingSite(
+async function findMatchingSite(
   accessToken: string,
   blogId: string,
 ): Promise<{ matched: GscSite | null; sites: GscSite[] }> {

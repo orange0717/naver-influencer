@@ -9,7 +9,7 @@ import { fetchWithRetry, sleep } from './crawler';
  * Referer: https://mate.naver.com/ 헤더가 없으면 403 — 브라우저 없이도 순수 fetch로 동작 확인됨.
  */
 
-export const MATE_TOPICS: { topicId: string; category: string }[] = [
+const MATE_TOPICS: { topicId: string; category: string }[] = [
   { topicId: 'TOPIC_001', category: '국내여행' },
   { topicId: 'TOPIC_002', category: '해외여행' },
   { topicId: 'TOPIC_003', category: '푸드' },
@@ -37,9 +37,9 @@ export const MATE_TOPICS: { topicId: string; category: string }[] = [
   { topicId: 'TOPIC_025', category: '취미' },
 ];
 
-export type MatePlatform = 'blog' | 'cafe' | 'kin' | 'premium';
+type MatePlatform = 'blog' | 'cafe' | 'kin' | 'premium';
 
-export interface NormalizedMate {
+interface NormalizedMate {
   platform: MatePlatform;
   platformKey: string;
   displayName: string;

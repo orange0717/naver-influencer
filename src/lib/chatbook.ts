@@ -11,7 +11,7 @@ import { createServiceClient } from './supabase-server';
 import { getAuthUser } from './auth';
 import { isRestrictedByUserId, isRestricted } from './admin';
 
-export const CHATBOOK_MAX_CONTEXT = 20;
+const CHATBOOK_MAX_CONTEXT = 20;
 export const CHATBOOK_MESSAGE_LIMIT = 2000;
 
 export const CHATBOOK_SAFETY_SUFFIX = `

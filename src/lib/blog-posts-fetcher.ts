@@ -42,7 +42,7 @@ export interface BlogPostResult {
   category?: string;
 }
 
-export interface BlogPostsPage {
+interface BlogPostsPage {
   posts: BlogPostResult[];
   totalCount: number;
   blogId: string;
@@ -248,7 +248,7 @@ async function fetchFromRss(blogId: string) {
  * 네이버 블로그 포스트 목록 1페이지를 가져온다.
  * 1) PostTitleListAsync API 시도 → 2) PostList.naver HTML 크롤링 → 3) RSS 폴백
  */
-export async function fetchBlogPostsPage(blogId: string, page: number, count: number): Promise<BlogPostsPage> {
+async function fetchBlogPostsPage(blogId: string, page: number, count: number): Promise<BlogPostsPage> {
   try {
     const apiResult = await fetchFromPostListApi(blogId, page, count);
     if (apiResult && apiResult.posts.length > 0) {

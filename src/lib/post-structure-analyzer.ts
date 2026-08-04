@@ -14,7 +14,7 @@ const ALLOWED_IMAGE_HOSTS = [
   'img.naver.net',
 ];
 
-export interface ImageAnalysis {
+interface ImageAnalysis {
   url: string;
   /** 파일 크기 (bytes) */
   size: number;
@@ -73,7 +73,7 @@ export interface PostAnalysis {
   success: boolean;
 }
 
-export interface BlogAnalysisResult {
+interface BlogAnalysisResult {
   blogId: string;
   analyzedCount: number;
   totalPosts: number;

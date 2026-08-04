@@ -21,7 +21,7 @@ let cachedToken: { token: string; expiresAt: number } | null = null;
  * Commerce API OAuth 2.0 액세스 토큰 발급
  * BCrypt 서명 방식 (client_credentials)
  */
-export async function getAccessToken(): Promise<string> {
+async function getAccessToken(): Promise<string> {
   // 캐시된 토큰이 아직 유효하면 재사용
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60000) {
     return cachedToken.token;

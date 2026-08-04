@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
-export type AuthModalMode = 'login' | 'signup' | null;
+type AuthModalMode = 'login' | 'signup' | null;
 
 interface AuthModalState {
   mode: AuthModalMode;

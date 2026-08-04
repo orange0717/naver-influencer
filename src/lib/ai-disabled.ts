@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 
 export const AI_DISABLED = false;
 
-export const AI_DISABLED_MSG =
+const AI_DISABLED_MSG =
   'AI 기능이 일시 중단되었습니다. 외부 AI API 잔액이 소진되어 충전 후 빠르게 복구할 예정입니다.';
 
 export function aiDisabledResponse() {

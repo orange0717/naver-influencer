@@ -95,7 +95,7 @@ async function fetchApolloState(url: string): Promise<Record<string, unknown>> {
   return state;
 }
 
-export interface NaverTopicCard {
+interface NaverTopicCard {
   topicId: string;
   title: string;
   thumbnailUrl: string | null;
@@ -151,7 +151,7 @@ export async function fetchInfluencerTopicCards(naverId: string): Promise<NaverT
   };
 }
 
-export interface NaverTopicPost {
+interface NaverTopicPost {
   contentId: string;
   title: string;
   introBody: string;

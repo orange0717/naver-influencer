@@ -1,4 +1,4 @@
-export const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function isTrialExpired(trialStartedCookie: string | undefined | null): boolean {
   if (!trialStartedCookie) return false;

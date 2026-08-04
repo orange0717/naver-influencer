@@ -28,7 +28,7 @@ export interface BlogCompareData {
   };
 }
 
-export interface AiAnalysisResult {
+interface AiAnalysisResult {
   aiProbability: number;
   aiReasoning: string;
   keywords: { keyword: string; relevance: 'high' | 'medium' | 'low'; searchable: boolean }[];

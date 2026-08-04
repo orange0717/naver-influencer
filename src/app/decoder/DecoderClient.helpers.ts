@@ -297,7 +297,7 @@ export function summarize(d: DecodedNaverUrl): Intent {
 // 일괄 분석 집계
 // ──────────────────────────────────────────────────────────
 
-export interface BatchRow {
+interface BatchRow {
   raw: string;
   decoded: DecodedNaverUrl;
   intent: Intent;

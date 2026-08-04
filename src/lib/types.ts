@@ -16,7 +16,7 @@ export interface Keyword {
   first_seen_at: string;
 }
 
-export interface Recommendation {
+interface Recommendation {
   id: string;
   keyword_id: string;
   keyword: string;
@@ -30,7 +30,7 @@ export interface Recommendation {
   is_free: boolean;
 }
 
-export interface Influencer {
+interface Influencer {
   id: string;
   naver_id: string;
   display_name: string;

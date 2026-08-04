@@ -19,7 +19,7 @@ export function getPrivacyReminderMonths(): number {
 }
 
 /** from ≤ to 기준으로 완전한 달 수 (같은 달·일 미만이면 한 달 미만으로 처리) */
-export function wholeMonthsElapsed(from: Date, to: Date): number {
+function wholeMonthsElapsed(from: Date, to: Date): number {
   let months = (to.getFullYear() - from.getFullYear()) * 12;
   months += to.getMonth() - from.getMonth();
   if (to.getDate() < from.getDate()) months -= 1;

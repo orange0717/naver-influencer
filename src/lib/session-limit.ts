@@ -57,7 +57,7 @@ function _cacheSet(key: string, verified: boolean, now: number): void {
 }
 
 /** 외부에서 강제 무효화가 필요한 경우 (예: 명시적 로그아웃 후 즉시 반영) */
-export function invalidateSessionCache(authUserId: string, deviceId?: string): void {
+function invalidateSessionCache(authUserId: string, deviceId?: string): void {
   if (deviceId) {
     sessionCache.delete(`${authUserId}:${deviceId}`);
     return;

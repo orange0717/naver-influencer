@@ -49,7 +49,7 @@ export interface PostScore {
 
 export const SCORE_API = '/api/blog/analyze-post-score';
 
-export const SUB_SCORE_LABELS: Record<keyof Omit<SubScores, 'schema'>, string> = {
+const SUB_SCORE_LABELS: Record<keyof Omit<SubScores, 'schema'>, string> = {
   sourceUsage: '출처 활용',
   faq: 'FAQ',
   table: '표',
@@ -64,7 +64,7 @@ export const SUB_SCORE_LABELS: Record<keyof Omit<SubScores, 'schema'>, string> =
   eeat: 'E-E-A-T',
 };
 
-export const IMPROVEMENT_SUGGESTIONS: Partial<Record<keyof Omit<SubScores, 'schema'>, string>> = {
+const IMPROVEMENT_SUGGESTIONS: Partial<Record<keyof Omit<SubScores, 'schema'>, string>> = {
   sourceUsage: '뉴스·정부·공공기관 등 공식 출처 링크를 1~2개 추가하세요.',
   faq: '"자주 묻는 질문" 형태의 FAQ 섹션을 추가하세요.',
   table: '핵심 정보를 정리한 표를 1개 이상 추가하세요.',

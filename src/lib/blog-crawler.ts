@@ -344,7 +344,6 @@ export interface BlogProfileStats {
   isOfficialBlog: boolean;
 }
 
-export { extractBlogId } from './blog-utils';
 
 export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfileStats> {
   const result: BlogProfileStats = {

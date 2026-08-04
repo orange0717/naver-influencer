@@ -1,6 +1,6 @@
 export type IndexedUrlStatus = 'pending' | 'submitted' | 'checking' | 'indexed' | 'not_indexed' | 'error';
 export type IndexedUrlProgressStage = 'registering' | 'requesting' | 'checking' | 'done';
-export type IndexedUrlSource = 'manual' | 'bulk_recent' | 'bulk_all' | 'rss' | 'auto_crawl';
+type IndexedUrlSource = 'manual' | 'bulk_recent' | 'bulk_all' | 'rss' | 'auto_crawl';
 
 export interface IndexedUrl {
   id: string;

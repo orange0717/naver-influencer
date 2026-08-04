@@ -1,11 +1,11 @@
 /** 경쟁도 분류 기준 */
-export const COMPETITION_THRESHOLDS = {
+const COMPETITION_THRESHOLDS = {
   HIGH: 100,
   MEDIUM: 30,
 } as const;
 
 /** 경쟁도 점수 가중치 */
-export const COMPETITION_WEIGHTS = {
+const COMPETITION_WEIGHTS = {
   PARTICIPANT: 0.6,      // 참여자 수 비중
   SEARCH_VOLUME: 0.25,   // 월검색량 비중 (검색량 대비 참여자가 많으면 경쟁 높음)
   RECENCY: 0.15,         // 최근 등록 여부 비중 (최근에 등록된 키워드일수록 경쟁 활발)

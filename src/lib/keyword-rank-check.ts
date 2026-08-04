@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 import { createHmac } from 'crypto';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
 
-export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || '';
 const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
@@ -11,7 +11,7 @@ const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
 export const CACHE_TTL_SEC = 10 * 60;
 
 // 검색량 공유 캐시 (24시간)
-export const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
+const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
 
 export type RankCheckResult = {
   blogTab: { exposed: boolean; rank: number | null };

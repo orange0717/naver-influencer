@@ -4,6 +4,7 @@ import {
   getClaudeFeedbackUser,
   trimClaudeContext,
   deriveConversationTitle,
+  incrementClaudeFreeTrial,
   CLAUDE_FEEDBACK_SYSTEM_PROMPT,
   CLAUDE_FEEDBACK_MESSAGE_LIMIT,
 } from '@/lib/claude-feedback';
@@ -75,6 +76,18 @@ export async function POST(
   const user = await getClaudeFeedbackUser(request);
   if (!user) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
+  // 무료 체험(비결제 INFLUENCER) 사용자만 메시지 한도 집행 — 관리자·결제자는 무제한
+  if (user.plan !== 'admin' && !user.isPaid && user.freeTrialUsed >= user.freeTrialLimit) {
+    return NextResponse.json(
+      {
+        error: `무료 체험 메시지 ${user.freeTrialLimit}회를 모두 사용했습니다. 결제 후 계속 이용해주세요.`,
+        freeTrialUsed: user.freeTrialUsed,
+        freeTrialLimit: user.freeTrialLimit,
+      },
+      { status: 402 },
+    );
   }
 
   // Rate limit (챗북과 동일 한도 — 1분 20회)
@@ -196,6 +209,12 @@ export async function POST(
     .select('id, role, content, created_at')
     .single();
 
+  // 무료 체험(비결제 INFLUENCER) 사용자만 사용량 집행 — 관리자·결제자는 카운트 안 함
+  let freeTrialUsed = user.freeTrialUsed;
+  if (user.plan !== 'admin' && !user.isPaid) {
+    freeTrialUsed = await incrementClaudeFreeTrial(user.userId);
+  }
+
   return NextResponse.json({
     userMessage: userMsg,
     reply: saved || {
@@ -204,7 +223,7 @@ export async function POST(
       created_at: new Date().toISOString(),
     },
     plan: user.plan,
-    freeTrialUsed: user.freeTrialUsed,
+    freeTrialUsed,
     freeTrialLimit: user.freeTrialLimit,
     isPaid: user.isPaid,
   });
