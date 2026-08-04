@@ -98,6 +98,7 @@ const MEMBER_ONLY_GATE_PREFIXES = [
   '/my/naver-mate',
   '/my/fans',
   '/my/keyword-ranking',
+  '/my/missing-posts',
   '/my/blogger',
   '/my/saved-keywords',
   '/profile',

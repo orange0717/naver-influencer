@@ -30,29 +30,30 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '블',
     items: [
       { label: '블로그', href: '/#blog-analysis', authOnly: true },
+      { label: '미노출', href: '/my/missing-posts', authOnly: true },
       { label: '인플루언서', href: '/my', requiredPlan: 'influencer', authOnly: true },
+      { label: '토픽발행', href: '/topics', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
     label: '네이버 메이트',
     icon: '메',
     items: [
-      { label: '네이버 메이트 랭킹', href: '/naver-mate-ranking', authOnly: true },
+      { label: '랭킹', href: '/naver-mate-ranking', authOnly: true },
       { label: 'AI글 적합도', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true },
-      { label: 'AI 브리핑·AI탭', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true },
+      { label: 'AI 브리핑 AI 탭', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
     label: '네이버 인플루언서',
     icon: 'I',
     items: [
+      { label: '토픽발행', href: '/topics', requiredPlan: 'influencer', authOnly: true },
+      { label: '키워드 챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
+      { label: '연도별 선정 현황', href: '/stats' },
       { label: '리스트', href: '/influencers/free-plan', authOnly: true },
-      { label: '맞팬관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true },
       { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
       { label: '리스트(토픽)', href: '/discover/influencers', requiredPlan: 'blogger', authOnly: true },
-      { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true },
-      { label: '연도별 선정 현황', href: '/stats' },
-      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer' },
     ],
   },
   {
