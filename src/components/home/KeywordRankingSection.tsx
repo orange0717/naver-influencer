@@ -9,11 +9,12 @@ import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from 
 import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow } from './KeywordRankingSection.helpers';
+import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow, RepKeywordEntry } from './KeywordRankingSection.helpers';
 import {
   STATE_API,
   FLASH_MS,
   fetchRankingState,
+  fetchRepKeywordsState,
   saveKeywordsToDb,
   saveRankResultToDb,
   rankKey,
@@ -41,6 +42,11 @@ export default function KeywordRankingSection() {
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
   // "postId::keyword" → RankDelta (전일대비/7일대비 계산 근거, get_keyword_rank_deltas RPC)
   const [rankDeltas, setRankDeltas] = useState<Record<string, RankDelta>>({});
+  // postId → 영속화된 대표 키워드(post_representative_keywords) — 자동추출, 사용자가 직접 입력하는 커스텀 키워드와 별개
+  const [repKeywords, setRepKeywords] = useState<Record<string, RepKeywordEntry>>({});
+  const [extractingRepId, setExtractingRepId] = useState('');
+  const [extractingAll, setExtractingAll] = useState(false);
+  const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0 });
   const [stateReady, setStateReady] = useState(false);
   const [checkingKey, setCheckingKey] = useState('');
   // 자동/수동 백그라운드 일괄 갱신 진행 여부 (화면을 막지 않는 작은 표시용)
@@ -50,12 +56,14 @@ export default function KeywordRankingSection() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showKeywordSearch, setShowKeywordSearch] = useState(false);
   const abortRef = useRef(false);
+  const extractAbortRef = useRef(false);
   const refreshingRef = useRef(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const rankingResultsRef = useRef<Record<string, RankingResult>>({});
   const postKeywordsRef = useRef<Record<string, string[]>>({});
   const editingKeywordsRef = useRef<Record<string, string[]>>({});
+  const repKeywordsRef = useRef<Record<string, RepKeywordEntry>>({});
   // postId → 디바운스 자동저장 타이머 (블러/엔터를 기다리지 않고도 입력 후 일정 시간 뒤 자동 저장)
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // handleKeywordSave의 최신 버전을 항상 가리키는 ref (디바운스 타이머가 오래된 클로저를 호출하지 않도록)
@@ -64,6 +72,7 @@ export default function KeywordRankingSection() {
   useEffect(() => { rankingResultsRef.current = rankingResults; }, [rankingResults]);
   useEffect(() => { postKeywordsRef.current = postKeywords; }, [postKeywords]);
   useEffect(() => { editingKeywordsRef.current = editingKeywords; }, [editingKeywords]);
+  useEffect(() => { repKeywordsRef.current = repKeywords; }, [repKeywords]);
 
   const showError = useCallback((msg: string, ms = 5000) => {
     setErrorMessage(msg);
@@ -104,7 +113,8 @@ export default function KeywordRankingSection() {
     const headers = ['제목', '검색 키워드', '통합검색', '블로그', '인플루언서', '전일대비', '7일대비', '검색량', '업데이트'];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
-      const kws = postKeywords[post.id] || [];
+      const repKw = repKeywords[post.id]?.keyword;
+      const kws = repKw ? [repKw, ...(postKeywords[post.id] || [])] : (postKeywords[post.id] || []);
       if (kws.length === 0) continue;
       for (const kw of kws) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
@@ -115,7 +125,7 @@ export default function KeywordRankingSection() {
         const weekDelta = computeDeltaDisplay(result?.viewTab.exposed ?? false, result?.viewTab.rank ?? null, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null);
         rows.push([
           post.title,
-          kw,
+          kw === repKw ? `${kw} (대표)` : kw,
           result?.viewTab?.exposed ? `${result.viewTab.rank}위` : '-',
           result?.blogTab?.exposed ? `${result.blogTab.rank}위` : '-',
           result?.influencerTab?.exposed ? `${result.influencerTab.rank}위` : '-',
@@ -250,6 +260,18 @@ export default function KeywordRankingSection() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // 영속화된 대표 키워드 복원 (post_representative_keywords, blog_id 기준 공용 — 크롤링 없이 즉시 조회)
+  const { data: repState } = useQuery({
+    queryKey: ['rep-keywords-state', profile?.blogId],
+    queryFn: () => fetchRepKeywordsState(profile!.blogId),
+    enabled: !!profile?.blogId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (repState) setRepKeywords(repState);
+  }, [repState]);
+
   useEffect(() => {
     if (syncedState) {
       setPostKeywords(syncedState.postKeywords);
@@ -383,6 +405,48 @@ export default function KeywordRankingSection() {
     } finally { setCheckingKey(''); }
   }, [profile, showError, flashCell, queryClient]);
 
+  // 포스팅 제목+본문을 분석해 대표 키워드를 자동추출(post_representative_keywords에 영속화)하고,
+  // 곧바로 그 키워드로 순위까지 확인한다 — 사용자가 직접 입력하는 커스텀 키워드와 별개 트랙.
+  const handleExtractRepresentative = useCallback(async (post: BlogPost) => {
+    if (!profile) return;
+    setExtractingRepId(post.id);
+    try {
+      const res = await fetch(
+        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}`,
+      );
+      if (!res.ok) {
+        showError('대표 키워드 자동추출에 실패했습니다.', 4000);
+        return;
+      }
+      const data: { representativeKeyword?: string | null; source?: string } = await res.json();
+      const keyword = data.representativeKeyword || null;
+      setRepKeywords(prev => ({ ...prev, [post.id]: { keyword, source: data.source } }));
+      if (keyword) await checkSingleKeyword(post, keyword);
+    } catch {
+      showError('네트워크 오류로 대표 키워드를 추출하지 못했습니다.', 4000);
+    } finally {
+      setExtractingRepId('');
+    }
+  }, [profile, checkSingleKeyword, showError]);
+
+  // 대표 키워드가 아직 없는 포스팅을 순차적으로 추출 (네이버 크롤링 + 순위확인이 겹치므로 2초 간격)
+  const extractAllRepresentative = useCallback(async () => {
+    const targets = blogPosts.filter(p => !repKeywordsRef.current[p.id]?.keyword);
+    if (targets.length === 0 || extractingAll) return;
+    setExtractingAll(true);
+    extractAbortRef.current = false;
+    setExtractProgress({ current: 0, total: targets.length });
+    for (let i = 0; i < targets.length; i++) {
+      if (extractAbortRef.current) break;
+      await handleExtractRepresentative(targets[i]);
+      setExtractProgress({ current: i + 1, total: targets.length });
+      if (i < targets.length - 1) await new Promise(r => setTimeout(r, 2000));
+    }
+    setExtractingAll(false);
+  }, [blogPosts, extractingAll, handleExtractRepresentative]);
+
+  const stopExtractingAll = () => { extractAbortRef.current = true; };
+
   // 자동 백그라운드 갱신 + 관리자 수동 강제 새로고침이 공유하는 순차 실행기
   const runBatch = useCallback(async (
     pairs: { post: BlogPost; keyword: string }[],
@@ -502,6 +566,11 @@ export default function KeywordRankingSection() {
         const key = rankKey(post.id, kw);
         if (isStale(rankingResultsRef.current[key])) pairs.push({ post, keyword: kw });
       }
+      const repKw = repKeywordsRef.current[post.id]?.keyword;
+      if (repKw) {
+        const key = rankKey(post.id, repKw);
+        if (isStale(rankingResultsRef.current[key])) pairs.push({ post, keyword: repKw });
+      }
     }
     if (pairs.length > 0) runBatch(pairs);
   }, [blogPosts, runBatch]);
@@ -557,6 +626,8 @@ export default function KeywordRankingSection() {
     for (const post of blogPosts) {
       const kws = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
       for (const kw of kws) pairs.push({ post, keyword: kw });
+      const repKw = repKeywords[post.id]?.keyword;
+      if (repKw) pairs.push({ post, keyword: repKw });
     }
     if (pairs.length > 0) runBatch(pairs, { force: true });
   };
@@ -569,6 +640,11 @@ export default function KeywordRankingSection() {
     }
     return latest;
   }, [rankingResults]);
+
+  const missingRepCount = useMemo(
+    () => blogPosts.filter(p => !repKeywords[p.id]?.keyword).length,
+    [blogPosts, repKeywords],
+  );
 
   // 로딩
   if (loading) {
@@ -676,6 +752,25 @@ export default function KeywordRankingSection() {
             >
               초기화
             </button>
+            {extractingAll ? (
+              <button
+                onClick={stopExtractingAll}
+                className="px-4 py-2 bg-down/10 text-down font-bold rounded-xl text-sm cursor-pointer hover:bg-down/20 transition"
+              >
+                중지 {extractProgress.current}/{extractProgress.total}
+              </button>
+            ) : (
+              missingRepCount > 0 && (
+                <button
+                  onClick={extractAllRepresentative}
+                  disabled={postsLoading || blogPosts.length === 0}
+                  className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
+                  title="포스팅 제목+본문을 분석해 대표 키워드를 자동추출합니다"
+                >
+                  대표 키워드 {missingRepCount}개 추출
+                </button>
+              )
+            )}
             {user.isAdmin && (
               checkingAll ? (
                 <button
@@ -755,51 +850,139 @@ export default function KeywordRankingSection() {
                 <tbody className="divide-y divide-border/20">
                   {blogPosts.map((post, i) => {
                     const keywords = editingKeywords[post.id] || [];
-                    const rowCount = Math.max(keywords.length, 1);
-                    return keywords.map((kw, kwIdx) => {
+                    const rowCount = Math.max(keywords.length, 1) + 1; // +1: 대표 키워드 행
+                    const repEntry = repKeywords[post.id];
+                    const repKeyword = repEntry?.keyword || null;
+                    const repKey = repKeyword ? rankKey(post.id, repKeyword) : '';
+                    const repResult = repKeyword ? rankingResults[repKey] : undefined;
+                    const repDelta = repKeyword ? rankDeltas[repKey] : undefined;
+                    const repPrevDelta = repResult ? computeDeltaDisplay(repResult.viewTab.exposed, repResult.viewTab.rank, repDelta?.prevRank ?? null, repDelta?.prevCheckedAt ?? null) : null;
+                    const repWeekDelta = repResult ? computeDeltaDisplay(repResult.viewTab.exposed, repResult.viewTab.rank, repDelta?.weekRank ?? null, repDelta?.weekCheckedAt ?? null) : null;
+                    const repFlashing = repKeyword ? flashKeys.has(repKey) : false;
+                    const isExtracting = extractingRepId === post.id;
+
+                    const sharedCells = (
+                      <>
+                        <td className="px-4 py-3 text-dim text-xs align-top" rowSpan={rowCount}>
+                          {(currentPage - 1) * postsPerPage + i + 1}
+                        </td>
+                        <td className="px-3 py-3 align-top" rowSpan={rowCount}>
+                          <a href={post.url} target="_blank" rel="noopener noreferrer"
+                            className="font-semibold hover:text-accent transition truncate block max-w-[320px]" title={post.title}>
+                            {post.title}
+                          </a>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[10px] text-dim">{post.date}</span>
+                            {post.commentCount > 0 && (
+                              <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            {keywords.length < 5 && (
+                              <button onClick={() => addKeyword(post.id)}
+                                className="text-xs text-accent cursor-pointer hover:underline">
+                                + 키워드 추가
+                              </button>
+                            )}
+                            {keywords.some(k => k.trim()) && (
+                              <button onClick={() => handleClearPostKeywords(post.id)}
+                                className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">
+                                초기화
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </>
+                    );
+
+                    const repRow = (
+                      <tr key={`${post.id}-rep`} className={`hover:bg-surface-hover transition !border-b-0 bg-accent/5`}>
+                        {sharedCells}
+                        <td className="px-3 py-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0">대표</span>
+                            {repKeyword ? (
+                              <span className="text-xs font-semibold truncate" title={repKeyword}>{repKeyword}</span>
+                            ) : (
+                              <span className="text-xs text-dim">미확인</span>
+                            )}
+                            <button
+                              onClick={() => handleExtractRepresentative(post)}
+                              disabled={isExtracting}
+                              className="ml-auto text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs shrink-0"
+                              title="대표 키워드 자동추출(다시 누르면 재추출)"
+                            >
+                              {isExtracting ? (
+                                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                              ) : '⟳'}
+                            </button>
+                          </div>
+                        </td>
+                        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
+                          {repResult ? (
+                            repResult.viewTab.exposed ? (
+                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                {repResult.viewTab.rank}위
+                              </span>
+                            ) : <span className="text-xs text-dim">-</span>
+                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                        </td>
+                        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
+                          {repResult ? (
+                            repResult.blogTab.exposed ? (
+                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                {repResult.blogTab.rank}위
+                              </span>
+                            ) : <span className="text-xs text-dim">-</span>
+                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                        </td>
+                        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
+                          {repResult ? (
+                            repResult.influencerTab?.exposed ? (
+                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
+                                {repResult.influencerTab.rank}위
+                              </span>
+                            ) : <span className="text-xs text-dim">-</span>
+                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                        </td>
+                        <td className="text-center px-3 py-1.5">
+                          {repPrevDelta ? (
+                            <span className={`text-xs font-bold ${repPrevDelta.colorClass}`} title={repPrevDelta.tooltip}>
+                              {repPrevDelta.label}
+                            </span>
+                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                        </td>
+                        <td className="text-center px-3 py-1.5">
+                          {repWeekDelta ? (
+                            <span className={`text-xs font-bold ${repWeekDelta.colorClass}`} title={repWeekDelta.tooltip}>
+                              {repWeekDelta.label}
+                            </span>
+                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                        </td>
+                        <td className="text-center px-3 py-1.5 text-xs text-dim">
+                          {repResult?.searchVolume ? repResult.searchVolume.toLocaleString() : '--'}
+                        </td>
+                        <td className="text-center px-4 py-1.5">
+                          <span
+                            className="text-[10px] text-dim"
+                            title={repResult?.checkedAt ? new Date(repResult.checkedAt).toLocaleString('ko-KR') : ''}
+                          >
+                            {repResult?.checkedAt ? timeAgo(repResult.checkedAt) : '--'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+
+                    const keywordRows = keywords.map((kw, kwIdx) => {
                       const key = rankKey(post.id, kw.trim());
                       const result = rankingResults[key];
                       const delta = rankDeltas[key];
                       const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
                       const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
-                      const isFirst = kwIdx === 0;
-                      const isLast = kwIdx === rowCount - 1;
+                      const isLast = kwIdx === keywords.length - 1;
                       const flashing = flashKeys.has(key);
                       return (
                         <tr key={`${post.id}-${kwIdx}`} className={`hover:bg-surface-hover transition ${!isLast ? '!border-b-0' : ''}`}>
-                          {isFirst && (
-                            <>
-                              <td className="px-4 py-3 text-dim text-xs align-top" rowSpan={rowCount}>
-                                {(currentPage - 1) * postsPerPage + i + 1}
-                              </td>
-                              <td className="px-3 py-3 align-top" rowSpan={rowCount}>
-                                <a href={post.url} target="_blank" rel="noopener noreferrer"
-                                  className="font-semibold hover:text-accent transition truncate block max-w-[320px]" title={post.title}>
-                                  {post.title}
-                                </a>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                  <span className="text-[10px] text-dim">{post.date}</span>
-                                  {post.commentCount > 0 && (
-                                    <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  {keywords.length < 5 && (
-                                    <button onClick={() => addKeyword(post.id)}
-                                      className="text-xs text-accent cursor-pointer hover:underline">
-                                      + 키워드 추가
-                                    </button>
-                                  )}
-                                  {keywords.some(k => k.trim()) && (
-                                    <button onClick={() => handleClearPostKeywords(post.id)}
-                                      className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">
-                                      초기화
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </>
-                          )}
                           <td className="px-3 py-1.5">
                             <div className="flex items-center gap-1">
                               <input
@@ -895,6 +1078,8 @@ export default function KeywordRankingSection() {
                         </tr>
                       );
                     });
+
+                    return [repRow, ...keywordRows];
                   })}
                 </tbody>
               </table>
@@ -904,6 +1089,15 @@ export default function KeywordRankingSection() {
             <div className="md:hidden divide-y divide-border/20">
               {blogPosts.map((post, i) => {
                 const keywords = editingKeywords[post.id] || [];
+                const repEntry = repKeywords[post.id];
+                const repKeyword = repEntry?.keyword || null;
+                const repKey = repKeyword ? rankKey(post.id, repKeyword) : '';
+                const repResult = repKeyword ? rankingResults[repKey] : undefined;
+                const repDelta = repKeyword ? rankDeltas[repKey] : undefined;
+                const repPrevDelta = repResult ? computeDeltaDisplay(repResult.viewTab.exposed, repResult.viewTab.rank, repDelta?.prevRank ?? null, repDelta?.prevCheckedAt ?? null) : null;
+                const repWeekDelta = repResult ? computeDeltaDisplay(repResult.viewTab.exposed, repResult.viewTab.rank, repDelta?.weekRank ?? null, repDelta?.weekCheckedAt ?? null) : null;
+                const repFlashing = repKeyword ? flashKeys.has(repKey) : false;
+                const isExtracting = extractingRepId === post.id;
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
                     <div className="flex items-start gap-2">
@@ -917,6 +1111,59 @@ export default function KeywordRankingSection() {
                         </a>
                         <span className="text-[10px] text-dim ml-1">{post.date}</span>
                       </div>
+                    </div>
+
+                    {/* 대표 키워드 행 */}
+                    <div className={`ml-7 rounded-lg p-2 space-y-1 bg-accent/5 transition-colors duration-700 ${repFlashing ? '!bg-accent/15' : ''}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0">대표</span>
+                        {repKeyword ? (
+                          <span className="text-xs font-semibold truncate" title={repKeyword}>{repKeyword}</span>
+                        ) : (
+                          <span className="text-xs text-dim">미확인</span>
+                        )}
+                        <button
+                          onClick={() => handleExtractRepresentative(post)}
+                          disabled={isExtracting}
+                          className="ml-auto text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs shrink-0"
+                          title="대표 키워드 자동추출(다시 누르면 재추출)"
+                        >
+                          {isExtracting ? (
+                            <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                          ) : '⟳'}
+                        </button>
+                      </div>
+                      {repResult && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                            repResult.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                          }`}>
+                            통합 {repResult.viewTab.exposed ? `${repResult.viewTab.rank}위` : '-'}
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                            repResult.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                          }`}>
+                            블로그 {repResult.blogTab.exposed ? `${repResult.blogTab.rank}위` : '-'}
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                            repResult.influencerTab?.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
+                          }`}>
+                            인플루언서 {repResult.influencerTab?.exposed ? `${repResult.influencerTab.rank}위` : '-'}
+                          </span>
+                          {repResult.searchVolume ? (
+                            <span className="text-[10px] text-dim">{repResult.searchVolume.toLocaleString()}</span>
+                          ) : null}
+                        </div>
+                      )}
+                      {repResult && repPrevDelta && repWeekDelta && (
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <span className={`font-bold ${repPrevDelta.colorClass}`} title={repPrevDelta.tooltip}>전일 {repPrevDelta.label}</span>
+                          <span className={`font-bold ${repWeekDelta.colorClass}`} title={repWeekDelta.tooltip}>7일 {repWeekDelta.label}</span>
+                          <span className="text-dim ml-auto" title={repResult?.checkedAt ? new Date(repResult.checkedAt).toLocaleString('ko-KR') : ''}>
+                            {repResult?.checkedAt ? timeAgo(repResult.checkedAt) : ''}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 키워드별 행 */}

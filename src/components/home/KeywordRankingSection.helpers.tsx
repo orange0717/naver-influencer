@@ -37,9 +37,24 @@ export type SyncedState = {
 };
 
 export const STATE_API = '/api/my/keyword-ranking-state';
+export const REP_STATE_API = '/api/my/representative-keywords-state';
 // 네이버 요청 최소화: 최근 10분 이내 갱신된 순위는 재조회하지 않고 그대로 표시
 const STALE_MS = 10 * 60 * 1000;
 export const FLASH_MS = 1400;
+
+export interface RepKeywordEntry {
+  keyword: string | null;
+  source?: string | null;
+  extractedAt?: string | null;
+}
+
+// 영속화된(post_representative_keywords) 포스트별 대표 키워드를 블로그 단위로 한 번에 복원
+export async function fetchRepKeywordsState(blogId: string): Promise<Record<string, RepKeywordEntry>> {
+  const res = await fetch(`${REP_STATE_API}?blogId=${encodeURIComponent(blogId)}`);
+  if (!res.ok) throw new Error('대표 키워드 상태 로드 실패');
+  const data = await res.json();
+  return data.results || {};
+}
 
 // 서버(DB)에서 저장된 키워드/순위 상태를 복원한다. (기기 간 동기화의 핵심)
 export async function fetchRankingState(blogId: string): Promise<SyncedState> {
