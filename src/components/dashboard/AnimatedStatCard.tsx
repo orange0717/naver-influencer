@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, ReactNode } from 'react';
+import Link from 'next/link';
 
 interface AnimatedStatCardProps {
   label: string;
@@ -17,6 +18,8 @@ interface AnimatedStatCardProps {
   className?: string; // grid 내 col-span 등 배치 오버라이드용
   /** 'kpi' = 상단 요약 8칸/6칸 (130px, 18px 숫자) · 'stat' = 발행/순위 등 3칸 그리드 (160px, 20px 숫자) */
   size?: 'kpi' | 'stat';
+  /** 지정 시 카드 전체가 링크가 되어 클릭하면 해당 상세 페이지로 이동 */
+  href?: string;
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -60,6 +63,7 @@ export default function AnimatedStatCard({
   delay = 0,
   className = '',
   size = 'kpi',
+  href,
 }: AnimatedStatCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -86,6 +90,10 @@ export default function AnimatedStatCard({
     return () => clearTimeout(timer);
   }, [delay]);
 
+  // 정수는 그대로, 소수(예: 평균순위 8.4)는 애니메이션 중에도 소수점 자리수를 유지한다
+  // (기존엔 Math.round만 써서 8.4 같은 값이 최종 프레임에도 8로 반올림돼버렸음)
+  const decimals = Number.isInteger(value) ? 0 : (value.toString().split('.')[1]?.length ?? 1);
+
   useEffect(() => {
     if (!isVisible || value === 0) return;
     const duration = 800;
@@ -94,13 +102,13 @@ export default function AnimatedStatCard({
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(Math.round(value * eased));
+      setDisplayValue(parseFloat((value * eased).toFixed(decimals)));
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  }, [isVisible, value]);
+  }, [isVisible, value, decimals]);
 
-  return (
+  const card = (
     <div
       ref={ref}
       className={`
@@ -110,6 +118,7 @@ export default function AnimatedStatCard({
         shadow-xs
         transition-all duration-500 ease-out
         hover:-translate-y-0.5 hover:shadow-lg ${c.hoverBorder}
+        ${href ? 'cursor-pointer' : ''}
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
         ${className}
       `}
@@ -140,4 +149,9 @@ export default function AnimatedStatCard({
       </div>
     </div>
   );
+
+  if (href) {
+    return <Link href={href} className="block">{card}</Link>;
+  }
+  return card;
 }

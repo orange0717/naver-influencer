@@ -23,8 +23,20 @@ import TrialBanner from '@/components/TrialBanner';
 import SubscriptionExpiryBanner from '@/components/SubscriptionExpiryBanner';
 import { after } from 'next/server';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
+import { getBlogVisitorSummary } from '@/lib/blog-crawler';
+import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
+import { parseNaverPostDate } from '@/lib/naver-date';
+import { calculateMissingRate, countMissing, type MissingResultsMap, type PostLike } from '@/lib/missing-rate';
 
 import { classifyKeyword, GuestDashboard } from './page.helpers';
+
+/** 외부 크롤링(방문자/포스트 목록)이 오래 걸려도 대시보드 전체 렌더가 막히지 않도록 상한을 둔다 */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
 export const dynamic = 'force-dynamic';
 // DB 쿼리(특히 keyword_rankings 1.5억 행 스캔)가 10~24초까지 걸릴 수 있어,
 // Vercel 기본 함수 타임아웃(10초)에 걸려 응답이 중간에 끊기고 로딩 화면에서
@@ -203,7 +215,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     return 0;
   })();
 
-  const aiVisibilityPromise: Promise<{ exposedCount: number; tabExposedCount: number; checkedCount: number } | null> =
+  const aiVisibilityPromise: Promise<{ exposedCount: number; tabExposedCount: number; checkedCount: number; exposedThisWeek: number; tabExposedThisWeek: number } | null> =
     (internalUserId && naverId)
       ? (async () => {
           const { data: briefingRows } = await supabase
@@ -213,15 +225,73 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
             .eq('blog_id', naverId)
             .not('checked_at', 'is', null);
           if (briefingRows && briefingRows.length > 0) {
+            const weekAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
             return {
               checkedCount: briefingRows.length,
               exposedCount: briefingRows.filter((r) => r.exposed === true).length,
               tabExposedCount: briefingRows.filter((r) => r.tab_exposed === true).length,
+              exposedThisWeek: briefingRows.filter((r) => r.exposed === true && new Date(r.checked_at as string).getTime() >= weekAgoMs).length,
+              tabExposedThisWeek: briefingRows.filter((r) => r.tab_exposed === true && new Date(r.checked_at as string).getTime() >= weekAgoMs).length,
             };
           }
           return null;
         })()
       : Promise.resolve(null);
+
+  /** 대시보드 허브 — 누락률 카드: 누락률 메뉴가 이미 검사 결과를 저장해두는 post_missing_checks를 그대로 재집계 */
+  const missingSummaryPromise: Promise<{ rate: number; missingCount: number; totalChecked: number }> = naverId
+    ? (async () => {
+        const { data: rows } = await supabase
+          .from('post_missing_checks')
+          .select('post_id, view_exposed, view_rank, blog_exposed, blog_rank')
+          .eq('blog_id', naverId)
+          .not('checked_at', 'is', null);
+        if (!rows || rows.length === 0) return { rate: 0, missingCount: 0, totalChecked: 0 };
+        const results: MissingResultsMap = {};
+        const posts: PostLike[] = [];
+        for (const r of rows) {
+          results[r.post_id] = {
+            blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
+            viewTab: { exposed: r.view_exposed, rank: r.view_rank },
+          };
+          posts.push({ id: r.post_id });
+        }
+        return {
+          rate: calculateMissingRate(posts, results),
+          missingCount: countMissing(posts, results),
+          totalChecked: posts.length,
+        };
+      })()
+    : Promise.resolve({ rate: 0, missingCount: 0, totalChecked: 0 });
+
+  /** 대시보드 허브 — 방문자 카드: 조회수 차트(BlogVisitorChart)와 동일한 공용 함수 재사용 */
+  const visitorSummaryPromise: Promise<{ todayVisitors: number; totalVisitors: number }> = naverId
+    ? withTimeout(
+        getBlogVisitorSummary(naverId, 30).then((s) => ({ todayVisitors: s.todayVisitors, totalVisitors: s.totalVisitors })),
+        8000,
+        { todayVisitors: 0, totalVisitors: 0 },
+      )
+    : Promise.resolve({ todayVisitors: 0, totalVisitors: 0 });
+
+  /** 대시보드 허브 — 전체 포스팅 카드: 포스팅 분석 메뉴와 동일한 목록 조회 함수 재사용(최신 50건 기준 주/월 집계) */
+  const postSummaryPromise: Promise<{ totalCount: number; weeklyCount: number; monthlyCount: number }> = naverId
+    ? withTimeout(
+        fetchBlogPostList(naverId, 1, 50).then(({ posts, totalCount }) => {
+          const now = Date.now();
+          const weeklyCount = posts.filter((p) => {
+            const t = parseNaverPostDate(p.date);
+            return t !== null && now - t <= 7 * 24 * 60 * 60 * 1000;
+          }).length;
+          const monthlyCount = posts.filter((p) => {
+            const t = parseNaverPostDate(p.date);
+            return t !== null && now - t <= 30 * 24 * 60 * 60 * 1000;
+          }).length;
+          return { totalCount, weeklyCount, monthlyCount };
+        }),
+        6000,
+        { totalCount: 0, weeklyCount: 0, monthlyCount: 0 },
+      )
+    : Promise.resolve({ totalCount: 0, weeklyCount: 0, monthlyCount: 0 });
 
   const mateStatusPromise: Promise<{ selected: boolean; expertiseValue: string | null } | null> = naverId
     ? (async () => {
@@ -389,6 +459,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const integratedCount = rankings.filter(r => r.is_integrated_top3).length;
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
+  const avgRankValue = totalRankedKeywords > 0
+    ? parseFloat((rankings.reduce((s, r) => s + r.rank_position, 0) / totalRankedKeywords).toFixed(1))
+    : 0;
 
   // ─── TOP3 진입/이탈 + 최대 변동 (브리핑용) ───
   const top3Entered = (latestRankings || []).filter(r =>
@@ -646,7 +719,14 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // ─── 6. NGI(Ninfle Growth Index) 계산용 데이터 수집 ───
   // AI 가시성: 네이버메이트에서 실제로 확인(checked_at 존재)한 건만 집계 — 한 번도 안 썼으면 null(측정 불가)
   // 네이버 메이트 선정 여부(블로그 홈 경로 = naverId 로 매칭) 포함, 둘 다 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
-  const [aiVisibility, mateStatus] = await Promise.all([aiVisibilityPromise, mateStatusPromise]);
+  // ─── 7. 대시보드 허브 KPI (누락률/방문자/전체 포스팅) — 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
+  const [aiVisibility, mateStatus, missingSummary, visitorSummary, postSummary] = await Promise.all([
+    aiVisibilityPromise,
+    mateStatusPromise,
+    missingSummaryPromise,
+    visitorSummaryPromise,
+    postSummaryPromise,
+  ]);
 
   return (
     <div className="space-y-10">
@@ -707,11 +787,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       {categoryRank > 0 && (
         <div className="bg-surface border border-border rounded-2xl px-5 py-3">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
+            <span className="text-dim">카테고리 순위 <strong className="text-text font-rank">{categoryRank}</strong>위{categoryTotal > 0 ? `/${categoryTotal}` : ''}</span>
             <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
             <span className="text-dim">TOP 3 <strong className="text-text font-rank">{top3Count}</strong>개</span>
             <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
             <span className="text-dim">순위 수집 <strong className="text-text font-rank">{totalRankedKeywords}</strong>건</span>
             <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
+            <span className="text-dim">토픽 <strong className="text-text font-rank">{topicCount}</strong>개</span>
             <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || influencer.total_follower_count || 0)}</strong></span>
           </div>
           {participatedCount > totalRankedKeywords && (
@@ -722,63 +804,84 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {/* ─── 2. 통계 카드 ─── 항상 6장 고정: 조건부 렌더링을 없애 그리드 마지막 행이 깨지지 않게 함 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* ─── 2. 대시보드 허브 KPI ─── 각 메뉴의 핵심 지표를 요약하고, 클릭하면 해당 메뉴로 이동 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         <AnimatedStatCard
-          size="kpi"
-          label="카테고리 순위"
-          value={categoryRank}
-          suffix={categoryRank > 0 && categoryTotal > 0 ? `위/${categoryTotal}` : '위'}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
-          color="accent"
-          delay={80}
+          size="stat"
+          label="누락률"
+          value={missingSummary.rate}
+          suffix="%"
+          placeholder={missingSummary.totalChecked === 0 ? '—' : '0%'}
+          description={missingSummary.totalChecked > 0 ? `누락포스팅 ${missingSummary.missingCount}건` : '누락률 메뉴에서 검사해보세요'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>}
+          color={missingSummary.totalChecked === 0 ? 'dim' : missingSummary.rate > 0 ? 'down' : 'up'}
+          delay={60}
+          href="/#blog-analysis"
         />
         <AnimatedStatCard
-          size="kpi"
-          label="AI브리핑 인용"
+          size="stat"
+          label="평균순위"
+          value={avgRankValue}
+          suffix="위"
+          description={`노출 키워드 ${totalRankedKeywords}개`}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
+          color={totalRankedKeywords > 0 ? 'accent' : 'dim'}
+          delay={100}
+          href="/my/keyword-ranking"
+        />
+        <AnimatedStatCard
+          size="stat"
+          label="AI 브리핑"
           value={aiVisibility?.exposedCount ?? 0}
           suffix="건"
-          description={aiVisibility ? `확인 ${aiVisibility.checkedCount}건 중` : '확인 전'}
+          description={aiVisibility ? `이번주 +${aiVisibility.exposedThisWeek}` : '확인 전'}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>}
           color={aiVisibility && aiVisibility.exposedCount > 0 ? 'up' : 'dim'}
-          delay={120}
+          delay={140}
+          href="/my/naver-mate"
         />
         <AnimatedStatCard
-          size="kpi"
-          label="참여 키워드"
+          size="stat"
+          label="AI 탭"
+          value={aiVisibility?.tabExposedCount ?? 0}
+          suffix="건"
+          description={aiVisibility ? `이번주 +${aiVisibility.tabExposedThisWeek}` : '확인 전'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>}
+          color={aiVisibility && aiVisibility.tabExposedCount > 0 ? 'up' : 'dim'}
+          delay={180}
+          href="/my/naver-mate"
+        />
+        <AnimatedStatCard
+          size="stat"
+          label="키워드 챌린지"
           value={participatedCount}
           suffix="개"
+          description={`진행중 · TOP3 ${top3Count}개`}
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>}
           color={participatedCount > 0 ? 'accent' : 'dim'}
-          delay={100}
+          delay={220}
+          href="/keywords"
         />
         <AnimatedStatCard
-          size="kpi"
-          label="TOP 3 키워드"
-          value={top3Count}
-          suffix="개"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
-          color={top3Count > 0 ? 'gold' : 'dim'}
-          delay={150}
-        />
-        <AnimatedStatCard
-          size="kpi"
-          label="순위 변동"
-          value={rankUpCount + rankDownCount}
+          size="stat"
+          label="전체 포스팅"
+          value={postSummary.totalCount}
           suffix="건"
-          trend={rankUpCount > rankDownCount ? { direction: 'up', value: rankUpCount } : rankDownCount > 0 ? { direction: 'down', value: rankDownCount } : undefined}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>}
-          color={rankUpCount > 0 ? 'up' : rankDownCount > 0 ? 'down' : 'dim'}
-          delay={200}
+          description={`이번주 ${postSummary.weeklyCount}건 · 이번달 ${postSummary.monthlyCount}건`}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>}
+          color={postSummary.totalCount > 0 ? 'accent' : 'dim'}
+          delay={260}
+          href="/my/post-analysis"
         />
         <AnimatedStatCard
-          size="kpi"
-          label="토픽"
-          value={topicCount}
-          suffix="개"
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>}
-          color={topicCount > 0 ? 'accent' : 'dim'}
-          delay={250}
+          size="stat"
+          label="오늘 방문자"
+          value={visitorSummary.todayVisitors}
+          suffix="명"
+          description={`30일 ${formatCount(visitorSummary.totalVisitors)}명`}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+          color="accent"
+          delay={300}
         />
       </div>
 
