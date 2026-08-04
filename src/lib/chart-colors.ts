@@ -32,9 +32,3 @@ export const DIRECTION_COLORS = {
   down: '#D94848',
   stable: '#BF877A',
 } as const;
-
-/* ── 경쟁자 비교 (CompetitorBarChart) ── */
-export const COMPETITOR = {
-  me: '#BF877A',
-  other: '#D9ABA0',
-} as const;

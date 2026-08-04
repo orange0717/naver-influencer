@@ -8,15 +8,6 @@ export function timingSafeEqualSecret(provided: string, expected: string): boole
   return crypto.timingSafeEqual(hashProvided, hashExpected);
 }
 
-/** Authorization: Bearer <secret> 검증 */
-export function verifyBearerSecret(request: Request, secret: string | undefined): boolean {
-  if (!secret) return false;
-  const auth = request.headers.get('authorization') || '';
-  const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!provided) return false;
-  return timingSafeEqualSecret(provided, secret);
-}
-
 /** Authorization 헤더(Bearer 또는 raw)와 env 토큰 timing-safe 비교 */
 export function verifyAuthorizationToken(request: Request, expectedToken: string | undefined): boolean {
   if (!expectedToken) return false;

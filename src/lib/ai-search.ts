@@ -275,42 +275,6 @@ export function parseQueryToFilters(query: string): InfluencerSearchFilters {
   return filters;
 }
 
-/**
- * 규칙 기반 요약 생성
- */
-export function buildRuleSummary(query: string, filters: InfluencerSearchFilters, totalResults: number): string {
-  if (totalResults === 0) {
-    return '조건에 맞는 인플루언서를 찾지 못했습니다. 검색 조건을 조정해보세요.';
-  }
-
-  const parts: string[] = [];
-
-  if (filters.category) parts.push(`${filters.category} 카테고리`);
-  if (filters.keyword_text) parts.push(`"${filters.keyword_text}" 관련`);
-  if (filters.min_subscriber_count) parts.push(`구독자 ${filters.min_subscriber_count.toLocaleString()}명 이상`);
-  if (filters.min_fan_count) parts.push(`팬 ${filters.min_fan_count.toLocaleString()}명 이상`);
-  if (filters.min_total_keywords) parts.push(`키챌 ${filters.min_total_keywords}건 이상`);
-  if (filters.ranking_top_n) parts.push(`상위 ${filters.ranking_top_n}명`);
-  if (filters.recency_days) parts.push(`최근 ${filters.recency_days}일 내 활동`);
-
-  const sortLabels: Record<string, string> = {
-    subscriber_count: '구독자 수',
-    fan_count: '팬 수',
-    total_keywords: '참여 키워드 수',
-    integrated_top3_count: 'TOP3 횟수',
-    top3_ratio: 'TOP3 비율',
-    top1_count: '1위 횟수',
-    last_crawled_at: '최근 활동',
-    first_seen_at: '선정일',
-  };
-  const sortLabel = filters.sort_by ? sortLabels[filters.sort_by] || '' : '';
-
-  const condition = parts.length > 0 ? parts.join(', ') + ' 조건으로' : '';
-  const sortInfo = sortLabel ? `${sortLabel} 기준으로 정렬하여` : '';
-
-  return `${condition} ${sortInfo} 총 ${totalResults}명의 인플루언서를 찾았습니다. 상위 ${Math.min(filters.limit || 10, totalResults)}명을 표시합니다.`.trim().replace(/\s+/g, ' ');
-}
-
 // ── 파워콘텐츠 95K 키워드 매칭 (서버사이드 전용) ──
 
 // 키워드 → 카테고리 역방향 맵 (lazy 초기화)

@@ -27,6 +27,4 @@ export const KEYWORD_CHALLENGE_CATEGORIES = [
   '어학/교육',
 ] as const;
 
-export type KeywordChallengeCategory = (typeof KEYWORD_CHALLENGE_CATEGORIES)[number];
-
 export const keywordChallengeCategorySchema = z.enum(KEYWORD_CHALLENGE_CATEGORIES);

@@ -11,7 +11,6 @@ export function dailyCrawlQueueOrFilter(): string {
   return `last_challenged_at.gte.${cutoff},top1_count.gt.0,top2_count.gt.0,top3_count.gt.0,last_challenged_at.is.null`;
 }
 
-export const PRODUCTION_CRAWL_SHARDS = 2;
 export const PRODUCTION_CRAWL_BATCH = 400;
 // (2026-07-30) 3샤드×5분(1분 엇갈림)에서 2샤드×10분(5분 엇갈림)으로 완화.
 // 개별 배치가 300~400초 넘게 걸려 5분 주기 자체가 자기 자신과도 겹치고 있었고,

@@ -16,19 +16,6 @@ export interface Keyword {
   first_seen_at: string;
 }
 
-export interface Ranking {
-  id: string;
-  keyword_id: string;
-  influencer_name: string;
-  influencer_url: string;
-  influencer_category: string;
-  rank_position: number;
-  previous_rank: number | null;
-  rank_change: number;
-  post_count: number;
-  snapshot_date: string;
-}
-
 export interface Recommendation {
   id: string;
   keyword_id: string;
@@ -41,34 +28,6 @@ export interface Recommendation {
   rank_in_day: number;
   reason: string;
   is_free: boolean;
-}
-
-export type SubscriptionStatus = 'active' | 'expired' | 'none';
-
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price_krw: number;
-  period_days: number;
-  description: string;
-  features: string[];
-}
-
-export interface UserSubscription {
-  id: string;
-  user_id: string;
-  plan_name: string;
-  status: SubscriptionStatus;
-  price_krw: number;
-  started_at: string;
-  expires_at: string;
-  payment_key?: string;
-  auto_renew: boolean;
-}
-
-export interface TrendData {
-  week: string;
-  volume: number;
 }
 
 export interface Influencer {
@@ -88,28 +47,7 @@ export interface Influencer {
   keyword_score?: number;
 }
 
-export interface MyKeywordRanking {
-  keyword_id: string;
-  keyword: string;
-  category: string;
-  rank_position: number;
-  previous_rank: number | null;
-  rank_change: number;
-  participant_count: number;
-  search_volume_monthly: number;
-  is_integrated_top3: boolean;
-}
-
 // ─── 크롤러 타입 ───
-
-/** GraphQL에서 받아오는 키워드 원본 데이터 */
-export interface NaverKeywordRaw {
-  name: string;
-  id: number;
-  categoryId: number;
-  participantCount: number;
-  thumbnailUrl?: string;
-}
 
 /** HTML 파싱으로 추출한 순위 데이터 */
 export interface ParsedRanking {
@@ -123,14 +61,6 @@ export interface ParsedRanking {
   latestPostUrl?: string;
 }
 
-/** 네이버 검색광고 API 키워드 볼륨 */
-export interface KeywordVolume {
-  keyword: string;
-  monthlyPcQcCnt: number;
-  monthlyMobileQcCnt: number;
-  compIdx: string; // '높음' | '중간' | '낮음'
-}
-
 /** 경쟁자 키워드 변동 이벤트 */
 export interface CompetitorChangeEvent {
   keyword: string;
@@ -139,15 +69,4 @@ export interface CompetitorChangeEvent {
   competitorRank: number | null;
   myRank: number | null;
   date: string;
-}
-
-/** 알림 레코드 */
-export interface NotificationRecord {
-  id: string;
-  notification_type: 'new_top3' | 'lost_top3' | 'rank_up_significant' | 'rank_down_significant' | 'momentum_up' | 'top3_opportunity' | 'daily_summary';
-  title: string;
-  body: string;
-  metadata: Record<string, unknown>;
-  is_read: boolean;
-  created_at: string;
 }

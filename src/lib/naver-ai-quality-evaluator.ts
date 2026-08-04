@@ -15,21 +15,6 @@ export const QUALITY_CATEGORY_DEFS = [
 
 export type QualityCategoryKey = typeof QUALITY_CATEGORY_DEFS[number]['key'];
 
-export const AI_TRACE_LABELS = [
-  '일반론이 많음',
-  '경험 부족',
-  '사례 부족',
-  '반복 문장',
-  '과장 표현',
-  '근거 없음',
-  '출처 없음',
-  '실제 사진 부족',
-] as const;
-
-export const SEO_ITEM_LABELS = ['제목', '소제목', '키워드', '목차', '메타설명', 'FAQ', '내부링크', '외부링크', '구조화'] as const;
-
-export const GEO_AEO_ENGINES = ['ChatGPT', 'Gemini', 'Claude', 'Perplexity', '네이버 AI브리핑', 'AI Overviews'] as const;
-
 export const EXPOSURE_LEVELS = ['매우 높음', '높음', '보통', '낮음', '매우 낮음'] as const;
 
 export interface QualityCategoryResult {

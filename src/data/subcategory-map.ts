@@ -304,11 +304,6 @@ export function getSubcategory(category: string, keyword: string): string {
   return '기타';
 }
 
-// 해당 카테고리에 세부분류가 있는지 확인
-export function hasSubcategories(category: string): boolean {
-  return !!CATEGORY_RULES[category];
-}
-
 // 카테고리의 세부분류 목록 반환
 export function getSubcategoryList(category: string): string[] {
   const rules = CATEGORY_RULES[category];

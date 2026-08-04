@@ -64,8 +64,3 @@ export function purchase(params: {
     ],
   });
 }
-
-/** 주요 버튼 클릭 — 커스텀 이벤트 */
-export function clickAction(action: string, params: Record<string, unknown> = {}) {
-  event('click_action', { action, ...params });
-}

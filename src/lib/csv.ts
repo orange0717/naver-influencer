@@ -21,16 +21,6 @@ export function rowsToCsv(headers: string[], rows: unknown[][]): string {
   return UTF8_BOM + [headerLine, ...bodyLines].join('\n');
 }
 
-/** 객체 배열 → CSV (key 순서대로 헤더 자동 생성) */
-export function objectsToCsv<T extends Record<string, unknown>>(
-  data: T[],
-  columns: { key: keyof T; label: string }[],
-): string {
-  const headers = columns.map((c) => c.label);
-  const rows = data.map((item) => columns.map((c) => item[c.key]));
-  return rowsToCsv(headers, rows);
-}
-
 /** Next.js Response 헬퍼: CSV 파일로 응답 */
 export function csvResponse(filename: string, csv: string): Response {
   return new Response(csv, {
