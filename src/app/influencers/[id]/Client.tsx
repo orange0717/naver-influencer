@@ -4,6 +4,7 @@ import { use, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import RankBadge from '@/components/RankBadge';
+import { TOPIC_TYPE_LABEL } from '@/lib/topic-labels';
 
 interface InfluencerKeyword {
   keyword_id: string;
@@ -39,6 +40,19 @@ interface InfluencerData {
   keywords: InfluencerKeyword[];
   recent_rankings: unknown[];
   is_member?: boolean;
+  topic_profile?: {
+    specialties: string[];
+    representativeTopic: string | null;
+    activeTopics: { name: string; topicType: string; postCount: number }[];
+    representativeKeywords: string[];
+    challengeTop3Count: number;
+    avgIntegratedRank: number | null;
+    avgBlogRank: number | null;
+  } | null;
+}
+
+function formatRank(rank: number | null): string {
+  return rank === null ? '-' : `${rank.toFixed(1)}위`;
 }
 
 function formatRelativeTime(iso?: string | null): string | null {
@@ -279,6 +293,72 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                 <p className="text-sm text-text whitespace-pre-line">{influencer.ad_process}</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 전문 분야 · 대표 토픽 (광고주 공개 정보) */}
+      {influencer.topic_profile && influencer.topic_profile.activeTopics.length > 0 && (
+        <div className="bg-surface rounded-2xl border border-border p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
+              <path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z" />
+              <circle cx="7.5" cy="7.5" r="1.5" />
+            </svg>
+            <h3 className="font-bold text-sm">전문 분야 · 대표 토픽</h3>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {influencer.topic_profile.specialties.map(s => (
+              <span key={s} className="text-[11px] px-2.5 py-1 rounded-full bg-accent/10 text-accent font-semibold">
+                {TOPIC_TYPE_LABEL[s] || s}
+              </span>
+            ))}
+          </div>
+
+          {influencer.topic_profile.representativeTopic && (
+            <div className="bg-bg rounded-xl p-3 flex items-center gap-2">
+              <span className="text-gold text-lg">★</span>
+              <div>
+                <p className="text-[11px] text-dim">대표 토픽</p>
+                <p className="text-sm font-bold">{influencer.topic_profile.representativeTopic}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-bg rounded-xl p-3">
+              <p className="text-[11px] text-dim font-medium mb-1">활동 토픽</p>
+              <p className="text-base font-bold font-rank">{influencer.topic_profile.activeTopics.length}개</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3">
+              <p className="text-[11px] text-dim font-medium mb-1">챌린지 TOP3</p>
+              <p className="text-base font-bold font-rank">{influencer.topic_profile.challengeTop3Count}개</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3">
+              <p className="text-[11px] text-dim font-medium mb-1">통합검색 평균</p>
+              <p className="text-base font-bold font-rank">{formatRank(influencer.topic_profile.avgIntegratedRank)}</p>
+            </div>
+            <div className="bg-bg rounded-xl p-3">
+              <p className="text-[11px] text-dim font-medium mb-1">블로그탭 평균</p>
+              <p className="text-base font-bold font-rank">{formatRank(influencer.topic_profile.avgBlogRank)}</p>
+            </div>
+          </div>
+
+          {influencer.topic_profile.representativeKeywords.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {influencer.topic_profile.representativeKeywords.map(k => (
+                <span key={k} className="text-[11px] px-2 py-0.5 rounded-full bg-bg text-dim border border-border">{k}</span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {influencer.topic_profile.activeTopics.map(t => (
+              <span key={t.name} className="text-xs px-2.5 py-1 rounded-full bg-bg text-text border border-border font-medium">
+                {t.name} <span className="text-dim">· {t.postCount}건</span>
+              </span>
+            ))}
           </div>
         </div>
       )}

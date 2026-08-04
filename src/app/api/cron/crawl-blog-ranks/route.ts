@@ -133,6 +133,7 @@ export async function GET(request: NextRequest) {
 
     if (kwError) throw kwError;
     if (!keywords || keywords.length === 0) {
+      await updateCrawlJob(jobId, { status: 'success', total_items: 0, processed_items: 0, failed_items: 0 });
       return NextResponse.json({ message: 'No active blog keywords found', count: 0 });
     }
 

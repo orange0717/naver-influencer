@@ -21,6 +21,7 @@ type SupabaseClient = ReturnType<typeof createServiceClient>;
 interface Target {
   userId: string;
   blogId: string;
+  influencerId: string | null;
 }
 
 interface Assignment {
@@ -40,7 +41,9 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** analyze-topic-insights와 동일한 조건(INFLUENCER 플랜 활성) → 본인 blog_id만 대상 */
+/** analyze-topic-insights와 동일한 조건(INFLUENCER 플랜 활성) → 본인 blog_id만 대상
+ *  influencerId도 함께 해석한다(aggregate-ninfl-member-ranks와 동일 패턴) — 토픽 성과의
+ *  키워드챌린지 TOP3 집계는 influencer_id 기준인 keyword_rankings를 조회해야 하기 때문. */
 async function resolveTargets(supabase: SupabaseClient): Promise<Target[]> {
   const { data: users, error: usersError } = await supabase
     .from('users')
@@ -52,23 +55,39 @@ async function resolveTargets(supabase: SupabaseClient): Promise<Target[]> {
     u => u.subscription_expires_at && new Date(u.subscription_expires_at).getTime() > Date.now(),
   );
 
-  const influencerIds = Array.from(
-    new Set(activeUsers.filter(u => !u.blog_id && u.linked_influencer_id).map(u => u.linked_influencer_id as string)),
-  );
-  const naverIdByInfluencerId = new Map<string, string>();
-  if (influencerIds.length > 0) {
-    const { data: infs } = await supabase.from('influencers').select('id, naver_id').in('id', influencerIds);
-    for (const inf of infs || []) {
-      if (inf.naver_id) naverIdByInfluencerId.set(inf.id, inf.naver_id);
-    }
+  const linkedIds = Array.from(new Set(activeUsers.filter(u => u.linked_influencer_id).map(u => u.linked_influencer_id as string)));
+  const blogOnlyIds = Array.from(new Set(activeUsers.filter(u => !u.linked_influencer_id && u.blog_id).map(u => u.blog_id as string)));
+
+  const influencerById = new Map<string, { id: string; naver_id: string }>();
+  if (linkedIds.length > 0) {
+    const { data: rows } = await supabase.from('influencers').select('id, naver_id').in('id', linkedIds);
+    for (const r of rows || []) influencerById.set(r.id as string, r as { id: string; naver_id: string });
+  }
+  const influencerByNaverId = new Map<string, { id: string; naver_id: string }>();
+  if (blogOnlyIds.length > 0) {
+    const { data: rows } = await supabase.from('influencers').select('id, naver_id').in('naver_id', blogOnlyIds);
+    for (const r of rows || []) influencerByNaverId.set(r.naver_id as string, r as { id: string; naver_id: string });
   }
 
   return shuffle(activeUsers)
-    .map(u => ({
-      userId: u.id as string,
-      blogId: (u.blog_id || naverIdByInfluencerId.get(u.linked_influencer_id || '') || '').trim(),
-    }))
+    .map(u => {
+      const inf = u.linked_influencer_id
+        ? influencerById.get(u.linked_influencer_id as string)
+        : u.blog_id
+          ? influencerByNaverId.get(u.blog_id as string)
+          : undefined;
+      return {
+        userId: u.id as string,
+        blogId: (u.blog_id || inf?.naver_id || '').trim(),
+        influencerId: inf?.id || null,
+      };
+    })
     .filter(t => t.blogId);
+}
+
+/** keyword_challenges.keyword_clean과 동일한 정규화 (crawl-challenge-ranks/crawl-keywords와 동일 규칙) */
+function cleanKeyword(keyword: string): string {
+  return keyword.replace(/\s+/g, '').toLowerCase();
 }
 
 /** blog_post_contents.published_at은 "2026. 8. 1." 또는 "2026. 8. 1. 14:23" 형식의 비표준 원문 문자열 */
@@ -199,6 +218,172 @@ async function recomputeTopicAggregate(supabase: SupabaseClient, userId: string,
       last_post_at: lastPostAt ? lastPostAt.toISOString() : null,
     })
     .eq('id', topicId);
+}
+
+function minMax(arr: number[]): [number, number] {
+  if (arr.length === 0) return [0, 0];
+  return [Math.min(...arr), Math.max(...arr)];
+}
+
+function normalizeHigherIsBetter(value: number, min: number, max: number): number {
+  if (max <= min) return value > 0 ? 100 : 0;
+  return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+}
+
+function normalizeLowerIsBetter(value: number | null, min: number, max: number): number {
+  if (value === null) return 0;
+  if (max <= min) return 100;
+  return Math.max(0, Math.min(100, ((max - value) / (max - min)) * 100));
+}
+
+/**
+ * 토픽별 성과(통합검색·블로그탭 평균순위, AI 브리핑/탭, 키워드챌린지 TOP3, 최근 30일 신규글)를
+ * 다시 집계하고, 사용자의 토픽들 중 가장 영향력 높은 1개를 대표 토픽으로 자동 선정한다.
+ * 가중치: 포스팅수 25% · 최근활동 20% · 통합검색 15% · 블로그탭 15% · AI브리핑 10% · AI탭 5% · 챌린지TOP3 10%
+ * (오렌지 제안서의 "포스팅 수/최근 활동/검색 성과/AI 브리핑 인용/AI 탭 노출/키워드챌린지 활동" 기준을 반영)
+ */
+async function computeTopicPerformance(supabase: SupabaseClient, target: Target) {
+  const { userId, blogId, influencerId } = target;
+
+  const { data: topicRows } = await supabase
+    .from('topics')
+    .select('id, representative_keywords')
+    .eq('user_id', userId)
+    .eq('blog_id', blogId);
+  const topics = (topicRows || []) as { id: string; representative_keywords: string[] | null }[];
+  if (topics.length === 0) return;
+
+  const topicIds = topics.map(t => t.id);
+  const { data: postLinks } = await supabase.from('topic_posts').select('topic_id, post_id').in('topic_id', topicIds);
+  const postIdsByTopic = new Map<string, string[]>();
+  for (const link of postLinks || []) {
+    const list = postIdsByTopic.get(link.topic_id as string) || [];
+    list.push(link.post_id as string);
+    postIdsByTopic.set(link.topic_id as string, list);
+  }
+
+  const [{ data: contentRows }, { data: rankLookups }, { data: briefings }] = await Promise.all([
+    supabase.from('blog_post_contents').select('post_id, published_at').eq('user_id', userId).eq('blog_id', blogId),
+    supabase.from('keyword_rank_lookups').select('post_id, view_rank, blog_rank').eq('user_id', userId).eq('blog_id', blogId),
+    supabase.from('ai_briefing_exposures').select('post_id, exposed, tab_exposed').eq('user_id', userId).eq('blog_id', blogId),
+  ]);
+
+  const publishedAtByPost = new Map<string, Date | null>();
+  for (const c of contentRows || []) publishedAtByPost.set(c.post_id as string, parsePostDate(c.published_at as string | null));
+
+  const rankByPost = new Map<string, { view: number[]; blog: number[] }>();
+  for (const r of rankLookups || []) {
+    const entry = rankByPost.get(r.post_id as string) || { view: [], blog: [] };
+    if (typeof r.view_rank === 'number') entry.view.push(r.view_rank);
+    if (typeof r.blog_rank === 'number') entry.blog.push(r.blog_rank);
+    rankByPost.set(r.post_id as string, entry);
+  }
+
+  const briefingByPost = new Map<string, { exposed: boolean; tabExposed: boolean }>();
+  for (const b of briefings || []) {
+    const entry = briefingByPost.get(b.post_id as string) || { exposed: false, tabExposed: false };
+    if (b.exposed) entry.exposed = true;
+    if (b.tab_exposed) entry.tabExposed = true;
+    briefingByPost.set(b.post_id as string, entry);
+  }
+
+  // 대표 키워드 → keyword_challenges → 본인 keyword_rankings 최신 스냅샷에서 TOP3 여부 확인
+  const top3KeywordCleanSet = new Set<string>();
+  if (influencerId) {
+    const allKeywords = Array.from(new Set(topics.flatMap(t => t.representative_keywords || [])));
+    const cleanSet = Array.from(new Set(allKeywords.map(cleanKeyword))).filter(Boolean);
+    if (cleanSet.length > 0) {
+      const { data: matchedChallenges } = await supabase.from('keyword_challenges').select('id, keyword_clean').in('keyword_clean', cleanSet);
+      const cleanByKeywordId = new Map((matchedChallenges || []).map(c => [c.id as string, c.keyword_clean as string]));
+      const keywordIds = Array.from(cleanByKeywordId.keys());
+      if (keywordIds.length > 0) {
+        const { data: rankRows } = await supabase
+          .from('keyword_rankings')
+          .select('keyword_id, is_integrated_top3, snapshot_date')
+          .eq('influencer_id', influencerId)
+          .in('keyword_id', keywordIds)
+          .order('snapshot_date', { ascending: false });
+        const seen = new Set<string>();
+        for (const row of rankRows || []) {
+          const kwId = row.keyword_id as string;
+          if (seen.has(kwId)) continue; // 최신 스냅샷만 채택
+          seen.add(kwId);
+          if (row.is_integrated_top3) {
+            const clean = cleanByKeywordId.get(kwId);
+            if (clean) top3KeywordCleanSet.add(clean);
+          }
+        }
+      }
+    }
+  }
+
+  const now = Date.now();
+  const metrics = topics.map(topic => {
+    const postIds = postIdsByTopic.get(topic.id) || [];
+    const viewRanks: number[] = [];
+    const blogRanks: number[] = [];
+    let aiBriefingCount = 0;
+    let aiTabCount = 0;
+    let newPosts30d = 0;
+    let daysSinceLastPost = 3650;
+    for (const postId of postIds) {
+      const rank = rankByPost.get(postId);
+      if (rank) {
+        viewRanks.push(...rank.view);
+        blogRanks.push(...rank.blog);
+      }
+      const briefing = briefingByPost.get(postId);
+      if (briefing?.exposed) aiBriefingCount++;
+      if (briefing?.tabExposed) aiTabCount++;
+      const publishedAt = publishedAtByPost.get(postId);
+      if (publishedAt) {
+        const ageMs = now - publishedAt.getTime();
+        if (ageMs <= 30 * 24 * 60 * 60 * 1000) newPosts30d++;
+        daysSinceLastPost = Math.min(daysSinceLastPost, ageMs / (24 * 60 * 60 * 1000));
+      }
+    }
+    const avgIntegratedRank = viewRanks.length > 0 ? viewRanks.reduce((a, b) => a + b, 0) / viewRanks.length : null;
+    const avgBlogRank = blogRanks.length > 0 ? blogRanks.reduce((a, b) => a + b, 0) / blogRanks.length : null;
+    const challengeTop3Count = (topic.representative_keywords || []).filter(k => top3KeywordCleanSet.has(cleanKeyword(k))).length;
+    return { id: topic.id, postCount: postIds.length, avgIntegratedRank, avgBlogRank, aiBriefingCount, aiTabCount, challengeTop3Count, newPosts30d, daysSinceLastPost };
+  });
+
+  const [postMin, postMax] = minMax(metrics.map(m => m.postCount));
+  const [dayMin, dayMax] = minMax(metrics.map(m => m.daysSinceLastPost));
+  const [intMin, intMax] = minMax(metrics.map(m => m.avgIntegratedRank).filter((v): v is number => v !== null));
+  const [blogMin, blogMax] = minMax(metrics.map(m => m.avgBlogRank).filter((v): v is number => v !== null));
+  const [briefMin, briefMax] = minMax(metrics.map(m => m.aiBriefingCount));
+  const [tabMin, tabMax] = minMax(metrics.map(m => m.aiTabCount));
+  const [top3Min, top3Max] = minMax(metrics.map(m => m.challengeTop3Count));
+
+  const scored = metrics.map(m => {
+    const score =
+      0.25 * normalizeHigherIsBetter(m.postCount, postMin, postMax) +
+      0.20 * normalizeLowerIsBetter(m.daysSinceLastPost, dayMin, dayMax) +
+      0.15 * normalizeLowerIsBetter(m.avgIntegratedRank, intMin, intMax) +
+      0.15 * normalizeLowerIsBetter(m.avgBlogRank, blogMin, blogMax) +
+      0.10 * normalizeHigherIsBetter(m.aiBriefingCount, briefMin, briefMax) +
+      0.05 * normalizeHigherIsBetter(m.aiTabCount, tabMin, tabMax) +
+      0.10 * normalizeHigherIsBetter(m.challengeTop3Count, top3Min, top3Max);
+    return { ...m, score: Math.round(score * 100) / 100 };
+  });
+  const representativeId = scored.length > 0 ? scored.reduce((best, cur) => (cur.score > best.score ? cur : best)).id : null;
+
+  for (const m of scored) {
+    await supabase
+      .from('topics')
+      .update({
+        avg_integrated_rank: m.avgIntegratedRank,
+        avg_blog_rank: m.avgBlogRank,
+        ai_briefing_count: m.aiBriefingCount,
+        ai_tab_count: m.aiTabCount,
+        challenge_top3_count: m.challengeTop3Count,
+        new_posts_30d: m.newPosts30d,
+        representative_score: m.score,
+        is_representative: m.id === representativeId,
+      })
+      .eq('id', m.id);
+  }
 }
 
 async function curateForUser(supabase: SupabaseClient, anthropic: Anthropic, target: Target) {
@@ -358,6 +543,7 @@ export async function GET(request: NextRequest) {
       try {
         const { classified } = await curateForUser(supabase, anthropic, target);
         totalClassified += classified;
+        await computeTopicPerformance(supabase, target);
       } catch (err) {
         totalFailed++;
         console.error(`[curate-blog-topics] user ${target.userId} (${target.blogId}) failed:`, err);

@@ -262,6 +262,44 @@ export async function GET(
     .limit(1);
   const isMember = (memberCheck?.length || 0) > 0;
 
+  // 광고주 공개 정보 — curate-blog-topics 크론이 채우는 topics를 그대로 재사용(대시보드와 동일 데이터 소스)
+  const { data: topicRows } = await supabase
+    .from('topics')
+    .select('topic_type, name, post_count, representative_keywords, avg_integrated_rank, avg_blog_rank, challenge_top3_count, is_representative')
+    .eq('blog_id', influencer.naver_id)
+    .order('is_representative', { ascending: false })
+    .order('post_count', { ascending: false });
+
+  const topics = topicRows || [];
+  let topicProfile: {
+    specialties: string[];
+    representativeTopic: string | null;
+    activeTopics: { name: string; topicType: string; postCount: number }[];
+    representativeKeywords: string[];
+    challengeTop3Count: number;
+    avgIntegratedRank: number | null;
+    avgBlogRank: number | null;
+  } | null = null;
+
+  if (topics.length > 0) {
+    const representative = topics.find(t => t.is_representative) || null;
+    const intRanks = topics.map(t => t.avg_integrated_rank).filter((v): v is number => v !== null);
+    const blogRanks = topics.map(t => t.avg_blog_rank).filter((v): v is number => v !== null);
+    const keywordSet = new Set<string>();
+    for (const t of [representative, ...topics].filter(Boolean) as typeof topics) {
+      for (const k of t.representative_keywords || []) keywordSet.add(k);
+    }
+    topicProfile = {
+      specialties: Array.from(new Set(topics.map(t => t.topic_type as string))),
+      representativeTopic: (representative?.name as string | undefined) ?? null,
+      activeTopics: topics.map(t => ({ name: t.name as string, topicType: t.topic_type as string, postCount: t.post_count as number })),
+      representativeKeywords: Array.from(keywordSet).slice(0, 10),
+      challengeTop3Count: topics.reduce((sum, t) => sum + ((t.challenge_top3_count as number | null) ?? 0), 0),
+      avgIntegratedRank: intRanks.length > 0 ? intRanks.reduce((a, b) => a + b, 0) / intRanks.length : null,
+      avgBlogRank: blogRanks.length > 0 ? blogRanks.reduce((a, b) => a + b, 0) / blogRanks.length : null,
+    };
+  }
+
   return NextResponse.json({
     influencer: {
       ...influencer,
@@ -272,6 +310,7 @@ export async function GET(
       recent_rankings: rankings || [],
       rank_history: rankHistory,
       is_member: isMember,
+      topic_profile: topicProfile,
     },
   });
 }

@@ -14,6 +14,7 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import GlassCard from '@/components/dashboard/GlassCard';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
+import TopicPerformanceSection, { type TopicPerformanceRow } from '@/components/dashboard/TopicPerformanceSection';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
@@ -294,20 +295,36 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       )
     : Promise.resolve({ totalCount: 0, weeklyCount: 0, monthlyCount: 0 });
 
-  /** 대시보드 허브 — 토픽 카드: curate-blog-topics 크론이 채우는 topics(자동분류) 재사용 */
-  const topicSummaryPromise: Promise<{ count: number; topName: string | null }> = (internalUserId && naverId)
+/** 대시보드 허브 — 토픽 카드 + 토픽 성과 테이블: curate-blog-topics 크론이 채우는 topics 재사용 */
+  const topicSummaryPromise: Promise<{ count: number; topName: string | null; topics: TopicPerformanceRow[] }> = (internalUserId && naverId)
     ? (async () => {
         const { data } = await supabase
           .from('topics')
-          .select('name, post_count, total_view_count')
+          .select('id, topic_type, name, post_count, total_view_count, last_post_at, avg_integrated_rank, avg_blog_rank, ai_briefing_count, ai_tab_count, challenge_top3_count, new_posts_30d, is_representative')
           .eq('user_id', internalUserId)
           .eq('blog_id', naverId)
+          .order('is_representative', { ascending: false })
           .order('post_count', { ascending: false })
           .order('total_view_count', { ascending: false });
         const rows = data || [];
-        return { count: rows.length, topName: (rows[0]?.name as string | undefined) ?? null };
+        const topics: TopicPerformanceRow[] = rows.map(r => ({
+          id: r.id as string,
+          topicType: r.topic_type as string,
+          name: r.name as string,
+          postCount: r.post_count as number,
+          lastPostAt: r.last_post_at as string | null,
+          avgIntegratedRank: r.avg_integrated_rank as number | null,
+          avgBlogRank: r.avg_blog_rank as number | null,
+          aiBriefingCount: (r.ai_briefing_count as number | null) ?? 0,
+          aiTabCount: (r.ai_tab_count as number | null) ?? 0,
+          challengeTop3Count: (r.challenge_top3_count as number | null) ?? 0,
+          newPosts30d: (r.new_posts_30d as number | null) ?? 0,
+          isRepresentative: !!r.is_representative,
+        }));
+        const topName = topics.find(t => t.isRepresentative)?.name ?? topics[0]?.name ?? null;
+        return { count: topics.length, topName, topics };
       })()
-    : Promise.resolve({ count: 0, topName: null });
+    : Promise.resolve({ count: 0, topName: null, topics: [] });
 
   /** 대시보드 허브 — 인플루언서 순위 카드: N인플 회원 풀 안에서만 산정하는 자체 종합 순위(공식 아님).
    *  aggregate-ninfl-member-ranks 크론이 매일 적재하는 스냅샷 중 최신값 + 7일 이전 값(변동 계산용)을 조회 */
@@ -931,7 +948,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>}
           color={topicSummary.count > 0 ? 'accent' : 'dim'}
           delay={340}
-          href="/topics"
+          href="/my#topic-performance"
         />
         <AnimatedStatCard
           size="stat"
@@ -972,6 +989,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 2-1-1. 주제별 강점 분석 ─── */}
       <CategoryStrengthSection categoryStats={categoryStats} />
+
+      {/* ─── 2-1-2. 토픽 현황 · 성과 ─── */}
+      <TopicPerformanceSection topics={topicSummary.topics} />
 
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
