@@ -30,9 +30,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '블',
     items: [
       { label: '블로그', href: '/#blog-analysis', authOnly: true },
-      { label: '미노출', href: '/my/missing-posts', authOnly: true },
       { label: '인플루언서', href: '/my', requiredPlan: 'influencer', authOnly: true },
-      { label: '토픽발행', href: '/topics', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
@@ -60,6 +58,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '키워드',
     icon: 'K',
     items: [
+      { label: '미노출', href: '/my/missing-posts', authOnly: true },
       { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'influencer' },
       { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
       { label: '키워드 검색', href: '/keywords/blogger' },

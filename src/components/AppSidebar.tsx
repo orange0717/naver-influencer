@@ -207,7 +207,7 @@ function SidebarContent({
                   <div className="space-y-0.5 pt-0.5">
                     {group.items.map((item) => (
                       <NavLink
-                        key={item.label}
+                        key={item.href}
                         item={item}
                         active={item.href !== '#' && item.href === activeHref}
                         currentPlan={currentPlan}
