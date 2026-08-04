@@ -293,6 +293,21 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       )
     : Promise.resolve({ totalCount: 0, weeklyCount: 0, monthlyCount: 0 });
 
+  /** 대시보드 허브 — 토픽 카드: curate-blog-topics 크론이 채우는 topics(자동분류) 재사용 */
+  const topicSummaryPromise: Promise<{ count: number; topName: string | null }> = (internalUserId && naverId)
+    ? (async () => {
+        const { data } = await supabase
+          .from('topics')
+          .select('name, post_count, total_view_count')
+          .eq('user_id', internalUserId)
+          .eq('blog_id', naverId)
+          .order('post_count', { ascending: false })
+          .order('total_view_count', { ascending: false });
+        const rows = data || [];
+        return { count: rows.length, topName: (rows[0]?.name as string | undefined) ?? null };
+      })()
+    : Promise.resolve({ count: 0, topName: null });
+
   const mateStatusPromise: Promise<{ selected: boolean; expertiseValue: string | null } | null> = naverId
     ? (async () => {
         const { data: mateRow } = await supabase
@@ -720,12 +735,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // AI 가시성: 네이버메이트에서 실제로 확인(checked_at 존재)한 건만 집계 — 한 번도 안 썼으면 null(측정 불가)
   // 네이버 메이트 선정 여부(블로그 홈 경로 = naverId 로 매칭) 포함, 둘 다 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
   // ─── 7. 대시보드 허브 KPI (누락률/방문자/전체 포스팅) — 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
-  const [aiVisibility, mateStatus, missingSummary, visitorSummary, postSummary] = await Promise.all([
+  const [aiVisibility, mateStatus, missingSummary, visitorSummary, postSummary, topicSummary] = await Promise.all([
     aiVisibilityPromise,
     mateStatusPromise,
     missingSummaryPromise,
     visitorSummaryPromise,
     postSummaryPromise,
+    topicSummaryPromise,
   ]);
 
   return (
@@ -872,6 +888,17 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           color={postSummary.totalCount > 0 ? 'accent' : 'dim'}
           delay={260}
           href="/my/post-analysis"
+        />
+        <AnimatedStatCard
+          size="stat"
+          label="토픽"
+          value={topicSummary.count}
+          suffix="개"
+          description={topicSummary.topName ? `대표 토픽 · ${topicSummary.topName}` : '분류된 토픽 없음'}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>}
+          color={topicSummary.count > 0 ? 'accent' : 'dim'}
+          delay={340}
+          href="/topics"
         />
         <AnimatedStatCard
           size="stat"
