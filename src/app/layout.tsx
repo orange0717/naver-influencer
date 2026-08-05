@@ -18,6 +18,8 @@ import AuthModal from "@/components/auth/AuthModal";
 import AuthModalQueryHandler from "@/components/auth/AuthModalQueryHandler";
 import MemberOnlyModal from "@/components/MemberOnlyModal";
 import MemberOnlyGateQueryHandler from "@/components/MemberOnlyGateQueryHandler";
+import TrialEndedModal from "@/components/TrialEndedModal";
+import TrialEndedGateQueryHandler from "@/components/TrialEndedGateQueryHandler";
 import SentryUserIdentity from "@/components/SentryUserIdentity";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -272,6 +274,8 @@ export default function RootLayout({
           <AuthModalQueryHandler />
           <MemberOnlyModal />
           <MemberOnlyGateQueryHandler />
+          <TrialEndedModal />
+          <TrialEndedGateQueryHandler />
         </Providers>
         {/* PWA 폐기: 기존에 설치된 service worker / cache 정리 (1회성) */}
         <Script id="sw-cleanup" strategy="afterInteractive">

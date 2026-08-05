@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   // 이미 존재하는지 확인 (멱등성: signUp 재시도 등)
   const { data: existing } = await supabase
     .from('users')
-    .select('id, nickname, blog_id, signup_keyword_category')
+    .select('id, nickname, blog_id, signup_keyword_category, subscription_plan, subscription_expires_at')
     .eq('auth_id', authUser.id)
     .single();
 
@@ -53,6 +53,15 @@ export async function POST(request: NextRequest) {
     if (!existing.nickname) backfill.nickname = nickname;
     if (!existing.blog_id && blogId) backfill.blog_id = blogId;
     if (!existing.signup_keyword_category) backfill.signup_keyword_category = keywordCategory;
+    // 이미 활성 유료/체험 플랜이 있으면 건드리지 않음 (migration-133과 동일 조건)
+    const hasActivePlan =
+      existing.subscription_plan &&
+      existing.subscription_expires_at &&
+      new Date(existing.subscription_expires_at as string) > new Date();
+    if (!hasActivePlan) {
+      backfill.subscription_plan = 'INFLUENCER';
+      backfill.subscription_expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    }
     if (Object.keys(backfill).length > 0) {
       await supabase.from('users').update(backfill).eq('id', existing.id);
     }
@@ -94,6 +103,9 @@ export async function POST(request: NextRequest) {
   };
   if (blogId) insertPayload.blog_id = blogId;
   insertPayload.last_privacy_policy_version_ack = getPrivacyPolicyVersion();
+  // 가입 시 7일 무료체험(INFLUENCER 등급) 자동 부여
+  insertPayload.subscription_plan = 'INFLUENCER';
+  insertPayload.subscription_expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
     .from('users')

@@ -5,6 +5,7 @@ import { getQueryClient } from '@/lib/query-client';
 import { AuthModalProvider } from '@/contexts/AuthModalContext';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { MemberOnlyGateProvider } from '@/contexts/MemberOnlyGateContext';
+import { TrialEndedGateProvider } from '@/contexts/TrialEndedGateContext';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
@@ -13,7 +14,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthModalProvider>
         <MemberOnlyGateProvider>
-          <SidebarProvider>{children}</SidebarProvider>
+          <TrialEndedGateProvider>
+            <SidebarProvider>{children}</SidebarProvider>
+          </TrialEndedGateProvider>
         </MemberOnlyGateProvider>
       </AuthModalProvider>
     </QueryClientProvider>

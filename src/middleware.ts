@@ -4,7 +4,7 @@ import { verifySession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { isTrialExpired } from '@/lib/trial';
 import { clearPostAuthDemoCookies } from '@/lib/demo-session';
-import { isRestricted } from '@/lib/admin';
+import { isRestricted, getPaywallContext } from '@/lib/admin';
 import { defaultApiLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getAllAuthOnlyHrefs } from '@/lib/sidebar-nav';
 
@@ -107,6 +107,32 @@ const MEMBER_ONLY_GATE_PREFIXES = [
   '/image-converter',
 ];
 
+/**
+ * 키워드 챌린지 리스트/추천/대량조회는 완전 공개 마케팅/SEO 페이지 2개(블로그 검색·블로그 순위)만 예외.
+ * 모듈 스코프로 둬서 isAuthOnlyHrefAccounted(감사 로직)와 middleware() 본문이 같은 상수를 공유한다.
+ */
+const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger', '/keywords/blog-ranking'];
+
+/**
+ * 7일 무료체험 종료 후 결제 없이는 접근 불가한 페이지 — 로그인은 되어 있으나
+ * 활성 유료 플랜(체험 포함)이 없는 회원을 /subscribe?trialEnded=1 로 보낸다.
+ * 로그인 자체가 안 된 사용자는 MEMBER_ONLY_GATE_PREFIXES 등 기존 게이트가 먼저 처리한다.
+ */
+const PAID_PLAN_GATE_PREFIXES = [
+  '/my',
+  '/rankings/blogger',
+  '/rankings/influencer',
+  '/naver-mate-ranking',
+  '/keywords/bulk',
+  '/keywords/recommend',
+  '/competitor',
+];
+// /my 하위이지만 결제 여부와 무관하게 계정 연결 자체는 열어둬야 하는 경로
+const PAID_PLAN_GATE_EXEMPT = ['/my/link', '/my/link-blog'];
+
+const PAID_PLAN_GATE_API_PREFIXES = ['/api/my'];
+const PAID_PLAN_GATE_API_EXEMPT = ['/api/my/link', '/api/my/link-blog'];
+
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
@@ -119,7 +145,6 @@ function matchesPathPrefix(pathname: string, prefix: string): boolean {
  */
 const GATE_HANDLED_ELSEWHERE = new Set([
   '/my', // 비로그인 시 리다이렉트 대신 GuestDashboard 빈 상태를 의도적으로 렌더 (src/app/my/page.tsx)
-  '/notice', // needsNoticeLogin — 데모 세션도 차단하는 더 엄격한 별도 규칙 (아래)
   // AI 호출 비용 발생 기능 — 데모 세션도 명시적으로 제외해야 해서 페이지 자체 서버 체크로 처리
   '/dashboard/writing/spellcheck',
   '/dashboard/writing/rewrite',
@@ -136,6 +161,12 @@ const GATE_HANDLED_ELSEWHERE = new Set([
 function isAuthOnlyHrefAccounted(href: string): boolean {
   if (GATE_HANDLED_ELSEWHERE.has(href)) return true;
   if (href === '/influencers') return true; // 아래 needsMemberOnlyGate에서 exact match로 별도 처리
+  if (
+    matchesPathPrefix(href, '/keywords') &&
+    !PUBLIC_KEYWORDS_PATHS.some(p => matchesPathPrefix(href, p))
+  ) {
+    return true; // 아래 needsKeywordsLogin에서 prefix 매칭으로 별도 처리
+  }
   return MEMBER_ONLY_GATE_PREFIXES.some(p => matchesPathPrefix(href, p));
 }
 
@@ -293,19 +324,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 공지사항: 정식 Supabase 로그인만 허용 (비회원·데모 쿠키만 있는 경우 차단)
-  const needsNoticeLogin = acceptsHtml && matchesPathPrefix(pathname, '/notice');
-  if (needsNoticeLogin && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
-    return NextResponse.redirect(url);
-  }
-
   // 키워드 분석 UI·데이터: 정식 로그인 또는 데모 체험 쿠키 (완전 비회원 공개 아님)
   // 단, /keywords/blogger·/keywords/blog-ranking은 완전 공개 마케팅/SEO 페이지라 예외
   // (각자 generateMetadata까지 갖춰져 있었는데 이 게이트에 막혀 크롤러가 도달 못 하고 있었음)
-  const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger', '/keywords/blog-ranking'];
   const needsKeywordsLogin =
     acceptsHtml &&
     matchesPathPrefix(pathname, '/keywords') &&
@@ -313,7 +334,7 @@ export async function middleware(request: NextRequest) {
   if (needsKeywordsLogin && !user && !hasDemoSession) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
-    url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 
@@ -328,6 +349,26 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/';
     url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
+  }
+
+  // 7일 무료체험 종료 + 결제 없음 → /subscribe 로 안내 (로그인은 되어 있는 경우만 대상)
+  const needsPaidPlanGate =
+    acceptsHtml &&
+    PAID_PLAN_GATE_PREFIXES.some(p => matchesPathPrefix(pathname, p)) &&
+    !PAID_PLAN_GATE_EXEMPT.some(p => matchesPathPrefix(pathname, p));
+  if (needsPaidPlanGate && user) {
+    // 지연 시 유료 플랜 보유로 폴백 — 가용성 우선(기존 isRestricted/verifySession과 동일 철학).
+    const ctx = await withTimeout(
+      getPaywallContext(user.id, user.email),
+      4000,
+      { isAdminUser: false, hasActivePaidPlan: true, plan: null, expiresAt: null, userId: null },
+    );
+    if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/subscribe';
+      url.search = `?trialEnded=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+      return NextResponse.redirect(url);
+    }
   }
 
   const isKeywordsApi =
@@ -354,6 +395,32 @@ export async function middleware(request: NextRequest) {
   const isNaverMateRankingApi = pathname.startsWith('/api/rankings/naver-mate');
   if (isNaverMateRankingApi && !user && !hasDemoSession) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+  // 로그인된 사용자는 데모 우회와 별개로 유료 플랜(체험 포함)까지 확인
+  if (isNaverMateRankingApi && user) {
+    const ctx = await withTimeout(
+      getPaywallContext(user.id, user.email),
+      4000,
+      { isAdminUser: false, hasActivePaidPlan: true, plan: null, expiresAt: null, userId: null },
+    );
+    if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
+      return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 });
+    }
+  }
+
+  // /my API 전반: 계정 연결(/api/my/link, /api/my/link-blog)은 결제 여부와 무관하게 열어둔다
+  const isPaidPlanGateApi =
+    PAID_PLAN_GATE_API_PREFIXES.some(p => matchesPathPrefix(pathname, p)) &&
+    !PAID_PLAN_GATE_API_EXEMPT.some(p => matchesPathPrefix(pathname, p));
+  if (isPaidPlanGateApi && user) {
+    const ctx = await withTimeout(
+      getPaywallContext(user.id, user.email),
+      4000,
+      { isAdminUser: false, hasActivePaidPlan: true, plan: null, expiresAt: null, userId: null },
+    );
+    if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
+      return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 });
+    }
   }
 
   // 데모 체험( trial_started + 72h ) 만료 후: 로그인 없이 데모 쿠키만 있으면 유료 전환 유도

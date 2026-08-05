@@ -66,9 +66,42 @@ export default function SubscribeClient() {
 
   // 데모 재시작 차단 — /subscribe?demo_used=1 로 리다이렉트되었을 때 안내
   const isDemoUsed = searchParams.get('demo_used') === '1';
+  // 7일 무료체험(가입 회원) 종료 — /subscribe?trialEnded=1 로 리다이렉트되었을 때 안내
+  const isTrialEnded = searchParams.get('trialEnded') === '1';
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
+      {/* 회원 무료체험 종료 안내 */}
+      {isTrialEnded && (
+        <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 flex items-start gap-3">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent shrink-0 mt-0.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-accent">무료체험이 종료되었습니다.</p>
+            <p className="text-xs text-text/80 mt-1 leading-relaxed">
+              계속 이용하시려면 이용권을 구매해주세요.
+            </p>
+            <div className="flex gap-2 mt-3">
+              <a
+                href="#pricing"
+                className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-bold hover:bg-accent-hover transition"
+              >
+                이용권 구매하기
+              </a>
+              <a
+                href="#pricing"
+                className="px-4 py-2 rounded-lg border border-accent/30 text-accent text-xs font-bold hover:bg-accent/10 transition"
+              >
+                가격 안내 보기
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 무료 체험 종료 안내 */}
       {isDemoUsed && (
         <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 flex items-start gap-3">
@@ -135,7 +168,7 @@ export default function SubscribeClient() {
       </div>
 
       {/* 플랜 카드 */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div id="pricing" className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* 무료 */}
         <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
           <div>

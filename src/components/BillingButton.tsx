@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTrialEndedGate } from '@/contexts/TrialEndedGateContext';
 
 interface PortOneSDK {
   // ORF 와 동일한 일회성 카드 결제 — KPN 채널은 빌링키 미지원이라 일회성으로 단순화.
@@ -112,6 +113,14 @@ export default function BillingButton({ planKey, label, className }: Props) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'info'; text: string } | null>(null);
   const router = useRouter();
+  const { redirectTo } = useTrialEndedGate();
+
+  // 체험 종료 게이트에서 넘어온 경우 결제 완료 후 원래 가려던 페이지로 복귀
+  // (redirectTo는 TrialEndedGateQueryHandler가 URL의 ?redirect=...를 파싱해 컨텍스트에 저장한 값 —
+  //  쿼리 파라미터는 모달을 연 직후 URL에서 즉시 제거되므로 여기서 URL을 다시 읽으면 안 된다)
+  function postPaymentRedirect(): string {
+    return redirectTo ?? '/my';
+  }
 
   async function handleClick() {
     setMessage(null);
@@ -190,7 +199,7 @@ export default function BillingButton({ planKey, label, className }: Props) {
 
       // 4. 성공
       setMessage({ type: 'info', text: '결제가 완료되었습니다. 이용권이 활성화되었습니다.' });
-      setTimeout(() => router.push('/my'), 1200);
+      setTimeout(() => router.push(postPaymentRedirect()), 1200);
     } catch (e) {
       hidePaymentCloseButton();
       console.error('[BillingButton] error:', e);

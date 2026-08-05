@@ -6,7 +6,7 @@ import {
   YoutubeTranscriptTooManyRequestError,
   YoutubeTranscriptVideoUnavailableError,
 } from 'youtube-transcript';
-import { requirePaidAccess, hasActivePaidPlanByUserId } from '@/lib/admin';
+import { requirePaidPlan } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -245,15 +245,8 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requirePaidAccess(request);
+  const auth = await requirePaidPlan(request);
   if (auth.error) return auth.error;
-
-  if (!(await hasActivePaidPlanByUserId(auth.authUser.userId))) {
-    return NextResponse.json(
-      { error: '구독 플랜이 필요합니다. 블로거+ 또는 인플루언서 플랜으로 업그레이드해주세요.' },
-      { status: 402 },
-    );
-  }
 
   let body: { url?: string };
   try {
