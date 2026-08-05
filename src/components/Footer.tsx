@@ -14,19 +14,19 @@ export default function Footer() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* 브랜드 + 링크 */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-          <div className="flex items-center gap-2 sm:flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-white/20 flex items-center justify-center text-white font-bold text-xs">N</div>
             <span className="font-title font-extrabold text-white text-sm">N인플</span>
           </div>
-          <nav className="flex flex-wrap items-center justify-center gap-4 sm:flex-1">
+          <nav className="flex flex-wrap items-center justify-center gap-4">
             {FOOTER_LINKS.map(link => (
               <Link key={link.href} href={link.href} className="text-xs text-footer-dim hover:text-white transition-colors">
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="hidden sm:block sm:flex-1" aria-hidden="true" />
+          <div className="hidden sm:block" aria-hidden="true" />
         </div>
 
         {/* 사업자정보 + 저작권 */}
