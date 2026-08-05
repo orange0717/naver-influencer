@@ -114,7 +114,7 @@ export default function AnimatedStatCard({
       className={`
         ${heightClass} flex flex-col min-w-0
         bg-gradient-to-br ${c.bg} bg-surface
-        rounded-2xl border border-border p-5
+        rounded-2xl border border-border p-4
         shadow-xs
         transition-all duration-500 ease-out
         hover:-translate-y-0.5 hover:shadow-lg ${c.hoverBorder}

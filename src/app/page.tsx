@@ -73,20 +73,20 @@ export default async function HomePage() {
     <>
       {/* 데모 사용자에게 잔여일 안내 (CTA 없이 안내만) */}
       {isDemo && (
-        <div className="max-w-[1600px] mx-auto px-4 pt-4">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-4">
           <TrialBanner isDemo />
         </div>
       )}
       {!isLoggedIn ? (
-        <div className="space-y-5">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           <section id="blog-analysis" className="scroll-mt-24 pt-4">
             <BlogAnalysisSection />
           </section>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           {/* 섹션 바로가기 탭 — 메뉴 이동 없이 한 화면에서 스크롤 이동 */}
-          <nav className="max-w-[1600px] mx-auto px-4 pt-4">
+          <nav className="pt-4">
             <div className="flex items-center gap-1.5 overflow-x-auto">
               {[
                 { href: '#dashboard-summary', label: 'KPI 요약' },
@@ -103,7 +103,8 @@ export default async function HomePage() {
             </div>
           </nav>
 
-          <section id="dashboard-summary" className="scroll-mt-24 max-w-[1600px] mx-auto px-4">
+          <section id="dashboard-summary" className="scroll-mt-24 space-y-3">
+            <h2 className="text-sm font-bold text-text px-1">KPI 요약</h2>
             <BlogDashboardKpiBar blogId={profileResult?.blog_id ?? null} />
           </section>
           <section id="blog-analysis" className="scroll-mt-24">

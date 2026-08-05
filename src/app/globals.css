@@ -193,16 +193,15 @@ a:hover:not(.btn) {
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
-/* KPI 카드(대시보드 상단 요약 8칸/6칸) 숫자 — 카드가 좁아 숫자가 절대 넘치면 안 되는 구간 */
+/* KPI 카드(대시보드 상단 요약)와 Statistics 카드(발행/순위/누락율 등) 숫자 — 동일 위계로 통일 */
 .stat-value-kpi {
-  font-size: 28px;
+  font-size: 30px;
 }
-/* Statistics 카드(발행/순위/누락율 등 3칸 그리드) 숫자 — KPI보다 한 단계 큰 강조 구간 */
 .stat-value-stat {
   font-size: 30px;
 }
 .stat-desc {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: #999;
   line-height: 1.4;

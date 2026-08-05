@@ -47,7 +47,7 @@ export default function DashboardCard({
             {icon}
             {title && (
               <div className="min-w-0">
-                <h3 className="font-bold text-[15px]">{title}</h3>
+                <h3 className="font-bold text-base">{title}</h3>
                 {subtitle && <p className="text-[11px] text-dim mt-0.5">{subtitle}</p>}
               </div>
             )}

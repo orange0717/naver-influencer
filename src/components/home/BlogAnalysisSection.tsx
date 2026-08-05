@@ -601,6 +601,8 @@ export default function BlogAnalysisSection() {
     <div className="space-y-6">
 
       {/* ─── 1. 프로필 헤더 (카테고리 선택을 하단 슬롯으로 통합해 카드 1개로 축소) ─── */}
+      <div className="space-y-3">
+      <h2 className="text-sm font-bold text-text px-1">블로그 정보</h2>
       <ProfileHeader
         displayName={customProfile.displayName || profile.displayName}
         imageUrl={customProfile.imageUrl || profile.imageUrl}
@@ -642,6 +644,7 @@ export default function BlogAnalysisSection() {
           </div>
         )}
       </ProfileHeader>
+      </div>
 
       {/* ─── 2. 대시보드 카드 ─── */}
       {/* TODAY 방문자·30일 방문자수·이웃수는 위쪽 KPI 요약(BlogDashboardKpiBar)과 중복되어 제거 (2026-07-15) */}
@@ -660,7 +663,7 @@ export default function BlogAnalysisSection() {
           <AnimatedStatCard size="stat" label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.viewExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.viewExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={250} />
           <AnimatedStatCard size="stat" label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.blogExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.blogExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={300} />
           {/* 누락율 — 슬라이스 탭 (AnimatedStatCard 공용 컴포넌트를 쓰지 않는 커스텀 카드라 사이즈·톤을 수동으로 맞춤, 높이는 stat 카드와 동일하게 유지) */}
-          <div className="h-[182px] flex flex-col bg-surface rounded-2xl border border-border p-5 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
+          <div className="h-[182px] flex flex-col bg-surface rounded-2xl border border-border p-4 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
             <div className="flex items-start justify-between mb-3 shrink-0">
               <div className="w-8 h-8 rounded-full bg-[#FAF4F2] text-down flex items-center justify-center shrink-0">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -758,21 +761,35 @@ export default function BlogAnalysisSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[920px]">
+              <table className="w-full text-sm min-w-[920px] table-fixed">
+                <colgroup>
+                  <col style={{ width: '3%' }} />
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '6%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '6%' }} />
+                  <col style={{ width: '6%' }} />
+                  <col style={{ width: '6%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '6%' }} />
+                  <col style={{ width: '8%' }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
-                    <th className="text-left px-5 py-3 font-semibold w-10">#</th>
+                    <th className="text-left px-5 py-3 font-semibold">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">색인</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">AI브리핑</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">AI탭</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">조회</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">댓글</th>
-                    <th className="text-center px-3 py-3 font-semibold w-24">작성일</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">확인</th>
-                    <th className="text-center px-5 py-3 font-semibold w-20">상세분석</th>
+                    <th className="text-center px-3 py-3 font-semibold">통합검색</th>
+                    <th className="text-center px-3 py-3 font-semibold">블로그탭</th>
+                    <th className="text-center px-3 py-3 font-semibold">색인</th>
+                    <th className="text-center px-3 py-3 font-semibold">AI브리핑</th>
+                    <th className="text-center px-3 py-3 font-semibold">AI탭</th>
+                    <th className="text-center px-3 py-3 font-semibold">조회</th>
+                    <th className="text-center px-3 py-3 font-semibold">댓글</th>
+                    <th className="text-center px-3 py-3 font-semibold">작성일</th>
+                    <th className="text-center px-3 py-3 font-semibold">확인</th>
+                    <th className="text-center px-5 py-3 font-semibold">상세분석</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -780,8 +797,8 @@ export default function BlogAnalysisSection() {
                     const mr = missingResults[post.id];
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition group">
-                        <td className="px-5 py-3.5 text-dim text-xs">{(blogPostsPage - 1) * postsPerPage + i + 1}</td>
-                        <td className="px-3 py-3.5">
+                        <td className="px-5 py-4 text-dim text-xs">{(blogPostsPage - 1) * postsPerPage + i + 1}</td>
+                        <td className="px-3 py-4">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold hover:text-accent transition truncate block max-w-[400px]" title={post.title}>
                             {post.title}
@@ -813,7 +830,7 @@ export default function BlogAnalysisSection() {
                             })}
                           </div>
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-center px-3 py-4">
                           {mr?.viewTab.exposed === true ? (
                             <span className="text-[11px] font-bold text-up">노출</span>
                           ) : mr?.viewTab.exposed === false ? (
@@ -824,7 +841,7 @@ export default function BlogAnalysisSection() {
                             <span className="text-[10px] text-dim/50">—</span>
                           )}
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-center px-3 py-4">
                           {mr?.blogTab.exposed === true ? (
                             <span className="text-[11px] font-bold text-up">노출</span>
                           ) : mr?.blogTab.exposed === false ? (
@@ -835,10 +852,10 @@ export default function BlogAnalysisSection() {
                             <span className="text-[10px] text-dim/50">—</span>
                           )}
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-center px-3 py-4">
                           <span className="text-[10px] text-dim/50" title="색인 여부 확인 기능은 준비 중입니다">—</span>
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-center px-3 py-4">
                           {(() => {
                             const ai = aiBriefingByPost[post.id];
                             if (!ai || ai.briefing === 'unchecked') return <span className="text-[10px] text-dim/50">—</span>;
@@ -847,7 +864,7 @@ export default function BlogAnalysisSection() {
                               : <span className="text-[11px] font-bold text-down">미인용</span>;
                           })()}
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-center px-3 py-4">
                           {(() => {
                             const ai = aiBriefingByPost[post.id];
                             if (!ai || ai.tab === 'unchecked') return <span className="text-[10px] text-dim/50">—</span>;
@@ -856,16 +873,16 @@ export default function BlogAnalysisSection() {
                               : <span className="text-[11px] font-bold text-down">미노출</span>;
                           })()}
                         </td>
-                        <td className="text-center px-3 py-3.5 text-xs text-dim">
+                        <td className="text-center px-3 py-4 text-xs text-dim">
                           {typeof post.viewCount === 'number' ? post.viewCount.toLocaleString() : '—'}
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-center px-3 py-4">
                           {post.commentCount > 0 ? (
                             <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
                           ) : <span className="text-xs text-dim">—</span>}
                         </td>
-                        <td className="text-center px-3 py-3.5 text-xs text-dim whitespace-nowrap">{post.date}</td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-center px-3 py-4 text-xs text-dim whitespace-nowrap">{post.date}</td>
+                        <td className="text-center px-3 py-4">
                           <button onClick={() => checkMissing(post)}
                             disabled={checkingMissing === post.id || checkingAll}
                             className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50">
@@ -874,7 +891,7 @@ export default function BlogAnalysisSection() {
                             ) : mr?.status === 'failed' ? '재시도' : mr ? '재확인' : '확인'}
                           </button>
                         </td>
-                        <td className="text-center px-5 py-3.5">
+                        <td className="text-center px-5 py-4">
                           <Link href={`/my/post-analysis?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}`}
                             className="text-[11px] text-accent hover:underline font-semibold">
                             상세분석
@@ -892,7 +909,7 @@ export default function BlogAnalysisSection() {
               {currentViewList.map((post, i) => {
                 const mr = missingResults[post.id];
                 return (
-                  <div key={post.id} className="px-4 py-3.5">
+                  <div key={post.id} className="px-4 py-4">
                     <div className="flex items-start gap-2">
                       <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">{(blogPostsPage - 1) * postsPerPage + i + 1}</span>
                       <div className="flex-1 min-w-0">

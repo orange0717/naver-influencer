@@ -83,7 +83,7 @@ export default function ProfileHeader({
   };
 
   return (
-    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-3.5 shadow-xs">
+    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-4 shadow-xs">
       <div className="flex items-center gap-3">
         {/* 프로필 이미지 */}
         <div className="relative group">
@@ -284,7 +284,7 @@ export default function ProfileHeader({
 
       {/* 추가 스탯 또는 자식 요소 */}
       {(extraStats || children) && (
-        <div className="mt-3 pt-3 border-t border-border/50">
+        <div className="mt-4 pt-4 border-t border-border/50">
           {extraStats || children}
         </div>
       )}
