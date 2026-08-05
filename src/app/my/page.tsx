@@ -12,6 +12,7 @@ import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import DashboardCard from '@/components/dashboard/DashboardCard';
+import KpiGrid from '@/components/dashboard/KpiGrid';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
 import TopicPerformanceSection, { type TopicPerformanceRow } from '@/components/dashboard/TopicPerformanceSection';
@@ -767,7 +768,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   ]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-5">
 
       {/* ─── 체험/데모 배너 ─── */}
       {!isLoggedIn && isTrial && <TrialBanner isDemo={isDemo} />}
@@ -819,7 +820,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       )}
 
       {/* ─── 무료 공개 영역 (항상 보임) ─── */}
-      <div className="space-y-10">
+      <div className="space-y-5">
 
       {/* 상세 통계 바 */}
       {categoryRank > 0 && (
@@ -843,7 +844,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       )}
 
       {/* ─── 2. 대시보드 허브 KPI ─── 각 메뉴의 핵심 지표를 요약하고, 클릭하면 해당 메뉴로 이동 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <KpiGrid>
         <AnimatedStatCard
           size="stat"
           label="누락률"
@@ -932,7 +933,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           color="accent"
           delay={300}
         />
-      </div>
+      </KpiGrid>
 
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
       <DashboardCard title="활동 현황">

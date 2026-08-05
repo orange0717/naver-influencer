@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
+import DashboardCard from '@/components/dashboard/DashboardCard';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
@@ -599,7 +600,7 @@ export default function BlogAnalysisSection() {
   return (
     <div className="space-y-6">
 
-      {/* ─── 1. 프로필 헤더 ─── */}
+      {/* ─── 1. 프로필 헤더 (카테고리 선택을 하단 슬롯으로 통합해 카드 1개로 축소) ─── */}
       <ProfileHeader
         displayName={customProfile.displayName || profile.displayName}
         imageUrl={customProfile.imageUrl || profile.imageUrl}
@@ -611,74 +612,80 @@ export default function BlogAnalysisSection() {
         editable={true}
         onProfileChange={handleProfileChange}
         isOfficialBlog={blogStats?.isOfficialBlog}
-      />
-
-      {/* ─── 카테고리 선택 ─── */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-dim">카테고리:</span>
-        <button
-          onClick={() => setShowCategorySelect(!showCategorySelect)}
-          className="px-3 py-1 bg-accent/10 text-accent font-semibold rounded-lg hover:bg-accent/20 transition cursor-pointer text-sm"
-        >
-          {category}
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="inline ml-1"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        {category === '기타' && suggestedCategory !== '기타' && (
-          <button onClick={() => saveCategory(suggestedCategory)}
-            className="text-xs text-accent hover:underline cursor-pointer">
-            추천: {suggestedCategory}
+      >
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-dim">카테고리:</span>
+          <button
+            onClick={() => setShowCategorySelect(!showCategorySelect)}
+            className="px-3 py-1 bg-accent/10 text-accent font-semibold rounded-lg hover:bg-accent/20 transition cursor-pointer text-sm"
+          >
+            {category}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="inline ml-1"><path d="M6 9l6 6 6-6"/></svg>
           </button>
-        )}
-      </div>
-      {showCategorySelect && (
-        <div className="flex flex-wrap gap-1.5">
-          {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => saveCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
-                cat === category ? 'bg-accent text-white' : 'bg-bg border border-border hover:border-accent/40 text-text'
-              }`}>
-              {cat}
+          {category === '기타' && suggestedCategory !== '기타' && (
+            <button onClick={() => saveCategory(suggestedCategory)}
+              className="text-xs text-accent hover:underline cursor-pointer">
+              추천: {suggestedCategory}
             </button>
-          ))}
+          )}
         </div>
-      )}
-
-      {/* ─── 2. 대시보드 카드 ─── */}
-      {/* TODAY 방문자·30일 방문자수·이웃수는 위쪽 KPI 요약(BlogDashboardKpiBar)과 중복되어 제거 (2026-07-15) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        <AnimatedStatCard size="stat" label="이번주 발행" value={publishingStats.weeklyTotal} suffix="회" description={(() => { const now = new Date(); const w = new Date(now.getTime() - 7*24*60*60*1000); return `${w.getMonth()+1}/${w.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>} color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'} delay={150} />
-        <AnimatedStatCard size="stat" label="한달 발행" value={publishingStats.monthlyTotal} suffix="회" description={(() => { const now = new Date(); const m = new Date(now.getTime() - 30*24*60*60*1000); return `${m.getMonth()+1}/${m.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'} delay={200} />
-        {/* 2행: 순위 + 누락율 */}
-        <AnimatedStatCard size="stat" label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.viewExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.viewExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={250} />
-        <AnimatedStatCard size="stat" label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.blogExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.blogExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={300} />
-        {/* 누락율 — 슬라이스 탭 (AnimatedStatCard 공용 컴포넌트를 쓰지 않는 커스텀 카드라 사이즈·톤을 수동으로 맞춤) */}
-        <div className="h-[174px] flex flex-col bg-surface rounded-2xl border border-border p-5 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
-          <div className="flex items-start justify-between mb-3 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-[#FAF4F2] text-down flex items-center justify-center shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-          </div>
-          <p className="stat-title mb-1 shrink-0">누락율</p>
-          <div className="flex rounded-md border border-border overflow-hidden text-[10px] shrink-0">
-            {([10, 30, 60, 180, 0] as const).map(n => (
-              <button key={n} onClick={() => setMissingRateSlice(n)}
-                className={`flex-1 py-1 font-semibold transition cursor-pointer ${missingRateSlice === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
-                {n === 0 ? '전체' : `${n}개`}
+        {showCategorySelect && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {CATEGORIES.map(cat => (
+              <button key={cat} onClick={() => saveCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                  cat === category ? 'bg-accent text-white' : 'bg-bg border border-border hover:border-accent/40 text-text'
+                }`}>
+                {cat}
               </button>
             ))}
           </div>
-          <div className="mt-auto flex items-baseline gap-1.5 pt-2 shrink-0">
-            <span className={`stat-value stat-value-stat font-rank truncate ${checkedCountForSlice === 0 ? 'text-dim' : missingRateForSlice <= 30 ? 'text-up' : missingRateForSlice <= 60 ? 'text-accent' : 'text-down'}`}>
-              {checkedCountForSlice === 0 ? '—' : `${missingRateForSlice}%`}
-            </span>
-            <span className="text-[10px] text-dim/60 truncate">
-              {checkedCountForSlice === 0 ? '누락 확인 후 표시' : `${checkedCountForSlice}개 중 ${missingCountForSlice}개 누락`}
-            </span>
+        )}
+      </ProfileHeader>
+
+      {/* ─── 2. 대시보드 카드 ─── */}
+      {/* TODAY 방문자·30일 방문자수·이웃수는 위쪽 KPI 요약(BlogDashboardKpiBar)과 중복되어 제거 (2026-07-15) */}
+      <DashboardCard
+        title="발행 · 순위 통계"
+        headerRight={
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-dim bg-border/30">
+            전체 순위 · {category} 순위 Coming Soon
+          </span>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <AnimatedStatCard size="stat" label="이번주 발행" value={publishingStats.weeklyTotal} suffix="회" description={(() => { const now = new Date(); const w = new Date(now.getTime() - 7*24*60*60*1000); return `${w.getMonth()+1}/${w.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>} color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'} delay={150} />
+          <AnimatedStatCard size="stat" label="한달 발행" value={publishingStats.monthlyTotal} suffix="회" description={(() => { const now = new Date(); const m = new Date(now.getTime() - 30*24*60*60*1000); return `${m.getMonth()+1}/${m.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'} delay={200} />
+          {/* 2행: 순위 + 누락율 */}
+          <AnimatedStatCard size="stat" label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.viewExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.viewExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={250} />
+          <AnimatedStatCard size="stat" label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.blogExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.blogExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={300} />
+          {/* 누락율 — 슬라이스 탭 (AnimatedStatCard 공용 컴포넌트를 쓰지 않는 커스텀 카드라 사이즈·톤을 수동으로 맞춤, 높이는 stat 카드와 동일하게 유지) */}
+          <div className="h-[182px] flex flex-col bg-surface rounded-2xl border border-border p-5 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
+            <div className="flex items-start justify-between mb-3 shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#FAF4F2] text-down flex items-center justify-center shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+            </div>
+            <p className="stat-title mb-1 shrink-0">누락율</p>
+            <div className="flex rounded-md border border-border overflow-hidden text-[10px] shrink-0">
+              {([10, 30, 60, 180, 0] as const).map(n => (
+                <button key={n} onClick={() => setMissingRateSlice(n)}
+                  className={`flex-1 py-1 font-semibold transition cursor-pointer ${missingRateSlice === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
+                  {n === 0 ? '전체' : `${n}개`}
+                </button>
+              ))}
+            </div>
+            <div className="mt-auto flex items-baseline gap-1.5 pt-2 shrink-0">
+              <span className={`stat-value stat-value-stat font-rank truncate ${checkedCountForSlice === 0 ? 'text-dim' : missingRateForSlice <= 30 ? 'text-up' : missingRateForSlice <= 60 ? 'text-accent' : 'text-down'}`}>
+                {checkedCountForSlice === 0 ? '—' : `${missingRateForSlice}%`}
+              </span>
+              <span className="text-[10px] text-dim/60 truncate">
+                {checkedCountForSlice === 0 ? '누락 확인 후 표시' : `${checkedCountForSlice}개 중 ${missingCountForSlice}개 누락`}
+              </span>
+            </div>
           </div>
         </div>
-        <AnimatedStatCard size="stat" label="전체 순위" value={0} placeholder="개발중" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} color="dim" delay={400} />
-        <AnimatedStatCard size="stat" label={`${category} 순위`} value={0} placeholder="개발중" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>} color="dim" delay={450} className="sm:col-span-2 lg:col-span-3" />
-      </div>
+      </DashboardCard>
 
 
       {/* ─── 6. 블로그 방문자수 차트 ─── */}
@@ -763,7 +770,7 @@ export default function BlogAnalysisSection() {
                     <th className="text-center px-3 py-3 font-semibold w-16">AI탭</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">조회</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">댓글</th>
-                    <th className="text-right px-3 py-3 font-semibold w-24">작성일</th>
+                    <th className="text-center px-3 py-3 font-semibold w-24">작성일</th>
                     <th className="text-center px-3 py-3 font-semibold w-16">확인</th>
                     <th className="text-center px-5 py-3 font-semibold w-20">상세분석</th>
                   </tr>
@@ -857,7 +864,7 @@ export default function BlogAnalysisSection() {
                             <span className="text-xs text-accent font-semibold">{post.commentCount}</span>
                           ) : <span className="text-xs text-dim">—</span>}
                         </td>
-                        <td className="text-right px-3 py-3.5 text-xs text-dim">{post.date}</td>
+                        <td className="text-center px-3 py-3.5 text-xs text-dim whitespace-nowrap">{post.date}</td>
                         <td className="text-center px-3 py-3.5">
                           <button onClick={() => checkMissing(post)}
                             disabled={checkingMissing === post.id || checkingAll}

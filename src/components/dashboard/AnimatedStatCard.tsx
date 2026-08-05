@@ -78,7 +78,7 @@ export default function AnimatedStatCard({
     dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
-  const heightClass = size === 'stat' ? 'h-[174px]' : 'h-[142px]';
+  const heightClass = size === 'stat' ? 'h-[182px]' : 'h-[150px]';
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
   // KPI 카드(142px)는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
   // 174px짜리 Statistics 카드 전용 여백(mb-3/min-h-28px/pt-2)을 그대로 쓰면 142px 안에 다 안 들어가

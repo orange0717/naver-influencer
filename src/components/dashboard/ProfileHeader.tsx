@@ -83,16 +83,16 @@ export default function ProfileHeader({
   };
 
   return (
-    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-4 shadow-xs">
+    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-3.5 shadow-xs">
       <div className="flex items-center gap-3">
         {/* 프로필 이미지 */}
         <div className="relative group">
           {imageUrl ? (
-            <div className={`relative w-12 h-12 rounded-full ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'ring-accent/30' : 'ring-[#2DB400]/30'}`}>
-              <img src={imageUrl} alt={displayName} className="w-12 h-12 rounded-full object-cover" />
+            <div className={`relative w-11 h-11 rounded-full ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'ring-accent/30' : 'ring-[#2DB400]/30'}`}>
+              <img src={imageUrl} alt={displayName} className="w-11 h-11 rounded-full object-cover" />
             </div>
           ) : (
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'bg-accent/15 text-accent ring-accent/20' : 'bg-[#2DB400]/15 text-[#2DB400] ring-[#2DB400]/20'}`}>
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'bg-accent/15 text-accent ring-accent/20' : 'bg-[#2DB400]/15 text-[#2DB400] ring-[#2DB400]/20'}`}>
               {displayName[0]}
             </div>
           )}
@@ -284,7 +284,7 @@ export default function ProfileHeader({
 
       {/* 추가 스탯 또는 자식 요소 */}
       {(extraStats || children) && (
-        <div className="mt-4 pt-4 border-t border-border/50">
+        <div className="mt-3 pt-3 border-t border-border/50">
           {extraStats || children}
         </div>
       )}

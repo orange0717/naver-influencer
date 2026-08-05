@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
+import KpiGrid from '@/components/dashboard/KpiGrid';
 import type { BlogDashboardSummary } from '@/app/api/my/blog-dashboard-summary/route';
 
 async function fetchSummary(blogId: string): Promise<BlogDashboardSummary> {
@@ -47,11 +48,11 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
+      <KpiGrid>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-[142px] animate-pulse" />
+          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-[150px] animate-pulse" />
         ))}
-      </div>
+      </KpiGrid>
     );
   }
 
@@ -75,7 +76,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
+    <KpiGrid>
       {cards.map((c, i) => (
         <AnimatedStatCard
           key={c.label}
@@ -88,6 +89,6 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
           size="kpi"
         />
       ))}
-    </div>
+    </KpiGrid>
   );
 }

@@ -195,11 +195,11 @@ a:hover:not(.btn) {
 }
 /* KPI 카드(대시보드 상단 요약 8칸/6칸) 숫자 — 카드가 좁아 숫자가 절대 넘치면 안 되는 구간 */
 .stat-value-kpi {
-  font-size: 22px;
+  font-size: 28px;
 }
 /* Statistics 카드(발행/순위/누락율 등 3칸 그리드) 숫자 — KPI보다 한 단계 큰 강조 구간 */
 .stat-value-stat {
-  font-size: 24px;
+  font-size: 30px;
 }
 .stat-desc {
   font-size: 11px;
