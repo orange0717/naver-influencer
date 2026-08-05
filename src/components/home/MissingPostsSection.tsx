@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
+import Modal from '@/components/ui/Modal';
 import { filterMissing, countMissing, countMissingInArea, countIndexingWait, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea } from '@/lib/missing-rate';
 import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
 import { fetchWithTimeout, getProfileFromApi, CHECK_FRESH_MS } from './BlogAnalysisSection.helpers';
@@ -48,6 +49,39 @@ function missingAreaCount(mr?: PostMissingEntry): number {
   return n;
 }
 
+/** 미노출 원인 추정 — 검사 결과를 바탕으로 사용자에게 보여줄 설명 문구 생성(휴리스틱, 확정 진단 아님) */
+function buildCauseAnalysis(mr?: PostMissingEntry): string[] {
+  const notes: string[] = [];
+  if (!mr) {
+    notes.push('아직 검사하지 않은 게시글입니다. "검사" 버튼을 눌러 노출 여부를 먼저 확인하세요.');
+    return notes;
+  }
+  if (mr.status === 'failed') {
+    notes.push('직전 검사가 실패했습니다(네트워크·타임아웃 가능성). 재검사를 시도해보세요.');
+  }
+  const areas = [
+    { label: '통합검색', exposed: mr.viewTab.exposed },
+    { label: '블로그탭', exposed: mr.blogTab.exposed },
+    { label: '인플루언서탭', exposed: mr.influencerTab?.exposed ?? null },
+  ];
+  const checkedAreas = areas.filter(a => a.exposed !== null);
+  const missingAreas = areas.filter(a => a.exposed === false);
+  const exposedAreas = areas.filter(a => a.exposed === true);
+  if (missingAreas.length > 0 && missingAreas.length === checkedAreas.length) {
+    notes.push(`검사한 모든 영역(${missingAreas.map(a => a.label).join(', ')})에서 노출이 확인되지 않았습니다. 대표 키워드의 경쟁이 심하거나, 검색 결과 상위 30위 안에 들지 못했을 가능성이 있습니다.`);
+  } else if (missingAreas.length > 0 && exposedAreas.length > 0) {
+    notes.push(`${exposedAreas.map(a => a.label).join(', ')}에서는 노출되지만 ${missingAreas.map(a => a.label).join(', ')}에서는 확인되지 않았습니다. 탭별 검색 알고리즘 차이로 인한 결과일 수 있습니다.`);
+  }
+  if (missingAreas.length > 0 && mr.query) {
+    notes.push(`표시된 대표 키워드 "${mr.query}"는 제목에서 자동으로 추출된 키워드입니다. 실제로는 다른 키워드로 검색되어 노출될 수 있으니, 아래에서 직접 키워드를 입력해 재검사해보세요.`);
+  }
+  if (missingAreas.length > 0 && (mr.searchVolume == null || mr.searchVolume === 0)) {
+    notes.push('해당 키워드의 월간 검색량 데이터가 없습니다. 검색량이 매우 낮은 키워드는 순위 확인이 불안정할 수 있습니다.');
+  }
+  if (notes.length === 0) notes.push('현재 노출 상태가 양호합니다.');
+  return notes;
+}
+
 function ExposureBadge({ exposed }: { exposed: boolean | null | undefined }) {
   if (exposed === true) return <span className="text-[11px] font-bold text-up bg-up/10 px-2 py-0.5 rounded-full whitespace-nowrap">🟢 노출</span>;
   if (exposed === false) return <span className="text-[11px] font-bold text-down bg-down/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔴 미노출</span>;
@@ -79,6 +113,10 @@ export default function MissingPostsSection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [areaFilter, setAreaFilter] = useState<AreaFilter>('all');
   const [sortBy, setSortBy] = useState<SortKey>('latest');
+  const [detailPostId, setDetailPostId] = useState<string | null>(null);
+  const [detailKeyword, setDetailKeyword] = useState('');
+  const [detailChecking, setDetailChecking] = useState(false);
+  const [detailError, setDetailError] = useState('');
   const abortRef = useRef(false);
 
   useEffect(() => () => { abortRef.current = true; }, []);
@@ -166,6 +204,29 @@ export default function MissingPostsSection() {
     return 'failed';
   }, [profile]);
 
+  // 상세 패널에서 사용자가 직접 입력한 키워드로 강제 재검사 (자동 추출 키워드가 부정확할 때 사용)
+  const recheckWithKeyword = useCallback(async (post: BlogPost, keyword: string) => {
+    if (!profile) return;
+    const trimmed = keyword.trim();
+    if (!trimmed) { setDetailError('키워드를 입력하세요.'); return; }
+    setDetailChecking(true);
+    setDetailError('');
+    try {
+      const res = await fetch('/api/blog/check-missing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, keyword: trimmed, checkInfluencer: true, force: true }),
+      });
+      if (!res.ok) { setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.'); return; }
+      const data = await res.json();
+      setMissingResults(prev => ({ ...prev, [post.id]: { ...data, status: 'ok', checkedAt: new Date().toISOString() } }));
+    } catch {
+      setDetailError('네트워크 오류가 발생했습니다.');
+    } finally {
+      setDetailChecking(false);
+    }
+  }, [profile]);
+
   const checkAll = async () => {
     if (!profile || posts.length === 0) return;
     setCheckingAll(true);
@@ -240,6 +301,16 @@ export default function MissingPostsSection() {
   }, [periodPostsDated, missingResults, areaFilter, searchQuery, sortBy]);
 
   const uncheckedCount = useMemo(() => periodPosts.filter(p => !missingResults[p.id]).length, [periodPosts, missingResults]);
+
+  const detailPost = useMemo(() => posts.find(p => p.id === detailPostId) || null, [posts, detailPostId]);
+  const detailMr = detailPostId ? missingResults[detailPostId] : undefined;
+  const detailCauses = useMemo(() => buildCauseAnalysis(detailMr), [detailMr]);
+
+  const closeDetail = useCallback(() => {
+    setDetailPostId(null);
+    setDetailKeyword('');
+    setDetailError('');
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -383,7 +454,15 @@ export default function MissingPostsSection() {
                         <td className="px-2 py-3.5 text-right text-dim text-xs">{mr?.searchVolume != null ? mr.searchVolume.toLocaleString() : '—'}</td>
                         <td className="px-3 py-3.5"><StatusBadge mr={mr} isChecking={isChecking} /></td>
                         <td className="px-5 py-3.5 text-center">
-                          <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs font-semibold">보기</a>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => { setDetailPostId(post.id); setDetailKeyword(mr?.query || ''); setDetailError(''); }}
+                              className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer"
+                            >
+                              상세
+                            </button>
+                            <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs font-semibold">보기</a>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -411,7 +490,15 @@ export default function MissingPostsSection() {
                     </div>
                     <div className="flex items-center justify-between">
                       <StatusBadge mr={mr} isChecking={isChecking} />
-                      <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs font-semibold">보기</a>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setDetailPostId(post.id); setDetailKeyword(mr?.query || ''); setDetailError(''); }}
+                          className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer"
+                        >
+                          상세
+                        </button>
+                        <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs font-semibold">보기</a>
+                      </div>
                     </div>
                     {mr?.checkedAt && <p className="text-[10px] text-dim">최근 검사 {formatCheckedAt(mr.checkedAt)}</p>}
                   </div>
@@ -421,6 +508,86 @@ export default function MissingPostsSection() {
           </>
         )}
       </GlassCard>
+
+      {/* 4. 상세뷰(원인분석) 패널 */}
+      <Modal open={!!detailPost} onClose={closeDetail} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+        {detailPost && (
+          <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto">
+            {/* 헤더 */}
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div>
+                <h3 className="font-bold text-base leading-snug">{detailPost.title}</h3>
+                <p className="text-[11px] text-dim mt-1">{detailPost.category || '—'} · {detailPost.date}</p>
+              </div>
+              <button onClick={closeDetail} className="text-dim hover:text-text transition cursor-pointer text-lg shrink-0">&times;</button>
+            </div>
+
+            {/* 노출 현황 */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {([
+                { label: '통합검색', exposed: detailMr?.viewTab.exposed, rank: detailMr?.viewTab.rank },
+                { label: '블로그탭', exposed: detailMr?.blogTab.exposed, rank: detailMr?.blogTab.rank },
+                { label: '인플루언서탭', exposed: detailMr?.influencerTab?.exposed, rank: detailMr?.influencerTab?.rank },
+              ] as const).map(a => (
+                <div key={a.label} className="bg-bg rounded-lg px-2.5 py-2 text-center">
+                  <p className="text-[10px] text-dim mb-1">{a.label}</p>
+                  <ExposureBadge exposed={a.exposed} />
+                  {a.rank != null && <p className="text-[10px] text-dim mt-1">{a.rank}위</p>}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-dim bg-bg rounded-lg px-3 py-2 mb-4">
+              <span>대표 키워드: <b className="text-text">{detailMr?.query || '—'}</b></span>
+              <span>검색량: <b className="text-text">{detailMr?.searchVolume != null ? detailMr.searchVolume.toLocaleString() : '—'}</b></span>
+            </div>
+
+            {/* 원인 분석 */}
+            <div className="mb-4">
+              <p className="font-bold text-xs mb-2">원인 분석 (추정)</p>
+              <ul className="space-y-1.5">
+                {detailCauses.map((c, i) => (
+                  <li key={i} className="text-xs text-dim leading-relaxed flex gap-1.5">
+                    <span className="text-accent shrink-0">·</span>
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 키워드 직접 입력 재검사 */}
+            <div className="bg-bg rounded-lg p-3">
+              <p className="text-xs font-semibold mb-2">직접 키워드로 재검사</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={detailKeyword}
+                  onChange={e => setDetailKeyword(e.target.value)}
+                  placeholder="예: 강남 맛집 추천"
+                  disabled={detailChecking}
+                  className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-xs disabled:opacity-50"
+                />
+                <button
+                  onClick={() => detailPost && recheckWithKeyword(detailPost, detailKeyword)}
+                  disabled={detailChecking || !detailKeyword.trim()}
+                  className="px-3 py-2 bg-accent text-white font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs shrink-0"
+                >
+                  {detailChecking ? '검사 중...' : '재검사'}
+                </button>
+              </div>
+              {detailError && <p className="text-xs text-down mt-2">{detailError}</p>}
+              {detailMr?.checkedAt && <p className="text-[10px] text-dim mt-2">최근 검사 {formatCheckedAt(detailMr.checkedAt)}</p>}
+            </div>
+
+            <button
+              onClick={closeDetail}
+              className="w-full mt-4 px-4 py-2.5 rounded-lg text-xs font-semibold bg-bg border border-border text-dim hover:border-accent/30 transition-colors cursor-pointer"
+            >
+              닫기
+            </button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
