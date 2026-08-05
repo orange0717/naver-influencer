@@ -662,6 +662,23 @@ export default function BlogAnalysisSection() {
           {/* 2행: 순위 + 누락율 */}
           <AnimatedStatCard size="stat" label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.viewExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.viewExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={250} />
           <AnimatedStatCard size="stat" label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.blogExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.blogExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={300} />
+          {/* 미노출 — 아래 누락율 카드와 동일 슬라이스(missingRateSlice) 공유, 체크 전/후 구분 위해 커스텀 카드 사용 */}
+          <div className="h-[182px] flex flex-col bg-surface rounded-2xl border border-border p-4 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
+            <div className="flex items-start justify-between mb-3 shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#FAF4F2] text-down flex items-center justify-center shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </div>
+            </div>
+            <p className="stat-title mb-1 shrink-0">미노출</p>
+            <p className="stat-desc line-clamp-2 min-h-[28px] shrink-0">
+              {checkedCountForSlice === 0 ? ' ' : `${checkedCountForSlice}개 확인 중 ${missingRateForSlice}%`}
+            </p>
+            <div className="mt-auto flex items-baseline gap-1.5 pt-2 shrink-0">
+              <span className={`stat-value stat-value-stat font-rank truncate ${checkedCountForSlice === 0 ? 'text-dim' : missingCountForSlice === 0 ? 'text-up' : 'text-down'}`}>
+                {checkedCountForSlice === 0 ? '—' : `${missingCountForSlice}개`}
+              </span>
+            </div>
+          </div>
           {/* 누락율 — 슬라이스 탭 (AnimatedStatCard 공용 컴포넌트를 쓰지 않는 커스텀 카드라 사이즈·톤을 수동으로 맞춤, 높이는 stat 카드와 동일하게 유지) */}
           <div className="h-[182px] flex flex-col bg-surface rounded-2xl border border-border p-4 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
             <div className="flex items-start justify-between mb-3 shrink-0">
@@ -687,6 +704,17 @@ export default function BlogAnalysisSection() {
               </span>
             </div>
           </div>
+          <AnimatedStatCard
+            size="stat"
+            label="품질점수"
+            value={scoreData?.total_score ?? 0}
+            suffix="점"
+            placeholder="—"
+            description={scoreData ? `${scoreData.grade}등급 · 전체 ${scoreData.totalBloggers}명 중 ${scoreData.rank}위` : '분석 중'}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
+            color={!scoreData ? 'dim' : scoreData.total_score >= 80 ? 'up' : scoreData.total_score >= 50 ? 'accent' : 'down'}
+            delay={350}
+          />
         </div>
       </DashboardCard>
 
