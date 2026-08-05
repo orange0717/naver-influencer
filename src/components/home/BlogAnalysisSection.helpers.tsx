@@ -22,6 +22,7 @@ export interface BlogPost {
   viewCount?: number;
   date: string;
   isPublic: boolean;
+  category?: string;
 }
 
 export interface AiBriefingResult {

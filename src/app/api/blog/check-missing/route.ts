@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     if (await blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
     const body = await request.json();
-    const { blogId, postTitle, postId, keyword, force } = body;
+    const { blogId, postTitle, postId, keyword, force, checkInfluencer } = body;
 
     if (!blogId || (!postTitle && !keyword)) {
       return NextResponse.json({ error: 'blogId, postTitle 또는 keyword 필수' }, { status: 400 });
@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
           query = extractKeywords(postTitle, blogId, displayName);
         }
 
-        // 블로그탭 + 통합검색 + (사용자 지정 키워드인 경우만) 인플루언서탭 동시 확인
-        // 인플루언서탭은 /my/keyword-ranking(사용자 키워드 지정) 전용 — 자동추출 제목 기반 확인(경쟁분석 등)에는 불필요
-        const hasKeyword = Boolean(keyword && keyword.trim());
+        // 블로그탭 + 통합검색 + (사용자 지정 키워드 또는 checkInfluencer 명시 요청 시) 인플루언서탭 동시 확인
+        // 인플루언서탭 확인은 네이버 요청이 추가로 3페이지 늘어나므로, 필요치 않은 호출(경쟁분석 등)엔 기본 비활성
+        const hasKeyword = Boolean(keyword && keyword.trim()) || Boolean(checkInfluencer);
         const [blogTabResult, viewTabResult, influencerTab] = await Promise.all([
           checkBlogTab(query, blogId, postId || ''),
           checkViewTab(query, blogId, postId || ''),
@@ -216,6 +216,8 @@ export async function POST(request: NextRequest) {
               view_rank: viewTab.rank,
               blog_exposed: blogTab.exposed,
               blog_rank: blogTab.rank,
+              influencer_exposed: hasKeyword ? influencerTab.exposed : null,
+              influencer_rank: hasKeyword ? influencerTab.rank : null,
               search_volume: searchVolume,
               status: 'ok',
               fail_count: 0,
