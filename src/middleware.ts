@@ -351,7 +351,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 7일 무료체험 종료 + 결제 없음 → /subscribe 로 안내 (로그인은 되어 있는 경우만 대상)
+  // 유료 플랜(체험 포함) 없음 → /subscribe 로 안내 (로그인은 되어 있는 경우만 대상)
+  // - subscription_plan 이 한 번도 없던 회원(가입 버그로 체험을 못 받은 기존 가입자 등)
+  //   → trialOffer=1: "7일 무료체험을 시작하시겠습니까?" 자가발급 모달 (오렌지 지시,
+  //     2026-08-05: 기존 가입자 전원에게 일괄 SQL로 체험을 부여하던 방식 폐기)
+  // - 체험/결제를 이미 받아봤고 지금은 만료된 회원 → trialEnded=1: 구매 유도 모달만
   const needsPaidPlanGate =
     acceptsHtml &&
     PAID_PLAN_GATE_PREFIXES.some(p => matchesPathPrefix(pathname, p)) &&
@@ -366,7 +370,8 @@ export async function middleware(request: NextRequest) {
     if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
       const url = request.nextUrl.clone();
       url.pathname = '/subscribe';
-      url.search = `?trialEnded=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+      const gateParam = ctx.plan === null ? 'trialOffer' : 'trialEnded';
+      url.search = `?${gateParam}=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
       return NextResponse.redirect(url);
     }
   }

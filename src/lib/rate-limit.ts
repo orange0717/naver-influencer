@@ -112,6 +112,9 @@ export const paymentLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 
 /** 쿠폰 등록: 코드 무작위 대입 방지, 15분에 10회 */
 export const couponLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60 * 1000 });
 
+/** 무료체험 시작(자가 발급): 남용 방지, 15분에 5회 */
+export const trialStartLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
+
 /** 대시보드: 1분에 30회 */
 export const dashboardLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });
 
