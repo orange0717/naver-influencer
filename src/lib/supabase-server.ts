@@ -24,6 +24,17 @@ export async function getUserWithTimeout(
   }
 }
 
+/**
+ * getUserWithTimeout 이 타임아웃으로 null 을 반환했을 때, 실제 비로그인인지
+ * (Auth 서버 장애로) 판정 불능인지 구분하기 위한 힌트. Supabase 세션 쿠키
+ * (sb-<project-ref>-auth-token, 대용량 토큰은 .0/.1 청크로 분할)가 남아있으면
+ * 로그인 흔적이 있는 것으로 간주한다.
+ */
+export async function hasSupabaseAuthCookie(): Promise<boolean> {
+  const cookieStore = await cookies();
+  return cookieStore.getAll().some((c) => /^sb-.*-auth-token/.test(c.name));
+}
+
 export function createServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

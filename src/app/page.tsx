@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createRouteHandlerClient, createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
+import { createRouteHandlerClient, createServiceClient, getUserWithTimeout, hasSupabaseAuthCookie } from '@/lib/supabase-server';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
 import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
@@ -65,6 +65,9 @@ export default async function HomePage() {
 
   const isLoggedIn = !!authUser || !!demoNaverId;
   const isInfluencerNoBlogId = !!authUser && !!profileResult?.linked_influencer_id && !profileResult?.blog_id;
+  /** getUserWithTimeout 타임아웃으로 로그인 판정이 불확실한 경우, 세션 쿠키가 남아있으면
+   *  실제로는 로그인 중일 수 있으므로 게스트 히어로/데모 유도 문구는 노출하지 않는다. */
+  const showGuestHero = !isLoggedIn && !(await hasSupabaseAuthCookie());
 
   return (
     <>
@@ -76,17 +79,19 @@ export default async function HomePage() {
       )}
       {!isLoggedIn ? (
         <div className="space-y-10">
-          <section className="max-w-7xl mx-auto px-4 pt-2 pb-4">
-            <h1 className="font-title text-2xl sm:text-3xl font-extrabold text-text">
-              N인플 — 네이버 인플루언서들을 위한 키워드 분석 플랫폼
-            </h1>
-            <p className="mt-3 text-sm sm:text-base text-dim leading-relaxed max-w-2xl">
-              수만 개 키워드의 검색량, 경쟁도, 순위를 분석해 블루오션 키워드를 추천합니다.
-              인플루언서 19,980명 + 블로거 83,933명+ 데이터를 기반으로 내 블로그의 방문자, 키워드 순위,
-              발행 현황을 한눈에 확인하세요.
-            </p>
-          </section>
-          <section id="blog-analysis" className="scroll-mt-24">
+          {showGuestHero && (
+            <section className="max-w-7xl mx-auto px-4 pt-2 pb-4">
+              <h1 className="font-title text-2xl sm:text-3xl font-extrabold text-text">
+                N인플 — 네이버 인플루언서들을 위한 키워드 분석 플랫폼
+              </h1>
+              <p className="mt-3 text-sm sm:text-base text-dim leading-relaxed max-w-2xl">
+                수만 개 키워드의 검색량, 경쟁도, 순위를 분석해 블루오션 키워드를 추천합니다.
+                인플루언서 19,980명 + 블로거 83,933명+ 데이터를 기반으로 내 블로그의 방문자, 키워드 순위,
+                발행 현황을 한눈에 확인하세요.
+              </p>
+            </section>
+          )}
+          <section id="blog-analysis" className={showGuestHero ? 'scroll-mt-24' : 'scroll-mt-24 pt-4'}>
             <BlogAnalysisSection />
           </section>
         </div>
@@ -119,7 +124,7 @@ export default async function HomePage() {
         </div>
       )}
       {/* 데모 = 비로그인 사용자만 노출 (가입한 회원은 데모 필요 없음) */}
-      {!isLoggedIn && <DemoFloatingButton />}
+      {showGuestHero && <DemoFloatingButton />}
     </>
   );
 }
