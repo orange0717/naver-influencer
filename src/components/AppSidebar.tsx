@@ -32,6 +32,20 @@ function LockIcon() {
   );
 }
 
+/** 모든 메뉴가 공유하는 좌측 여백 기준선 — indent 항목은 여기서 한 단계(pl-6)만 더 들어간다 */
+function itemPadding(indent?: boolean) {
+  return indent ? 'pl-6' : 'pl-[10px]';
+}
+
+/** 클릭 불가능한 소제목 — 그룹 내부 구간 구분용 (예: "리스트") */
+function NavHeading({ label }: { label: string }) {
+  return (
+    <div className={`${itemPadding(false)} pr-3 pt-2 pb-1 text-[11px] font-bold text-dim/60 uppercase tracking-wide truncate`}>
+      {label}
+    </div>
+  );
+}
+
 function NavLink({
   item,
   active,
@@ -47,10 +61,15 @@ function NavLink({
 }) {
   const router = useRouter();
   const { openGate } = useMemberOnlyGate();
+  const padding = itemPadding(item.indent);
+
+  if (item.heading) {
+    return <NavHeading label={item.label} />;
+  }
 
   if (item.disabled) {
     return (
-      <span className="flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm text-dim/50 border-l-2 border-transparent cursor-not-allowed">
+      <span className={`flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
         {item.label}
         <span className="ml-auto text-[10px] font-bold text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
       </span>
@@ -66,7 +85,7 @@ function NavLink({
           onNavigate();
           openGate(item.href);
         }}
-        className="w-full flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer"
+        className={`w-full flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-dim/60"><LockIcon /></span>
@@ -84,7 +103,7 @@ function NavLink({
           onNavigate();
           router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
         }}
-        className="w-full flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer"
+        className={`w-full flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-accent"><LockIcon /></span>
@@ -96,7 +115,7 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-2 pl-[10px] pr-3 py-2 rounded-lg text-sm font-semibold border-l-2 transition-colors ${
+      className={`flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm font-semibold border-l-2 transition-colors ${
         active
           ? 'bg-accent/15 text-accent border-accent'
           : 'text-dim border-transparent hover:text-text hover:bg-bg'

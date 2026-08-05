@@ -333,7 +333,7 @@ export default function SubscribeClient() {
           <ul className="space-y-2.5 text-sm">
             <li className="flex items-center gap-2.5">{CHECK}<span>예비 인플루언서 플랜 전체 포함</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드 챌린지</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지 리스트</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>블로그 글 피드백 (Claude AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (무제한)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 데이터 다운로드 (1회 500건)</span></li>
@@ -470,7 +470,7 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
-                <td className="py-2.5 px-2">키워드 챌린지 리스트</td>
+                <td className="py-2.5 px-2">키워드 챌린지</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>

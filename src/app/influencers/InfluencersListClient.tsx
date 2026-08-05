@@ -179,7 +179,7 @@ export default function InfluencersListClient() {
               }}
               className="hover:text-accent transition-colors cursor-pointer"
             >
-              리스트(키챌반영)
+              리스트(유료)
             </button>
             <span className="text-sm font-normal text-dim"> (구. 파워블로거 2016년도 폐지)</span>
           </h1>

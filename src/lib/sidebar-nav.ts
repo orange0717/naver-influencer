@@ -13,6 +13,10 @@ export interface SidebarItem {
   authOnly?: boolean;
   /** 아직 구현되지 않은 기능 — 클릭 불가, "준비중" 뱃지만 표시 */
   disabled?: boolean;
+  /** 클릭 불가능한 소제목 — 그룹 내부를 시각적으로 구간 분리할 때 사용 (href는 '#' 고정) */
+  heading?: boolean;
+  /** 직전 heading 하위 항목임을 표시해 들여쓰기를 한 단계 추가 적용 */
+  indent?: boolean;
 }
 
 export interface SidebarGroup {
@@ -46,12 +50,12 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '네이버 인플루언서',
     icon: 'I',
     items: [
-      { label: '토픽발행', href: '/topics', requiredPlan: 'influencer', authOnly: true },
-      { label: '키워드 챌린지 리스트', href: '/keywords', requiredPlan: 'influencer', authOnly: true },
+      { label: '토픽 발행', href: '/topics', requiredPlan: 'influencer', authOnly: true },
+      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer', authOnly: true },
       { label: '연도별 선정 현황', href: '/stats' },
-      { label: '리스트', href: '/influencers/free-plan', authOnly: true },
-      { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer', authOnly: true },
-      { label: '리스트(토픽)', href: '/discover/influencers', requiredPlan: 'blogger', authOnly: true },
+      { label: '리스트', href: '#', heading: true },
+      { label: '리스트(무료)', href: '/influencers/free-plan', authOnly: true, indent: true },
+      { label: '리스트(유료)', href: '/influencers', requiredPlan: 'influencer', authOnly: true, indent: true },
     ],
   },
   {

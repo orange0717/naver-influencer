@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireInfluencerPlan } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { rowsToCsv, csvResponse, todayStamp } from '@/lib/csv';
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
   if (await dashboardLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requirePaidPlan(request);
+  const auth = await requireInfluencerPlan(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = request.nextUrl;
