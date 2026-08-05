@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
-import { filterMissing, countMissing, countMissingInArea, type MissingResultsMap, type MissingState, type MissingArea } from '@/lib/missing-rate';
+import { filterMissing, countMissing, countMissingInArea, countIndexingWait, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea } from '@/lib/missing-rate';
 import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
 import { fetchWithTimeout, getProfileFromApi, CHECK_FRESH_MS } from './BlogAnalysisSection.helpers';
 
@@ -203,16 +203,22 @@ export default function MissingPostsSection() {
     return d ? d >= thirtyDaysAgo : false;
   }), [posts, thirtyDaysAgo]);
 
-  const totalMissing = useMemo(() => countMissing(periodPosts, missingResults), [periodPosts, missingResults]);
-  const viewMissing = useMemo(() => countMissingInArea(periodPosts, missingResults, 'view'), [periodPosts, missingResults]);
-  const blogMissing = useMemo(() => countMissingInArea(periodPosts, missingResults, 'blog'), [periodPosts, missingResults]);
-  const influencerMissing = useMemo(() => countMissingInArea(periodPosts, missingResults, 'influencer'), [periodPosts, missingResults]);
-  const recent30Missing = useMemo(() => countMissing(recent30Posts, missingResults), [recent30Posts, missingResults]);
+  // 발행 시각(publishedAt)을 붙인 버전 — 색인 지연 유예 판정(missing-rate.ts)에 사용
+  const periodPostsDated = useMemo(() => periodPosts.map(p => ({ ...p, publishedAt: parsePostDate(p.date) })), [periodPosts]);
+  const recent30PostsDated = useMemo(() => recent30Posts.map(p => ({ ...p, publishedAt: parsePostDate(p.date) })), [recent30Posts]);
+
+  const totalMissing = useMemo(() => countMissing(periodPostsDated, missingResults), [periodPostsDated, missingResults]);
+  const viewMissing = useMemo(() => countMissingInArea(periodPostsDated, missingResults, 'view'), [periodPostsDated, missingResults]);
+  const blogMissing = useMemo(() => countMissingInArea(periodPostsDated, missingResults, 'blog'), [periodPostsDated, missingResults]);
+  const influencerMissing = useMemo(() => countMissingInArea(periodPostsDated, missingResults, 'influencer'), [periodPostsDated, missingResults]);
+  const recent30Missing = useMemo(() => countMissing(recent30PostsDated, missingResults), [recent30PostsDated, missingResults]);
+  // 발행 후 유예 기간 내라 미노출 집계에서 제외된 게시글 수(투명성 안내용)
+  const indexingWaitCount = useMemo(() => countIndexingWait(periodPostsDated, missingResults), [periodPostsDated, missingResults]);
 
   const pct = (n: number) => periodPosts.length === 0 ? 0 : Math.round((n / periodPosts.length) * 100);
 
   const missingList = useMemo(() => {
-    let list = filterMissing(periodPosts, missingResults);
+    let list = filterMissing(periodPostsDated, missingResults);
     if (areaFilter !== 'all') {
       list = list.filter(p => {
         const mr = missingResults[p.id];
@@ -231,7 +237,7 @@ export default function MissingPostsSection() {
     else if (sortBy === 'title') arr.sort((a, b) => a.title.localeCompare(b.title, 'ko'));
     else if (sortBy === 'missingRate') arr.sort((a, b) => missingAreaCount(missingResults[b.id]) - missingAreaCount(missingResults[a.id]));
     return arr;
-  }, [periodPosts, missingResults, areaFilter, searchQuery, sortBy]);
+  }, [periodPostsDated, missingResults, areaFilter, searchQuery, sortBy]);
 
   const uncheckedCount = useMemo(() => periodPosts.filter(p => !missingResults[p.id]).length, [periodPosts, missingResults]);
 
@@ -258,6 +264,9 @@ export default function MissingPostsSection() {
         <p className="font-bold text-text mb-1">미노출 정의</p>
         <p>선택한 기간에 발행한 게시글 중 <b className="text-text">네이버 통합검색 · 네이버 블로그 · 네이버 인플루언서</b> 검색 결과에서 확인되지 않는 게시글입니다.</p>
         <p className="mt-1">※ 제목 검색 · 대표 키워드 검색 · 본문 핵심 키워드 검색 기준 · 정상 수집된 게시글만 검사합니다.</p>
+        <p className="mt-1">※ 발행 후 {INDEXING_GRACE_HOURS}시간 이내 게시글은 네이버 색인 지연으로 인한 오탐을 막기 위해 미노출 집계·목록에서 제외합니다.
+          {indexingWaitCount > 0 && <span className="text-accent font-semibold"> (현재 인덱싱 대기 중 {indexingWaitCount}개)</span>}
+        </p>
       </GlassCard>
 
       {/* 2. 요약 통계 카드 */}
