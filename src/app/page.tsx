@@ -76,6 +76,16 @@ export default async function HomePage() {
       )}
       {!isLoggedIn ? (
         <div className="space-y-10">
+          <section className="max-w-7xl mx-auto px-4 pt-2 pb-4">
+            <h1 className="font-title text-2xl sm:text-3xl font-extrabold text-text">
+              N인플 — 네이버 인플루언서들을 위한 키워드 분석 플랫폼
+            </h1>
+            <p className="mt-3 text-sm sm:text-base text-dim leading-relaxed max-w-2xl">
+              수만 개 키워드의 검색량, 경쟁도, 순위를 분석해 블루오션 키워드를 추천합니다.
+              인플루언서 19,980명 + 블로거 83,933명+ 데이터를 기반으로 내 블로그의 방문자, 키워드 순위,
+              발행 현황을 한눈에 확인하세요.
+            </p>
+          </section>
           <section id="blog-analysis" className="scroll-mt-24">
             <BlogAnalysisSection />
           </section>

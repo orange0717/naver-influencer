@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import GlassCard from './GlassCard';
+import DashboardCard from './DashboardCard';
 import type { RankAlert } from '@/lib/rank-alerts';
 
 interface SmartAlertsProps {
@@ -100,15 +100,11 @@ export default function SmartAlerts({ alerts, maxPerColumn = 5 }: SmartAlertsPro
   if (warnings.length === 0 && opportunities.length === 0) return null;
 
   return (
-    <GlassCard>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="font-bold text-[15px]">오늘의 액션 포인트</h3>
-          <p className="text-[11px] text-dim mt-0.5">순위 변동 트렌드 기반 자동 분석</p>
-        </div>
-        <span className="text-[11px] text-dim">{alerts.length}건 감지</span>
-      </div>
-
+    <DashboardCard
+      title="오늘의 액션 포인트"
+      subtitle="순위 변동 트렌드 기반 자동 분석"
+      headerRight={<span className="text-[11px] text-dim">{alerts.length}건 감지</span>}
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* 좌: 주의 필요 */}
         <div>
@@ -150,6 +146,6 @@ export default function SmartAlerts({ alerts, maxPerColumn = 5 }: SmartAlertsPro
           </div>
         </div>
       </div>
-    </GlassCard>
+    </DashboardCard>
   );
 }

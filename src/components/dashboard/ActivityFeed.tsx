@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ActivityEvent } from '@/lib/activity-events';
+import DashboardCard from './DashboardCard';
 
 interface ActivityFeedProps {
   events: ActivityEvent[];
@@ -153,21 +154,21 @@ function PaginatedList({ events, label, icon, emptyText }: {
 }
 
 export default function ActivityFeed({ events }: ActivityFeedProps) {
+  const liveBadge = (
+    <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">
+      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />
+      LIVE
+    </span>
+  );
+
   if (events.length === 0) {
     return (
-      <div className="bg-surface rounded-2xl border border-border p-5 shadow-xs">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="font-bold text-[15px]">순위 변동</h3>
-          <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />
-            LIVE
-          </span>
-        </div>
+      <DashboardCard title={<span className="inline-flex items-center gap-2">순위 변동 {liveBadge}</span>}>
         <div className="text-center py-8 text-dim text-sm">
           <p>아직 순위 변동 데이터가 없습니다.</p>
           <p className="text-xs mt-1">데이터가 수집되면 자동으로 표시됩니다.</p>
         </div>
-      </div>
+      </DashboardCard>
     );
   }
 
@@ -175,16 +176,10 @@ export default function ActivityFeed({ events }: ActivityFeedProps) {
   const downEvents = events.filter(e => e.type === 'rank_down');
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-5 shadow-xs">
-      <div className="flex items-center gap-2 mb-4">
-        <h3 className="font-bold text-[15px]">순위 변동</h3>
-        <span className="flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />
-          LIVE
-        </span>
-        <span className="text-[11px] text-dim ml-auto">{events.length}건</span>
-      </div>
-
+    <DashboardCard
+      title={<span className="inline-flex items-center gap-2">순위 변동 {liveBadge}</span>}
+      headerRight={<span className="text-[11px] text-dim">{events.length}건</span>}
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* 왼쪽: 상승 */}
         <PaginatedList
@@ -202,6 +197,6 @@ export default function ActivityFeed({ events }: ActivityFeedProps) {
           emptyText="하락 키워드 없음"
         />
       </div>
-    </div>
+    </DashboardCard>
   );
 }

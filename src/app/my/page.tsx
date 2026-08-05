@@ -11,7 +11,7 @@ import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
-import GlassCard from '@/components/dashboard/GlassCard';
+import DashboardCard from '@/components/dashboard/DashboardCard';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
 import TopicPerformanceSection, { type TopicPerformanceRow } from '@/components/dashboard/TopicPerformanceSection';
@@ -265,11 +265,16 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       })()
     : Promise.resolve({ rate: 0, missingCount: 0, totalChecked: 0 });
 
-  /** 대시보드 허브 — 방문자 카드: 조회수 차트(BlogVisitorChart)와 동일한 공용 함수 재사용 */
+  /**
+   * 대시보드 허브 — 방문자 카드: 조회수 차트(BlogVisitorChart)와 동일한 공용 함수 재사용.
+   * fetchBlogVisitors가 순차 2회 요청(각 AbortSignal.timeout 8초)까지 갈 수 있어 최악 16초 소요 —
+   * 기존 8초 타임아웃은 이 재크롤링을 중간에 잘라 DB에 최신값이 반영되기 전에 폴백 0을 반환했고,
+   * 그 결과 KPI 카드("오늘 0")와 같은 데이터를 쓰는 그래프(BlogVisitorChart)의 값이 어긋났다.
+   */
   const visitorSummaryPromise: Promise<{ todayVisitors: number; totalVisitors: number }> = naverId
     ? withTimeout(
         getBlogVisitorSummary(naverId, 30).then((s) => ({ todayVisitors: s.todayVisitors, totalVisitors: s.totalVisitors })),
-        8000,
+        20000,
         { todayVisitors: 0, totalVisitors: 0 },
       )
     : Promise.resolve({ todayVisitors: 0, totalVisitors: 0 });
@@ -818,7 +823,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* 상세 통계 바 */}
       {categoryRank > 0 && (
-        <div className="bg-surface border border-border rounded-2xl px-5 py-3">
+        <div className="bg-surface border border-border rounded-2xl shadow-xs px-5 py-3">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
             <span className="text-dim">카테고리 순위 <strong className="text-text font-rank">{categoryRank}</strong>위{categoryTotal > 0 ? `/${categoryTotal}` : ''}</span>
             <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
@@ -930,8 +935,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       </div>
 
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
-      <GlassCard>
-        <h3 className="font-bold text-[15px] mb-4">활동 현황</h3>
+      <DashboardCard title="활동 현황">
         {/* 순위별 키워드 분포 (클릭 시 키워드 목록 표시) */}
         <RankDistribution
           rankings={rankings.map(r => ({
@@ -942,7 +946,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
             category: r.category,
           }))}
         />
-      </GlassCard>
+      </DashboardCard>
 
       {/* ─── 2-1. 키워드챌린지 참여 현황 ─── */}
       <ChallengeStatsSection

@@ -5,6 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { CHART, SERIES_COLORS } from '@/lib/chart-colors';
+import DashboardCard from './DashboardCard';
 
 interface KeywordHistory {
   keyword_id: string;
@@ -127,14 +128,10 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
   };
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-5 shadow-xs">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="font-bold text-[15px]">순위 추이</h3>
-          <p className="text-[11px] text-dim mt-0.5">저장한 키워드의 순위 변화를 확인하세요</p>
-        </div>
-        {/* 기간 선택 */}
+    <DashboardCard
+      title="순위 추이"
+      subtitle="저장한 키워드의 순위 변화를 확인하세요"
+      headerRight={
         <div className="flex gap-1 bg-bg rounded-lg p-0.5">
           {periodOptions.map(opt => (
             <button
@@ -150,8 +147,8 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
             </button>
           ))}
         </div>
-      </div>
-
+      }
+    >
       {/* 키워드 필터 */}
       {keywords.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-4">
@@ -262,6 +259,6 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
           </div>
         </div>
       )}
-    </div>
+    </DashboardCard>
   );
 }

@@ -47,7 +47,11 @@ export default function Footer() {
             </a>
           </p>
           <p>충청남도 아산시 탕정면 탕정면로 22번길 15-12 301호 · 개인정보보호책임자 한미선</p>
-          <p className="mt-2 text-footer-dim/50">&copy; 2026 오렌지도서관 · Built with Claude by Anthropic</p>
+          <p className="mt-2 text-footer-dim/50">&copy; 2026 오렌지도서관</p>
+          <p className="mt-3 text-footer-dim/60">N인플은 오렌지도서관이 운영하는 네이버 인플루언서 분석 플랫폼입니다.</p>
+          <p className="mt-1 text-footer-dim/40">
+            N인플은 네이버의 공식 서비스가 아니며, 공개된 데이터를 기반으로 분석 정보를 제공하는 독립 서비스입니다. NAVER 및 네이버는 NAVER Corp.의 등록상표입니다.
+          </p>
         </div>
       </div>
     </footer>

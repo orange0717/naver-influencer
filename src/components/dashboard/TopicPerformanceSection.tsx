@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { TOPIC_TYPE_LABEL } from '@/lib/topic-labels';
+import DashboardCard, { DashboardCardIcon } from './DashboardCard';
 
 export interface TopicPerformanceRow {
   id: string;
@@ -32,17 +33,18 @@ function formatRank(rank: number | null): string {
 
 export default function TopicPerformanceSection({ topics }: { topics: TopicPerformanceRow[] }) {
   return (
-    <div id="topic-performance" className="rounded-2xl border border-border bg-surface shadow-xs p-6 space-y-5">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
+    <DashboardCard
+      id="topic-performance"
+      title="토픽 현황 · 성과"
+      icon={
+        <DashboardCardIcon>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
             <path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z" />
             <circle cx="7.5" cy="7.5" r="1.5" />
           </svg>
-        </div>
-        <h3 className="font-bold text-[15px]">토픽 현황 · 성과</h3>
-      </div>
-
+        </DashboardCardIcon>
+      }
+    >
       {topics.length === 0 ? (
         <p className="text-center text-sm text-dim py-8">
           아직 분류된 토픽이 없습니다. 매일 새벽 자동 분류가 실행되면 여기에 표시됩니다.
@@ -122,6 +124,6 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
           </div>
         </>
       )}
-    </div>
+    </DashboardCard>
   );
 }

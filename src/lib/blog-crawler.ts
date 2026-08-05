@@ -232,11 +232,15 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
     const text = res.ok && res.status !== 204 ? await res.text() : '';
 
     // 1. XML 형식: <visitorcnt id="20260407" cnt="706" />
+    // ⚠️ 네이버가 차단 응답으로 미로딩 위젯 템플릿(기본값 cnt="0")을 200으로 내려주는 경우가 있어,
+    // 0은 실제 방문자수가 아니라 placeholder로 간주해 건너뛴다(모바일 폴백과 동일한 원칙, 2026-08-05).
     const xmlMatches = text.matchAll(/visitorcnt\s+id="(\d{8})"\s+cnt="(\d+)"/g);
     for (const m of xmlMatches) {
+      const cnt = parseInt(m[2]);
+      if (!Number.isFinite(cnt) || cnt <= 0) continue;
       const dateRaw = m[1];
       const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
-      results.push({ date, visitors: parseInt(m[2]) });
+      results.push({ date, visitors: cnt });
     }
 
     // 2. JSON 형식: "cnt": 123, "date": "20260407"
@@ -246,6 +250,7 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
       if (countMatches && dateMatches) {
         for (let i = 0; i < Math.min(countMatches.length, dateMatches.length); i++) {
           const cnt = parseInt(countMatches[i].replace(/[^0-9]/g, ''));
+          if (!Number.isFinite(cnt) || cnt <= 0) continue;
           const dateRaw = dateMatches[i].replace(/[^0-9]/g, '');
           const date = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
           results.push({ date, visitors: cnt });
@@ -260,11 +265,12 @@ export async function fetchBlogVisitors(blogId: string): Promise<BlogVisitorData
         const items = json?.visitorcnts || json?.items || json?.result || [];
         if (Array.isArray(items)) {
           for (const item of items) {
-            if (item.cnt !== undefined && item.date) {
-              const d = String(item.date);
-              const date = d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
-              results.push({ date, visitors: Number(item.cnt) || 0 });
-            }
+            if (item.cnt === undefined || !item.date) continue;
+            const cnt = Number(item.cnt);
+            if (!Number.isFinite(cnt) || cnt <= 0) continue;
+            const d = String(item.date);
+            const date = d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
+            results.push({ date, visitors: cnt });
           }
         }
       } catch {

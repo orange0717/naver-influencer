@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import DashboardCard, { DashboardCardIcon } from './DashboardCard';
 
 interface ChallengeStatsProps {
   totalKeywords: number;
@@ -54,17 +55,17 @@ export default function ChallengeStatsSection({
   const top3Rate = totalKeywords > 0 ? Math.round((top3Count / totalKeywords) * 100) : 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-surface shadow-xs p-6 space-y-5">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
+    <DashboardCard
+      title="키워드챌린지 참여 현황"
+      icon={
+        <DashboardCardIcon>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
             <line x1="4" y1="22" x2="4" y2="15" />
           </svg>
-        </div>
-        <h3 className="font-bold text-[15px]">키워드챌린지 참여 현황</h3>
-      </div>
-
+        </DashboardCardIcon>
+      }
+    >
       {/* 6개 스탯 그리드 */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <StatBox
@@ -124,8 +125,7 @@ export default function ChallengeStatsSection({
           }
         />
       </div>
-
-    </div>
+    </DashboardCard>
   );
 }
 

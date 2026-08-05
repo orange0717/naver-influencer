@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { CHART } from '@/lib/chart-colors';
-import GlassCard from './GlassCard';
+import DashboardCard, { DashboardCardIcon } from './DashboardCard';
 
 interface VisitorData {
   date: string;
@@ -44,33 +44,35 @@ export default function BlogVisitorChart({ blogId }: Props) {
 
   if (loading) {
     return (
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+      <DashboardCard
+        title="블로그 방문자수"
+        icon={
+          <DashboardCardIcon>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-          </div>
-          <h3 className="font-bold text-[15px]">블로그 방문자수</h3>
-        </div>
+          </DashboardCardIcon>
+        }
+      >
         <div className="flex items-center justify-center py-8">
           <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
-      </GlassCard>
+      </DashboardCard>
     );
   }
 
   if (visitors.length === 0) {
     return (
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-border/30 flex items-center justify-center">
+      <DashboardCard
+        title="블로그 방문자수"
+        icon={
+          <DashboardCardIcon className="bg-border/30">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-          </div>
-          <h3 className="font-bold text-[15px]">블로그 방문자수</h3>
-        </div>
+          </DashboardCardIcon>
+        }
+      >
         <div className="text-center py-4 space-y-2">
           <p className="text-sm text-dim">방문자 데이터가 아직 수집되지 않았습니다.</p>
           <div className="text-xs text-dim bg-bg rounded-xl p-3 text-left space-y-1.5 max-w-sm mx-auto">
@@ -80,7 +82,7 @@ export default function BlogVisitorChart({ blogId }: Props) {
             <p>3. 설정 완료 후 다음 날부터 자동 수집됩니다.</p>
           </div>
         </div>
-      </GlassCard>
+      </DashboardCard>
     );
   }
 
@@ -90,19 +92,17 @@ export default function BlogVisitorChart({ blogId }: Props) {
   }));
 
   return (
-    <GlassCard>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-bold text-[15px]">블로그 방문자수</h3>
-            <p className="text-[10px] text-dim">최근 30일 일별 방문자 추이</p>
-          </div>
-        </div>
+    <DashboardCard
+      title="블로그 방문자수"
+      subtitle="최근 30일 일별 방문자 추이"
+      icon={
+        <DashboardCardIcon>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </DashboardCardIcon>
+      }
+      headerRight={
         <div className="text-right">
           <div className="flex items-center gap-1.5">
             <span className="text-lg font-black">{todayVisitors.toLocaleString()}</span>
@@ -117,8 +117,8 @@ export default function BlogVisitorChart({ blogId }: Props) {
             )}
           </div>
         </div>
-      </div>
-
+      }
+    >
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
           <defs>
@@ -161,6 +161,6 @@ export default function BlogVisitorChart({ blogId }: Props) {
           />
         </AreaChart>
       </ResponsiveContainer>
-    </GlassCard>
+    </DashboardCard>
   );
 }

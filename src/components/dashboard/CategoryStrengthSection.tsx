@@ -1,5 +1,7 @@
 'use client';
 
+import DashboardCard from './DashboardCard';
+
 interface CategoryStat {
   category: string;
   totalKeywords: number;
@@ -30,8 +32,7 @@ export default function CategoryStrengthSection({ categoryStats }: Props) {
   if (!categoryStats || categoryStats.length === 0) return null;
 
   return (
-    <div className="bg-surface rounded-2xl border border-border shadow-xs p-6">
-      <h3 className="text-sm font-extrabold text-text mb-4">주제별 강점 분석</h3>
+    <DashboardCard title="주제별 강점 분석">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-fr">
         {categoryStats.map((cat) => (
           <div
@@ -71,6 +72,6 @@ export default function CategoryStrengthSection({ categoryStats }: Props) {
           </div>
         ))}
       </div>
-    </div>
+    </DashboardCard>
   );
 }

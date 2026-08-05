@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import GlassCard from './GlassCard';
+import DashboardCard, { DashboardCardIcon } from './DashboardCard';
 import KeywordSyncButton from './KeywordSyncButton';
 import BookmarkButton from '@/components/keywords/BookmarkButton';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
@@ -291,30 +291,30 @@ export default function MyKeywordList({
   }, [categoryGroups, participationFilter]);
 
   return (
-    <div className="space-y-3">
-      {/* --- 헤더 --- */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
-              <path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-bold text-[15px]">내 키워드</h3>
-            <p className="text-[11px] text-dim">
-              참여 {headerCounts.participated} / 전체 {headerCounts.total}개
-              {selectedCategory !== '전체' && ` · ${selectedCategory}`}
-              {filteredKeywords.length !== headerCounts.total && ` (표시 ${filteredKeywords.length}개)`}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
+    <DashboardCard
+      title="내 키워드"
+      subtitle={
+        <>
+          참여 {headerCounts.participated} / 전체 {headerCounts.total}개
+          {selectedCategory !== '전체' && ` · ${selectedCategory}`}
+          {filteredKeywords.length !== headerCounts.total && ` (표시 ${filteredKeywords.length}개)`}
+        </>
+      }
+      icon={
+        <DashboardCardIcon>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
+            <path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" />
+          </svg>
+        </DashboardCardIcon>
+      }
+      headerRight={
+        <>
           <span className="text-[11px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-full">참여 {headerCounts.participated}</span>
           <span className="text-[11px] text-dim font-bold bg-border/30 px-2 py-0.5 rounded-full">미참여 {headerCounts.total - headerCounts.participated}</span>
-        </div>
-      </div>
-
+        </>
+      }
+    >
+      <div className="space-y-3">
       {totalKeywords > 0 && topicTabs.length > 0 && (
         <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="키워드 주제">
           {topicTabs.map((tab) => {
@@ -749,16 +749,13 @@ export default function MyKeywordList({
           )}
         </div>
       ) : totalKeywords > 0 ? (
-        <GlassCard>
-          <div className="text-center py-8 text-dim text-sm">
-            검색 결과가 없습니다.
-          </div>
-        </GlassCard>
+        <div className="text-center py-8 text-dim text-sm rounded-2xl border border-border bg-bg/30">
+          검색 결과가 없습니다.
+        </div>
       ) : (
-        <GlassCard>
-          <KeywordSyncButton />
-        </GlassCard>
+        <KeywordSyncButton />
       )}
-    </div>
+      </div>
+    </DashboardCard>
   );
 }

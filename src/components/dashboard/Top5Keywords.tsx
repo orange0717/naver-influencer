@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import GlassCard from './GlassCard';
+import DashboardCard from './DashboardCard';
 import { formatCount } from '@/lib/format';
 
 interface RecommendedKeyword {
@@ -73,7 +73,7 @@ export default function Top5Keywords({ recommendations, totalNotParticipated }: 
   }, [recommendations, displayed]);
 
   return (
-    <GlassCard padding="none">
+    <DashboardCard padding="none">
       <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
         <div>
           <h3 className="font-bold text-[15px]">오늘의 추천키워드</h3>
@@ -136,6 +136,6 @@ export default function Top5Keywords({ recommendations, totalNotParticipated }: 
           <p className="text-xs mt-1">모든 키워드에 참여하고 있습니다.</p>
         </div>
       )}
-    </GlassCard>
+    </DashboardCard>
   );
 }

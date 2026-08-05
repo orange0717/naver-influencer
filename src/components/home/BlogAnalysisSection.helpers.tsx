@@ -331,7 +331,7 @@ export function GuestBlogAnalysis() {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-extrabold text-text">블로그를 연결하세요</h1>
+              <h3 className="text-xl font-extrabold text-text">블로그를 연결하세요</h3>
               <p className="text-sm text-dim mt-1">Google 계정으로 로그인한 후 블로그를 연결하면 방문자, 순위, 발행 데이터 등을 자동으로 분석합니다.</p>
             </div>
           </div>

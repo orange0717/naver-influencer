@@ -46,16 +46,21 @@ export default function MemberOnlyModal() {
             </button>
 
             <h2 id="member-only-title" className="text-lg font-bold text-text text-center mb-3">
-              🔒 회원 전용 서비스입니다.
+              🔒 N인플은 회원 전용 서비스입니다.
             </h2>
-            <p className="text-sm text-dim text-center mb-8 leading-relaxed">
-              현재 선택하신 기능은<br />
-              회원가입 후 이용할 수 있습니다.
+            <p className="text-sm text-dim text-center mb-4 leading-relaxed">
+              이 기능은 회원만 이용할 수 있습니다.
               <br /><br />
-              먼저 데모를 체험해보시겠습니까?
-              <br />
-              데모에서는 실제 기능을<br />
-              미리 체험해볼 수 있습니다.
+              지금 가입하시면<br />
+              모든 기능을 7일 동안 무료로 체험하실 수 있습니다.
+              <br /><br />
+              블로그 분석, 인플루언서 분석,<br />
+              AI 브리핑, 키워드 챌린지,<br />
+              토픽 발행 등 모든 기능을 이용해보세요.
+            </p>
+            <p className="text-xs text-accent font-semibold text-center mb-8 leading-relaxed">
+              지금 가입하면 7일 동안 모든 프리미엄 기능을<br />
+              무료로 이용할 수 있습니다.
             </p>
 
             <div className="space-y-2.5">
@@ -64,7 +69,7 @@ export default function MemberOnlyModal() {
                 onClick={startDemo}
                 className="w-full px-4 py-3 rounded-xl bg-accent text-white text-sm font-bold hover:bg-accent-hover transition"
               >
-                무료 데모 체험하기
+                7일 무료체험 시작하기
               </button>
               <button
                 type="button"
@@ -78,7 +83,7 @@ export default function MemberOnlyModal() {
                 onClick={close}
                 className="w-full px-4 py-2 text-xs font-semibold text-dim hover:text-text transition"
               >
-                닫기
+                나중에 보기
               </button>
             </div>
         </div>

@@ -47,10 +47,10 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: 'I',
     items: [
       { label: '토픽발행', href: '/topics', requiredPlan: 'influencer', authOnly: true },
-      { label: '키워드 챌린지 리스트', href: '/keywords', requiredPlan: 'influencer' },
+      { label: '키워드 챌린지 리스트', href: '/keywords', requiredPlan: 'influencer', authOnly: true },
       { label: '연도별 선정 현황', href: '/stats' },
       { label: '리스트', href: '/influencers/free-plan', authOnly: true },
-      { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer' },
+      { label: '리스트(키챌반영)', href: '/influencers', requiredPlan: 'influencer', authOnly: true },
       { label: '리스트(토픽)', href: '/discover/influencers', requiredPlan: 'blogger', authOnly: true },
     ],
   },
@@ -59,11 +59,11 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: 'K',
     items: [
       { label: '미노출', href: '/my/missing-posts', authOnly: true },
-      { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'influencer' },
+      { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'influencer', authOnly: true },
       { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
       { label: '키워드 검색', href: '/keywords/blogger' },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true },
-      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer' },
+      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
@@ -91,14 +91,14 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '•',
     items: [
       { label: '설정', href: '/profile', authOnly: true },
-      { label: 'CSV 다운로드', href: '/keywords/bulk', requiredPlan: 'influencer' },
+      { label: 'CSV 다운로드', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true },
     ],
   },
 ];
 
 /** 사이드바 하단 — 기존 헤더 상단 네비에서 옮겨온 항목 */
 export const SIDEBAR_FOOTER_LINKS: SidebarItem[] = [
-  { label: '공지사항', href: '/notice', authOnly: true },
+  { label: '공지사항', href: '/notice' },
   { label: '커뮤니티', href: '/community' },
   { label: '성장후기', href: '/stories' },
   { label: '이용권', href: '/subscribe' },
