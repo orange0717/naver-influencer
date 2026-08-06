@@ -9,6 +9,7 @@ type StoredRow = {
   post_id: string;
   post_title: string | null;
   query: string | null;
+  search_candidates: string[] | null;
   view_exposed: boolean | null;
   view_rank: number | null;
   blog_exposed: boolean | null;
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('post_missing_checks')
-    .select('post_id, post_title, query, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, checked_at')
+    .select('post_id, post_title, query, search_candidates, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, checked_at')
     .eq('blog_id', blogId);
 
   if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
     viewTab: { exposed: boolean | null; rank: number | null };
     influencerTab: { exposed: boolean | null; rank: number | null };
     query: string | null;
+    candidates: string[];
     searchVolume: number | null;
     status: string;
     checkedAt: string | null;
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest) {
       viewTab: { exposed: r.view_exposed, rank: r.view_rank },
       influencerTab: { exposed: r.influencer_exposed, rank: r.influencer_rank },
       query: r.query,
+      candidates: r.search_candidates ?? (r.query ? [r.query] : []),
       searchVolume: r.search_volume,
       status: r.status,
       checkedAt: r.checked_at,

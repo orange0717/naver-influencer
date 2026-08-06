@@ -4,6 +4,8 @@ export interface MissingState {
   // 인플루언서탭은 checkInfluencer 요청 시에만 채워짐 — 미검사 데이터와 호환을 위해 optional
   influencerTab?: { exposed: boolean | null; rank: number | null };
   query?: string | null;
+  // 이번 검사에서 실제로 시도한 검색 후보 전체(제목 기반, 1~4개) — 상세 화면 표시용
+  candidates?: string[] | null;
   searchVolume?: number | null;
   status?: string;
   checkedAt?: string | null;

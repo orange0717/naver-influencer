@@ -68,15 +68,15 @@ function buildCauseAnalysis(mr?: PostMissingEntry): string[] {
   const missingAreas = areas.filter(a => a.exposed === false);
   const exposedAreas = areas.filter(a => a.exposed === true);
   if (missingAreas.length > 0 && missingAreas.length === checkedAreas.length) {
-    notes.push(`검사한 모든 영역(${missingAreas.map(a => a.label).join(', ')})에서 노출이 확인되지 않았습니다. 대표 키워드의 경쟁이 심하거나, 검색 결과 상위 30위 안에 들지 못했을 가능성이 있습니다.`);
+    notes.push(`검사한 모든 영역(${missingAreas.map(a => a.label).join(', ')})에서 노출이 확인되지 않았습니다. 제목 경쟁이 심하거나, 검색 결과 상위 30위 안에 들지 못했을 가능성이 있습니다.`);
   } else if (missingAreas.length > 0 && exposedAreas.length > 0) {
     notes.push(`${exposedAreas.map(a => a.label).join(', ')}에서는 노출되지만 ${missingAreas.map(a => a.label).join(', ')}에서는 확인되지 않았습니다. 탭별 검색 알고리즘 차이로 인한 결과일 수 있습니다.`);
   }
-  if (missingAreas.length > 0 && mr.query) {
-    notes.push(`표시된 대표 키워드 "${mr.query}"는 제목에서 자동으로 추출된 키워드입니다. 실제로는 다른 키워드로 검색되어 노출될 수 있으니, 아래에서 직접 키워드를 입력해 재검사해보세요.`);
+  if (missingAreas.length > 0 && mr.candidates && mr.candidates.length > 0) {
+    notes.push(`검사에 사용한 검색어: "${mr.candidates.join('", "')}" (포스팅 제목 기반). 실제 색인 반영이 늦어졌을 수 있으니 아래 "재검사" 버튼으로 다시 확인해보세요.`);
   }
   if (missingAreas.length > 0 && (mr.searchVolume == null || mr.searchVolume === 0)) {
-    notes.push('해당 키워드의 월간 검색량 데이터가 없습니다. 검색량이 매우 낮은 키워드는 순위 확인이 불안정할 수 있습니다.');
+    notes.push('해당 검색어의 월간 검색량 데이터가 없습니다. 검색량이 매우 낮으면 순위 확인이 불안정할 수 있습니다.');
   }
   if (notes.length === 0) notes.push('현재 노출 상태가 양호합니다.');
   return notes;
@@ -114,7 +114,6 @@ export default function MissingPostsSection() {
   const [areaFilter, setAreaFilter] = useState<AreaFilter>('all');
   const [sortBy, setSortBy] = useState<SortKey>('latest');
   const [detailPostId, setDetailPostId] = useState<string | null>(null);
-  const [detailKeyword, setDetailKeyword] = useState('');
   const [detailChecking, setDetailChecking] = useState(false);
   const [detailError, setDetailError] = useState('');
   const abortRef = useRef(false);
@@ -183,7 +182,7 @@ export default function MissingPostsSection() {
     fetchMissingState(profile.blogId);
   }, [profile, fetchCutoff, fetchPosts, fetchMissingState]);
 
-  const checkOne = useCallback(async (post: BlogPost): Promise<'ok' | 'failed'> => {
+  const checkOne = useCallback(async (post: BlogPost, opts?: { force?: boolean }): Promise<'ok' | 'failed'> => {
     if (!profile) return 'failed';
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -191,7 +190,7 @@ export default function MissingPostsSection() {
         const res = await fetch('/api/blog/check-missing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, checkInfluencer: true }),
+          body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, checkInfluencer: true, force: opts?.force }),
         });
         if (res.ok) {
           const data = await res.json();
@@ -204,28 +203,14 @@ export default function MissingPostsSection() {
     return 'failed';
   }, [profile]);
 
-  // 상세 패널에서 사용자가 직접 입력한 키워드로 강제 재검사 (자동 추출 키워드가 부정확할 때 사용)
-  const recheckWithKeyword = useCallback(async (post: BlogPost, keyword: string) => {
-    if (!profile) return;
-    const trimmed = keyword.trim();
-    if (!trimmed) { setDetailError('키워드를 입력하세요.'); return; }
+  // 상세 패널에서 포스팅 제목 기반으로 강제 재검사 (캐시 무시, 최신 노출 여부 재확인)
+  const recheckDetail = useCallback(async (post: BlogPost) => {
     setDetailChecking(true);
     setDetailError('');
-    try {
-      const res = await fetch('/api/blog/check-missing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, keyword: trimmed, checkInfluencer: true, force: true }),
-      });
-      if (!res.ok) { setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.'); return; }
-      const data = await res.json();
-      setMissingResults(prev => ({ ...prev, [post.id]: { ...data, status: 'ok', checkedAt: new Date().toISOString() } }));
-    } catch {
-      setDetailError('네트워크 오류가 발생했습니다.');
-    } finally {
-      setDetailChecking(false);
-    }
-  }, [profile]);
+    const result = await checkOne(post, { force: true });
+    if (result === 'failed') setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    setDetailChecking(false);
+  }, [checkOne]);
 
   const checkAll = async () => {
     if (!profile || posts.length === 0) return;
@@ -290,7 +275,7 @@ export default function MissingPostsSection() {
     }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      list = list.filter(p => p.title.toLowerCase().includes(q) || (missingResults[p.id]?.query || '').toLowerCase().includes(q));
+      list = list.filter(p => p.title.toLowerCase().includes(q));
     }
     const arr = [...list];
     if (sortBy === 'latest') arr.sort((a, b) => (parsePostDate(b.date)?.getTime() || 0) - (parsePostDate(a.date)?.getTime() || 0));
@@ -308,7 +293,6 @@ export default function MissingPostsSection() {
 
   const closeDetail = useCallback(() => {
     setDetailPostId(null);
-    setDetailKeyword('');
     setDetailError('');
   }, []);
 
@@ -334,7 +318,7 @@ export default function MissingPostsSection() {
       <GlassCard padding="sm" className="text-xs text-dim leading-relaxed">
         <p className="font-bold text-text mb-1">미노출 정의</p>
         <p>선택한 기간에 발행한 게시글 중 <b className="text-text">네이버 통합검색 · 네이버 블로그 · 네이버 인플루언서</b> 검색 결과에서 확인되지 않는 게시글입니다.</p>
-        <p className="mt-1">※ 제목 검색 · 대표 키워드 검색 · 본문 핵심 키워드 검색 기준 · 정상 수집된 게시글만 검사합니다.</p>
+        <p className="mt-1">※ 검색 기준은 항상 <b className="text-text">포스팅 제목</b>입니다. 제목이 길면 의미를 유지한 채 자연스럽게 분리한 검색어 여러 개로 확인하며, 그중 하나라도 노출되면 &apos;노출&apos;로 처리합니다. 정상 수집된 게시글만 검사합니다.</p>
         <p className="mt-1">※ 발행 후 {INDEXING_GRACE_HOURS}시간 이내 게시글은 네이버 색인 지연으로 인한 오탐을 막기 위해 미노출 집계·목록에서 제외합니다.
           {indexingWaitCount > 0 && <span className="text-accent font-semibold"> (현재 인덱싱 대기 중 {indexingWaitCount}개)</span>}
         </p>
@@ -378,7 +362,7 @@ export default function MissingPostsSection() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            placeholder="게시글 또는 대표 키워드 검색"
+            placeholder="게시글 제목 검색"
             className="px-3 py-1.5 rounded-lg border border-border bg-surface text-xs w-56" />
           <select value={areaFilter} onChange={e => setAreaFilter(e.target.value as AreaFilter)}
             className="px-3 py-1.5 rounded-lg border border-border bg-surface text-xs text-dim cursor-pointer">
@@ -420,13 +404,12 @@ export default function MissingPostsSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[1080px]">
+              <table className="w-full text-sm min-w-[980px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-left px-5 py-3 font-semibold">제목</th>
                     <th className="text-left px-3 py-3 font-semibold w-20">카테고리</th>
                     <th className="text-right px-3 py-3 font-semibold w-24">발행일</th>
-                    <th className="text-left px-3 py-3 font-semibold w-28">대표 키워드</th>
                     <th className="text-center px-2 py-3 font-semibold w-24">통합검색</th>
                     <th className="text-center px-2 py-3 font-semibold w-24">블로그</th>
                     <th className="text-center px-2 py-3 font-semibold w-24">인플루언서</th>
@@ -447,7 +430,6 @@ export default function MissingPostsSection() {
                         </td>
                         <td className="px-3 py-3.5 text-dim text-xs">{post.category || '—'}</td>
                         <td className="px-3 py-3.5 text-right text-dim text-xs">{post.date}</td>
-                        <td className="px-3 py-3.5 text-dim text-xs truncate max-w-[120px]" title={mr?.query || ''}>{mr?.query || '—'}</td>
                         <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.viewTab.exposed} /></td>
                         <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.blogTab.exposed} /></td>
                         <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.influencerTab?.exposed} /></td>
@@ -456,7 +438,7 @@ export default function MissingPostsSection() {
                         <td className="px-5 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => { setDetailPostId(post.id); setDetailKeyword(mr?.query || ''); setDetailError(''); }}
+                              onClick={() => { setDetailPostId(post.id); setDetailError(''); }}
                               className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer"
                             >
                               상세
@@ -480,7 +462,7 @@ export default function MissingPostsSection() {
                   <div key={post.id} className="p-4 space-y-2">
                     <p className="font-semibold text-sm truncate" title={post.title}>{post.title}</p>
                     <div className="flex items-center justify-between text-xs text-dim">
-                      <span>{post.category || '—'} · {mr?.query || '대표 키워드 —'}</span>
+                      <span>{post.category || '—'}</span>
                       <span>{post.date}</span>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -492,7 +474,7 @@ export default function MissingPostsSection() {
                       <StatusBadge mr={mr} isChecking={isChecking} />
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => { setDetailPostId(post.id); setDetailKeyword(mr?.query || ''); setDetailError(''); }}
+                          onClick={() => { setDetailPostId(post.id); setDetailError(''); }}
                           className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer"
                         >
                           상세
@@ -537,9 +519,16 @@ export default function MissingPostsSection() {
               ))}
             </div>
 
-            <div className="flex items-center justify-between text-xs text-dim bg-bg rounded-lg px-3 py-2 mb-4">
-              <span>대표 키워드: <b className="text-text">{detailMr?.query || '—'}</b></span>
-              <span>검색량: <b className="text-text">{detailMr?.searchVolume != null ? detailMr.searchVolume.toLocaleString() : '—'}</b></span>
+            <div className="text-xs text-dim bg-bg rounded-lg px-3 py-2 mb-4 space-y-1">
+              <p>검색 기준: <b className="text-text">포스팅 제목</b></p>
+              {detailMr?.candidates && detailMr.candidates.length > 0 && (
+                <p className="leading-relaxed">
+                  검색 후보: {detailMr.candidates.map((c, i) => (
+                    <span key={i} className="inline-block bg-surface border border-border rounded px-1.5 py-0.5 mr-1 mt-1 text-text">{c}</span>
+                  ))}
+                </p>
+              )}
+              <p>검색량: <b className="text-text">{detailMr?.searchVolume != null ? detailMr.searchVolume.toLocaleString() : '—'}</b></p>
             </div>
 
             {/* 원인 분석 */}
@@ -555,21 +544,13 @@ export default function MissingPostsSection() {
               </ul>
             </div>
 
-            {/* 키워드 직접 입력 재검사 */}
+            {/* 재검사 */}
             <div className="bg-bg rounded-lg p-3">
-              <p className="text-xs font-semibold mb-2">직접 키워드로 재검사</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={detailKeyword}
-                  onChange={e => setDetailKeyword(e.target.value)}
-                  placeholder="예: 강남 맛집 추천"
-                  disabled={detailChecking}
-                  className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-xs disabled:opacity-50"
-                />
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-dim">포스팅 제목 기준으로 다시 검사합니다.</p>
                 <button
-                  onClick={() => detailPost && recheckWithKeyword(detailPost, detailKeyword)}
-                  disabled={detailChecking || !detailKeyword.trim()}
+                  onClick={() => detailPost && recheckDetail(detailPost)}
+                  disabled={detailChecking}
                   className="px-3 py-2 bg-accent text-white font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs shrink-0"
                 >
                   {detailChecking ? '검사 중...' : '재검사'}

@@ -55,45 +55,73 @@ function stripParticles(word: string): string {
   return word;
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 검색어에서 제거할 클릭베이트/서식 노이즈 토큰 (예: "TOP3", "BEST5")
+const SEARCH_NOISE_RE = /\bTOP\s?\d*\b|\bBEST\s?\d*\b/gi;
+// 구분자로 쓰이는 특수문자 (예: "제목 | 부제목", "제목 - 부제목", "제목: 설명")
+const SEARCH_SEPARATOR_RE = /[|:\-~!?"'『』「」<>·•,.]/g;
+
 /**
- * 포스팅 제목에서 핵심 키워드 추출
- * - 블로그 이름/닉네임/displayName 제거
- * - 한국어 조사 분리 (블로그의→블로그, 미래는→미래)
- * - 복합어 분리
- * - 불용어 제거
- * - 핵심 명사 2~3개 추출
+ * 미노출 검사용 검색어 정제: 포스팅 제목을 그대로 검색하기 위한 최소 정제
+ * - 블로그 이름/닉네임 제거 (검색 결과가 본인 블로그명으로 오염되는 것 방지)
+ * - 대괄호/소괄호 주석([공지], (협찬) 등) 제거
+ * - 특수문자·구분자·클릭베이트 토큰(TOP3 등) 제거
+ * - 대표 키워드를 뽑지 않고 제목의 의미는 그대로 유지한다
  */
-function extractKeywords(title: string, blogId: string, displayName?: string): string {
+function cleanTitleForSearch(title: string, blogId: string, displayName?: string): string {
   let cleaned = title;
-  // 1. blogId + displayName + 닉네임 변형 제거
   const removePatterns = [blogId, blogId.replace(/[_-]/g, '')];
-  if (displayName && displayName.length >= 2) {
-    removePatterns.push(displayName);
-    if (displayName.length >= 4) {
-      removePatterns.push(displayName.slice(0, Math.ceil(displayName.length / 2)));
-    }
-  }
-  const suffixes = ['단상', '도서관', '지음', '블로그', '일기', '기록', '이야기', '스토리'];
+  if (displayName && displayName.length >= 2) removePatterns.push(displayName);
   for (const p of removePatterns) {
-    if (p.length >= 2) cleaned = cleaned.replace(new RegExp(p, 'gi'), ' ');
+    if (p.length >= 2) cleaned = cleaned.replace(new RegExp(escapeRegExp(p), 'gi'), ' ');
   }
-  for (const s of suffixes) {
-    if (displayName && cleaned.toLowerCase().includes(displayName.slice(0, 3).toLowerCase() + s)) {
-      cleaned = cleaned.replace(new RegExp(displayName.slice(0, 3) + s, 'gi'), ' ');
+  cleaned = cleaned.replace(/\[[^\]]*\]/g, ' ').replace(/\([^)]*\)/g, ' ');
+  cleaned = cleaned.replace(SEARCH_NOISE_RE, ' ').replace(SEARCH_SEPARATOR_RE, ' ');
+  cleaned = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ');
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * 제목 기반 검색 후보 생성 (미노출 검사 전용)
+ * - 1순위: 정제된 제목 전체 (대표 키워드가 아닌 실제 제목으로 검색)
+ * - 제목이 길어 정확도가 떨어질 수 있는 경우, 어절 단위로 자연스럽게 분리해 2~4개 후보 생성
+ * - 조사는 어절 단위로만 제거하고, 의미 있는 단어는 그대로 유지한다 (불용어 필터링 없음)
+ */
+function buildTitleSearchCandidates(title: string, blogId: string, displayName?: string): string[] {
+  const cleaned = cleanTitleForSearch(title, blogId, displayName);
+  const words = cleaned
+    .split(' ')
+    .filter(Boolean)
+    .map(w => (/^[가-힣]+$/.test(w) ? stripParticles(w) : w))
+    .filter(Boolean);
+
+  const fullQuery = words.join(' ');
+  const candidates: string[] = [];
+  if (fullQuery) candidates.push(fullQuery);
+
+  const MAX_QUERY_LEN = 25; // 이보다 길면 검색 정확도가 떨어질 수 있어 어절 단위로 분리
+  if (fullQuery.length > MAX_QUERY_LEN && words.length >= 2) {
+    const half = Math.ceil(words.length / 2);
+    const front = words.slice(0, half).join(' ');
+    const back = words.slice(half).join(' ');
+    if (front && front !== fullQuery) candidates.push(front);
+    if (back && back !== fullQuery && back !== front) candidates.push(back);
+
+    if (words.length >= 4) {
+      const twoThirds = Math.ceil((words.length * 2) / 3);
+      const frontShort = words.slice(0, twoThirds).join(' ');
+      if (frontShort && !candidates.includes(frontShort)) candidates.push(frontShort);
     }
   }
-  // 2. 괄호 제거
-  cleaned = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
-  // 3. 복합어 분리 (의미 단위가 붙어있는 경우만)
-  cleaned = cleaned.replace(/([가-힣]{2,})(명대사|명언|글귀|해석|도서관|지음|런칭|소식|업데이트|참여|강의|모집|발행)/g, '$1 $2');
-  // 4. 특수문자 제거 + 분리
-  const rawWords = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
-  // 5. 조사 제거 + 불용어 필터
-  const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
-  const words = rawWords
-    .map(w => /^[가-힣]+$/.test(w) ? stripParticles(w) : w)
-    .filter(w => w.length >= 1 && !stop.has(w) && !/^\d+$/.test(w) && !/^[a-zA-Z]$/.test(w));
-  return words.slice(0, 3).join(' ') || title.slice(0, 20);
+
+  if (candidates.length === 0) {
+    const rawFallback = title.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+    candidates.push((rawFallback || title).slice(0, 20));
+  }
+  return candidates.slice(0, 4);
 }
 
 /**
@@ -131,61 +159,39 @@ export async function POST(request: NextRequest) {
     let promise = inFlight.get(cacheKey);
     if (!promise) {
       promise = (async (): Promise<RankCheckResult> => {
-        // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 자동 추출
+        // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 포스팅 제목 전체(+분리 후보)로 검색
         const displayName = await getDisplayName(blogId);
-        let query: string;
-        if (keyword && keyword.trim()) {
-          query = keyword.trim();
-        } else {
-          query = extractKeywords(postTitle, blogId, displayName);
-        }
+        const candidates: string[] = keyword && keyword.trim()
+          ? [keyword.trim()]
+          : buildTitleSearchCandidates(postTitle, blogId, displayName);
+        const query = candidates[0];
 
         // 블로그탭 + 통합검색 + (사용자 지정 키워드 또는 checkInfluencer 명시 요청 시) 인플루언서탭 동시 확인
         // 인플루언서탭 확인은 네이버 요청이 추가로 3페이지 늘어나므로, 필요치 않은 호출(경쟁분석 등)엔 기본 비활성
         const hasKeyword = Boolean(keyword && keyword.trim()) || Boolean(checkInfluencer);
-        const [blogTabResult, viewTabResult, influencerTab] = await Promise.all([
+        const [blogTabResult, viewTabResult, influencerTabResult] = await Promise.all([
           checkBlogTab(query, blogId, postId || ''),
           checkViewTab(query, blogId, postId || ''),
           hasKeyword ? checkInfluencerTab(query, blogId, postId || '') : Promise.resolve({ exposed: false, rank: null }),
         ]);
         let blogTab = blogTabResult;
         let viewTab = viewTabResult;
+        let influencerTab = influencerTabResult;
 
-        // 폴백: 사용자 키워드가 아닌 경우 여러 쿼리 조합으로 재시도
-        if (!keyword && (!blogTab.exposed || !viewTab.exposed)) {
-          // 원본 제목에서 추가 후보 쿼리 생성
-          const fallbackCandidates: string[] = [];
-
-          // 후보 1: 단어 2개 (가장 긴 단어 2개 조합 — 더 구체적)
-          let cleaned = postTitle;
-          if (displayName && displayName.length >= 2) {
-            cleaned = cleaned.replace(new RegExp(displayName, 'gi'), ' ');
-          }
-          cleaned = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-          const stop = new Set(['의','에','를','을','이','가','는','은','와','과','도','로','으로','에서','에게','한','된','하는','있는','없는','대한','위한','통한','그리고','또는','하지만','그러나','때문에','그래서','관련','관련한','관련된','대해','대해서','과연','입장글','입장','TOP','VS','BEST','추천','정리','모음','총정리','후기','리뷰','비교','분석','방법','소개','안내','단상','지음','中','및','더','각','수','것','중','좋은','나쁜','많은','적은','새로운']);
-          const words2 = cleaned.split(/\s+/).filter((w: string) => w.length >= 2 && !stop.has(w) && !/^\d+$/.test(w));
-          const byLength = [...words2].sort((a, b) => b.length - a.length);
-          if (byLength.length >= 2) fallbackCandidates.push(byLength.slice(0, 2).join(' '));
-          if (byLength.length >= 1) fallbackCandidates.push(byLength[0]);
-
-          // 후보 2: 원본 제목 앞 30자
-          const rawTitle = postTitle.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-          if (rawTitle.length >= 4 && rawTitle !== query) {
-            fallbackCandidates.push(rawTitle.length > 30 ? rawTitle.slice(0, 30) : rawTitle);
-          }
-
-          for (const fb of fallbackCandidates) {
-            if (fb === query || fb.length < 2) continue;
-            if (blogTab.exposed && viewTab.exposed) break;
-            const [fbBlog, fbView] = await Promise.all([
-              !blogTab.exposed ? checkBlogTab(fb, blogId, postId || '') : Promise.resolve(blogTab),
-              !viewTab.exposed ? checkViewTab(fb, blogId, postId || '') : Promise.resolve(viewTab),
-            ]);
-            if (fbBlog.exposed) blogTab = fbBlog;
-            if (fbView.exposed) viewTab = fbView;
-            if (blogTab.exposed && viewTab.exposed) break;
-            await new Promise(r => setTimeout(r, 300));
-          }
+        // 후보가 여러 개면, 아직 미노출인 영역만 다음 후보로 순차 재시도 (하나라도 노출되면 그 결과를 채택)
+        for (let i = 1; i < candidates.length; i++) {
+          const allExposed = blogTab.exposed && viewTab.exposed && (!hasKeyword || influencerTab.exposed);
+          if (allExposed) break;
+          const cand = candidates[i];
+          const [cBlog, cView, cInf] = await Promise.all([
+            !blogTab.exposed ? checkBlogTab(cand, blogId, postId || '') : Promise.resolve(blogTab),
+            !viewTab.exposed ? checkViewTab(cand, blogId, postId || '') : Promise.resolve(viewTab),
+            (hasKeyword && !influencerTab.exposed) ? checkInfluencerTab(cand, blogId, postId || '') : Promise.resolve(influencerTab),
+          ]);
+          if (cBlog.exposed) blogTab = cBlog;
+          if (cView.exposed) viewTab = cView;
+          if (cInf.exposed) influencerTab = cInf;
+          await new Promise(r => setTimeout(r, 300));
         }
 
         // 검색량 조회 (순위 공식용)
@@ -196,6 +202,7 @@ export async function POST(request: NextRequest) {
           viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
           influencerTab: { exposed: influencerTab.exposed, rank: influencerTab.rank },
           query,
+          candidates,
           searchVolume,
           checkedAt: new Date().toISOString(),
         };
@@ -212,6 +219,7 @@ export async function POST(request: NextRequest) {
               post_id: String(postId),
               post_title: postTitle || null,
               query,
+              search_candidates: candidates,
               view_exposed: viewTab.exposed,
               view_rank: viewTab.rank,
               blog_exposed: blogTab.exposed,

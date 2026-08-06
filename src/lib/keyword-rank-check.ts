@@ -18,6 +18,8 @@ export type RankCheckResult = {
   viewTab: { exposed: boolean; rank: number | null };
   influencerTab: { exposed: boolean; rank: number | null };
   query: string;
+  // 이번 검사에서 실제로 시도한 검색 후보 전체(제목 기반, 1~4개) — 상세 화면 표시용. check-missing API에서만 채움
+  candidates?: string[];
   searchVolume: number;
   checkedAt: string;
 };
@@ -211,7 +213,7 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
  * 네이버 통합검색(VIEW) — 검색 결과 페이지 직접 파싱
  * data-cr-on="r=순위" 속성에서 네이버 공식 순위 추출
  */
-export async function checkViewTab(query: string, blogId: string, postId?: string): Promise<{
+export async function checkViewTab(query: string, blogId: string, postId?: string, maxPages: number = 3): Promise<{
   exposed: boolean;
   rank: number | null;
 }> {
@@ -223,7 +225,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   const postIdStr = String(postId);
   const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
-  for (let page = 1; page <= 3; page++) {
+  for (let page = 1; page <= maxPages; page++) {
     const start = (page - 1) * 10 + 1;
     const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
 
@@ -261,8 +263,8 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
         }
       }
 
-      // 2순위 폴백: webkr API 사용
-      if (seen.size === 0 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
+      // 2순위 폴백: webkr API 사용 (스크리닝 모드=maxPages 1페이지에선 API 쿼터 절약을 위해 건너뜀)
+      if (seen.size === 0 && maxPages > 1 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
         try {
           const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
           const apiRes = await fetch(apiUrl, {
@@ -294,10 +296,10 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
       continue;
     }
 
-    if (page < 3) await new Promise(r => setTimeout(r, 500));
+    if (page < maxPages) await new Promise(r => setTimeout(r, 500));
   }
 
-  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
+  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (${maxPages}페이지 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
   return { exposed: false, rank: null };
 }
 
