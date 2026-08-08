@@ -26,21 +26,15 @@ export interface SidebarGroup {
   items: SidebarItem[];
 }
 
-export const SIDEBAR_HOME: SidebarItem = { href: '/', label: '홈' };
+/** 홈(/) = N인플 AI (2026-08-08부터). KPI/블로그 분석은 /dashboard로 이동. */
+export const SIDEBAR_HOME: SidebarItem = { href: '/', label: 'N인플 AI' };
 
 export const SIDEBAR_GROUPS: SidebarGroup[] = [
-  {
-    label: 'N인플 AI',
-    icon: 'AI',
-    items: [
-      { label: '무엇을 도와드릴까요?', href: '/dashboard/ai-consultant', authOnly: true },
-    ],
-  },
   {
     label: '대시보드',
     icon: '블',
     items: [
-      { label: '블로그', href: '/#blog-analysis', authOnly: true },
+      { label: '블로그', href: '/dashboard#blog-analysis', authOnly: true },
       { label: '인플루언서', href: '/my', requiredPlan: 'influencer', authOnly: true },
     ],
   },
@@ -140,12 +134,18 @@ export const SIDEBAR_HIDDEN_PREFIXES = [
  * middleware.ts가 이 목록과 실제 서버측 차단 목록을 대조해, 사이드바에는
  * "회원 전용"으로 선언해놓고 정작 어디서도 막지 않는 누락을 개발 중 자동으로 잡아낸다.
  * (2026-07-21 /naver-mate-ranking, /my/blogger, /my/saved-keywords, /profile 누락 발견 계기로 추가)
+ *
+ * '/dashboard#blog-analysis' 처럼 경로+해시 조합인 href는 해시를 떼고 경로(`/dashboard`)만
+ * 감사 대상으로 삼는다 — 브라우저가 해시를 서버로 보내지 않아 middleware가 애초에 볼 수 없는
+ * 부분이기 때문. 해시를 뗀 결과가 '/'(홈)면 홈은 항상 게스트/회원 분기를 자체 처리하므로 제외한다.
  */
 export function getAllAuthOnlyHrefs(): string[] {
   const items = [...SIDEBAR_GROUPS.flatMap(g => g.items), ...SIDEBAR_FOOTER_LINKS];
-  return items
-    .filter(item => item.authOnly && item.href !== '#' && !item.href.startsWith('/#'))
-    .map(item => item.href);
+  const paths = items
+    .filter(item => item.authOnly && item.href !== '#')
+    .map(item => item.href.split('#')[0])
+    .filter(path => path !== '' && path !== '/');
+  return Array.from(new Set(paths));
 }
 
 /**
