@@ -304,7 +304,7 @@ export function GuestBlogAnalysis() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
 
       {/* ─── CTA 배너: 로그인 후 제공되는 기능 안내 ─── */}
       <div className="rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:p-6 text-center space-y-3">
@@ -341,7 +341,7 @@ export function GuestBlogAnalysis() {
       </div>
 
       {/* ─── 2. 대시보드 카드 (Empty State) ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {statCards.map((c, i) => (
           <AnimatedStatCard
             key={c.label}
@@ -358,14 +358,14 @@ export function GuestBlogAnalysis() {
       </div>
 
       {/* ─── 3. 블로그 방문자수 그래프 (Empty State) ─── */}
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-border/30 flex items-center justify-center text-dim">
+      <GlassCard padding="sm">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-border/30 flex items-center justify-center text-dim">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
           <h3 className="font-bold text-[15px]">블로그 방문자수</h3>
         </div>
-        <div className="flex items-center justify-center py-12 text-center">
+        <div className="flex items-center justify-center py-9 text-center">
           <p className="text-sm text-dim">데이터가 없습니다. 로그인 후 자동으로 분석됩니다.</p>
         </div>
       </GlassCard>

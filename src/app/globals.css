@@ -198,10 +198,10 @@ a:hover:not(.btn) {
   font-size: 30px;
 }
 .stat-value-stat {
-  font-size: 30px;
+  font-size: 26px;
 }
 .stat-desc {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
   color: #999;
   line-height: 1.4;

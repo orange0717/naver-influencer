@@ -40,7 +40,7 @@ function itemPadding(indent?: boolean) {
 /** 클릭 불가능한 소제목 — 그룹 내부 구간 구분용 (예: "리스트") */
 function NavHeading({ label }: { label: string }) {
   return (
-    <div className={`${itemPadding(false)} pr-3 pt-2 pb-1 text-[11px] font-bold text-dim/60 uppercase tracking-wide truncate`}>
+    <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[11px] font-bold text-dim/60 uppercase tracking-wide truncate`}>
       {label}
     </div>
   );
@@ -69,7 +69,7 @@ function NavLink({
 
   if (item.disabled) {
     return (
-      <span className={`flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
+      <span className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
         {item.label}
         <span className="ml-auto text-[10px] font-bold text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
       </span>
@@ -85,7 +85,7 @@ function NavLink({
           onNavigate();
           openGate(item.href);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-dim/60"><LockIcon /></span>
@@ -103,7 +103,7 @@ function NavLink({
           onNavigate();
           router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-accent"><LockIcon /></span>
@@ -115,7 +115,7 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-2 ${padding} pr-3 py-2 rounded-lg text-sm font-semibold border-l-2 transition-colors ${
+      className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] font-semibold border-l-2 transition-colors ${
         active
           ? 'bg-accent/15 text-accent border-accent'
           : 'text-dim border-transparent hover:text-text hover:bg-bg'
@@ -198,7 +198,7 @@ function SidebarContent({
 
   return (
     <>
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1.5">
         <NavLink
           item={SIDEBAR_HOME}
           active={SIDEBAR_HOME.href === activeHref}
@@ -215,7 +215,7 @@ function SidebarContent({
                 type="button"
                 onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
-                className="w-full flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide hover:bg-bg transition-colors cursor-pointer"
+                className="w-full flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide hover:bg-bg transition-colors cursor-pointer"
                 style={{ color: '#BF8888' }}
               >
                 <span className="truncate">{group.label}</span>
@@ -242,13 +242,13 @@ function SidebarContent({
         })}
       </nav>
       {showFooterLinks && (
-        <div className="border-t border-border p-3 space-y-0.5 shrink-0">
+        <div className="border-t border-border p-2.5 space-y-0.5 shrink-0">
           {visibleFooterLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={onNavigate}
-              className={`block px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`block px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
                 pathname.startsWith(link.href) ? 'text-accent' : 'text-dim hover:text-text'
               }`}
             >
@@ -295,8 +295,8 @@ export default function AppSidebar() {
     <>
       {/* ── 데스크탑 사이드바 ── */}
       <aside
-        className={`hidden lg:flex flex-col shrink-0 sticky top-16 h-[calc(100vh-4rem)] bg-surface border-r border-border transition-[width] duration-200 ${
-          collapsed ? 'w-14' : 'w-60'
+        className={`hidden lg:flex flex-col shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] bg-surface border-r border-border transition-[width] duration-200 ${
+          collapsed ? 'w-14' : 'w-56'
         }`}
       >
         {collapsed ? (
@@ -348,7 +348,7 @@ export default function AppSidebar() {
 
       {/* ── 모바일 오버레이 ── */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 top-16 z-40 flex flex-col bg-surface border-t border-border">
+        <div className="lg:hidden fixed inset-0 top-14 z-40 flex flex-col bg-surface border-t border-border">
           <SidebarContent
             pathname={pathname}
             currentPlan={currentPlan}

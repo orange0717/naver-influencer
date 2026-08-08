@@ -78,11 +78,10 @@ export default function AnimatedStatCard({
     dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
-  const heightClass = size === 'stat' ? 'h-[182px]' : 'h-[150px]';
+  const heightClass = size === 'stat' ? 'h-[136px]' : 'h-[150px]';
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
-  // KPI 카드(142px)는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
-  // 174px짜리 Statistics 카드 전용 여백(mb-3/min-h-28px/pt-2)을 그대로 쓰면 142px 안에 다 안 들어가
-  // 숫자 줄이 카드 테두리 밖으로 흘러넘치던 문제를 해결. (글자크기 상향 후에도 여유 있도록 카드 높이 +12~14px)
+  // KPI 카드는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
+  // Statistics 카드(size="stat")는 정보 밀도를 높이기 위해 136px로 압축 (2026-08-08).
   const isKpi = size === 'kpi';
 
   useEffect(() => {
@@ -123,21 +122,21 @@ export default function AnimatedStatCard({
         ${className}
       `}
     >
-      <div className={`flex items-start justify-between ${isKpi ? 'mb-2' : 'mb-3'} shrink-0`}>
-        <div className={`w-8 h-8 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
+      <div className="flex items-start justify-between mb-2 shrink-0">
+        <div className={`w-7 h-7 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
           {icon}
         </div>
         {sparklineData && sparklineData.length > 1 && (
           <Sparkline data={sparklineData} color={c.spark} />
         )}
       </div>
-      <p className={`stat-title ${isKpi ? 'mb-0.5' : 'mb-1'} shrink-0`}>{label}</p>
+      <p className="stat-title mb-0.5 shrink-0">{label}</p>
       {!isKpi && (
-        <p className="stat-desc line-clamp-2 min-h-[28px] shrink-0">
+        <p className="stat-desc line-clamp-2 min-h-[22px] shrink-0">
           {description || ' '}
         </p>
       )}
-      <div className={`mt-auto flex items-baseline gap-1.5 ${isKpi ? 'pt-1' : 'pt-2'} shrink-0`}>
+      <div className={`mt-auto flex items-baseline gap-1.5 ${isKpi ? 'pt-1' : 'pt-1.5'} shrink-0`}>
         <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
           {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
         </span>

@@ -308,7 +308,7 @@ export default function ClaudeChatClient() {
     : 'Claude Haiku 4.5 · 빠른 피드백 모드';
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-bg">
+    <div className="flex h-[calc(100vh-56px)] bg-bg">
       {/* ── 모바일 백드롭 ── */}
       {sidebarOpen && (
         <button
