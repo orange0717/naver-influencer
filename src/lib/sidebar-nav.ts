@@ -30,6 +30,13 @@ export const SIDEBAR_HOME: SidebarItem = { href: '/', label: '홈' };
 
 export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
+    label: 'N인플 AI',
+    icon: 'AI',
+    items: [
+      { label: '무엇을 도와드릴까요?', href: '/dashboard/ai-consultant', authOnly: true },
+    ],
+  },
+  {
     label: '대시보드',
     icon: '블',
     items: [
@@ -88,6 +95,14 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
       { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
       { label: '블로그 글 심층피드백', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
+      { label: '컬러 팔레트', href: '/dashboard/writing/color-palette' },
+    ],
+  },
+  {
+    label: '콘텐츠 분석',
+    icon: 'C',
+    items: [
+      { label: '유튜브 분석', href: '/dashboard/content/youtube', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {

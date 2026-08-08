@@ -196,6 +196,9 @@ export const googleOAuthLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 6
 /** 구글 색인등록: 공개 사이트맵 라우트(비인증, Google 크롤러가 호출) — IP당 1분 30회 */
 export const googleIndexingSitemapLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });
 
+/** 유튜브 콘텐츠 분석: Data API+자막+썸네일 팔레트+Claude Sonnet(무거운 호출) — 5분에 5회 */
+export const contentAnalysisLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
 /**
  * 전역 기본 API Rate Limiter (안전망) — 개별 라우트에 전용 limiter가 없는 경우를 위한 IP당 기본 상한.
  * 미들웨어(src/middleware.ts)에서 모든 /api/ 요청에 적용되며, 라우트 자체 limiter가 더 엄격하면
