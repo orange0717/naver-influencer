@@ -33,6 +33,12 @@ const ICONS = {
   rank: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
   ),
+  missing: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+  ),
+  challenge: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
+  ),
 };
 
 export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null }) {
@@ -49,7 +55,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
   if (isLoading) {
     return (
       <KpiGrid>
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
           <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-[150px] animate-pulse" />
         ))}
       </KpiGrid>
@@ -64,15 +70,17 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
     );
   }
 
-  const cards: { label: string; value: number; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim' }[] = [
+  const cards: { label: string; value: number; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim'; href?: string }[] = [
     { label: '오늘 방문자', value: data.todayVisitors, suffix: '명', icon: ICONS.visitor, color: 'accent' },
     { label: '30일 방문자', value: data.thirtyDayVisitors, suffix: '명', icon: ICONS.visitor, color: 'accent' },
     { label: '이웃수', value: data.neighborCount, suffix: '명', icon: ICONS.neighbor, color: 'accent' },
     { label: '발행 수', value: data.postCount, suffix: '개', icon: ICONS.post, color: 'accent' },
+    { label: '누락률', value: data.missingRate, suffix: '%', icon: ICONS.missing, color: data.missingRate > 0 ? 'down' : 'up', href: '/my/missing-posts' },
     { label: 'AI 브리핑 인용', value: data.aiBriefingCitedCount, suffix: '건', icon: ICONS.ai, color: data.aiBriefingCitedCount > 0 ? 'up' : 'dim' },
     { label: 'AI 탭 노출', value: data.aiTabExposedCount, suffix: '건', icon: ICONS.ai, color: data.aiTabExposedCount > 0 ? 'up' : 'dim' },
     { label: 'TOP10 키워드', value: data.top10KeywordCount, suffix: '개', icon: ICONS.keyword, color: data.top10KeywordCount > 0 ? 'gold' : 'dim' },
     { label: '평균 검색순위', value: data.avgRank ?? 0, suffix: '위', icon: ICONS.rank, color: 'accent' },
+    { label: '키워드챌린지 참여', value: data.challengeParticipatedCount, suffix: '개', icon: ICONS.challenge, color: data.challengeParticipatedCount > 0 ? 'gold' : 'dim', href: '/my' },
   ];
 
   return (
@@ -85,6 +93,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
           suffix={c.suffix}
           icon={c.icon}
           color={c.color}
+          href={c.href}
           delay={i * 40}
           size="kpi"
         />
