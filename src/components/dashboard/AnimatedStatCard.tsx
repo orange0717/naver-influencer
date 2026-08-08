@@ -78,11 +78,11 @@ export default function AnimatedStatCard({
     dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
-  const heightClass = size === 'stat' ? 'h-[136px]' : 'h-[150px]';
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
-  // KPI 카드는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
-  // Statistics 카드(size="stat")는 정보 밀도를 높이기 위해 136px로 압축 (2026-08-08).
   const isKpi = size === 'kpi';
+  // KPI 카드(홈 상단 요약바)는 고정 높이 150px 유지. Statistics 카드(size="stat", "발행·순위 통계"
+  // 3~6칸 그리드)는 콘텐츠 양과 무관하게 항상 정사각형이어야 해서 aspect-square로 전환 (2026-08-08).
+  const sizeClass = isKpi ? 'h-[150px]' : 'aspect-square';
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), delay);
@@ -107,13 +107,26 @@ export default function AnimatedStatCard({
     requestAnimationFrame(animate);
   }, [isVisible, value, decimals]);
 
+  const valueRow = (
+    <div className={`flex items-baseline gap-1.5 shrink-0 ${isKpi ? '' : 'justify-center'}`}>
+      <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
+        {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
+      </span>
+      {trend && trend.value !== 0 && (
+        <span className={`text-xs font-bold shrink-0 ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
+          {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}
+        </span>
+      )}
+    </div>
+  );
+
   const card = (
     <div
       ref={ref}
       className={`
-        ${heightClass} flex flex-col min-w-0
+        ${sizeClass} flex flex-col min-w-0
         bg-gradient-to-br ${c.bg} bg-surface
-        rounded-2xl border border-border p-4
+        rounded-2xl border border-border ${isKpi ? 'p-4' : 'p-3 sm:p-4'}
         shadow-xs
         transition-all duration-500 ease-out
         hover:-translate-y-0.5 hover:shadow-lg ${c.hoverBorder}
@@ -122,30 +135,33 @@ export default function AnimatedStatCard({
         ${className}
       `}
     >
-      <div className="flex items-start justify-between mb-2 shrink-0">
-        <div className={`w-7 h-7 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
-          {icon}
+      {isKpi ? (
+        <>
+          <div className="flex items-start justify-between mb-2 shrink-0">
+            <div className={`w-7 h-7 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
+              {icon}
+            </div>
+            {sparklineData && sparklineData.length > 1 && (
+              <Sparkline data={sparklineData} color={c.spark} />
+            )}
+          </div>
+          <p className="stat-title mb-0.5 shrink-0">{label}</p>
+          <div className="mt-auto pt-1">{valueRow}</div>
+        </>
+      ) : (
+        // 정사각형(aspect-square) 카드 — 상단 아이콘 / 중앙 제목·설명 / 하단 숫자로 균등 분배.
+        // justify-between이 콘텐츠 양과 무관하게 아이콘·숫자를 항상 같은 기준선에 고정시킨다.
+        <div className="flex-1 flex flex-col items-center justify-between text-center min-h-0">
+          <div className={`w-8 h-8 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
+            {icon}
+          </div>
+          <div className="flex flex-col items-center gap-1 px-1 min-w-0 w-full">
+            <p className="stat-title">{label}</p>
+            <p className="stat-desc line-clamp-2">{description || ' '}</p>
+          </div>
+          {valueRow}
         </div>
-        {sparklineData && sparklineData.length > 1 && (
-          <Sparkline data={sparklineData} color={c.spark} />
-        )}
-      </div>
-      <p className="stat-title mb-0.5 shrink-0">{label}</p>
-      {!isKpi && (
-        <p className="stat-desc line-clamp-2 min-h-[22px] shrink-0">
-          {description || ' '}
-        </p>
       )}
-      <div className={`mt-auto flex items-baseline gap-1.5 ${isKpi ? 'pt-1' : 'pt-1.5'} shrink-0`}>
-        <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
-          {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
-        </span>
-        {trend && trend.value !== 0 && (
-          <span className={`text-xs font-bold shrink-0 ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
-            {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}
-          </span>
-        )}
-      </div>
     </div>
   );
 
