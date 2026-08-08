@@ -1,12 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import MarketingSchoolCard from '@/components/MarketingSchoolCard';
 
 interface Recommendation {
   featureId: string;
   label: string;
   href: string;
   authOnly: boolean;
+  /** 네이버 비즈니스 스쿨처럼 N인플 밖 공식 사이트로 연결되는 항목 — 새 탭으로 열어야 한다.
+   *  optional인 이유: 이 필드 추가 이전에 저장된 "최근 분석" 이력에는 값이 없을 수 있음. */
+  external?: boolean;
   score: number;
   reason: string;
 }
@@ -164,6 +168,9 @@ export default function AiConsultantClient() {
         </div>
       )}
 
+      {/* AI 호출 없이 항상 노출 — 크레딧/로그인과 무관한 단순 외부 링크 안내 */}
+      {!result && !loading && <MarketingSchoolCard />}
+
       {loading && (
         <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-2xl">
           <div className="text-center">
@@ -204,12 +211,28 @@ export default function AiConsultantClient() {
                     </div>
                     <p className="text-xs text-dim leading-relaxed">{rec.reason}</p>
                   </div>
-                  <Link
-                    href={rec.href}
-                    className="shrink-0 px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition-colors"
-                  >
-                    이동
-                  </Link>
+                  {rec.external ? (
+                    <a
+                      href={rec.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${rec.label} 바로가기`}
+                      className="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition-colors"
+                    >
+                      바로가기
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M7 17L17 7" />
+                        <path d="M7 7h10v10" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <Link
+                      href={rec.href}
+                      className="shrink-0 px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition-colors"
+                    >
+                      이동
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>

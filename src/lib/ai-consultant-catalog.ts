@@ -11,6 +11,8 @@
  *  [[naver_influencer_multiplatform_content_analysis_vision]] 참고)
  */
 
+import { MARKETING_SCHOOL_URL } from '@/lib/external-links';
+
 export interface AiConsultantFeature {
   id: string;
   /** Claude에게 보여줄 설명 — 이 기능이 언제 유용한지 */
@@ -20,6 +22,8 @@ export interface AiConsultantFeature {
   href: string;
   /** 로그인 필요 여부 — 추천 카드에 "로그인 필요" 뱃지 표시용 */
   authOnly: boolean;
+  /** N인플 내부 페이지가 아니라 외부 공식 사이트로 연결되는 항목인지 — 새 탭으로 열어야 한다 */
+  external?: boolean;
 }
 
 export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
@@ -150,6 +154,16 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
     reasonHint: '이미지의 대표 색상과 어울리는 팔레트를 추출합니다',
     href: '/dashboard/writing/color-palette',
     authOnly: false,
+  },
+  {
+    id: 'marketing-school',
+    label: '네이버 비즈니스 스쿨',
+    toolDescription:
+      'N인플에는 자체 강의 콘텐츠가 없다. 특정 분석 도구가 아니라 마케팅/광고/콘텐츠 전반을 기초부터 체계적으로 "배우고" 싶어 하는 경우, 네이버가 직접 운영하는 공식 무료 교육 플랫폼 네이버 비즈니스 스쿨을 안내한다. "마케팅을 어디서 배워야 할지 모르겠다", "기초 강의 추천해달라", "공부하고 싶다" 같은 학습 의도 질문에 적합. 특정 키워드/글 하나에 대한 실행형 질문에는 다른 기능을 우선 추천할 것.',
+    reasonHint: '실무 중심 마케팅 교육은 네이버 비즈니스 스쿨에서 확인해보세요',
+    href: MARKETING_SCHOOL_URL,
+    authOnly: false,
+    external: true,
   },
 ];
 
