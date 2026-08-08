@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import BillingButton from '@/components/BillingButton';
 import { useAuth } from '@/hooks/useAuth';
@@ -46,32 +46,10 @@ const formatKRW = (v: number) => v.toLocaleString('ko-KR');
 
 export default function SubscribeClient() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { user } = useAuth();
   const isLoggedIn = !!user;
   const [callbackStatus, setCallbackStatus] = useState<'processing' | 'success' | 'error' | null>(null);
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
-  const [trialStarting, setTrialStarting] = useState(false);
-  const [trialError, setTrialError] = useState<string | null>(null);
-
-  async function startTrial() {
-    setTrialError(null);
-    setTrialStarting(true);
-    try {
-      const res = await fetch('/api/trial/start', { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setTrialError(data.error || '체험 시작에 실패했습니다. 잠시 후 다시 시도해주세요.');
-        return;
-      }
-      router.push('/my');
-      router.refresh();
-    } catch {
-      setTrialError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setTrialStarting(false);
-    }
-  }
 
   // 모바일 리다이렉트 콜백 처리 — Stage 6 빌링키 구현 후 재작성 예정
   useEffect(() => {
@@ -86,17 +64,13 @@ export default function SubscribeClient() {
   const influencerMonthly = period === 'monthly' ? null : Math.round(price.influencer / price.months);
   const periodBadge = PERIOD_OPTIONS.find((o) => o.value === period)?.badge;
 
-  // 데모 재시작 차단 — /subscribe?demo_used=1 로 리다이렉트되었을 때 안내
-  const isDemoUsed = searchParams.get('demo_used') === '1';
-  // 7일 무료체험(가입 회원) 종료 — /subscribe?trialEnded=1 로 리다이렉트되었을 때 안내
-  const isTrialEnded = searchParams.get('trialEnded') === '1';
-  // 체험을 한 번도 받아본 적 없는 회원 — /subscribe?trialOffer=1 로 리다이렉트되었을 때 옵트인 안내
-  const isTrialOffer = searchParams.get('trialOffer') === '1';
+  // PRO 전용 기능에 이용권 없이 접근 → /subscribe?needsPro=1 로 리다이렉트되었을 때 안내
+  const needsPro = searchParams.get('needsPro') === '1';
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
-      {/* 무료체험 시작 옵트인 안내 (한 번도 체험을 받아본 적 없는 회원) */}
-      {isTrialOffer && (
+      {/* PRO 이용권 필요 안내 */}
+      {needsPro && (
         <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 flex items-start gap-3">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent shrink-0 mt-0.5" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
@@ -104,43 +78,9 @@ export default function SubscribeClient() {
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <div className="flex-1">
-            <p className="text-sm font-bold text-accent">7일 무료체험을 시작해보세요.</p>
+            <p className="text-sm font-bold text-accent">이 기능은 PRO 이용권 전용입니다.</p>
             <p className="text-xs text-text/80 mt-1 leading-relaxed">
-              N인플의 모든 기능을 7일간 무료로 체험하실 수 있습니다.
-            </p>
-            {trialError && <p className="text-xs text-down mt-2">{trialError}</p>}
-            <div className="flex gap-2 mt-3">
-              <button
-                type="button"
-                onClick={startTrial}
-                disabled={trialStarting}
-                className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-bold hover:bg-accent-hover transition disabled:opacity-50"
-              >
-                {trialStarting ? '시작하는 중…' : '무료체험 시작하기'}
-              </button>
-              <a
-                href="#pricing"
-                className="px-4 py-2 rounded-lg border border-accent/30 text-accent text-xs font-bold hover:bg-accent/10 transition"
-              >
-                가격 안내 보기
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 회원 무료체험 종료 안내 */}
-      {isTrialEnded && (
-        <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 flex items-start gap-3">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent shrink-0 mt-0.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-accent">무료체험이 종료되었습니다.</p>
-            <p className="text-xs text-text/80 mt-1 leading-relaxed">
-              계속 이용하시려면 이용권을 구매해주세요.
+              대량 데이터·AI 분석이 필요한 기능이라 이용권 구매 후 이용할 수 있습니다.
             </p>
             <div className="flex gap-2 mt-3">
               <a
@@ -149,30 +89,7 @@ export default function SubscribeClient() {
               >
                 이용권 구매하기
               </a>
-              <a
-                href="#pricing"
-                className="px-4 py-2 rounded-lg border border-accent/30 text-accent text-xs font-bold hover:bg-accent/10 transition"
-              >
-                가격 안내 보기
-              </a>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 무료 체험 종료 안내 */}
-      {isDemoUsed && (
-        <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 flex items-start gap-3">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent shrink-0 mt-0.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <div>
-            <p className="text-sm font-bold text-accent">무료 체험 기간이 종료되었습니다</p>
-            <p className="text-xs text-text/80 mt-1 leading-relaxed">
-              이미 7일 무료 체험을 사용하셨습니다. 계속 이용하시려면 아래에서 이용권을 구독해주세요.
-            </p>
           </div>
         </div>
       )}

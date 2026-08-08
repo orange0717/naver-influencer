@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
-import { isRestrictedByUserId } from '@/lib/admin';
+import { isRestrictedByUserId, hasActivePaidPlanByUserId } from '@/lib/admin';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
 import { chatbookMessageLimiter, getClientIp } from '@/lib/rate-limit';
+import { requireFeatureAccess } from '@/lib/feature-gate';
 import { AI_CONSULTANT_CATALOG, getFeatureById } from '@/lib/ai-consultant-catalog';
 import { createServiceClient } from '@/lib/supabase-server';
 
@@ -104,23 +105,30 @@ ${AI_CONSULTANT_CATALOG.map((f) => `- id: ${f.id} / ${f.label}: ${f.toolDescript
 export async function POST(request: NextRequest) {
   if (AI_DISABLED) return aiDisabledResponse();
 
+  // 2026-08-08 프리미엄 모델 전환: 로그인 없이도 하루 5회 무료 풀로 체험 가능.
+  // 로그인 사용자는 회원 무료 풀(10회) 또는 PRO 이용권 무제한.
   let authUser;
   try {
     authUser = await getAuthUser(request);
   } catch {
     authUser = null;
   }
-  if (!authUser) {
-    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-  }
-  if (await isRestrictedByUserId(authUser.userId)) {
+  if (authUser && (await isRestrictedByUserId(authUser.userId))) {
     return NextResponse.json({ error: '이용이 제한된 계정입니다.' }, { status: 403 });
   }
 
   const ip = getClientIp(request);
-  if (await chatbookMessageLimiter.check(`ai-consultant:${authUser.userId}:${ip}`)) {
+  if (await chatbookMessageLimiter.check(`ai-consultant:${authUser?.userId ?? 'anon'}:${ip}`)) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
   }
+
+  const isPro = authUser ? await hasActivePaidPlanByUserId(authUser.userId) : false;
+  const gate = await requireFeatureAccess(request, {
+    actionId: 'ai_consultant',
+    userId: authUser?.userId ?? null,
+    isPro,
+  });
+  if (!gate.ok) return gate.response;
 
   let body: { query?: string };
   try {
@@ -186,23 +194,26 @@ export async function POST(request: NextRequest) {
 
     const interpretation = (input.interpretation || '').slice(0, 500);
 
-    // 이력 저장 (실패해도 사용자 응답 자체는 막지 않음 — "최근 분석" 목록에만 안 남을 뿐)
+    // 이력 저장 (로그인 사용자만 — user_id 필수 컬럼. 비회원 호출은 "최근 분석" 목록에 안 남을 뿐
+    // 응답 자체는 동일하게 받는다. 실패해도 사용자 응답은 막지 않는다.)
     let savedId: string | null = null;
-    try {
-      const supabase = createServiceClient();
-      const { data: saved } = await supabase
-        .from('ai_consultant_queries')
-        .insert({
-          user_id: authUser.userId,
-          query,
-          interpretation,
-          recommendations,
-        })
-        .select('id')
-        .single();
-      savedId = saved?.id ?? null;
-    } catch (saveErr) {
-      console.error('[ai-consultant] history save failed:', saveErr instanceof Error ? saveErr.message : saveErr);
+    if (authUser) {
+      try {
+        const supabase = createServiceClient();
+        const { data: saved } = await supabase
+          .from('ai_consultant_queries')
+          .insert({
+            user_id: authUser.userId,
+            query,
+            interpretation,
+            recommendations,
+          })
+          .select('id')
+          .single();
+        savedId = saved?.id ?? null;
+      } catch (saveErr) {
+        console.error('[ai-consultant] history save failed:', saveErr instanceof Error ? saveErr.message : saveErr);
+      }
     }
 
     return NextResponse.json({ id: savedId, interpretation, recommendations });

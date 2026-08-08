@@ -496,11 +496,10 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 구독 기간 요약 카드 (가입일 / 구독 만료까지) */}
+      {/* 이용 기간 요약 카드 (가입일 / 이용권 만료까지) */}
       <UsagePeriodCard
         userCreatedAt={user.created_at}
         subscriptionExpiresAt={user.subscription_expires_at}
-        trialStartedTs={null}
       />
 
       {/* 구독 등급 */}

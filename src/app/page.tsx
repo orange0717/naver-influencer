@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createRouteHandlerClient, createServiceClient, getUserWithTimeout, hasSupabaseAuthCookie } from '@/lib/supabase-server';
+import { createRouteHandlerClient, createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
-import DemoFloatingButton from '@/components/DemoFloatingButton';
 import TrialBanner from '@/components/TrialBanner';
 import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
@@ -65,9 +64,6 @@ export default async function HomePage() {
 
   const isLoggedIn = !!authUser || !!demoNaverId;
   const isInfluencerNoBlogId = !!authUser && !!profileResult?.linked_influencer_id && !profileResult?.blog_id;
-  /** getUserWithTimeout 타임아웃으로 로그인 판정이 불확실한 경우, 세션 쿠키가 남아있으면
-   *  실제로는 로그인 중일 수 있으므로 데모 유도 버튼은 노출하지 않는다. */
-  const isConfirmedGuest = !isLoggedIn && !(await hasSupabaseAuthCookie());
 
   return (
     <>
@@ -112,8 +108,6 @@ export default async function HomePage() {
           </section>
         </div>
       )}
-      {/* 데모 = 비로그인 사용자만 노출 (가입한 회원은 데모 필요 없음) */}
-      {isConfirmedGuest && <DemoFloatingButton />}
     </>
   );
 }
