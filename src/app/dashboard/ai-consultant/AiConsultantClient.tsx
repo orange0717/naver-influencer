@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import MarketingSchoolCard from '@/components/MarketingSchoolCard';
+import { AI_CONSULTANT_CATALOG } from '@/lib/ai-consultant-catalog';
 
 interface Recommendation {
   featureId: string;
@@ -28,15 +29,11 @@ interface RecentQuery {
   created_at: string;
 }
 
-// 카테고리 칩 — "정보 찾아줘" 처럼 아직 없는 기능(도서/기사/영상 자료조사)도 예시 문장은 보여주되,
-// 실제로는 기존 카탈로그(src/lib/ai-consultant-catalog.ts) 안에서만 추천이 나온다.
-// 자료조사 전용 기능 자체는 아직 구현 전 — AI가 관련도 낮음/추천 없음으로 응답할 수 있음.
-const SUGGESTED_CATEGORIES: { chip: string; query: string }[] = [
-  { chip: '정보 찾아줘', query: '나미야 잡화점의 기적에 대한 블로그 글을 쓰려고 하는데 자료를 찾아줘' },
-  { chip: '마케팅 분석', query: '천안 미용실 마케팅을 어떻게 해야 할지 모르겠어요' },
-  { chip: '콘텐츠 분석', query: '블로그 글을 썼는데 왜 노출이 안 될까요?' },
-  { chip: '키워드 분석', query: '어떤 키워드로 글을 써야 할지 모르겠어요' },
-];
+// "추천 분석" 칩 = N인플에 이미 만들어진 기능 전체 목록 (src/lib/ai-consultant-catalog.ts 그대로 재사용).
+// AI에게 물어보지 않고 바로 해당 기능 페이지로 이동하는 직행 바로가기 — 카탈로그에 기능이 추가되면
+// 이 목록도 자동으로 늘어난다. 외부 링크(네이버 비즈니스 스쿨)는 아래 MarketingSchoolCard가 이미
+// 전용 카드로 안내하고 있어 중복을 피하려고 제외.
+const FEATURE_SHORTCUTS = AI_CONSULTANT_CATALOG.filter((f) => !f.external);
 
 export default function AiConsultantClient() {
   const [input, setInput] = useState('');
@@ -107,8 +104,15 @@ export default function AiConsultantClient() {
     setActiveRecentId(null);
   };
 
+  // 결과/로딩/에러가 없는 초기 화면은 ChatGPT·Claude처럼 화면 중앙에 오도록,
+  // 질문을 하고 나면(결과가 생기면) 다시 일반적인 위→아래 흐름으로 전환한다.
+  const isIdle = !result && !loading && !error;
+
+  // 헤더(56px) + 페이지 상하 여백을 뺀 나머지 뷰포트 안에서 정중앙에 오도록.
+  // 65vh는 화면 위쪽 65%에서만 중앙 정렬돼 오히려 위로 쏠려 보였음 (2026-08-08).
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className={isIdle ? 'min-h-[calc(100dvh-8rem)] flex flex-col justify-center' : ''}>
+    <div className="max-w-2xl mx-auto w-full space-y-6">
       <div className="flex items-center justify-between gap-3 pt-2">
         <div className="text-center flex-1 space-y-1.5">
           <h1 className="font-title text-2xl font-bold text-text">N인플 AI</h1>
@@ -150,19 +154,16 @@ export default function AiConsultantClient() {
 
       {!result && !loading && (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-dim">추천 분석</p>
+          <p className="text-xs font-bold text-dim">추천 분석 — N인플 기능 바로가기</p>
           <div className="flex flex-wrap gap-2">
-            {SUGGESTED_CATEGORIES.map((c) => (
-              <button
-                key={c.chip}
-                onClick={() => {
-                  setInput(c.query);
-                  runConsult(c.query);
-                }}
-                className="px-3.5 py-2 rounded-full border border-border bg-surface text-xs text-text hover:border-accent hover:text-accent transition-colors cursor-pointer"
+            {FEATURE_SHORTCUTS.map((f) => (
+              <Link
+                key={f.id}
+                href={f.href}
+                className="px-3.5 py-2 rounded-full border border-border bg-surface text-xs text-text hover:border-accent hover:text-accent transition-colors"
               >
-                {c.chip}
-              </button>
+                {f.label}
+              </Link>
             ))}
           </div>
         </div>
@@ -260,6 +261,7 @@ export default function AiConsultantClient() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

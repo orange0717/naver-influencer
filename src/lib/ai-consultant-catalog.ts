@@ -52,6 +52,14 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
     authOnly: false,
   },
   {
+    id: 'keyword-ranking',
+    label: '키워드 순위',
+    toolDescription: '저장해둔 내 키워드들의 검색 순위 추이를 추적한다. "내 키워드 순위가 궁금하다", "순위가 올랐는지 확인하고 싶다" 질문에 적합.',
+    reasonHint: '저장한 키워드의 순위 변화를 추적합니다',
+    href: '/my/keyword-ranking',
+    authOnly: true,
+  },
+  {
     id: 'content-angles',
     label: '글감 찾기',
     toolDescription: '키워드 하나로 사람들이 궁금해하는 질문과 글감 아이디어를 찾는다. "무슨 글을 써야 할지 모르겠다" 질문에 적합.',
@@ -130,6 +138,14 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
     reasonHint: '경쟁 인플루언서의 순위와 프로필을 보여줍니다',
     href: '/influencers',
     authOnly: false,
+  },
+  {
+    id: 'topics',
+    label: '토픽 발행',
+    toolDescription: '네이버 인플루언서 토픽을 발행하고 관리한다. "토픽을 어떻게 발행하나요", "토픽 발행 현황이 궁금하다" 질문에 적합.',
+    reasonHint: '토픽 발행 현황을 확인하고 새 토픽을 발행합니다',
+    href: '/topics',
+    authOnly: true,
   },
   {
     id: 'keyword-challenge',

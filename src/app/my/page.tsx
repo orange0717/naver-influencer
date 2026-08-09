@@ -855,7 +855,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>}
           color={missingSummary.totalChecked === 0 ? 'dim' : missingSummary.rate > 0 ? 'down' : 'up'}
           delay={60}
-          href="/#blog-analysis"
+          href="/dashboard#blog-analysis"
         />
         <AnimatedStatCard
           size="stat"

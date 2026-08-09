@@ -303,7 +303,7 @@ export default function PostAnalysisPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-      <Link href="/#blog-analysis" className="inline-flex items-center gap-1 text-xs font-semibold text-dim hover:text-accent transition">
+      <Link href="/dashboard#blog-analysis" className="inline-flex items-center gap-1 text-xs font-semibold text-dim hover:text-accent transition">
         ← 블로그 분석 대시보드로
       </Link>
       {/* 헤더 */}

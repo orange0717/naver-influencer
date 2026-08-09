@@ -1,11 +1,9 @@
-import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient, createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
+import { redirect } from 'next/navigation';
 import TrialBanner from '@/components/TrialBanner';
-import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
-import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
-import BlogConnectCta from '@/components/home/BlogConnectCta';
+import AiConsultantClient from '@/app/dashboard/ai-consultant/AiConsultantClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +13,12 @@ export const metadata = {
   alternates: { canonical: 'https://ninfle.kr/' },
 };
 
+/**
+ * 홈(/) — 2026-08-09부터 "N인플 AI"가 비회원·회원 공통 메인 화면.
+ * 예전 KPI 대시보드 + 블로그 분석은 /dashboard로 이동 (src/app/dashboard/page.tsx).
+ * 비로그인 게스트도 동일한 AI 컨설턴트를 보고, 하루 5회 무료 풀로 바로 체험한다
+ * (API 쪽 게이팅은 src/app/api/ai-consultant/route.ts의 requireFeatureAccess가 담당).
+ */
 export default async function HomePage() {
   const supabaseAuth = await createRouteHandlerClient();
   const authUser = await getUserWithTimeout(supabaseAuth);
@@ -24,7 +28,7 @@ export default async function HomePage() {
   const isDemo = !authUser && cookieStore.get('demo_mode')?.value === 'true';
   const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
 
-  // 로그인/데모 유저 중 제한 사용자만 /subscribe로 분기. 비로그인은 게스트 대시보드 노출.
+  // 로그인/데모 유저 중 제한 사용자만 /subscribe로 분기. 비로그인은 게스트 랜딩 노출.
   if (authUser) {
     const ctx = await getPaywallContext(authUser.id, authUser.email);
     if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
@@ -44,27 +48,6 @@ export default async function HomePage() {
     }
   }
 
-  const supabase = createServiceClient();
-
-  const fetchProfile = async () => {
-    if (!authUser) return null;
-    try {
-      const { data } = await supabase
-        .from('users')
-        .select('id, nickname, blog_id, linked_influencer_id, subscription_plan, subscription_expires_at')
-        .eq('auth_id', authUser.id)
-        .maybeSingle();
-      return data;
-    } catch {
-      return null;
-    }
-  };
-
-  const profileResult = await fetchProfile();
-
-  const isLoggedIn = !!authUser || !!demoNaverId;
-  const isInfluencerNoBlogId = !!authUser && !!profileResult?.linked_influencer_id && !profileResult?.blog_id;
-
   return (
     <>
       {/* 데모 사용자에게 잔여일 안내 (CTA 없이 안내만) */}
@@ -73,41 +56,9 @@ export default async function HomePage() {
           <TrialBanner isDemo />
         </div>
       )}
-      {!isLoggedIn ? (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          <section id="blog-analysis" className="scroll-mt-24 pt-4">
-            <BlogAnalysisSection />
-          </section>
-        </div>
-      ) : (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          {/* 섹션 바로가기 탭 — 메뉴 이동 없이 한 화면에서 스크롤 이동 */}
-          <nav className="pt-4">
-            <div className="flex items-center gap-1.5 overflow-x-auto">
-              {[
-                { href: '#dashboard-summary', label: 'KPI 요약' },
-                { href: '#blog-analysis', label: '블로그 분석' },
-              ].map(t => (
-                <a
-                  key={t.href}
-                  href={t.href}
-                  className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface border border-border text-dim hover:text-accent hover:border-accent transition"
-                >
-                  {t.label}
-                </a>
-              ))}
-            </div>
-          </nav>
-
-          <section id="dashboard-summary" className="scroll-mt-24 space-y-3">
-            <h2 className="text-sm font-bold text-text px-1">KPI 요약</h2>
-            <BlogDashboardKpiBar blogId={profileResult?.blog_id ?? null} />
-          </section>
-          <section id="blog-analysis" className="scroll-mt-24">
-            {isInfluencerNoBlogId ? <BlogConnectCta /> : <BlogAnalysisSection />}
-          </section>
-        </div>
-      )}
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <AiConsultantClient />
+      </div>
     </>
   );
 }

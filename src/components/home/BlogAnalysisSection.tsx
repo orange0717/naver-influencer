@@ -709,17 +709,22 @@ export default function BlogAnalysisSection() {
               </div>
             </div>
           </div>
-          <AnimatedStatCard
-            size="stat"
-            label="품질점수"
-            value={scoreData?.total_score ?? 0}
-            suffix="점"
-            placeholder="—"
-            description={scoreData ? `${scoreData.grade}등급 · 전체 ${scoreData.totalBloggers}명 중 ${scoreData.rank}위` : '분석 중'}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
-            color={!scoreData ? 'dim' : scoreData.total_score >= 80 ? 'up' : scoreData.total_score >= 50 ? 'accent' : 'down'}
-            delay={350}
-          />
+          {/* 7번째(마지막) 카드 — 2/3/6칸 그리드에서 나눠떨어지지 않고 혼자 다음 줄로 밀려나 왼쪽에
+              붙어버리는 문제. 이 카드만 그리드 한 행 전체를 차지시키고 그 안에서 가운데 정렬한다. */}
+          <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-6 flex justify-center">
+            <AnimatedStatCard
+              size="stat"
+              label="품질점수"
+              value={scoreData?.total_score ?? 0}
+              suffix="점"
+              placeholder="—"
+              description={scoreData ? `${scoreData.grade}등급 · 전체 ${scoreData.totalBloggers}명 중 ${scoreData.rank}위` : '분석 중'}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
+              color={!scoreData ? 'dim' : scoreData.total_score >= 80 ? 'up' : scoreData.total_score >= 50 ? 'accent' : 'down'}
+              delay={350}
+              className="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(25%-0.5625rem)] lg:w-[calc(16.666%-0.625rem)]"
+            />
+          </div>
         </div>
       </DashboardCard>
 
