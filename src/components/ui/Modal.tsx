@@ -105,17 +105,27 @@ export default function Modal({
       document.body.style.overflow = 'hidden';
     }
 
-    if (autoFocusFirstInput) {
-      container?.querySelector<HTMLElement>('input')?.focus();
-    }
-
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       if (lockBodyScroll && prevOverflow !== undefined) {
         document.body.style.overflow = prevOverflow;
       }
     };
-  }, [open, onClose, closeOnEscape, trapFocus, lockBodyScroll, autoFocusFirstInput]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onClose/closeOnEscape 등은
+    // 부모에서 매 렌더 재생성되는 콜백일 수 있어(예: AuthModal의 handleClose) deps에 넣으면
+    // 매 리렌더(=매 키 입력)마다 effect가 재실행되어 버린다. open 전환 시에만 리스너를
+    // (재)등록하면 충분하고, 콜백들은 클로저로 최신 값을 참조하지 않아도 되는 값들이 아니라
+    // 실제로는 이 effect 내부에서만 쓰이므로 open 하나로 충분하다.
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !autoFocusFirstInput) return;
+    // 모달이 "열릴 때" 한 번만 첫 input에 포커스한다. open 이외의 값(예: onClose)에
+    // 의존하면 부모 리렌더마다(폼 입력 등으로 인한 매 키 입력마다) 다시 실행되어
+    // 사용자가 타이핑 중인 필드에서 포커스를 첫 input으로 강제로 되돌려 버린다.
+    containerRef.current?.querySelector<HTMLElement>('input')?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 
