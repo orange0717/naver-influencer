@@ -60,7 +60,7 @@ function FirstVisitModalInner() {
       overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
       <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-bg rounded-2xl border border-border shadow-xl w-full max-w-md p-8">
+      <div className="relative bg-bg rounded-lg border border-border shadow-xl w-full max-w-md p-8">
           <div className="text-center mb-6">
             <span className="inline-block px-4 py-1.5 bg-accent/10 text-accent text-xs font-bold rounded-full">
               처음 방문

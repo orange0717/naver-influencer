@@ -387,7 +387,7 @@ export default function ChatbookClient() {
                 {myCharacters.map((c) => (
                   <div
                     key={c.id}
-                    className="relative group rounded-2xl border border-border bg-surface hover:border-accent hover:shadow-md transition-all"
+                    className="relative group rounded-lg border border-border bg-surface hover:border-accent hover:shadow-md transition-all"
                     style={{ borderTop: `3px solid ${c.accent_color || '#BF8C80'}` }}
                   >
                     <button
@@ -435,7 +435,7 @@ export default function ChatbookClient() {
                   key={c.id}
                   type="button"
                   onClick={() => openCharacter(c)}
-                  className="group rounded-2xl border border-border bg-surface hover:border-accent hover:shadow-md transition-all p-4 text-left flex flex-col gap-2"
+                  className="group rounded-lg border border-border bg-surface hover:border-accent hover:shadow-md transition-all p-4 text-left flex flex-col gap-2"
                   style={{ borderTop: `3px solid ${c.accent_color || '#BF8C80'}` }}
                 >
                   <div className="text-center pt-1">
@@ -501,7 +501,7 @@ export default function ChatbookClient() {
         </>
       ) : (
         /* 채팅 패널 */
-        <div className="rounded-2xl border border-border bg-surface overflow-hidden flex flex-col" style={{ minHeight: '540px' }}>
+        <div className="rounded-lg border border-border bg-surface overflow-hidden flex flex-col" style={{ minHeight: '540px' }}>
           {/* 상단 바 */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background/40">
             <button
@@ -527,7 +527,7 @@ export default function ChatbookClient() {
             {messages.map((m, idx) => (
               <div
                 key={m.id || idx}
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                className={`max-w-[80%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words ${
                   m.role === 'user'
                     ? 'ml-auto bg-accent text-white rounded-br-sm'
                     : 'mr-auto bg-background/60 text-foreground border border-border rounded-bl-sm'
@@ -580,7 +580,7 @@ export default function ChatbookClient() {
           onClick={() => !creating && setShowCreateModal(false)}
         >
           <div
-            className="bg-surface border border-border rounded-2xl shadow-xl w-full max-w-md p-6"
+            className="bg-surface border border-border rounded-lg shadow-xl w-full max-w-md p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-foreground mb-1">새 캐릭터 만들기</h3>

@@ -114,7 +114,7 @@ export default function UpdateBanner() {
   );
 
   return (
-    <div className="relative bg-gradient-to-r from-accent/[0.08] to-accent/[0.03] border-b border-accent/15">
+    <div className="relative bg-accent/[0.05] border-b border-accent/15">
       {bannerHref ? (
         <Link href={bannerHref} className="block hover:bg-accent/[0.05] transition-colors">
           {inner}

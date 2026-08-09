@@ -71,7 +71,7 @@ export default function SubscribeClient() {
     <div className="max-w-5xl mx-auto space-y-10">
       {/* PRO 이용권 필요 안내 */}
       {needsPro && (
-        <div className="bg-accent/10 border border-accent/30 rounded-2xl p-5 flex items-start gap-3">
+        <div className="bg-accent/10 border border-accent/30 rounded-lg p-5 flex items-start gap-3">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent shrink-0 mt-0.5" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
@@ -96,19 +96,19 @@ export default function SubscribeClient() {
 
       {/* 콜백 상태 */}
       {callbackStatus === 'processing' && (
-        <div className="bg-surface rounded-2xl border border-border p-8 text-center">
+        <div className="bg-surface rounded-lg border border-border p-8 text-center">
           <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-dim">결제를 확인하고 있습니다...</p>
         </div>
       )}
       {callbackStatus === 'success' && (
-        <div className="bg-up/10 rounded-2xl border border-up/30 p-8 text-center">
+        <div className="bg-up/10 rounded-lg border border-up/30 p-8 text-center">
           <p className="text-sm text-up font-bold">결제가 완료되었습니다. 이용권이 활성화되었습니다.</p>
           <Link href="/my" className="text-xs text-accent mt-2 inline-block hover:underline">대시보드로 이동</Link>
         </div>
       )}
       {callbackStatus === 'error' && (
-        <div className="bg-down/10 rounded-2xl border border-down/30 p-8 text-center">
+        <div className="bg-down/10 rounded-lg border border-down/30 p-8 text-center">
           <p className="text-sm text-down font-bold">결제 확인에 실패했습니다. 관리자에게 문의해주세요.</p>
         </div>
       )}
@@ -145,7 +145,7 @@ export default function SubscribeClient() {
       {/* 플랜 카드 */}
       <div id="pricing" className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* 무료 */}
-        <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
+        <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
           <div>
             <p className="text-xs text-dim font-semibold">FREE</p>
             <div className="flex items-baseline gap-1 mt-1">
@@ -172,7 +172,7 @@ export default function SubscribeClient() {
         </div>
 
         {/* 예비 인플루언서 */}
-        <div className="bg-surface rounded-2xl border-2 border-accent p-6 space-y-5 relative">
+        <div className="bg-surface rounded-lg border-2 border-accent p-6 space-y-5 relative">
           <div className="absolute -top-3 left-6 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full">
             추천
           </div>
@@ -217,7 +217,7 @@ export default function SubscribeClient() {
         </div>
 
         {/* 인플루언서 */}
-        <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
+        <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
           <div>
             <p className="text-xs text-accent font-semibold">INFLUENCER</p>
             <div className="flex items-baseline gap-1 mt-1">
@@ -259,7 +259,7 @@ export default function SubscribeClient() {
         </div>
 
         {/* 기업 */}
-        <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
+        <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
           <div>
             <p className="text-xs text-dim font-semibold">기업</p>
             <div className="flex items-baseline gap-1 mt-1">
@@ -290,7 +290,7 @@ export default function SubscribeClient() {
       </div>
 
       {/* 기능과 스펙 비교표 */}
-      <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
+      <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
         <div className="space-y-1">
           <h2 className="text-base font-bold">기능과 스펙</h2>
           <p className="text-xs text-dim">플랜별 제공 기능을 한눈에 비교하세요</p>
@@ -469,7 +469,7 @@ export default function SubscribeClient() {
       </div>
 
       {/* 환불 정책 */}
-      <div className="bg-surface rounded-2xl border border-border p-6 space-y-3">
+      <div className="bg-surface rounded-lg border border-border p-6 space-y-3">
         <h2 className="text-sm font-bold">환불 정책</h2>
         <ul className="space-y-1.5 text-xs text-dim leading-relaxed">
           <li>- 구매일로부터 7일 이내 미이용 시 전액 환불</li>

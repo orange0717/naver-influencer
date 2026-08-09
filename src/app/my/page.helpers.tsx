@@ -44,7 +44,7 @@ export function GuestDashboard() {
   return (
     <div className="space-y-10">
       {/* ─── 로그인 유도 배너 ─── */}
-      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-6">
+      <div className="rounded-lg border border-accent/20 bg-accent/5 p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1.5">
             <h1 className="font-title text-lg lg:text-xl font-bold text-text">내 대시보드</h1>
@@ -72,7 +72,7 @@ export function GuestDashboard() {
       {/* ─── 빈 상태 통계 카드 (레이아웃 미리보기) ─── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {placeholderStats.map((c) => (
-          <div key={c.label} className="h-[142px] flex flex-col bg-surface rounded-2xl border border-border shadow-xs p-5">
+          <div key={c.label} className="h-[142px] flex flex-col bg-surface rounded-lg border border-border shadow-xs p-5">
             <div className="w-8 h-8 rounded-full bg-[#FAF4F2] shrink-0" />
             <p className="stat-title mt-2 mb-0.5 shrink-0">{c.label}</p>
             <p className="stat-value stat-value-kpi text-dim mt-auto pt-1">{`-${c.suffix}`}</p>
@@ -81,7 +81,7 @@ export function GuestDashboard() {
       </div>
 
       {/* ─── 빈 상태 안내 ─── */}
-      <div className="rounded-2xl border border-dashed border-border bg-surface/50 p-8 lg:p-12 text-center">
+      <div className="rounded-lg border border-dashed border-border bg-surface/50 p-8 lg:p-12 text-center">
         <div className="w-14 h-14 mx-auto rounded-full bg-accent/10 flex items-center justify-center text-accent mb-4">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="11" cy="11" r="8" />

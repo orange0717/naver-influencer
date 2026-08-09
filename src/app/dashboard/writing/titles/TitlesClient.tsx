@@ -88,7 +88,7 @@ export default function TitlesClient() {
       </p>
 
       {loading && (
-        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-2xl">
+        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
             <p className="text-xs text-dim">&ldquo;{seedKeyword}&rdquo; 제목 20개 생성 중...</p>

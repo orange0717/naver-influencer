@@ -824,7 +824,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* 상세 통계 바 */}
       {categoryRank > 0 && (
-        <div className="bg-surface border border-border rounded-2xl shadow-xs px-5 py-3">
+        <div className="bg-surface border border-border rounded-lg shadow-xs px-5 py-3">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
             <span className="text-dim">카테고리 순위 <strong className="text-text font-rank">{categoryRank}</strong>위{categoryTotal > 0 ? `/${categoryTotal}` : ''}</span>
             <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>

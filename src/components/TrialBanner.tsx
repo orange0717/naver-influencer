@@ -25,7 +25,7 @@ export default function TrialBanner({ isDemo = false }: TrialBannerProps) {
 
   if (isDemo) {
     return (
-      <div className="bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-xl border border-blue-500/20 px-5 py-3 flex items-center gap-3 mb-4">
+      <div className="bg-blue-500/5 rounded-xl border border-blue-500/20 px-5 py-3 flex items-center gap-3 mb-4">
         <div className="w-8 h-8 bg-blue-500/15 rounded-lg flex items-center justify-center shrink-0">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
         </div>
@@ -40,7 +40,7 @@ export default function TrialBanner({ isDemo = false }: TrialBannerProps) {
   }
 
   return (
-    <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-xl border border-accent/20 px-5 py-3 flex items-center justify-between mb-4">
+    <div className="bg-accent/5 rounded-xl border border-accent/20 px-5 py-3 flex items-center justify-between mb-4">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 bg-accent/15 rounded-lg flex items-center justify-center">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>

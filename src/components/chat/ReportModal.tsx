@@ -47,7 +47,7 @@ export default function ReportModal({ messageId, onClose, onSubmitted }: Props) 
 
   return (
     <Modal open onClose={onClose} overlayClassName="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 max-w-sm w-full space-y-4">
+      <div className="bg-surface rounded-lg border border-border p-6 max-w-sm w-full space-y-4">
         <h3 className="font-bold text-text">메시지 신고</h3>
         <div className="space-y-2">
           {REASONS.map(r => (

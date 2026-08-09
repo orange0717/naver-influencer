@@ -65,7 +65,7 @@ export default function DailyBriefing({
   if (visibleItems.length === 0 && !bestUp && !worstDown) return null;
 
   return (
-    <div className="bg-gradient-to-br from-surface to-accent/[0.04] rounded-2xl border border-accent/15 shadow-xs p-4">
+    <div className="bg-surface rounded-lg border border-accent/15 shadow-xs p-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[13px] font-bold text-text">오늘의 브리핑</h3>

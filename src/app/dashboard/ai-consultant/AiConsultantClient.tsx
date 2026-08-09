@@ -173,7 +173,7 @@ export default function AiConsultantClient() {
       {!result && !loading && <MarketingSchoolCard />}
 
       {loading && (
-        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-2xl">
+        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
             <p className="text-xs text-dim">&ldquo;{submittedQuery}&rdquo; 분석 중...</p>
@@ -190,7 +190,7 @@ export default function AiConsultantClient() {
 
       {result && (
         <div className="space-y-4">
-          <div className="bg-surface border border-border rounded-2xl p-5">
+          <div className="bg-surface border border-border rounded-lg p-5">
             <p className="text-sm text-text leading-relaxed">{result.interpretation}</p>
           </div>
 

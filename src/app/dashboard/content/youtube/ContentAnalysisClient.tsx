@@ -130,7 +130,7 @@ export default function ContentAnalysisClient() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-2xl">
+        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
             <p className="text-xs text-dim">영상 정보와 자막을 가져와 분석하는 중...</p>
@@ -150,7 +150,7 @@ export default function ContentAnalysisClient() {
       {result && (
         <div className="space-y-4">
           {/* 영상 정보 */}
-          <div className="bg-surface border border-border rounded-2xl p-4 flex gap-4">
+          <div className="bg-surface border border-border rounded-lg p-4 flex gap-4">
             {result.video.thumbnailUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -172,7 +172,7 @@ export default function ContentAnalysisClient() {
           </div>
 
           {/* 콘텐츠 DNA */}
-          <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <h2 className="text-sm font-bold text-text">🔍 콘텐츠 DNA</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
               <div>
@@ -207,7 +207,7 @@ export default function ContentAnalysisClient() {
 
           {/* 컬러 팔레트 */}
           {result.colorPalette && result.colorPalette.length > 0 && (
-            <div className="bg-surface border border-border rounded-2xl p-5 space-y-3">
+            <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
               <h2 className="text-sm font-bold text-text">🎨 추천 컬러 팔레트</h2>
               <div className="flex gap-2">
                 {result.colorPalette.map((hex, i) => (
@@ -223,7 +223,7 @@ export default function ContentAnalysisClient() {
 
           {/* 챕터 분해 */}
           {result.analysis.chapters.length > 0 && (
-            <div className="bg-surface border border-border rounded-2xl p-5 space-y-3">
+            <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
               <h2 className="text-sm font-bold text-text">영상 구조 분석</h2>
               <ul className="space-y-1.5">
                 {result.analysis.chapters.map((c, i) => (
@@ -238,7 +238,7 @@ export default function ContentAnalysisClient() {
 
           {/* 이탈 위험 구간 (AI 추정 — 실측 아님 명시) */}
           {result.analysis.dropOffRiskNote && (
-            <div className="bg-surface border border-border rounded-2xl p-5 space-y-2">
+            <div className="bg-surface border border-border rounded-lg p-5 space-y-2">
               <h2 className="text-sm font-bold text-text">이탈 가능 구간 (AI 추정)</h2>
               <p className="text-xs text-text leading-relaxed">{result.analysis.dropOffRiskNote}</p>
               <p className="text-[11px] text-dim/70 leading-relaxed">

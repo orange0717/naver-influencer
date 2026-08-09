@@ -56,7 +56,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
     return (
       <KpiGrid>
         {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className="bg-surface border border-border rounded-2xl shadow-xs h-[150px] animate-pulse" />
+          <div key={i} className="bg-surface border border-border rounded-lg shadow-xs h-[150px] animate-pulse" />
         ))}
       </KpiGrid>
     );

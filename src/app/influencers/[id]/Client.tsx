@@ -155,7 +155,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
       <Link href="/keywords" className="text-xs text-accent font-bold hover:underline">← 키워드 목록</Link>
 
       {/* 프로필 헤더 */}
-      <div className="bg-surface rounded-2xl border border-border p-6">
+      <div className="bg-surface rounded-lg border border-border p-6">
         <div className="flex items-center gap-4">
           {influencer.image_url ? (
             <Image
@@ -266,7 +266,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
 
       {/* 광고 프로필 */}
       {(influencer.ad_fee_amount || influencer.ad_fee_text || influencer.ad_process) && (
-        <div className="bg-surface rounded-2xl border border-border p-5 space-y-3">
+        <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
           <div className="flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
               <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
@@ -299,7 +299,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
 
       {/* 전문 분야 · 대표 토픽 (광고주 공개 정보) */}
       {influencer.topic_profile && influencer.topic_profile.activeTopics.length > 0 && (
-        <div className="bg-surface rounded-2xl border border-border p-5 space-y-4">
+        <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
           <div className="flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent">
               <path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z" />

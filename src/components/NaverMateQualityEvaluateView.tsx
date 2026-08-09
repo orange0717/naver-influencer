@@ -157,7 +157,7 @@ export default function NaverMateQualityEvaluateView() {
       ) : (
         <div className="space-y-3">
           {blogPosts.map(post => (
-            <div key={post.id} className="bg-surface border border-border/30 rounded-2xl p-4">
+            <div key={post.id} className="bg-surface border border-border/30 rounded-lg p-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0 flex-1">
                   <a href={post.url} target="_blank" rel="noreferrer" className="text-sm font-bold hover:underline break-words">

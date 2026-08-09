@@ -180,7 +180,7 @@ export default function YoutubeSttClient() {
         </ul>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
+      <div className="bg-surface rounded-lg border border-border p-4 sm:p-6">
         {/* 입력 + 툴바 */}
         <div className="flex flex-col sm:flex-row gap-2 mb-4">
           <input

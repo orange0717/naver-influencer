@@ -121,7 +121,7 @@ export default function AdLoginPage() {
   return (
     <div className="min-h-[75vh] flex items-center justify-center -mt-6">
       <div className="w-full max-w-sm mx-auto px-4">
-        <div className="bg-surface rounded-2xl border border-border p-8 space-y-6">
+        <div className="bg-surface rounded-lg border border-border p-8 space-y-6">
           {/* 헤더 */}
           <div className="text-center">
             <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-white font-bold text-lg mx-auto mb-3">

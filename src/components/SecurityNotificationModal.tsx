@@ -46,7 +46,7 @@ export function SecurityNotificationModal({
       overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
     >
       <div
-        className="bg-surface/90 backdrop-blur-md border border-border/50 rounded-2xl shadow-lg max-w-md w-full p-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
+        className="bg-surface border border-border rounded-lg shadow-lg max-w-md w-full p-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
         role="alertdialog"
         aria-labelledby="modal-title"
         aria-describedby="modal-body"

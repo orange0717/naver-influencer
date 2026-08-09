@@ -243,7 +243,7 @@ export default function AdSearchPage() {
           <div key={i}>
             {msg.role === 'user' ? (
               <div className="flex justify-end">
-                <div className="bg-accent text-white px-4 py-2.5 rounded-2xl rounded-tr-sm max-w-[80%] text-sm">
+                <div className="bg-accent text-white px-4 py-2.5 rounded-lg rounded-tr-sm max-w-[80%] text-sm">
                   {msg.text}
                 </div>
               </div>
@@ -254,7 +254,7 @@ export default function AdSearchPage() {
                   <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center text-accent font-bold text-[10px] shrink-0 mt-0.5">
                     AI
                   </div>
-                  <div className="bg-surface border border-border px-4 py-3 rounded-2xl rounded-tl-sm max-w-[85%]">
+                  <div className="bg-surface border border-border px-4 py-3 rounded-lg rounded-tl-sm max-w-[85%]">
                     {msg.text ? (
                       <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                     ) : (
@@ -339,7 +339,7 @@ export default function AdSearchPage() {
             <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center text-accent font-bold text-[10px] shrink-0">
               AI
             </div>
-            <div className="bg-surface border border-border px-4 py-3 rounded-2xl rounded-tl-sm">
+            <div className="bg-surface border border-border px-4 py-3 rounded-lg rounded-tl-sm">
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 bg-accent/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <div className="w-1.5 h-1.5 bg-accent/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />

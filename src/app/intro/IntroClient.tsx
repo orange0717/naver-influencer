@@ -120,7 +120,7 @@ export default function IntroClient() {
           </span>
         </div>
         <p className="text-sm text-accent font-semibold tracking-wide mb-8">
-          네이버 인플루언서를 위한 플랫폼
+          네이버 검색 데이터 분석 플랫폼
         </p>
 
         <h1 className="font-title text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
@@ -372,7 +372,7 @@ export default function IntroClient() {
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto text-left">
-          <div className="bg-bg rounded-2xl border border-border p-7">
+          <div className="bg-bg rounded-lg border border-border p-7">
             <p className="text-xs font-bold text-accent tracking-wide mb-3">블로거</p>
             <h3 className="font-bold text-text mb-3 text-lg">네이버 블로그를 운영하는 분</h3>
             <p className="text-sm text-dim leading-relaxed mb-4">블로그 품질지수와 키워드별 블로그 순위를 추적해 상위노출 전략을 세우세요. 인플루언서 선정을 준비하는 분에게도 좋습니다.</p>
@@ -383,7 +383,7 @@ export default function IntroClient() {
               <li className="text-accent font-semibold pt-1">월 5,500원</li>
             </ul>
           </div>
-          <div className="bg-bg rounded-2xl border border-border p-7">
+          <div className="bg-bg rounded-lg border border-border p-7">
             <p className="text-xs font-bold text-accent tracking-wide mb-3">인플루언서</p>
             <h3 className="font-bold text-text mb-3 text-lg">네이버 인플루언서로 활동 중인 분</h3>
             <p className="text-sm text-dim leading-relaxed mb-4">키워드챌린지 TOP3 진입과 팬 확대를 위한 데이터를 제공합니다. 경쟁자 분석과 알림으로 순위를 지키세요.</p>
@@ -558,7 +558,7 @@ export default function IntroClient() {
                 ),
               },
             ].map(card => (
-              <Link key={card.title} href={card.link} className="bg-bg rounded-2xl border border-border overflow-hidden flex flex-col hover:border-accent/40 transition group">
+              <Link key={card.title} href={card.link} className="bg-bg rounded-lg border border-border overflow-hidden flex flex-col hover:border-accent/40 transition group">
                 {/* 브라우저 목업 */}
                 <div className="bg-surface border-b border-border">
                   <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/60">

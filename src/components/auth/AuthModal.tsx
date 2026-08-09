@@ -393,7 +393,7 @@ export default function AuthModal() {
         role="dialog"
         aria-modal="true"
         aria-label={mode === 'login' ? '로그인' : '회원가입'}
-        className="relative w-full max-w-md rounded-2xl border border-border bg-surface shadow-xl"
+        className="relative w-full max-w-md rounded-lg border border-border bg-surface shadow-xl"
       >
         <button
           type="button"

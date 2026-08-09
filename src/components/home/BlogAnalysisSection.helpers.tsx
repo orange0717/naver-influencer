@@ -307,7 +307,7 @@ export function GuestBlogAnalysis() {
     <div className="space-y-4">
 
       {/* ─── CTA 배너: 로그인 후 제공되는 기능 안내 ─── */}
-      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:p-6 text-center space-y-3">
+      <div className="rounded-lg border border-accent/20 bg-accent/5 p-5 lg:p-6 text-center space-y-3">
         <h2 className="font-title text-lg lg:text-xl font-bold text-text">
           Google 계정으로 로그인하면 <br className="hidden sm:block" />
           블로그 데이터를 자동으로 분석해드립니다.
@@ -325,7 +325,7 @@ export function GuestBlogAnalysis() {
       </div>
 
       {/* ─── 1. 프로필 헤더 (게스트) ─── */}
-      <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="bg-surface rounded-lg border border-border p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <div className="w-16 h-16 rounded-full flex items-center justify-center bg-border/30 text-dim ring-2 ring-offset-2 ring-offset-surface ring-border/40 shrink-0">

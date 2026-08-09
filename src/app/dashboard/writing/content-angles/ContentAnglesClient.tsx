@@ -67,7 +67,7 @@ export default function ContentAnglesClient() {
       </p>
 
       {loading && (
-        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-2xl">
+        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
             <p className="text-xs text-dim">&ldquo;{seedKeyword}&rdquo; 관련 질문·글감 찾는 중...</p>
@@ -84,7 +84,7 @@ export default function ContentAnglesClient() {
 
       {result && (
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-surface border border-border rounded-2xl p-5 space-y-3">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
             <h2 className="text-sm font-bold text-text">사람들이 궁금한 질문</h2>
             {result.questions.length === 0 ? (
               <p className="text-xs text-dim">찾은 질문이 없습니다.</p>
@@ -100,7 +100,7 @@ export default function ContentAnglesClient() {
             )}
           </div>
 
-          <div className="bg-surface border border-border rounded-2xl p-5 space-y-3">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
             <h2 className="text-sm font-bold text-text">추천 글감</h2>
             {result.angles.length === 0 ? (
               <p className="text-xs text-dim">찾은 글감이 없습니다.</p>

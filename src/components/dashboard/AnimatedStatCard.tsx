@@ -71,11 +71,11 @@ export default function AnimatedStatCard({
 
   // 아이콘 칩 배경은 색상 무관 단일 뉴트럴 톤으로 통일 — 글리프 색상만 컬러별로 구분
   const colorMap = {
-    accent: { text: 'text-accent', bg: 'from-accent/5 to-accent/[0.02]', spark: '#CC9486', hoverBorder: 'hover:border-accent/40' },
-    up: { text: 'text-up', bg: 'from-up/5 to-up/[0.02]', spark: '#2E8B57', hoverBorder: 'hover:border-up/40' },
-    down: { text: 'text-down', bg: 'from-down/5 to-down/[0.02]', spark: '#D94848', hoverBorder: 'hover:border-down/40' },
-    gold: { text: 'text-gold', bg: 'from-gold/5 to-gold/[0.02]', spark: '#D4A017', hoverBorder: 'hover:border-gold/40' },
-    dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', spark: '#999', hoverBorder: 'hover:border-accent/25' },
+    accent: { text: 'text-accent', spark: '#CC9486', hoverBorder: 'hover:border-accent/40' },
+    up: { text: 'text-up', spark: '#2E8B57', hoverBorder: 'hover:border-up/40' },
+    down: { text: 'text-down', spark: '#D94848', hoverBorder: 'hover:border-down/40' },
+    gold: { text: 'text-gold', spark: '#D4A017', hoverBorder: 'hover:border-gold/40' },
+    dim: { text: 'text-dim', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
@@ -125,11 +125,11 @@ export default function AnimatedStatCard({
       ref={ref}
       className={`
         ${sizeClass} flex flex-col min-w-0
-        bg-gradient-to-br ${c.bg} bg-surface
-        rounded-2xl border border-border ${isKpi ? 'p-4' : 'p-3 sm:p-4'}
+        bg-surface
+        rounded-lg border border-border ${isKpi ? 'p-4' : 'p-3 sm:p-4'}
         shadow-xs
         transition-all duration-500 ease-out
-        hover:-translate-y-0.5 hover:shadow-lg ${c.hoverBorder}
+        ${c.hoverBorder}
         ${href ? 'cursor-pointer' : ''}
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
         ${className}

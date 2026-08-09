@@ -470,7 +470,7 @@ export default function ClaudeChatClient() {
                 >
                   <div
                     className={`
-                      max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words
+                      max-w-[85%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words
                       ${m.role === 'user'
                         ? 'bg-accent text-white'
                         : 'bg-surface border border-border text-fg'}
@@ -482,7 +482,7 @@ export default function ClaudeChatClient() {
               ))}
               {sending && (
                 <div className="flex justify-start">
-                  <div className="bg-surface border border-border rounded-2xl px-4 py-3 text-sm text-dim flex items-center gap-2">
+                  <div className="bg-surface border border-border rounded-lg px-4 py-3 text-sm text-dim flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                     <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse [animation-delay:120ms]" />
                     <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse [animation-delay:240ms]" />
@@ -513,7 +513,7 @@ export default function ClaudeChatClient() {
         {/* 입력 영역 */}
         <div className="px-4 md:px-6 py-3 border-t border-border bg-surface">
           <div className="max-w-2xl mx-auto">
-            <div className="relative bg-bg border border-border rounded-2xl focus-within:border-accent/50 transition-colors shadow-sm">
+            <div className="relative bg-bg border border-border rounded-lg focus-within:border-accent/50 transition-colors shadow-sm">
                   <textarea
                     ref={inputRef}
                     rows={1}
@@ -521,7 +521,7 @@ export default function ClaudeChatClient() {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="블로그 글이나 고민을 자유롭게 적어 주세요"
-                    className="block w-full bg-transparent rounded-2xl pl-4 pr-24 py-3 text-sm leading-relaxed resize-none outline-none placeholder:text-dim min-h-[52px] max-h-[240px] overflow-y-auto"
+                    className="block w-full bg-transparent rounded-lg pl-4 pr-24 py-3 text-sm leading-relaxed resize-none outline-none placeholder:text-dim min-h-[52px] max-h-[240px] overflow-y-auto"
                     disabled={sending}
                     maxLength={INPUT_LIMIT + 200}
                     autoComplete="off"

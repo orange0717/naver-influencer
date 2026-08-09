@@ -126,7 +126,7 @@ export default function SpellcheckClient() {
         </p>
       </header>
 
-      <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
+      <div className="bg-surface rounded-lg border border-border p-4 sm:p-6">
         {/* 툴바 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <button

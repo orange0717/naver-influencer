@@ -179,7 +179,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* 캠페인 정보 */}
-      <div className="bg-surface border border-border rounded-2xl p-6 space-y-4">
+      <div className="bg-surface border border-border rounded-lg p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -269,7 +269,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* 신청 목록 */}
-      <div className="bg-surface border border-border rounded-2xl p-6">
+      <div className="bg-surface border border-border rounded-lg p-6">
         <h2 className="font-bold text-base mb-4">
           신청 목록 <span className="text-dim font-normal text-sm">({stats.total})</span>
         </h2>

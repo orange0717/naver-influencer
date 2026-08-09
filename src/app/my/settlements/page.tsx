@@ -16,7 +16,7 @@ export default function SettlementsPage() {
         </div>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-border p-5 md:p-6">
+      <div className="bg-surface rounded-lg border border-border p-5 md:p-6">
         <AdSettlements />
       </div>
     </div>

@@ -160,7 +160,7 @@ export default function ColorPaletteClient() {
           const file = e.dataTransfer.files?.[0];
           if (file) handleFile(file);
         }}
-        className={`flex flex-col items-center justify-center gap-2 px-4 py-10 rounded-2xl border-2 border-dashed cursor-pointer transition-colors ${
+        className={`flex flex-col items-center justify-center gap-2 px-4 py-10 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
           dragOver ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-accent/50'
         }`}
       >
@@ -301,7 +301,7 @@ export default function ColorPaletteClient() {
                 placeholder="썸네일에 넣을 제목"
               />
               <div
-                className="rounded-2xl p-6 flex flex-col justify-between min-h-[160px] border border-border"
+                className="rounded-lg p-6 flex flex-col justify-between min-h-[160px] border border-border"
                 style={{ backgroundColor: roles.background }}
               >
                 <span

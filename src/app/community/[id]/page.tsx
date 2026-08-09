@@ -220,7 +220,7 @@ export default function CommunityPostPage() {
   if (authChecked && !user) {
     return (
       <div className="max-w-3xl mx-auto py-20 text-center">
-        <div className="bg-surface rounded-2xl border border-border p-8 space-y-4">
+        <div className="bg-surface rounded-lg border border-border p-8 space-y-4">
           <div className="w-14 h-14 mx-auto rounded-full bg-accent/15 flex items-center justify-center">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
@@ -262,7 +262,7 @@ export default function CommunityPostPage() {
       </div>
 
       {/* 게시글 */}
-      <article className="bg-surface rounded-2xl border border-border overflow-hidden">
+      <article className="bg-surface rounded-lg border border-border overflow-hidden">
         {/* 헤더 */}
         <div className="px-6 py-5 border-b border-border/50">
           <div className="flex items-center gap-2 mb-3">
@@ -371,7 +371,7 @@ export default function CommunityPostPage() {
       </article>
 
       {/* 댓글 섹션 */}
-      <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-lg border border-border overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
           <h2 className="text-sm font-bold text-text">댓글 {comments.length > 0 && `(${comments.length})`}</h2>
         </div>
@@ -439,7 +439,7 @@ export default function CommunityPostPage() {
       {/* 신고 모달 */}
       {reportOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setReportOpen(false)}>
-          <div className="bg-surface rounded-2xl border border-border p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-lg border border-border p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-text">
               {reportTarget.type === 'post' ? '게시글' : '댓글'} 신고
             </h3>

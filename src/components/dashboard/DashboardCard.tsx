@@ -39,7 +39,7 @@ export default function DashboardCard({
   return (
     <div
       id={id}
-      className={`bg-surface rounded-2xl border border-border shadow-xs ${padding === 'md' ? 'p-5' : ''} ${className}`.trim()}
+      className={`bg-surface rounded-lg border border-border shadow-xs ${padding === 'md' ? 'p-5' : ''} ${className}`.trim()}
     >
       {hasHeader && (
         <div className="flex items-center justify-between gap-2 mb-3">

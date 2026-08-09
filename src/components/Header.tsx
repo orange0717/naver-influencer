@@ -96,6 +96,12 @@ export default function Header({ serverUser }: HeaderProps) {
             </span>
           </Link>
 
+          {/* ── 서비스 정체성 태그라인 — "AI 서비스"가 아니라 데이터 분석 툴임을 헤더에서부터 각인 (2026-08-09) ── */}
+          <span className="hidden lg:block w-px h-3.5 bg-white/25 shrink-0" aria-hidden="true" />
+          <span className="hidden lg:inline text-[11px] font-semibold text-white/65 tracking-tight whitespace-nowrap shrink-0">
+            네이버 검색 데이터 분석
+          </span>
+
           {/* ── 왼쪽: 공지사항 등 서브 네비 (로고 옆) ── */}
           {!authLoading && (
             <nav aria-label="서브 네비게이션" className="hidden lg:flex items-center gap-1 ml-1">

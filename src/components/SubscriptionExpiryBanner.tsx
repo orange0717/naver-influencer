@@ -22,7 +22,7 @@ export default function SubscriptionExpiryBanner({
   if (diffMs <= 0) {
     const expiredDays = Math.ceil(-diffMs / dayMs);
     return (
-      <div className="bg-gradient-to-r from-down/10 to-down/5 rounded-xl border border-down/30 px-5 py-3 flex items-center justify-between mb-4 gap-3">
+      <div className="bg-down/5 rounded-xl border border-down/30 px-5 py-3 flex items-center justify-between mb-4 gap-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-down/15 rounded-lg flex items-center justify-center shrink-0">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-down" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
@@ -49,7 +49,7 @@ export default function SubscriptionExpiryBanner({
   if (daysLeft > 7) return null;
 
   return (
-    <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-xl border border-accent/30 px-5 py-3 flex items-center justify-between mb-4 gap-3">
+    <div className="bg-accent/5 rounded-xl border border-accent/30 px-5 py-3 flex items-center justify-between mb-4 gap-3">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 bg-accent/15 rounded-lg flex items-center justify-center shrink-0">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>

@@ -111,7 +111,7 @@ export default function CommunityWritePage() {
       </div>
 
       {/* 작성 폼 */}
-      <div className="bg-surface rounded-2xl border border-border p-6 space-y-5">
+      <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
         {/* 카테고리 선택 */}
         <div>
           <label className="block text-xs font-bold text-dim mb-2">카테고리</label>

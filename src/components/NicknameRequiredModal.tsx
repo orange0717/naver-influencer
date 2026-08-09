@@ -78,7 +78,7 @@ export default function NicknameRequiredModal() {
       overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4"
     >
       <div
-        className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-md p-6"
+        className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="nickname-modal-title"
