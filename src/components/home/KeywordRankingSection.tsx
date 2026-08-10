@@ -418,9 +418,22 @@ export default function KeywordRankingSection() {
         showError('대표 키워드 자동추출에 실패했습니다.', 4000);
         return;
       }
-      const data: { representativeKeyword?: string | null; source?: string } = await res.json();
+      const data: {
+        representativeKeyword?: string | null;
+        source?: string;
+        keywords?: string[];
+        candidateScreen?: { keyword: string; exposed: boolean; rank: number | null }[];
+      } = await res.json();
       const keyword = data.representativeKeyword || null;
-      setRepKeywords(prev => ({ ...prev, [post.id]: { keyword, source: data.source } }));
+      setRepKeywords(prev => ({
+        ...prev,
+        [post.id]: {
+          keyword,
+          source: data.source,
+          candidates: data.keywords || [],
+          candidateScreen: data.candidateScreen || [],
+        },
+      }));
       if (keyword) await checkSingleKeyword(post, keyword);
     } catch {
       showError('네트워크 오류로 대표 키워드를 추출하지 못했습니다.', 4000);
@@ -917,6 +930,26 @@ export default function KeywordRankingSection() {
                               ) : '⟳'}
                             </button>
                           </div>
+                          {(repEntry?.candidates?.length ?? 0) > 1 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {repEntry!.candidates!.map(kw => {
+                                const isRep = kw === repKeyword;
+                                const screen = repEntry?.candidateScreen?.find(s => s.keyword === kw);
+                                return (
+                                  <span
+                                    key={kw}
+                                    title={screen?.exposed ? `통합검색 ${screen.rank}위` : screen ? '통합검색 100위 밖' : '스크리닝 전'}
+                                    className={`text-[10px] px-1.5 py-0.5 rounded-full truncate max-w-[110px] ${
+                                      isRep ? 'bg-accent/15 text-accent font-semibold' : 'bg-bg text-dim'
+                                    }`}
+                                  >
+                                    {isRep ? '★ ' : ''}{kw}
+                                    {screen?.exposed ? ` ${screen.rank}위` : ''}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                         </td>
                         <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
                           {repResult ? (
@@ -1133,6 +1166,25 @@ export default function KeywordRankingSection() {
                           ) : '⟳'}
                         </button>
                       </div>
+                      {(repEntry?.candidates?.length ?? 0) > 1 && (
+                        <div className="flex flex-wrap gap-1">
+                          {repEntry!.candidates!.map(kw => {
+                            const isRep = kw === repKeyword;
+                            const screen = repEntry?.candidateScreen?.find(s => s.keyword === kw);
+                            return (
+                              <span
+                                key={kw}
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full truncate max-w-[110px] ${
+                                  isRep ? 'bg-accent/15 text-accent font-semibold' : 'bg-bg text-dim'
+                                }`}
+                              >
+                                {isRep ? '★ ' : ''}{kw}
+                                {screen?.exposed ? ` ${screen.rank}위` : ''}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                       {repResult && (
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${

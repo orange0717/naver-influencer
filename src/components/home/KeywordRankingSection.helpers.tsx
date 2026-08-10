@@ -42,10 +42,19 @@ export const REP_STATE_API = '/api/my/representative-keywords-state';
 const STALE_MS = 10 * 60 * 1000;
 export const FLASH_MS = 1400;
 
+export interface CandidateScreenEntry {
+  keyword: string;
+  exposed: boolean;
+  rank: number | null;
+}
+
 export interface RepKeywordEntry {
   keyword: string | null;
   source?: string | null;
   extractedAt?: string | null;
+  // AI가 뽑은 후보 3~5개 전체(대표 포함) — 통합검색 1페이지 스크리닝 결과와 함께 태그로 표시
+  candidates?: string[];
+  candidateScreen?: CandidateScreenEntry[];
 }
 
 // 영속화된(post_representative_keywords) 포스트별 대표 키워드를 블로그 단위로 한 번에 복원
