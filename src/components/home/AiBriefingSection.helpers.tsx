@@ -243,7 +243,7 @@ export function ResultStatCard({
     accent: 'text-accent', up: 'text-up', down: 'text-down', gold: 'text-gold', dim: 'text-dim',
   };
   return (
-    <div className="relative h-28 flex flex-col justify-between bg-surface rounded-2xl border border-border p-4 shadow-xs">
+    <div className="relative h-28 flex flex-col justify-between bg-surface rounded-lg border border-border p-4 shadow-xs">
       {spinning && (
         <span className="absolute top-2 right-2 w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       )}

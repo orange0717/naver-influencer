@@ -107,7 +107,7 @@ export default function AdDashboardPage() {
           { label: '수락 인원', value: stats.acceptedApplications, suffix: '명' },
           { label: '총 집행금액', value: stats.totalSpend.toLocaleString(), suffix: '원' },
         ].map(card => (
-          <div key={card.label} className="bg-surface border border-border rounded-2xl p-5">
+          <div key={card.label} className="bg-surface border border-border rounded-lg p-5">
             <p className="text-[10px] text-dim font-semibold mb-1">{card.label}</p>
             <p className="text-2xl font-extrabold font-rank">
               {card.value}<span className="text-sm text-dim font-normal ml-1">{card.suffix}</span>
@@ -130,7 +130,7 @@ export default function AdDashboardPage() {
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* 최근 캠페인 */}
-        <div className="bg-surface border border-border rounded-2xl p-5">
+        <div className="bg-surface border border-border rounded-lg p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-base">캠페인 현황</h2>
             <Link href="/orangeconnect/campaign" className="text-xs text-accent hover:underline">전체 보기</Link>
@@ -162,7 +162,7 @@ export default function AdDashboardPage() {
         </div>
 
         {/* 최근 신청 */}
-        <div className="bg-surface border border-border rounded-2xl p-5">
+        <div className="bg-surface border border-border rounded-lg p-5">
           <h2 className="font-bold text-base mb-4">최근 신청</h2>
           {recentApplications.length === 0 ? (
             <p className="text-sm text-dim text-center py-4">아직 신청이 없습니다</p>

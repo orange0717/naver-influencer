@@ -327,7 +327,7 @@ export default function BloggerKeywordsPage() {
 
       {/* 결과 없음 */}
       {!loading && searched && results.length === 0 && !error && (
-        <div className="text-center py-10 bg-surface border border-border rounded-2xl">
+        <div className="text-center py-10 bg-surface border border-border rounded-lg">
           <p className="text-sm text-dim">검색 결과가 없습니다.</p>
           <p className="text-xs text-dim/60 mt-1">다른 키워드로 시도해보세요.</p>
         </div>
@@ -335,7 +335,7 @@ export default function BloggerKeywordsPage() {
 
       {/* 초기 상태 — 저장된 키워드가 없을 때만 안내 카드 노출 (저장된 키워드가 있으면 자동 노출되어 빈 공간 최소화) */}
       {!loading && !searched && (!isLoggedIn || savedKeywords.length === 0) && (
-        <div className="text-center py-10 bg-surface border border-border rounded-2xl">
+        <div className="text-center py-10 bg-surface border border-border rounded-lg">
           <div className="w-12 h-12 mx-auto rounded-xl bg-accent/10 flex items-center justify-center mb-3">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
               <circle cx="11" cy="11" r="8" />

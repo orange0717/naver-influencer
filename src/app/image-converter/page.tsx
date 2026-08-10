@@ -169,7 +169,7 @@ export default function ImageConverterPage() {
       </div>
 
       {/* 업로드 영역 */}
-      <div className="bg-surface rounded-2xl border-2 border-dashed border-border p-8 text-center">
+      <div className="bg-surface rounded-lg border-2 border-dashed border-border p-8 text-center">
         <input
           ref={fileInputRef}
           type="file"
@@ -262,7 +262,7 @@ export default function ImageConverterPage() {
             </>
           ) : (
             <>
-              ✨ {selectedFiles.length}개 파일 변환하기
+              {selectedFiles.length}개 파일 변환하기
             </>
           )}
         </button>

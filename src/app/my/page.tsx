@@ -824,7 +824,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* 상세 통계 바 */}
       {categoryRank > 0 && (
-        <div className="bg-surface border border-border rounded-2xl shadow-xs px-5 py-3">
+        <div className="bg-surface border border-border rounded-lg shadow-xs px-5 py-3">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs">
             <span className="text-dim">카테고리 순위 <strong className="text-text font-rank">{categoryRank}</strong>위{categoryTotal > 0 ? `/${categoryTotal}` : ''}</span>
             <span className="text-dim">1위 키워드 <strong className="text-text font-rank">{rank1Count}</strong>개</span>
@@ -855,7 +855,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>}
           color={missingSummary.totalChecked === 0 ? 'dim' : missingSummary.rate > 0 ? 'down' : 'up'}
           delay={60}
-          href="/#blog-analysis"
+          href="/dashboard#blog-analysis"
         />
         <AnimatedStatCard
           size="stat"

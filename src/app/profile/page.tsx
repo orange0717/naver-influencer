@@ -496,11 +496,10 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 구독 기간 요약 카드 (가입일 / 구독 만료까지) */}
+      {/* 이용 기간 요약 카드 (가입일 / 이용권 만료까지) */}
       <UsagePeriodCard
         userCreatedAt={user.created_at}
         subscriptionExpiresAt={user.subscription_expires_at}
-        trialStartedTs={null}
       />
 
       {/* 구독 등급 */}
@@ -807,7 +806,7 @@ export default function ProfilePage() {
       {/* 탈퇴 확인 모달 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" onClick={() => { setShowDeleteConfirm(false); setWithdrawalReason(''); }}>
-          <div className="bg-surface rounded-2xl border border-border p-6 max-w-sm mx-4 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-lg border border-border p-6 max-w-sm mx-4 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
             <h3 id="delete-modal-title" className="text-lg font-extrabold text-text">회원 탈퇴</h3>
             <div className="space-y-2 text-sm text-dim">
               <p>정말 탈퇴하시겠습니까?</p>

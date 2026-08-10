@@ -11,6 +11,7 @@ import { SIDEBAR_FOOTER_LINKS } from '@/lib/sidebar-nav';
 import NotificationBell from './NotificationBell';
 import MessageBell from './MessageBell';
 import HeaderSearch from './HeaderSearch';
+import UsageQuotaBadge from './UsageQuotaBadge';
 
 // 비로그인 게스트에게는 로그인이 필요한 링크(공지사항)를 숨김
 const GUEST_NAV_LINKS = SIDEBAR_FOOTER_LINKS.filter((link) => !link.authOnly);
@@ -85,15 +86,21 @@ export default function Header({ serverUser }: HeaderProps) {
   return (
     <>
       <header className="font-title sticky top-0 z-50 w-full max-w-[100vw] bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
-        <div className="flex h-16 w-full min-w-0 max-w-full items-center flex-nowrap gap-1.5 px-2.5 sm:gap-2 sm:px-3 lg:gap-3 lg:px-4">
+        <div className="flex h-14 w-full min-w-0 max-w-full items-center flex-nowrap gap-1.5 px-2.5 sm:gap-2 sm:px-3 lg:gap-3 lg:px-4">
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
-            <span className="font-title font-bold text-base text-white hidden sm:flex items-center gap-1.5">
+            <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">N</div>
+            <span className="font-title font-bold text-[15px] text-white hidden sm:flex items-center gap-1.5">
               N인플
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none bg-white/20 text-white">베타</span>
             </span>
           </Link>
+
+          {/* ── 서비스 정체성 태그라인 — "AI 서비스"가 아니라 데이터 분석 툴임을 헤더에서부터 각인 (2026-08-09) ── */}
+          <span className="hidden lg:block w-px h-3.5 bg-white/25 shrink-0" aria-hidden="true" />
+          <span className="hidden lg:inline text-[11px] font-semibold text-white/65 tracking-tight whitespace-nowrap shrink-0">
+            네이버 검색 데이터 분석
+          </span>
 
           {/* ── 왼쪽: 공지사항 등 서브 네비 (로고 옆) ── */}
           {!authLoading && (
@@ -102,7 +109,7 @@ export default function Header({ serverUser }: HeaderProps) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="px-2.5 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  className="px-2.5 py-1.5 rounded-lg text-[13px] font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                 >
                   {link.label}
                 </Link>
@@ -113,6 +120,7 @@ export default function Header({ serverUser }: HeaderProps) {
           {/* ── 우측: 검색 · 앱 다운로드 · 쪽지 · 알림 · 프로필/로그인 ── */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
             <HeaderSearch />
+            {!authLoading && <UsageQuotaBadge />}
             {canShowAppDownload &&
               (downloadNavUnlocked ? (
                 <Link

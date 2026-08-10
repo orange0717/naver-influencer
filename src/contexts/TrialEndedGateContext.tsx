@@ -3,30 +3,27 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 /**
- * 'ended'  — 체험/결제를 이미 받아본 적 있고 지금은 만료됨 → 구매 유도만 (자가발급 체험 없음)
- * 'offer'  — subscription_plan 이 한 번도 없던 회원(가입 시점에 체험을 못 받은 기존 가입자 등)
- *            → "7일 무료체험을 시작하시겠습니까?" 자가발급 옵트인 모달
+ * PRO 전용 페이지에 PRO 이용권 없이 접근했을 때 뜨는 게이트 모달의 상태.
+ * (2026-08-08 이전에는 "7일 체험 종료/미개시" 두 가지 사유가 있었으나, 자가발급 체험이
+ *  폐지되면서 "PRO 이용권이 필요합니다" 단일 안내로 단순화됨 — reason 구분 없음.)
  */
-export type TrialGateReason = 'ended' | 'offer';
-
 interface TrialEndedGateState {
   open: boolean;
   redirectTo: string | null;
-  reason: TrialGateReason;
 }
 
 interface TrialEndedGateContextValue extends TrialEndedGateState {
-  openGate: (redirectTo?: string, reason?: TrialGateReason) => void;
+  openGate: (redirectTo?: string) => void;
   close: () => void;
 }
 
 const TrialEndedGateContext = createContext<TrialEndedGateContextValue | null>(null);
 
 export function TrialEndedGateProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<TrialEndedGateState>({ open: false, redirectTo: null, reason: 'ended' });
+  const [state, setState] = useState<TrialEndedGateState>({ open: false, redirectTo: null });
 
-  const openGate = useCallback((redirectTo?: string, reason: TrialGateReason = 'ended') => {
-    setState({ open: true, redirectTo: redirectTo ?? null, reason });
+  const openGate = useCallback((redirectTo?: string) => {
+    setState({ open: true, redirectTo: redirectTo ?? null });
   }, []);
 
   const close = useCallback(() => {

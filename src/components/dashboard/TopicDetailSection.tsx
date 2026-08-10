@@ -89,7 +89,7 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
       </div>
 
       {/* 성과 요약 */}
-      <div className="rounded-2xl border border-border bg-surface shadow-xs p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="rounded-lg border border-border bg-surface shadow-xs p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatBox label="포스팅 수" value={`${topic.postCount}개`} />
         <StatBox label="누적 조회수" value={topic.totalViewCount.toLocaleString()} />
         <StatBox label="통합검색 평균" value={formatRank(topic.avgIntegratedRank)} />
@@ -101,7 +101,7 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
       </div>
 
       {/* 관련 키워드챌린지 */}
-      <div className="rounded-2xl border border-border bg-surface shadow-xs p-5">
+      <div className="rounded-lg border border-border bg-surface shadow-xs p-5">
         <h3 className="font-bold text-sm mb-3">관련 키워드챌린지</h3>
         {challenges.length === 0 ? (
           <p className="text-sm text-dim">연결된 키워드챌린지가 없습니다.</p>
@@ -120,7 +120,7 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
       </div>
 
       {/* 관련 포스팅 */}
-      <div className="rounded-2xl border border-border bg-surface shadow-xs p-5">
+      <div className="rounded-lg border border-border bg-surface shadow-xs p-5">
         <h3 className="font-bold text-sm mb-3">관련 포스팅 ({posts.length}개)</h3>
         {posts.length === 0 ? (
           <p className="text-sm text-dim">연결된 포스팅이 없습니다.</p>

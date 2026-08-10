@@ -260,7 +260,7 @@ export default function BulkSearchVolumePage() {
             {/* 우측: 결과 요약 또는 안내 */}
             <div className="flex flex-col justify-center">
               {!done && !loading && (
-                <div className="text-center py-10 bg-surface border border-border rounded-2xl h-full flex flex-col items-center justify-center gap-3">
+                <div className="text-center py-10 bg-surface border border-border rounded-lg h-full flex flex-col items-center justify-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
                       <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -277,7 +277,7 @@ export default function BulkSearchVolumePage() {
               )}
 
               {loading && (
-                <div className="flex items-center justify-center py-10 bg-surface border border-border rounded-2xl h-full">
+                <div className="flex items-center justify-center py-10 bg-surface border border-border rounded-lg h-full">
                   <div className="text-center">
                     <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
                     <p className="text-xs text-dim">
@@ -289,7 +289,7 @@ export default function BulkSearchVolumePage() {
               )}
 
               {done && (
-                <div className="bg-surface border border-border rounded-2xl p-5 h-full flex flex-col justify-center gap-4">
+                <div className="bg-surface border border-border rounded-lg p-5 h-full flex flex-col justify-center gap-4">
                   <div className="grid grid-cols-3 gap-3">
                     <div className="text-center">
                       <p className="text-2xl font-extrabold font-rank text-accent">{results.length}</p>
@@ -509,7 +509,7 @@ export default function BulkSearchVolumePage() {
             {/* 우측: 결과 요약 또는 안내 */}
             <div className="flex flex-col justify-center">
               {!relatedDone && !relatedLoading && (
-                <div className="text-center py-10 bg-surface border border-border rounded-2xl h-full flex flex-col items-center justify-center gap-3">
+                <div className="text-center py-10 bg-surface border border-border rounded-lg h-full flex flex-col items-center justify-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
                       <circle cx="11" cy="11" r="7" />
@@ -526,7 +526,7 @@ export default function BulkSearchVolumePage() {
               )}
 
               {relatedLoading && (
-                <div className="flex items-center justify-center py-10 bg-surface border border-border rounded-2xl h-full">
+                <div className="flex items-center justify-center py-10 bg-surface border border-border rounded-lg h-full">
                   <div className="text-center">
                     <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
                     <p className="text-xs text-dim">&ldquo;{relatedKeyword}&rdquo; 연관 키워드 조회 중...</p>
@@ -536,7 +536,7 @@ export default function BulkSearchVolumePage() {
               )}
 
               {relatedDone && (
-                <div className="bg-surface border border-border rounded-2xl p-5 h-full flex flex-col justify-center gap-4">
+                <div className="bg-surface border border-border rounded-lg p-5 h-full flex flex-col justify-center gap-4">
                   <div className="text-center">
                     <p className="text-2xl font-extrabold font-rank text-accent">{relatedResults.length}</p>
                     <p className="text-xs text-dim mt-0.5">&ldquo;{seedKeyword}&rdquo; 연관 키워드 발견</p>

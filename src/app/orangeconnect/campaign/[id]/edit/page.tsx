@@ -133,7 +133,7 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
         <h1 className="text-xl font-extrabold">캠페인 수정</h1>
       </div>
 
-      <div className="bg-surface border border-border rounded-2xl p-6 space-y-5">
+      <div className="bg-surface border border-border rounded-lg p-6 space-y-5">
         <div>
           <label className="text-xs font-semibold text-dim block mb-1.5">캠페인명 *</label>
           <input type="text" value={title} onChange={e => setTitle(e.target.value)} maxLength={200}

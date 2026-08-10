@@ -260,7 +260,7 @@ export default function RootLayout({
           <Suspense fallback={null}><VisitTracker /></Suspense>
           <div className="flex flex-1 w-full min-w-0">
             <AppSidebar />
-            <main className="max-w-[1800px] mx-auto px-4 pt-6 pb-10 flex-1 w-full min-w-0">
+            <main className="max-w-[1800px] mx-auto px-4 pt-4 pb-6 flex-1 w-full min-w-0">
               {children}
             </main>
           </div>

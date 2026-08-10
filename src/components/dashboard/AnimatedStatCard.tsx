@@ -71,19 +71,18 @@ export default function AnimatedStatCard({
 
   // 아이콘 칩 배경은 색상 무관 단일 뉴트럴 톤으로 통일 — 글리프 색상만 컬러별로 구분
   const colorMap = {
-    accent: { text: 'text-accent', bg: 'from-accent/5 to-accent/[0.02]', spark: '#CC9486', hoverBorder: 'hover:border-accent/40' },
-    up: { text: 'text-up', bg: 'from-up/5 to-up/[0.02]', spark: '#2E8B57', hoverBorder: 'hover:border-up/40' },
-    down: { text: 'text-down', bg: 'from-down/5 to-down/[0.02]', spark: '#D94848', hoverBorder: 'hover:border-down/40' },
-    gold: { text: 'text-gold', bg: 'from-gold/5 to-gold/[0.02]', spark: '#D4A017', hoverBorder: 'hover:border-gold/40' },
-    dim: { text: 'text-dim', bg: 'from-border/5 to-border/[0.02]', spark: '#999', hoverBorder: 'hover:border-accent/25' },
+    accent: { text: 'text-accent', spark: '#CC9486', hoverBorder: 'hover:border-accent/40' },
+    up: { text: 'text-up', spark: '#2E8B57', hoverBorder: 'hover:border-up/40' },
+    down: { text: 'text-down', spark: '#D94848', hoverBorder: 'hover:border-down/40' },
+    gold: { text: 'text-gold', spark: '#D4A017', hoverBorder: 'hover:border-gold/40' },
+    dim: { text: 'text-dim', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
   const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
-  const heightClass = size === 'stat' ? 'h-[182px]' : 'h-[150px]';
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
-  // KPI 카드(142px)는 아이콘·타이틀·숫자 3단만 담는 구조라 description 줄을 아예 안 그림 —
-  // 174px짜리 Statistics 카드 전용 여백(mb-3/min-h-28px/pt-2)을 그대로 쓰면 142px 안에 다 안 들어가
-  // 숫자 줄이 카드 테두리 밖으로 흘러넘치던 문제를 해결. (글자크기 상향 후에도 여유 있도록 카드 높이 +12~14px)
   const isKpi = size === 'kpi';
+  // KPI 카드(홈 상단 요약바)는 고정 높이 150px 유지. Statistics 카드(size="stat", "발행·순위 통계"
+  // 3~6칸 그리드)는 콘텐츠 양과 무관하게 항상 정사각형이어야 해서 aspect-square로 전환 (2026-08-08).
+  const sizeClass = isKpi ? 'h-[150px]' : 'aspect-square';
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), delay);
@@ -108,45 +107,61 @@ export default function AnimatedStatCard({
     requestAnimationFrame(animate);
   }, [isVisible, value, decimals]);
 
+  const valueRow = (
+    <div className={`flex items-baseline gap-1.5 shrink-0 ${isKpi ? '' : 'justify-center'}`}>
+      <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
+        {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
+      </span>
+      {trend && trend.value !== 0 && (
+        <span className={`text-xs font-bold shrink-0 ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
+          {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}
+        </span>
+      )}
+    </div>
+  );
+
   const card = (
     <div
       ref={ref}
       className={`
-        ${heightClass} flex flex-col min-w-0
-        bg-gradient-to-br ${c.bg} bg-surface
-        rounded-2xl border border-border p-4
+        ${sizeClass} flex flex-col min-w-0
+        bg-surface
+        rounded-lg border border-border ${isKpi ? 'p-4' : 'p-3 sm:p-4'}
         shadow-xs
         transition-all duration-500 ease-out
-        hover:-translate-y-0.5 hover:shadow-lg ${c.hoverBorder}
+        ${c.hoverBorder}
         ${href ? 'cursor-pointer' : ''}
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
         ${className}
       `}
     >
-      <div className={`flex items-start justify-between ${isKpi ? 'mb-2' : 'mb-3'} shrink-0`}>
-        <div className={`w-8 h-8 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
-          {icon}
+      {isKpi ? (
+        <>
+          <div className="flex items-start justify-between mb-2 shrink-0">
+            <div className={`w-7 h-7 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
+              {icon}
+            </div>
+            {sparklineData && sparklineData.length > 1 && (
+              <Sparkline data={sparklineData} color={c.spark} />
+            )}
+          </div>
+          <p className="stat-title mb-0.5 shrink-0">{label}</p>
+          <div className="mt-auto pt-1">{valueRow}</div>
+        </>
+      ) : (
+        // 정사각형(aspect-square) 카드 — 상단 아이콘 / 중앙 제목·설명 / 하단 숫자로 균등 분배.
+        // justify-between이 콘텐츠 양과 무관하게 아이콘·숫자를 항상 같은 기준선에 고정시킨다.
+        <div className="flex-1 flex flex-col items-center justify-between text-center min-h-0">
+          <div className={`w-8 h-8 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
+            {icon}
+          </div>
+          <div className="flex flex-col items-center gap-1 px-1 min-w-0 w-full">
+            <p className="stat-title">{label}</p>
+            <p className="stat-desc line-clamp-2">{description || ' '}</p>
+          </div>
+          {valueRow}
         </div>
-        {sparklineData && sparklineData.length > 1 && (
-          <Sparkline data={sparklineData} color={c.spark} />
-        )}
-      </div>
-      <p className={`stat-title ${isKpi ? 'mb-0.5' : 'mb-1'} shrink-0`}>{label}</p>
-      {!isKpi && (
-        <p className="stat-desc line-clamp-2 min-h-[28px] shrink-0">
-          {description || ' '}
-        </p>
       )}
-      <div className={`mt-auto flex items-baseline gap-1.5 ${isKpi ? 'pt-1' : 'pt-2'} shrink-0`}>
-        <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
-          {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
-        </span>
-        {trend && trend.value !== 0 && (
-          <span className={`text-xs font-bold shrink-0 ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
-            {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}
-          </span>
-        )}
-      </div>
     </div>
   );
 

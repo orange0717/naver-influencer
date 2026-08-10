@@ -145,23 +145,23 @@ export default function TopicsPage() {
           <>
             {/* 요약 섹션 */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-              <div className="p-4 rounded-2xl bg-surface border border-border">
+              <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">전체 토픽</p>
                 <p className="text-xl font-bold text-text mt-1">{summary.publishedCount}</p>
               </div>
-              <div className="p-4 rounded-2xl bg-surface border border-border">
+              <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">AI 토픽</p>
                 <p className="text-xl font-bold text-text mt-1">{summary.aiPossibleCount}</p>
               </div>
-              <div className="p-4 rounded-2xl bg-surface border border-border">
+              <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">토픽 활용률</p>
                 <p className="text-xl font-bold text-accent mt-1">{utilizationPercent}%</p>
               </div>
-              <div className="p-4 rounded-2xl bg-surface border border-border">
+              <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">AI 추천 토픽</p>
                 <p className="text-xl font-bold text-text mt-1">{summary.recommendations.length}</p>
               </div>
-              <div className="p-4 rounded-2xl bg-surface border border-border">
+              <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">경쟁 비교</p>
                 {summary.competitor.count > 0 ? (
                   <p className="text-sm font-semibold text-text mt-1">
@@ -191,7 +191,7 @@ export default function TopicsPage() {
                   <Link
                     key={topic.id}
                     href={`/topics/naver/${topic.id}`}
-                    className="group p-4 rounded-2xl bg-surface border border-border hover:border-accent/40 hover:shadow-sm transition-all flex gap-4"
+                    className="group p-4 rounded-lg bg-surface border border-border hover:border-accent/40 hover:shadow-sm transition-all flex gap-4"
                   >
                     {topic.thumbnail_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -239,7 +239,7 @@ export default function TopicsPage() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span>
-                            ✨ <span className="font-semibold">{rec.suggested_name}</span>
+                            <span className="font-semibold">{rec.suggested_name}</span>
                             {rec.topic_subject_category && <span className="text-xs text-dim ml-1">({rec.topic_subject_category})</span>}
                           </span>
                           <span className="text-xs text-dim flex-shrink-0">예상 콘텐츠 {rec.estimated_post_count}개</span>

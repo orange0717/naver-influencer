@@ -427,7 +427,7 @@ export default function MyKeywordList({
 
       {/* --- 키워드 리스트 --- */}
       {filteredKeywords.length > 0 ? (
-        <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <div className="rounded-lg border border-border bg-surface overflow-hidden">
           {/* 데스크톱 테이블 */}
           <div className="hidden md:block">
             <table className="w-full">
@@ -749,7 +749,7 @@ export default function MyKeywordList({
           )}
         </div>
       ) : totalKeywords > 0 ? (
-        <div className="text-center py-8 text-dim text-sm rounded-2xl border border-border bg-bg/30">
+        <div className="text-center py-8 text-dim text-sm rounded-lg border border-border bg-bg/30">
           검색 결과가 없습니다.
         </div>
       ) : (

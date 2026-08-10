@@ -290,7 +290,7 @@ export default function DownloadClient() {
       </div>
 
       {downloadLocked && (
-        <div className="mb-8 rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3.5 text-center text-xs text-dim leading-relaxed">
+        <div className="mb-8 rounded-lg border border-accent/25 bg-accent/5 px-4 py-3.5 text-center text-xs text-dim leading-relaxed">
           설치 파일·스토어·GitHub 링크는{' '}
           <Link
             href={`/auth/login?redirect=${encodeURIComponent('/download')}`}
@@ -445,7 +445,7 @@ function MobileStoreCard({
   const btnClass =
     'inline-flex items-center gap-2 px-7 py-3.5 bg-text text-white text-sm font-bold rounded-xl transition';
   return (
-    <div className="mb-8 bg-surface border border-border rounded-2xl p-6 md:p-8 text-center">
+    <div className="mb-8 bg-surface border border-border rounded-lg p-6 md:p-8 text-center">
       <p className="text-xs text-accent font-bold tracking-widest mb-2">MOBILE</p>
       <h2 className="text-lg md:text-xl font-bold text-text mb-2">{isIos ? 'iPhone · iPad' : 'Android'} (N인플)</h2>
       <p className="text-xs text-dim leading-relaxed mb-5">
@@ -505,7 +505,7 @@ function PrimaryDownloadCard({
     'inline-block px-5 py-2.5 bg-accent text-white text-xs font-bold rounded-xl transition';
   if (loading) {
     return (
-      <div className="bg-surface border border-border rounded-2xl p-8 text-center">
+      <div className="bg-surface border border-border rounded-lg p-8 text-center">
         <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm text-dim">최신 버전 정보를 불러오는 중...</p>
       </div>
@@ -515,7 +515,7 @@ function PrimaryDownloadCard({
   if (error || !release) {
     const { title, hint } = releaseErrorMessage(error);
     return (
-      <div className="bg-surface border border-border rounded-2xl p-8 text-center">
+      <div className="bg-surface border border-border rounded-lg p-8 text-center">
         <p className="text-sm text-text font-semibold mb-2">{title}</p>
         <p className="text-xs text-dim mb-5">{hint}</p>
         {downloadLocked ? (
@@ -539,7 +539,7 @@ function PrimaryDownloadCard({
 
   if (desktopAssetMissing || !links) {
     return (
-      <div className="bg-surface border border-border rounded-2xl p-8 text-center">
+      <div className="bg-surface border border-border rounded-lg p-8 text-center">
         <p className="text-sm text-text font-semibold mb-2">
           릴리스에서 설치 파일을 찾지 못했습니다
         </p>
@@ -601,7 +601,7 @@ function PrimaryDownloadCard({
     'inline-block px-6 py-3 bg-accent text-white text-sm font-bold rounded-xl transition';
 
   return (
-    <div className="bg-gradient-to-br from-accent/10 via-bg to-bg border border-accent/20 rounded-2xl p-8 md:p-10 text-center">
+    <div className="bg-accent/5 border border-accent/20 rounded-lg p-8 md:p-10 text-center">
       {deviceHint ? (
         <p className="text-xs text-dim mb-2 leading-relaxed">
           모바일({osLabel(deviceHint)})으로 접속 중입니다.
@@ -738,7 +738,7 @@ function FeatureCard({ title, desc }: { title: string; desc: string }) {
 
 function SecurityWarning() {
   return (
-    <div className="mt-12 bg-surface border border-border rounded-2xl p-6">
+    <div className="mt-12 bg-surface border border-border rounded-lg p-6">
       <p className="text-sm font-bold text-text mb-3">설치 시 경고가 뜬다면</p>
       <div className="space-y-3 text-xs text-dim leading-relaxed">
         <div>

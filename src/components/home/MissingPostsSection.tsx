@@ -494,7 +494,7 @@ export default function MissingPostsSection() {
       {/* 4. 상세뷰(원인분석) 패널 */}
       <Modal open={!!detailPost} onClose={closeDetail} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
         {detailPost && (
-          <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto">
+          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto">
             {/* 헤더 */}
             <div className="flex items-start justify-between mb-4 gap-3">
               <div>

@@ -98,7 +98,7 @@ export default function KeywordRecommendPage() {
 
         <div className="flex flex-col justify-center">
           {!done && !loading && (
-            <div className="text-center py-10 bg-surface border border-border rounded-2xl h-full flex flex-col items-center justify-center gap-3">
+            <div className="text-center py-10 bg-surface border border-border rounded-lg h-full flex flex-col items-center justify-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
                   <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
@@ -114,7 +114,7 @@ export default function KeywordRecommendPage() {
           )}
 
           {loading && (
-            <div className="flex items-center justify-center py-10 bg-surface border border-border rounded-2xl h-full">
+            <div className="flex items-center justify-center py-10 bg-surface border border-border rounded-lg h-full">
               <div className="text-center">
                 <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
                 <p className="text-xs text-dim">&ldquo;{seedKeyword}&rdquo; 분석 중...</p>
@@ -124,7 +124,7 @@ export default function KeywordRecommendPage() {
           )}
 
           {done && (
-            <div className="bg-surface border border-border rounded-2xl p-5 h-full flex flex-col justify-center gap-2">
+            <div className="bg-surface border border-border rounded-lg p-5 h-full flex flex-col justify-center gap-2">
               <div className="text-center">
                 <p className="text-2xl font-extrabold font-rank text-accent">{results.length}</p>
                 <p className="text-xs text-dim mt-0.5">&ldquo;{seedKeyword}&rdquo; 추천 키워드</p>

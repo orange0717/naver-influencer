@@ -96,7 +96,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
       {/* 단건 모드 */}
       {mode === 'single' && (
         <>
-          <div className="bg-surface rounded-2xl border border-border p-5 space-y-3">
+          <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
             <label className="block text-xs font-semibold text-dim">분석할 URL</label>
             <textarea
               value={input}
@@ -143,7 +143,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
           {decoded && (
             <div className="space-y-5">
               {intent && (
-                <div className="bg-surface rounded-2xl border border-border p-6 space-y-4">
+                <div className="bg-surface rounded-lg border border-border p-6 space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full border ${intent.cls}`}>
                       <span className="text-base">{intent.icon}</span>
@@ -165,7 +165,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
               )}
 
               {decoded.valid && (
-                <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+                <div className="bg-surface rounded-lg border border-border overflow-hidden">
                   <div className="px-5 py-3 border-b border-border/50 bg-bg/30">
                     <h2 className="text-sm font-bold text-text">상세 분석</h2>
                   </div>
@@ -278,7 +278,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
       {/* 일괄 모드 */}
       {mode === 'batch' && (
         <>
-          <div className="bg-surface rounded-2xl border border-border p-5 space-y-3">
+          <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
             <div className="flex items-baseline justify-between">
               <label className="block text-xs font-semibold text-dim">
                 URL 목록 (한 줄에 하나씩)
@@ -314,7 +314,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
           {batch && batch.total > 0 && (
             <div className="space-y-5">
               {/* 요약 헤더 */}
-              <div className="bg-surface rounded-2xl border border-border p-5 flex flex-wrap gap-4 items-center">
+              <div className="bg-surface rounded-lg border border-border p-5 flex flex-wrap gap-4 items-center">
                 <div>
                   <p className="text-xs text-dim">총 URL</p>
                   <p className="text-2xl font-extrabold text-text">{batch.total}</p>
@@ -394,7 +394,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
               )}
 
               {/* 전체 목록 */}
-              <details className="bg-surface rounded-2xl border border-border">
+              <details className="bg-surface rounded-lg border border-border">
                 <summary className="px-5 py-3 cursor-pointer text-sm font-bold text-text hover:bg-bg/30">
                   📋 전체 목록 ({batch.rows.length}개)
                 </summary>
@@ -424,7 +424,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
       )}
 
       {/* 도움말 */}
-      <div className="bg-surface rounded-2xl border border-border p-6 space-y-4">
+      <div className="bg-surface rounded-lg border border-border p-6 space-y-4">
         <h2 className="text-sm font-bold text-text flex items-center gap-2">
           <span>💡</span> sm 코드로 보는 브랜드 강도
         </h2>

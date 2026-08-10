@@ -3,10 +3,8 @@ import { formatDateDot as formatDate } from '@/lib/format';
 interface Props {
   /** users.created_at — N인플 가입일 */
   userCreatedAt?: string | null;
-  /** users.subscription_expires_at — 유료 구독 만료일 */
+  /** users.subscription_expires_at — PRO 패스 만료일 */
   subscriptionExpiresAt?: string | null;
-  /** trial_started 쿠키 (timestamp ms 문자열) */
-  trialStartedTs?: string | null;
 }
 
 function daysBetween(a: Date, b: Date) {
@@ -16,7 +14,6 @@ function daysBetween(a: Date, b: Date) {
 export default function UsagePeriodCard({
   userCreatedAt,
   subscriptionExpiresAt,
-  trialStartedTs,
 }: Props) {
   const now = new Date();
 
@@ -40,21 +37,8 @@ export default function UsagePeriodCard({
     }
   }
 
-  // C) 체험 종료까지
-  let trialInfo: { left: number; until: string } | null = null;
-  if (trialStartedTs) {
-    const startedMs = Number(trialStartedTs);
-    if (!isNaN(startedMs) && startedMs > 0) {
-      const durationDays = 7;
-      const endMs = startedMs + durationDays * 24 * 60 * 60 * 1000;
-      const end = new Date(endMs);
-      const left = Math.max(0, daysBetween(now, end) + 1);
-      if (left > 0) trialInfo = { left, until: formatDate(end) };
-    }
-  }
-
   // 표시할 카드가 하나도 없으면 렌더링 안 함
-  if (!usageInfo && !subInfo && !trialInfo) return null;
+  if (!usageInfo && !subInfo) return null;
 
   const cards: { label: string; value: string; sub: string; tone: 'accent' | 'gold' | 'gray' }[] = [];
   if (usageInfo) {
@@ -67,18 +51,10 @@ export default function UsagePeriodCard({
   }
   if (subInfo) {
     cards.push({
-      label: '구독 만료까지',
+      label: '이용권 만료까지',
       value: `${subInfo.left}일 남음`,
       sub: `~ ${subInfo.until}`,
       tone: 'gold',
-    });
-  }
-  if (trialInfo) {
-    cards.push({
-      label: '체험 종료까지',
-      value: `${trialInfo.left}일 남음`,
-      sub: `~ ${trialInfo.until}`,
-      tone: 'gray',
     });
   }
 

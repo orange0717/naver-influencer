@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifySession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
-import { isTrialExpired } from '@/lib/trial';
 import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
 import { defaultApiLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -114,8 +113,8 @@ const MEMBER_ONLY_GATE_PREFIXES = [
 const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger', '/keywords/blog-ranking'];
 
 /**
- * 7일 무료체험 종료 후 결제 없이는 접근 불가한 페이지 — 로그인은 되어 있으나
- * 활성 유료 플랜(체험 포함)이 없는 회원을 /subscribe?trialEnded=1 로 보낸다.
+ * PRO 이용권 없이는 접근 불가한 페이지(대량 조회·헤비 AI 등 비용이 큰 기능) — 로그인은 되어 있으나
+ * 활성 PRO 이용권이 없는 회원을 /subscribe?needsPro=1 로 보낸다.
  * 로그인 자체가 안 된 사용자는 MEMBER_ONLY_GATE_PREFIXES 등 기존 게이트가 먼저 처리한다.
  */
 const PAID_PLAN_GATE_PREFIXES = [
@@ -155,6 +154,8 @@ const GATE_HANDLED_ELSEWHERE = new Set([
   '/dashboard/claude', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts)
   '/topics', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts) — AI 토픽 큐레이션, dashboard/claude와 동일 패턴
   '/dashboard/google-indexing', // page.tsx 자체에서 getPaywallContext로 미인증/미결제 redirect 처리
+  '/dashboard/content/youtube', // page.tsx 자체 서버 체크(getUserWithTimeout + INFLUENCER 플랜) — AI 호출 비용 발생 기능
+  '/dashboard', // page.tsx 자체에서 getUserWithTimeout + 데모쿠키 체크 후 비로그인은 /로 redirect (구 홈 KPI 대시보드가 이동해온 자리)
 ]);
 
 function isAuthOnlyHrefAccounted(href: string): boolean {
@@ -350,11 +351,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 유료 플랜(체험 포함) 없음 → /subscribe 로 안내 (로그인은 되어 있는 경우만 대상)
-  // - subscription_plan 이 한 번도 없던 회원(가입 버그로 체험을 못 받은 기존 가입자 등)
-  //   → trialOffer=1: "7일 무료체험을 시작하시겠습니까?" 자가발급 모달 (오렌지 지시,
-  //     2026-08-05: 기존 가입자 전원에게 일괄 SQL로 체험을 부여하던 방식 폐기)
-  // - 체험/결제를 이미 받아봤고 지금은 만료된 회원 → trialEnded=1: 구매 유도 모달만
+  // PRO 이용권 없음 → /subscribe 로 안내 (로그인은 되어 있는 경우만 대상).
+  // 2026-08-08 프리미엄 모델 전환: 자가발급 7일 체험 폐지 — 이 경로는 원래부터
+  // "비싸서 무료 없음" 기능(대량 조회·헤비 AI 등)만 모아둔 것이므로 이용권 구매 안내만 한다.
   const needsPaidPlanGate =
     acceptsHtml &&
     PAID_PLAN_GATE_PREFIXES.some(p => matchesPathPrefix(pathname, p)) &&
@@ -369,8 +368,7 @@ export async function middleware(request: NextRequest) {
     if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
       const url = request.nextUrl.clone();
       url.pathname = '/subscribe';
-      const gateParam = ctx.plan === null ? 'trialOffer' : 'trialEnded';
-      url.search = `?${gateParam}=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+      url.search = `?needsPro=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
       return NextResponse.redirect(url);
     }
   }
@@ -424,24 +422,6 @@ export async function middleware(request: NextRequest) {
     );
     if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
       return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 });
-    }
-  }
-
-  // 데모 체험( trial_started + 72h ) 만료 후: 로그인 없이 데모 쿠키만 있으면 유료 전환 유도
-  // — /subscribe 는 허용(결제·안내). 커뮤니티(로그인 게이트) 또는 홈(/) 은 /subscribe 로 보냄.
-  if (acceptsHtml && !user && hasDemoSession) {
-    const trialStarted = request.cookies.get('trial_started')?.value;
-    if (isTrialExpired(trialStarted)) {
-      const onSubscribe = pathname === '/subscribe' || pathname.startsWith('/subscribe/');
-      if (!onSubscribe) {
-        const blockedByLoginGate = needsLoginPage || pathname === '/';
-        if (blockedByLoginGate) {
-          const url = request.nextUrl.clone();
-          url.pathname = '/subscribe';
-          url.search = '';
-          return NextResponse.redirect(url);
-        }
-      }
     }
   }
 

@@ -47,7 +47,7 @@ export function DistroCard({
   if (items.length === 0) return null;
   const max = Math.max(...items.map((i) => i.ratio), 0.0001);
   return (
-    <div className="bg-surface rounded-2xl border border-border p-5 space-y-3">
+    <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
       <h3 className="text-sm font-bold text-text">{title}</h3>
       <div className="space-y-2">
         {items.map((item) => (

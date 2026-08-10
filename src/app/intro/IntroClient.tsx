@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import DemoModal from '@/components/DemoModal';
 import LandingFaq from '@/components/LandingFaq';
+import { useAuthModal } from '@/contexts/AuthModalContext';
 import { formatNewInfluencerWeekRangeKst, subscribeNewInfluencerWeekBoundaryRefresh } from '@/lib/new-influencer-week-kst';
 
 /* ── 신규 집계와 동일한 KST 주간 표기 (일요일은 전주 일요일 시작과 맞춤) ── */
@@ -106,7 +106,7 @@ export default function IntroClient() {
   const featuredStories = useFeaturedStories();
   const weekRange = useNewInfluencerWeekRangeLabel();
   const weekLabel = weekRange ? `${weekRange.start} ~ ${weekRange.end}` : '';
-  const [demoOpen, setDemoOpen] = useState(false);
+  const { openSignup } = useAuthModal();
 
   return (
     <div className="-mt-6 -mb-10 w-screen relative left-1/2 -ml-[50vw]">
@@ -120,7 +120,7 @@ export default function IntroClient() {
           </span>
         </div>
         <p className="text-sm text-accent font-semibold tracking-wide mb-8">
-          네이버 인플루언서를 위한 플랫폼
+          네이버 검색 데이터 분석 플랫폼
         </p>
 
         <h1 className="font-title text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
@@ -144,24 +144,22 @@ export default function IntroClient() {
         </div>
 
         <button
-          onClick={() => setDemoOpen(true)}
+          onClick={() => openSignup()}
           className="inline-block px-10 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm"
         >
-          7일 데모체험 →
+          무료로 시작하기 →
         </button>
 
         <p className="text-xs text-dim mt-5">
-          인플루언서홈 또는 블로그 주소 입력 후 7일간 핵심 기능을 무료로 이용할 수 있습니다.
+          회원가입 없이도 하루 5회 무료로 체험할 수 있습니다.
         </p>
         <p className="text-[11px] text-dim/70 mt-2">
-          ※ Claude AI 기능(맞춤법 검사·블로그 글 피드백)은 가입 후 이용 가능
+          가입하면 매일 더 많은 무료 이용량이 제공됩니다.
         </p>
 
         <p className="text-[11px] text-dim/70 mt-3">
           네이버 크리에이터의 꿈이 실현되는 곳, 정직하고 투명한 데이터, N인플에서 확인하세요.
         </p>
-
-        <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       </section>
 
       <SectionDivider />
@@ -374,7 +372,7 @@ export default function IntroClient() {
         <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto text-left">
-          <div className="bg-bg rounded-2xl border border-border p-7">
+          <div className="bg-bg rounded-lg border border-border p-7">
             <p className="text-xs font-bold text-accent tracking-wide mb-3">블로거</p>
             <h3 className="font-bold text-text mb-3 text-lg">네이버 블로그를 운영하는 분</h3>
             <p className="text-sm text-dim leading-relaxed mb-4">블로그 품질지수와 키워드별 블로그 순위를 추적해 상위노출 전략을 세우세요. 인플루언서 선정을 준비하는 분에게도 좋습니다.</p>
@@ -385,7 +383,7 @@ export default function IntroClient() {
               <li className="text-accent font-semibold pt-1">월 5,500원</li>
             </ul>
           </div>
-          <div className="bg-bg rounded-2xl border border-border p-7">
+          <div className="bg-bg rounded-lg border border-border p-7">
             <p className="text-xs font-bold text-accent tracking-wide mb-3">인플루언서</p>
             <h3 className="font-bold text-text mb-3 text-lg">네이버 인플루언서로 활동 중인 분</h3>
             <p className="text-sm text-dim leading-relaxed mb-4">키워드챌린지 TOP3 진입과 팬 확대를 위한 데이터를 제공합니다. 경쟁자 분석과 알림으로 순위를 지키세요.</p>
@@ -415,7 +413,7 @@ export default function IntroClient() {
               {
                 step: '01',
                 title: '가입하기',
-                desc: '이메일 또는 네이버 계정으로 가입하세요. 7일 무료 체험이 바로 시작됩니다.',
+                desc: '이메일 또는 네이버 계정으로 가입하세요. 가입 즉시 무료로 이용을 시작할 수 있습니다.',
               },
               {
                 step: '02',
@@ -560,7 +558,7 @@ export default function IntroClient() {
                 ),
               },
             ].map(card => (
-              <Link key={card.title} href={card.link} className="bg-bg rounded-2xl border border-border overflow-hidden flex flex-col hover:border-accent/40 transition group">
+              <Link key={card.title} href={card.link} className="bg-bg rounded-lg border border-border overflow-hidden flex flex-col hover:border-accent/40 transition group">
                 {/* 브라우저 목업 */}
                 <div className="bg-surface border-b border-border">
                   <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/60">
@@ -602,10 +600,10 @@ export default function IntroClient() {
         </p>
 
         <button
-          onClick={() => setDemoOpen(true)}
+          onClick={() => openSignup()}
           className="inline-block px-12 py-4 bg-accent text-white text-sm font-bold rounded-full hover:bg-accent-hover transition-colors shadow-sm mb-4"
         >
-          7일 데모체험 →
+          무료로 시작하기 →
         </button>
       </section>
     </div>

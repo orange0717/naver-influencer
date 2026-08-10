@@ -83,7 +83,7 @@ export default function ProfileHeader({
   };
 
   return (
-    <div className="bg-gradient-to-r from-surface via-surface to-accent/[0.05] rounded-2xl border border-border p-4 shadow-xs">
+    <div className="bg-surface rounded-lg border border-border p-4 shadow-xs">
       <div className="flex items-center gap-3">
         {/* 프로필 이미지 */}
         <div className="relative group">
@@ -169,9 +169,9 @@ export default function ProfileHeader({
             {subscribed && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-accent bg-accent/10 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />
-                {subscriptionPlan === 'INFLUENCER' ? '인플루언서 구독중'
-                  : subscriptionPlan === 'BLOGGER' ? '블로거 구독중'
-                  : '구독중'}
+                {subscriptionPlan === 'INFLUENCER' ? '인플루언서 PRO 이용 중'
+                  : subscriptionPlan === 'BLOGGER' ? '블로거 PRO 이용 중'
+                  : 'PRO 이용 중'}
                 {subscriptionExpiresAt && (
                   <span className="text-accent/70 font-normal ml-0.5">
                     · ~{formatDate(subscriptionExpiresAt)}
@@ -239,7 +239,7 @@ export default function ProfileHeader({
       {/* TOP3 위젯 HTML 코드 모달 */}
       {showWidgetCode && naverId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowWidgetCode(false)}>
-          <div className="bg-surface rounded-2xl border border-border p-6 max-w-lg w-full space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-lg border border-border p-6 max-w-lg w-full space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg">TOP 3 달성률 위젯</h3>
               <button onClick={() => setShowWidgetCode(false)} className="text-dim hover:text-text transition cursor-pointer">

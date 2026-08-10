@@ -130,19 +130,19 @@ export default function NaverTopicDetailPage() {
 
             {stats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <div className="p-4 rounded-2xl bg-surface border border-border">
+                <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">게시글 수</p>
                   <p className="text-xl font-bold text-text mt-1">{stats.postCount}</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-surface border border-border">
+                <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">총 조회수</p>
                   <p className="text-xl font-bold text-text mt-1">{formatCountK(stats.totalViewCount)}</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-surface border border-border">
+                <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">평균 조회수</p>
                   <p className="text-xl font-bold text-text mt-1">{formatCountK(stats.avgViewCount)}</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-surface border border-border">
+                <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">최근 발행일</p>
                   <p className="text-sm font-bold text-text mt-1">{stats.latestPublishedAt ? formatDate(stats.latestPublishedAt) : '-'}</p>
                 </div>
@@ -162,7 +162,7 @@ export default function NaverTopicDetailPage() {
                 href="/topics"
                 className="block mb-6 p-4 rounded-xl bg-accent/5 border border-accent/20 text-sm text-text hover:border-accent/40 transition"
               >
-                ✨ 이 주제와 비슷한 미발행 토픽이 있어요: <span className="font-semibold">{stats.nextRecommendation.suggested_name}</span>
+                이 주제와 비슷한 미발행 토픽이 있어요: <span className="font-semibold">{stats.nextRecommendation.suggested_name}</span>
                 <span className="text-xs text-dim ml-1">(예상 글 {stats.nextRecommendation.estimated_post_count}개)</span>
               </Link>
             )}

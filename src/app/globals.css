@@ -101,23 +101,16 @@ button {
 }
 
 button:not(:disabled):hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  filter: brightness(0.97);
 }
 
 button:not(:disabled):active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  filter: brightness(0.94);
 }
 
-/* 카드 호버 효과 */
+/* 카드 — 데이터 중심 화면은 뜨는 대신 테두리만 또렷해지는 정도로 절제 */
 [role="article"], .card, [class*="card"] {
-  transition: all var(--duration-base) var(--easing-in-out);
-}
-
-[role="article"]:hover, .card:hover, [class*="card"]:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  transition: border-color var(--duration-base) var(--easing-in-out);
 }
 
 /* 입력 필드 포커스 */
@@ -198,10 +191,10 @@ a:hover:not(.btn) {
   font-size: 30px;
 }
 .stat-value-stat {
-  font-size: 30px;
+  font-size: 26px;
 }
 .stat-desc {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
   color: #999;
   line-height: 1.4;

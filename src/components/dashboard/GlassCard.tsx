@@ -28,10 +28,10 @@ export default function GlassCard({
   return (
     <div
       className={`
-        bg-surface rounded-2xl border border-border
+        bg-surface rounded-lg border border-border
         shadow-xs
-        ${hover ? 'hover:border-accent/30 hover:shadow-sm transition-all duration-300 ease-out' : ''}
-        ${gradient ? 'bg-gradient-to-br from-surface to-accent/[0.03]' : ''}
+        ${hover ? 'hover:border-accent/40 transition-colors duration-200 ease-out' : ''}
+        ${gradient ? 'bg-accent/[0.03]' : ''}
         ${paddings[padding]}
         ${className}
       `.trim().replace(/\s+/g, ' ')}

@@ -80,8 +80,8 @@ export default function CampaignListPage() {
   if (!authLoading && !advertiser.id) {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4 text-center">
-        <div className="bg-surface border border-border rounded-2xl p-10">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center mb-5">
+        <div className="bg-surface border border-border rounded-lg p-10">
+          <div className="w-16 h-16 mx-auto rounded-lg bg-accent/10 flex items-center justify-center mb-5">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
@@ -144,7 +144,7 @@ export default function CampaignListPage() {
           <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
         </div>
       ) : campaigns.length === 0 ? (
-        <div className="text-center py-12 bg-surface border border-border rounded-2xl">
+        <div className="text-center py-12 bg-surface border border-border rounded-lg">
           <p className="text-dim mb-4">등록된 캠페인이 없습니다</p>
           <Link href="/orangeconnect/campaign/new"
             className="inline-block px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg text-sm transition">
@@ -155,7 +155,7 @@ export default function CampaignListPage() {
         <div className="grid gap-4">
           {campaigns.map(c => (
             <Link key={c.id} href={`/orangeconnect/campaign/${c.id}`}
-              className="bg-surface border border-border rounded-2xl p-5 hover:border-accent/40 transition-colors block">
+              className="bg-surface border border-border rounded-lg p-5 hover:border-accent/40 transition-colors block">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">

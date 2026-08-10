@@ -315,7 +315,7 @@ export default function CompetitorPage() {
         >
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold">
-              경쟁자 분석 : 무료 일일 1회, 예비 인플루언서 일일 5회, 인플루언서 일일 무제한
+              경쟁자 분석 : 하루 {quota.limit ?? 10}회 무료(다른 기능과 합산), PRO 이용권은 무제한
             </span>
             {!quota.unlimited && (
               <span className="text-dim">

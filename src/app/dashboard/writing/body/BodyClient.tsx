@@ -132,7 +132,7 @@ export default function BodyClient() {
       </p>
 
       {loading && (
-        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-2xl">
+        <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
             <p className="text-xs text-dim">본문 작성 중...</p>
@@ -160,11 +160,11 @@ export default function BodyClient() {
               {copied ? '복사됨' : '전체 복사'}
             </button>
           </div>
-          <div className="bg-surface border border-border rounded-2xl p-5">
+          <div className="bg-surface border border-border rounded-lg p-5">
             <pre className="whitespace-pre-wrap break-words font-sans text-sm text-text leading-relaxed">{result.markdown}</pre>
           </div>
 
-          <div className="bg-surface border border-border rounded-2xl p-5 space-y-3">
+          <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
             <h2 className="text-sm font-bold text-text">발행 후 다음 단계</h2>
             <p className="text-xs text-dim leading-relaxed">
               검수 후 네이버 블로그에 발행했다면, 아래에서 &ldquo;{result.title || title}&rdquo;

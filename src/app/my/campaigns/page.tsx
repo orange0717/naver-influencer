@@ -107,7 +107,7 @@ export default function MyCampaignsPage() {
           <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
         </div>
       ) : applications.length === 0 ? (
-        <div className="text-center py-12 bg-surface border border-border rounded-2xl">
+        <div className="text-center py-12 bg-surface border border-border rounded-lg">
           <p className="text-dim mb-4">신청한 캠페인이 없습니다</p>
           <Link href="/campaigns" className="text-accent hover:underline text-sm font-semibold">
             캠페인 둘러보기
@@ -116,7 +116,7 @@ export default function MyCampaignsPage() {
       ) : (
         <div className="grid gap-4">
           {applications.map(app => (
-            <div key={app.id} className="bg-surface border border-border rounded-2xl p-5">
+            <div key={app.id} className="bg-surface border border-border rounded-lg p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">

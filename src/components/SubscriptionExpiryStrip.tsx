@@ -38,16 +38,16 @@ export default function SubscriptionExpiryStrip() {
   if (isExpired) {
     return (
       <div className="bg-down/15 border-b border-down/30 px-4 py-2 text-xs text-text flex items-center justify-center gap-3 flex-wrap">
-        <span>구독이 <strong>{expiredDays}일 전 만료</strong>되었습니다. 현재 무료 플랜으로 이용 중.</span>
-        <Link href="/subscribe" className="px-3 py-1 bg-down text-white font-bold rounded-md hover:opacity-90 transition">갱신</Link>
+        <span>PRO 이용권이 <strong>{expiredDays}일 전 만료</strong>되었습니다. 현재 무료 이용 중.</span>
+        <Link href="/subscribe" className="px-3 py-1 bg-down text-white font-bold rounded-md hover:opacity-90 transition">이용권 구매</Link>
       </div>
     );
   }
 
   return (
     <div className="bg-accent/15 border-b border-accent/30 px-4 py-2 text-xs text-text flex items-center justify-center gap-3 flex-wrap">
-      <span>구독 만료 <strong>{daysLeft}일</strong> 남음. 미리 갱신하면 끊김 없이 이용 가능합니다.</span>
-      <Link href="/subscribe" className="px-3 py-1 bg-accent text-white font-bold rounded-md hover:bg-accent-hover transition">갱신하기</Link>
+      <span>PRO 이용권 만료 <strong>{daysLeft}일</strong> 남음. 미리 연장하면 끊김 없이 이용 가능합니다.</span>
+      <Link href="/subscribe" className="px-3 py-1 bg-accent text-white font-bold rounded-md hover:bg-accent-hover transition">연장하기</Link>
       <button onClick={handleDismiss} className="text-dim hover:text-text font-bold" aria-label="닫기">×</button>
     </div>
   );
