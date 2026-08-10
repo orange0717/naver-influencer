@@ -300,16 +300,30 @@ export default function AuthModal() {
     try {
       const supabase = createSupabaseBrowserClient();
 
-      // signUp이 응답 없이 멈추면(느린 SMTP 발송 등) 아래 await가 끝나지 않아
-      // 버튼이 "계정 생성 중..."에 무한정 멈춘다 → 15초 타임아웃으로 강제 종료.
-      const { data: authData, error: authError } = await withTimeout(
-        supabase.auth.signUp({
-          email: email.trim(),
-          password,
-        }),
-        15000,
-        '회원가입',
-      );
+      // signUp이 응답 없이 멈추면 아래 await가 끝나지 않아 버튼이 "계정 생성 중..."에
+      // 무한정 멈춘다 → 타임아웃으로 강제 종료.
+      // 30초: 크롤링 크론(keyword_rankings 배치 upsert)이 DB CPU를 점유하는 시간대에는
+      // 단순 INSERT도 지연될 수 있어(2026-08-10 실관측, 근본 원인은 별도 트래킹) 15초보다
+      // 여유를 둔다. 그래도 실패하면 재시도 1회 후에만 사용자에게 에러를 보여준다.
+      const doSignUp = () =>
+        withTimeout(
+          supabase.auth.signUp({
+            email: email.trim(),
+            password,
+          }),
+          30000,
+          '회원가입',
+        );
+
+      let authData: Awaited<ReturnType<typeof doSignUp>>['data'];
+      let authError: Awaited<ReturnType<typeof doSignUp>>['error'];
+      try {
+        ({ data: authData, error: authError } = await doSignUp());
+      } catch (err) {
+        if (!(err instanceof TimeoutError)) throw err;
+        setSignupLoadingStep('재시도 중...');
+        ({ data: authData, error: authError } = await doSignUp());
+      }
 
       if (authError) {
         setSignupError(
