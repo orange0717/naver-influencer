@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS public.iblog_rank_keywords (
   keyword     text NOT NULL,
   -- 키워드 출처: title_extract(포스팅 제목 추출) | user_registered(사용자 등록)
   --            | service_collected(서비스 수집) | category(카테고리 주요 키워드)
+  --            | challenge_seed(keyword_challenges 전 카테고리 검색량 상위 자동 시드)
   source      text NOT NULL DEFAULT 'service_collected',
   category    text,
   is_active   boolean NOT NULL DEFAULT true,

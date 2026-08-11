@@ -4,10 +4,11 @@ import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep } from '@/lib/c
 import { collectKeywordExposure, aggregateDailyRanking } from '@/lib/iblog-rank';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+/** 전 카테고리 ~300개 키워드를 하루 여러 배치로 순회 — 배치당 최대 시간 확보 */
+export const maxDuration = 300;
 
-/** 한 번의 실행(배치)에서 처리할 키워드 수 기본값 — maxDuration 60초 여유 확보 */
-const DEFAULT_BATCH_SIZE = 12;
+/** 한 번의 실행(배치)에서 처리할 키워드 수 기본값 — maxDuration 300초 내 안전 */
+const DEFAULT_BATCH_SIZE = 50;
 
 /**
  * 블로그 순위 통합검색 수집 크론 (배치)
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   const sizeParam = Number(new URL(request.url).searchParams.get('size'));
-  const batchSize = Number.isFinite(sizeParam) && sizeParam > 0 ? Math.min(sizeParam, 50) : DEFAULT_BATCH_SIZE;
+  const batchSize = Number.isFinite(sizeParam) && sizeParam > 0 ? Math.min(sizeParam, 100) : DEFAULT_BATCH_SIZE;
 
   const jobId = await createCrawlJob('crawl-iblog-rank');
   const supabase = createServiceClient();

@@ -28,6 +28,11 @@ const MIN_INTEGRATED_POSTS = 5;
 /** 보완 시 블로그검색 API 상위 N개를 "노출"로 간주 */
 const BLOG_API_TOP_N = 10;
 
+/** 자동 시드된 키워드의 출처 라벨 (관리자 수동 등록분과 구분해 세트 최신화에 사용) */
+export const SEED_SOURCE = 'challenge_seed';
+/** 카테고리당 시드할 상위 키워드 수 기본값 (전 20카테고리 × 15 ≈ 300) */
+export const DEFAULT_SEED_PER_CATEGORY = 15;
+
 export type ExposureSource = 'integrated' | 'blog_api' | 'hybrid';
 
 /** 순위 변화 표기: 신규=NEW, 상승=▲n, 하락=▼n, 유지=- */
@@ -331,4 +336,108 @@ export async function aggregateDailyRanking(
   }
 
   return { snapshotDate, blogs: dailyRows.length, previousDate };
+}
+
+export interface SeedSummary {
+  perCategory: number;
+  categories: number;
+  activated: number;
+  deactivated: number;
+}
+
+/**
+ * 전 카테고리 키워드 마스터(keyword_challenges)에서 카테고리별 검색량 상위 N개를
+ * iblog_rank_keywords 로 자동 시드한다.
+ *
+ * - 검색량(search_volume_monthly)은 네이버 SearchAd/DataLab 로 측정된 값이므로
+ *   "카테고리별 인기 키워드"의 근사다. 특정 분야가 아니라 전 카테고리를 포괄해
+ *   "전체 블로거"를 순위 대상으로 삼기 위한 것.
+ * - 활성 세트를 매 실행마다 최신 상위 N 으로 재설정한다: 먼저 시드 출처
+ *   (source=SEED_SOURCE) 키워드를 전부 비활성화한 뒤, 이번 상위 N 을
+ *   is_active=true 로 upsert 한다. 관리자 수동 등록분(source!=SEED_SOURCE)은
+ *   비활성화 대상에서 제외한다.
+ *
+ * keyword_challenges 는 "키워드 문자열 마스터"로만 사용하며, 노출/순위는
+ * 이 시스템이 통합검색을 직접 크롤해 산정한다(기존 순위 데이터 재사용 아님).
+ */
+export async function seedKeywordsFromChallenges(
+  supabase: SupabaseClient,
+  perCategory = DEFAULT_SEED_PER_CATEGORY,
+): Promise<SeedSummary> {
+  // 1) 활성 키워드챌린지에서 카테고리 + 검색량 전량 로드
+  const rows: Array<{
+    keyword: string | null;
+    category: string | null;
+    search_volume_monthly: number | null;
+  }> = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('keyword_challenges')
+      .select('keyword, category, search_volume_monthly')
+      .eq('is_active', true)
+      .not('category', 'is', null)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < pageSize) break;
+  }
+
+  // 2) 카테고리별 그룹핑 → 검색량 내림차순 상위 perCategory 선별
+  const byCategory = new Map<string, Array<{ keyword: string; vol: number }>>();
+  for (const r of rows) {
+    const cat = (r.category || '').trim();
+    const kw = (r.keyword || '').trim();
+    if (!cat || !kw || kw.length > 100) continue;
+    const list = byCategory.get(cat) || [];
+    list.push({ keyword: kw, vol: r.search_volume_monthly ?? 0 });
+    byCategory.set(cat, list);
+  }
+
+  const seen = new Set<string>();
+  const selected: Array<{ keyword: string; category: string }> = [];
+  for (const [cat, list] of byCategory) {
+    list.sort((a, b) => b.vol - a.vol);
+    for (const item of list.slice(0, perCategory)) {
+      if (seen.has(item.keyword)) continue; // 키워드 중복 시 검색량 높은 카테고리 우선
+      seen.add(item.keyword);
+      selected.push({ keyword: item.keyword, category: cat });
+    }
+  }
+
+  const now = new Date().toISOString();
+
+  // 3) 기존 시드 출처 키워드 전부 비활성화 (활성 세트 최신화의 기준선)
+  const { data: deactivatedRows, error: deErr } = await supabase
+    .from('iblog_rank_keywords')
+    .update({ is_active: false, updated_at: now })
+    .eq('source', SEED_SOURCE)
+    .eq('is_active', true)
+    .select('id');
+  if (deErr) throw deErr;
+
+  // 4) 이번 상위 N 을 활성 upsert (기존 행이면 is_active=true 로 되살림)
+  if (selected.length > 0) {
+    for (let i = 0; i < selected.length; i += 500) {
+      const chunk = selected.slice(i, i + 500).map((s) => ({
+        keyword: s.keyword,
+        category: s.category,
+        source: SEED_SOURCE,
+        is_active: true,
+        updated_at: now,
+      }));
+      const { error: upErr } = await supabase
+        .from('iblog_rank_keywords')
+        .upsert(chunk, { onConflict: 'keyword' });
+      if (upErr) throw upErr;
+    }
+  }
+
+  return {
+    perCategory,
+    categories: byCategory.size,
+    activated: selected.length,
+    deactivated: (deactivatedRows || []).length,
+  };
 }
