@@ -103,6 +103,7 @@ const MEMBER_ONLY_GATE_PREFIXES = [
   '/decoder',
   '/competitor',
   '/image-converter',
+  '/image-editor',
 ];
 
 /**
@@ -525,6 +526,18 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // 이미지 편집기(/image-editor)의 AI 배경 제거는 브라우저에서 @imgly/background-removal이
+  // WASM(ONNX)로 추론하고 모델 자산을 staticimgly.com CDN에서 받아온다. 전역 CSP는 그대로
+  // 두고 이 경로에서만 eval(WASM 글루)·blob 워커·CDN fetch를 허용한다.
+  const workerSrc = ["'self'"];
+  if (matchesPathPrefix(pathname, '/image-editor')) {
+    // onnxruntime-web은 WASM 로딩 글루에서 문자열을 eval하므로 'unsafe-eval'이 필요하다
+    // (WASM만 허용하는 'wasm-unsafe-eval'로는 EvalError로 실패). 이 경로에서만 허용.
+    scriptSrc.push("'unsafe-eval'", "blob:");
+    connectSrc.push("https://staticimgly.com", "blob:");
+    workerSrc.push("blob:");
+  }
+
   supabaseResponse.headers.set(
     'Content-Security-Policy',
     [
@@ -534,6 +547,7 @@ export async function middleware(request: NextRequest) {
       `font-src ${fontSrc.join(' ')}`,
       `img-src ${imgSrc.join(' ')}`,
       `connect-src ${connectSrc.join(' ')}`,
+      `worker-src ${workerSrc.join(' ')}`,
       `frame-src ${frameSrc.join(' ')}`,
       "base-uri 'self'",
       "form-action 'self'",

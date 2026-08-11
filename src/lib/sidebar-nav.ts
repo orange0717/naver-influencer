@@ -89,6 +89,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
       { label: '블로그 글 심층피드백', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
       { label: '컬러 팔레트', href: '/dashboard/writing/color-palette' },
+      { label: '이미지 편집', href: '/image-editor', authOnly: true },
     ],
   },
   {
