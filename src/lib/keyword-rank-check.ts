@@ -174,90 +174,79 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
 
   const blogIdLower = blogId.toLowerCase();
   const postIdStr = String(postId || '');
+  // 인플루언서 탭도 통합검색과 마찬가지로 &start= 파라미터를 무시하고 항상 1페이지 결과를 반환한다
+  // (scripts/probe-influencer-tab.mjs로 확증 — page1=page2=page3 동일). 과거엔 이를 페이지2/3으로 오인해
+  // start/(page-1)*10 오프셋을 더해, 실제 2위 글을 15/18위로 부풀리는 버그가 있었다.
+  // 따라서 1페이지만 조회하고 등장순서/r= 값을 그대로 순위로 사용한다.
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.influencer.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
-  let anyPageLoaded = false;
-
-  for (let page = 1; page <= 3; page++) {
-    const start = (page - 1) * 10 + 1;
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
-
-    try {
-      const res = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          'Accept-Encoding': 'gzip, deflate',
-          'Referer': 'https://search.naver.com/',
-        },
-      });
-      if (!res.ok) {
-        console.warn(`[keyword-rank-check] checkInfluencerTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
-        continue;
-      }
-
-      const html = await res.text();
-      anyPageLoaded = true;
-
-      // 신형 인플루언서 탭(fender-ui SDS)은 결과가 in.naver.com/{handle}/contents/internal/{id} 링크로 노출되고
-      // data-cr-on="r=" 순위 속성이 없다. 등장 순서(dedupe 후)를 순위로 사용하고 handle(=blogId)로 매칭한다.
-      const inRank = matchInfluencerContentByHandle(html, blogIdLower, (page - 1) * 10);
-      if (inRank !== null) {
-        return { exposed: true, rank: inRank };
-      }
-
-      // 폴백1: 구형/혼합 마크업 — data-url=blog.naver.com + data-cr-on="r=" 정밀 매칭 (postId 필요)
-      if (postIdStr) {
-        const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
-        const seen = new Set<string>();
-        let match;
-        while ((match = rankRegex.exec(html)) !== null) {
-          const [, linkBlogId, linkPostId, rankStr] = match;
-          const key = `${linkBlogId}/${linkPostId}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-            const absoluteRank = start + parseInt(rankStr) - 1;
-            return { exposed: true, rank: absoluteRank };
-          }
-        }
-
-        // 폴백2: <a> href에서 blog.naver.com 수동 카운트
-        const $ = cheerio.load(html);
-        const seenFb = new Set<string>();
-        let globalRank = (page - 1) * 10;
-        let found: number | null = null;
-        $('a').each((_, el) => {
-          if (found !== null) return;
-          const href = $(el).attr('href') || '';
-          const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-          if (!m) return;
-          const key = `${m[1]}/${m[2]}`;
-          if (seenFb.has(key)) return;
-          seenFb.add(key);
-          globalRank++;
-          if (m[1].toLowerCase() === blogIdLower && m[2] === postIdStr) {
-            found = globalRank;
-          }
-        });
-        if (found !== null) {
-          return { exposed: true, rank: found };
-        }
-      }
-    } catch (err) {
-      console.error(`[keyword-rank-check] checkInfluencerTab 예외 query="${query}" blogId=${blogId} postId=${postId} page=${page}:`, err);
-      continue;
+  try {
+    const res = await fetch(baseUrl, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+        'Accept-Encoding': 'gzip, deflate',
+        'Referer': 'https://search.naver.com/',
+      },
+    });
+    if (!res.ok) {
+      console.warn(`[keyword-rank-check] checkInfluencerTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId}`);
+      return { exposed: false, rank: null, error: true };
     }
 
-    if (page < 3) await new Promise(r => setTimeout(r, 500));
-  }
+    const html = await res.text();
 
-  if (!anyPageLoaded) {
-    console.warn(`[keyword-rank-check] checkInfluencerTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
+    // 신형 인플루언서 탭(fender-ui SDS)은 결과가 in.naver.com/{handle}/contents/internal/{id} 링크로 노출되고
+    // data-cr-on="r=" 순위 속성이 없다. 등장 순서(dedupe 후)를 순위로 사용하고 handle(=blogId)로 매칭한다.
+    const inRank = matchInfluencerContentByHandle(html, blogIdLower, 0);
+    if (inRank !== null) {
+      return { exposed: true, rank: inRank };
+    }
+
+    // 폴백1: 구형/혼합 마크업 — data-url=blog.naver.com + data-cr-on="r=" 정밀 매칭 (postId 필요). r= 는 절대순위이므로 그대로 사용.
+    if (postIdStr) {
+      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+      const seen = new Set<string>();
+      let match;
+      while ((match = rankRegex.exec(html)) !== null) {
+        const [, linkBlogId, linkPostId, rankStr] = match;
+        const key = `${linkBlogId}/${linkPostId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+          return { exposed: true, rank: parseInt(rankStr) };
+        }
+      }
+
+      // 폴백2: <a> href에서 blog.naver.com 수동 카운트 (1페이지 등장순서)
+      const $ = cheerio.load(html);
+      const seenFb = new Set<string>();
+      let globalRank = 0;
+      let found: number | null = null;
+      $('a').each((_, el) => {
+        if (found !== null) return;
+        const href = $(el).attr('href') || '';
+        const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+        if (!m) return;
+        const key = `${m[1]}/${m[2]}`;
+        if (seenFb.has(key)) return;
+        seenFb.add(key);
+        globalRank++;
+        if (m[1].toLowerCase() === blogIdLower && m[2] === postIdStr) {
+          found = globalRank;
+        }
+      });
+      if (found !== null) {
+        return { exposed: true, rank: found };
+      }
+    }
+  } catch (err) {
+    console.error(`[keyword-rank-check] checkInfluencerTab 예외 query="${query}" blogId=${blogId} postId=${postId}:`, err);
     return { exposed: false, rank: null, error: true };
   }
-  console.info(`[keyword-rank-check] checkInfluencerTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음)`);
+
+  console.info(`[keyword-rank-check] checkInfluencerTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (인플루언서 1페이지 내 매칭 없음)`);
   return { exposed: false, rank: null };
 }
 
@@ -277,98 +266,90 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
 
   const blogIdLower = blogId.toLowerCase();
   const postIdStr = String(postId || '');
+  // 네이버 통합검색(where=webkr)은 &start= 파라미터를 무시하고 항상 1페이지 결과를 반환하며,
+  // data-cr-on="r=" 값이 이미 최종(절대) 순위다. 과거엔 이를 페이지2/3으로 오인해 start 오프셋(+10/+20)을
+  // 이중 가산해, 실제 8위 글을 18/28위로 부풀리는 버그가 있었다(scripts/probe-rank-offset.mjs로 확증).
+  // 따라서 통합검색은 1페이지만 조회하고 r= 값을 그대로 순위로 사용한다.
+  // maxPages는 이제 "webkr OpenAPI 폴백 사용 여부(정밀조회=3 / 스크리닝=1)" 플래그로만 쓴다.
   const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
-  let anyPageLoaded = false;
-
-  for (let page = 1; page <= maxPages; page++) {
-    const start = (page - 1) * 10 + 1;
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
-
-    try {
-      const res = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          'Accept-Encoding': 'gzip, deflate',
-          'Referer': 'https://search.naver.com/',
-        },
-      });
-      if (!res.ok) {
-        console.warn(`[keyword-rank-check] checkViewTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
-        continue;
-      }
-
-      const html = await res.text();
-      anyPageLoaded = true;
-
-      // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..." (postId 정밀 매칭 우선)
-      if (postIdStr) {
-        const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
-        const seen = new Set<string>();
-        let match;
-
-        while ((match = rankRegex.exec(html)) !== null) {
-          const [, linkBlogId, linkPostId, rankStr] = match;
-          const key = `${linkBlogId}/${linkPostId}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-
-          if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-            const absoluteRank = start + parseInt(rankStr) - 1;
-            return { exposed: true, rank: absoluteRank };
-          }
-        }
-      }
-
-      // 인플루언서 콘텐츠(in.naver.com)로 통합검색에 노출된 경우 — handle 기준 등장순서 매칭
-      const inRank = matchInfluencerContentByHandle(html, blogIdLower, (page - 1) * 10);
-      if (inRank !== null) {
-        return { exposed: true, rank: inRank };
-      }
-
-      // 2순위 폴백: webkr API 사용 (스크리닝 모드=maxPages 1페이지에선 API 쿼터 절약을 위해 건너뜀)
-      if (postIdStr && maxPages > 1 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
-        try {
-          const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
-          const apiRes = await fetch(apiUrl, {
-            headers: {
-              'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
-              'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
-            },
-          });
-          if (apiRes.ok) {
-            const apiData = await apiRes.json();
-            const items = apiData.items || [];
-            let rank = 0;
-            for (const item of items) {
-              const link = item.link || '';
-              const blogMatch = link.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-              if (!blogMatch) continue;
-              rank++;
-              if (blogMatch[1].toLowerCase() === blogIdLower && blogMatch[2] === postIdStr) {
-                return { exposed: true, rank };
-              }
-            }
-          }
-        } catch (err) {
-          console.error(`[keyword-rank-check] checkViewTab webkr API 폴백 실패 query="${query}":`, err);
-        }
-      }
-    } catch (err) {
-      console.error(`[keyword-rank-check] checkViewTab 예외 query="${query}" blogId=${blogId} postId=${postId} page=${page}:`, err);
-      continue;
+  try {
+    const res = await fetch(baseUrl, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+        'Accept-Encoding': 'gzip, deflate',
+        'Referer': 'https://search.naver.com/',
+      },
+    });
+    if (!res.ok) {
+      // 단일 페이지 조회이므로 이 페이지 실패 = 조회 실패 → 미노출로 오판하지 않고 일시적 오류로 신호(스펙 #8)
+      console.warn(`[keyword-rank-check] checkViewTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId}`);
+      return { exposed: false, rank: null, error: true };
     }
 
-    if (page < maxPages) await new Promise(r => setTimeout(r, 500));
-  }
+    const html = await res.text();
 
-  if (!anyPageLoaded) {
-    console.warn(`[keyword-rank-check] checkViewTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
+    // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..." (postId 정밀 매칭 우선)
+    // r= 값은 이미 절대순위이므로 페이지 오프셋을 더하지 않고 그대로 사용한다.
+    if (postIdStr) {
+      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+      const seen = new Set<string>();
+      let match;
+
+      while ((match = rankRegex.exec(html)) !== null) {
+        const [, linkBlogId, linkPostId, rankStr] = match;
+        const key = `${linkBlogId}/${linkPostId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+          return { exposed: true, rank: parseInt(rankStr) };
+        }
+      }
+    }
+
+    // 인플루언서 콘텐츠(in.naver.com)로 통합검색에 노출된 경우 — handle 기준 등장순서 매칭(1페이지 기준)
+    const inRank = matchInfluencerContentByHandle(html, blogIdLower, 0);
+    if (inRank !== null) {
+      return { exposed: true, rank: inRank };
+    }
+
+    // 2순위 폴백: webkr OpenAPI(display=100, 절대순위). 스크리닝(maxPages=1)에선 API 쿼터 절약 위해 건너뜀.
+    if (postIdStr && maxPages > 1 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
+      try {
+        const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
+        const apiRes = await fetch(apiUrl, {
+          headers: {
+            'X-Naver-Client-Id': NAVER_SEARCH_CLIENT_ID,
+            'X-Naver-Client-Secret': NAVER_SEARCH_CLIENT_SECRET,
+          },
+        });
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          const items = apiData.items || [];
+          let rank = 0;
+          for (const item of items) {
+            const link = item.link || '';
+            const blogMatch = link.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
+            if (!blogMatch) continue;
+            rank++;
+            if (blogMatch[1].toLowerCase() === blogIdLower && blogMatch[2] === postIdStr) {
+              return { exposed: true, rank };
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[keyword-rank-check] checkViewTab webkr API 폴백 실패 query="${query}":`, err);
+      }
+    }
+  } catch (err) {
+    console.error(`[keyword-rank-check] checkViewTab 예외 query="${query}" blogId=${blogId} postId=${postId}:`, err);
     return { exposed: false, rank: null, error: true };
   }
-  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (${maxPages}페이지 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
+
+  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (통합검색 1페이지 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
   return { exposed: false, rank: null };
 }
 
