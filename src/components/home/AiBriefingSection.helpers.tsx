@@ -123,6 +123,8 @@ export function ImprovePanel({ score }: { score: PostScore }) {
   );
 }
 
+export type CheckStatus = 'ok' | 'transient_error' | 'unanalyzable';
+
 export interface BriefingResult {
   // AI 브리핑(통합검색 인라인 위젯) — AI 탭과 완전히 별개인 독립 서비스
   hasAiBriefing: boolean | null;  // 이 키워드로 통합검색 시 AI 브리핑 위젯 콘텐츠 자체가 생성됐는지
@@ -141,7 +143,15 @@ export interface BriefingResult {
   competition?: string | null;
   relatedKeywordCount?: number | null;
   checkedAt?: string | null;
+  checkStatus?: CheckStatus | null;
+  lastError?: string | null;
 }
+
+export const EMPTY_BRIEFING: BriefingResult = {
+  hasAiBriefing: null, exposed: null, sourceIndex: null, sourceTotal: null, matchedTitle: null,
+  hasAiTab: null, tabExposed: null, tabSourceIndex: null, tabSourceTotal: null, tabMatchedTitle: null,
+  checkedAt: null, checkStatus: null, lastError: null,
+};
 
 export const STATE_API = '/api/my/ai-briefing-state';
 
@@ -173,18 +183,53 @@ export function saveBriefingResultToDb(blogId: string, postId: string, keyword: 
   }).catch(() => { /* ignore */ });
 }
 
+// 확인 실패(일시적 오류/분석불가)를 DB에 상태로 기록 — 성공 결과 컬럼은 건드리지 않는다.
+export function saveBriefingErrorToDb(
+  blogId: string, postId: string, keyword: string, checkStatus: Exclude<CheckStatus, 'ok'>, error?: string,
+): void {
+  fetch(STATE_API, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blogId, postId, keyword, checkStatus, error }),
+  }).catch(() => { /* ignore */ });
+}
+
 export function rankKey(postId: string, keyword: string): string {
   return `${postId}::${keyword}`;
 }
 
 /**
+ * 확인 실패 상태(일시적 오류/분석불가) 공용 배지 — 성공 판정(인용/미인용)과 시각적으로 구분한다.
+ * check_status가 오류일 때는 직전에 남아있던 exposed 값이 아니라 "마지막 확인이 실패했음"을
+ * 정직하게 표기한다(정확도 우선 원칙 #8: 검증 불가는 인용으로 처리하지 않는다).
+ */
+function ErrorStatusBadge({ status, lastError }: { status: CheckStatus; lastError?: string | null }) {
+  if (status === 'unanalyzable') {
+    return (
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title={lastError || '구조적으로 분석할 수 없습니다.'}>
+        분석불가
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full" title={lastError || '네이버 접근 제한 등 일시적 오류로 확인하지 못했습니다.'}>
+      일시적 오류
+    </span>
+  );
+}
+
+/**
  * "AI 브리핑" 컬럼 배지 — 통합검색 인라인 위젯(AI 탭과 무관한 별개 서비스) 결과만 사용.
- * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "인용"/"미인용" 두 가지로만 통일한다.
+ * 2026-07-04(6차) 오렌지 지시: 성공 판정 문구는 "인용"/"미인용" 두 가지로만 통일한다.
  * 콘텐츠 자체가 생성되지 않은 경우("없음")와 생성됐지만 내 글이 인용되지 않은 경우를
  * 더 이상 구분 표시하지 않고 둘 다 "미인용"으로 표기한다 — exposed 단일 필드로만 판정.
+ * 단, 확인 실패(일시적 오류/분석불가)는 "미인용"과 섞지 않고 별도 상태로 표기한다.
  */
 export function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
-  if (!result) return <span className="text-[10px] text-dim/50">--</span>;
+  if (!result || (!result.checkedAt && !result.checkStatus)) return <span className="text-[10px] text-dim/50">--</span>;
+  if (result.checkStatus === 'transient_error' || result.checkStatus === 'unanalyzable') {
+    return <ErrorStatusBadge status={result.checkStatus} lastError={result.lastError} />;
+  }
   if (!result.exposed) {
     return (
       <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 브리핑 출처 목록에 이 게시글이 없습니다.">
@@ -213,7 +258,10 @@ export function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
  * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "인용"/"미인용" 두 가지로만 통일(BriefingLabelBadge와 동일 원칙).
  */
 export function AiTabBadge({ result }: { result?: BriefingResult }) {
-  if (!result) return <span className="text-[10px] text-dim/50">--</span>;
+  if (!result || (!result.checkedAt && !result.checkStatus)) return <span className="text-[10px] text-dim/50">--</span>;
+  if (result.checkStatus === 'transient_error' || result.checkStatus === 'unanalyzable') {
+    return <ErrorStatusBadge status={result.checkStatus} lastError={result.lastError} />;
+  }
   if (!result.tabExposed) {
     return (
       <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 탭 출처 목록에 이 게시글이 없습니다.">
@@ -273,6 +321,54 @@ export function timeAgo(dateStr?: string | null): string {
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}일 전`;
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+}
+
+export interface HistoryEntry {
+  exposed: boolean | null;
+  tabExposed: boolean | null;
+  checkedAt: string;
+}
+
+export const HISTORY_API = '/api/my/ai-briefing-history';
+
+export async function fetchCitationHistory(blogId: string): Promise<Record<string, HistoryEntry[]>> {
+  const res = await fetch(`${HISTORY_API}?blogId=${encodeURIComponent(blogId)}`);
+  if (!res.ok) throw new Error('이력 로드 실패');
+  const data = await res.json();
+  return (data.history || {}) as Record<string, HistoryEntry[]>;
+}
+
+function citationLabel(exposed: boolean | null, tabExposed: boolean | null): string {
+  return `AI 브리핑 ${exposed ? '인용' : '미인용'} · AI 탭 ${tabExposed ? '인용' : '미인용'}`;
+}
+
+function shortDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/**
+ * 인용 상태 변경 타임라인 — 스냅샷이 2개 이상일 때만 "8/10 미인용 → 8/11 인용" 형태로 렌더.
+ * 스냅샷은 상태가 실제로 바뀔 때만 쌓이므로 배열 자체가 변화 지점의 나열이다(spec #7).
+ */
+export function CitationTimeline({ entries }: { entries?: HistoryEntry[] }) {
+  if (!entries || entries.length < 2) return <span className="text-[10px] text-dim/40">—</span>;
+  const last = entries.slice(-3); // 최근 변화 3개만 노출
+  return (
+    <span className="inline-flex items-center gap-1 flex-wrap text-[10px] text-dim">
+      {last.map((e, i) => {
+        const cited = e.exposed || e.tabExposed;
+        return (
+          <span key={e.checkedAt} className="inline-flex items-center gap-1">
+            {i > 0 && <span className="text-dim/50">→</span>}
+            <span className={cited ? 'text-up font-semibold' : ''} title={citationLabel(e.exposed, e.tabExposed)}>
+              {shortDate(e.checkedAt)} {cited ? '인용' : '미인용'}
+            </span>
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 export interface AnalysisEntry {

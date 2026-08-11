@@ -6,6 +6,8 @@ import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-lim
 
 export const dynamic = 'force-dynamic';
 
+type CheckStatus = 'ok' | 'transient_error' | 'unanalyzable';
+
 type BriefingResult = {
   hasAiBriefing: boolean | null;
   exposed: boolean | null;
@@ -21,6 +23,8 @@ type BriefingResult = {
   competition?: string | null;
   relatedKeywordCount?: number | null;
   checkedAt?: string | null;
+  checkStatus?: CheckStatus | null;
+  lastError?: string | null;
 };
 
 async function guard(request: NextRequest): Promise<{ res: NextResponse } | { userId: string }> {
@@ -44,7 +48,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('ai_briefing_exposures')
-    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, checked_at, search_volume_monthly, competition, related_keyword_count')
+    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, checked_at, search_volume_monthly, competition, related_keyword_count, check_status, last_error')
     .eq('user_id', g.userId)
     .eq('blog_id', blogId);
 
@@ -63,9 +67,12 @@ export async function GET(request: NextRequest) {
     tab_matched_title: string | null;
     checked_at: string | null;
     search_volume_monthly: number | null; competition: string | null; related_keyword_count: number | null;
+    check_status: CheckStatus | null; last_error: string | null;
   }>) {
     (postKeywords[r.post_id] ??= []).push(r.keyword);
-    if (r.checked_at) {
+    // 성공 확인(checked_at) 또는 실패 상태(check_status)가 있으면 결과로 노출한다.
+    // 실패만 있는 경우도 반환해야 UI에서 "미확인"이 아니라 "일시적 오류/분석불가"로 구분된다.
+    if (r.checked_at || r.check_status) {
       briefingResults[`${r.post_id}::${r.keyword}`] = {
         hasAiBriefing: r.has_ai_briefing,
         exposed: r.exposed,
@@ -81,6 +88,8 @@ export async function GET(request: NextRequest) {
         competition: r.competition,
         relatedKeywordCount: r.related_keyword_count,
         checkedAt: r.checked_at,
+        checkStatus: r.check_status,
+        lastError: r.last_error,
       };
     }
   }
@@ -141,39 +150,102 @@ export async function PATCH(request: NextRequest) {
   const g = await guard(request);
   if ('res' in g) return g.res;
 
-  const { blogId, postId, keyword, result, searchVolume, relatedKeywordCount } = await request.json();
+  const { blogId, postId, keyword, result, searchVolume, relatedKeywordCount, checkStatus, error: checkError } = await request.json();
   if (typeof blogId !== 'string' || typeof postId !== 'string' || typeof keyword !== 'string' || !keyword.trim()) {
     return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
 
+  const kw = keyword.trim();
+  const supabase = createServiceClient();
+  const now = new Date().toISOString();
+
+  // 확인 실패(일시적 오류/분석불가)는 성공 결과 컬럼을 건드리지 않고 상태·오류만 기록한다.
+  // checked_at도 갱신하지 않아 "마지막 성공 확인" 시각이 실패로 덮이지 않는다.
+  const status = (checkStatus ?? null) as CheckStatus | null;
+  if (status === 'transient_error' || status === 'unanalyzable') {
+    const { error } = await supabase
+      .from('ai_briefing_exposures')
+      .upsert({
+        user_id: g.userId,
+        blog_id: blogId,
+        post_id: postId,
+        keyword: kw,
+        check_status: status,
+        last_error: typeof checkError === 'string' ? checkError.slice(0, 500) : null,
+        error_at: now,
+        updated_at: now,
+      }, { onConflict: 'user_id,post_id,keyword' });
+    if (error) return NextResponse.json({ error: '갱신에 실패했습니다.' }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
   const r = (result ?? {}) as Partial<BriefingResult>;
   const sv = (searchVolume ?? null) as { total?: number | string; competition?: string } | null;
-  const supabase = createServiceClient();
+  const exposed = typeof r.exposed === 'boolean' ? r.exposed : null;
+  const tabExposed = typeof r.tabExposed === 'boolean' ? r.tabExposed : null;
+  const hasAiBriefing = typeof r.hasAiBriefing === 'boolean' ? r.hasAiBriefing : null;
+  const sourceIndex = typeof r.sourceIndex === 'number' ? r.sourceIndex : null;
+  const hasAiTab = typeof r.hasAiTab === 'boolean' ? r.hasAiTab : null;
+  const tabSourceIndex = typeof r.tabSourceIndex === 'number' ? r.tabSourceIndex : null;
+
   const { error } = await supabase
     .from('ai_briefing_exposures')
     .upsert({
       user_id: g.userId,
       blog_id: blogId,
       post_id: postId,
-      keyword: keyword.trim(),
-      has_ai_briefing: typeof r.hasAiBriefing === 'boolean' ? r.hasAiBriefing : null,
-      exposed: typeof r.exposed === 'boolean' ? r.exposed : null,
-      source_index: typeof r.sourceIndex === 'number' ? r.sourceIndex : null,
+      keyword: kw,
+      has_ai_briefing: hasAiBriefing,
+      exposed,
+      source_index: sourceIndex,
       source_total: typeof r.sourceTotal === 'number' ? r.sourceTotal : null,
       matched_title: typeof r.matchedTitle === 'string' ? r.matchedTitle : null,
-      has_ai_tab: typeof r.hasAiTab === 'boolean' ? r.hasAiTab : null,
-      tab_exposed: typeof r.tabExposed === 'boolean' ? r.tabExposed : null,
-      tab_source_index: typeof r.tabSourceIndex === 'number' ? r.tabSourceIndex : null,
+      has_ai_tab: hasAiTab,
+      tab_exposed: tabExposed,
+      tab_source_index: tabSourceIndex,
       tab_source_total: typeof r.tabSourceTotal === 'number' ? r.tabSourceTotal : null,
       tab_matched_title: typeof r.tabMatchedTitle === 'string' ? r.tabMatchedTitle : null,
       // 검색량/관련키워드는 이번 PATCH에 값이 없으면(예: 개별 게시물 테이블의 기존 확인 흐름) 기존 값을 지우지 않도록 undefined로 두어 upsert에서 컬럼 자체를 생략
       ...(sv && typeof sv.total === 'number' ? { search_volume_monthly: sv.total, competition: sv.competition ?? null } : {}),
       ...(typeof relatedKeywordCount === 'number' ? { related_keyword_count: relatedKeywordCount } : {}),
-      checked_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      check_status: 'ok',
+      last_error: null,
+      error_at: null,
+      checked_at: now,
+      updated_at: now,
     }, { onConflict: 'user_id,post_id,keyword' });
 
   if (error) return NextResponse.json({ error: '갱신에 실패했습니다.' }, { status: 500 });
+
+  // 인용 상태 변경 이력: 직전 스냅샷과 exposed/tab_exposed가 달라졌을 때만 한 줄 추가한다.
+  const { data: lastHist } = await supabase
+    .from('ai_briefing_exposure_history')
+    .select('exposed, tab_exposed')
+    .eq('user_id', g.userId)
+    .eq('post_id', postId)
+    .eq('keyword', kw)
+    .order('checked_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const prev = lastHist as { exposed: boolean | null; tab_exposed: boolean | null } | null;
+  const changed = !prev || prev.exposed !== exposed || prev.tab_exposed !== tabExposed;
+  if (changed) {
+    await supabase.from('ai_briefing_exposure_history').insert({
+      user_id: g.userId,
+      blog_id: blogId,
+      post_id: postId,
+      keyword: kw,
+      has_ai_briefing: hasAiBriefing,
+      exposed,
+      source_index: sourceIndex,
+      has_ai_tab: hasAiTab,
+      tab_exposed: tabExposed,
+      tab_source_index: tabSourceIndex,
+      checked_at: now,
+    });
+  }
+
   return NextResponse.json({ success: true });
 }
 
@@ -188,12 +260,16 @@ export async function DELETE(request: NextRequest) {
 
   const supabase = createServiceClient();
   let q = supabase.from('ai_briefing_exposures').delete().eq('user_id', g.userId);
+  let hq = supabase.from('ai_briefing_exposure_history').delete().eq('user_id', g.userId);
   if (!all) {
     if (!postId) return NextResponse.json({ error: 'postId 또는 all=true가 필요합니다.' }, { status: 400 });
     q = q.eq('post_id', postId);
-    if (blogId) q = q.eq('blog_id', blogId);
+    hq = hq.eq('post_id', postId);
+    if (blogId) { q = q.eq('blog_id', blogId); hq = hq.eq('blog_id', blogId); }
   }
   const { error } = await q;
   if (error) return NextResponse.json({ error: '삭제에 실패했습니다.' }, { status: 500 });
+  // 이력도 함께 정리(실패해도 본 삭제는 성공 처리 — 이력은 부수적).
+  await hq;
   return NextResponse.json({ success: true });
 }

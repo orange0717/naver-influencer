@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
@@ -17,8 +17,12 @@ import {
   timeAgo,
   rankKey,
   fetchBriefingState,
+  fetchCitationHistory,
+  CitationTimeline,
   saveKeywordsToDb,
   saveBriefingResultToDb,
+  saveBriefingErrorToDb,
+  EMPTY_BRIEFING,
   ScoreCell,
   ImprovePanel,
   BriefingLabelBadge,
@@ -33,6 +37,7 @@ export default function AiBriefingSection() {
   const [currentPage, setCurrentPage] = useState(1);
   const [postsPerPage, setPostsPerPage] = useState(30);
   const [postsLoading, setPostsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   // postId → 타겟 키워드 배열
   const [postKeywords, setPostKeywords] = useState<Record<string, string[]>>({});
@@ -204,6 +209,13 @@ export default function AiBriefingSection() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: citationHistory } = useQuery({
+    queryKey: ['ai-briefing-history', profile?.blogId],
+    queryFn: () => fetchCitationHistory(profile!.blogId),
+    enabled: !!profile?.blogId,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: syncedScores } = useQuery({
     queryKey: ['post-ai-scores', profile?.blogId],
     queryFn: async () => {
@@ -304,19 +316,30 @@ export default function AiBriefingSection() {
     }
   }, [syncedState]);
 
-  // 포스트 로드 시 타겟 키워드 초기화 (저장된 값 있으면 사용, 없으면 빈 입력 1개)
+  // 포스트 로드 시 타겟 키워드 초기화
+  // 우선순위: 저장된 타겟 키워드 > 자동 추출된 대표 키워드(post_ai_scores) > 빈 입력.
+  // 대표 키워드를 타겟 입력에 자동 채워 오렌지가 직접 타이핑하지 않아도 되게 한다(완전 자동화).
+  // 단, DB 저장(및 네이버 확인)은 "확인" 클릭 시점까지 미뤄 불필요한 쓰기/크롤을 막는다(수동 우선).
   useEffect(() => {
     if (!profile || blogPosts.length === 0) return;
-    const initial: Record<string, string[]> = {};
-    for (const post of blogPosts) {
-      if (postKeywords[post.id] && postKeywords[post.id].length > 0) {
-        initial[post.id] = [...postKeywords[post.id]];
-      } else {
-        initial[post.id] = [''];
+    setEditingKeywords(prev => {
+      const next = { ...prev };
+      for (const post of blogPosts) {
+        const saved = postKeywords[post.id];
+        if (saved && saved.length > 0) {
+          next[post.id] = [...saved];
+          continue;
+        }
+        // 이미 사용자가 입력 중인 값(빈 문자열이 아님)은 덮어쓰지 않는다.
+        const current = prev[post.id];
+        const userTyped = current && current.some(k => k.trim());
+        if (userTyped) continue;
+        const rep = postScores[post.id]?.representativeKeyword?.trim();
+        next[post.id] = rep ? [rep] : [''];
       }
-    }
-    setEditingKeywords(prev => ({ ...prev, ...initial }));
-  }, [profile, blogPosts, postKeywords]);
+      return next;
+    });
+  }, [profile, blogPosts, postKeywords, postScores]);
 
   const handleKeywordChange = (postId: string, kwIndex: number, value: string) => {
     setEditingKeywords(prev => {
@@ -382,7 +405,20 @@ export default function AiBriefingSection() {
   // content-type으로 분기해서 두 경로 모두 처리한다.
   const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean; result: BriefingResult | null }> => {
     if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false, result: null };
-    const key = rankKey(post.id, keyword.trim());
+    const kw = keyword.trim();
+    const key = rankKey(post.id, kw);
+    // 확인 실패를 "미확인"과 구분해 DB에 남긴다(정확도 원칙 #8) — UI엔 즉시 "일시적 오류"로 반영.
+    const persistTransient = (msg?: string) => {
+      saveBriefingErrorToDb(profile.blogId, post.id, kw, 'transient_error', msg);
+      setBriefingResults(prev => {
+        const prevRes = prev[key];
+        return { ...prev, [key]: { ...(prevRes ?? EMPTY_BRIEFING), checkStatus: 'transient_error', lastError: msg ?? null } };
+      });
+    };
+    // 성공 저장(fire-and-forget) + 서버측 이력 스냅샷 insert가 커밋될 시간을 주고 타임라인을 갱신한다.
+    const refreshHistorySoon = () => {
+      setTimeout(() => { queryClient.invalidateQueries({ queryKey: ['ai-briefing-history', profile.blogId] }); }, 1200);
+    };
     setCheckingKey(key);
     setCheckingStage('searching');
     try {
@@ -398,10 +434,13 @@ export default function AiBriefingSection() {
 
       if (!res.ok) {
         if (res.status === 429) {
+          // 클라이언트 레이트리밋 — 네이버 확인 자체를 시도하지 않았으므로 상태를 남기지 않는다.
           showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
         } else {
           const body = await res.json().catch(() => null);
-          showError(body?.error || `AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`, 8000);
+          const msg = body?.error || `AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`;
+          showError(msg, 8000);
+          persistTransient(typeof body?.error === 'string' ? body.error : undefined);
         }
         return { ok: false, status: res.status, cached: false, result: null };
       }
@@ -411,7 +450,8 @@ export default function AiBriefingSection() {
         // 캐시 적중 등 — 일반 JSON 즉시 응답
         const data = await res.json();
         setBriefingResults(prev => ({ ...prev, [key]: data }));
-        saveBriefingResultToDb(profile.blogId, post.id, keyword.trim(), data);
+        saveBriefingResultToDb(profile.blogId, post.id, kw, data);
+        refreshHistorySoon();
         return { ok: true, status: res.status, cached: data?.cached === true, result: data };
       }
 
@@ -445,18 +485,22 @@ export default function AiBriefingSection() {
 
       if (streamError) {
         showError(streamError, 8000);
+        persistTransient(streamError);
         return { ok: false, status: res.status, cached: false, result: null };
       }
       if (finalData) {
         const parsed = finalData as unknown as BriefingResult;
         setBriefingResults(prev => ({ ...prev, [key]: parsed }));
-        saveBriefingResultToDb(profile.blogId, post.id, keyword.trim(), parsed);
+        saveBriefingResultToDb(profile.blogId, post.id, kw, parsed);
+        refreshHistorySoon();
         return { ok: true, status: res.status, cached: false, result: parsed };
       }
       showError('AI 브리핑 확인 결과를 받지 못했습니다. 잠시 후 다시 시도해주세요.', 8000);
+      persistTransient('확인 결과를 받지 못했습니다.');
       return { ok: false, status: res.status, cached: false, result: null };
     } catch {
       showError('네트워크 오류로 AI 브리핑을 확인하지 못했습니다.');
+      persistTransient('네트워크 오류');
       return { ok: false, status: 0, cached: false, result: null };
     } finally {
       setCheckingKey('');
@@ -864,6 +908,7 @@ export default function AiBriefingSection() {
                   <th className="text-center px-3 py-3 font-semibold">AI브리핑</th>
                   <th className="text-center px-3 py-3 font-semibold">AI탭</th>
                   <th className="text-center px-3 py-3 font-semibold">노출순위</th>
+                  <th className="text-center px-3 py-3 font-semibold">변경 이력</th>
                   <th className="text-center px-3 py-3 font-semibold">검색량</th>
                   <th className="text-center px-3 py-3 font-semibold">경쟁도</th>
                   <th className="text-center px-3 py-3 font-semibold">관련키워드</th>
@@ -878,6 +923,9 @@ export default function AiBriefingSection() {
                     <td className="text-center px-3 py-3"><AiTabBadge result={h.briefing} /></td>
                     <td className="text-center px-3 py-3 text-xs text-dim">
                       {h.briefing.sourceIndex ?? h.briefing.tabSourceIndex ? `${h.briefing.sourceIndex ?? h.briefing.tabSourceIndex}위` : '—'}
+                    </td>
+                    <td className="text-center px-3 py-3">
+                      <CitationTimeline entries={citationHistory?.[rankKey(h.post.id, h.keyword)]} />
                     </td>
                     <td className="text-center px-3 py-3 text-xs text-dim">
                       {h.searchVolume ? `${typeof h.searchVolume.total === 'number' ? h.searchVolume.total.toLocaleString() : h.searchVolume.total}` : '—'}
@@ -901,6 +949,12 @@ export default function AiBriefingSection() {
                   <span>브리핑</span><BriefingLabelBadge result={h.briefing} />
                   <span>탭</span><AiTabBadge result={h.briefing} />
                 </div>
+                {citationHistory?.[rankKey(h.post.id, h.keyword)] && citationHistory[rankKey(h.post.id, h.keyword)].length >= 2 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[11px] text-dim">이력</span>
+                    <CitationTimeline entries={citationHistory[rankKey(h.post.id, h.keyword)]} />
+                  </div>
+                )}
                 <div className="flex items-center gap-3 text-[11px] text-dim">
                   <span>검색량 {h.searchVolume ? (typeof h.searchVolume.total === 'number' ? h.searchVolume.total.toLocaleString() : h.searchVolume.total) : '—'}</span>
                   <span>경쟁도 {h.searchVolume?.competition || '—'}</span>
@@ -1125,15 +1179,22 @@ export default function AiBriefingSection() {
                             </>
                           )}
                           <td className="text-center px-3 py-1.5">
-                            <button
-                              onClick={() => checkSingleKeyword(post, kw)}
-                              disabled={!!checkingKey || !kw.trim()}
-                              className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
-                            >
-                              {checkingKey === key ? (
-                                <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                              ) : result ? '재확인' : '확인'}
-                            </button>
+                            <div className="flex flex-col items-center gap-0.5">
+                              <button
+                                onClick={() => checkSingleKeyword(post, kw)}
+                                disabled={!!checkingKey || !kw.trim()}
+                                className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                              >
+                                {checkingKey === key ? (
+                                  <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                                ) : result ? '재확인' : '확인'}
+                              </button>
+                              {result?.checkedAt && (
+                                <span className="text-[9px] text-dim" title={new Date(result.checkedAt).toLocaleString('ko-KR')}>
+                                  {timeAgo(result.checkedAt)}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           {isFirst && (
                             <td className="text-center px-3 py-1.5 align-top" rowSpan={rowCount}>

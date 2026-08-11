@@ -3,6 +3,7 @@ import { createRouteHandlerClient, createServiceClient, getUserWithTimeout, hasS
 import { cookies } from 'next/headers';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
 import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
+import AiExposureSummary from '@/components/home/AiExposureSummary';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
 import BlogConnectCta from '@/components/home/BlogConnectCta';
 
@@ -96,6 +97,11 @@ export default async function DashboardPage() {
         <h2 className="text-sm font-bold text-text px-1">KPI 요약</h2>
         <BlogDashboardKpiBar blogId={profileResult?.blog_id ?? null} />
       </section>
+      {!isInfluencerNoBlogId && (
+        <section id="ai-exposure" className="scroll-mt-24">
+          <AiExposureSummary blogId={profileResult?.blog_id ?? null} />
+        </section>
+      )}
       <section id="blog-analysis" className="scroll-mt-24">
         {isInfluencerNoBlogId ? <BlogConnectCta /> : <BlogAnalysisSection />}
       </section>

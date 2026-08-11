@@ -19,6 +19,18 @@ export interface BlogDashboardSummary {
   avgRank: number | null;
   missingRate: number;
   challengeParticipatedCount: number;
+  // 'AI 브리핑·AI 탭 현황' 요약 — 대시보드 상세 표와 동일 소스(ai_briefing_exposures)에서 집계(정확도 원칙 #8)
+  aiExposure: {
+    analyzedPostCount: number;      // 확인 완료(check_status='ok') 포스팅 수(distinct post_id)
+    analyzedKeywordCount: number;   // 확인 완료 (post,keyword) 수
+    briefingCitedCount: number;     // AI 브리핑 인용 포스팅 수(distinct)
+    tabCitedCount: number;          // AI 탭 인용 포스팅 수(distinct)
+    overallCitedCount: number;      // 브리핑·탭 중 하나라도 인용된 포스팅 수(distinct)
+    briefingRate: number;           // 인용률 %(브리핑) = briefingCited / analyzed
+    tabRate: number;                // 인용률 %(탭)
+    overallRate: number;            // 인용률 %(전체)
+    lastCheckedAt: string | null;   // 마지막 확인 시각
+  };
 }
 
 /**
@@ -57,7 +69,7 @@ export async function GET(request: NextRequest) {
     fetchBlogProfileStats(blogId).catch(() => null),
     supabase
       .from('ai_briefing_exposures')
-      .select('post_id, exposed, tab_exposed')
+      .select('post_id, keyword, exposed, tab_exposed, check_status, checked_at')
       .eq('user_id', auth.userId)
       .eq('blog_id', blogId)
       .then(({ data }) => data ?? []),
@@ -99,6 +111,35 @@ export async function GET(request: NextRequest) {
     briefingRows.filter(r => r.tab_exposed === true).map(r => r.post_id),
   ).size;
 
+  // 'AI 브리핑·AI 탭 현황' — 확인 완료(check_status='ok')된 행만 분석 대상으로 삼는다.
+  // (일시적 오류/분석불가/미확인은 분모에서 제외해 인용률이 왜곡되지 않게 한다.)
+  const okRows = briefingRows.filter(r => r.check_status === 'ok');
+  const analyzedPostCount = new Set(okRows.map(r => r.post_id)).size;
+  const analyzedKeywordCount = okRows.length;
+  const briefingCitedPosts = new Set(okRows.filter(r => r.exposed === true).map(r => r.post_id));
+  const tabCitedPosts = new Set(okRows.filter(r => r.tab_exposed === true).map(r => r.post_id));
+  const overallCitedPosts = new Set(
+    okRows.filter(r => r.exposed === true || r.tab_exposed === true).map(r => r.post_id),
+  );
+  const pct = (n: number) => (analyzedPostCount > 0 ? Math.round((n / analyzedPostCount) * 1000) / 10 : 0);
+  const lastCheckedAt = okRows.reduce<string | null>((max, r) => {
+    const c = r.checked_at as string | null;
+    if (!c) return max;
+    return !max || c > max ? c : max;
+  }, null);
+
+  const aiExposure = {
+    analyzedPostCount,
+    analyzedKeywordCount,
+    briefingCitedCount: briefingCitedPosts.size,
+    tabCitedCount: tabCitedPosts.size,
+    overallCitedCount: overallCitedPosts.size,
+    briefingRate: pct(briefingCitedPosts.size),
+    tabRate: pct(tabCitedPosts.size),
+    overallRate: pct(overallCitedPosts.size),
+    lastCheckedAt,
+  };
+
   const bestRanks = rankRows
     .map(r => {
       const candidates = [r.view_rank, r.blog_rank].filter((v): v is number => typeof v === 'number');
@@ -133,6 +174,7 @@ export async function GET(request: NextRequest) {
     avgRank,
     missingRate,
     challengeParticipatedCount,
+    aiExposure,
   };
 
   return NextResponse.json(summary);
