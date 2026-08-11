@@ -21,6 +21,9 @@ import {
   isStale,
   timeAgo,
   computeDeltaDisplay,
+  renderRankTab,
+  renderRankPill,
+  rankCellText,
   getProfileFromApi,
 } from './KeywordRankingSection.helpers';
 
@@ -126,9 +129,9 @@ export default function KeywordRankingSection() {
         rows.push([
           post.title,
           kw === repKw ? `${kw} (대표)` : kw,
-          result?.viewTab?.exposed ? `${result.viewTab.rank}위` : '-',
-          result?.blogTab?.exposed ? `${result.blogTab.rank}위` : '-',
-          result?.influencerTab?.exposed ? `${result.influencerTab.rank}위` : '-',
+          rankCellText(result, result?.viewTab),
+          rankCellText(result, result?.blogTab),
+          rankCellText(result, result?.influencerTab),
           result ? prevDelta.label : '-',
           result ? weekDelta.label : '-',
           result?.searchVolume ?? '',
@@ -351,6 +354,7 @@ export default function KeywordRankingSection() {
           influencerTab: data.influencerTab,
           query: data.query,
           searchVolume: data.searchVolume,
+          status: data.status,
           checkedAt: data.checkedAt || new Date().toISOString(),
         };
 
@@ -608,12 +612,15 @@ export default function KeywordRankingSection() {
           const row = payload.new as KeywordRankLookupRow;
           if (!row?.post_id || !row?.keyword || !row?.checked_at) return;
           const key = rankKey(row.post_id, row.keyword);
+          const rowStatus = (row.status === 'ok' || row.status === 'error' || row.status === 'unanalyzable') ? row.status : undefined;
           const nextResult: RankingResult = {
-            viewTab: { exposed: row.view_exposed ?? false, rank: row.view_rank },
-            blogTab: { exposed: row.blog_exposed ?? false, rank: row.blog_rank },
-            influencerTab: { exposed: row.influencer_exposed ?? false, rank: row.influencer_rank },
+            // null(미확인/일시오류)을 false(미노출)로 뭉개지 않도록 그대로 유지한다(스펙 #8).
+            viewTab: { exposed: row.view_exposed ?? null, rank: row.view_rank },
+            blogTab: { exposed: row.blog_exposed ?? null, rank: row.blog_rank },
+            influencerTab: { exposed: row.influencer_exposed ?? null, rank: row.influencer_rank },
             query: row.keyword,
             searchVolume: row.search_volume ?? undefined,
+            status: rowStatus,
             checkedAt: row.checked_at,
           };
           const prevResult = rankingResultsRef.current[key];
@@ -950,31 +957,13 @@ export default function KeywordRankingSection() {
                           )}
                         </td>
                         <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
-                          {repResult ? (
-                            repResult.viewTab.exposed ? (
-                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {repResult.viewTab.rank}위
-                              </span>
-                            ) : <span className="text-xs text-dim">-</span>
-                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                          {renderRankTab(repResult, repResult?.viewTab)}
                         </td>
                         <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
-                          {repResult ? (
-                            repResult.blogTab.exposed ? (
-                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {repResult.blogTab.rank}위
-                              </span>
-                            ) : <span className="text-xs text-dim">-</span>
-                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                          {renderRankTab(repResult, repResult?.blogTab)}
                         </td>
                         <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
-                          {repResult ? (
-                            repResult.influencerTab?.exposed ? (
-                              <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                {repResult.influencerTab.rank}위
-                              </span>
-                            ) : <span className="text-xs text-dim">-</span>
-                          ) : <span className="text-[10px] text-dim/50">--</span>}
+                          {renderRankTab(repResult, repResult?.influencerTab)}
                         </td>
                         <td className="text-center px-3 py-1.5">
                           {repPrevDelta ? (
@@ -1039,31 +1028,13 @@ export default function KeywordRankingSection() {
                             </div>
                           </td>
                           <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
-                            {result ? (
-                              result.viewTab.exposed ? (
-                                <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                  {result.viewTab.rank}위
-                                </span>
-                              ) : <span className="text-xs text-dim">-</span>
-                            ) : <span className="text-[10px] text-dim/50">--</span>}
+                            {renderRankTab(result, result?.viewTab)}
                           </td>
                           <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
-                            {result ? (
-                              result.blogTab.exposed ? (
-                                <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                  {result.blogTab.rank}위
-                                </span>
-                              ) : <span className="text-xs text-dim">-</span>
-                            ) : <span className="text-[10px] text-dim/50">--</span>}
+                            {renderRankTab(result, result?.blogTab)}
                           </td>
                           <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
-                            {result ? (
-                              result.influencerTab?.exposed ? (
-                                <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">
-                                  {result.influencerTab.rank}위
-                                </span>
-                              ) : <span className="text-xs text-dim">-</span>
-                            ) : <span className="text-[10px] text-dim/50">--</span>}
+                            {renderRankTab(result, result?.influencerTab)}
                           </td>
                           <td className="text-center px-3 py-1.5">
                             {prevDelta ? (
@@ -1185,21 +1156,9 @@ export default function KeywordRankingSection() {
                       )}
                       {repResult && (
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                            repResult.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                          }`}>
-                            통합 {repResult.viewTab.exposed ? `${repResult.viewTab.rank}위` : '-'}
-                          </span>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                            repResult.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                          }`}>
-                            블로그 {repResult.blogTab.exposed ? `${repResult.blogTab.rank}위` : '-'}
-                          </span>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                            repResult.influencerTab?.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                          }`}>
-                            인플루언서 {repResult.influencerTab?.exposed ? `${repResult.influencerTab.rank}위` : '-'}
-                          </span>
+                          {renderRankPill('통합', repResult, repResult.viewTab)}
+                          {renderRankPill('블로그', repResult, repResult.blogTab)}
+                          {renderRankPill('인플루언서', repResult, repResult.influencerTab)}
                           {repResult.searchVolume ? (
                             <span className="text-[10px] text-dim">{repResult.searchVolume.toLocaleString()}</span>
                           ) : null}
@@ -1271,21 +1230,9 @@ export default function KeywordRankingSection() {
                             </div>
                             {result && (
                               <div className={`flex items-center gap-2 flex-wrap rounded-lg transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                  result.viewTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                                }`}>
-                                  통합 {result.viewTab.exposed ? `${result.viewTab.rank}위` : '-'}
-                                </span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                  result.blogTab.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                                }`}>
-                                  블로그 {result.blogTab.exposed ? `${result.blogTab.rank}위` : '-'}
-                                </span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                  result.influencerTab?.exposed ? 'bg-up/10 text-up' : 'bg-bg text-dim'
-                                }`}>
-                                  인플루언서 {result.influencerTab?.exposed ? `${result.influencerTab.rank}위` : '-'}
-                                </span>
+                                {renderRankPill('통합', result, result.viewTab)}
+                                {renderRankPill('블로그', result, result.blogTab)}
+                                {renderRankPill('인플루언서', result, result.influencerTab)}
                                 {result.searchVolume ? (
                                   <span className="text-[10px] text-dim">{result.searchVolume.toLocaleString()}</span>
                                 ) : null}

@@ -656,7 +656,7 @@ export default function BlogAnalysisSection() {
           </span>
         }
       >
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <AnimatedStatCard size="stat" label="이번주 발행" value={publishingStats.weeklyTotal} suffix="회" description={(() => { const now = new Date(); const w = new Date(now.getTime() - 7*24*60*60*1000); return `${w.getMonth()+1}/${w.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>} color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'} delay={150} />
           <AnimatedStatCard size="stat" label="한달 발행" value={publishingStats.monthlyTotal} suffix="회" description={(() => { const now = new Date(); const m = new Date(now.getTime() - 30*24*60*60*1000); return `${m.getMonth()+1}/${m.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'} delay={200} />
           {/* 2행: 순위 + 누락율 */}
@@ -709,22 +709,17 @@ export default function BlogAnalysisSection() {
               </div>
             </div>
           </div>
-          {/* 7번째(마지막) 카드 — 2/3/6칸 그리드에서 나눠떨어지지 않고 혼자 다음 줄로 밀려나 왼쪽에
-              붙어버리는 문제. 이 카드만 그리드 한 행 전체를 차지시키고 그 안에서 가운데 정렬한다. */}
-          <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-6 flex justify-center">
-            <AnimatedStatCard
-              size="stat"
-              label="품질점수"
-              value={scoreData?.total_score ?? 0}
-              suffix="점"
-              placeholder="—"
-              description={scoreData ? `${scoreData.grade}등급 · 전체 ${scoreData.totalBloggers}명 중 ${scoreData.rank}위` : '분석 중'}
-              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
-              color={!scoreData ? 'dim' : scoreData.total_score >= 80 ? 'up' : scoreData.total_score >= 50 ? 'accent' : 'down'}
-              delay={350}
-              className="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(25%-0.5625rem)] lg:w-[calc(16.666%-0.625rem)]"
-            />
-          </div>
+          <AnimatedStatCard
+            size="stat"
+            label="품질점수"
+            value={scoreData?.total_score ?? 0}
+            suffix="점"
+            placeholder="—"
+            description={scoreData ? `${scoreData.grade}등급 · 전체 ${scoreData.totalBloggers}명 중 ${scoreData.rank}위` : '분석 중'}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
+            color={!scoreData ? 'dim' : scoreData.total_score >= 80 ? 'up' : scoreData.total_score >= 50 ? 'accent' : 'down'}
+            delay={350}
+          />
         </div>
       </DashboardCard>
 

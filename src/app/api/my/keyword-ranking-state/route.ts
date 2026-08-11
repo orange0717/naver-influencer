@@ -12,6 +12,8 @@ type RankingResult = {
   influencerTab: { exposed: boolean | null; rank: number | null };
   query: string;
   searchVolume?: number;
+  // 'ok' = 조회 성공 / 'error' = 일시적 오류(미노출로 오판 금지, 저장 생략) / 'unanalyzable' = 분석불가
+  status?: 'ok' | 'error' | 'unanalyzable';
   checkedAt?: string | null;
 };
 
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
   const [{ data, error }, { data: deltaRows, error: deltaError }] = await Promise.all([
     supabase
       .from('keyword_rank_lookups')
-      .select('post_id, keyword, view_rank, view_exposed, blog_rank, blog_exposed, influencer_rank, influencer_exposed, search_volume, checked_at')
+      .select('post_id, keyword, view_rank, view_exposed, blog_rank, blog_exposed, influencer_rank, influencer_exposed, search_volume, status, checked_at')
       .eq('user_id', g.userId)
       .eq('blog_id', blogId),
     supabase.rpc('get_keyword_rank_deltas', { p_user_id: g.userId, p_blog_id: blogId }),
@@ -62,16 +64,18 @@ export async function GET(request: NextRequest) {
     view_rank: number | null; view_exposed: boolean | null;
     blog_rank: number | null; blog_exposed: boolean | null;
     influencer_rank: number | null; influencer_exposed: boolean | null;
-    search_volume: number | null; checked_at: string | null;
+    search_volume: number | null; status: string | null; checked_at: string | null;
   }>) {
     (postKeywords[r.post_id] ??= []).push(r.keyword);
-    if (r.checked_at) {
+    // checked_at이 없어도 분석불가(unanalyzable)는 상태 배지를 그려야 하므로 결과에 포함한다.
+    if (r.checked_at || r.status === 'unanalyzable') {
       rankingResults[`${r.post_id}::${r.keyword}`] = {
         query: r.keyword,
         viewTab: { exposed: r.view_exposed, rank: r.view_rank },
         blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
         influencerTab: { exposed: r.influencer_exposed, rank: r.influencer_rank },
         searchVolume: r.search_volume ?? undefined,
+        status: (r.status === 'ok' || r.status === 'error' || r.status === 'unanalyzable') ? r.status : undefined,
         checkedAt: r.checked_at,
       };
     }
@@ -159,6 +163,14 @@ export async function PATCH(request: NextRequest) {
   const supabase = createServiceClient();
   const trimmedKeyword = keyword.trim();
   const checkedAt = typeof r.checkedAt === 'string' && r.checkedAt ? r.checkedAt : new Date().toISOString();
+
+  // 일시적 오류(status='error')는 저장하지 않는다 — 이전의 정상 노출/미노출 순위를 null로 덮어쓰지 않기 위함(스펙 #8).
+  // 저장을 생략하면 checked_at도 그대로라 백그라운드 큐가 다음 실행에 자동 재조회한다.
+  if (r.status === 'error') {
+    return NextResponse.json({ success: true, skipped: 'error' });
+  }
+  const status: 'ok' | 'unanalyzable' = r.status === 'unanalyzable' ? 'unanalyzable' : 'ok';
+
   const { error } = await supabase
     .from('keyword_rank_lookups')
     .upsert({
@@ -173,6 +185,8 @@ export async function PATCH(request: NextRequest) {
       influencer_rank: typeof r.influencerTab?.rank === 'number' ? r.influencerTab.rank : null,
       influencer_exposed: typeof r.influencerTab?.exposed === 'boolean' ? r.influencerTab.exposed : null,
       search_volume: typeof r.searchVolume === 'number' ? r.searchVolume : null,
+      status,
+      fail_count: 0,
       // 캐시 히트로 받은 결과는 실제 조회 시각(checkedAt)이 과거일 수 있으므로 그대로 보존
       checked_at: checkedAt,
       updated_at: new Date().toISOString(),

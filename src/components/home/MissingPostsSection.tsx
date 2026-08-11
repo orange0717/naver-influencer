@@ -13,11 +13,21 @@ type Period = typeof PERIOD_OPTIONS[number];
 const PER_PAGE = 30;
 const MAX_PAGES_ALL = 20; // 안전장치: 최대 600개까지만 조회
 const DAY_MS = 24 * 60 * 60 * 1000;
+// 페이지 진입 시 최근 발행글을 자동 검사하는 개수 — 최신 상태를 자동 갱신하되 대량 호출은 피한다.
+// 이미 최근(CHECK_FRESH_MS 내) 검사된 글은 runBatch가 건너뛰므로 실제 호출은 이보다 적다.
+const AUTO_CHECK_LIMIT = 30;
 
 type SortKey = 'latest' | 'oldest' | 'title' | 'missingRate';
 type AreaFilter = 'all' | MissingArea;
 
 type PostMissingEntry = MissingState;
+
+// §7 노출↔미노출 전환 이력 (API /my/post-missing-history 응답)
+type HistoryEntry = {
+  prevState: 'exposed' | 'missing';
+  newState: 'exposed' | 'missing';
+  changedAt: string;
+};
 
 /** "2026. 8. 1." 또는 "2026. 8. 1. 14:23" 형식(비표준) + ISO 문자열까지 최대한 파싱 */
 function parsePostDate(raw?: string | null): Date | null {
@@ -56,6 +66,14 @@ function buildCauseAnalysis(mr?: PostMissingEntry): string[] {
     notes.push('아직 검사하지 않은 게시글입니다. "검사" 버튼을 눌러 노출 여부를 먼저 확인하세요.');
     return notes;
   }
+  if (mr.status === 'unanalyzable') {
+    notes.push('이 게시글은 검색 노출 분석 대상이 아닙니다(비공개 글이거나 검색어를 만들 수 없는 제목). 미노출로 집계되지 않습니다.');
+    return notes;
+  }
+  if (mr.status === 'error') {
+    notes.push('직전 검사에서 네이버 검색 결과를 불러오지 못했습니다(일시적 오류). 이 경우 미노출로 처리하지 않으며, 잠시 후 재검사하면 정상 확인될 수 있습니다.');
+    return notes;
+  }
   if (mr.status === 'failed') {
     notes.push('직전 검사가 실패했습니다(네트워크·타임아웃 가능성). 재검사를 시도해보세요.');
   }
@@ -88,13 +106,20 @@ function ExposureBadge({ exposed }: { exposed: boolean | null | undefined }) {
   return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
 }
 
-function StatusBadge({ mr, isChecking }: { mr?: PostMissingEntry; isChecking: boolean }) {
-  if (isChecking) return <span className="text-[11px] font-bold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔵 검사중</span>;
-  if (mr?.status === 'failed') return <span className="text-[11px] font-bold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full whitespace-nowrap">🟡 재검사 필요</span>;
+// 스펙 §3 상태값 5종: 노출 / 미노출 / 분석중 / 분석불가 / 일시적 오류
+// 분석불가/일시적 오류는 절대 미노출로 표시하지 않는다.
+function StatusBadge({ mr, isChecking, isPublic }: { mr?: PostMissingEntry; isChecking: boolean; isPublic?: boolean }) {
+  if (isChecking) return <span className="text-[11px] font-bold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔵 분석중</span>;
+  if (isPublic === false || mr?.status === 'unanalyzable')
+    return <span className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap">⚪ 분석불가</span>;
+  if (mr?.status === 'error')
+    return <span className="text-[11px] font-bold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full whitespace-nowrap">🟠 일시적 오류</span>;
+  if (mr?.status === 'failed')
+    return <span className="text-[11px] font-bold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full whitespace-nowrap">🟡 재검사 필요</span>;
   if (!mr) return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
   if (missingAreaCount(mr) > 0) return <span className="text-[11px] font-bold text-down bg-down/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔴 미노출</span>;
-  const allChecked = mr.viewTab.exposed !== null && mr.blogTab.exposed !== null;
-  if (allChecked) return <span className="text-[11px] font-bold text-up bg-up/10 px-2 py-0.5 rounded-full whitespace-nowrap">🟢 노출</span>;
+  const anyChecked = mr.viewTab.exposed !== null || mr.blogTab.exposed !== null || (mr.influencerTab?.exposed ?? null) !== null;
+  if (anyChecked) return <span className="text-[11px] font-bold text-up bg-up/10 px-2 py-0.5 rounded-full whitespace-nowrap">🟢 노출</span>;
   return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
 }
 
@@ -109,6 +134,9 @@ export default function MissingPostsSection() {
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const [checkingPostId, setCheckingPostId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 대량 분석 확인 다이얼로그 대상 (§9~13) — 실제 네이버 검색이 발생할 글 수(toCheck)가 임계 이상일 때만 표시
+  const [confirmBatch, setConfirmBatch] = useState<{ targets: BlogPost[]; toCheck: number; force: boolean } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [areaFilter, setAreaFilter] = useState<AreaFilter>('all');
@@ -116,7 +144,10 @@ export default function MissingPostsSection() {
   const [detailPostId, setDetailPostId] = useState<string | null>(null);
   const [detailChecking, setDetailChecking] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [detailHistory, setDetailHistory] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const abortRef = useRef(false);
+  const autoCheckedRef = useRef(false); // 진입 자동검사 1회만 실행
 
   useEffect(() => () => { abortRef.current = true; }, []);
 
@@ -176,6 +207,18 @@ export default function MissingPostsSection() {
     } catch { /* ignore */ }
   }, []);
 
+  // §7 특정 포스트의 노출↔미노출 전환 이력 로드 (상세 모달용)
+  const fetchDetailHistory = useCallback(async (blogId: string, postId: string) => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetchWithTimeout(`/api/my/post-missing-history?blogId=${encodeURIComponent(blogId)}&postId=${encodeURIComponent(postId)}`);
+      if (!res.ok) { setDetailHistory([]); return; }
+      const data = await res.json();
+      setDetailHistory(Array.isArray(data.history) ? data.history : []);
+    } catch { setDetailHistory([]); }
+    finally { setHistoryLoading(false); }
+  }, []);
+
   useEffect(() => {
     if (!profile) return;
     fetchPosts(profile.blogId, fetchCutoff);
@@ -184,6 +227,16 @@ export default function MissingPostsSection() {
 
   const checkOne = useCallback(async (post: BlogPost, opts?: { force?: boolean }): Promise<'ok' | 'failed'> => {
     if (!profile) return 'failed';
+    // 비공개 글은 검색 노출 대상이 아니므로 네이버를 치지 않고 '분석불가'로 표시 (호출량·비용 절약)
+    if (post.isPublic === false) {
+      setMissingResults(prev => ({ ...prev, [post.id]: {
+        blogTab: { exposed: null, rank: null },
+        viewTab: { exposed: null, rank: null },
+        influencerTab: { exposed: null, rank: null },
+        status: 'unanalyzable', checkedAt: new Date().toISOString(),
+      } }));
+      return 'ok';
+    }
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
@@ -194,8 +247,11 @@ export default function MissingPostsSection() {
         });
         if (res.ok) {
           const data = await res.json();
-          setMissingResults(prev => ({ ...prev, [post.id]: { ...data, status: 'ok', checkedAt: new Date().toISOString() } }));
-          return 'ok';
+          // 서버가 반환한 status(ok/error/unanalyzable)를 그대로 존중한다 — 'error'(일시적 오류)를 미노출로 오판하지 않기 위함
+          const status = data.status || 'ok';
+          setMissingResults(prev => ({ ...prev, [post.id]: { ...data, status, checkedAt: data.checkedAt || new Date().toISOString() } }));
+          // 일시적 오류는 성공 검사로 치지 않는다 → 다음 재검사 때 다시 확인되도록 'failed' 취급(집계엔 영향 없음)
+          return status === 'error' ? 'failed' : 'ok';
         }
       } catch { /* 재시도 */ }
       if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, 800 * attempt));
@@ -209,31 +265,64 @@ export default function MissingPostsSection() {
     setDetailError('');
     const result = await checkOne(post, { force: true });
     if (result === 'failed') setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    else if (profile) fetchDetailHistory(profile.blogId, post.id); // 전환이 기록됐을 수 있으니 이력 갱신
     setDetailChecking(false);
-  }, [checkOne]);
+  }, [checkOne, profile, fetchDetailHistory]);
 
-  const checkAll = async () => {
-    if (!profile || posts.length === 0) return;
+  // 실제로 네이버 검색이 발생할 글만 센다 — 비공개(분석불가)·최근 성공검사(캐시 신선)는 호출이 없으므로 조회량 추정에서 제외
+  const willHitNaver = useCallback((post: BlogPost, now: number): boolean => {
+    if (post.isPublic === false) return false;
+    const ex = missingResults[post.id];
+    const fresh = ex?.status === 'ok' && !!ex.checkedAt && (now - new Date(ex.checkedAt).getTime()) < CHECK_FRESH_MS;
+    return !fresh;
+  }, [missingResults]);
+
+  const runBatch = useCallback(async (targets: BlogPost[], opts?: { force?: boolean }) => {
+    if (!profile || targets.length === 0) return;
     setCheckingAll(true);
     abortRef.current = false;
-    setCheckProgress({ current: 0, total: posts.length });
+    setCheckProgress({ current: 0, total: targets.length });
     const now = Date.now();
-    for (let i = 0; i < posts.length; i++) {
+    for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
-      const post = posts[i];
-      const existing = missingResults[post.id];
-      const isFresh = existing?.status === 'ok' && !!existing.checkedAt
-        && (now - new Date(existing.checkedAt).getTime()) < CHECK_FRESH_MS;
-      if (!isFresh) {
+      const post = targets[i];
+      // force면 신선도 무시하고 공개글은 항상 재검사(사용자가 명시적으로 '다시 확인' 요청한 경우, §8)
+      const hits = opts?.force ? post.isPublic !== false : willHitNaver(post, now);
+      if (hits || post.isPublic === false) {
+        // 비공개 글은 checkOne이 네이버 호출 없이 '분석불가'로 표시하고 즉시 반환
         setCheckingPostId(post.id);
-        await checkOne(post);
-        if (i < posts.length - 1) await new Promise(r => setTimeout(r, 2000));
+        await checkOne(post, { force: opts?.force });
+        // 실제 네이버 호출이 있었던 경우에만 요청 간격을 둔다 (캐시/분석불가는 지연 불필요)
+        if (hits && i < targets.length - 1) await new Promise(r => setTimeout(r, 2000));
       }
-      setCheckProgress({ current: i + 1, total: posts.length });
+      setCheckProgress({ current: i + 1, total: targets.length });
     }
     setCheckingPostId(null);
     setCheckingAll(false);
-  };
+  }, [profile, willHitNaver, checkOne]);
+
+  // 대량 분석 게이트 (§9~13): 실제 검색이 발생할 글이 10개 이하면 즉시, 그 이상이면 비용 안내 확인 후 실행
+  const requestBatch = useCallback((targets: BlogPost[], opts?: { force?: boolean }) => {
+    if (targets.length === 0) return;
+    const now = Date.now();
+    const toCheck = opts?.force
+      ? targets.filter(p => p.isPublic !== false).length
+      : targets.filter(p => willHitNaver(p, now)).length;
+    if (toCheck <= 10) { runBatch(targets, opts); return; }
+    setConfirmBatch({ targets, toCheck, force: !!opts?.force });
+  }, [willHitNaver, runBatch]);
+
+  // 진입 시 최근 발행글 자동검사 (오렌지 지정) — 검사 안 됐거나 오래된(신선도 만료) 최근 글만 새 로직으로 갱신.
+  // runBatch가 willHitNaver로 이미 최근 검사된 글은 건너뛰므로, 하루 한 번꼴로만 실제 네이버 호출이 발생한다.
+  useEffect(() => {
+    if (!profile || postsLoading || posts.length === 0 || autoCheckedRef.current) return;
+    autoCheckedRef.current = true;
+    const recent = [...posts]
+      .sort((a, b) => (parsePostDate(b.date)?.getTime() || 0) - (parsePostDate(a.date)?.getTime() || 0))
+      .slice(0, AUTO_CHECK_LIMIT);
+    const now = Date.now();
+    if (recent.some(p => willHitNaver(p, now))) runBatch(recent);
+  }, [profile, postsLoading, posts, willHitNaver, runBatch]);
 
   // 선택한 기간(직접 선택 포함)으로 정확히 트리밍 — fetchPosts는 안전을 위해 30일치를 항상 더 넉넉히 불러오므로 여기서 최종 필터링
   const periodPosts = useMemo(() => posts.filter(p => {
@@ -287,9 +376,30 @@ export default function MissingPostsSection() {
 
   const uncheckedCount = useMemo(() => periodPosts.filter(p => !missingResults[p.id]).length, [periodPosts, missingResults]);
 
+  const toggleOne = useCallback((id: string) => {
+    setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }, []);
+  const allVisibleSelected = missingList.length > 0 && missingList.every(p => selectedIds.has(p.id));
+  const toggleAll = useCallback(() => {
+    const visibleIds = missingList.map(p => p.id);
+    setSelectedIds(prev => {
+      const everySelected = visibleIds.length > 0 && visibleIds.every(id => prev.has(id));
+      const n = new Set(prev);
+      if (everySelected) visibleIds.forEach(id => n.delete(id));
+      else visibleIds.forEach(id => n.add(id));
+      return n;
+    });
+  }, [missingList]);
+
   const detailPost = useMemo(() => posts.find(p => p.id === detailPostId) || null, [posts, detailPostId]);
   const detailMr = detailPostId ? missingResults[detailPostId] : undefined;
   const detailCauses = useMemo(() => buildCauseAnalysis(detailMr), [detailMr]);
+
+  // 상세 모달이 열릴 때 해당 포스트의 전환 이력을 불러온다
+  useEffect(() => {
+    if (!profile || !detailPostId) { setDetailHistory([]); return; }
+    fetchDetailHistory(profile.blogId, detailPostId);
+  }, [profile, detailPostId, fetchDetailHistory]);
 
   const closeDetail = useCallback(() => {
     setDetailPostId(null);
@@ -303,15 +413,33 @@ export default function MissingPostsSection() {
           <h2 className="text-lg font-bold">미노출</h2>
           <p className="text-xs text-dim mt-1">선택한 기간 내 포스팅 중 통합검색·블로그·인플루언서에서 미노출된 글만 표시합니다.</p>
         </div>
-        <button onClick={checkAll} disabled={checkingAll || periodPosts.length === 0}
-          className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {checkingAll ? (
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              {checkProgress.current}/{checkProgress.total} 검사 완료
-            </span>
-          ) : uncheckedCount > 0 ? `미확인 ${uncheckedCount}개 검사` : '미노출 재검사'}
-        </button>
+            <>
+              <span className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white font-bold rounded-xl text-xs">
+                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {checkProgress.current}/{checkProgress.total} 분석 중
+              </span>
+              <button onClick={() => { abortRef.current = true; }}
+                className="px-3 py-2 border border-border text-dim font-semibold rounded-xl hover:bg-surface-hover transition cursor-pointer text-xs">
+                중단
+              </button>
+            </>
+          ) : (
+            <>
+              {selectedIds.size > 0 && (
+                <button onClick={() => requestBatch(periodPosts.filter(p => selectedIds.has(p.id)), { force: true })}
+                  className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer text-xs">
+                  선택한 {selectedIds.size}개 재검사
+                </button>
+              )}
+              <button onClick={() => requestBatch(periodPosts)} disabled={periodPosts.length === 0}
+                className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs">
+                {uncheckedCount > 0 ? `미확인 ${uncheckedCount}개 검사` : '미노출 재검사'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* 1. 미노출 정의 안내 */}
@@ -407,6 +535,10 @@ export default function MissingPostsSection() {
               <table className="w-full text-sm min-w-[980px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
+                    <th className="text-center px-3 py-3 font-semibold w-10">
+                      <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll}
+                        className="cursor-pointer accent-accent" aria-label="전체 선택" />
+                    </th>
                     <th className="text-left px-5 py-3 font-semibold">제목</th>
                     <th className="text-left px-3 py-3 font-semibold w-20">카테고리</th>
                     <th className="text-right px-3 py-3 font-semibold w-24">발행일</th>
@@ -424,6 +556,10 @@ export default function MissingPostsSection() {
                     const isChecking = checkingAll && checkingPostId === post.id;
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition">
+                        <td className="px-3 py-3.5 text-center">
+                          <input type="checkbox" checked={selectedIds.has(post.id)} onChange={() => toggleOne(post.id)}
+                            className="cursor-pointer accent-accent" aria-label={`${post.title} 선택`} />
+                        </td>
                         <td className="px-5 py-3.5">
                           <span className="font-semibold truncate block max-w-[280px]" title={post.title}>{post.title}</span>
                           {mr?.checkedAt && <span className="text-[10px] text-dim">최근 검사 {formatCheckedAt(mr.checkedAt)}</span>}
@@ -434,7 +570,7 @@ export default function MissingPostsSection() {
                         <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.blogTab.exposed} /></td>
                         <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.influencerTab?.exposed} /></td>
                         <td className="px-2 py-3.5 text-right text-dim text-xs">{mr?.searchVolume != null ? mr.searchVolume.toLocaleString() : '—'}</td>
-                        <td className="px-3 py-3.5"><StatusBadge mr={mr} isChecking={isChecking} /></td>
+                        <td className="px-3 py-3.5"><StatusBadge mr={mr} isChecking={isChecking} isPublic={post.isPublic} /></td>
                         <td className="px-5 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -460,7 +596,11 @@ export default function MissingPostsSection() {
                 const isChecking = checkingAll && checkingPostId === post.id;
                 return (
                   <div key={post.id} className="p-4 space-y-2">
-                    <p className="font-semibold text-sm truncate" title={post.title}>{post.title}</p>
+                    <div className="flex items-start gap-2">
+                      <input type="checkbox" checked={selectedIds.has(post.id)} onChange={() => toggleOne(post.id)}
+                        className="cursor-pointer accent-accent mt-1 shrink-0" aria-label={`${post.title} 선택`} />
+                      <p className="font-semibold text-sm truncate flex-1" title={post.title}>{post.title}</p>
+                    </div>
                     <div className="flex items-center justify-between text-xs text-dim">
                       <span>{post.category || '—'}</span>
                       <span>{post.date}</span>
@@ -471,7 +611,7 @@ export default function MissingPostsSection() {
                       <ExposureBadge exposed={mr?.influencerTab?.exposed} />
                     </div>
                     <div className="flex items-center justify-between">
-                      <StatusBadge mr={mr} isChecking={isChecking} />
+                      <StatusBadge mr={mr} isChecking={isChecking} isPublic={post.isPublic} />
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => { setDetailPostId(post.id); setDetailError(''); }}
@@ -544,6 +684,27 @@ export default function MissingPostsSection() {
               </ul>
             </div>
 
+            {/* 노출/미노출 전환 이력 (§7) */}
+            <div className="mb-4">
+              <p className="font-bold text-xs mb-2">노출 변화 이력</p>
+              {historyLoading ? (
+                <p className="text-xs text-dim">이력을 불러오는 중...</p>
+              ) : detailHistory.length === 0 ? (
+                <p className="text-xs text-dim">아직 기록된 노출↔미노출 전환이 없습니다. 재검사로 상태가 바뀌면 여기에 기록됩니다.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {detailHistory.map((h, i) => (
+                    <li key={i} className="flex items-center gap-2 text-xs">
+                      <span className="text-[10px] text-dim w-28 shrink-0">{formatCheckedAt(h.changedAt)}</span>
+                      <ExposureBadge exposed={h.prevState === 'exposed'} />
+                      <span className="text-dim">→</span>
+                      <ExposureBadge exposed={h.newState === 'exposed'} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             {/* 재검사 */}
             <div className="bg-bg rounded-lg p-3">
               <div className="flex items-center justify-between gap-2">
@@ -566,6 +727,38 @@ export default function MissingPostsSection() {
             >
               닫기
             </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* 5. 대량 분석 비용 안내 확인 (§9~13) */}
+      <Modal open={!!confirmBatch} onClose={() => setConfirmBatch(null)} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+        {confirmBatch && (
+          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="font-bold text-base mb-3">미노출 대량 분석 안내</h3>
+            <div className="text-xs text-dim leading-relaxed space-y-2">
+              <p>
+                이번 분석에서 새로 검색할 포스팅: <b className="text-text">{confirmBatch.toCheck}개</b>
+                {' '}(최근 검사된 글·비공개 글은 제외)
+              </p>
+              <p>
+                예상 검색 요청: <b className="text-text">약 {confirmBatch.toCheck}회 이상</b> — 글마다 <b className="text-text">통합검색 · 블로그 · 인플루언서</b>를 각각 조회하므로 실제 외부 요청은 이보다 많을 수 있습니다.
+              </p>
+              <p className="p-2.5 rounded-lg bg-amber-500/10 text-amber-700">
+                포스팅 수가 많을수록 네이버 검색·검색량 API 등 외부 데이터 조회량이 증가하며, 이용 중인 API 정책에 따라 <b>비용이 발생할 수 있습니다.</b>
+                {confirmBatch.toCheck > 50 && ' 특히 50개를 초과하는 대량 분석은 소량으로 나눠 진행하는 것을 권장합니다.'}
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button onClick={() => setConfirmBatch(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-bg border border-border text-dim hover:border-accent/30 transition-colors cursor-pointer">
+                취소
+              </button>
+              <button onClick={() => { const c = confirmBatch; setConfirmBatch(null); runBatch(c.targets, { force: c.force }); }}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer">
+                분석 시작
+              </button>
+            </div>
           </div>
         )}
       </Modal>

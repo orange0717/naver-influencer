@@ -145,7 +145,7 @@ export default function AiConsultantClient() {
       )}
 
     <div className={`${hasConversationList ? 'flex-1 min-w-0' : ''} ${isIdle && !hasConversationList ? 'min-h-[calc(100dvh-8rem)] flex flex-col justify-center' : ''}`}>
-    <div className="max-w-2xl mx-auto w-full space-y-6">
+    <div className="max-w-[860px] mx-auto w-full space-y-6">
       <div className="flex items-center justify-between gap-3 pt-2">
         <div className="text-center flex-1 space-y-1.5">
           <h1 className="font-title text-2xl font-bold text-text">N인플 AI</h1>
@@ -161,8 +161,8 @@ export default function AiConsultantClient() {
         )}
       </div>
 
-      <div className="space-y-2">
-        <div className="flex gap-2">
+      <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-sm space-y-2.5">
+        <div className="flex flex-col sm:flex-row gap-2.5">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -170,12 +170,12 @@ export default function AiConsultantClient() {
               if (e.key === 'Enter') runConsult(input);
             }}
             placeholder="예: 요즘 블로그 방문자가 줄었는데 무엇부터 확인해야 할까요?"
-            className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            className="flex-1 w-full px-4 py-3.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
           />
           <button
             onClick={() => runConsult(input)}
             disabled={loading || !input.trim()}
-            className="px-5 py-3 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default shrink-0"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default shrink-0"
           >
             {loading ? '분석 중...' : 'AI에게 물어보기'}
           </button>
@@ -186,7 +186,7 @@ export default function AiConsultantClient() {
       </div>
 
       {!result && !loading && (
-        <div className="space-y-2">
+        <div className="space-y-2.5 pt-3 mt-2 border-t border-border/60">
           <p className="text-xs font-bold text-dim">추천 분석 — N인플 기능 바로가기</p>
           <div className="flex flex-wrap gap-2">
             {FEATURE_SHORTCUTS.map((f) => (

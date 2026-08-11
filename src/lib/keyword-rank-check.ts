@@ -13,16 +13,44 @@ export const CACHE_TTL_SEC = 10 * 60;
 // 검색량 공유 캐시 (24시간)
 const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
 
+// 탭 조회 결과 — error:true = 전 페이지 로드 실패(일시적 오류). 미노출(exposed:false)과 구분해야 오판을 막는다.
+export type TabCheckResult = { exposed: boolean; rank: number | null; error?: boolean };
+
 export type RankCheckResult = {
-  blogTab: { exposed: boolean; rank: number | null };
-  viewTab: { exposed: boolean; rank: number | null };
-  influencerTab: { exposed: boolean; rank: number | null };
+  blogTab: TabCheckResult;
+  viewTab: TabCheckResult;
+  influencerTab: TabCheckResult;
   query: string;
   // 이번 검사에서 실제로 시도한 검색 후보 전체(제목 기반, 1~4개) — 상세 화면 표시용. check-missing API에서만 채움
   candidates?: string[];
   searchVolume: number;
   checkedAt: string;
 };
+
+/**
+ * 신형 인플루언서 콘텐츠(in.naver.com/{handle}/contents/internal/{id}) 링크를 등장 순서로 세어
+ * handle(=blogId)이 일치하는 첫 항목의 순위를 반환한다. 없으면 null.
+ * 신형 마크업엔 data-cr-on="r=" 순위 속성이 없어 DOM 등장 순서를 순위로 사용한다.
+ * (blog logNo ↔ 인플루언서 contentId는 체계가 달라 글 단위 정밀 매칭은 불가 — handle 기준 근사)
+ */
+function matchInfluencerContentByHandle(html: string, blogIdLower: string, rankBase: number): number | null {
+  const inRegex = /in\.naver\.com\/([a-zA-Z0-9_-]+)\/contents\/internal\/(\d+)/g;
+  const seen = new Set<string>();
+  let rank = rankBase;
+  let m;
+  while ((m = inRegex.exec(html)) !== null) {
+    const handle = m[1];
+    const contentId = m[2];
+    const key = `${handle}/${contentId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rank++;
+    if (handle.toLowerCase() === blogIdLower) {
+      return rank;
+    }
+  }
+  return null;
+}
 
 /**
  * 네이버 블로그탭에서 포스팅 노출 여부 확인
@@ -32,6 +60,7 @@ export type RankCheckResult = {
 export async function checkBlogTab(query: string, blogId: string, postId: string): Promise<{
   exposed: boolean;
   rank: number | null;
+  error?: boolean;
 }> {
   if (!blogId || !postId) {
     return { exposed: false, rank: null };
@@ -40,6 +69,10 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
   const blogIdLower = blogId.toLowerCase();
   const postIdStr = String(postId);
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
+
+  // 한 페이지라도 정상 로드됐는지 추적 — 전 페이지가 실패하면 "미노출"이 아니라 "일시적 오류"로 신호한다
+  // (네이버 다운/차단으로 인한 오탐을 미노출로 잘못 집계하지 않기 위함)
+  let anyPageLoaded = false;
 
   for (let page = 1; page <= 3; page++) {
     const start = (page - 1) * 10 + 1;
@@ -61,6 +94,7 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
       }
 
       const html = await res.text();
+      anyPageLoaded = true;
 
       // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
       // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
@@ -114,6 +148,10 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
     if (page < 3) await new Promise(r => setTimeout(r, 500));
   }
 
+  if (!anyPageLoaded) {
+    console.warn(`[keyword-rank-check] checkBlogTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
+    return { exposed: false, rank: null, error: true };
+  }
   console.info(`[keyword-rank-check] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음)`);
   return { exposed: false, rank: null };
 }
@@ -127,14 +165,18 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
 export async function checkInfluencerTab(query: string, blogId: string, postId: string): Promise<{
   exposed: boolean;
   rank: number | null;
+  error?: boolean;
 }> {
-  if (!blogId || !postId) {
+  // 인플루언서 콘텐츠는 in.naver.com handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
+  if (!blogId) {
     return { exposed: false, rank: null };
   }
 
   const blogIdLower = blogId.toLowerCase();
-  const postIdStr = String(postId);
+  const postIdStr = String(postId || '');
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.influencer.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
+
+  let anyPageLoaded = false;
 
   for (let page = 1; page <= 3; page++) {
     const start = (page - 1) * 10 + 1;
@@ -156,45 +198,51 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
       }
 
       const html = await res.text();
+      anyPageLoaded = true;
 
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
-      const seen = new Set<string>();
-      let match;
-
-      while ((match = rankRegex.exec(html)) !== null) {
-        const [, linkBlogId, linkPostId, rankStr] = match;
-        const key = `${linkBlogId}/${linkPostId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-          const absoluteRank = start + parseInt(rankStr) - 1;
-          return { exposed: true, rank: absoluteRank };
-        }
+      // 신형 인플루언서 탭(fender-ui SDS)은 결과가 in.naver.com/{handle}/contents/internal/{id} 링크로 노출되고
+      // data-cr-on="r=" 순위 속성이 없다. 등장 순서(dedupe 후)를 순위로 사용하고 handle(=blogId)로 매칭한다.
+      const inRank = matchInfluencerContentByHandle(html, blogIdLower, (page - 1) * 10);
+      if (inRank !== null) {
+        return { exposed: true, rank: inRank };
       }
 
-      // 2순위 폴백: <a> href에서 수동 카운트 (data-cr-on 없는 경우)
-      if (seen.size === 0) {
+      // 폴백1: 구형/혼합 마크업 — data-url=blog.naver.com + data-cr-on="r=" 정밀 매칭 (postId 필요)
+      if (postIdStr) {
+        const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+        const seen = new Set<string>();
+        let match;
+        while ((match = rankRegex.exec(html)) !== null) {
+          const [, linkBlogId, linkPostId, rankStr] = match;
+          const key = `${linkBlogId}/${linkPostId}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+            const absoluteRank = start + parseInt(rankStr) - 1;
+            return { exposed: true, rank: absoluteRank };
+          }
+        }
+
+        // 폴백2: <a> href에서 blog.naver.com 수동 카운트
         const $ = cheerio.load(html);
-        const blogLinks: { blogId: string; postId: string }[] = [];
         const seenFb = new Set<string>();
         let globalRank = (page - 1) * 10;
-
+        let found: number | null = null;
         $('a').each((_, el) => {
+          if (found !== null) return;
           const href = $(el).attr('href') || '';
           const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
           if (!m) return;
           const key = `${m[1]}/${m[2]}`;
           if (seenFb.has(key)) return;
           seenFb.add(key);
-          blogLinks.push({ blogId: m[1], postId: m[2] });
-        });
-
-        for (const link of blogLinks) {
           globalRank++;
-          if (link.blogId.toLowerCase() === blogIdLower && link.postId === postIdStr) {
-            return { exposed: true, rank: globalRank };
+          if (m[1].toLowerCase() === blogIdLower && m[2] === postIdStr) {
+            found = globalRank;
           }
+        });
+        if (found !== null) {
+          return { exposed: true, rank: found };
         }
       }
     } catch (err) {
@@ -205,6 +253,10 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
     if (page < 3) await new Promise(r => setTimeout(r, 500));
   }
 
+  if (!anyPageLoaded) {
+    console.warn(`[keyword-rank-check] checkInfluencerTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
+    return { exposed: false, rank: null, error: true };
+  }
   console.info(`[keyword-rank-check] checkInfluencerTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음)`);
   return { exposed: false, rank: null };
 }
@@ -216,14 +268,18 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
 export async function checkViewTab(query: string, blogId: string, postId?: string, maxPages: number = 3): Promise<{
   exposed: boolean;
   rank: number | null;
+  error?: boolean;
 }> {
-  if (!blogId || !postId) {
+  // 인플루언서 콘텐츠(in.naver.com)는 handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
+  if (!blogId) {
     return { exposed: false, rank: null };
   }
 
   const blogIdLower = blogId.toLowerCase();
-  const postIdStr = String(postId);
+  const postIdStr = String(postId || '');
   const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
+
+  let anyPageLoaded = false;
 
   for (let page = 1; page <= maxPages; page++) {
     const start = (page - 1) * 10 + 1;
@@ -245,26 +301,35 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
       }
 
       const html = await res.text();
+      anyPageLoaded = true;
 
-      // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..."
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
-      const seen = new Set<string>();
-      let match;
+      // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..." (postId 정밀 매칭 우선)
+      if (postIdStr) {
+        const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+        const seen = new Set<string>();
+        let match;
 
-      while ((match = rankRegex.exec(html)) !== null) {
-        const [, linkBlogId, linkPostId, rankStr] = match;
-        const key = `${linkBlogId}/${linkPostId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
+        while ((match = rankRegex.exec(html)) !== null) {
+          const [, linkBlogId, linkPostId, rankStr] = match;
+          const key = `${linkBlogId}/${linkPostId}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
 
-        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-          const absoluteRank = start + parseInt(rankStr) - 1;
-          return { exposed: true, rank: absoluteRank };
+          if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+            const absoluteRank = start + parseInt(rankStr) - 1;
+            return { exposed: true, rank: absoluteRank };
+          }
         }
       }
 
+      // 인플루언서 콘텐츠(in.naver.com)로 통합검색에 노출된 경우 — handle 기준 등장순서 매칭
+      const inRank = matchInfluencerContentByHandle(html, blogIdLower, (page - 1) * 10);
+      if (inRank !== null) {
+        return { exposed: true, rank: inRank };
+      }
+
       // 2순위 폴백: webkr API 사용 (스크리닝 모드=maxPages 1페이지에선 API 쿼터 절약을 위해 건너뜀)
-      if (seen.size === 0 && maxPages > 1 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
+      if (postIdStr && maxPages > 1 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
         try {
           const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
           const apiRes = await fetch(apiUrl, {
@@ -299,6 +364,10 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
     if (page < maxPages) await new Promise(r => setTimeout(r, 500));
   }
 
+  if (!anyPageLoaded) {
+    console.warn(`[keyword-rank-check] checkViewTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
+    return { exposed: false, rank: null, error: true };
+  }
   console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (${maxPages}페이지 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
   return { exposed: false, rank: null };
 }

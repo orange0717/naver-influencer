@@ -3,13 +3,27 @@ import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-l
 import { createServiceClient } from '@/lib/supabase-server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
-import { checkBlogTab, checkViewTab, checkInfluencerTab, getSearchVolume, CACHE_TTL_SEC, type RankCheckResult } from '@/lib/keyword-rank-check';
+import { checkBlogTab, checkViewTab, checkInfluencerTab, getSearchVolume, CACHE_TTL_SEC } from '@/lib/keyword-rank-check';
 
 export const dynamic = 'force-dynamic';
 
+// 미노출 검사 응답 — 노출 여부는 boolean(확정) 또는 null(미확인/일시적 오류로 확인 불가).
+// status로 노출/미노출 외의 '일시적 오류'(error)·'분석불가'(unanalyzable)를 구분해 미노출 오판을 방지한다.
+type TabState = { exposed: boolean | null; rank: number | null };
+type MissingCheckResult = {
+  blogTab: TabState;
+  viewTab: TabState;
+  influencerTab: TabState;
+  query: string;
+  candidates?: string[];
+  searchVolume: number;
+  status: 'ok' | 'error' | 'unanalyzable';
+  checkedAt: string;
+};
+
 // 동일 인스턴스 내 동시 요청 공유: 같은 cacheKey를 여러 사용자가 동시에 조회해도
 // 진행 중인 크롤링 하나만 수행하고 결과를 나눠 갖는다 (네이버 요청 중복 방지)
-const inFlight = new Map<string, Promise<RankCheckResult>>();
+const inFlight = new Map<string, Promise<MissingCheckResult>>();
 
 // displayName 캐시 (30분, 프로세스 로컬 — DB 조회가 이미 빠름)
 const nameCache = new Map<string, { name: string; expires: number }>();
@@ -124,6 +138,88 @@ function buildTitleSearchCandidates(title: string, blogId: string, displayName?:
   return candidates.slice(0, 4);
 }
 
+// 세 영역 노출값을 하나의 종합 상태로 요약 — 이력 전환 판정용
+// 하나라도 명시적 미노출(false)이면 'missing', 아니면 하나라도 노출(true)이면 'exposed', 전부 미확인이면 'unknown'
+function overallExposureState(view: boolean | null, blog: boolean | null, inf: boolean | null): 'exposed' | 'missing' | 'unknown' {
+  if (view === false || blog === false || inf === false) return 'missing';
+  if (view === true || blog === true || inf === true) return 'exposed';
+  return 'unknown';
+}
+
+type MissingCheckRecord = {
+  query: string;
+  candidates: string[];
+  viewExposed: boolean | null;
+  viewRank: number | null;
+  blogExposed: boolean | null;
+  blogRank: number | null;
+  infExposed: boolean | null;
+  infRank: number | null;
+  searchVolume: number;
+  status: 'ok' | 'unanalyzable';
+  checkedAt: string;
+};
+
+/**
+ * 검사 결과를 post_missing_checks에 upsert하고, 종합 노출 상태가 이전과 달라졌으면
+ * post_missing_history에 전환 이력을 남긴다 (노출→미노출 / 미노출→노출).
+ */
+async function recordMissingCheck(
+  blogId: string,
+  postId: string,
+  postTitle: string | null,
+  rec: MissingCheckRecord,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<void> {
+  // 직전 종합 상태 조회 (전환 판정용)
+  const { data: prev } = await supabase
+    .from('post_missing_checks')
+    .select('view_exposed, blog_exposed, influencer_exposed')
+    .eq('blog_id', blogId)
+    .eq('post_id', postId)
+    .maybeSingle();
+
+  const prevState = prev
+    ? overallExposureState(prev.view_exposed, prev.blog_exposed, prev.influencer_exposed)
+    : 'unknown';
+  const newState = overallExposureState(rec.viewExposed, rec.blogExposed, rec.infExposed);
+
+  await supabase.from('post_missing_checks').upsert({
+    blog_id: blogId,
+    post_id: postId,
+    post_title: postTitle,
+    query: rec.query,
+    search_candidates: rec.candidates,
+    view_exposed: rec.viewExposed,
+    view_rank: rec.viewRank,
+    blog_exposed: rec.blogExposed,
+    blog_rank: rec.blogRank,
+    influencer_exposed: rec.infExposed,
+    influencer_rank: rec.infRank,
+    search_volume: rec.searchVolume,
+    status: rec.status,
+    fail_count: 0,
+    checked_at: rec.checkedAt,
+  }, { onConflict: 'blog_id,post_id' });
+
+  // 노출↔미노출이 실제로 바뀐 경우에만 이력 적재 (첫 확정 검사나 미확인 상태는 이력 남기지 않음)
+  if (prevState !== 'unknown' && newState !== 'unknown' && prevState !== newState) {
+    const { error: histErr } = await supabase.from('post_missing_history').insert({
+      blog_id: blogId,
+      post_id: postId,
+      post_title: postTitle,
+      prev_state: prevState,
+      new_state: newState,
+      view_exposed: rec.viewExposed,
+      blog_exposed: rec.blogExposed,
+      influencer_exposed: rec.infExposed,
+      changed_at: rec.checkedAt,
+    });
+    // 이력 저장 실패는 검사 결과 저장에 영향 주지 않음 (테이블 미적용 시에도 기능 동작 유지)
+    if (histErr) console.error(`[check-missing] post_missing_history 저장 실패 blogId=${blogId} postId=${postId}:`, histErr);
+  }
+}
+
 /**
  * POST /api/blog/check-missing
  * 포스팅의 블로그탭 + 통합검색 노출/누락 여부 확인
@@ -148,7 +244,7 @@ export async function POST(request: NextRequest) {
       ? `rank:${blogId}:${postId || ''}:kw:${keyword.trim()}`
       : `rank:${blogId}:${postId || postTitle.slice(0, 30)}`;
     if (!force) {
-      const cached = await cacheGet<RankCheckResult>(cacheKey);
+      const cached = await cacheGet<MissingCheckResult>(cacheKey);
       if (cached !== null) {
         // 캐시 히트는 네이버를 치지 않으므로 클라이언트가 대기 없이 다음 키워드로 넘어갈 수 있다.
         return NextResponse.json({ ...cached, cached: true });
@@ -158,79 +254,102 @@ export async function POST(request: NextRequest) {
     // 같은 키에 대해 이미 진행 중인 조회가 있으면 그 결과를 공유 (동시 접속 사용자 간 중복 크롤링 방지)
     let promise = inFlight.get(cacheKey);
     if (!promise) {
-      promise = (async (): Promise<RankCheckResult> => {
+      promise = (async (): Promise<MissingCheckResult> => {
         // 사용자 지정 키워드가 있으면 그대로 사용, 없으면 포스팅 제목 전체(+분리 후보)로 검색
         const displayName = await getDisplayName(blogId);
         const candidates: string[] = keyword && keyword.trim()
           ? [keyword.trim()]
           : buildTitleSearchCandidates(postTitle, blogId, displayName);
+
+        // 검색 후보를 하나도 만들 수 없으면(제목이 전부 노이즈) 검색 자체가 불가능 → 분석불가
+        if (candidates.length === 0 || !candidates[0]) {
+          return {
+            blogTab: { exposed: null, rank: null },
+            viewTab: { exposed: null, rank: null },
+            influencerTab: { exposed: null, rank: null },
+            query: '',
+            candidates: [],
+            searchVolume: 0,
+            status: 'unanalyzable',
+            checkedAt: new Date().toISOString(),
+          };
+        }
         const query = candidates[0];
 
-        // 블로그탭 + 통합검색 + (사용자 지정 키워드 또는 checkInfluencer 명시 요청 시) 인플루언서탭 동시 확인
+        // 블로그탭 + 통합검색 + (사용자 지정 키워드 또는 checkInfluencer 명시 요청 시) 인플루언서탭 확인
         // 인플루언서탭 확인은 네이버 요청이 추가로 3페이지 늘어나므로, 필요치 않은 호출(경쟁분석 등)엔 기본 비활성
         const hasKeyword = Boolean(keyword && keyword.trim()) || Boolean(checkInfluencer);
-        const [blogTabResult, viewTabResult, influencerTabResult] = await Promise.all([
-          checkBlogTab(query, blogId, postId || ''),
-          checkViewTab(query, blogId, postId || ''),
-          hasKeyword ? checkInfluencerTab(query, blogId, postId || '') : Promise.resolve({ exposed: false, rank: null }),
-        ]);
-        let blogTab = blogTabResult;
-        let viewTab = viewTabResult;
-        let influencerTab = influencerTabResult;
 
-        // 후보가 여러 개면, 아직 미노출인 영역만 다음 후보로 순차 재시도 (하나라도 노출되면 그 결과를 채택)
-        for (let i = 1; i < candidates.length; i++) {
-          const allExposed = blogTab.exposed && viewTab.exposed && (!hasKeyword || influencerTab.exposed);
-          if (allExposed) break;
+        // 각 탭의 누적 상태. exposed는 노출 확정 시 고정, loaded는 어떤 시도든 정상 응답을 한 번이라도 받으면 true.
+        // loaded가 끝까지 false면 = 전 후보의 모든 페이지가 실패 = '일시적 오류'(미노출로 집계하지 않음)
+        const blog = { exposed: false, rank: null as number | null, loaded: false };
+        const view = { exposed: false, rank: null as number | null, loaded: false };
+        const inf = { exposed: false, rank: null as number | null, loaded: false };
+
+        for (let i = 0; i < candidates.length; i++) {
+          const allExposed = blog.exposed && view.exposed && (!hasKeyword || inf.exposed);
+          if (i > 0 && allExposed) break;
           const cand = candidates[i];
           const [cBlog, cView, cInf] = await Promise.all([
-            !blogTab.exposed ? checkBlogTab(cand, blogId, postId || '') : Promise.resolve(blogTab),
-            !viewTab.exposed ? checkViewTab(cand, blogId, postId || '') : Promise.resolve(viewTab),
-            (hasKeyword && !influencerTab.exposed) ? checkInfluencerTab(cand, blogId, postId || '') : Promise.resolve(influencerTab),
+            !blog.exposed ? checkBlogTab(cand, blogId, postId || '') : Promise.resolve({ exposed: true, rank: blog.rank, error: false }),
+            !view.exposed ? checkViewTab(cand, blogId, postId || '') : Promise.resolve({ exposed: true, rank: view.rank, error: false }),
+            (hasKeyword && !inf.exposed) ? checkInfluencerTab(cand, blogId, postId || '') : Promise.resolve({ exposed: inf.exposed, rank: inf.rank, error: false }),
           ]);
-          if (cBlog.exposed) blogTab = cBlog;
-          if (cView.exposed) viewTab = cView;
-          if (cInf.exposed) influencerTab = cInf;
-          await new Promise(r => setTimeout(r, 300));
+          // 오류가 아니면(정상 응답) loaded 확정. 노출됐으면 순위까지 채택하고 고정.
+          if (!blog.exposed && !cBlog.error) { blog.loaded = true; if (cBlog.exposed) { blog.exposed = true; blog.rank = cBlog.rank; } }
+          if (!view.exposed && !cView.error) { view.loaded = true; if (cView.exposed) { view.exposed = true; view.rank = cView.rank; } }
+          if (hasKeyword && !inf.exposed && !cInf.error) { inf.loaded = true; if (cInf.exposed) { inf.exposed = true; inf.rank = cInf.rank; } }
+          if (i < candidates.length - 1) await new Promise(r => setTimeout(r, 300));
         }
 
-        // 검색량 조회 (순위 공식용)
-        const searchVolume = await getSearchVolume(query);
+        // 탭별 저장값: 노출=true / 정상 확인했으나 못 찾음=false / 확인 실패(일시적 오류)=null
+        const blogExposed: boolean | null = blog.exposed ? true : (blog.loaded ? false : null);
+        const viewExposed: boolean | null = view.exposed ? true : (view.loaded ? false : null);
+        const infExposed: boolean | null = !hasKeyword ? null : (inf.exposed ? true : (inf.loaded ? false : null));
 
-        const freshResult: RankCheckResult = {
-          blogTab: { exposed: blogTab.exposed, rank: blogTab.rank },
-          viewTab: { exposed: viewTab.exposed, rank: viewTab.rank },
-          influencerTab: { exposed: influencerTab.exposed, rank: influencerTab.rank },
+        // 검사한 영역(통합검색·블로그 + 필요 시 인플루언서)이 전부 확인 실패면 '일시적 오류'
+        const checkedTabsLoaded = [view.loaded, blog.loaded, ...(hasKeyword ? [inf.loaded] : [])];
+        const allErrored = checkedTabsLoaded.every(l => !l);
+        const status: 'ok' | 'error' = allErrored ? 'error' : 'ok';
+
+        // 검색량 조회 (순위 공식용) — 오류 상태에선 굳이 추가 호출하지 않음
+        const searchVolume = status === 'error' ? 0 : await getSearchVolume(query);
+
+        const freshResult: MissingCheckResult = {
+          blogTab: { exposed: blogExposed, rank: blog.rank },
+          viewTab: { exposed: viewExposed, rank: view.rank },
+          influencerTab: { exposed: infExposed, rank: inf.rank },
           query,
           candidates,
           searchVolume,
+          status,
           checkedAt: new Date().toISOString(),
         };
 
-        // 캐시 저장 (공유)
-        await cacheSet(cacheKey, freshResult, CACHE_TTL_SEC);
+        // 오류 응답은 캐시하지 않는다(다음 시도에서 정상 재확인되도록). 정상 결과만 공유 캐시에 저장.
+        if (status !== 'error') {
+          await cacheSet(cacheKey, freshResult, CACHE_TTL_SEC);
+        }
 
         // 검사 결과 즉시 DB 반영 (포스트 1개 검사 → 저장, 전체 일괄 계산 방지)
-        if (postId) {
+        // ⚠️ 일시적 오류(status='error')는 저장하지 않는다 — 이전의 정상 노출/미노출 기록을 null로 덮어쓰지 않기 위함.
+        //    오류는 클라이언트에 응답만 반환하고(UI에 일시적 표시), 다음 재검사 때 정상 확인되면 그때 기록한다.
+        if (postId && status !== 'error') {
           try {
             const supabase = createServiceClient();
-            await supabase.from('post_missing_checks').upsert({
-              blog_id: blogId,
-              post_id: String(postId),
-              post_title: postTitle || null,
+            await recordMissingCheck(blogId, String(postId), postTitle || null, {
               query,
-              search_candidates: candidates,
-              view_exposed: viewTab.exposed,
-              view_rank: viewTab.rank,
-              blog_exposed: blogTab.exposed,
-              blog_rank: blogTab.rank,
-              influencer_exposed: hasKeyword ? influencerTab.exposed : null,
-              influencer_rank: hasKeyword ? influencerTab.rank : null,
-              search_volume: searchVolume,
-              status: 'ok',
-              fail_count: 0,
-              checked_at: freshResult.checkedAt,
-            }, { onConflict: 'blog_id,post_id' });
+              candidates,
+              viewExposed,
+              viewRank: view.rank,
+              blogExposed,
+              blogRank: blog.rank,
+              infExposed,
+              infRank: inf.rank,
+              searchVolume,
+              status,
+              checkedAt: freshResult.checkedAt,
+            }, supabase);
           } catch (err) {
             // DB 저장 실패는 응답에 영향 주지 않음 (캐시된 결과는 이미 반환) — 다만 원인 추적을 위해 로그는 남긴다
             console.error(`[check-missing] post_missing_checks 저장 실패 blogId=${blogId} postId=${postId} query="${query}":`, err);

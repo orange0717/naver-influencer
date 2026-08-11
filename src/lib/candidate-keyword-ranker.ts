@@ -49,10 +49,16 @@ export async function evaluateCandidates(
   }
 
   // 1) 스크리닝 (순차 처리 — 페이지 1개뿐이라 후보당 요청 1회)
+  // 일시적 오류(error=전 페이지 로드 실패)면 한 번 더 시도해 '미노출'로 오표기되는 것을 막는다(스펙 #8).
   const screen: CandidateScreenEntry[] = [];
   for (const kw of candidates) {
-    const r = await checkViewTab(kw, blogId, postId, 1);
-    screen.push({ keyword: kw, exposed: r.exposed, rank: r.rank });
+    let r = await checkViewTab(kw, blogId, postId, 1);
+    if (r.error) {
+      await new Promise(res => setTimeout(res, 400));
+      r = await checkViewTab(kw, blogId, postId, 1);
+    }
+    // 재시도 후에도 오류면 미노출(false)이 아니라 미확인 취급(exposed=false, rank=null이되 후속 정밀조회에서 재확인)
+    screen.push({ keyword: kw, exposed: r.error ? false : r.exposed, rank: r.error ? null : r.rank });
     if (kw !== candidates[candidates.length - 1]) await new Promise(res => setTimeout(res, 300));
   }
 
@@ -77,33 +83,38 @@ export async function evaluateCandidates(
       checkViewTab(kw, blogId, postId),
       checkInfluencerTab(kw, blogId, postId),
     ]);
-    const searchVolume = await getSearchVolume(kw);
+    // 세 탭 모두 전 페이지 로드 실패면 일시적 오류 — 캐시/DB에 '미노출·ok'로 굳히지 않는다(스펙 #8).
+    const allErrored = Boolean(blogTab.error) && Boolean(viewTab.error) && Boolean(influencerTab.error);
+    const searchVolume = allErrored ? 0 : await getSearchVolume(kw);
     const result: RankCheckResult = {
       blogTab, viewTab, influencerTab, query: kw, searchVolume, checkedAt: new Date().toISOString(),
     };
 
-    // check-missing과 동일 캐시 키 — 프론트 후속 조회가 캐시 히트로 처리되어 네이버 중복요청 방지
-    await cacheSet(`rank:${blogId}:${postId}:kw:${kw.trim()}`, result, CACHE_TTL_SEC);
+    if (!allErrored) {
+      // check-missing과 동일 캐시 키 — 프론트 후속 조회가 캐시 히트로 처리되어 네이버 중복요청 방지
+      await cacheSet(`rank:${blogId}:${postId}:kw:${kw.trim()}`, result, CACHE_TTL_SEC);
 
-    try {
-      await supabase.from('post_missing_checks').upsert({
-        blog_id: blogId,
-        post_id: String(postId),
-        post_title: postTitle || null,
-        query: kw,
-        view_exposed: viewTab.exposed,
-        view_rank: viewTab.rank,
-        blog_exposed: blogTab.exposed,
-        blog_rank: blogTab.rank,
-        influencer_exposed: influencerTab.exposed,
-        influencer_rank: influencerTab.rank,
-        search_volume: searchVolume,
-        status: 'ok',
-        fail_count: 0,
-        checked_at: result.checkedAt,
-      }, { onConflict: 'blog_id,post_id' });
-    } catch (err) {
-      console.error(`[candidate-keyword-ranker] post_missing_checks 저장 실패 blogId=${blogId} postId=${postId} keyword="${kw}":`, err);
+      try {
+        await supabase.from('post_missing_checks').upsert({
+          blog_id: blogId,
+          post_id: String(postId),
+          post_title: postTitle || null,
+          query: kw,
+          // 개별 탭이 오류면 null(미확인) — 미노출(false)로 오표기 금지
+          view_exposed: viewTab.error ? null : viewTab.exposed,
+          view_rank: viewTab.error ? null : viewTab.rank,
+          blog_exposed: blogTab.error ? null : blogTab.exposed,
+          blog_rank: blogTab.error ? null : blogTab.rank,
+          influencer_exposed: influencerTab.error ? null : influencerTab.exposed,
+          influencer_rank: influencerTab.error ? null : influencerTab.rank,
+          search_volume: searchVolume,
+          status: 'ok',
+          fail_count: 0,
+          checked_at: result.checkedAt,
+        }, { onConflict: 'blog_id,post_id' });
+      } catch (err) {
+        console.error(`[candidate-keyword-ranker] post_missing_checks 저장 실패 blogId=${blogId} postId=${postId} keyword="${kw}":`, err);
+      }
     }
 
     const candidateScore = { view: viewTab, blog: blogTab, influencer: influencerTab };
