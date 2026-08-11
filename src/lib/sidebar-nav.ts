@@ -84,7 +84,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'influencer', authOnly: true },
       { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'influencer', authOnly: true },
-      { label: '본문 생성', href: '/dashboard/writing/body', requiredPlan: 'influencer', authOnly: true },
       { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
       { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
       { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
