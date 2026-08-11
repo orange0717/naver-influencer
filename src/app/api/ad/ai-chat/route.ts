@@ -41,6 +41,10 @@ export async function POST(request: NextRequest) {
   if (!question) {
     return Response.json({ error: '질문을 입력해주세요.' }, { status: 400 });
   }
+  // Claude 프롬프트에 그대로 삽입되므로 길이 상한으로 토큰 비용 폭증/장문 남용 차단
+  if (question.length > 500) {
+    return Response.json({ error: '질문은 500자 이내로 입력해주세요.' }, { status: 400 });
+  }
 
   try {
     // 1) 자연어 파싱 (규칙 기반 + 파워콘텐츠 95K 키워드)

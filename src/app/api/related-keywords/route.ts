@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
 import { fetchNaverKeywordTool, mapNaverKeywordToResult } from '@/lib/naver-searchad';
+import { bulkKeywordLimiter } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,11 @@ export async function POST(request: NextRequest) {
   // 인플루언서 플랜 이상 필수 (대량 키워드 조회와 동일한 게이트 유지)
   const auth = await requireInfluencerPlan(request);
   if (auth.error) return auth.error;
+
+  // 유료 회원이라도 자동화로 네이버 검색광고 API 쿼터를 소진하지 못하도록 사용자 단위 상한
+  if (await bulkKeywordLimiter.check(`relkw:${auth.authUser.userId}`)) {
+    return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
+  }
 
   let body: { keyword?: unknown; limit?: unknown };
   try {

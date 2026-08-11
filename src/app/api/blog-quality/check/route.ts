@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { computeBlogQuality } from '@/lib/blog-quality';
+import { blogQualityCheckLimiter, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -67,6 +68,17 @@ export async function POST(req: NextRequest) {
       details: cached.details,
       checkedAt: cached.checked_at,
     });
+  }
+
+  // 캐시 미스 → 실제 네이버 API 호출 비용 발생. 임의 blog_id 반복 대입으로
+  // 쿼터/비용을 소진하는 남용을 IP 단위로 차단(캐시 히트는 카운트하지 않아
+  // 정상 사용자의 무료 반복 조회 UX 는 유지).
+  const ip = getClientIp(req);
+  if (await blogQualityCheckLimiter.check(`bq:${ip}`)) {
+    return NextResponse.json(
+      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+      { status: 429 },
+    );
   }
 
   // 실제 계산

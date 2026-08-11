@@ -166,6 +166,12 @@ export const aiBriefingLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60
 /** Chrome 확장 / 외부 키워드 분석 API */
 export const extKeywordAnalysisLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 
+/** 외부 키워드 분석 '비인증' 호출(스푸핑 가능한 x-ninfle-client 헤더에 의존)의 일일 상한.
+ *  로그인 세션이 없는 호출만 대상으로 IP+UA당 하루 300회로 제한 — 네이버 검색광고/데이터랩
+ *  API 쿼터를 헤더 위조로 대량 소진하는 남용을 완화한다. 실제 확장 사용자(사람)의 수동 조회는
+ *  5분 캐시 + 이 넉넉한 일일 캡 안에 충분히 들어오므로 확장 정상 사용은 깨지지 않는다. */
+export const extKeywordAnalysisDailyLimiter = createRateLimiter({ limit: 300, windowMs: 24 * 60 * 60 * 1000 });
+
 /** 키워드 추천: 연관키워드 1건당 검색광고+데이터랩+블로그검색 API를 여러 번 호출하므로 5분에 10회로 제한 */
 export const keywordRecommendLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
 
@@ -198,6 +204,14 @@ export const googleIndexingSitemapLimiter = createRateLimiter({ limit: 30, windo
 
 /** 유튜브 콘텐츠 분석: Data API+자막+썸네일 팔레트+Claude Sonnet(무거운 호출) — 5분에 5회 */
 export const contentAnalysisLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
+
+/** 블로그 품질지수 검사(무료 공개): 캐시 미스 시 네이버 검색 API 다중 호출 — IP당 5분에 10회.
+ *  임의 blog_id 를 반복 대입해 유료 네이버 API 쿼터/비용을 소진하는 남용 차단. */
+export const blogQualityCheckLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
+
+/** 대량/연관 키워드 조회(인플루언서 플랜): 1건당 네이버 검색광고 API 다중 호출 — 사용자당 5분에 20회.
+ *  유료 회원이라도 자동화로 네이버 API 쿼터를 소진하지 못하도록 사용자 단위 상한 적용. */
+export const bulkKeywordLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 
 /**
  * 전역 기본 API Rate Limiter (안전망) — 개별 라우트에 전용 limiter가 없는 경우를 위한 IP당 기본 상한.

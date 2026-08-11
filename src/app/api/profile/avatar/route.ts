@@ -21,11 +21,15 @@ export async function POST(req: NextRequest) {
 
   if (!userId) {
     const cookieUser = await getCookieUser();
-    if (cookieUser) {
+    // 쿠키 식별자는 blog_id/naver_id 로 정확히(equality) 매칭한다.
+    // 기존 email.ilike.%id% 부분일치는 다른 사용자 이메일에 우연히 포함되면
+    // 그 사용자의 아바타를 덮어쓸 수 있었고(cross-user write), 쿠키값을 필터
+    // 문자열에 그대로 이어붙여 PostgREST 필터 인젝션 여지도 있었다.
+    if (cookieUser && /^[a-zA-Z0-9._-]{2,64}$/.test(cookieUser.id)) {
       const { data: user } = await supabase
         .from('users')
         .select('id')
-        .or(`blog_id.eq.${cookieUser.id},email.ilike.%${cookieUser.id}%`)
+        .eq('blog_id', cookieUser.id)
         .limit(1)
         .maybeSingle();
       userId = user?.id || null;

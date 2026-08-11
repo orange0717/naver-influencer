@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
-import { extKeywordAnalysisLimiter, getClientIp } from '@/lib/rate-limit';
+import { extKeywordAnalysisLimiter, extKeywordAnalysisDailyLimiter, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -183,6 +183,15 @@ export async function GET(request: NextRequest) {
   const authUser = await getAuthUser(request);
   if (!authUser && !isAllowedExtClient(request)) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401, headers: getCorsHeaders(request) });
+  }
+
+  // 로그인 세션이 없는 호출(x-ninfle-client 헤더/Origin에만 의존 → 위조 가능)에는 일일 상한을 추가로 건다.
+  // 인증된 사용자는 대상에서 제외되어 정상 사용에 영향이 없다.
+  if (!authUser) {
+    const ua = (request.headers.get('user-agent') || 'ua').slice(0, 40);
+    if (await extKeywordAnalysisDailyLimiter.check(`extkw:daily:${ip}:${ua}`)) {
+      return NextResponse.json({ error: '오늘 사용량을 초과했습니다. 로그인 후 이용해주세요.' }, { status: 429, headers: getCorsHeaders(request) });
+    }
   }
 
   const keyword = request.nextUrl.searchParams.get('keyword');

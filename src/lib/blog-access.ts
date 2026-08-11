@@ -40,6 +40,12 @@ export async function assertBlogResourceAccess(
   if (!trimmed) {
     return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
   }
+  // 형식 검증: 네이버 블로그 ID는 영문/숫자/밑줄/하이픈만. 이 값은 하위에서
+  // 서버측 fetch(`.../${blogId}`) URL 에 그대로 들어가므로, 고정 호스트 프리픽스에만
+  // 의존하지 않도록 진입부에서 charset 을 강제해 SSRF/경로변조 여지를 원천 차단한다.
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(trimmed)) {
+    return NextResponse.json({ error: '블로그 ID 형식이 올바르지 않습니다.' }, { status: 400 });
+  }
 
   const auth = await getAuthUser(request);
   if (auth) {

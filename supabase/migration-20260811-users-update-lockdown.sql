@@ -1,0 +1,54 @@
+-- =================================================================
+-- 20260811: users 테이블 클라이언트 직접 UPDATE 차단 (CRITICAL)
+--
+-- 배경 (2026-08-11 보안 감사에서 발견):
+--   schema.sql:344
+--     CREATE POLICY "users_update_own" ON users
+--       FOR UPDATE USING (auth.uid() = auth_id);
+--   이 정책은 "본인 행"만 UPDATE 하도록 행(row)은 제한하지만,
+--   WITH CHECK 도 없고 컬럼 수준 제한도 없다. Supabase 는 public 스키마
+--   테이블에 대해 authenticated 롤에 기본 UPDATE 권한을 부여하므로,
+--   로그인한 사용자가 앱 UI 가 아니라 공개된 NEXT_PUBLIC_SUPABASE_ANON_KEY +
+--   본인 JWT 로 REST/GraphQL 을 직접 호출하면 자기 users 행의 임의 컬럼을
+--   변조할 수 있었다:
+--       UPDATE users
+--       SET is_admin = true,
+--           subscription_plan = 'INFLUENCER',
+--           subscription_expires_at = '2999-01-01',
+--           point_balance = 999999,
+--           first_paid_at = now()
+--       WHERE auth_id = <본인 auth uid>;
+--   → 관리자 권한 상승 + 유료 플랜/페이월 우회 + 잔액 위조 (전부 브라우저에서).
+--   is_admin / subscription_plan / subscription_expires_at 는
+--   admin.ts 의 requireAdmin·getPaywallContext·hasActivePaidPlanByUserId 가
+--   권한 판정의 source of truth 로 읽으므로 영향이 직접적이다.
+--
+-- 안전성 확인 (2026-08-11 코드 grep):
+--   브라우저(클라이언트) 코드에서 public.users 를 직접 UPDATE/INSERT/DELETE
+--   하는 경로는 없다. 유일한 클라이언트 참조는
+--     src/components/auth/AuthModal.tsx:191  ...from('users').select('id')...
+--   로 SELECT 뿐이다. users 에 대한 모든 쓰기(회원가입 백필, 결제 동기화,
+--   프로필 수정, 관리자 지급 등)는 API 라우트가 createServiceClient()
+--   (service_role) 로 수행하며 service_role 은 RLS/권한을 우회한다.
+--   따라서 anon/authenticated 의 쓰기 권한을 회수해도 앱 기능은 영향 없다.
+--
+-- 조치:
+--   1) anon/authenticated 롤의 users 테이블 INSERT/UPDATE/DELETE 권한 회수.
+--      (RLS 정책은 롤에 base 권한이 있을 때만 평가되므로, 권한 회수가
+--       컬럼 수준 방어를 하지 못하는 RLS 보다 견고한 근본 차단이다.)
+--   2) 오해를 유발하는 users_update_own 정책 제거(이제 authenticated 는
+--      애초에 UPDATE 권한이 없으므로 inert). SELECT 는 users_read_own 유지.
+--
+-- ⚠️ 오렌지가 Supabase 콘솔 SQL Editor 에서 수동 실행. 실행 전, 새로 추가된
+--    라우트/클라이언트 코드가 anon/authenticated 키로 users 를 직접 쓰지
+--    않는지 한 번 더 grep 확인 권장(`from('users')` + update/insert/delete).
+-- =================================================================
+
+REVOKE INSERT, UPDATE, DELETE ON public.users FROM anon, authenticated;
+
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
+
+-- 확인용(선택):
+-- SELECT grantee, privilege_type FROM information_schema.role_table_grants
+--   WHERE table_name = 'users' AND grantee IN ('anon','authenticated');
+-- SELECT polname, cmd FROM pg_policies WHERE tablename = 'users';
