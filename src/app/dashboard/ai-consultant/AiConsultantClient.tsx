@@ -144,7 +144,7 @@ export default function AiConsultantClient() {
         </aside>
       )}
 
-    <div className={`${hasConversationList ? 'flex-1 min-w-0' : ''} ${isIdle ? 'min-h-[calc(100dvh-8rem)] flex flex-col justify-center' : ''}`}>
+    <div className={`${hasConversationList ? 'flex-1 min-w-0' : ''} ${isIdle && !hasConversationList ? 'min-h-[calc(100dvh-8rem)] flex flex-col justify-center' : ''}`}>
     <div className="max-w-2xl mx-auto w-full space-y-6">
       <div className="flex items-center justify-between gap-3 pt-2">
         <div className="text-center flex-1 space-y-1.5">
