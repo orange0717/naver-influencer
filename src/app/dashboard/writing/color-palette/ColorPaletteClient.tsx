@@ -139,15 +139,34 @@ export default function ColorPaletteClient() {
     }
   };
 
+  const reset = () => {
+    setPalette(null);
+    setImagePreview(null);
+    setError(null);
+    setExtracting(false);
+    setFormat('hex');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const roles = palette ? assignRoles(palette) : null;
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="space-y-1">
-        <h1 className="font-title text-xl font-bold text-text">컬러 팔레트</h1>
-        <p className="text-sm text-dim">
-          블로그 썸네일 이미지를 올리면 대표 색상 5가지를 추출하고, 어울리는 색상 조합·카테고리별 팔레트를 만들어드립니다.
-        </p>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="font-title text-xl font-bold text-text">컬러 팔레트</h1>
+          <p className="text-sm text-dim">
+            블로그 썸네일 이미지를 올리면 대표 색상 5가지를 추출하고, 어울리는 색상 조합·카테고리별 팔레트를 만들어드립니다.
+          </p>
+        </div>
+        {(palette || imagePreview) && (
+          <button
+            onClick={reset}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent hover:text-accent transition-colors cursor-pointer"
+          >
+            초기화
+          </button>
+        )}
       </div>
 
       {/* 업로드 영역 */}
