@@ -1,7 +1,7 @@
 /**
  * 제목 생성 — 키워드 하나로 SEO·AEO·GEO를 고려한 블로그 제목 후보를 생성하고 4개 지표로 점수화한다.
  */
-import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText } from './claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from './claude-client';
 
 export interface GeneratedTitle {
   title: string;
@@ -28,14 +28,17 @@ const SYSTEM_PROMPT = `당신은 네이버 블로그·인플루언서 콘텐츠�
 - 낚시성 과장 문구, 특수문자 남발, 이모지 금지
 - 특정 업종에 치우치지 않고 입력된 키워드의 실제 맥락에만 집중
 - 아래 JSON 스키마로만 응답하세요. 마크다운, 코드블록, 설명 문구 없이 순수 JSON만 반환합니다:
-{"titles": [{"title": "...", "seoScore": 0, "ctrScore": 0, "aiExposureScore": 0, "naverFitScore": 0}]}`;
+{"titles": [{"title": "...", "seoScore": 0, "ctrScore": 0, "aiExposureScore": 0, "naverFitScore": 0}]}
+
+${UNTRUSTED_DATA_NOTICE}`;
 
 export async function generateTitles(keyword: string, relatedKeywords: string[]): Promise<GeneratedTitle[]> {
   const anthropic = getAnthropicClient();
-  const userContent = [
+  const externalBlock = [
     `키워드: ${keyword}`,
     relatedKeywords.length > 0 ? `연관 검색어: ${relatedKeywords.join(', ')}` : '연관 검색어: (데이터 없음)',
   ].join('\n');
+  const userContent = `제목 생성 대상 검색 데이터:\n${wrapUntrusted(externalBlock, 'naver_search')}`;
 
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL_SONNET,

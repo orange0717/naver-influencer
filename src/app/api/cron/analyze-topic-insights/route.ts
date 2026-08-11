@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob, tryAcquireCronLock, releaseCronLock } from '@/lib/crawler';
-import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonArrayFromClaudeText } from '@/lib/claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonArrayFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -110,10 +110,12 @@ async function analyzeClusters(
 규칙:
 - matchedPostIds는 반드시 글 목록에 주어진 실제 [id] 값만 사용
 - 정보성 없는 잡담 글은 어떤 클러스터에도 넣지 않아도 됨
-- 클러스터 개수 상한 없음 — 찾을 수 있는 만큼 모두 반환`,
+- 클러스터 개수 상한 없음 — 찾을 수 있는 만큼 모두 반환
+
+${UNTRUSTED_DATA_NOTICE}`,
       messages: [{
         role: 'user',
-        content: `이미 발행된 토픽 목록:\n${publishedLines}\n\n블로그 글 목록 (총 ${posts.length}개):\n${postLines}`,
+        content: `이미 발행된 토픽 목록:\n${wrapUntrusted(publishedLines, 'published_topics')}\n\n블로그 글 목록 (총 ${posts.length}개):\n${wrapUntrusted(postLines, 'naver_blog_posts')}`,
       }],
     });
 

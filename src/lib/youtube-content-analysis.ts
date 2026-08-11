@@ -5,7 +5,7 @@
  * 주의: 이 분석은 자막 텍스트만으로 하는 "AI 추정"이다. 실제 시청 유지율 데이터가 아니므로
  * dropOffRisk는 참고용으로만 표시해야 한다 (YouTube Analytics API는 채널 소유자 본인만 접근 가능).
  */
-import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText } from './claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from './claude-client';
 
 export interface ContentChapter {
   time: string; // "MM:SS" 또는 "H:MM:SS"
@@ -44,7 +44,9 @@ const SYSTEM_PROMPT = `당신은 유튜브 콘텐츠를 분석하는 전문가�
 자막이 매우 짧거나 없는 경우, 제목/설명만으로 최선을 다해 추정하되 chapters는 빈 배열로 반환.
 
 아래 JSON 스키마로만 응답하세요. 마크다운, 코드블록, 설명 문구 없이 순수 JSON만 반환합니다:
-{"topic":"...","contentType":"...","tone":"...","hookScore":0,"infoScore":0,"readabilityScore":0,"ctaScore":0,"chapters":[{"time":"00:00","label":"..."}],"dropOffRiskNote":"...","recurringThemes":["..."]}`;
+{"topic":"...","contentType":"...","tone":"...","hookScore":0,"infoScore":0,"readabilityScore":0,"ctaScore":0,"chapters":[{"time":"00:00","label":"..."}],"dropOffRiskNote":"...","recurringThemes":["..."]}
+
+${UNTRUSTED_DATA_NOTICE}`;
 
 const MAX_TRANSCRIPT_CHARS = 12000;
 
@@ -55,13 +57,17 @@ export async function analyzeYoutubeContent(params: {
 }): Promise<YoutubeContentAnalysis> {
   const anthropic = getAnthropicClient();
 
-  const userContent = [
+  const externalBlock = [
     `제목: ${params.title}`,
     params.description ? `설명: ${params.description.slice(0, 1000)}` : null,
     params.transcriptPromptText
       ? `\n자막(타임스탬프 포함, 최대 ${MAX_TRANSCRIPT_CHARS}자):\n${params.transcriptPromptText.slice(0, MAX_TRANSCRIPT_CHARS)}`
-      : '\n자막을 가져오지 못했습니다. 제목/설명만으로 분석하세요.',
+      : null,
   ].filter(Boolean).join('\n');
+
+  const userContent = params.transcriptPromptText
+    ? `분석 대상 유튜브 영상 데이터:\n${wrapUntrusted(externalBlock, 'youtube')}`
+    : `분석 대상 유튜브 영상 데이터:\n${wrapUntrusted(externalBlock, 'youtube')}\n\n자막을 가져오지 못했습니다. 제목/설명만으로 분석하세요.`;
 
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL_SONNET,

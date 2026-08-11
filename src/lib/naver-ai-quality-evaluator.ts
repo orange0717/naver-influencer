@@ -1,4 +1,4 @@
-import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText } from '@/lib/claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
 
 export const QUALITY_CATEGORY_DEFS = [
   { key: 'experience', label: '실제 경험', max: 20 },
@@ -88,7 +88,9 @@ const SYSTEM_PROMPT = `당신은 네이버 AI 검색 품질평가 전문가입�
   "conclusion": { "score": number, "reason": string, "topFixes": string[3] }
 }
 
-규칙: 한국어로 작성. categories의 key는 반드시 experience/expertise/readerFocus/process/comparison/results/freshness/readability/imageRelevance/trust 10개를 이 순서대로 모두 포함.`;
+규칙: 한국어로 작성. categories의 key는 반드시 experience/expertise/readerFocus/process/comparison/results/freshness/readability/imageRelevance/trust 10개를 이 순서대로 모두 포함.
+
+${UNTRUSTED_DATA_NOTICE}`;
 
 export interface StructuralHints {
   charCount: number;
@@ -119,9 +121,7 @@ export async function evaluateNaverAiSearchQuality(
     system: SYSTEM_PROMPT,
     messages: [{
       role: 'user',
-      content: `제목: ${title}
-
-구조적 지표 (참고용, 채점 시 함께 고려):
+      content: `구조적 지표 (참고용, 채점 시 함께 고려):
 - 글자수: ${hints.charCount}자
 - 이미지: ${hints.imageCount}장 (원본 추정 ${hints.originalImageCount}장)
 - 동영상: ${hints.videoCount}개
@@ -131,8 +131,8 @@ export async function evaluateNaverAiSearchQuality(
 - 1인칭/경험 표현 등장 횟수: ${hints.personalPronounCount}회
 - FAQ 패턴 감지: ${hints.faqDetected ? '있음' : '없음'}
 
-본문:
-${text}`,
+채점 대상 블로그 글:
+${wrapUntrusted(`제목: ${title}\n\n본문:\n${text}`, 'naver_blog')}`,
     }],
   });
 

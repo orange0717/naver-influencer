@@ -6,7 +6,7 @@ import { computeContentScore, type SubScores } from '@/lib/post-content-scorer';
 import { AI_DISABLED } from '@/lib/ai-disabled';
 import { googleIndexingDiagnoseLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { FAILURE_REASON_LABEL } from '@/lib/google-indexing-types';
-import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -94,11 +94,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 이어서 실행 가능한 개선 제안을 1~3개 bullet(문장 끝에 마침표)로 제시하세요.
 제안은 반드시 다음 어휘 중에서만 골라 자연스럽게 작성하세요: 본문 길이를 늘리세요 / 이미지를 추가하세요 /
 내부링크를 추가하세요 / 외부링크를 추가하세요 / 메타 설명을 작성하세요 / 제목을 수정하세요.
-마크다운, 코드블록 없이 순수 텍스트로만 답하세요.`,
+마크다운, 코드블록 없이 순수 텍스트로만 답하세요.
+
+${UNTRUSTED_DATA_NOTICE}`,
         messages: [
           {
             role: 'user',
-            content: `구글 커버리지 판정 원인: ${reasonLabel}\n본문 글자수: ${analysis.charCount}자\n이미지 수: ${analysis.imageCount}\n내부링크 수: ${analysis.internalLinkCount}\n외부링크 수: ${analysis.linkCount}\n소제목 수: ${analysis.headingCount}\n본문 미리보기: ${analysis.textPreview}`,
+            content: `구글 커버리지 판정 원인: ${reasonLabel}\n본문 글자수: ${analysis.charCount}자\n이미지 수: ${analysis.imageCount}\n내부링크 수: ${analysis.internalLinkCount}\n외부링크 수: ${analysis.linkCount}\n소제목 수: ${analysis.headingCount}\n본문 미리보기:\n${wrapUntrusted(analysis.textPreview, 'naver_blog')}`,
           },
         ],
       });

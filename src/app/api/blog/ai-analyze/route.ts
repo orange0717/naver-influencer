@@ -3,7 +3,7 @@ import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-lim
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { requirePaidPlan } from '@/lib/admin';
 import { extractPostText } from '@/lib/blog-post-content';
-import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonObjectFromClaudeText } from '@/lib/claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonObjectFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -124,10 +124,12 @@ AI 작성 텍스트의 특징 (높은 확률):
 규칙:
 - 한국어로 답변
 - JSON만 반환 (코드블록, 마크다운 없이 순수 JSON)
-- keywords 최대 8개, keySentences 최대 5개`,
+- keywords 최대 8개, keySentences 최대 5개
+
+${UNTRUSTED_DATA_NOTICE}`,
           messages: [{
             role: 'user',
-            content: `제목: ${title}\n\n본문 (${charCount}자):\n${text}`,
+            content: `분석 대상 블로그 글:\n${wrapUntrusted(`제목: ${title}\n\n본문 (${charCount}자):\n${text}`, 'naver_blog')}`,
           }],
         });
 

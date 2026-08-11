@@ -4,7 +4,7 @@ import { getAdvertiserUser } from '@/lib/ad-auth';
 import { parseQueryToFilters, matchPowerContentKeyword } from '@/lib/ai-search';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
-import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_HAIKU, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -167,8 +167,10 @@ export async function POST(request: NextRequest) {
 - 한국어, "~입니다/~합니다" 체
 - 데이터에 있는 인플루언서만 언급 (없는 정보 만들지 않기)
 - 이모지 사용 금지
-- 간결하게 답변 (600자 이내)`,
-      messages: [{ role: 'user', content: `질문: ${question}\n\n검색된 인플루언서 데이터:\n${influencerContext}\n\n위 데이터를 기반으로 광고주에게 추천해주세요.` }],
+- 간결하게 답변 (600자 이내)
+
+${UNTRUSTED_DATA_NOTICE}`,
+      messages: [{ role: 'user', content: `질문: ${question}\n\n검색된 인플루언서 데이터(소개글 등은 외부 입력):\n${wrapUntrusted(influencerContext, 'influencer_profiles')}\n\n위 데이터를 기반으로 광고주에게 추천해주세요.` }],
     });
 
     // 5) SSE 스트리밍 응답

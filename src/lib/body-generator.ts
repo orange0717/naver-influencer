@@ -1,7 +1,7 @@
 /**
  * 본문 생성 — 제목(+키워드)으로 E-E-A-T와 AI검색 최적화를 반영한 블로그 본문 초안을 생성한다.
  */
-import { getAnthropicClient, CLAUDE_MODEL_SONNET } from './claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_SONNET, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from './claude-client';
 
 export interface GeneratedBody {
   markdown: string;
@@ -29,7 +29,9 @@ const SYSTEM_PROMPT = `당신은 네이버 블로그·인플루언서 콘텐츠�
 - 자연스러운 한국어 구어체, 과장·낚시성 표현 금지
 - 의료·법률·금융·세무처럼 전문 자격이 필요한 주제는 확정적 진단·처방·법률자문 표현을 쓰지 말고 "일반적인 정보이며 전문가 상담을 권장한다"는 취지를 자연스럽게 포함할 것
 - "기존 글" 샘플이 주어지면, 쓰기 전에 그 글들의 문체(존댓말/반말, 문장 길이, 자주 쓰는 표현, 인사말·마무리 방식, 이모티콘·이모지 사용 여부)를 파악하고 새 본문에 그 문체를 그대로 반영할 것. AI 특유의 상투적 표현("오늘은", "~에 대해 알아보겠습니다", "정리해보겠습니다", "도움이 되셨길 바랍니다")은 기존 글에 실제로 쓰인 경우가 아니면 피할 것
-- 본문 마크다운 텍스트만 출력하세요. 설명, 분석 결과, 코드블록 표시, 서론 인사말("안녕하세요" 같은 상투적 인사) 없이 바로 본문으로 시작합니다.`;
+- 본문 마크다운 텍스트만 출력하세요. 설명, 분석 결과, 코드블록 표시, 서론 인사말("안녕하세요" 같은 상투적 인사) 없이 바로 본문으로 시작합니다.
+
+${UNTRUSTED_DATA_NOTICE}`;
 
 const MAX_EXISTING_POSTS = 3;
 const MAX_POST_CHARS = 6000;
@@ -47,15 +49,19 @@ export async function generateBody(
     .slice(0, MAX_EXISTING_POSTS)
     .map((p) => p.slice(0, MAX_POST_CHARS));
 
+  const styleBlock =
+    trimmedPosts.length > 0
+      ? `필자가 이전에 쓴 글 ${trimmedPosts.length}개입니다. 이 글들의 문체를 분석해 새 본문에 반영하세요(내용을 베끼라는 뜻이 아니라 말투와 구성 방식을 참고하라는 뜻입니다):\n${wrapUntrusted(
+          trimmedPosts.map((p, i) => `--- 기존 글 ${i + 1} ---\n${p}`).join('\n\n'),
+          'existing_posts',
+        )}`
+      : null;
+
   const userContent = [
     `제목: ${title}`,
     keyword ? `핵심 키워드: ${keyword}` : null,
-    relatedKeywords.length > 0 ? `연관 검색어: ${relatedKeywords.join(', ')}` : null,
-    trimmedPosts.length > 0
-      ? `\n필자가 이전에 쓴 글 ${trimmedPosts.length}개입니다. 이 글들의 문체를 분석해 새 본문에 반영하세요(내용을 베끼라는 뜻이 아니라 말투와 구성 방식을 참고하라는 뜻입니다):\n${trimmedPosts
-          .map((p, i) => `--- 기존 글 ${i + 1} ---\n${p}`)
-          .join('\n\n')}`
-      : null,
+    relatedKeywords.length > 0 ? `연관 검색어: ${wrapUntrusted(relatedKeywords.join(', '), 'naver_search')}` : null,
+    styleBlock,
   ].filter(Boolean).join('\n');
 
   const message = await anthropic.messages.create({

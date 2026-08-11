@@ -2,7 +2,7 @@
  * 글감찾기 — 키워드 하나로 "사람들이 궁금한 질문"과 "추천 글감"을 찾는다.
  * 네이버 연관키워드(검색광고)·자동완성 실데이터를 Claude에 넣어 근거 있는 글감을 합성한다.
  */
-import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText } from './claude-client';
+import { getAnthropicClient, CLAUDE_MODEL_SONNET, parseJsonObjectFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from './claude-client';
 
 const AUTOCOMPLETE_URL = 'https://ac.search.naver.com/nx/ac';
 
@@ -37,7 +37,9 @@ const SYSTEM_PROMPT = `당신은 네이버 블로그·인플루언서 콘텐츠 
 - 특정 업종에 치우치지 않고 입력된 키워드의 실제 맥락에만 집중
 - 질문 5~8개, 글감 4~6개
 - 아래 JSON 스키마로만 응답하세요. 마크다운, 코드블록, 설명 문구 없이 순수 JSON만 반환합니다:
-{"questions": ["질문1", "질문2"], "angles": ["글감1", "글감2"]}`;
+{"questions": ["질문1", "질문2"], "angles": ["글감1", "글감2"]}
+
+${UNTRUSTED_DATA_NOTICE}`;
 
 export async function synthesizeContentAngles(
   keyword: string,
@@ -45,11 +47,12 @@ export async function synthesizeContentAngles(
   autocomplete: string[],
 ): Promise<ContentAngles> {
   const anthropic = getAnthropicClient();
-  const userContent = [
+  const externalBlock = [
     `키워드: ${keyword}`,
     relatedKeywords.length > 0 ? `연관 검색어: ${relatedKeywords.join(', ')}` : '연관 검색어: (데이터 없음)',
     autocomplete.length > 0 ? `자동완성 제안: ${autocomplete.join(', ')}` : '자동완성 제안: (데이터 없음)',
   ].join('\n');
+  const userContent = `분석 대상 검색 데이터:\n${wrapUntrusted(externalBlock, 'naver_search')}`;
 
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL_SONNET,
