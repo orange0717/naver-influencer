@@ -97,6 +97,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: 'C',
     items: [
       { label: '유튜브 분석', href: '/dashboard/content/youtube', requiredPlan: 'influencer', authOnly: true },
+      { label: '릴스·쇼츠 분석', href: '/dashboard/content/shortform', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {
