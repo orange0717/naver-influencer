@@ -47,11 +47,13 @@ export default async function DashboardPage() {
 
   const isLoggedIn = !!authUser || !!demoNaverId;
   if (!isLoggedIn) {
-    // 게스트는 대시보드가 없음 — 홈의 게스트용 블로그 분석 랜딩으로
+    // 진짜 비로그인(세션 쿠키 없음)만 홈으로 보낸다.
+    // 세션 쿠키는 있는데 서버측 getUserWithTimeout이 타임아웃·동시 갱신 충돌로 null 이
+    // 된 애매한 경우(로그인 상태인데 사이드바 '블로그' 클릭 시 홈으로 튕기던 문제)는
+    // 홈으로 돌려보내지 않고 대시보드 쉘을 렌더한다 — 하위 컴포넌트가 클라이언트 세션으로
+    // 프로필/데이터를 다시 불러오므로 정상 동작한다.
     const hasSession = await hasSupabaseAuthCookie();
     if (!hasSession) redirect('/');
-    // 세션 쿠키는 있는데 getUserWithTimeout이 타임아웃된 애매한 경우도 홈으로 보냄
-    redirect('/');
   }
 
   const supabase = createServiceClient();
