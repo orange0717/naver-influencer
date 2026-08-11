@@ -7,12 +7,11 @@ import { isTrialExpired } from '@/lib/trial';
 import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import RankDistribution from '@/components/dashboard/RankDistribution';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
-import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import DashboardCard from '@/components/dashboard/DashboardCard';
-import KpiGrid from '@/components/dashboard/KpiGrid';
+import DashboardHubCards from '@/components/dashboard/DashboardHubCards';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
 import TopicPerformanceSection, { type TopicPerformanceRow } from '@/components/dashboard/TopicPerformanceSection';
@@ -236,6 +235,29 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         return { count: topics.length, topName, topics };
       })()
     : Promise.resolve({ count: 0, topName: null, topics: [] });
+
+  /** 대시보드 허브 — 토픽 카드: 인플홈에서 수집한 실제 토픽(crawl-naver-topics/수동 새로고침이 채우는 naver_influencer_topics) */
+  const homeTopicsPromise: Promise<{ count: number; topTitles: string[]; lastSyncedAt: string | null }> = (internalUserId && naverId)
+    ? (async () => {
+        const { data } = await supabase
+          .from('naver_influencer_topics')
+          .select('title, content_count, scraped_at')
+          .eq('user_id', internalUserId)
+          .eq('blog_id', naverId)
+          .eq('is_own_blog', true)
+          .order('content_count', { ascending: false });
+        const rows = data || [];
+        const lastSyncedAt = rows.reduce<string | null>((max, r) => {
+          const t = r.scraped_at as string | null;
+          return t && (!max || t > max) ? t : max;
+        }, null);
+        return {
+          count: rows.length,
+          topTitles: rows.slice(0, 3).map(r => (r.title as string) || '').filter(Boolean),
+          lastSyncedAt,
+        };
+      })()
+    : Promise.resolve({ count: 0, topTitles: [], lastSyncedAt: null });
 
   const mateStatusPromise: Promise<{ selected: boolean; expertiseValue: string | null } | null> = naverId
     ? (async () => {
@@ -660,9 +682,10 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // AI 가시성: 네이버메이트에서 실제로 확인(checked_at 존재)한 건만 집계 — 한 번도 안 썼으면 null(측정 불가)
   // 네이버 메이트 선정 여부(블로그 홈 경로 = naverId 로 매칭) 포함, 둘 다 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
   // ─── 7. 대시보드 허브 KPI (누락률/방문자/전체 포스팅) — 컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수
-  const [mateStatus, topicSummary] = await Promise.all([
+  const [mateStatus, topicSummary, homeTopics] = await Promise.all([
     mateStatusPromise,
     topicSummaryPromise,
+    homeTopicsPromise,
   ]);
 
   return (
@@ -741,31 +764,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {/* ─── 2. 대시보드 허브 KPI ─── 각 메뉴의 핵심 지표를 요약하고, 클릭하면 해당 메뉴로 이동 */}
-      <KpiGrid>
-        <AnimatedStatCard
-          size="stat"
-          label="키워드 챌린지"
-          value={participatedCount}
-          suffix="개"
-          description={`진행중 · TOP3 ${top3Count}개`}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>}
-          color={participatedCount > 0 ? 'accent' : 'dim'}
-          delay={60}
-          href="/keywords"
-        />
-        <AnimatedStatCard
-          size="stat"
-          label="토픽"
-          value={topicSummary.count}
-          suffix="개"
-          description={topicSummary.topName ? `대표 토픽 · ${topicSummary.topName}` : '분류된 토픽 없음'}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>}
-          color={topicSummary.count > 0 ? 'accent' : 'dim'}
-          delay={100}
-          href="/my#topic-performance"
-        />
-      </KpiGrid>
+      {/* ─── 2. 대시보드 허브 ─── 키워드 챌린지 + 토픽(인플홈 동기화)을 전체 너비 2열로 요약 */}
+      <DashboardHubCards
+        challenge={{ participated: participatedCount, top3: top3Count, top10: top10Count }}
+        topic={{ count: homeTopics.count, topTitles: homeTopics.topTitles, lastSyncedAt: homeTopics.lastSyncedAt }}
+        canSync={!!naverId}
+      />
 
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
       <DashboardCard title="활동 현황">

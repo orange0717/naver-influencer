@@ -300,8 +300,11 @@ export async function GET(request: NextRequest) {
         }
 
         // 인플루언서 배치 UPSERT
-        // - 팬 수: UI(/api/influencers)는 subscriber_count 우선 — fan_count만 넣으면 화면과 DB가 어긋남
-        // - 파싱 실패 시 0으로 덮어쓰지 않음(기존 Feed·이전 크롤 값 유지)
+        // - 팬 수: 검색 스니펫의 _fan_count는 인플홈의 실제 팬수/구독자수와 다른 지표라
+        //   subscriber_count/total_follower_count는 절대 덮어쓰지 않는다. 이 두 컬럼의 유일한
+        //   출처는 인플홈(in.naver.com/{naverId})을 읽는 refresh-follower/update-followers/
+        //   crawl-influencers 뿐이다. 여기서는 참고용 fan_count 컬럼만 갱신한다.
+        // - 파싱 실패 시 0으로 덮어쓰지 않음(기존 값 유지)
         // - category: 검색 스니펫은 in.naver 프로필/Feed와 표기가 달라 덮어쓰지 않음(crawl-influencers가 담당)
         const influencerRows = rankings.map(rank => {
           const fans =
@@ -313,9 +316,7 @@ export async function GET(request: NextRequest) {
             display_name: rank.influencerName,
             profile_url: rank.influencerUrl || `https://in.naver.com/${rank.naverId}`,
             last_crawled_at: new Date().toISOString(),
-            ...(fans != null
-              ? { fan_count: fans, subscriber_count: fans, total_follower_count: fans }
-              : {}),
+            ...(fans != null ? { fan_count: fans } : {}),
           };
         });
 
