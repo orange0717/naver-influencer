@@ -306,7 +306,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // recentRows 페이지네이션 루프와 myKeywords 조회는 둘 다 influencerId만 필요해
   // 데이터 의존성이 없으므로 병렬로 실행한다 (myKeywords는 원래 아래쪽에서 쓰임).
   const recentRowsPromise: Promise<RankingRow[]> = (async () => {
-    const rows: RankingRow[] = [];
+    // ⚠️ keyword_challenges 임베드 조인을 넣은 단일 쿼리는 대용량 keyword_rankings 스캔과
+    // 겹쳐 Postgres statement timeout이 나고, 그때 batch가 undefined가 되면서 루프가 즉시
+    // 끊겨 "순위 전체가 0"으로 렌더되는 버그(오렌지 리포트: 1·2·3위·TOP3·TOP10 미반영)가 있었다.
+    // → 순위 행은 조인 없이(influencer_id+snapshot_date 인덱스로 빠름) 가져오고,
+    //   챌린지 메타(키워드/카테고리/참가자수/검색량)는 keyword_id별로 별도 조회해 매핑한다.
+    type RawRankingRow = Omit<RankingRow, 'keyword_challenges'>;
+    const rawRows: RawRankingRow[] = [];
     const PAGE = 1000;
     let from = 0;
     while (true) {
@@ -315,19 +321,42 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         .select(`
           rank_position, previous_rank, rank_change, is_integrated_top3,
           keyword_id, latest_post_title, latest_post_url, snapshot_date,
-          blog_search_rank, view_tab_rank,
-          keyword_challenges(keyword, category, participant_count, search_volume_monthly)
+          blog_search_rank, view_tab_rank
         `)
         .eq('influencer_id', influencerId)
         .gte('snapshot_date', sinceDate)
         .order('snapshot_date', { ascending: false })
         .range(from, from + PAGE - 1);
       if (!batch || batch.length === 0) break;
-      rows.push(...(batch as unknown as RankingRow[]));
+      rawRows.push(...(batch as unknown as RawRankingRow[]));
       if (batch.length < PAGE) break;
       from += PAGE;
     }
-    return rows;
+
+    // 등장한 keyword_id들의 챌린지 메타를 청크로 나눠 조회(.in()은 URL 길이 한계가 있어 200개씩).
+    const uniqueKwIds = [...new Set(rawRows.map((r) => r.keyword_id))];
+    const kwMap = new Map<string, KeywordChallengeJoin>();
+    const CHUNK = 200;
+    for (let i = 0; i < uniqueKwIds.length; i += CHUNK) {
+      const chunk = uniqueKwIds.slice(i, i + CHUNK);
+      const { data: kcs } = await supabase
+        .from('keyword_challenges')
+        .select('id, keyword, category, participant_count, search_volume_monthly')
+        .in('id', chunk);
+      for (const kc of kcs || []) {
+        kwMap.set(kc.id as string, {
+          keyword: (kc.keyword as string) || '',
+          category: (kc.category as string) || '',
+          participant_count: (kc.participant_count as number) || 0,
+          search_volume_monthly: (kc.search_volume_monthly as number) || 0,
+        });
+      }
+    }
+
+    return rawRows.map((r) => ({
+      ...r,
+      keyword_challenges: kwMap.get(r.keyword_id) ?? null,
+    })) as RankingRow[];
   })();
 
   const myKeywordsPromise = supabase
