@@ -13,8 +13,24 @@ import {
   deleteBillingKey as portoneDeleteBillingKey,
   type BillingChargeResult,
 } from '@/lib/portone';
+import { grantCredit } from '@/lib/credits';
+import { PLAN_MONTHLY_CREDITS } from '@/lib/credit-config';
 
 const MAX_FAILED_CHARGES = 3;
+
+/**
+ * 구독 결제/갱신 성공 시 플랜 월 크레딧을 멱등 지급한다(payment_id 기준).
+ * 크레딧 지급 실패는 결제 자체를 실패시키지 않는다 (원장에서 사후 보정 가능).
+ */
+async function grantSubscriptionCredits(userId: string, planTier: string, paymentId: string): Promise<void> {
+  const monthly = PLAN_MONTHLY_CREDITS[planTier];
+  if (!monthly || monthly <= 0) return;
+  try {
+    await grantCredit(userId, monthly, 'subscription_grant', { referenceId: `subgrant:${paymentId}` });
+  } catch (e) {
+    console.error('[Billing] subscription credit grant failed:', e, { userId, planTier, paymentId });
+  }
+}
 
 /**
  * KPN PG 규칙: 영숫자만 + 32바이트 이하.
@@ -144,6 +160,9 @@ export async function completeBillingKeyIssue(opts: {
     return { ok: false, error: '구독 생성에 실패했습니다.' };
   }
 
+  // 6. 플랜 월 크레딧 지급 (멱등 — payment_id 기준)
+  await grantSubscriptionCredits(opts.userId, plan.tier, opts.paymentId);
+
   return { ok: true, subscriptionId: sub.id };
 }
 
@@ -254,6 +273,9 @@ async function chargePlan(opts: {
     console.error('[Billing] users paywall sync failed:', userUpdErr, { userId: opts.userId, paymentId });
     // 결제 자체는 성공했으므로 200 흐름은 유지 — 운영자가 알림으로 수동 보정 권장.
   }
+
+  // 6. 플랜 월 크레딧 지급 (멱등 — payment_id 기준). 갱신 결제마다 매월 지급된다.
+  await grantSubscriptionCredits(opts.userId, plan.tier, paymentId);
 
   return { ok: true, paymentId };
 }
