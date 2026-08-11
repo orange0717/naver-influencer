@@ -108,10 +108,43 @@ export default function AiConsultantClient() {
   // 질문을 하고 나면(결과가 생기면) 다시 일반적인 위→아래 흐름으로 전환한다.
   const isIdle = !result && !loading && !error;
 
+  // 대화 목록(최근 분석)이 있는 로그인 사용자에게만 ChatGPT식 좌측 전용 패널을 띄운다.
+  // 게스트·신규(이력 없음)는 패널 없이 기존 중앙 정렬 레이아웃 그대로. 모바일에서는
+  // 좁은 화면 눌림을 피하려 패널 대신 본문 하단의 최근 분석 목록을 유지한다(아래 lg:hidden).
+  const hasConversationList = !!(recent && recent.length > 0);
+
   // 헤더(56px) + 페이지 상하 여백을 뺀 나머지 뷰포트 안에서 정중앙에 오도록.
   // 65vh는 화면 위쪽 65%에서만 중앙 정렬돼 오히려 위로 쏠려 보였음 (2026-08-08).
   return (
-    <div className={isIdle ? 'min-h-[calc(100dvh-8rem)] flex flex-col justify-center' : ''}>
+    <div className={hasConversationList ? 'w-full lg:max-w-5xl lg:mx-auto lg:flex lg:gap-6 lg:items-start' : ''}>
+      {hasConversationList && (
+        <aside className="hidden lg:flex lg:flex-col lg:w-60 lg:shrink-0 gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)]">
+          <button
+            onClick={startNew}
+            className="shrink-0 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold text-accent border border-accent/40 hover:bg-accent/10 transition-colors cursor-pointer text-center"
+          >
+            + 새 분석
+          </button>
+          <p className="text-xs font-bold text-dim shrink-0">대화 목록</p>
+          <div className="space-y-1.5 overflow-y-auto pr-1">
+            {recent!.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => openRecent(item)}
+                className={`w-full text-left px-3.5 py-2.5 rounded-lg border text-xs transition-colors cursor-pointer ${
+                  activeRecentId === item.id
+                    ? 'border-accent text-accent bg-accent/5'
+                    : 'border-border text-dim hover:border-accent hover:text-accent'
+                }`}
+              >
+                {item.query}
+              </button>
+            ))}
+          </div>
+        </aside>
+      )}
+
+    <div className={`${hasConversationList ? 'flex-1 min-w-0' : ''} ${isIdle ? 'min-h-[calc(100dvh-8rem)] flex flex-col justify-center' : ''}`}>
     <div className="max-w-2xl mx-auto w-full space-y-6">
       <div className="flex items-center justify-between gap-3 pt-2">
         <div className="text-center flex-1 space-y-1.5">
@@ -121,7 +154,7 @@ export default function AiConsultantClient() {
         {(result || error) && (
           <button
             onClick={startNew}
-            className="shrink-0 px-3.5 py-2 rounded-lg text-xs font-bold text-accent border border-accent/40 hover:bg-accent/10 transition-colors cursor-pointer"
+            className={`shrink-0 px-3.5 py-2 rounded-lg text-xs font-bold text-accent border border-accent/40 hover:bg-accent/10 transition-colors cursor-pointer ${hasConversationList ? 'lg:hidden' : ''}`}
           >
             + 새 분석
           </button>
@@ -241,11 +274,12 @@ export default function AiConsultantClient() {
         </div>
       )}
 
-      {recent && recent.length > 0 && (
-        <div className="space-y-2 pt-2 border-t border-border">
+      {/* 데스크톱은 좌측 대화 목록 패널로 이동 — 여기서는 모바일 화면에서만 하단 목록 노출 */}
+      {hasConversationList && (
+        <div className="lg:hidden space-y-2 pt-2 border-t border-border">
           <p className="text-xs font-bold text-dim pt-3">최근 분석</p>
           <div className="space-y-1.5">
-            {recent.map((item) => (
+            {recent!.map((item) => (
               <button
                 key={item.id}
                 onClick={() => openRecent(item)}
@@ -261,6 +295,7 @@ export default function AiConsultantClient() {
           </div>
         </div>
       )}
+    </div>
     </div>
     </div>
   );
