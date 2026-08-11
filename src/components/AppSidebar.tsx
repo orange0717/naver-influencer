@@ -342,7 +342,11 @@ export default function AppSidebar() {
           onClick={toggleCollapsed}
           title={collapsed ? '펼치기' : '접기'}
           aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-          className="absolute top-1/2 -translate-y-1/2 -right-3 z-10 w-6 h-6 flex items-center justify-center rounded-full bg-surface border border-accent/40 text-accent shadow-sm hover:bg-accent hover:text-white hover:border-accent transition-colors cursor-pointer"
+          className={`absolute top-1/2 -translate-y-1/2 -right-3 z-10 flex items-center justify-center rounded-full border border-accent shadow-md transition-colors cursor-pointer ${
+            collapsed
+              ? 'w-7 h-7 bg-accent text-white hover:brightness-110'
+              : 'w-6 h-6 bg-surface text-accent hover:bg-accent hover:text-white'
+          }`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d={collapsed ? 'M9 18l6-6-6-6' : 'M15 18l-6-6 6-6'} />
