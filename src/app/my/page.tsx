@@ -148,7 +148,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
-      const inRes = await fetch(`https://in.naver.com/${naverId}`, {
+      // 프로필 홈(in.naver.com/{id})에는 토픽 수 숫자가 없어 기존 정규식이 항상 0을 반환했다.
+      // 토픽 탭(/topic)의 Apollo state에는 "topicCount":N 이 있으므로 그 페이지를 긁는다.
+      const inRes = await fetch(`https://in.naver.com/${naverId}/topic`, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
           'Accept-Language': 'ko-KR,ko;q=0.9',
@@ -159,10 +161,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       clearTimeout(timeout);
       if (inRes.ok) {
         const html = await inRes.text();
-        const topicMatch = html.match(/토픽\s*(\d+)/);
-        if (topicMatch) return parseInt(topicMatch[1]);
+        // 신뢰할 수 있는 JSON 카운트를 우선 사용하고, 없을 때만 느슨한 텍스트 정규식으로 폴백.
         const jsonMatch = html.match(/"topicCount"\s*:\s*(\d+)/);
         if (jsonMatch) return parseInt(jsonMatch[1]);
+        const topicMatch = html.match(/토픽\s*(\d+)/);
+        if (topicMatch) return parseInt(topicMatch[1]);
       }
     } catch {
       // 토픽 크롤링 실패 무시
