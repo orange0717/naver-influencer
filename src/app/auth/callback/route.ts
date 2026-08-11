@@ -4,7 +4,12 @@ import { cookies } from 'next/headers';
 import { registerSession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { createServiceClient } from '@/lib/supabase-server';
-import { clearPostAuthDemoCookies } from '@/lib/demo-session';
+
+/** 정식 로그인 후 잔존 데모 브라우징 쿠키 제거 */
+function clearDemoCookies(res: NextResponse) {
+  res.cookies.delete('demo_mode');
+  res.cookies.delete('trial_started');
+}
 
 // next 파라미터를 같은 origin 의 내부 경로로만 허용 (open redirect 방지).
 // '//evil.com', '/\\evil.com', 외부 절대 URL 등은 모두 기본값으로 폴백.
@@ -82,12 +87,12 @@ export async function GET(request: NextRequest) {
 
         if (!existingUser) {
           const res = NextResponse.redirect(`${origin}/auth/onboard?next=${encodeURIComponent(next)}`);
-          clearPostAuthDemoCookies(res);
+          clearDemoCookies(res);
           return res;
         }
       }
       const res = NextResponse.redirect(`${origin}${next}`);
-      clearPostAuthDemoCookies(res);
+      clearDemoCookies(res);
       return res;
     }
   }

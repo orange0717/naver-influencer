@@ -190,8 +190,8 @@ function releaseErrorMessage(code: string | null): { title: string; hint: string
 
 export default function DownloadClient() {
   const { user, isLoading: authLoading } = useAuth();
-  /** 데모·비회원은 페이지는 볼 수 있으나 설치·외부 수령 링크는 사용 불가 */
-  const downloadUnlocked = !authLoading && !!user.id && !user.isDemo;
+  /** 비회원은 페이지는 볼 수 있으나 설치·외부 수령 링크는 사용 불가 */
+  const downloadUnlocked = !authLoading && !!user.id;
   const downloadLocked = !downloadUnlocked;
 
   const [os, setOS] = useState<OS>('unknown');

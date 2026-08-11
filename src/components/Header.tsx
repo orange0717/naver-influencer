@@ -28,8 +28,6 @@ type UserInfo = {
   restricted?: boolean;
   subscriptionPlan?: string | null;
   subscriptionActive?: boolean;
-  trialDaysLeft?: number;
-  isDemo?: boolean;
 };
 
 interface HeaderProps {
@@ -63,9 +61,9 @@ export default function Header({ serverUser }: HeaderProps) {
   // 서버에서 전달받은 유저 정보를 우선 사용, 클라이언트에서 로드되면 클라이언트 데이터로 전환
   const user = (clientUser.id ? clientUser : serverUser ? { ...clientUser, type: serverUser.type as UserInfo['type'], id: serverUser.id, name: serverUser.name } : clientUser) as UserInfo;
 
-  /** 헤더에 /download 안내 표시 (Electron 내 제외). 링크 이동은 로그인·비데모 회원만 */
+  /** 헤더에 /download 안내 표시 (Electron 내 제외). 링크 이동은 로그인 회원만 */
   const canShowAppDownload = !inDesktopApp;
-  const downloadNavUnlocked = !authLoading && !!user.id && !user.isDemo;
+  const downloadNavUnlocked = !authLoading && !!user.id;
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
-import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +20,9 @@ export async function POST() {
 
     const jsonAuthed = (body: Record<string, unknown>) => {
       const r = NextResponse.json(body);
-      clearPostAuthDemoCookies(r);
+      // 정식 로그인 후 잔존 데모 브라우징 쿠키 제거
+      r.cookies.delete('demo_mode');
+      r.cookies.delete('trial_started');
       return r;
     };
 

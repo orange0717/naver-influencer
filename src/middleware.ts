@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifySession } from '@/lib/session-limit';
 import { DEVICE_ID_COOKIE } from '@/lib/device-id';
-import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
 import { defaultApiLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getAllAuthOnlyHrefs } from '@/lib/sidebar-nav';
@@ -308,30 +307,26 @@ export async function middleware(request: NextRequest) {
   const isBypass = SESSION_CHECK_BYPASS.some(p => pathname.startsWith(p));
   const acceptsHtml = request.headers.get('accept')?.includes('text/html') ?? false;
   const shouldIssueDeviceId = acceptsHtml && !DEVICE_ID_BYPASS.some(p => pathname.startsWith(p));
-  const hasDemoSession =
-    request.cookies.get('demo_mode')?.value === 'true' &&
-    !!request.cookies.get('naver_id')?.value;
-  const hasDemoParam = pathname === '/my' && !!request.nextUrl.searchParams.get('demo');
 
   const needsLoginPage =
     acceptsHtml &&
     AUTH_REQUIRED_PAGE_PREFIXES.some(p => matchesPathPrefix(pathname, p));
 
-  if (needsLoginPage && !user && !hasDemoSession && !hasDemoParam) {
+  if (needsLoginPage && !user) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 
-  // 키워드 분석 UI·데이터: 정식 로그인 또는 데모 체험 쿠키 (완전 비회원 공개 아님)
+  // 키워드 분석 UI·데이터: 정식 로그인 필요 (완전 비회원 공개 아님)
   // 단, /keywords/blogger·/keywords/blog-ranking은 완전 공개 마케팅/SEO 페이지라 예외
   // (각자 generateMetadata까지 갖춰져 있었는데 이 게이트에 막혀 크롤러가 도달 못 하고 있었음)
   const needsKeywordsLogin =
     acceptsHtml &&
     matchesPathPrefix(pathname, '/keywords') &&
     !PUBLIC_KEYWORDS_PATHS.some(p => matchesPathPrefix(pathname, p));
-  if (needsKeywordsLogin && !user && !hasDemoSession) {
+  if (needsKeywordsLogin && !user) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
@@ -339,12 +334,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // 사이드바 "회원 전용" 메뉴 — 비회원의 URL 직접 접근을 사이드바 클릭 차단과 동일하게 막고,
-  // 홈에서 회원 전용 모달(데모 체험/로그인 선택지)을 띄운다.
+  // 홈에서 회원 전용 모달(회원가입/로그인 선택지)을 띄운다.
   const needsMemberOnlyGate =
     acceptsHtml &&
     (pathname === '/influencers' ||
       MEMBER_ONLY_GATE_PREFIXES.some(p => matchesPathPrefix(pathname, p)));
-  if (needsMemberOnlyGate && !user && !hasDemoSession) {
+  if (needsMemberOnlyGate && !user) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
@@ -377,11 +372,11 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/keywords' ||
     pathname.startsWith('/api/keywords/') ||
     pathname === '/api/downloads/keywords';
-  if (isKeywordsApi && !user && !hasDemoSession) {
+  if (isKeywordsApi && !user) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
-  // 인플루언서 순위/키챌 데이터 API: 로그인 또는 데모 세션 필요
+  // 인플루언서 순위/키챌 데이터 API: 로그인 필요
   // - /api/influencers/recent (인트로 공개용), /api/influencers/list, /api/influencers/free-plan
   //   (무료 명단, 자체 로그인 체크)는 제외
   const isInfluencersRankingApi =
@@ -389,16 +384,16 @@ export async function middleware(request: NextRequest) {
     pathname !== '/api/influencers/recent' &&
     !pathname.startsWith('/api/influencers/list') &&
     !pathname.startsWith('/api/influencers/free-plan');
-  if (isInfluencersRankingApi && !user && !hasDemoSession) {
+  if (isInfluencersRankingApi && !user) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
   // 네이버메이트 랭킹 API: 회원 전용 페이지(/naver-mate-ranking)와 동일하게 보호
   const isNaverMateRankingApi = pathname.startsWith('/api/rankings/naver-mate');
-  if (isNaverMateRankingApi && !user && !hasDemoSession) {
+  if (isNaverMateRankingApi && !user) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
-  // 로그인된 사용자는 데모 우회와 별개로 유료 플랜(체험 포함)까지 확인
+  // 로그인된 사용자는 유료 플랜(체험 포함)까지 확인
   if (isNaverMateRankingApi && user) {
     const ctx = await withTimeout(
       getPaywallContext(user.id, user.email),
@@ -560,14 +555,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 정식 Supabase 세션이 있으면 데모 체험 쿠키는 무시·삭제 (가입 후 플랜 판정이 데모와 섞이지 않도록)
-  if (user) {
-    const hasDemoTrialCookies =
-      request.cookies.get('demo_mode')?.value === 'true' ||
-      !!request.cookies.get('trial_started')?.value;
-    if (hasDemoTrialCookies) {
-      clearPostAuthDemoCookies(supabaseResponse);
-    }
+  // 폐지된 데모 체험 쿠키가 남아 있으면 정리 (플랜 판정이 옛 쿠키와 섞이지 않도록)
+  if (
+    request.cookies.get('demo_mode')?.value ||
+    request.cookies.get('trial_started')?.value
+  ) {
+    supabaseResponse.cookies.delete('demo_mode');
+    supabaseResponse.cookies.delete('trial_started');
   }
 
   return supabaseResponse;

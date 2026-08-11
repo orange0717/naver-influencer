@@ -71,7 +71,7 @@ export default function UpdateBanner() {
   if (!item || !visible) return null;
 
   const bannerHref =
-    item.href && (!user.id || user.isDemo) && item.href.startsWith('/notice')
+    item.href && !user.id && item.href.startsWith('/notice')
       ? `/auth/login?redirect=${encodeURIComponent(item.href)}`
       : item.href;
 

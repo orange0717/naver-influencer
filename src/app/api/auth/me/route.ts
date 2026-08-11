@@ -161,25 +161,12 @@ export async function GET(request: NextRequest) {
         .limit(1)
         .single();
 
-      const trialStarted = cookieStore.get('trial_started')?.value;
-      const isDemo = cookieStore.get('demo_mode')?.value === 'true';
-      // 데모/체험 모두 7일 통일 (TRIAL_DAYS·DEMO_DAYS 와 일치)
-      const durationDays = 7;
-      let trialDaysLeft: number | undefined;
-      if (trialStarted) {
-        const elapsed = Date.now() - Number(trialStarted);
-        const remaining = Math.ceil((durationDays * 24 * 60 * 60 * 1000 - elapsed) / (24 * 60 * 60 * 1000));
-        trialDaysLeft = Math.max(0, remaining);
-      }
-
       return NextResponse.json({
         type: 'influencer',
         id: naverId,
         blogId: blogId || null,
         name: inf?.display_name || naverId,
         restricted: await isRestricted(registeredUser?.email),
-        ...(trialDaysLeft !== undefined && { trialDaysLeft }),
-        ...(isDemo && { isDemo: true }),
       });
     }
 

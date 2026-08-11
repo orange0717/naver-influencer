@@ -70,11 +70,11 @@ function FirstVisitModalInner() {
             N인플에 처음 방문하셨습니까?
           </h2>
           <p className="text-sm text-dim text-center mb-3 leading-relaxed">
-            <span className="text-accent font-semibold">회원가입 없이 하루 5회 무료</span>로<br />
+            <span className="text-accent font-semibold">회원가입 없이 하루 3회 무료</span>로<br />
             바로 체험해보실 수 있습니다.
           </p>
           <p className="text-[11px] text-dim/80 text-center mb-8 leading-relaxed">
-            회원가입하면 매일 더 많은 무료 이용량이 제공됩니다.
+            더 많이 이용하시려면 이용권을 구매해보세요.
           </p>
           <div className="flex gap-3">
             <button

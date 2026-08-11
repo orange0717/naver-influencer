@@ -3,8 +3,13 @@ import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-se
 import { validateBody } from '@/lib/validations';
 import { signupSchema } from '@/lib/validations/auth';
 import { authLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
-import { clearPostAuthDemoCookies } from '@/lib/demo-session';
 import { getPrivacyPolicyVersion } from '@/lib/privacy-notice';
+
+/** 정식 로그인 후 잔존 데모 브라우징 쿠키 제거 */
+function clearDemoCookies(res: NextResponse) {
+  res.cookies.delete('demo_mode');
+  res.cookies.delete('trial_started');
+}
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     const res = NextResponse.json({ success: true, userId: existing.id });
-    clearPostAuthDemoCookies(res);
+    clearDemoCookies(res);
     return res;
   }
 
@@ -139,6 +144,6 @@ export async function POST(request: NextRequest) {
   }
 
   const res = NextResponse.json({ success: true, userId: data.id });
-  clearPostAuthDemoCookies(res);
+  clearDemoCookies(res);
   return res;
 }

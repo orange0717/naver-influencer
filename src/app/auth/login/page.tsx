@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 function sanitizeRedirect(raw: string | undefined): string | null {
@@ -19,14 +18,6 @@ export default async function LoginPage({
   searchParams: Promise<{ redirect?: string; reason?: string }>;
 }) {
   const params = await searchParams;
-  const cookieStore = await cookies();
-  const isDemo = cookieStore.get('demo_mode')?.value === 'true';
-  const naverId = cookieStore.get('naver_id')?.value;
-
-  // 데모 세션이 활성화되어 있으면 로그인 모달 대신 /my 로 이동
-  if (isDemo && naverId) {
-    redirect(`/my?demo=${naverId}`);
-  }
 
   const qs = new URLSearchParams();
   qs.set('authModal', 'login');

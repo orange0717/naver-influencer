@@ -19,7 +19,7 @@ export default function SentryUserIdentity() {
     if (identifier) {
       Sentry.setUser({
         id: identifier,
-        segment: user.isDemo ? 'demo' : (user.subscriptionPlan || 'free'),
+        segment: user.subscriptionPlan || 'free',
       });
     } else {
       Sentry.setUser(null);

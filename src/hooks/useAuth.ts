@@ -17,8 +17,6 @@ type UserInfo = {
   subscriptionPlan?: string | null;
   subscriptionExpiresAt?: string | null;
   subscriptionActive?: boolean;
-  trialDaysLeft?: number;
-  isDemo?: boolean;
 };
 
 const defaultUser: UserInfo = { type: null, id: null, name: null, email: null };

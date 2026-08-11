@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import MarketingSchoolCard from '@/components/MarketingSchoolCard';
 import { AI_CONSULTANT_CATALOG } from '@/lib/ai-consultant-catalog';
+import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
+import { useTrialEndedGate } from '@/contexts/TrialEndedGateContext';
 
 interface Recommendation {
   featureId: string;
@@ -36,6 +38,11 @@ interface RecentQuery {
 const FEATURE_SHORTCUTS = AI_CONSULTANT_CATALOG.filter((f) => !f.external);
 
 export default function AiConsultantClient() {
+  // AI 질문은 게스트·무료회원 모두 하루 3회까지 무료. 초과(402)하면 유료가입을 유도한다.
+  // 게스트는 회원가입 모달, 로그인 무료회원은 이용권 구매 모달로 분기 (needsSignup 플래그 기준).
+  const { openGate: openMemberGate } = useMemberOnlyGate();
+  const { openGate: openUpgradeGate } = useTrialEndedGate();
+
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [result, setResult] = useState<ConsultResult | null>(null);
@@ -75,7 +82,13 @@ export default function AiConsultantClient() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || '추천을 불러오지 못했습니다.');
+        // 하루 무료 3회 소진 → 유료가입 유도. 게스트는 회원가입, 무료회원은 이용권 구매 모달.
+        if (res.status === 402 && data.quotaExceeded) {
+          if (data.needsSignup) openMemberGate('/');
+          else openUpgradeGate('/');
+        } else {
+          setError(data.error || '추천을 불러오지 못했습니다.');
+        }
       } else {
         setResult(data);
         if (data.id) setActiveRecentId(data.id);
@@ -181,7 +194,7 @@ export default function AiConsultantClient() {
           </button>
         </div>
         <p className="text-[11px] text-dim/70 leading-relaxed">
-          마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 어떤 N인플 기능이 도움이 될지 추천해드립니다.
+          마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 어떤 N인플 기능이 도움이 될지 추천해드립니다. (무료 하루 3회)
         </p>
       </div>
 

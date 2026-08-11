@@ -4,7 +4,7 @@ import { createServiceClient } from './supabase-server';
 import { getClientIp } from './rate-limit';
 
 /**
- * "하루 5회 무료" 전역 사용량 카운터 (2026-08-08 프리미엄 모델 전환).
+ * "하루 3회 무료" 전역 사용량 카운터 (2026-08-08 프리미엄 모델 전환).
  *
  * - PRO 이용권 보유자는 이 카운터를 아예 타지 않는다 (무제한).
  * - 로그인 회원은 user_id 단위로, 비회원은 IP+UA 해시 단위로 카운트한다.
@@ -15,8 +15,8 @@ import { getClientIp } from './rate-limit';
  *   나중에 내부 구현을 크레딧 차감으로 바꿔도 호출부(feature-gate.ts 등)는 그대로 둘 수 있다.
  */
 
-export const ANON_DAILY_FREE_LIMIT = 5;
-export const MEMBER_DAILY_FREE_LIMIT = 10;
+export const ANON_DAILY_FREE_LIMIT = 3;
+export const MEMBER_DAILY_FREE_LIMIT = 3;
 
 export interface FreeQuotaResult {
   allowed: boolean;

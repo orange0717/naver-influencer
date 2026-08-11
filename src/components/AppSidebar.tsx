@@ -285,8 +285,8 @@ export default function AppSidebar() {
 
   if (isLoading || hidden) return null;
 
-  // 정식 로그인도, 데모 체험 중도 아닌 순수 비회원 — 메뉴는 보이되 회원 전용 항목은 클릭 시 모달로 유도
-  const isGuest = !user.id && !user.isDemo;
+  // 비회원 — 메뉴는 보이되 회원 전용 항목은 클릭 시 모달로 유도
+  const isGuest = !user.id;
 
   const currentPlan: PlanTier = (() => {
     if (!user.subscriptionActive) return 'free';

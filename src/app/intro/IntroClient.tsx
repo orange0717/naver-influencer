@@ -151,10 +151,10 @@ export default function IntroClient() {
         </button>
 
         <p className="text-xs text-dim mt-5">
-          회원가입 없이도 하루 5회 무료로 체험할 수 있습니다.
+          회원가입 없이도 하루 3회 무료로 체험할 수 있습니다.
         </p>
         <p className="text-[11px] text-dim/70 mt-2">
-          가입하면 매일 더 많은 무료 이용량이 제공됩니다.
+          더 많이 이용하려면 이용권을 구매해보세요.
         </p>
 
         <p className="text-[11px] text-dim/70 mt-3">

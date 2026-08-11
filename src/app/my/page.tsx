@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { createServiceClient, createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
-import { isTrialExpired } from '@/lib/trial';
 import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import RankDistribution from '@/components/dashboard/RankDistribution';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
@@ -20,7 +19,6 @@ import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
 import SmartAlerts from '@/components/dashboard/SmartAlerts';
 import DailyBriefing from '@/components/dashboard/DailyBriefing';
-import TrialBanner from '@/components/TrialBanner';
 import SubscriptionExpiryBanner from '@/components/SubscriptionExpiryBanner';
 import { after } from 'next/server';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
@@ -87,27 +85,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     if (!naverId && profile?.blog_id) {
       naverId = profile.blog_id;
     }
-  } else {
-    // ─── 2. 비로그인: 데모 체험 쿠키는 값 자체를 신뢰하지 않고 demo_sessions DB로 실재/만료를 검증 ───
-    // (httpOnly 쿠키라도 서명되어 있지 않아 curl 등 raw 요청으로 위조 가능 — ?demo= 쿼리 파라미터 폴백도
-    //  검증 없이 임의 naver_id를 그대로 신뢰하는 구멍이라 제거)
-    if (cookieStore.get('demo_mode')?.value === 'true') {
-      const cookieNaverId = cookieStore.get('naver_id')?.value;
-      if (cookieNaverId) {
-        const { data: demoSession } = await supabase
-          .from('demo_sessions')
-          .select('expires_at')
-          .eq('naver_id', cookieNaverId)
-          .maybeSingle();
-        if (demoSession && new Date(demoSession.expires_at).getTime() > Date.now()) {
-          naverId = cookieNaverId;
-        }
-      }
-    }
   }
-
-  /** UI용: 정식 로그인이 아닐 때만 데모 배너 등에 사용 */
-  const isDemo = !isLoggedIn && cookieStore.get('demo_mode')?.value === 'true';
 
   if (!naverId) {
     if (isLoggedIn) {
@@ -115,19 +93,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     }
     // 비로그인(게스트): 강제 리다이렉트 없이 MY 대시보드의 빈 상태(Empty State)를 렌더.
     return <GuestDashboard />;
-  }
-
-  // 체험/데모 만료 체크 — 정식 로그인 사용자는 trial_started 잔존 쿠키와 무관하게 여기서 차단하지 않음
-  const trialStarted = cookieStore.get('trial_started')?.value;
-  const isTrial = !!trialStarted;
-  const trialExpired = isTrialExpired(trialStarted);
-  const hasActivePlan = !!(
-    subscriptionPlan &&
-    subscriptionExpiresAt &&
-    new Date(subscriptionExpiresAt).getTime() > Date.now()
-  );
-  if (!isLoggedIn && trialExpired && !hasActivePlan) {
-    redirect('/subscribe');
   }
 
   // naver_id로 인플루언서 조회
@@ -139,7 +104,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   if (!influencerData) {
     // 블로거로 접속한 경우 (blog_id만 있는 사용자 포함)
-    const blogId = cookieStore.get('blog_id')?.value || params.demo;
+    const blogId = cookieStore.get('blog_id')?.value;
     if (blogId) {
       redirect(`/my/blogger?blogId=${blogId}`);
     }
@@ -154,7 +119,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
         <h1 className="font-title text-xl font-bold text-text mb-3">내 대시보드</h1>
         <p className="text-sm text-dim mb-6 leading-relaxed">
-          연결된 인플루언서 정보를 찾을 수 없습니다. 로그인 후 프로필에서 블로그를 연결하거나 데모 체험을 이용해 보세요.
+          연결된 인플루언서 정보를 찾을 수 없습니다. 로그인 후 프로필에서 블로그를 연결해 보세요.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
@@ -690,9 +655,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-5">
-
-      {/* ─── 체험/데모 배너 ─── */}
-      {!isLoggedIn && isTrial && <TrialBanner isDemo={isDemo} />}
 
       {/* ─── 구독 만료 임박/만료 배너 ─── */}
       <SubscriptionExpiryBanner

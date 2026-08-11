@@ -62,8 +62,7 @@ export default function HeaderSearch() {
     return SEARCHABLE_ITEMS.filter((item) => item.label.toLowerCase().includes(q));
   }, [query]);
 
-  const loggedInOrDemo = !!user.id || !!user.isDemo;
-  if (isLoading || !loggedInOrDemo) return null;
+  if (isLoading || !user.id) return null;
 
   const handleSelect = (item: SearchableItem) => {
     setOpen(false);

@@ -8,7 +8,7 @@ type UsageState = {
 } | null;
 
 /**
- * 헤더에 표시하는 "오늘 무료 사용 X/5회" 배지. PRO 이용권 보유자는 "PRO 이용 중"으로 대체.
+ * 헤더에 표시하는 "오늘 무료 사용 X/3회" 배지. PRO 이용권 보유자는 "PRO 이용 중"으로 대체.
  * /api/usage/today는 로그인 여부와 무관하게 호출 가능(비회원은 IP 기준 카운트).
  */
 export default function UsageQuotaBadge() {

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { createRouteHandlerClient, createServiceClient, getUserWithTimeout, hasSupabaseAuthCookie } from '@/lib/supabase-server';
-import { cookies } from 'next/headers';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
 import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
 import AiExposureSummary from '@/components/home/AiExposureSummary';
@@ -17,15 +16,11 @@ export const metadata = {
 /**
  * KPI 요약 + 블로그 분석 대시보드.
  * 2026-08-08까지는 이 내용이 홈(/)이었으나, 홈을 "N인플 AI"로 교체하면서 이곳으로 옮김
- * (src/app/page.tsx 참고). 로그인/데모 사용자 전용 — 비로그인은 홈으로 리다이렉트.
+ * (src/app/page.tsx 참고). 로그인 사용자 전용 — 비로그인은 홈으로 리다이렉트.
  */
 export default async function DashboardPage() {
   const supabaseAuth = await createRouteHandlerClient();
   const authUser = await getUserWithTimeout(supabaseAuth);
-
-  const cookieStore = await cookies();
-  const isDemo = !authUser && cookieStore.get('demo_mode')?.value === 'true';
-  const demoNaverId = isDemo ? cookieStore.get('naver_id')?.value : null;
 
   if (authUser) {
     const ctx = await getPaywallContext(authUser.id, authUser.email);
@@ -34,19 +29,9 @@ export default async function DashboardPage() {
         redirect('/subscribe');
       }
     }
-  } else if (demoNaverId) {
-    const supabase = createServiceClient();
-    const { data: demoUser } = await supabase
-      .from('users')
-      .select('email')
-      .eq('naver_id', demoNaverId)
-      .maybeSingle();
-    if (demoUser?.email && (await isRestricted(demoUser.email))) {
-      redirect('/subscribe');
-    }
   }
 
-  const isLoggedIn = !!authUser || !!demoNaverId;
+  const isLoggedIn = !!authUser;
   if (!isLoggedIn) {
     // 진짜 비로그인(세션 쿠키 없음)만 홈으로 보낸다.
     // 세션 쿠키는 있는데 서버측 getUserWithTimeout이 타임아웃·동시 갱신 충돌로 null 이
