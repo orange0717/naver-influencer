@@ -17,6 +17,14 @@ ALTER TABLE ai_briefing_exposures
   ADD COLUMN IF NOT EXISTS last_error   TEXT        NULL,  -- 마지막 실패 메시지(디버그/사용자 안내)
   ADD COLUMN IF NOT EXISTS error_at     TIMESTAMPTZ NULL;  -- 마지막 실패 시각
 
+-- ── 1-1) 기존 데이터 백필 ────────────────────────────────────────────
+-- 이미 checked_at 이 있는 행(과거에 확인 성공해 결과가 저장된 행)은 'ok' 로 채운다.
+-- 이 백필이 없으면 기존 163건이 check_status=NULL(미확인)로 남아, 분모가 check_status='ok'인
+-- 대시보드 집계에서 통째로 빠진다(인용률이 전부 0/0으로 보임).
+UPDATE ai_briefing_exposures
+  SET check_status = 'ok'
+  WHERE checked_at IS NOT NULL AND check_status IS NULL;
+
 -- ── 2) 인용 상태 변경 이력 스냅샷 ────────────────────────────────────
 -- 확인이 "성공"할 때마다(check_status='ok') 인용 상태가 직전 스냅샷과 달라지면 한 줄 추가한다.
 -- 매 확인마다가 아니라 "변화가 있을 때만" 기록해 테이블 비대화를 막는다.
@@ -44,6 +52,10 @@ CREATE INDEX IF NOT EXISTS idx_abeh_user_blog
 
 ALTER TABLE ai_briefing_exposure_history ENABLE ROW LEVEL SECURITY;
 
+-- 정책은 재실행 안전하게 DROP 후 재생성(구버전 PG엔 CREATE POLICY IF NOT EXISTS 없음)
+DROP POLICY IF EXISTS abeh_select ON ai_briefing_exposure_history;
+DROP POLICY IF EXISTS abeh_insert ON ai_briefing_exposure_history;
+DROP POLICY IF EXISTS abeh_delete ON ai_briefing_exposure_history;
 CREATE POLICY abeh_select ON ai_briefing_exposure_history FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY abeh_insert ON ai_briefing_exposure_history FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY abeh_delete ON ai_briefing_exposure_history FOR DELETE USING (user_id = auth.uid());
