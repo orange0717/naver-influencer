@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { isRestrictedByUserId, hasActivePaidPlanByUserId } from '@/lib/admin';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
-import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
+import { getOpenAiClient, OPENAI_MODEL_MINI } from '@/lib/openai-client';
 import { chatbookMessageLimiter, getClientIp } from '@/lib/rate-limit';
 import { requireFeatureAccess } from '@/lib/feature-gate';
 import { AI_CONSULTANT_CATALOG, getFeatureById } from '@/lib/ai-consultant-catalog';
@@ -12,7 +12,7 @@ const RECENT_QUERIES_LIMIT = 8;
 
 /**
  * GET /api/ai-consultant — 로그인한 사용자의 최근 질문 이력(최대 8건)
- * "최근 분석" 목록 표시용. Claude 재호출 없이 저장된 결과를 그대로 내려준다.
+ * "최근 분석" 목록 표시용. AI 재호출 없이 저장된 결과를 그대로 내려준다.
  */
 export async function GET(request: NextRequest) {
   let authUser;
@@ -45,59 +45,62 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const QUERY_MAX_LENGTH = 400;
+const ANSWER_STORE_LIMIT = 4000;
 
-// Claude에게 강제로 호출시킬 tool. free-text 응답 대신 구조화된 추천 목록을 받기 위함
-// (질문 의도 분석 → 기존 N인플 기능 라우팅). 여기서 참조하는 catalog 확장은
-// src/lib/ai-consultant-catalog.ts 에서만 하면 된다.
-const RECOMMEND_TOOL = {
-  name: 'recommend_analyses',
-  description: '사용자의 마케팅/콘텐츠 고민을 분석해서 N인플의 기존 기능 중 도움이 될 것들을 추천한다.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      interpretation: {
-        type: 'string',
-        description: '사용자의 질문을 한두 문장으로 요약 해석. 공감하는 톤으로, 존댓말로.',
-      },
-      recommendations: {
-        type: 'array',
-        description: '추천 기능 목록. 관련도 높은 순으로 최대 5개.',
-        items: {
-          type: 'object',
-          properties: {
-            featureId: {
-              type: 'string',
-              enum: AI_CONSULTANT_CATALOG.map((f) => f.id),
-            },
-            score: {
-              type: 'integer',
-              minimum: 1,
-              maximum: 5,
-              description: '이 질문에 대한 관련도 점수 1~5 (5가 가장 관련 높음)',
-            },
-            reason: {
-              type: 'string',
-              description: '왜 이 기능을 추천하는지 한 문장, 사용자 질문에 맞춰 구체적으로.',
-            },
+// OpenAI(ChatGPT) structured output 스키마. 실제 정보성 답변(answer)과, 그와 관련해
+// N인플에 이미 있는 기능 추천(recommendations)을 한 번의 호출로 함께 받는다.
+// strict 모드라 모든 필드가 required + additionalProperties:false 여야 한다.
+// 점수 범위(1~5) 제약은 스키마 대신 아래 응답 파싱에서 clamp 한다.
+// 참조하는 catalog 확장은 src/lib/ai-consultant-catalog.ts 에서만 하면 된다.
+const RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    answer: {
+      type: 'string',
+      description:
+        '사용자의 고민에 실제로 도움이 되는 구체적 답변. 존댓말, 친절하고 실용적으로. ' +
+        '핵심부터, 필요하면 번호목록이나 줄바꿈으로 정리. 200~600자 내외.',
+    },
+    recommendations: {
+      type: 'array',
+      description: '답변과 관련해 도움이 될 N인플 기능 목록. 관련도 높은 순으로 최대 5개.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          featureId: {
+            type: 'string',
+            enum: AI_CONSULTANT_CATALOG.map((f) => f.id),
           },
-          required: ['featureId', 'score', 'reason'],
+          score: {
+            type: 'integer',
+            description: '이 질문에 대한 관련도 점수 1~5 (5가 가장 관련 높음)',
+          },
+          reason: {
+            type: 'string',
+            description: '왜 이 기능을 추천하는지 한 문장, 사용자 질문에 맞춰 구체적으로.',
+          },
         },
+        required: ['featureId', 'score', 'reason'],
       },
     },
-    required: ['interpretation', 'recommendations'],
   },
-};
+  required: ['answer', 'recommendations'],
+} as const;
 
-const SYSTEM_PROMPT = `당신은 N인플(네이버 인플루언서·블로그 마케팅 분석 서비스)의 AI 콘텐츠 컨설턴트입니다.
-사용자가 마케팅/블로그/콘텐츠에 대한 고민을 자유롭게 입력하면, 그 의도를 파악해서
-recommend_analyses 도구를 반드시 호출해 N인플에 이미 있는 기능 중 관련도 높은 것들을 추천하세요.
+const SYSTEM_PROMPT = `당신은 N인플(네이버 인플루언서·블로그 마케팅 분석 서비스)의 AI 컨설턴트입니다.
+사용자가 마케팅/블로그/콘텐츠/검색노출에 대한 고민을 자유롭게 입력하면 아래 두 가지를 만들어 주세요.
 
-[규칙]
-- 목록에 없는 기능은 절대 지어내지 마세요. 오직 제공된 기능 목록 중에서만 골라야 합니다.
-- 관련 없는 질문(마케팅/콘텐츠와 무관한 잡담, 코드 요청 등)이면 recommendations를 빈 배열로 반환하고
-  interpretation에 "마케팅이나 콘텐츠 관련 고민을 입력해주시면 도와드릴게요" 같은 안내를 담으세요.
-- interpretation은 사용자의 상황에 공감하며 짧게 요약하는 한두 문장. 존댓말.
-- score는 실제 관련도를 반영해서 차등 부여하세요. 관련 기능이 하나뿐이면 굳이 5개를 채우지 마세요.
+1) answer — 질문에 실제로 도움이 되는 답변.
+   - 존댓말, 친절하고 실용적으로. 핵심부터 말하고 필요하면 번호목록·줄바꿈으로 정리하세요.
+   - 네이버 블로그/인플루언서 맥락에 맞게 구체적으로. 200~600자 내외.
+   - 확실치 않은 통계·수치를 지어내지 말고, 일반 원칙과 실행 방법 위주로 안내하세요.
+   - 마케팅/콘텐츠와 무관한 잡담·코드 요청 등이면 정중히 "마케팅·블로그·콘텐츠 관련 고민을 도와드린다"고 안내하세요.
+
+2) recommendations — 답변과 관련해 N인플에 이미 있는 기능 중 도움이 될 것을 관련도 높은 순으로 최대 5개.
+   - 목록에 없는 기능은 절대 지어내지 마세요. 오직 아래 목록에서만 고르세요.
+   - 관련 기능이 없으면 빈 배열로 두세요. score는 실제 관련도(1~5)를 차등 부여하세요.
 
 [N인플 기능 목록]
 ${AI_CONSULTANT_CATALOG.map((f) => `- id: ${f.id} / ${f.label}: ${f.toolDescription}`).join('\n')}`;
@@ -145,36 +148,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `질문은 ${QUERY_MAX_LENGTH}자 이내로 입력해주세요.` }, { status: 400 });
   }
 
-  let anthropic;
+  let openai;
   try {
-    anthropic = getAnthropicClient();
+    openai = getOpenAiClient();
   } catch {
     return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
   }
 
   try {
-    const result = await anthropic.messages.create({
-      model: CLAUDE_MODEL_HAIKU,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      tools: [RECOMMEND_TOOL],
-      tool_choice: { type: 'tool', name: 'recommend_analyses' },
-      messages: [{ role: 'user', content: query }],
+    const completion = await openai.chat.completions.create({
+      model: OPENAI_MODEL_MINI,
+      max_tokens: 1200,
+      temperature: 0.5,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: query },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'consultant_answer', strict: true, schema: RESPONSE_SCHEMA },
+      },
     });
 
-    const toolUseBlock = result.content.find(
-      (block): block is Extract<typeof block, { type: 'tool_use' }> => block.type === 'tool_use',
-    );
-    if (!toolUseBlock) {
-      return NextResponse.json({ error: '추천을 생성하지 못했습니다.' }, { status: 502 });
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) {
+      return NextResponse.json({ error: '응답을 생성하지 못했습니다.' }, { status: 502 });
     }
 
-    const input = toolUseBlock.input as {
-      interpretation?: string;
+    let parsed: {
+      answer?: string;
       recommendations?: Array<{ featureId?: string; score?: number; reason?: string }>;
     };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return NextResponse.json({ error: '응답을 생성하지 못했습니다.' }, { status: 502 });
+    }
 
-    const recommendations = (input.recommendations || [])
+    const recommendations = (parsed.recommendations || [])
       .map((r) => {
         const feature = r.featureId ? getFeatureById(r.featureId) : undefined;
         if (!feature) return null;
@@ -192,7 +203,11 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
 
-    const interpretation = (input.interpretation || '').slice(0, 500);
+    // interpretation 컬럼에 ChatGPT의 실제 답변을 저장한다(기존 스키마 재사용 — DB 마이그레이션 불필요).
+    const interpretation = (parsed.answer || '').trim().slice(0, ANSWER_STORE_LIMIT);
+    if (!interpretation) {
+      return NextResponse.json({ error: '응답을 생성하지 못했습니다.' }, { status: 502 });
+    }
 
     // 이력 저장 (로그인 사용자만 — user_id 필수 컬럼. 비회원 호출은 "최근 분석" 목록에 안 남을 뿐
     // 응답 자체는 동일하게 받는다. 실패해도 사용자 응답은 막지 않는다.)
@@ -218,7 +233,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ id: savedId, interpretation, recommendations });
   } catch (err) {
-    console.error('[ai-consultant] Claude call failed:', err instanceof Error ? err.message : err);
+    console.error('[ai-consultant] OpenAI call failed:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: '응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
   }
 }

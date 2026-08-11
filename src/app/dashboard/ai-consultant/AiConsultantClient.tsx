@@ -129,7 +129,7 @@ export default function AiConsultantClient() {
   // 헤더(56px) + 페이지 상하 여백을 뺀 나머지 뷰포트 안에서 정중앙에 오도록.
   // 65vh는 화면 위쪽 65%에서만 중앙 정렬돼 오히려 위로 쏠려 보였음 (2026-08-08).
   return (
-    <div className={hasConversationList ? 'w-full lg:max-w-5xl lg:mx-auto lg:flex lg:gap-6 lg:items-start' : ''}>
+    <div className={hasConversationList ? 'w-full lg:flex lg:gap-8 lg:items-start' : ''}>
       {hasConversationList && (
         <aside className="hidden lg:flex lg:flex-col lg:w-60 lg:shrink-0 gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)]">
           <button
@@ -194,7 +194,7 @@ export default function AiConsultantClient() {
           </button>
         </div>
         <p className="text-[11px] text-dim/70 leading-relaxed">
-          마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 어떤 N인플 기능이 도움이 될지 추천해드립니다. (무료 하루 3회)
+          마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 바로 답변해드리고, 관련된 N인플 기능도 함께 추천해드립니다. (무료 하루 3회)
         </p>
       </div>
 
@@ -222,8 +222,8 @@ export default function AiConsultantClient() {
         <div className="flex items-center justify-center py-14 bg-surface border border-border rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-7 h-7 border-2 border-accent border-t-transparent rounded-full mx-auto mb-2.5" />
-            <p className="text-xs text-dim">&ldquo;{submittedQuery}&rdquo; 분석 중...</p>
-            <p className="text-[11px] text-dim/60 mt-1">질문 의도 파악 → 관련 기능 매칭 중</p>
+            <p className="text-xs text-dim">&ldquo;{submittedQuery}&rdquo; 답변 생성 중...</p>
+            <p className="text-[11px] text-dim/60 mt-1">질문 분석 → AI 답변 작성 중</p>
           </div>
         </div>
       )}
@@ -236,13 +236,14 @@ export default function AiConsultantClient() {
 
       {result && (
         <div className="space-y-4">
-          <div className="bg-surface border border-border rounded-lg p-5">
-            <p className="text-sm text-text leading-relaxed">{result.interpretation}</p>
+          <div className="bg-surface border border-border rounded-2xl p-5 space-y-1.5 shadow-sm">
+            <p className="text-[11px] font-bold text-accent">N인플 AI 답변</p>
+            <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">{result.interpretation}</p>
           </div>
 
           {result.recommendations.length > 0 && (
             <div className="space-y-2.5">
-              <p className="text-xs font-bold text-dim">추천 분석</p>
+              <p className="text-xs font-bold text-dim">함께 보면 좋은 N인플 기능</p>
               {result.recommendations.map((rec) => (
                 <div
                   key={rec.featureId}
