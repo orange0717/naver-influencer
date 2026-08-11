@@ -632,8 +632,8 @@ export default function KeywordRankingSection() {
     return () => { supabase.removeChannel(channel); };
   }, [profile?.blogId, flashCell, queryClient]);
 
-  // 관리자 전용: 캐시 무시하고 현재 페이지 전체를 강제로 다시 조회
-  const handleAdminForceRefreshAll = () => {
+  // 캐시 무시하고 현재 페이지 전체를 강제로 다시 조회
+  const handleForceRefreshAll = () => {
     if (!profile || blogPosts.length === 0 || refreshingRef.current) return;
     const pairs: { post: BlogPost; keyword: string }[] = [];
     for (const post of blogPosts) {
@@ -784,24 +784,22 @@ export default function KeywordRankingSection() {
                 </button>
               )
             )}
-            {user.isAdmin && (
-              checkingAll ? (
-                <button
-                  onClick={stopChecking}
-                  className="px-4 py-2 bg-down/10 text-down font-bold rounded-xl text-sm cursor-pointer hover:bg-down/20 transition"
-                >
-                  중지 {checkProgress.current}/{checkProgress.total}
-                </button>
-              ) : (
-                <button
-                  onClick={handleAdminForceRefreshAll}
-                  disabled={postsLoading || blogPosts.length === 0}
-                  className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
-                  title="관리자 전용: 캐시를 무시하고 전체를 강제로 다시 조회합니다"
-                >
-                  전체 새로고침
-                </button>
-              )
+            {checkingAll ? (
+              <button
+                onClick={stopChecking}
+                className="px-4 py-2 bg-down/10 text-down font-bold rounded-xl text-sm cursor-pointer hover:bg-down/20 transition"
+              >
+                중지 {checkProgress.current}/{checkProgress.total}
+              </button>
+            ) : (
+              <button
+                onClick={handleForceRefreshAll}
+                disabled={postsLoading || blogPosts.length === 0}
+                className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
+                title="등록된 키워드의 순위를 캐시 무시하고 전체 다시 조회합니다"
+              >
+                순위 다시 조회
+              </button>
             )}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-dim h-4">
@@ -1095,12 +1093,12 @@ export default function KeywordRankingSection() {
                                 >
                                   {result?.checkedAt ? timeAgo(result.checkedAt) : '--'}
                                 </span>
-                                {user.isAdmin && kw.trim() && (
+                                {kw.trim() && (
                                   <button
                                     onClick={() => checkSingleKeyword(post, kw, true)}
                                     disabled={checkingAll}
                                     className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs"
-                                    title="관리자 전용: 캐시 무시하고 강제 재조회"
+                                    title="이 키워드 순위 다시 조회"
                                   >
                                     ⟳
                                   </button>
@@ -1254,12 +1252,12 @@ export default function KeywordRankingSection() {
                                   {result?.checkedAt ? timeAgo(result.checkedAt) : '--'}
                                 </span>
                               )}
-                              {user.isAdmin && kw.trim() && checkingKey !== key && (
+                              {kw.trim() && checkingKey !== key && (
                                 <button
                                   onClick={() => checkSingleKeyword(post, kw, true)}
                                   disabled={checkingAll}
                                   className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs shrink-0 px-1"
-                                  title="관리자 전용: 캐시 무시하고 강제 재조회"
+                                  title="이 키워드 순위 다시 조회"
                                 >
                                   ⟳
                                 </button>
