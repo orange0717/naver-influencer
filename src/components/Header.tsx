@@ -12,6 +12,7 @@ import NotificationBell from './NotificationBell';
 import MessageBell from './MessageBell';
 import HeaderSearch from './HeaderSearch';
 import UsageQuotaBadge from './UsageQuotaBadge';
+import CreditBadge from './CreditBadge';
 
 // 비로그인 게스트에게는 로그인이 필요한 링크(공지사항)를 숨김
 const GUEST_NAV_LINKS = SIDEBAR_FOOTER_LINKS.filter((link) => !link.authOnly);
@@ -121,6 +122,7 @@ export default function Header({ serverUser }: HeaderProps) {
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
             <HeaderSearch />
             {!authLoading && <UsageQuotaBadge />}
+            {!authLoading && <CreditBadge />}
             {canShowAppDownload &&
               (downloadNavUnlocked ? (
                 <Link

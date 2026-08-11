@@ -6,6 +6,7 @@ import Link from 'next/link';
 import BillingButton from '@/components/BillingButton';
 import { useAuth } from '@/hooks/useAuth';
 import { CONTACT_EMAIL } from '@/lib/site-contact';
+import { CREDIT_PACKAGES } from '@/lib/credit-config';
 
 const CHECK = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-up shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
@@ -50,11 +51,30 @@ export default function SubscribeClient() {
   const isLoggedIn = !!user;
   const [callbackStatus, setCallbackStatus] = useState<'processing' | 'success' | 'error' | null>(null);
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
 
   // 모바일 리다이렉트 콜백 처리 — Stage 6 빌링키 구현 후 재작성 예정
   useEffect(() => {
     // 결제 모듈 재구성 중 (2026-05-03)
   }, [searchParams]);
+
+  // 크레딧 잔액 (구독과 독립적인 사용량)
+  useEffect(() => {
+    if (!user?.id) {
+      setCreditBalance(null);
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/credits/balance')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.balance === 'number') setCreditBalance(data.balance);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const price = PRICE_TABLE[period];
   const bloggerPlanKey = PLAN_KEY[period].blogger;
@@ -119,6 +139,38 @@ export default function SubscribeClient() {
         <h1 className="font-title text-3xl font-extrabold">이용권 안내</h1>
         <p className="text-sm text-dim">나에게 맞는 플랜을 선택하세요</p>
       </div>
+
+      {/* 크레딧 (구독과 별개인 사용량) — 명세 9: 구독과 크레딧을 하나의 상품처럼 혼동하지 않는다 */}
+      {user?.id && (
+        <div className="bg-surface rounded-xl border border-border p-6 space-y-5">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sm font-bold text-text">크레딧</p>
+              <p className="text-xs text-dim mt-0.5">
+                구독(이용권)과 별개로, AI·대량 분석 등 고비용 기능 사용 시 차감됩니다.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] text-dim">보유 크레딧</p>
+              <p className="font-rank font-extrabold text-2xl text-text leading-tight">
+                {creditBalance === null ? '—' : creditBalance.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {CREDIT_PACKAGES.map((pkg) => (
+              <div key={pkg.key} className="rounded-lg border border-border bg-bg/50 p-4 text-center">
+                <p className="font-rank font-extrabold text-lg text-text">{pkg.credits.toLocaleString()}</p>
+                <p className="text-[11px] text-dim">크레딧</p>
+                <p className="text-sm font-bold text-text mt-2">₩{formatKRW(pkg.amount)}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] text-dim text-center">크레딧 충전 결제 기능은 준비 중입니다.</p>
+        </div>
+      )}
 
       {/* 결제 주기 토글 (5개) */}
       <div className="flex justify-center">

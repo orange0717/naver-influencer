@@ -7,14 +7,23 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { clearUserScopedLocalStorage } from '@/lib/clear-user-storage';
 import UsagePeriodCard from '@/components/dashboard/UsagePeriodCard';
 import { extractBlogId } from '@/lib/blog-utils';
-import type { UserProfile, LinkedInfluencer, Transaction } from './page.helpers';
+import type { UserProfile, LinkedInfluencer } from './page.helpers';
 import { NotificationSettingsSection, SnsInput } from './page.helpers';
+
+type CreditTx = {
+  amount: number;
+  balanceAfter: number;
+  type: string;
+  label: string;
+  createdAt: string;
+};
 
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [linkedInfluencer, setLinkedInfluencer] = useState<LinkedInfluencer | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [creditTx, setCreditTx] = useState<CreditTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
@@ -76,7 +85,6 @@ export default function ProfilePage() {
       const data = await res.json();
       setUser(data.user);
       setLinkedInfluencer(data.linked_influencer);
-      setTransactions(data.transactions || []);
       setNicknameInput(data.user.nickname);
       setEmailInput(data.user.email);
       setAvatarUrl(data.user.avatar_url || null);
@@ -95,6 +103,20 @@ export default function ProfilePage() {
     if (couponsRes.ok) {
       const couponsData = await couponsRes.json();
       setAvailableCoupons(couponsData.items || []);
+    }
+
+    // 크레딧 잔액 + 거래 내역 (구독과 독립적인 사용량)
+    const [balRes, txRes] = await Promise.all([
+      fetch('/api/credits/balance', { headers: { Authorization: `Bearer ${token}` } }),
+      fetch('/api/credits/transactions?limit=50', { headers: { Authorization: `Bearer ${token}` } }),
+    ]);
+    if (balRes.ok) {
+      const balData = await balRes.json();
+      setCreditBalance(typeof balData.balance === 'number' ? balData.balance : 0);
+    }
+    if (txRes.ok) {
+      const txData = await txRes.json();
+      setCreditTx(txData.transactions || []);
     }
 
     setLoading(false);
@@ -729,14 +751,33 @@ export default function ProfilePage() {
       {/* 알림 설정 */}
       <NotificationSettingsSection />
 
-      {/* 사용 내역 */}
+      {/* 크레딧 잔액 (구독과 별개인 사용량) */}
+      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-xs text-dim">보유 크레딧</p>
+            <p className="font-rank font-extrabold text-2xl text-text mt-0.5">
+              {creditBalance === null ? '—' : creditBalance.toLocaleString()}
+            </p>
+            <p className="text-[11px] text-dim mt-1">AI·대량 분석 등 고비용 기능에 사용됩니다.</p>
+          </div>
+          <Link
+            href="/subscribe"
+            className="shrink-0 px-4 py-2 rounded-lg bg-accent text-white text-sm font-bold hover:opacity-90 transition"
+          >
+            크레딧 충전
+          </Link>
+        </div>
+      </div>
+
+      {/* 크레딧 사용 내역 */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         <div className="p-4 border-b border-border">
-          <h3 className="font-bold text-sm">최근 사용 내역</h3>
+          <h3 className="font-bold text-sm">최근 크레딧 내역</h3>
         </div>
 
-        {transactions.length === 0 ? (
-          <div className="p-8 text-center text-dim text-sm">사용 내역이 없습니다.</div>
+        {creditTx.length === 0 ? (
+          <div className="p-8 text-center text-dim text-sm">크레딧 내역이 없습니다.</div>
         ) : (
           <>
             {/* Desktop */}
@@ -744,21 +785,23 @@ export default function ProfilePage() {
               <thead>
                 <tr className="border-b border-border bg-bg/50">
                   <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">내역</th>
-                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">포인트</th>
+                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">크레딧</th>
+                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">잔액</th>
                   <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">날짜</th>
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((h, idx) => (
+                {creditTx.map((h, idx) => (
                   <tr key={idx} className="border-b border-border/50">
-                    <td className="py-3 px-4 text-sm">{h.description}</td>
+                    <td className="py-3 px-4 text-sm">{h.label}</td>
                     <td className="py-3 px-4 text-right">
                       <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
-                        {h.amount > 0 ? '+' : ''}{h.amount}P
+                        {h.amount > 0 ? '+' : ''}{h.amount.toLocaleString()}
                       </span>
                     </td>
+                    <td className="py-3 px-4 text-right text-xs text-dim font-rank">{h.balanceAfter.toLocaleString()}</td>
                     <td className="py-3 px-4 text-right text-xs text-dim">
-                      {new Date(h.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(h.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </td>
                   </tr>
                 ))}
@@ -767,16 +810,16 @@ export default function ProfilePage() {
 
             {/* Mobile */}
             <div className="sm:hidden divide-y divide-border/50">
-              {transactions.map((h, idx) => (
+              {creditTx.map((h, idx) => (
                 <div key={idx} className="flex items-center justify-between p-4">
                   <div>
-                    <p className="text-sm">{h.description}</p>
+                    <p className="text-sm">{h.label}</p>
                     <p className="text-xs text-dim">
-                      {new Date(h.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(h.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
-                    {h.amount > 0 ? '+' : ''}{h.amount}P
+                    {h.amount > 0 ? '+' : ''}{h.amount.toLocaleString()}
                   </span>
                 </div>
               ))}
@@ -813,7 +856,7 @@ export default function ProfilePage() {
               <p>탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
               <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                 <li>계정 정보 및 프로필</li>
-                <li>포인트 잔액 및 거래 내역</li>
+                <li>크레딧 잔액 및 거래 내역</li>
               </ul>
             </div>
             <div>
