@@ -299,7 +299,7 @@ export default function AppSidebar() {
     <>
       {/* ── 데스크탑 사이드바 ── */}
       <aside
-        className={`hidden lg:flex flex-col shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] bg-surface border-r border-border transition-[width] duration-200 ${
+        className={`hidden lg:flex flex-col shrink-0 sticky top-14 z-30 h-[calc(100vh-3.5rem)] bg-surface border-r border-border transition-[width] duration-200 ${
           collapsed ? 'w-14' : 'w-56'
         }`}
       >
@@ -336,17 +336,17 @@ export default function AppSidebar() {
             showFooterLinks={false}
           />
         )}
+        {/* 사이드바 오른쪽 경계에 걸쳐 있는 세로형 접기/펼치기 버튼 */}
         <button
           type="button"
           onClick={toggleCollapsed}
           title={collapsed ? '펼치기' : '접기'}
           aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-          className="shrink-0 flex items-center justify-center gap-1.5 py-2.5 border-t border-border text-dim hover:text-accent transition-colors cursor-pointer"
+          className="absolute top-1/2 -translate-y-1/2 -right-3 z-10 w-6 h-6 flex items-center justify-center rounded-full bg-surface border border-border text-dim shadow-sm hover:text-accent hover:border-accent transition-colors cursor-pointer"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${collapsed ? 'rotate-180' : ''}`} aria-hidden="true">
-            <path d="M15 18l-6-6 6-6" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d={collapsed ? 'M9 18l6-6-6-6' : 'M15 18l-6-6 6-6'} />
           </svg>
-          {!collapsed && <span className="text-xs font-semibold">접기</span>}
         </button>
       </aside>
 
