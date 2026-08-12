@@ -67,9 +67,10 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { label: '랭킹', href: '#ranking', heading: true, subgroup: true },
       { label: '랭킹', href: '/naver-mate-ranking', authOnly: true, indent: true },
-      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '연도별 선정 현황', href: '/stats', indent: true },
       { label: '키워드', href: '#keyword', heading: true, subgroup: true },
+      // '키워드 챌린지'(/keywords)는 순위가 아니라 키워드 전체 목록 성격 → 키워드 그룹으로 이동(사용자 요청 2026-08-12)
+      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '키워드 검색', href: '/keywords/blogger', indent: true },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true, indent: true },
