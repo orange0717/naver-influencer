@@ -134,6 +134,10 @@
     {
       "path": "/api/cron/refresh-personal-keyword-ranks",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/crawl-post-exposure",
+      "schedule": "0 1 * * *"
     }
   ]
 }

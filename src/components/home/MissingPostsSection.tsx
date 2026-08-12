@@ -5,6 +5,7 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import Modal from '@/components/ui/Modal';
 import { filterMissing, countMissing, countMissingInArea, countIndexingWait, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea } from '@/lib/missing-rate';
+import { parseNaverPostDate } from '@/lib/naver-date';
 import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
 import { fetchWithTimeout, getProfileFromApi, CHECK_FRESH_MS } from './BlogAnalysisSection.helpers';
 
@@ -29,17 +30,10 @@ type HistoryEntry = {
   changedAt: string;
 };
 
-/** "2026. 8. 1." 또는 "2026. 8. 1. 14:23" 형식(비표준) + ISO 문자열까지 최대한 파싱 */
+/** 절대 날짜 + 네이버 상대 시간("22시간 전"·"어제"·"3일 전") + ISO 까지 파싱 (공용 파서 위임, number→Date) */
 function parsePostDate(raw?: string | null): Date | null {
-  if (!raw) return null;
-  const m = raw.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?(?:\s+(\d{1,2}):(\d{2}))?/);
-  if (m) {
-    const [, y, mo, d, h, mi] = m;
-    const date = new Date(Number(y), Number(mo) - 1, Number(d), Number(h || 0), Number(mi || 0));
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  const iso = new Date(raw);
-  return Number.isNaN(iso.getTime()) ? null : iso;
+  const t = parseNaverPostDate(raw);
+  return t == null ? null : new Date(t);
 }
 
 function formatCheckedAt(iso?: string | null): string {
@@ -452,18 +446,23 @@ export default function MissingPostsSection() {
         </p>
       </GlassCard>
 
-      {/* 2. 요약 통계 카드 */}
+      {/* 2. 요약 통계 카드 — 데이터 로딩 전에는 0을 지어내지 않고 '—'로 표시(§13: undefined≠null≠0) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <AnimatedStatCard label="전체 미노출" value={totalMissing} color="down" size="kpi" placeholder="0"
-          description={`전체 ${periodPosts.length}개 중 ${pct(totalMissing)}%`} />
+          statusText={postsLoading ? '—' : undefined}
+          description={postsLoading ? '불러오는 중...' : `전체 ${periodPosts.length}개 중 ${pct(totalMissing)}%`} />
         <AnimatedStatCard label="통합검색 미노출" value={viewMissing} color="down" size="kpi" placeholder="0"
-          description={`${pct(viewMissing)}%`} />
+          statusText={postsLoading ? '—' : undefined}
+          description={postsLoading ? '불러오는 중...' : `${pct(viewMissing)}%`} />
         <AnimatedStatCard label="블로그 미노출" value={blogMissing} color="down" size="kpi" placeholder="0"
-          description={`${pct(blogMissing)}%`} />
+          statusText={postsLoading ? '—' : undefined}
+          description={postsLoading ? '불러오는 중...' : `${pct(blogMissing)}%`} />
         <AnimatedStatCard label="인플루언서 미노출" value={influencerMissing} color="down" size="kpi" placeholder="0"
-          description={`${pct(influencerMissing)}%`} />
+          statusText={postsLoading ? '—' : undefined}
+          description={postsLoading ? '불러오는 중...' : `${pct(influencerMissing)}%`} />
         <AnimatedStatCard label="최근 30일 미노출" value={recent30Missing} color="accent" size="kpi" placeholder="0"
-          description={`발행 ${recent30Posts.length}개 중`} />
+          statusText={postsLoading ? '—' : undefined}
+          description={postsLoading ? '불러오는 중...' : `발행 ${recent30Posts.length}개 중`} />
       </div>
 
       {/* 3. 필터 · 검색 */}
@@ -522,8 +521,16 @@ export default function MissingPostsSection() {
             <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
             포스트를 불러오는 중...
           </div>
+        ) : !profile?.blogId ? (
+          <div className="text-center py-10 text-dim text-sm">블로그가 연결되지 않았습니다. 프로필에서 블로그를 연결하면 미노출 검사가 시작됩니다.</div>
+        ) : posts.length === 0 ? (
+          // 게시물 원본 수집 자체가 0건 — 기간 문제가 아니라 수집 실패(블로그 ID·네이버 응답 등). "발행 없음"과 명확히 구분한다.
+          <div className="text-center py-10 text-dim text-sm">
+            게시물을 수집하지 못했습니다.<br />
+            <span className="text-xs">블로그 연결 상태를 확인하거나 잠시 후 다시 시도해주세요. (수집된 게시물이 없어 미노출을 판정할 수 없습니다)</span>
+          </div>
         ) : periodPosts.length === 0 ? (
-          <div className="text-center py-10 text-dim text-sm">선택한 기간에 발행된 포스트가 없습니다.</div>
+          <div className="text-center py-10 text-dim text-sm">선택한 기간에 발행된 포스트가 없습니다. (전체 {posts.length}개 수집됨 — 기간 필터를 넓혀보세요)</div>
         ) : missingList.length === 0 ? (
           <div className="text-center py-10 text-dim text-sm">
             {uncheckedCount > 0 ? '아직 검사하지 않은 포스팅이 있습니다. "미확인 검사"를 눌러 확인하세요.' : '미노출된 포스팅이 없습니다.'}
