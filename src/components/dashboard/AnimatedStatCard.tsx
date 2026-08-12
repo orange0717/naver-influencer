@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, ReactNode } from 'react';
 import Link from 'next/link';
+import { CARD_BASE_CLASS } from './card-base';
 
 interface AnimatedStatCardProps {
   label: string;
@@ -136,9 +137,7 @@ export default function AnimatedStatCard({
       ref={ref}
       className={`
         ${sizeClass} flex flex-col min-w-0
-        bg-surface
-        rounded-lg border border-border ${isKpi ? 'p-4' : 'p-3 sm:p-4'}
-        shadow-xs
+        ${CARD_BASE_CLASS} ${isKpi ? 'p-4' : 'p-3 sm:p-4'}
         transition-all duration-500 ease-out
         ${c.hoverBorder}
         ${href ? 'cursor-pointer' : ''}

@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { CARD_BASE_CLASS } from './card-base';
 
 interface DashboardCardProps {
   id?: string;
@@ -39,7 +40,7 @@ export default function DashboardCard({
   return (
     <div
       id={id}
-      className={`bg-surface rounded-lg border border-border shadow-xs ${padding === 'md' ? 'p-5' : ''} ${className}`.trim()}
+      className={`${CARD_BASE_CLASS} ${padding === 'md' ? 'p-5' : ''} ${className}`.trim()}
     >
       {hasHeader && (
         <div className="flex items-center justify-between gap-2 mb-3">

@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { CARD_BASE_CLASS } from './card-base';
 
 interface GlassCardProps {
   children: ReactNode;
@@ -28,8 +29,7 @@ export default function GlassCard({
   return (
     <div
       className={`
-        bg-surface rounded-lg border border-border
-        shadow-xs
+        ${CARD_BASE_CLASS}
         ${hover ? 'hover:border-accent/40 transition-colors duration-200 ease-out' : ''}
         ${gradient ? 'bg-accent/[0.03]' : ''}
         ${paddings[padding]}

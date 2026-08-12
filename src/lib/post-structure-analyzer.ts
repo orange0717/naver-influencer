@@ -199,7 +199,7 @@ export async function analyzePost(blogId: string, logNo: string): Promise<PostAn
       '#viewTypeSelector',         // 폴백
     ];
 
-    let $content: cheerio.Cheerio<any> | null = null;
+    let $content: ReturnType<typeof $> | null = null;
     for (const sel of contentSelectors) {
       const found = $(sel);
       if (found.length > 0 && found.text().trim().length > 10) {
