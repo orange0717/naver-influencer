@@ -14,10 +14,11 @@
 ## 배포
 ```bash
 # Vercel CLI 직접 배포 (Vercel↔GitHub 자동배포 미연결 → CLI 수동 배포)
-# Vercel 연결 디렉토리: /Users/orange/개발/ninfle (.vercel/project.json)
+# 배포 디렉토리 = 이 저장소 루트 /Users/orange/개발/naver-influencer (.vercel/project.json 이 여기 있음)
 #   projectName: naver-influencer · org: orangelibrary · 도메인: ninfle.kr
-# vercel CLI: nvm node(v24)에 설치됨 (구 /tmp/node-v20… 경로는 폐기)
-cd /Users/orange/개발/ninfle && vercel deploy --prod
+#   ⚠️ 과거 CLAUDE.md 의 /Users/orange/개발/ninfle 경로는 실제로 존재하지 않음(오기) — 이 저장소에서 직접 배포한다.
+#   ⚠️ --prebuilt 배포는 "Deploying outputs"에서 실패한 이력 → 풀 배포(vercel deploy --prod)를 쓸 것.
+vercel deploy --prod
 ```
 
 ## 디자인 시스템
@@ -63,19 +64,19 @@ src/
     ├── supabase.ts       # Supabase 클라이언트 (anon)
     ├── supabase-server.ts # Supabase 서버 클라이언트 (service_role)
     ├── subscription.ts   # 구독 확인/활성화 로직
-    ├── plans.ts          # 플랜 & 기간 상수 (PERSONAL/INFLUENCER/AGENCY)
+    ├── payment-config.ts # 플랜 & 기간 상수 (BLOGGER/INFLUENCER 티어, getPlan/calculateNextChargeAt)
     ├── crawler.ts        # 크롤러 공통 유틸 (fetchWithRetry, verifyCronSecret, crawlJob)
     └── chart-colors.ts   # Recharts 차트 색상 상수
 ```
 
-## 구독 모델 (3-플랜 체계)
-- **개인 (PERSONAL)**: 월 ₩9,900 — 블로그 1개, 키워드 분석 기본
-- **인플루언서 (INFLUENCER)**: 월 ₩44,000 — 인플루언서 순위 + 챌린지 분석
-- **대행사 (AGENCY)**: 월 ₩99,000 — 최대 10개 블로그, 대행사 대시보드
-- **기간 옵션**: 1/3/6/10/12개월 (할인율 0%/5%/7%/9%/11%)
-- **무료 체험**: 7일
-- **비구독자(무료)**: 키워드 목록 + 일일 추천 3개만
-- **결제**: PortOne V2 + 한국결제네트웍스(KPN) — 카드 단건 결제, prepare/complete/webhook 3단계 검증
+## 구독 모델 (프리미엄 모델, 2026-08 전환 · 상세는 src/lib/payment-config.ts)
+> ⚠️ 과거 "PERSONAL/INFLUENCER/AGENCY 3플랜 + 7일 체험 + src/lib/plans.ts"는 stale. 현재는 아래 2티어 + 하루 무료다.
+- **예비 인플루언서 (tier: blogger)**: ₩5,500(1개월)~₩55,000(12개월), 기간 1/3/6/9/12개월
+- **인플루언서 (tier: influencer)**: ₩9,900(1개월)~, 기간 1/3/6/9/12개월 — 인플루언서 순위·챌린지·AI 생성
+- **무료(비구독/회원)**: 하루 3회(MEMBER/ANON_DAILY_FREE_LIMIT). PRO 이용권 보유자는 무제한
+- **유료 AI 생성 남용 상한**: 사용자당 하루 PAID_AI_DAILY_CAP회(기본 50, free-quota.ts)
+- **결제**: PortOne V2 + 한국결제네트웍스(KPN) — 카드 단건 결제, prepare/complete/webhook 3단계 검증.
+  플랜은 서버 저장값 payment_intents.plan_key 로만 결정(클라 planKey 불신) + 3중 금액검증, users 페이월 동기화
 - **환불**: 7일 이내 미이용 시 전액 환불
 - **상세**: src/lib/plans.ts (PlanInfo, PeriodOption, calculatePrice)
 

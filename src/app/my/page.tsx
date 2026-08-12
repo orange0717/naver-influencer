@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createServiceClient, createRouteHandlerClient, getUserWithTimeout, hasSupabaseAuthCookie } from '@/lib/supabase-server';
+import { cacheGet, cacheSet } from '@/lib/kv-cache';
 import SessionRecovering from '@/components/SessionRecovering';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
@@ -287,6 +288,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // recentRows 페이지네이션 루프와 myKeywords 조회는 둘 다 influencerId만 필요해
   // 데이터 의존성이 없으므로 병렬로 실행한다 (myKeywords는 원래 아래쪽에서 쓰임).
   const recentRowsPromise: Promise<RankingRow[]> = (async () => {
+    // [/my 캐싱] keyword_rankings 풀스캔을 사용자·기간별 공유 캐시(Redis, 로컬 인메모리 폴백)로 완화.
+    // 순위는 크론이 하루 단위로 갱신하므로 짧은 TTL(180s)이면 충분하고, 새로고침마다의 풀스캔이 사라진다.
+    // ⚠️ 빈 결과는 캐시하지 않는다 — transient timeout으로 0건이 나와도 "순위 0"이 3분간 고착되지 않도록.
+    const rankingsCacheKey = `my-rankings:${influencerId}:${sinceDate}`;
+    const cachedRows = await cacheGet<RankingRow[]>(rankingsCacheKey);
+    if (cachedRows && cachedRows.length > 0) return cachedRows;
     // ⚠️ keyword_challenges 임베드 조인을 넣은 단일 쿼리는 대용량 keyword_rankings 스캔과
     // 겹쳐 Postgres statement timeout이 나고, 그때 batch가 undefined가 되면서 루프가 즉시
     // 끊겨 "순위 전체가 0"으로 렌더되는 버그(오렌지 리포트: 1·2·3위·TOP3·TOP10 미반영)가 있었다.
@@ -334,10 +341,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       }
     }
 
-    return rawRows.map((r) => ({
+    const mapped = rawRows.map((r) => ({
       ...r,
       keyword_challenges: kwMap.get(r.keyword_id) ?? null,
     })) as RankingRow[];
+    // 비어있지 않을 때만 캐시(위 주석 참고).
+    if (mapped.length > 0) await cacheSet(rankingsCacheKey, mapped, 180);
+    return mapped;
   })();
 
   const myKeywordsPromise = supabase

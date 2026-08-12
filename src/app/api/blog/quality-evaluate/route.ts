@@ -4,14 +4,14 @@ import { qualityEvaluateLimiter, getClientIp, rateLimitResponse } from '@/lib/ra
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { analyzePost } from '@/lib/post-structure-analyzer';
 import { evaluateNaverAiSearchQuality } from '@/lib/naver-ai-quality-evaluator';
+import { cacheGet, cacheSet } from '@/lib/kv-cache';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// 결과 캐시 (10분, 최대 100개) — /api/blog/ai-analyze와 동일 패턴
-const MAX_CACHE = 100;
-const CACHE_TTL = 10 * 60 * 1000;
-const cache = new Map<string, { data: unknown; expires: number }>();
+// 결과 공유 캐시 TTL(초, 10분) — ai-analyze와 동일. 인메모리 Map은 서버리스에서 공유되지 않아
+// 미스가 잦았으므로 kv-cache(Redis, 로컬은 인메모리 폴백)로 교체(동일 글 재평가 Sonnet 재호출 방지).
+const CACHE_TTL_SEC = 10 * 60;
 
 /**
  * POST /api/blog/quality-evaluate
@@ -39,10 +39,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'blogId와 postId가 필요합니다.' }, { status: 400 });
   }
 
-  const cacheKey = `${blogId}-${postId}`;
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) {
-    return NextResponse.json(cached.data);
+  const cacheKey = `quality-eval:${blogId}:${postId}`;
+  const cached = await cacheGet<Record<string, unknown>>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
   }
 
   const analysis = await analyzePost(blogId, postId);
@@ -71,11 +71,7 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (cache.size >= MAX_CACHE) {
-      const firstKey = cache.keys().next().value;
-      if (firstKey) cache.delete(firstKey);
-    }
-    cache.set(cacheKey, { data: result, expires: Date.now() + CACHE_TTL });
+    await cacheSet(cacheKey, result, CACHE_TTL_SEC);
 
     return NextResponse.json(result);
   } catch (err) {

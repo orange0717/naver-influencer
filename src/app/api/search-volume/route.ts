@@ -44,6 +44,15 @@ export async function GET(request: NextRequest) {
 
   // 비회원 IP+UA 일일 캡 (네이버 검색광고 API 한도 보호)
   const quota = await checkToolAnonQuota(request, 'search-volume', ANON_DAILY_LIMIT);
+  // [M-2 fix] 이 엔드포인트는 외부 유료 API(네이버 검색광고)를 태우므로, 쿼터 조회 자체가 실패한
+  // 경우(Supabase 장애)에는 fail-open 하지 않고 fail-closed 한다 — 상한이 사라진 틈에 무제한
+  // 호출로 비용이 폭증하는 것을 막는다. (일반 무료 기능은 가용성 우선으로 계속 fail-open)
+  if (quota.degraded) {
+    return NextResponse.json(
+      { error: '일시적으로 검색이 제한됩니다. 잠시 후 다시 시도해주세요.', temporarilyUnavailable: true },
+      { status: 503, headers: getCorsHeaders(request) },
+    );
+  }
   if (!quota.allowed) {
     return NextResponse.json(
       {

@@ -49,7 +49,7 @@ export const FAQ_DATA: FaqItem[] = [
     category: '서비스 이용',
     question: 'N인플의 AI 기능은 어떤 모델로 동작하나요?',
     answer:
-      '블로그 글 피드백(클로드 AI), 캐릭터챗북, 블로그 AI 분석, 광고주 AI 챗, 대시보드 Claude 챗 — N인플의 모든 AI 기능은 Anthropic Claude Haiku 4.5 로 통일되어 빠르고 합리적인 비용으로 동작합니다.',
+      '블로그 글 피드백(클로드 AI), 블로그 AI 분석, 광고주 AI 챗, 대시보드 Claude 챗 — N인플의 모든 AI 기능은 Anthropic Claude Haiku 4.5 로 통일되어 빠르고 합리적인 비용으로 동작합니다.',
   },
 
   // ─── 키워드 분석 ───

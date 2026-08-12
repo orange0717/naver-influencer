@@ -180,6 +180,13 @@ export async function GET(request: NextRequest) {
   try {
     // 인증 없는 공개 엔드포인트 — IP+UA 일일 캡으로 네이버 API/크롤링 남용 차단
     const quota = await checkToolAnonQuota(request, 'shopping-keywords', ANON_DAILY_LIMIT);
+    // [M-2 fix] 외부 API/크롤링을 태우므로 쿼터 조회 자체가 실패(Supabase 장애)하면 fail-closed.
+    if (quota.degraded) {
+      return NextResponse.json(
+        { error: '일시적으로 조회가 제한됩니다. 잠시 후 다시 시도해주세요.', temporarilyUnavailable: true },
+        { status: 503 },
+      );
+    }
     if (!quota.allowed) {
       return NextResponse.json(
         {

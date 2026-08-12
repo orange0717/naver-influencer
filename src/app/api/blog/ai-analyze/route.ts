@@ -4,14 +4,14 @@ import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { requirePaidPlan } from '@/lib/admin';
 import { extractPostText } from '@/lib/blog-post-content';
 import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonObjectFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
+import { cacheGet, cacheSet } from '@/lib/kv-cache';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-// 결과 캐시 (10분, 최대 100개)
-const MAX_CACHE = 100;
-const CACHE_TTL = 10 * 60 * 1000;
-const cache = new Map<string, { data: string; expires: number }>();
+// 결과 공유 캐시 TTL(초, 10분). 인메모리 Map은 서버리스 인스턴스 간 공유되지 않아 미스가 잦았다
+// → kv-cache(Redis, 로컬은 인메모리 폴백)로 교체해 동일 글 재분석(Haiku 재호출)을 막는다.
+const CACHE_TTL_SEC = 10 * 60;
 
 /**
  * POST /api/blog/ai-analyze
@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'blogId와 logNo가 필요합니다.' }, { status: 400 });
   }
 
-  // 캐시 확인
-  const cacheKey = `${blogId}-${logNo}`;
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) {
-    return Response.json(JSON.parse(cached.data));
+  // 공유 캐시 확인
+  const cacheKey = `ai-analyze:${blogId}:${logNo}`;
+  const cached = await cacheGet<Record<string, unknown>>(cacheKey);
+  if (cached) {
+    return Response.json(cached);
   }
 
   const encoder = new TextEncoder();
@@ -139,12 +139,8 @@ ${UNTRUSTED_DATA_NOTICE}`,
 
         result.textLength = charCount;
 
-        // 캐시 저장
-        if (cache.size >= MAX_CACHE) {
-          const firstKey = cache.keys().next().value;
-          if (firstKey) cache.delete(firstKey);
-        }
-        cache.set(cacheKey, { data: JSON.stringify(result), expires: Date.now() + CACHE_TTL });
+        // 공유 캐시 저장
+        await cacheSet(cacheKey, result, CACHE_TTL_SEC);
 
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'result', data: result })}\n\n`));
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
