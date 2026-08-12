@@ -5,6 +5,7 @@ import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { fetchBlogProfileStats, getBlogVisitorSummary } from '@/lib/blog-crawler';
 import { countMissing, type MissingResultsMap, type PostLike } from '@/lib/missing-rate';
+import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,6 +101,12 @@ export async function GET(request: NextRequest) {
 
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
+
+  // [M-1 fix] 소유권/플랜 검증 — 다른 blog/* 라우트와 동일. 미검증 시 로그인만 하면
+  // 임의 blogId 의 블로그 단위 분석(미노출·방문자·프로필 요약)을 조회할 수 있었다(IDOR).
+  // charset 강제로 SSRF/경로변조도 함께 차단한다.
+  const denied = await assertBlogResourceAccess(request, blogId);
+  if (denied) return denied;
 
   const supabase = createServiceClient();
 

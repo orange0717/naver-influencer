@@ -87,9 +87,6 @@ export async function completeBillingKeyIssue(opts: {
   paymentId: string;
   planKey: string;
 }): Promise<{ ok: true; subscriptionId: string } | { ok: false; error: string }> {
-  const plan = getPlan(opts.planKey);
-  if (!plan) return { ok: false, error: '유효하지 않은 플랜입니다.' };
-
   // 1. PortOne API 결제 상태 조회
   const { getPayment } = await import('@/lib/portone');
   const payData = await getPayment(opts.paymentId);
@@ -100,7 +97,7 @@ export async function completeBillingKeyIssue(opts: {
 
   const supa = adminClient();
 
-  // 2. payment_intents 검증 (사용자 + 금액 일치)
+  // 2. payment_intents 검증 — 플랜은 반드시 서버가 사전등록한 intent.plan_key 로만 결정한다.
   const { data: intent } = await supa
     .from('payment_intents')
     .select('*')
@@ -109,8 +106,24 @@ export async function completeBillingKeyIssue(opts: {
   if (!intent || intent.user_id !== opts.userId) {
     return { ok: false, error: '결제 사전등록을 찾을 수 없습니다.' };
   }
-  if (Number(payData.amount?.total) !== Number(intent.amount)) {
-    console.error('[Billing] amount mismatch:', payData.amount, intent.amount);
+
+  // [C-1 fix] 결제 플랜 위조 차단.
+  // 과거: 클라이언트가 보낸 opts.planKey 로 플랜을 만들고 금액만 intent.amount 와 비교했다.
+  // → 저가 플랜(예: BLOGGER ₩5,500)으로 결제한 뒤 /complete 를 상위 플랜(INFLUENCER_ANNUAL)으로
+  //   호출하면 금액(5,500===5,500)만 통과해 ₩99,000짜리 연간권을 ₩5,500에 탈취할 수 있었다.
+  // 이제 플랜은 intent.plan_key(서버 저장값)로만 결정하고, 클라이언트 값이 다르면 위조로 거부한다.
+  const planKey = intent.plan_key as string;
+  if (opts.planKey && opts.planKey !== planKey) {
+    console.error('[Billing] planKey tampering blocked:', { client: opts.planKey, intent: planKey, paymentId: opts.paymentId });
+    return { ok: false, error: '결제 플랜이 일치하지 않습니다.' };
+  }
+  const plan = getPlan(planKey);
+  if (!plan) return { ok: false, error: '유효하지 않은 플랜입니다.' };
+
+  // [C-1 fix] 3중 금액 검증: 플랜 정가 == 사전등록 금액 == 실제 결제 금액.
+  const paidTotal = Number(payData.amount?.total);
+  if (Number(plan.amount) !== Number(intent.amount) || paidTotal !== Number(intent.amount)) {
+    console.error('[Billing] amount mismatch:', { planAmount: plan.amount, intentAmount: intent.amount, paidTotal });
     return { ok: false, error: '결제 금액이 일치하지 않습니다.' };
   }
 
@@ -119,7 +132,7 @@ export async function completeBillingKeyIssue(opts: {
     user_id: opts.userId,
     payment_id: opts.paymentId,
     transaction_id: payData.transactionId || null,
-    plan_key: opts.planKey,
+    plan_key: planKey,
     amount: intent.amount,
     status: 'PAID',
     pay_method: payData.method?.type || 'CARD',
@@ -145,7 +158,7 @@ export async function completeBillingKeyIssue(opts: {
     .from('subscriptions')
     .insert({
       user_id: opts.userId,
-      plan_key: opts.planKey,
+      plan_key: planKey,
       billing_key: null,                        // 빌링키 미사용 (KPN 채널 미지원)
       status: 'active',
       current_period_start: now.toISOString(),
@@ -160,7 +173,33 @@ export async function completeBillingKeyIssue(opts: {
     return { ok: false, error: '구독 생성에 실패했습니다.' };
   }
 
-  // 6. 플랜 월 크레딧 지급 (멱등 — payment_id 기준)
+  // 6. users 테이블 페이월 컬럼 동기화 (chargePlan 과 동일 — [H-1 fix]).
+  //    admin.ts 의 hasActivePaidPlanByUserId / getPaywallContext / requireInfluencerPlan 가
+  //    users.subscription_plan + subscription_expires_at 를 source of truth 로 읽으므로,
+  //    여기서 함께 갱신하지 않으면 일회성 결제자가 계속 비구독자로 취급된다(유료 기능 접근 불가).
+  const planTier = plan.tier.toUpperCase(); // 'BLOGGER' | 'INFLUENCER'
+  const { data: existingUser } = await supa
+    .from('users')
+    .select('first_paid_at')
+    .eq('auth_id', opts.userId)
+    .maybeSingle();
+  const userUpdate: Record<string, unknown> = {
+    subscription_plan: planTier,
+    subscription_expires_at: periodEnd.toISOString(),
+  };
+  if (!existingUser?.first_paid_at) {
+    userUpdate.first_paid_at = now.toISOString();
+  }
+  const { error: userUpdErr } = await supa
+    .from('users')
+    .update(userUpdate)
+    .eq('auth_id', opts.userId);
+  if (userUpdErr) {
+    console.error('[Billing] users paywall sync failed:', userUpdErr, { userId: opts.userId, paymentId: opts.paymentId });
+    // 결제·구독 자체는 성공했으므로 흐름은 유지 — 운영자가 로그로 수동 보정.
+  }
+
+  // 7. 플랜 월 크레딧 지급 (멱등 — payment_id 기준)
   await grantSubscriptionCredits(opts.userId, plan.tier, opts.paymentId);
 
   return { ok: true, subscriptionId: sub.id };

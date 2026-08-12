@@ -28,21 +28,22 @@ export async function GET(
     .order('period_start', { ascending: true })
     .limit(12);
 
-  let trendData: { date: string; volume: number }[];
-
-  if (history && history.length > 0) {
-    // 실제 DB 데이터 사용
-    trendData = history.map(h => ({
-      date: h.period_start,
-      volume: h.search_volume_total || 0,
-    }));
-  } else {
-    // DB 데이터 없으면 추정 데이터 생성
-    trendData = generateEstimatedTrend(
-      kw.search_volume_monthly || 0,
-      kw.trend_direction || 'stable',
-    );
+  // 실제 search_volume_history가 있을 때만 추이를 반환한다.
+  // 과거: 데이터가 없으면 Math.random() 지터로 12주치 검색량·피크 날짜를 지어내
+  // 실데이터와 동일한 형태로 내보냈다 → 사용자가 조작된 값을 실제 추이로 오인.
+  // 데이터가 없으면 빈 배열을 반환하고, 소비처(Client.tsx)는 차트를 숨긴다(데이터 없음 상태).
+  if (!history || history.length === 0) {
+    return NextResponse.json({
+      trendData: [],
+      isEstimated: false,
+      summary: null,
+    });
   }
+
+  const trendData = history.map(h => ({
+    date: h.period_start,
+    volume: h.search_volume_total || 0,
+  }));
 
   const volumes = trendData.map(d => d.volume);
   const maxVol = Math.max(...volumes, 0);
@@ -50,6 +51,7 @@ export async function GET(
 
   return NextResponse.json({
     trendData,
+    isEstimated: false,
     summary: {
       trend_direction: kw.trend_direction || 'stable',
       trend_percentage: kw.trend_percentage || 0,
@@ -59,23 +61,4 @@ export async function GET(
       lowest_date: trendData[volumes.indexOf(minVol)]?.date || '',
     },
   });
-}
-
-function generateEstimatedTrend(monthlyVolume: number, direction: string) {
-  const weeks = 12;
-  const data = [];
-  const multiplier = direction === 'up' ? 1.03 : direction === 'down' ? 0.97 : 1.0;
-
-  let vol = (monthlyVolume / 4) * 0.7;
-  for (let i = 0; i < weeks; i++) {
-    const jitter = 0.85 + Math.random() * 0.3;
-    vol = vol * multiplier * jitter;
-    const d = new Date();
-    d.setDate(d.getDate() - (weeks - i) * 7);
-    data.push({
-      date: d.toISOString().split('T')[0],
-      volume: Math.round(vol),
-    });
-  }
-  return data;
 }

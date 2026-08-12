@@ -253,11 +253,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     );
   }
 
-  // TEMP DEBUG (원인 특정 후 제거 예정): 렌더 도중 예외가 스트리밍 커밋 이후 발생하면
-  // Next가 error.tsx로 전환하지 못하고 loading.tsx에 무한히 멈추는 문제(오렌지 리포트)를
-  // 진단하기 위해 예외를 화면에 직접 노출한다.
-  try {
-
   // ─── 1. 최신 순위 데이터 (keyword_rankings) ───
   // crawl-challenge-ranks가 부분 적재로 끊기면 오늘 snapshot_date에 일부만 들어가,
   // 기존 "최신 snapshot 1일치만" 로직이 어제 풀 데이터를 통째로 가려버린다.
@@ -811,16 +806,4 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       </div>
     </div>
   );
-  } catch (err) {
-    // TEMP DEBUG: 위 try와 짝. 원인 특정 후 제거 예정.
-    console.error('[my-dashboard-error]', err);
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-16">
-        <h1 className="font-title text-xl font-bold text-down mb-3">대시보드 로딩 중 오류 (임시 디버그)</h1>
-        <pre className="text-left text-xs bg-surface border border-border rounded-xl p-4 overflow-auto whitespace-pre-wrap">
-          {err instanceof Error ? `${err.name}: ${err.message}\n\n${err.stack || ''}` : String(err)}
-        </pre>
-      </div>
-    );
-  }
 }
