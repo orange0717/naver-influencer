@@ -15,9 +15,6 @@ async function fetchSummary(blogId: string): Promise<BlogDashboardSummary> {
 }
 
 const ICONS = {
-  visitor: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-  ),
   neighbor: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
   ),
@@ -43,8 +40,7 @@ const ICONS = {
 // AI 브리핑 인용·AI 탭 노출은 KPI 카드로 표시한다. 단, 상세 요약 패널(AiExposureSummary)은
 // 대시보드에서 제거되어 상세는 별도 'AI 브리핑 · AI 탭 인용' 탭(/my/naver-mate)에서 확인한다.
 const CARD_META: Record<string, { label: string; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim' }> = {
-  blog_today_visitors: { label: '오늘 방문자', suffix: '명', icon: ICONS.visitor, color: 'accent' },
-  blog_30day_visitors: { label: '최근 30일 방문자', suffix: '명', icon: ICONS.visitor, color: 'accent' },
+  // 방문자 KPI(오늘/30일)는 제거됨 — 이 대시보드는 방문자 통계가 아니라 검색 노출·키워드 성과 분석 화면.
   blog_neighbor_count: { label: '이웃 수', suffix: '명', icon: ICONS.neighbor, color: 'accent' },
   blog_post_count: { label: '총 발행 수', suffix: '개', icon: ICONS.post, color: 'accent' },
   blog_missing_count: { label: '미노출', suffix: '건', icon: ICONS.missing, color: 'down' },
@@ -76,7 +72,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
   if (isLoading) {
     return (
       <KpiGrid>
-        {Array.from({ length: 9 }).map((_, i) => (
+        {Array.from({ length: 7 }).map((_, i) => (
           <div key={i} className="bg-surface border border-border rounded-lg shadow-xs h-[150px] animate-pulse" />
         ))}
       </KpiGrid>

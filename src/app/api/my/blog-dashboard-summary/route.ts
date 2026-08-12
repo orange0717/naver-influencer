@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
 import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
-import { fetchBlogProfileStats, getBlogVisitorSummary } from '@/lib/blog-crawler';
+import { fetchBlogProfileStats } from '@/lib/blog-crawler';
 import { countMissing, type MissingResultsMap, type PostLike } from '@/lib/missing-rate';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 
@@ -112,8 +112,7 @@ export async function GET(request: NextRequest) {
 
   // ── 각 전문 기능이 저장해둔 BLOG_* 결과만 병렬 조회한다(스펙 16항: 재수집·재계산 금지) ──
   // 조회 실패/에러를 '실제 0'과 구분하기 위해 각 소스를 {data, error} 형태로 보존한다.
-  const [visitorSummary, profileStats, briefing, rank, missing] = await Promise.all([
-    getBlogVisitorSummary(blogId, 30).then(v => ({ v, ok: true as const })).catch(() => ({ v: null, ok: false as const })),
+  const [profileStats, briefing, rank, missing] = await Promise.all([
     fetchBlogProfileStats(blogId).catch(() => null),
     supabase
       .from('ai_briefing_exposures')
@@ -136,13 +135,9 @@ export async function GET(request: NextRequest) {
       .then(({ data, error }) => ({ rows: data ?? [], ok: !error })),
   ]);
 
-  // ─────────────────── 방문자 (BLOG_VISITOR) ───────────────────
-  // getBlogVisitorSummary는 DB(blog_visitor_history) 조회 + stale 시 재크롤링을 이미 수행한다.
-  // 수집된 날이 하나도 없으면(collectedDays===0) '실제 0'이 아니라 '연결 필요'다(스펙 6항: 샘플/fallback 금지).
-  const visitorOk = visitorSummary.ok && visitorSummary.v !== null;
-  const visitorCollected = visitorOk ? visitorSummary.v!.collectedDays > 0 : false;
-  const visitorUpdatedAt = visitorSummary.v?.lastCollectedDate ?? null;
-  const visitorStatus: BlogMetricStatus = !visitorOk ? 'ERROR' : !visitorCollected ? 'NEEDS_CONNECTION' : 'FRESH';
+  // 방문자(BLOG_VISITOR) KPI는 대시보드에서 제거됨 — 이 대시보드는 방문자 통계가 아니라
+  // 검색 노출·키워드 성과 분석에 집중한다. 방문자 데이터/수집(crawl-blog-visitors)·경쟁 비교
+  // 페이지의 방문자 추이는 그대로 유지되며, 여기 KPI 바에서만 노출하지 않는다.
 
   // ─────────────────── 프로필/이웃 (BLOG_PROFILE·BLOG_NEIGHBOR) ───────────────────
   // fetchBlogProfileStats는 실패해도 0을 반환하므로 ok 플래그로 '실제 0'과 '조회 실패'를 구분한다.
@@ -228,18 +223,6 @@ export async function GET(request: NextRequest) {
   // ─────────────────── KPI 조립 (BLOG_* 화이트리스트만) ───────────────────
   const m = (metric: BlogMetric) => metric;
   const metrics: Record<string, BlogMetric> = {
-    blog_today_visitors: m({
-      metric_key: 'blog_today_visitors', source_type: 'BLOG_VISITOR', source_table: 'blog_visitor_history',
-      status: visitorStatus, value: visitorStatus === 'FRESH' ? (visitorSummary.v!.todayVisitors) : null,
-      source_updated_at: visitorUpdatedAt,
-      calculation_rule: '오늘(KST) 방문자수 실측치. 미수집이면 연결 필요',
-    }),
-    blog_30day_visitors: m({
-      metric_key: 'blog_30day_visitors', source_type: 'BLOG_VISITOR', source_table: 'blog_visitor_history',
-      status: visitorStatus, value: visitorStatus === 'FRESH' ? (visitorSummary.v!.totalVisitors) : null,
-      source_updated_at: visitorUpdatedAt,
-      calculation_rule: '최근 30일 일별 방문자수 합계 실측치',
-    }),
     blog_neighbor_count: m({
       metric_key: 'blog_neighbor_count', source_type: 'BLOG_NEIGHBOR', source_table: 'naver_profile(subscriberCount)',
       status: profileStatus, value: profileOk ? profileStats!.subscriberCount : null,
@@ -289,8 +272,6 @@ export async function GET(request: NextRequest) {
   // 대시보드에서 제거됨 → 상세는 별도 'AI 브리핑 · AI 탭 인용' 탭(/my/naver-mate)에서 확인.
   // aiExposure 집계는 그대로 유지되어 별도 탭·통합 합산이 계속 사용한다.
   const order = [
-    'blog_today_visitors',
-    'blog_30day_visitors',
     'blog_neighbor_count',
     'blog_post_count',
     'blog_missing_count',

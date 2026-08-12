@@ -18,6 +18,8 @@ const KEYWORD_CONCURRENCY = 4;
 async function searchBlogRank(keyword: string, blogId: string): Promise<{
   rank: number | null;
   postTitle: string;
+  /** 검색 페이지를 한 번이라도 정상 로드·파싱했는지. false면 '수집 실패'(미노출과 구분). */
+  loaded: boolean;
 }> {
   const blogIdLower = blogId.toLowerCase();
   const baseUrl = `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(keyword)}&sm=tab_blog`;
@@ -25,6 +27,7 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
   let globalRank = 0;
   let foundRank: number | null = null;
   let foundTitle = '';
+  let anyLoaded = false;
 
   for (let page = 1; page <= 3; page++) {
     if (foundRank !== null) break;
@@ -45,6 +48,7 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
 
       const html = await res.text();
       const $ = cheerio.load(html);
+      anyLoaded = true; // 이 페이지를 정상 로드·파싱함 → 최소 1페이지 확인 성공
 
       const resultSelectors = [
         '.api_txt_lines.fds-comps-right-image',
@@ -107,7 +111,7 @@ async function searchBlogRank(keyword: string, blogId: string): Promise<{
     }
   }
 
-  return { rank: foundRank, postTitle: foundTitle };
+  return { rank: foundRank, postTitle: foundTitle, loaded: anyLoaded };
 }
 
 /**
@@ -147,6 +151,7 @@ export async function GET(request: NextRequest) {
 
     let totalChecked = 0;
     let totalRanked = 0;
+    let totalFailed = 0; // 수집 실패(페이지 로드 실패) — 미노출과 구분
 
     // 3) 블로거별로 순위 체크
     for (const [blogId, kwList] of blogGroups) {
@@ -170,25 +175,28 @@ export async function GET(request: NextRequest) {
       // 키워드별 순위 체크 — KEYWORD_CONCURRENCY 만큼 웨이브 병렬 처리
       for (let i = 0; i < kwList.length; i += KEYWORD_CONCURRENCY) {
         const wave = kwList.slice(i, i + KEYWORD_CONCURRENCY);
-        const results = await Promise.allSettled(wave.map(async (keyword) => {
+        const results = await Promise.allSettled(wave.map(async (keyword): Promise<'ranked' | 'missing' | 'failed'> => {
           const result = await searchBlogRank(keyword, blogId);
+
+          // 수집 실패(검색 페이지를 한 번도 로드 못 함): 미노출로 오판하지 않는다(스펙 5·14항).
+          // 순위를 null/0/이탈로 덮어쓰지 않고 그대로 두어(=이 날짜 행 미기록) 전날 실제 순위를 보존한다.
+          if (!result.loaded) return 'failed';
+
           const prevRank = prevRanks.get(keyword) ?? null;
 
-          let rankChange = 0;
-          if (result.rank !== null && prevRank !== null) {
-            rankChange = prevRank - result.rank; // 양수 = 상승
-          } else if (result.rank !== null && prevRank === null) {
-            rankChange = 30 - result.rank; // 새로 진입
-          } else if (result.rank === null && prevRank !== null) {
-            rankChange = -(30 - prevRank); // 이탈
-          }
+          // rank_change는 '실제 값끼리'만 계산한다. 가짜 기준값(30)으로 진입/이탈 폭을 지어내지 않는다.
+          // - 현재·이전 둘 다 순위 있음: 이전 - 현재 (양수=상승)
+          // - 그 외(신규 진입/미노출로 이탈/이전 없음): 0 (변동 폭 미상 — rank_position=null이 미노출을 이미 표현)
+          const rankChange = (result.rank !== null && prevRank !== null)
+            ? prevRank - result.rank
+            : 0;
 
           await supabase
             .from('blog_rank_history')
             .upsert({
               blog_id: blogId,
               keyword,
-              rank_position: result.rank,
+              rank_position: result.rank, // 로드 성공 + 미발견이면 null = 진짜 미노출
               previous_rank: prevRank,
               rank_change: rankChange,
               post_title: result.postTitle || null,
@@ -197,15 +205,17 @@ export async function GET(request: NextRequest) {
               onConflict: 'blog_id,keyword,snapshot_date',
             });
 
-          return result.rank !== null;
+          return result.rank !== null ? 'ranked' : 'missing';
         }));
 
         for (let j = 0; j < results.length; j++) {
           const r = results[j];
           totalChecked++;
           if (r.status === 'fulfilled') {
-            if (r.value) totalRanked++;
+            if (r.value === 'ranked') totalRanked++;
+            else if (r.value === 'failed') totalFailed++;
           } else {
+            totalFailed++;
             console.error(`[crawl-blog-ranks] Error checking ${blogId}/${wave[j]}:`, r.reason);
           }
         }
@@ -235,10 +245,12 @@ export async function GET(request: NextRequest) {
             ? ranked.reduce((sum, r) => sum + (r.rank_position || 0), 0) / ranked.length
             : 0;
 
-          // 노출 기반 등급 계산
-          const exposureRate = kwList.length > 0 ? ranked.length / kwList.length : 0;
-          const qualityScore = kwList.length > 0
-            ? Math.min(30, (top10.length / kwList.length) * 30)
+          // 노출률 분모는 '오늘 실제로 확인한 키워드 수'(=todayRanks.length)를 쓴다.
+          // 수집 실패한 키워드는 행이 없어 제외되므로, 수집 실패 때문에 노출률이 왜곡되지 않는다.
+          const checkedCount = todayRanks.length;
+          const exposureRate = checkedCount > 0 ? ranked.length / checkedCount : 0;
+          const qualityScore = checkedCount > 0
+            ? Math.min(30, (top10.length / checkedCount) * 30)
             : 0;
           const rankScore = avgRank > 0
             ? Math.min(30, Math.max(0, 30 - (avgRank - 1)))
@@ -279,8 +291,10 @@ export async function GET(request: NextRequest) {
     await updateCrawlJob(jobId, {
       status: 'success',
       total_items: totalChecked,
-      processed_items: totalRanked,
-      failed_items: totalChecked - totalRanked,
+      // 성공적으로 확인한 키워드(순위 발견 + 미노출) — 수집 실패는 제외
+      processed_items: totalChecked - totalFailed,
+      // 수집 실패만 failed로 집계(미노출은 정상 확인 결과지 실패가 아님)
+      failed_items: totalFailed,
     });
 
     return NextResponse.json({
@@ -288,7 +302,9 @@ export async function GET(request: NextRequest) {
       date: today,
       bloggers: blogGroups.size,
       totalChecked,
-      totalRanked,
+      totalRanked,                              // 순위 발견
+      totalMissing: totalChecked - totalRanked - totalFailed, // 정상 확인 후 미노출
+      totalFailed,                              // 수집 실패(재시도 대상)
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

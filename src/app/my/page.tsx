@@ -267,6 +267,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     latest_post_title: string | null;
     latest_post_url: string | null;
     snapshot_date: string;
+    crawled_at: string | null;
     blog_search_rank: number | null;
     view_tab_rank: number | null;
     keyword_challenges: unknown;
@@ -308,7 +309,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         .from('keyword_rankings')
         .select(`
           rank_position, previous_rank, rank_change, is_integrated_top3,
-          keyword_id, latest_post_title, latest_post_url, snapshot_date,
+          keyword_id, latest_post_title, latest_post_url, snapshot_date, crawled_at,
           blog_search_rank, view_tab_rank
         `)
         .eq('influencer_id', influencerId)
@@ -427,6 +428,25 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const dataDateLabel = latestSnapshotDate
     ? `${latestSnapshotDate.slice(5, 7).replace(/^0/, '')}월 ${latestSnapshotDate.slice(8, 10).replace(/^0/, '')}일 기준`
     : '';
+
+  // ─── 마지막 데이터 갱신 시각(스펙 7·13항) ───
+  // keyword_rankings.crawled_at 중 가장 최신 값을 KST 'YYYY.MM.DD HH:mm 기준'으로 표기해,
+  // 사용자가 지금 보는 순위가 언제 수집된 데이터인지 즉시 알 수 있게 한다.
+  // crawled_at이 없는(구) 데이터만 있으면 날짜만 있는 dataDateLabel로 폴백한다.
+  const latestCrawledAt = recentRows.reduce<string | null>((max, r) => {
+    const c = r.crawled_at;
+    if (!c) return max;
+    return !max || c > max ? c : max;
+  }, null);
+  const lastUpdatedLabel = (() => {
+    if (latestCrawledAt) {
+      // 'sv-SE' 로케일은 "YYYY-MM-DD HH:mm:ss" 형태를 주므로 KST 변환에 안정적.
+      const kst = new Date(latestCrawledAt).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });
+      const [datePart, timePart] = kst.split(' ');
+      if (datePart && timePart) return `${datePart.replace(/-/g, '.')} ${timePart.slice(0, 5)} 기준`;
+    }
+    return latestSnapshotDate ? `${latestSnapshotDate.replace(/-/g, '.')} 기준` : '';
+  })();
 
   const avgParticipants = rankings.length > 0
     ? Math.round(rankings.reduce((s, r) => s + r.participant_count, 0) / rankings.length)
@@ -678,6 +698,14 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         subscriptionPlan={subscriptionPlan}
         subscriptionExpiresAt={subscriptionExpiresAt}
       />
+
+      {/* ─── 데이터 마지막 갱신 시각(스펙 7·13항) ─── */}
+      {lastUpdatedLabel && (
+        <div className="flex items-center justify-end gap-1.5 text-[11px] text-dim -mb-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          <span>데이터 업데이트: {lastUpdatedLabel}</span>
+        </div>
+      )}
 
 
       {/* ─── 1. 프로필 헤더 ─── */}

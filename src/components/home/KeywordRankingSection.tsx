@@ -640,8 +640,29 @@ export default function KeywordRankingSection() {
   }, [profile?.blogId, flashCell, queryClient]);
 
   // 캐시 무시하고 현재 페이지 전체를 강제로 다시 조회
-  const handleForceRefreshAll = () => {
+  // 사용자별 쿨다운(스펙 12항): 서버 게이트가 마지막 실행 후 30분 이내 재실행을 막는다.
+  const handleForceRefreshAll = async () => {
     if (!profile || blogPosts.length === 0 || refreshingRef.current) return;
+
+    // 1) 서버 쿨다운 게이트 확인 — 통과할 때만 실제 재수집을 시작한다.
+    try {
+      const gateRes = await fetch('/api/my/keyword-ranking/refresh-gate', { method: 'POST' });
+      if (gateRes.status === 429) {
+        const { remainingSec } = await gateRes.json().catch(() => ({ remainingSec: 0 }));
+        const mins = Math.max(1, Math.ceil((remainingSec || 0) / 60));
+        showError(`방금 전체 순위를 새로고침했어요. 약 ${mins}분 후 다시 시도할 수 있습니다.`, 6000);
+        return;
+      }
+      if (!gateRes.ok) {
+        showError('지금 업데이트를 시작할 수 없습니다. 잠시 후 다시 시도해주세요.', 5000);
+        return;
+      }
+    } catch {
+      showError('네트워크 오류로 업데이트를 시작하지 못했습니다.', 5000);
+      return;
+    }
+
+    // 2) 게이트 통과 → 현재 페이지 전체 키워드를 강제 재조회
     const pairs: { post: BlogPost; keyword: string }[] = [];
     for (const post of blogPosts) {
       const kws = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
@@ -802,10 +823,11 @@ export default function KeywordRankingSection() {
               <button
                 onClick={handleForceRefreshAll}
                 disabled={postsLoading || blogPosts.length === 0}
-                className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
-                title="등록된 키워드의 순위를 캐시 무시하고 전체 다시 조회합니다"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
+                title="등록된 키워드의 순위를 캐시 무시하고 전체 다시 조회합니다 (30분에 1회)"
               >
-                순위 다시 조회
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>
+                지금 업데이트
               </button>
             )}
           </div>

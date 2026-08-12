@@ -287,12 +287,10 @@ export function extractKeywords(title: string, blogId: string, displayName?: str
  * 게스트 상태에서는 어떤 사용자 데이터 API도 호출하지 않는다. */
 export function GuestBlogAnalysis() {
   const loginRedirect = '/my/blogger';
-  const features = ['방문자 분석', '키워드 순위', 'AI 브리핑', '포스팅 분석', '인플루언서 분석'];
-  // 오늘 방문자·30일 방문자수·이웃수는 실데이터 화면에서 상단 KPI 요약(BlogDashboardKpiBar)에 속하고,
-  // 나머지는 이 섹션의 Statistics 3칸 그리드에 속함 — 게스트 빈 상태도 같은 사이즈 체계를 따른다.
+  const features = ['키워드 순위', 'AI 브리핑', '포스팅 분석', '인플루언서 분석'];
+  // 방문자 통계는 이 대시보드에서 제거됨(검색 노출·키워드 성과 분석에 집중) —
+  // 게스트 빈 상태도 실데이터 화면과 동일하게 방문자 카드/그래프를 노출하지 않는다.
   const statCards: { label: string; size: 'kpi' | 'stat' }[] = [
-    { label: '오늘 방문자', size: 'kpi' },
-    { label: '30일 방문자수', size: 'kpi' },
     { label: '이웃수', size: 'kpi' },
     { label: '이번주 발행', size: 'stat' },
     { label: '한달 발행', size: 'stat' },
@@ -357,20 +355,7 @@ export function GuestBlogAnalysis() {
         ))}
       </div>
 
-      {/* ─── 3. 블로그 방문자수 그래프 (Empty State) ─── */}
-      <GlassCard padding="sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-border/30 flex items-center justify-center text-dim">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </div>
-          <h3 className="font-bold text-[15px]">블로그 방문자수</h3>
-        </div>
-        <div className="flex items-center justify-center py-9 text-center">
-          <p className="text-sm text-dim">데이터가 없습니다. 로그인 후 자동으로 분석됩니다.</p>
-        </div>
-      </GlassCard>
-
-      {/* ─── 4. 포스팅 목록 (Empty State) ─── */}
+      {/* ─── 3. 포스팅 목록 (Empty State) ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30">
           <h3 className="font-bold text-[15px]">내 블로그 포스팅</h3>

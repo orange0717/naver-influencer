@@ -7,7 +7,6 @@ import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
 import DashboardCard from '@/components/dashboard/DashboardCard';
-import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 import { filterMissing, countMissing } from '@/lib/missing-rate';
@@ -745,10 +744,7 @@ export default function BlogAnalysisSection() {
       </DashboardCard>
 
 
-      {/* ─── 6. 블로그 방문자수 차트 ─── */}
-      {profile && <BlogVisitorChart blogId={profile.blogId} />}
-
-      {/* ─── 7. 포스팅 목록 + 순위 확인 ─── */}
+      {/* ─── 6. 포스팅 목록 + 순위 확인 ─── */}
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3 flex-wrap">

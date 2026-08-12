@@ -33,11 +33,14 @@ const periodOptions = [
 
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload?.length) return null;
+  const rows = payload.filter((entry) => typeof entry.value === 'number');
   return (
     <div className="bg-surface border border-border rounded-xl shadow-lg p-3 text-xs">
       <p className="text-dim mb-1.5 font-semibold">{label}</p>
-      {payload.map((entry) => (
-        entry.value && (
+      {rows.length === 0 ? (
+        <p className="text-dim/70">데이터 없음</p>
+      ) : (
+        rows.map((entry) => (
           <div key={entry.dataKey} className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
             <span className="text-text truncate max-w-[120px]">{entry.dataKey}</span>
@@ -45,8 +48,8 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
               {entry.value}위
             </span>
           </div>
-        )
-      ))}
+        ))
+      )}
     </div>
   );
 }
@@ -92,29 +95,47 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
   const chartData = useMemo(() => {
     if (activeKeywords.length === 0 && !showAvg) return [];
 
-    const dateMap = new Map<string, Record<string, unknown>>();
-
-    // 개별 키워드 데이터
+    // 실제 순위가 존재하는 날짜만 (date,series)→rank 로 모은다.
+    const rankByDate = new Map<string, Record<string, number | null>>();
+    const put = (date: string, key: string, rank: number | null) => {
+      const e = rankByDate.get(date) || {};
+      e[key] = rank;
+      rankByDate.set(date, e);
+    };
     for (const kw of activeKeywords) {
-      for (const h of kw.history) {
-        const entry = dateMap.get(h.date) || { date: h.date };
-        entry[kw.keyword] = h.rank;
-        dateMap.set(h.date, entry);
-      }
+      for (const h of kw.history) put(h.date, kw.keyword, h.rank);
     }
-
-    // 전체 평균 순위 데이터
     if (showAvg && avgHistory.length > 0) {
-      for (const avg of avgHistory) {
-        const entry = dateMap.get(avg.date) || { date: avg.date };
-        entry['전체 평균'] = avg.rank;
-        dateMap.set(avg.date, entry);
-      }
+      for (const avg of avgHistory) put(avg.date, '전체 평균', avg.rank);
     }
 
-    return Array.from(dateMap.values())
-      .sort((a, b) => (a.date as string).localeCompare(b.date as string))
-      .slice(-period);
+    const dates = [...rankByDate.keys()].sort();
+    if (dates.length === 0) return [];
+
+    // 렌더할 모든 시리즈 키(선택된 키워드 + 전체 평균)를 모은다.
+    const seriesKeys = new Set<string>();
+    for (const e of rankByDate.values()) for (const k of Object.keys(e)) seriesKeys.add(k);
+
+    // ─── 연속 일자 축(스펙 9항) ───
+    // 데이터가 있는 날만 이어붙이면 Recharts가 결측일을 직선으로 보간해버린다.
+    // 마지막 데이터 날짜를 창 끝으로 삼아 period일치 연속 일자를 만들고,
+    // 데이터가 없는 날은 이전 순위를 복사하지 않고 명시적으로 null로 채워 선을 끊는다.
+    const endDate = dates[dates.length - 1];
+    const end = new Date(`${endDate}T00:00:00Z`);
+    const out: Record<string, unknown>[] = [];
+    for (let i = period - 1; i >= 0; i--) {
+      const d = new Date(end);
+      d.setUTCDate(d.getUTCDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      const found = rankByDate.get(iso);
+      const entry: Record<string, unknown> = { date: iso };
+      for (const key of seriesKeys) {
+        // 값이 있으면 실제 순위, 없으면 null(선 끊김). 결측일에 이전 값을 복사하지 않는다.
+        entry[key] = found && typeof found[key] === 'number' ? found[key] : null;
+      }
+      out.push(entry);
+    }
+    return out;
   }, [activeKeywords, avgHistory, showAvg, period]);
 
   const toggleKeyword = (keyword: string) => {
@@ -231,9 +252,9 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
                 stroke="#2D2D2D"
                 strokeWidth={2.5}
                 strokeDasharray="6 3"
-                dot={false}
+                dot={{ r: 2, strokeWidth: 0, fill: '#2D2D2D' }}
                 activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }}
-                connectNulls
+                connectNulls={false}
               />
             )}
             {activeKeywords.map((kw) => (
@@ -243,9 +264,9 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
                 dataKey={kw.keyword}
                 stroke={SERIES_COLORS[keywords.indexOf(kw) % SERIES_COLORS.length]}
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 1.8, strokeWidth: 0, fill: SERIES_COLORS[keywords.indexOf(kw) % SERIES_COLORS.length] }}
                 activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }}
-                connectNulls
+                connectNulls={false}
               />
             ))}
           </LineChart>
