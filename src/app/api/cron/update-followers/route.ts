@@ -44,7 +44,9 @@ async function fetchProfileData(naverId: string) {
 
     return {
       totalFollowerCount: data.totalFollowerCount || 0,
-      subscriberCount: data.subscriberCount || 0,
+      // 팬수(subscriberCount)는 2026-04경부터 data.stats 하위로 이동됨. legacy 경로도 폴백.
+      // refresh-follower.ts와 동일 추출 — legacy만 읽으면 undefined→0으로 팬수 갱신이 스킵된다.
+      subscriberCount: data.stats?.subscriberCount ?? data.subscriberCount ?? 0,
       ownerId: data.ownerId ? String(data.ownerId) : null,
       createdAt: data.createdAt && typeof data.createdAt === 'string' ? data.createdAt : null,
     };
@@ -136,10 +138,10 @@ export async function GET(request: NextRequest) {
         if (profile.subscriberCount > 0) {
           updateData.subscriber_count = profile.subscriberCount;
         }
-        // crawl-influencers와 동일 규칙 — fan_count 미갱신 시 정합성 RPC·리스트 표시가 깨짐
-        const fanCount = profile.subscriberCount || profile.totalFollowerCount || 0;
-        if (fanCount > 0) {
-          updateData.fan_count = fanCount;
+        // fan_count는 팬수(subscriberCount)와 항상 동일 — totalFollowerCount(팔로워)로 폴백하면
+        // 화면에 팔로워가 팬수로 잘못 표시된다(팬≠팔로워). 팬수가 0이면 갱신하지 않는다.
+        if (profile.subscriberCount > 0) {
+          updateData.fan_count = profile.subscriberCount;
         }
         if (profile.ownerId) {
           updateData.naver_owner_id = profile.ownerId;

@@ -244,8 +244,9 @@ export async function GET(request: NextRequest) {
             introduction: c.introduction || '',
             subscriber_count: c.subscriberCount || 0,
             total_follower_count: c.totalFollowerCount || 0,
-            // fan_count 컬럼(구 스키마/정렬)과 표시용 subscriber 정합
-            fan_count: c.subscriberCount || c.totalFollowerCount || 0,
+            // fan_count는 팬수(subscriberCount)와 항상 동일 — totalFollowerCount로 폴백하면
+            // 팔로워가 팬수로 잘못 표시된다(팬≠팔로워).
+            fan_count: c.subscriberCount || 0,
             my_keyword_category: fix(mk),
             my_keyword: c.myKeyword || '',
             category_my_type: fix(cmt),
