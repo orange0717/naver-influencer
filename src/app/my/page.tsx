@@ -144,32 +144,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // ─── 병렬 프리페치: naverId/internalUserId만 있으면 되고 rankings·keywords 계산과
   // 데이터 의존성이 없는 것들을 여기서 미리 시작해, 아래 refreshFollowerCount(최대 13초)와
   // 겹쳐서 실행되게 한다. 실제 await은 각자 원래 쓰이던 위치에서 한다. ───
-  const topicCountPromise: Promise<number> = (async () => {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-      const inRes = await fetch(`https://in.naver.com/${naverId}`, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-        },
-        signal: controller.signal,
-        next: { revalidate: 3600 },
-      });
-      clearTimeout(timeout);
-      if (inRes.ok) {
-        const html = await inRes.text();
-        const topicMatch = html.match(/토픽\s*(\d+)/);
-        if (topicMatch) return parseInt(topicMatch[1]);
-        const jsonMatch = html.match(/"topicCount"\s*:\s*(\d+)/);
-        if (jsonMatch) return parseInt(jsonMatch[1]);
-      }
-    } catch {
-      // 토픽 크롤링 실패 무시
-    }
-    return 0;
-  })();
-
   /** 대시보드 허브 — 토픽 카드 + 토픽 성과 테이블: curate-blog-topics 크론이 채우는 topics 재사용 */
   const topicSummaryPromise: Promise<{ count: number; topName: string | null; topics: TopicPerformanceRow[] }> = (internalUserId && naverId)
     ? (async () => {
@@ -378,9 +352,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       view_tab_rank: (r as Record<string, unknown>).view_tab_rank as number | null,
     };
   }).sort((a, b) => a.rank_position - b.rank_position);
-
-  // ─── 토픽 수 (컴포넌트 진입 직후 미리 시작해둔 fetch를 여기서 회수) ───
-  const topicCount = await topicCountPromise;
 
   // 통계 계산
   const totalRankedKeywords = rankings.length;
@@ -668,7 +639,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         displayName={influencer.display_name}
         imageUrl={influencer.image_url}
         category={influencer.my_keyword_category || influencer.category}
-        subscriberCount={influencer.subscriber_count || influencer.total_follower_count || 0}
+        subscriberCount={influencer.subscriber_count || 0}
         firstSeenAt={influencer.naver_created_at || undefined}
         type="influencer"
         subscribed={!!subscriptionPlan}
@@ -715,8 +686,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
             <span className="text-dim">TOP 10 <strong className="text-text font-rank">{top10Count}</strong>개</span>
             <span className="text-dim">순위 수집 <strong className="text-text font-rank">{totalRankedKeywords}</strong>건</span>
             <span className="text-dim">참여 키워드 <strong className="text-text font-rank">{participatedCount}</strong>개</span>
-            <span className="text-dim">토픽 <strong className="text-text font-rank">{topicCount}</strong>개</span>
-            <span className="text-dim">팬 <strong className="text-text font-rank">{formatCount(influencer.subscriber_count || influencer.total_follower_count || 0)}</strong></span>
+            <span className="text-dim">토픽 {homeTopics.lastSyncedAt
+              ? <><strong className="text-text font-rank">{homeTopics.count}</strong>개</>
+              : <strong className="text-dim">수집 필요</strong>}</span>
+            <span className="text-dim">팬 {influencer.subscriber_count && influencer.subscriber_count > 0
+              ? <strong className="text-text font-rank">{formatCount(influencer.subscriber_count)}</strong>
+              : <strong className="text-dim">수집 필요</strong>}</span>
           </div>
           {participatedCount > totalRankedKeywords && (
             <p className="text-center text-[10px] text-dim mt-2 leading-snug">
