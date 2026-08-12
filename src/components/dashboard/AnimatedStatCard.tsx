@@ -20,6 +20,11 @@ interface AnimatedStatCardProps {
   size?: 'kpi' | 'stat';
   /** 지정 시 카드 전체가 링크가 되어 클릭하면 해당 상세 페이지로 이동 */
   href?: string;
+  /**
+   * 지정 시 숫자 대신 이 상태 문구를 표시한다(예: '확인 중'·'연결 필요'·'미확인'·'확인 오류').
+   * 데이터가 없거나 확인 전인 KPI에서 0을 지어내지 않기 위한 값(정확도 원칙 #5).
+   */
+  statusText?: string;
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -64,6 +69,7 @@ export default function AnimatedStatCard({
   className = '',
   size = 'kpi',
   href,
+  statusText,
 }: AnimatedStatCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -77,7 +83,8 @@ export default function AnimatedStatCard({
     gold: { text: 'text-gold', spark: '#D4A017', hoverBorder: 'hover:border-gold/40' },
     dim: { text: 'text-dim', spark: '#999', hoverBorder: 'hover:border-accent/25' },
   };
-  const c = colorMap[value === 0 && color !== 'dim' ? 'dim' : color];
+  // 상태 문구(확인 중/연결 필요 등)는 값이 아니므로 항상 뉴트럴(dim) 톤으로 표시한다.
+  const c = colorMap[statusText || (value === 0 && color !== 'dim') ? 'dim' : color];
   const valueSizeClass = size === 'stat' ? 'stat-value-stat' : 'stat-value-kpi';
   const isKpi = size === 'kpi';
   // KPI 카드(홈 상단 요약바)는 고정 높이 150px 유지. Statistics 카드(size="stat", "발행·순위 통계"
@@ -94,7 +101,7 @@ export default function AnimatedStatCard({
   const decimals = Number.isInteger(value) ? 0 : (value.toString().split('.')[1]?.length ?? 1);
 
   useEffect(() => {
-    if (!isVisible || value === 0) return;
+    if (!isVisible || value === 0 || statusText) return;
     const duration = 800;
     const startTime = performance.now();
     const animate = (now: number) => {
@@ -105,13 +112,17 @@ export default function AnimatedStatCard({
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  }, [isVisible, value, decimals]);
+  }, [isVisible, value, decimals, statusText]);
 
   const valueRow = (
     <div className={`flex items-baseline gap-1.5 shrink-0 ${isKpi ? '' : 'justify-center'}`}>
-      <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
-        {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
-      </span>
+      {statusText ? (
+        <span className={`${isKpi ? 'text-sm' : 'text-base'} font-bold text-dim truncate`}>{statusText}</span>
+      ) : (
+        <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
+          {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
+        </span>
+      )}
       {trend && trend.value !== 0 && (
         <span className={`text-xs font-bold shrink-0 ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
           {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}

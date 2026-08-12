@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
 import KpiGrid from '@/components/dashboard/KpiGrid';
-import type { BlogDashboardSummary } from '@/app/api/my/blog-dashboard-summary/route';
+import type { BlogDashboardSummary, BlogMetric, BlogMetricStatus } from '@/app/api/my/blog-dashboard-summary/route';
 
 async function fetchSummary(blogId: string): Promise<BlogDashboardSummary> {
   const res = await fetch(`/api/my/blog-dashboard-summary?blogId=${encodeURIComponent(blogId)}`, {
@@ -36,9 +36,28 @@ const ICONS = {
   missing: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
   ),
-  challenge: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
-  ),
+};
+
+// KPI 카드 표시 메타(라벨·단위·아이콘·정상값 색상). 데이터/상태는 서버 metric에서 온다.
+// challenge(키워드챌린지)는 블로그 데이터가 아니므로 이 목록에 없음 — 인플루언서 대시보드(/my)로 분리됨.
+const CARD_META: Record<string, { label: string; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim' }> = {
+  blog_today_visitors: { label: '오늘 방문자', suffix: '명', icon: ICONS.visitor, color: 'accent' },
+  blog_30day_visitors: { label: '최근 30일 방문자', suffix: '명', icon: ICONS.visitor, color: 'accent' },
+  blog_neighbor_count: { label: '이웃 수', suffix: '명', icon: ICONS.neighbor, color: 'accent' },
+  blog_post_count: { label: '총 발행 수', suffix: '개', icon: ICONS.post, color: 'accent' },
+  blog_missing_count: { label: '미노출', suffix: '건', icon: ICONS.missing, color: 'down' },
+  blog_ai_briefing_cited: { label: 'AI 브리핑 인용', suffix: '건', icon: ICONS.ai, color: 'up' },
+  blog_ai_tab_exposed: { label: 'AI 탭 노출', suffix: '건', icon: ICONS.ai, color: 'up' },
+  blog_top10_keywords: { label: 'TOP10 키워드', suffix: '개', icon: ICONS.keyword, color: 'gold' },
+  blog_avg_rank: { label: '평균 검색순위', suffix: '위', icon: ICONS.rank, color: 'accent' },
+};
+
+// 상태값 → 화면 문구(정확도 원칙 #5). FRESH만 실제 숫자를 표시한다.
+const STATUS_LABEL: Record<Exclude<BlogMetricStatus, 'FRESH'>, string> = {
+  CHECKING: '확인 중',
+  NEEDS_CONNECTION: '연결 필요',
+  UNVERIFIED: '미확인',
+  ERROR: '확인 오류',
 };
 
 export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null }) {
@@ -55,7 +74,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
   if (isLoading) {
     return (
       <KpiGrid>
-        {Array.from({ length: 10 }).map((_, i) => (
+        {Array.from({ length: 9 }).map((_, i) => (
           <div key={i} className="bg-surface border border-border rounded-lg shadow-xs h-[150px] animate-pulse" />
         ))}
       </KpiGrid>
@@ -70,34 +89,32 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
     );
   }
 
-  const cards: { label: string; value: number; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim'; href?: string }[] = [
-    { label: '오늘 방문자', value: data.todayVisitors, suffix: '명', icon: ICONS.visitor, color: 'accent' },
-    { label: '30일 방문자', value: data.thirtyDayVisitors, suffix: '명', icon: ICONS.visitor, color: 'accent' },
-    { label: '이웃수', value: data.neighborCount, suffix: '명', icon: ICONS.neighbor, color: 'accent' },
-    { label: '발행 수', value: data.postCount, suffix: '개', icon: ICONS.post, color: 'accent' },
-    { label: '누락률', value: data.missingRate, suffix: '%', icon: ICONS.missing, color: data.missingRate > 0 ? 'down' : 'up', href: '/my/missing-posts' },
-    { label: 'AI 브리핑 인용', value: data.aiBriefingCitedCount, suffix: '건', icon: ICONS.ai, color: data.aiBriefingCitedCount > 0 ? 'up' : 'dim' },
-    { label: 'AI 탭 노출', value: data.aiTabExposedCount, suffix: '건', icon: ICONS.ai, color: data.aiTabExposedCount > 0 ? 'up' : 'dim' },
-    { label: 'TOP10 키워드', value: data.top10KeywordCount, suffix: '개', icon: ICONS.keyword, color: data.top10KeywordCount > 0 ? 'gold' : 'dim' },
-    { label: '평균 검색순위', value: data.avgRank ?? 0, suffix: '위', icon: ICONS.rank, color: 'accent' },
-    { label: '키워드챌린지 참여', value: data.challengeParticipatedCount, suffix: '개', icon: ICONS.challenge, color: data.challengeParticipatedCount > 0 ? 'gold' : 'dim', href: '/my' },
-  ];
+  const cards = data.order
+    .map(key => ({ key, meta: CARD_META[key], metric: data.metrics[key] as BlogMetric | undefined }))
+    .filter((c): c is { key: string; meta: (typeof CARD_META)[string]; metric: BlogMetric } => !!c.meta && !!c.metric);
 
   return (
     <KpiGrid>
-      {cards.map((c, i) => (
-        <AnimatedStatCard
-          key={c.label}
-          label={c.label}
-          value={c.value}
-          suffix={c.suffix}
-          icon={c.icon}
-          color={c.color}
-          href={c.href}
-          delay={i * 40}
-          size="kpi"
-        />
-      ))}
+      {cards.map(({ key, meta, metric }, i) => {
+        const isFresh = metric.status === 'FRESH' && metric.value !== null;
+        const statusText = isFresh ? undefined : STATUS_LABEL[metric.status as Exclude<BlogMetricStatus, 'FRESH'>];
+        // 실제 값이 0이면 정상 dim 처리, 양수면 지정 색상. 상태문구일 땐 카드가 알아서 dim 처리.
+        const color = isFresh && (metric.value ?? 0) > 0 ? meta.color : 'dim';
+        return (
+          <AnimatedStatCard
+            key={key}
+            label={meta.label}
+            value={isFresh ? (metric.value as number) : 0}
+            statusText={statusText}
+            suffix={meta.suffix}
+            icon={meta.icon}
+            color={color}
+            href={metric.href}
+            delay={i * 40}
+            size="kpi"
+          />
+        );
+      })}
     </KpiGrid>
   );
 }

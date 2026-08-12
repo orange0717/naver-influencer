@@ -348,6 +348,12 @@ export interface BlogProfileStats {
   subscriberCount: number;
   postCount: number;
   isOfficialBlog: boolean;
+  /**
+   * 네이버 프로필 페이지를 실제로 받아와 파싱에 성공했는지 여부.
+   * false면 아래 숫자들은 "실제 0"이 아니라 "조회 실패로 채우지 못한 0"이다.
+   * 대시보드에서 '연결 필요/확인 오류' 상태와 '실제 0'을 구분하는 데 쓴다(정확도 원칙 #5·#6).
+   */
+  ok: boolean;
 }
 
 
@@ -358,6 +364,7 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
     subscriberCount: 0,
     postCount: 0,
     isOfficialBlog: false,
+    ok: false,
   };
 
   const id = extractBlogId(blogId);
@@ -372,6 +379,8 @@ export async function fetchBlogProfileStats(blogId: string): Promise<BlogProfile
     });
     if (!res.ok) return result;
     const html = await res.text();
+    // 프로필 페이지를 정상 수신·파싱 시작 — 이 지점부터의 0은 "실제 0"으로 신뢰할 수 있다.
+    result.ok = true;
 
     // 네이버 실제 필드명: totalVisitorCount, dayVisitorCount, subscriberCount, postCount
     const totalMatch = html.match(/"totalVisitorCount"\s*:\s*(\d+)/);
