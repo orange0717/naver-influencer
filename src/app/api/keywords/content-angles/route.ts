@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
+import { consumePaidDailyCap } from '@/lib/free-quota';
 import { contentAngleLimiter, getClientIp } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { ClaudeApiKeyMissingError } from '@/lib/claude-client';
@@ -45,6 +46,14 @@ export async function GET(request: NextRequest) {
 
   if (relatedKeywords.length === 0 && autocomplete.length === 0) {
     return NextResponse.json({ error: '연관 데이터를 찾을 수 없습니다. 다른 키워드로 시도해주세요.' }, { status: 404 });
+  }
+
+  // 사용자당 일일 AI 생성 상한(남용 방지, 관리자 제외). body/titles와 하루 풀을 공유한다.
+  if (!auth.authUser.user.is_admin) {
+    const cap = await consumePaidDailyCap({ userId: auth.authUser.userId, actionId: 'ai-angles' });
+    if (!cap.allowed) {
+      return NextResponse.json({ error: `오늘 AI 생성 한도(${cap.limit}회)를 모두 사용했습니다. 내일 다시 이용해주세요.`, code: 'DAILY_CAP_REACHED' }, { status: 429 });
+    }
   }
 
   try {

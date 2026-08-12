@@ -45,6 +45,9 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
         </DashboardCardIcon>
       }
     >
+      <p className="text-xs text-dim mb-3 leading-snug">
+        게시글 분석으로 분류된 토픽의 성과입니다. 인플루언서 홈의 전체 토픽 수와 다를 수 있습니다.
+      </p>
       {topics.length === 0 ? (
         <p className="text-center text-sm text-dim py-8">
           아직 분류된 토픽이 없습니다. 매일 새벽 자동 분류가 실행되면 여기에 표시됩니다.

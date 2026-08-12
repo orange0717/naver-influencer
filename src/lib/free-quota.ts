@@ -86,6 +86,47 @@ export async function consumeFreeDailyQuota(opts: {
 }
 
 /**
+ * 유료(PRO) 사용자용 일일 AI 생성 남용 상한(abuse ceiling)의 기본값.
+ * 정상 사용자는 하루 몇 회 정도만 생성하므로 이 상한에 걸리지 않는다 — 정액 요금제(₩44,000/월)
+ * 사용자 1명이 고가 모델(Sonnet)을 무제한 호출해 마진을 잠식하는 경우만 차단한다.
+ * 비즈니스 상황에 맞게 조정 가능. (참고: 무료 한도 MEMBER_DAILY_FREE_LIMIT와는 별개 축)
+ */
+export const PAID_AI_DAILY_CAP = 50;
+
+/**
+ * 유료 사용자 일일 AI 생성 상한을 1회 소모한다.
+ * free_daily_usage 테이블을 별도 네임스페이스(`paidcap:{userId}`)로 재사용하므로 무료 한도
+ * 카운터(`user:{userId}`)와 간섭하지 않는다(새 마이그레이션 불필요). 여러 생성 기능이 하나의
+ * 사용자별 풀을 공유한다(하루 총 생성 상한). RPC 장애 시 통과 — 하드 결제 게이트가 아니라 남용 상한이므로.
+ */
+export async function consumePaidDailyCap(opts: {
+  userId: string;
+  actionId: string;
+  max?: number;
+}): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const { userId, actionId } = opts;
+  const max = opts.max ?? PAID_AI_DAILY_CAP;
+  const subjectKey = `paidcap:${userId}`;
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase.rpc('consume_free_daily_quota', {
+      p_subject_key: subjectKey,
+      p_action_id: actionId,
+      p_max: max,
+    });
+    if (error) {
+      console.error('[consumePaidDailyCap] RPC error:', error.message);
+      return { allowed: true, used: 0, limit: max };
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    return { allowed: row?.allowed ?? true, used: row?.current_count ?? 0, limit: max };
+  } catch (err) {
+    console.error('[consumePaidDailyCap] unexpected error:', err);
+    return { allowed: true, used: 0, limit: max };
+  }
+}
+
+/**
  * 소모 없이 오늘 사용량만 조회 (헤더 배지 표시용). PRO는 항상 {used:0, limit:Infinity}로 표시.
  */
 export async function getFreeDailyUsage(opts: {

@@ -47,7 +47,9 @@ export default function BloggerRankingView() {
   const [nameHits, setNameHits] = useState<NameHit[] | null>(null);
 
   useEffect(() => {
-    fetch('/api/rankings/top?limit=50')
+    // 이 화면은 활성 블로거 총계(total_active)만 표시한다(Top 50 목록은 "준비 중").
+    // 과거엔 limit=50으로 순위 50건을 받아 rows에 담았지만 렌더에 쓰지 않아 버려졌다 → limit=1로 축소.
+    fetch('/api/rankings/top?limit=1')
       .then((r) => r.json())
       .then((d) => {
         setRows(d.rankings || []);

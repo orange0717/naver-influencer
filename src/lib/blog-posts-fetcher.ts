@@ -1,25 +1,14 @@
 import * as cheerio from 'cheerio';
 import { sleep } from '@/lib/crawler';
+import { cacheGet, cacheSet } from '@/lib/kv-cache';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 const WORKER_PROXY = 'https://ninfl-proxy.orange-e65.workers.dev';
 
-// 캐시 (5분, 최대 200개) — fetchBlogPostList 전용
-const MAX_CACHE_SIZE = 200;
-const cache = new Map<string, { data: BlogPostListResult; expires: number }>();
-
-function setPostCache(key: string, data: BlogPostListResult) {
-  const now = Date.now();
-  for (const [k, v] of cache) {
-    if (v.expires < now) cache.delete(k);
-  }
-  if (cache.size >= MAX_CACHE_SIZE) {
-    const oldest = cache.keys().next().value;
-    if (oldest) cache.delete(oldest);
-  }
-  cache.set(key, { data, expires: now + 5 * 60 * 1000 });
-}
+// fetchBlogPostList 결과 공유 캐시 TTL(초). 과거엔 서버리스 인스턴스 간 공유되지 않는
+// 인메모리 Map 이라 대시보드 반복 로드·다수 사용자가 같은 블로그를 계속 재스크랩했다.
+const POST_LIST_TTL_SECONDS = 5 * 60;
 
 interface NaverPostItem {
   logNo: string;
@@ -281,19 +270,21 @@ async function fetchBlogPostsPage(blogId: string, page: number, count: number): 
 }
 
 /**
- * 네이버 블로그 포스트 목록을 가져온다 (5분 캐시, page/countPerPage 포함).
- * fetchBlogPostsPage와 동일한 3단계 폴백을 사용하되 결과를 캐싱한다.
+ * 네이버 블로그 포스트 목록을 가져온다 (공유 캐시 5분, page/countPerPage 포함).
+ * fetchBlogPostsPage와 동일한 3단계 폴백을 사용하되 결과를 공유 캐시(Redis, 로컬은 인메모리
+ * 폴백)에 저장한다. 서버리스 인스턴스 간 공유되므로 대시보드 반복 로드·다수 사용자가 같은
+ * 블로그를 재스크랩하지 않는다(TTL 내 1회 스크랩). Redis 장애 시 kv-cache가 미스로 처리해 스크랩 폴백.
  */
 export async function fetchBlogPostList(blogId: string, page: number, count: number): Promise<BlogPostListResult> {
-  const cacheKey = `posts-${blogId}-${page}-${count}`;
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) return cached.data;
+  const cacheKey = `blogposts:${blogId}:${page}:${count}`;
+  const cached = await cacheGet<BlogPostListResult>(cacheKey);
+  if (cached) return cached;
 
   const pageData = await fetchBlogPostsPage(blogId, page, count);
   const result: BlogPostListResult = { ...pageData, page, countPerPage: count };
 
   if (result.posts.length > 0) {
-    setPostCache(cacheKey, result);
+    await cacheSet(cacheKey, result, POST_LIST_TTL_SECONDS);
   }
 
   return result;
