@@ -37,15 +37,28 @@ export default function NaverAiQualityPanel({ result }: { result: NaverAiQuality
             <span className="text-xl font-black font-rank">{result.totalScore}점</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs flex-wrap">
           <span className="px-2.5 py-1 rounded-lg bg-border/20 text-dim">
             AI 검색 적합도 <b className="text-text">{result.aiSearchFitPercent}%</b>
           </span>
+          {result.influencerFit && (
+            <span className="px-2.5 py-1 rounded-lg bg-border/20 text-dim">
+              인플루언서 글 적합도 <b className="text-text">{result.influencerFit.percent}%</b>
+            </span>
+          )}
           <span className={`px-2.5 py-1 rounded-lg font-bold ${exposureColor(result.naverExposureLikelihood)}`}>
             노출 가능성: {result.naverExposureLikelihood}
           </span>
         </div>
       </div>
+
+      {/* 인플루언서 글 적합도 근거 (스펙 5 병합) */}
+      {result.influencerFit?.reason && (
+        <div className="bg-bg rounded-xl p-3 border border-border/30">
+          <p className="text-xs text-dim font-semibold mb-1">인플루언서 글 적합도 진단</p>
+          <p className="text-xs leading-relaxed">{result.influencerFit.reason}</p>
+        </div>
+      )}
 
       {/* 항목별 점수 */}
       <div>

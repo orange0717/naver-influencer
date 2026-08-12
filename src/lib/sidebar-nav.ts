@@ -36,10 +36,11 @@ export const SIDEBAR_HOME: SidebarItem = { href: '/', label: 'N인플 AI' };
 
 export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
-    // 개인 데이터 기능을 하나의 대시보드 트리로 통합 (블로그 4 + 인플루언서 2, 2026-08-12 개편).
-    // 기존 페이지/URL은 그대로 두고 사이드바 정보구조·활성 강조만 재구성한다.
-    // heading = 클릭 불가 하위그룹 제목, subgroup = 하위그룹 첫 항목(상단 간격),
-    // indent = 하위그룹 소속 항목 들여쓰기. 각 항목의 requiredPlan/authOnly는 이관 전 값을 그대로 유지.
+    // ── 개인화 영역 ─────────────────────────────────────────────
+    // 로그인한 user_id의 실제 데이터에 기반해 동작하는 기능만 이 그룹에 둔다(스펙 1·2·21).
+    // 블로그(4) + 인플루언서(2) + 포스팅(2). 기존 페이지/URL은 유지하고 IA만 재구성한다.
+    // heading = 클릭 불가 하위그룹 제목, subgroup = 하위그룹 첫 항목(상단 간격 강조, 스펙 24),
+    // indent = 하위그룹 소속 항목 들여쓰기. requiredPlan/authOnly는 이관 전 값을 그대로 유지.
     label: '대시보드',
     icon: '대',
     items: [
@@ -51,72 +52,55 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '인플루언서', href: '#influencer', heading: true, subgroup: true },
       { label: '대시보드', href: '/my', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '포스팅', href: '#posting', heading: true, subgroup: true },
+      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true, indent: true },
+      // 글 심층피드백 = 기존 블로그 심층피드백 + AI글 적합도 + 인플루언서 글 적합도를 한 번의
+      // 분석으로 합친 개인화 기능(스펙 4·5). 구조적 정밀 진단 엔진(quality-evaluate)이 본체다.
+      { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true, indent: true },
     ],
   },
   {
-    label: '네이버 메이트',
-    icon: '메',
+    // ── 공통(비개인화) 데이터 도구 ─────────────────────────────
+    // 특정 사용자의 블로그 데이터와 무관하게 누구나 조회하는 네이버 데이터(스펙 2·21).
+    label: '네이버 데이터',
+    icon: '데',
     items: [
-      { label: '랭킹', href: '/naver-mate-ranking', authOnly: true },
-      { label: 'AI글 적합도', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true },
+      { label: '랭킹', href: '#ranking', heading: true, subgroup: true },
+      { label: '랭킹', href: '/naver-mate-ranking', authOnly: true, indent: true },
+      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '연도별 선정 현황', href: '/stats', indent: true },
+      { label: '키워드', href: '#keyword', heading: true, subgroup: true },
+      { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '키워드 검색', href: '/keywords/blogger', indent: true },
+      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '리스트', href: '#list', heading: true, subgroup: true },
+      { label: '무료', href: '/influencers/free-plan', authOnly: true, indent: true },
+      { label: '유료', href: '/influencers', requiredPlan: 'influencer', authOnly: true, indent: true },
     ],
   },
   {
-    label: '네이버 인플루언서',
-    icon: 'I',
+    // ── 공통 콘텐츠 제작 도구 ──────────────────────────────────
+    // 글쓰기(2) / 이미지(2) / 유튜브(3). 이미지·유튜브를 글쓰기에서 분리(스펙 9·11·12).
+    label: '콘텐츠 도구',
+    icon: '도',
     items: [
-      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer', authOnly: true },
-      { label: '연도별 선정 현황', href: '/stats' },
-      { label: '리스트', href: '#', heading: true },
-      { label: '리스트(무료)', href: '/influencers/free-plan', authOnly: true, indent: true },
-      { label: '리스트(유료)', href: '/influencers', requiredPlan: 'influencer', authOnly: true, indent: true },
-    ],
-  },
-  {
-    label: '키워드',
-    icon: 'K',
-    items: [
-      { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'influencer', authOnly: true },
-      { label: '저장 키워드', href: '/my/saved-keywords', authOnly: true },
-      { label: '키워드 검색', href: '/keywords/blogger' },
-      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true },
+      { label: '글쓰기', href: '#writing', heading: true, subgroup: true },
+      { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '이미지', href: '#image', heading: true, subgroup: true },
+      { label: '컬러 팔레트', href: '/dashboard/writing/color-palette', indent: true },
+      { label: '이미지 편집', href: '/image-editor', authOnly: true, indent: true },
+      { label: '유튜브', href: '#youtube', heading: true, subgroup: true },
+      { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true, indent: true },
+      { label: '유튜브 분석', href: '/dashboard/content/youtube', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '릴스 · 쇼츠 분석', href: '/dashboard/content/shortform', requiredPlan: 'influencer', authOnly: true, indent: true },
     ],
   },
   {
     label: '구글',
     icon: 'G',
     items: [
-      { label: '구글 색인등록', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true },
-    ],
-  },
-  {
-    label: '글쓰기',
-    icon: 'W',
-    items: [
-      { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'influencer', authOnly: true },
-      { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'influencer', authOnly: true },
-      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
-      { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
-      { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
-      { label: '블로그 글 심층피드백', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
-      { label: '컬러 팔레트', href: '/dashboard/writing/color-palette' },
-      { label: '이미지 편집', href: '/image-editor', authOnly: true },
-    ],
-  },
-  {
-    label: '콘텐츠 분석',
-    icon: 'C',
-    items: [
-      { label: '유튜브 분석', href: '/dashboard/content/youtube', requiredPlan: 'influencer', authOnly: true },
-      { label: '릴스·쇼츠 분석', href: '/dashboard/content/shortform', requiredPlan: 'influencer', authOnly: true },
-    ],
-  },
-  {
-    label: '기타',
-    icon: '•',
-    items: [
-      { label: '설정', href: '/profile', authOnly: true },
-      { label: 'CSV 다운로드', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true },
+      { label: 'Google 색인 관리', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true },
     ],
   },
 ];

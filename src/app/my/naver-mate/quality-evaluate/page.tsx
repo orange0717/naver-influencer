@@ -1,17 +1,18 @@
 import NaverMateQualityEvaluateView from '@/components/NaverMateQualityEvaluateView';
 
 export const metadata = {
-  title: 'AI글 적합도 — N인플',
-  description: '네이버 AI 검색 품질평가 — Claude Sonnet 기반 블로그 글 10개 항목 정밀 진단.',
+  title: '글 심층피드백 — N인플',
+  description: '한 번의 분석으로 종합 완성도·AI 글 적합도·인플루언서 글 적합도·검색 친화성·정보 구조·가독성·전문성까지 진단합니다.',
 };
 
 export default function QualityEvaluatePage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold">AI글 적합도</h1>
+        <h1 className="text-2xl font-extrabold">글 심층피드백</h1>
         <p className="text-sm text-dim mt-1">
-          네이버 AI 검색 품질평가 기준으로 Claude Sonnet이 내 포스팅을 10개 항목 + SEO + GEO/AEO로 정밀 분석합니다.
+          내 포스팅 하나를 한 번에 정밀 분석합니다 — 종합 완성도, AI 글 적합도, 인플루언서 글 적합도,
+          검색 친화성(SEO·GEO/AEO), 정보 구조·가독성·전문성, 장점·문제점·수정 우선순위·개선 방법까지.
         </p>
       </div>
       <NaverMateQualityEvaluateView />

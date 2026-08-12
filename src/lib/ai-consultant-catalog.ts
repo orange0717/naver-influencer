@@ -92,26 +92,12 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
     authOnly: true,
   },
   {
-    id: 'rewrite',
-    label: '교정·교열·윤문',
-    toolDescription: '이미 쓴 글의 문장 흐름과 표현을 다듬는다. 맞춤법 교정보다 더 깊은 문장 손질이 필요할 때 적합.',
-    reasonHint: '문장 흐름과 표현을 다듬어드립니다',
-    href: '/dashboard/writing/rewrite',
-    authOnly: true,
-  },
-  {
-    id: 'claude-feedback',
-    label: '블로그 글 심층피드백',
-    toolDescription: '이미 쓴 글 전체를 놓고 대화하듯 방향성 피드백을 받는다. 구체적인 글 하나를 놓고 깊게 이야기하고 싶을 때 적합.',
-    reasonHint: '글의 방향성을 대화하며 깊게 피드백받습니다',
-    href: '/dashboard/claude',
-    authOnly: true,
-  },
-  {
+    // 교정·교열·윤문(rewrite)·블로그 글 심층피드백(claude 채팅)·AI글 적합도를 하나로 합친
+    // 통합 "글 심층피드백"(스펙 4·5). id는 저장된 추천 호환을 위해 'ai-quality' 유지.
     id: 'ai-quality',
-    label: 'AI글 적합도',
-    toolDescription: 'AI로 작성한 글이 검색 노출에 불리하지 않은지 적합도를 점검한다. "AI로 글 써도 되는지" 질문에 적합.',
-    reasonHint: 'AI 작성 글의 검색 노출 적합도를 점검합니다',
+    label: '글 심층피드백',
+    toolDescription: '내 블로그 글 하나를 한 번에 정밀 분석한다 — 종합 완성도, AI 글 적합도, 인플루언서 글 적합도, 검색 친화성(SEO·GEO/AEO), 정보 구조·가독성·전문성, 장점·문제점·수정 우선순위·개선 방법까지. "내 글 진단해줘", "AI로 써도 되는지", "어떻게 고쳐야 할지", "글 좀 봐줘" 질문에 적합.',
+    reasonHint: '글 하나를 종합·AI·인플루언서 적합도까지 한 번에 진단합니다',
     href: '/my/naver-mate/quality-evaluate',
     authOnly: true,
   },
@@ -125,7 +111,7 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
   },
   {
     id: 'google-indexing',
-    label: '구글 색인등록',
+    label: 'Google 색인 관리',
     toolDescription: '블로그 글이 구글 검색에 색인됐는지 확인하고 등록을 요청한다. "구글에서 안 나와요" 질문에 적합.',
     reasonHint: '구글 색인 여부를 확인하고 등록을 요청합니다',
     href: '/dashboard/google-indexing',
@@ -141,9 +127,9 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
   },
   {
     id: 'topics',
-    label: '토픽 발행',
-    toolDescription: '네이버 인플루언서 토픽을 발행하고 관리한다. "토픽을 어떻게 발행하나요", "토픽 발행 현황이 궁금하다" 질문에 적합.',
-    reasonHint: '토픽 발행 현황을 확인하고 새 토픽을 발행합니다',
+    label: '토픽',
+    toolDescription: '내 기존 포스팅을 분석해 어떤 글끼리 하나의 토픽으로 묶으면 좋을지 추천한다. "토픽을 어떻게 잡아야 하나요", "무슨 토픽으로 묶을까" 질문에 적합.',
+    reasonHint: '내 포스팅을 묶을 토픽을 추천합니다',
     href: '/topics',
     authOnly: true,
   },

@@ -27,6 +27,21 @@ const nextConfig: NextConfig = {
         destination: 'https://ninfle.kr/:path',
         permanent: true,
       },
+      // ── 메뉴 개편(2026-08-12) 이동/폐지 라우트 호환 (스펙 23) ──
+      // 즐겨찾기·내부 링크가 깨지지 않도록 기존 URL을 새 위치로 보낸다.
+      // 기능 통합(폐지)은 되돌릴 여지가 있으므로 캐시가 영구 고정되는 308 대신 307(임시)을 쓴다.
+      {
+        // 옛 "블로그 글 심층피드백"(클로드 채팅) → 통합 "글 심층피드백"(정밀 진단)
+        source: '/dashboard/claude',
+        destination: '/my/naver-mate/quality-evaluate',
+        permanent: false,
+      },
+      {
+        // "교정·교열·윤문" 전용 메뉴 폐지(스펙 10) → 맞춤법 검사로 유도
+        source: '/dashboard/writing/rewrite',
+        destination: '/dashboard/writing/spellcheck',
+        permanent: false,
+      },
     ];
   },
 };

@@ -30,6 +30,8 @@ export interface NaverAiQualityEvaluation {
   starRating: number;
   categories: QualityCategoryResult[];
   aiSearchFitPercent: number;
+  /** 인플루언서 글 적합도 — 네이버 인플루언서 콘텐츠(주제 전문성·홈/토픽 노출)로서의 적합도 (스펙 5 병합) */
+  influencerFit: { percent: number; reason: string };
   naverExposureLikelihood: typeof EXPOSURE_LEVELS[number];
   goodPoints: string[];
   badPoints: string[];
@@ -67,6 +69,7 @@ const SYSTEM_PROMPT = `당신은 네이버 AI 검색 품질평가 전문가입�
 - suggestedAdditions: 추가하면 좋은 내용을 구체적으로 제안 (실제 경험/사진/비교표/통계자료/FAQ/공식자료 등 구체적으로)
 - naverExposureLikelihood: "매우 높음"|"높음"|"보통"|"낮음"|"매우 낮음" 중 하나
 - aiSearchFitPercent: AI 검색 적합도 (0~100 정수)
+- influencerFit: 네이버 인플루언서 콘텐츠로서의 적합도. { percent(0~100 정수), reason(이유 1~2문장) }. 특정 주제에 대한 전문성·일관성, 인플루언서 홈/토픽에 노출될 만한 깊이, 검색+AI 인용 잠재력을 종합해 판단. 잡다한 일상글일수록 낮고, 한 주제를 깊게 다룬 전문 콘텐츠일수록 높다.
 - conclusion: { score(100점 만점 재평가), reason(왜 그런 점수인지), topFixes(가장 먼저 수정해야 할 3가지) }
 - totalScore: 위 10개 항목 점수의 합
 - starRating: totalScore 기준 1~5 (정수, 반올림)
@@ -77,6 +80,7 @@ const SYSTEM_PROMPT = `당신은 네이버 AI 검색 품질평가 전문가입�
   "starRating": number,
   "categories": [ { "key": "experience", "score": number, "good": string, "bad": string, "improvement": string }, ... 10개 전부 ],
   "aiSearchFitPercent": number,
+  "influencerFit": { "percent": number, "reason": string },
   "naverExposureLikelihood": string,
   "goodPoints": string[5],
   "badPoints": string[5],
