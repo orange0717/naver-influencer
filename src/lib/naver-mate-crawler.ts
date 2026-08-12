@@ -1,5 +1,6 @@
 import { createServiceClient } from './supabase-server';
 import { fetchWithRetry, sleep } from './crawler';
+import { MATE_TOPICS } from './naver-mate-categories';
 
 /**
  * 네이버 메이트(mate.naver.com) 공식 AI 펠로우십 프로그램의 "이달의 메이트" 데이터 수집.
@@ -7,35 +8,9 @@ import { fetchWithRetry, sleep } from './crawler';
  * 4개 서비스(블로그/카페/지식iN/프리미엄콘텐츠)의 topic-contributors API를 count를 크게 주고 직접 호출하면
  * 해당 월 해당 주제의 전체 명단을 받을 수 있음 (2026-07-07 실측 확인, count를 total 이상으로 줘도 실제 총량만 반환됨).
  * Referer: https://mate.naver.com/ 헤더가 없으면 403 — 브라우저 없이도 순수 fetch로 동작 확인됨.
+ *
+ * 수집 대상 25개 분야(TOPIC_001~025)는 naver-mate-categories.ts 의 MATE_TOPICS 를 유일한 원본으로 삼는다.
  */
-
-const MATE_TOPICS: { topicId: string; category: string }[] = [
-  { topicId: 'TOPIC_001', category: '국내여행' },
-  { topicId: 'TOPIC_002', category: '해외여행' },
-  { topicId: 'TOPIC_003', category: '푸드' },
-  { topicId: 'TOPIC_004', category: '레시피' },
-  { topicId: 'TOPIC_005', category: '패션' },
-  { topicId: 'TOPIC_006', category: '뷰티' },
-  { topicId: 'TOPIC_007', category: '리빙' },
-  { topicId: 'TOPIC_008', category: '반려동물' },
-  { topicId: 'TOPIC_009', category: '건강' },
-  { topicId: 'TOPIC_010', category: '육아' },
-  { topicId: 'TOPIC_011', category: '영화' },
-  { topicId: 'TOPIC_012', category: '방송' },
-  { topicId: 'TOPIC_013', category: '애니메이션' },
-  { topicId: 'TOPIC_014', category: '공연ㆍ전시' },
-  { topicId: 'TOPIC_015', category: '음악' },
-  { topicId: 'TOPIC_016', category: '책' },
-  { topicId: 'TOPIC_017', category: '예술' },
-  { topicId: 'TOPIC_018', category: 'ITㆍ테크' },
-  { topicId: 'TOPIC_019', category: '자동차' },
-  { topicId: 'TOPIC_020', category: '교육' },
-  { topicId: 'TOPIC_021', category: '경제' },
-  { topicId: 'TOPIC_022', category: '사회' },
-  { topicId: 'TOPIC_023', category: '스포츠' },
-  { topicId: 'TOPIC_024', category: '게임' },
-  { topicId: 'TOPIC_025', category: '취미' },
-];
 
 type MatePlatform = 'blog' | 'cafe' | 'kin' | 'premium';
 

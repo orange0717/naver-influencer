@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { sortByMateOrder } from '@/lib/naver-mate-categories';
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -33,7 +34,8 @@ export async function GET(request: NextRequest) {
     const mate = Array.isArray(r.naver_mates) ? r.naver_mates[0] : r.naver_mates;
     if (mate?.category) categorySet.add(mate.category);
   });
-  const categories = Array.from(categorySet).sort((a, b) => a.localeCompare(b, 'ko'));
+  // 네이버 메이트 공식 분야 순서로 정렬(임의의 가나다순 아님). 데이터에 존재하는 분야만 노출.
+  const categories = sortByMateOrder(Array.from(categorySet));
 
   let query = supabase
     .from('naver_mate_monthly')
