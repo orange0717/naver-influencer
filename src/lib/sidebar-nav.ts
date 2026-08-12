@@ -84,12 +84,12 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'influencer', authOnly: true },
       { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'influencer', authOnly: true },
-      { label: '본문 생성', href: '/dashboard/writing/body', requiredPlan: 'influencer', authOnly: true },
       { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true },
       { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true },
       { label: '교정·교열·윤문', href: '/dashboard/writing/rewrite', requiredPlan: 'influencer', authOnly: true },
       { label: '블로그 글 심층피드백', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true },
       { label: '컬러 팔레트', href: '/dashboard/writing/color-palette' },
+      { label: '이미지 편집', href: '/image-editor', authOnly: true },
     ],
   },
   {
@@ -97,6 +97,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: 'C',
     items: [
       { label: '유튜브 분석', href: '/dashboard/content/youtube', requiredPlan: 'influencer', authOnly: true },
+      { label: '릴스·쇼츠 분석', href: '/dashboard/content/shortform', requiredPlan: 'influencer', authOnly: true },
     ],
   },
   {

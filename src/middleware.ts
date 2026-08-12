@@ -103,6 +103,7 @@ const MEMBER_ONLY_GATE_PREFIXES = [
   '/decoder',
   '/competitor',
   '/image-converter',
+  '/image-editor',
 ];
 
 /**
@@ -154,6 +155,7 @@ const GATE_HANDLED_ELSEWHERE = new Set([
   '/topics', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts) — AI 토픽 큐레이션, dashboard/claude와 동일 패턴
   '/dashboard/google-indexing', // page.tsx 자체에서 getPaywallContext로 미인증/미결제 redirect 처리
   '/dashboard/content/youtube', // page.tsx 자체 서버 체크(getUserWithTimeout + INFLUENCER 플랜) — AI 호출 비용 발생 기능
+  '/dashboard/content/shortform', // page.tsx 자체 서버 체크(getUserWithTimeout + INFLUENCER 플랜) — Manus+AI 호출 비용 발생 기능
   '/dashboard', // page.tsx 자체에서 getUserWithTimeout + 데모쿠키 체크 후 비로그인은 /로 redirect (구 홈 KPI 대시보드가 이동해온 자리)
 ]);
 
@@ -524,6 +526,18 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // 이미지 편집기(/image-editor)의 AI 배경 제거는 브라우저에서 @imgly/background-removal이
+  // WASM(ONNX)로 추론하고 모델 자산을 staticimgly.com CDN에서 받아온다. 전역 CSP는 그대로
+  // 두고 이 경로에서만 eval(WASM 글루)·blob 워커·CDN fetch를 허용한다.
+  const workerSrc = ["'self'"];
+  if (matchesPathPrefix(pathname, '/image-editor')) {
+    // onnxruntime-web은 WASM 로딩 글루에서 문자열을 eval하므로 'unsafe-eval'이 필요하다
+    // (WASM만 허용하는 'wasm-unsafe-eval'로는 EvalError로 실패). 이 경로에서만 허용.
+    scriptSrc.push("'unsafe-eval'", "blob:");
+    connectSrc.push("https://staticimgly.com", "blob:");
+    workerSrc.push("blob:");
+  }
+
   supabaseResponse.headers.set(
     'Content-Security-Policy',
     [
@@ -533,6 +547,7 @@ export async function middleware(request: NextRequest) {
       `font-src ${fontSrc.join(' ')}`,
       `img-src ${imgSrc.join(' ')}`,
       `connect-src ${connectSrc.join(' ')}`,
+      `worker-src ${workerSrc.join(' ')}`,
       `frame-src ${frameSrc.join(' ')}`,
       "base-uri 'self'",
       "form-action 'self'",

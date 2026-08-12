@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { extractPalette } from '@/lib/color-extract';
 import {
   assignRoles,
@@ -41,6 +42,20 @@ export default function ColorPaletteClient() {
   const [thumbTitle, setThumbTitle] = useState('말의 품격을 읽고\n내가 다시 생각하게 된 것들');
   const [savedPalettes, setSavedPalettes] = useState<string[][]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 사이드바는 lg+ 에서만 레이아웃 폭을 차지(펼침 w-56=224px / 접힘 w-14=56px).
+  // 콘텐츠는 사이드바 오른쪽 영역 기준으로 중앙 정렬되어 화면상 오른쪽으로 치우쳐 보이므로,
+  // 사이드바 폭의 절반만큼 왼쪽으로 당겨 뷰포트 정중앙에 맞춘다.
+  const { collapsed } = useSidebar();
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const viewportShift = isDesktop ? (collapsed ? -28 : -112) : 0;
 
   useEffect(() => {
     try {
@@ -139,15 +154,37 @@ export default function ColorPaletteClient() {
     }
   };
 
+  const reset = () => {
+    setPalette(null);
+    setImagePreview(null);
+    setError(null);
+    setExtracting(false);
+    setFormat('hex');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const roles = palette ? assignRoles(palette) : null;
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="space-y-1">
-        <h1 className="font-title text-xl font-bold text-text">컬러 팔레트</h1>
-        <p className="text-sm text-dim">
-          블로그 썸네일 이미지를 올리면 대표 색상 5가지를 추출하고, 어울리는 색상 조합·카테고리별 팔레트를 만들어드립니다.
-        </p>
+    <div
+      className="space-y-6 max-w-3xl mx-auto relative transition-[left] duration-200"
+      style={{ left: viewportShift ? `${viewportShift}px` : undefined }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="font-title text-xl font-bold text-text">컬러 팔레트</h1>
+          <p className="text-sm text-dim">
+            블로그 썸네일 이미지를 올리면 대표 색상 5가지를 추출하고, 어울리는 색상 조합·카테고리별 팔레트를 만들어드립니다.
+          </p>
+        </div>
+        {(palette || imagePreview) && (
+          <button
+            onClick={reset}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent hover:text-accent transition-colors cursor-pointer"
+          >
+            초기화
+          </button>
+        )}
       </div>
 
       {/* 업로드 영역 */}
@@ -175,11 +212,9 @@ export default function ColorPaletteClient() {
             e.target.value = '';
           }}
         />
-        {imagePreview ? (
+        {imagePreview && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imagePreview} alt="업로드한 이미지" className="max-h-32 rounded-xl object-contain" />
-        ) : (
-          <span className="text-2xl">🖼️</span>
         )}
         <p className="text-sm font-semibold text-text">
           {extracting ? '색상 분석 중...' : '이미지를 드래그하거나 클릭해서 업로드'}
