@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
 import { consumePaidDailyCap } from '@/lib/free-quota';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { titleGenerateLimiter, getClientIp } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { ClaudeApiKeyMissingError } from '@/lib/claude-client';
@@ -50,11 +51,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // 크레딧 확인(미활성이면 통과).
+  const creditDenied = await assertCreditFor(auth.authUser.userId, 'ai_titles');
+  if (creditDenied) return creditDenied;
+
   try {
     const titles = await generateTitles(keyword, relatedKeywords);
     if (titles.length === 0) {
       return NextResponse.json({ error: '제목 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
     }
+    await chargeCreditIfEnabled(auth.authUser.userId, 'ai_titles'); // 성공 후 차감(미활성이면 no-op)
     return NextResponse.json({ keyword, relatedKeywords, titles });
   } catch (err) {
     if (err instanceof ClaudeApiKeyMissingError) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
 import { consumePaidDailyCap } from '@/lib/free-quota';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { contentAngleLimiter, getClientIp } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { ClaudeApiKeyMissingError } from '@/lib/claude-client';
@@ -56,8 +57,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // 크레딧 확인(미활성이면 통과).
+  const creditDenied = await assertCreditFor(auth.authUser.userId, 'ai_content_angles');
+  if (creditDenied) return creditDenied;
+
   try {
     const angles = await synthesizeContentAngles(keyword, relatedKeywords, autocomplete);
+    await chargeCreditIfEnabled(auth.authUser.userId, 'ai_content_angles'); // 성공 후 차감(미활성이면 no-op)
     return NextResponse.json({
       keyword,
       relatedKeywords,

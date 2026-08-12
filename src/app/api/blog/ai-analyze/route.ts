@@ -5,6 +5,7 @@ import { requirePaidPlan } from '@/lib/admin';
 import { extractPostText } from '@/lib/blog-post-content';
 import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonObjectFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -49,8 +50,12 @@ export async function POST(request: NextRequest) {
   const cacheKey = `ai-analyze:${blogId}:${logNo}`;
   const cached = await cacheGet<Record<string, unknown>>(cacheKey);
   if (cached) {
-    return Response.json(cached);
+    return Response.json(cached); // 캐시 히트 = AI 작업 없음 → 크레딧 미차감
   }
+
+  // 크레딧 확인(미활성이면 통과). 캐시 미스(=실제 AI 호출)에만 적용.
+  const creditDenied = await assertCreditFor(paid.authUser.userId, 'ai_blog_analyze');
+  if (creditDenied) return creditDenied;
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
@@ -141,6 +146,7 @@ ${UNTRUSTED_DATA_NOTICE}`,
 
         // 공유 캐시 저장
         await cacheSet(cacheKey, result, CACHE_TTL_SEC);
+        await chargeCreditIfEnabled(paid.authUser.userId, 'ai_blog_analyze'); // 성공 후 차감(미활성이면 no-op)
 
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'result', data: result })}\n\n`));
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
