@@ -212,22 +212,41 @@ export default function BlogAnalysisSection() {
         return;
       }
       setIsLoggedIn(true);
-      const customProfileKey = `blogger_custom_profile_${p.accountId || 'anon'}_${p.blogId}`;
-      const customData = localStorage.getItem(customProfileKey);
-      if (customData) {
-        try {
-          const parsed = JSON.parse(customData);
-          if (parsed && typeof parsed === 'object') {
-            setCustomProfile(parsed);
-            if (parsed.displayName) p = { ...p, displayName: parsed.displayName };
-            if (parsed.imageUrl) p = { ...p, imageUrl: parsed.imageUrl };
-          } else {
-            localStorage.removeItem(customProfileKey);
-          }
-        } catch {
-          localStorage.removeItem(customProfileKey);
+      // 커스텀 프로필(표시이름/아바타)은 로그인 계정(서버 DB)에 귀속 — 기기 간 동기화된다.
+      // 서버 우선 조회, 서버가 비어있고 기존 localStorage 데이터가 있으면 1회 마이그레이션.
+      const legacyKey = `blogger_custom_profile_${p.accountId || 'anon'}_${p.blogId}`;
+      try {
+        let custom: { displayName?: string; imageUrl?: string } | null = null;
+        const cpRes = await fetchWithTimeout(`/api/my/blog-custom-profile?blogId=${encodeURIComponent(p.blogId)}`);
+        if (cpRes.ok) {
+          const cpData = await cpRes.json();
+          custom = cpData?.profile ?? null;
         }
-      }
+        if (!custom) {
+          const legacy = localStorage.getItem(legacyKey);
+          if (legacy) {
+            try {
+              const parsed = JSON.parse(legacy);
+              if (parsed && typeof parsed === 'object' && (parsed.displayName || parsed.imageUrl)) {
+                custom = parsed;
+                await fetch(`/api/my/blog-custom-profile?blogId=${encodeURIComponent(p.blogId)}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify(parsed),
+                });
+              }
+            } catch { /* 파싱 실패 — 무시 */ }
+          }
+        }
+        // 서버가 원본이 된 이후로는 로컬 캐시를 정리한다.
+        try { localStorage.removeItem(legacyKey); } catch { /* ignore */ }
+        if (custom) {
+          setCustomProfile(custom);
+          if (custom.displayName) p = { ...p, displayName: custom.displayName };
+          if (custom.imageUrl) p = { ...p, imageUrl: custom.imageUrl };
+        }
+      } catch { /* 조회 실패 — 오버라이드 없이 진행 */ }
       setProfile(p);
 
       // 아래 두 복원 호출은 서로 의존관계가 없고, 본문 데이터 호출(포스트/점수/카테고리 등)과도
@@ -285,14 +304,16 @@ export default function BlogAnalysisSection() {
   }, [fetchBlogPosts, fetchAllBlogPosts, fetchScoreData, fetchCategory, fetchPostAnalysis, fetchBlogStats]);
 
   const handleProfileChange = useCallback((data: { displayName?: string; imageUrl?: string }) => {
-    setCustomProfile(prev => {
-      const updated = { ...prev, ...data };
-      if (profile) {
-        const key = `blogger_custom_profile_${profile.accountId || 'anon'}_${profile.blogId}`;
-        localStorage.setItem(key, JSON.stringify(updated));
-      }
-      return updated;
-    });
+    setCustomProfile(prev => ({ ...prev, ...data }));
+    // 로그인 계정(서버)에 저장 → 다른 기기/브라우저에서도 동일하게 반영. 변경 필드만 전송(부분 갱신).
+    if (profile) {
+      fetch(`/api/my/blog-custom-profile?blogId=${encodeURIComponent(profile.blogId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      }).catch(() => { /* 저장 실패해도 화면 상태는 유지 */ });
+    }
     setProfile(prev => prev ? { ...prev, ...data } : prev);
   }, [profile]);
 

@@ -57,14 +57,60 @@ export default function ColorPaletteClient() {
   }, []);
   const viewportShift = isDesktop ? (collapsed ? -28 : -112) : 0;
 
+  // 저장 팔레트는 로그인 계정(서버 DB)에 귀속 — 어느 기기/브라우저에서나 동일하게 보인다.
+  // 마운트 시 서버에서 불러오고, 서버가 비어있으면 기존 localStorage 데이터를 1회 업로드한다.
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setSavedPalettes(JSON.parse(raw));
-    } catch {
-      // 저장된 팔레트 없음/파싱 실패 — 무시
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/color-palettes', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          const server: string[][] = Array.isArray(data.palettes) ? data.palettes : [];
+          if (server.length > 0) {
+            if (!cancelled) setSavedPalettes(server);
+            try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+            return;
+          }
+          // 서버가 비어있고 로컬에 기존 저장분이 있으면 → 서버로 1회 마이그레이션
+          let local: string[][] = [];
+          try {
+            const raw = window.localStorage.getItem(STORAGE_KEY);
+            if (raw) local = JSON.parse(raw);
+          } catch { /* ignore */ }
+          if (Array.isArray(local) && local.length > 0) {
+            if (!cancelled) setSavedPalettes(local);
+            try {
+              await fetch('/api/color-palettes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ palettes: local }),
+              });
+              window.localStorage.removeItem(STORAGE_KEY);
+            } catch { /* 업로드 실패 시 다음 마운트에서 재시도 */ }
+          }
+          return;
+        }
+      } catch { /* 서버 조회 실패 — 아래 로컬 폴백 */ }
+      // 오프라인/조회 실패 폴백: 로컬 캐시라도 표시
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw && !cancelled) setSavedPalettes(JSON.parse(raw));
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
+
+  // 저장 팔레트 전체 배열을 서버에 반영(덮어쓰기). 실패해도 화면 상태는 유지.
+  const persistPalettes = (next: string[][]) => {
+    fetch('/api/color-palettes', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ palettes: next }),
+    }).catch(() => { /* ignore */ });
+  };
 
   const copy = async (text: string, key: string) => {
     try {
@@ -137,21 +183,13 @@ export default function ColorPaletteClient() {
     if (!palette) return;
     const next = [palette, ...savedPalettes].slice(0, 12);
     setSavedPalettes(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
+    persistPalettes(next);
   };
 
   const deleteSaved = (idx: number) => {
     const next = savedPalettes.filter((_, i) => i !== idx);
     setSavedPalettes(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
+    persistPalettes(next);
   };
 
   const reset = () => {
@@ -388,7 +426,7 @@ export default function ColorPaletteClient() {
       {savedPalettes.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-bold text-text">저장한 팔레트</h2>
-          <p className="text-[11px] text-dim/70">이 브라우저에만 저장됩니다(로그인 계정과 별개).</p>
+          <p className="text-[11px] text-dim/70">로그인 계정에 저장되어 어느 기기·브라우저에서나 동일하게 보입니다.</p>
           <div className="space-y-1.5">
             {savedPalettes.map((p, idx) => (
               <div key={idx} className="flex items-center gap-2 bg-surface border border-border rounded-xl px-2.5 py-2">

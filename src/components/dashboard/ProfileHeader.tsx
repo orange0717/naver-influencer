@@ -68,8 +68,29 @@ export default function ProfileHeader({
     }
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      onProfileChange?.({ imageUrl: dataUrl });
+      const src = reader.result as string;
+      // 아바타는 44px로 렌더되므로 256px로 다운스케일해 저장한다.
+      // (서버 DB에 계정 귀속으로 저장되므로 원본 대용량 data URL을 그대로 넣지 않는다.)
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 256;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { onProfileChange?.({ imageUrl: src }); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        try {
+          onProfileChange?.({ imageUrl: canvas.toDataURL('image/jpeg', 0.85) });
+        } catch {
+          onProfileChange?.({ imageUrl: src });
+        }
+      };
+      img.onerror = () => onProfileChange?.({ imageUrl: src });
+      img.src = src;
     };
     reader.readAsDataURL(file);
   };
