@@ -22,9 +22,14 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // API가 500/에러 바디({error})를 주면 그걸 data로 삼아 grandTotal.toLocaleString()에서
+    // 크래시하던 문제 방지 — 응답이 실제 통계 형태(rows 배열 + grandTotal 숫자)일 때만 채택하고,
+    // 그 외(로드 실패)는 null로 두어 "데이터를 불러올 수 없습니다"로 분기한다(로딩/에러 구분).
     fetch('/api/stats/yearly')
-      .then(r => r.json())
-      .then(setData)
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: StatsData | null) =>
+        setData(d && Array.isArray(d.rows) && typeof d.grandTotal === 'number' ? d : null),
+      )
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
