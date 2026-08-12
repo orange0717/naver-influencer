@@ -43,12 +43,21 @@ export async function GET(
   }
 
   const postIds = recommendation.matched_post_ids || [];
-  let posts: { post_id: string; title: string | null; url: string; view_count: number | null; published_at: string | null }[] = [];
+  let posts: {
+    post_id: string;
+    title: string | null;
+    url: string;
+    view_count: number | null;
+    published_at: string | null;
+    thumbnail_url: string | null;
+    tags: string[];
+  }[] = [];
 
   if (postIds.length > 0) {
     const { data: rows, error: postsError } = await supabase
       .from('blog_post_contents')
-      .select('post_id, title, blog_id, view_count, published_at')
+      // thumbnail_url·tags: 추천 카드에서 글을 직접 선택할 때 썸네일 표시 + 적합도 실시간 재계산용(스펙 18·19항)
+      .select('post_id, title, blog_id, view_count, published_at, thumbnail_url, tags')
       .eq('user_id', userId)
       .in('post_id', postIds);
 
@@ -61,6 +70,8 @@ export async function GET(
         url: `https://blog.naver.com/${p.blog_id}/${p.post_id}`,
         view_count: p.view_count,
         published_at: p.published_at,
+        thumbnail_url: (p.thumbnail_url as string | null) ?? null,
+        tags: (p.tags as string[] | null) || [],
       }));
     }
   }

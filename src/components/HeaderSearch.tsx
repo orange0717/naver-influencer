@@ -13,7 +13,8 @@ interface SearchableItem extends SidebarItem {
 
 const SEARCHABLE_ITEMS: SearchableItem[] = SIDEBAR_GROUPS.flatMap((group) =>
   group.items
-    .filter((item) => !item.disabled)
+    // 클릭 불가 소제목(heading: '블로그'/'인플루언서'/'리스트' 등)과 준비중 항목은 검색 대상에서 제외
+    .filter((item) => !item.disabled && !item.heading)
     .map((item) => ({ ...item, groupLabel: group.label })),
 );
 

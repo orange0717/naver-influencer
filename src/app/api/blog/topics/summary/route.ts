@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireInfluencerPlan } from '@/lib/admin';
+import { computeTopicFit } from '@/lib/topic-fit';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   let recommendationsQuery = supabase
     .from('topic_ai_recommendations')
-    .select('id, suggested_name, topic_subject_category, representative_keywords, estimated_post_count, reasoning, generated_at')
+    .select('id, suggested_name, topic_subject_category, representative_keywords, matched_post_ids, estimated_post_count, reasoning, generated_at')
     .eq('user_id', userId)
     .order('estimated_post_count', { ascending: false });
   if (blogId) recommendationsQuery = recommendationsQuery.eq('blog_id', blogId);
@@ -63,6 +64,49 @@ export async function GET(request: NextRequest) {
   const summary = summaryError ? null : (summaries || [])[0] || null;
   const safeRecommendations = recError ? [] : recommendations || [];
 
+  // ─── 추천 카드용 보강: 대표 썸네일 + 적합도(키워드 일치율) ───
+  // 매칭 글들의 썸네일/제목/태그를 한 번에 조회해 카드가 클릭 전에도 시각적으로 어떤 묶음인지
+  // 바로 이해되게 한다(스펙 18항). 적합도는 저장된 데이터만으로 계산(새 AI 호출 없음, 스펙 21항).
+  type PostMeta = { title: string | null; tags: string[]; thumbnail_url: string | null };
+  const postMetaById = new Map<string, PostMeta>();
+  const allPostIds = [
+    ...new Set(
+      safeRecommendations.flatMap((r) => ((r.matched_post_ids as string[] | null) || []).slice(0, 12)),
+    ),
+  ];
+  if (allPostIds.length > 0) {
+    const CHUNK = 200;
+    for (let i = 0; i < allPostIds.length; i += CHUNK) {
+      const chunk = allPostIds.slice(i, i + CHUNK);
+      const { data: metaRows } = await supabase
+        .from('blog_post_contents')
+        .select('post_id, title, tags, thumbnail_url')
+        .eq('user_id', userId)
+        .in('post_id', chunk);
+      for (const m of metaRows || []) {
+        postMetaById.set(m.post_id as string, {
+          title: (m.title as string | null) ?? null,
+          tags: (m.tags as string[] | null) || [],
+          thumbnail_url: (m.thumbnail_url as string | null) ?? null,
+        });
+      }
+    }
+  }
+
+  const enrichedRecommendations = safeRecommendations.map((r) => {
+    const matchedIds = (r.matched_post_ids as string[] | null) || [];
+    const metas = matchedIds.map((id) => postMetaById.get(id)).filter((m): m is PostMeta => !!m);
+    const thumbnails = metas.map((m) => m.thumbnail_url).filter((u): u is string => !!u).slice(0, 4);
+    const fitScore = computeTopicFit(
+      (r.representative_keywords as string[] | null) || [],
+      metas.map((m) => ({ title: m.title, tags: m.tags })),
+    );
+    // matched_post_ids는 카드 표시에 불필요하므로 payload에서 제외(상세는 /[id]에서 조회)
+    const { matched_post_ids: _omit, ...rest } = r;
+    void _omit;
+    return { ...rest, thumbnails, fitScore };
+  });
+
   return NextResponse.json({
     myTopicCount: summary?.my_topic_count ?? 0,
     publishedCount: summary?.published_count ?? 0,
@@ -74,6 +118,6 @@ export async function GET(request: NextRequest) {
       avg: summary?.competitor_avg_topic_count ?? null,
       top: summary?.competitor_top_topic_count ?? null,
     },
-    recommendations: safeRecommendations,
+    recommendations: enrichedRecommendations,
   });
 }

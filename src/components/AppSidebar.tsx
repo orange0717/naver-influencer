@@ -37,8 +37,17 @@ function itemPadding(indent?: boolean) {
   return indent ? 'pl-6' : 'pl-[10px]';
 }
 
-/** 클릭 불가능한 소제목 — 그룹 내부 구간 구분용 (예: "리스트") */
-function NavHeading({ label }: { label: string }) {
+/** 클릭 불가능한 소제목 — 그룹 내부 구간 구분용 (예: "리스트", "블로그"/"인플루언서") */
+function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) {
+  // subgroup(블로그/인플루언서)은 두 하위그룹 경계를 분명히 하도록 더 굵고 진하게, 위 여백도 크게(스펙 24항).
+  if (subgroup) {
+    return (
+      <div className="flex items-center gap-1.5 pl-[10px] pr-3 pt-3 pb-1 first:pt-1">
+        <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />
+        <span className="text-[12px] font-extrabold text-text tracking-wide truncate">{label}</span>
+      </div>
+    );
+  }
   return (
     <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[11px] font-bold text-dim/60 uppercase tracking-wide truncate`}>
       {label}
@@ -64,7 +73,7 @@ function NavLink({
   const padding = itemPadding(item.indent);
 
   if (item.heading) {
-    return <NavHeading label={item.label} />;
+    return <NavHeading label={item.label} subgroup={item.subgroup} />;
   }
 
   if (item.disabled) {
