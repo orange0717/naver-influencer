@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createServiceClient, createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
+import { createServiceClient, createRouteHandlerClient, getUserWithTimeout, hasSupabaseAuthCookie } from '@/lib/supabase-server';
+import SessionRecovering from '@/components/SessionRecovering';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
 import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import RankDistribution from '@/components/dashboard/RankDistribution';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
-import BlogVisitorChart from '@/components/dashboard/BlogVisitorChart';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import DashboardHubCards from '@/components/dashboard/DashboardHubCards';
@@ -44,7 +44,14 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
   const cookieStore = await cookies();
   const supabaseAuth = await createRouteHandlerClient();
-  const authUser = await getUserWithTimeout(supabaseAuth);
+  let authUser = await getUserWithTimeout(supabaseAuth);
+
+  // 로그인 쿠키는 있는데 Auth 응답이 지연되어 null 이 나온 경우(타임아웃)와
+  // 진짜 비로그인을 구분한다. 쿠키가 있으면 게스트로 강등하지 말고 1회 더 시도.
+  const hasAuthCookie = await hasSupabaseAuthCookie();
+  if (!authUser && hasAuthCookie) {
+    authUser = await getUserWithTimeout(supabaseAuth, 8000);
+  }
 
   let isLoggedIn = false;
 
@@ -90,6 +97,11 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   if (!naverId) {
     if (isLoggedIn) {
       redirect('/profile');
+    }
+    // 로그인 쿠키는 있으나 Auth 지연으로 사용자 판정에 실패한 경우 → 게스트 빈 화면
+    // 대신 "세션 확인 중" 상태를 노출하고 자동 재시도(새 PC/느린 네트워크 오인 방지).
+    if (hasAuthCookie) {
+      return <SessionRecovering />;
     }
     // 비로그인(게스트): 강제 리다이렉트 없이 MY 대시보드의 빈 상태(Empty State)를 렌더.
     return <GuestDashboard />;
@@ -769,9 +781,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
-
-      {/* ─── 2-3. 조회수(블로그 방문자) 추이 ─── */}
-      <BlogVisitorChart blogId={naverId} />
 
       {/* ─── 3. 순위 추이 차트 ─── */}
       <RankTrendSection mode="influencer" naverId={naverId} />

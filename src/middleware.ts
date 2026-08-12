@@ -441,6 +441,15 @@ export async function middleware(request: NextRequest) {
     const ok = await withTimeout(verifySession(user.id, deviceId), 4000, true);
     if (!ok) {
       await supabase.auth.signOut();
+      // API(fetch) 요청은 HTML 로그인 페이지로 302 리다이렉트하면 클라이언트가
+      // res.json() 파싱에 실패하고 그 오류를 삼켜 "데이터 없음" 빈 상태로 오인한다.
+      // → API 는 401 JSON 으로 응답해 클라이언트가 "재로그인 필요"를 정확히 표시하게 한다.
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'session_taken', reason: '다른 기기에서 로그인되어 세션이 종료되었습니다.' },
+          { status: 401 },
+        );
+      }
       const url = request.nextUrl.clone();
       url.pathname = '/';
       url.search = '?authModal=login&reason=session_taken';

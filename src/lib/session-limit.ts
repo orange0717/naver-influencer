@@ -2,13 +2,19 @@
  * session-limit.ts
  * 동시 로그인 기기 제한 — 서버 헬퍼
  *
- * 정책: 전 플랜 공통 1대
+ * 정책: 전 플랜 공통 3대 (PC + 노트북 + 모바일 앱 등 정상 다기기 사용 허용)
+ *
+ * 과거 1대 정책은 웹·모바일(Capacitor)·데스크톱·확장프로그램이 하나의
+ * 세션 슬롯을 서로 밀어내(가장 오래된 세션 삭제) "다른 PC에서 로그인하면
+ * 기존 기기가 강제 로그아웃되고 화면이 텅 비어 보이는" 증상을 유발했다.
+ * 계정 공유 남용은 여전히 3대 상한으로 억제하면서 정상 사용자의 다기기
+ * 동기화 경험을 회복하기 위해 3대로 상향. (2026-08-12)
  */
 
 import { createServiceClient } from './supabase-server';
 import { isValidDeviceId } from './device-id';
 
-const SESSION_LIMIT = 1;
+const SESSION_LIMIT = 3;
 
 /* ── verifySession 결과 캐시 ─────────────────────────────────────
    미들웨어가 거의 모든 요청에 verifySession 을 호출하므로 (SELECT + UPDATE
@@ -96,7 +102,7 @@ export async function registerSession(
     );
   if (upsertErr) return { ok: false, reason: 'upsert_failed' };
 
-  // 2) 한도 초과 시 가장 오래된 세션부터 삭제 (전 플랜 1대)
+  // 2) 한도 초과 시 가장 오래된 세션부터 삭제 (전 플랜 3대)
   const { data: rows } = await supabase
     .from('user_sessions')
     .select('id')
@@ -116,7 +122,7 @@ export async function registerSession(
 
 /**
  * 매 요청마다 호출 — 현재 device 가 user_sessions 에 살아있는지 확인
- * - 전 플랜 공통 1대 제한 → 세션 없으면 false (강제 로그아웃 대상)
+ * - 전 플랜 공통 3대 제한 → 세션 없으면 false (강제 로그아웃 대상)
  *
  * 성능: 30초 인메모리 캐시. 첫 호출(또는 캐시 만료)은 DB 라운드트립 1회로
  *   유지되, 그 직후 30초간의 같은 device 요청은 캐시 hit 으로 0회.

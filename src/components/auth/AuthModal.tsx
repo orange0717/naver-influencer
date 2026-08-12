@@ -208,10 +208,22 @@ export default function AuthModal() {
 
       stage = 'session-register';
       const tSession = performance.now();
+      // 이 기기를 user_sessions 에 등록해야 이후 요청이 verifySession 을 통과한다.
+      // 등록이 실패한 채 로그인만 진행되면, 새 기기가 미들웨어에서 강제 로그아웃되어
+      // 모든 메뉴가 "데이터 없음"으로 보이는 증상이 발생한다 → 최대 2회 재시도.
       try {
         const { getDeviceId } = await import('@/lib/device-id');
-        getDeviceId();
-        await fetch('/api/session/register', { method: 'POST' });
+        getDeviceId(); // localStorage+쿠키에 device-id 동기화 (서버가 쿠키로 읽음)
+        let registered = false;
+        for (let attempt = 0; attempt < 2 && !registered; attempt++) {
+          try {
+            const res = await fetch('/api/session/register', { method: 'POST' });
+            const body = await res.json().catch(() => null);
+            registered = res.ok && body?.ok === true;
+          } catch { /* 네트워크 오류 — 다음 시도 */ }
+          if (!registered && attempt === 0) await new Promise(r => setTimeout(r, 300));
+        }
+        if (!registered) console.warn('[login] session-register 실패 — 새 기기에서 세션이 튈 수 있음');
       } catch { /* 등록 실패해도 로그인 흐름은 계속 */ }
       console.info(`[login] session-register stage=${Math.round(performance.now() - tSession)}ms`);
 
