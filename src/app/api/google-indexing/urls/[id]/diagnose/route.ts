@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePaidPlan } from '@/lib/admin';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { createServiceClient } from '@/lib/supabase-server';
 import { analyzePost } from '@/lib/post-structure-analyzer';
 import { computeContentScore, type SubScores } from '@/lib/post-content-scorer';
@@ -84,6 +85,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (needsNarrative && !AI_DISABLED && apiKey && analysis?.success) {
+    // 실제 Claude 호출이 일어나는 모호 케이스에만 크레딧 확인(미활성이면 통과).
+    const creditDenied = await assertCreditFor(paid.authUser.userId, 'ai_seo_diagnose');
+    if (creditDenied) return creditDenied;
     try {
       const anthropic = getAnthropicClient(apiKey);
       const message = await anthropic.messages.create({
@@ -105,7 +109,10 @@ ${UNTRUSTED_DATA_NOTICE}`,
         ],
       });
       const text = message.content[0]?.type === 'text' ? message.content[0].text.trim() : '';
-      if (text) aiDiagnosis = text;
+      if (text) {
+        aiDiagnosis = text;
+        await chargeCreditIfEnabled(paid.authUser.userId, 'ai_seo_diagnose'); // AI 진단 성공 시에만 차감(미활성이면 no-op)
+      }
     } catch (err) {
       console.error('[google-indexing/diagnose] Claude 호출 실패:', err instanceof Error ? err.message : err);
       // Claude 실패 시에도 규칙기반 진단은 그대로 반환한다.

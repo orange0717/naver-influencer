@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePaidPlan } from '@/lib/admin';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 import { submitSitemapForUser } from '@/lib/sitemap-builder';
@@ -33,6 +34,9 @@ export async function POST(request: NextRequest) {
   if (!blogId) {
     return NextResponse.json({ error: '프로필에 등록된 블로그 아이디가 없어요.' }, { status: 403 });
   }
+
+  const creditDenied = await assertCreditFor(paid.authUser.userId, 'bulk_index_register');
+  if (creditDenied) return creditDenied;
 
   const collected: { id: string; title: string; url: string }[] = [];
   const maxPages = mode === 'all' ? ALL_MAX_PAGES : Math.ceil(RECENT_TARGET / PAGE_SIZE);
@@ -78,6 +82,8 @@ export async function POST(request: NextRequest) {
     console.error('[google-indexing/bulk-register] upsert error:', error.message);
     return NextResponse.json({ error: '대량 등록 중 오류가 발생했어요.' }, { status: 500 });
   }
+
+  await chargeCreditIfEnabled(paid.authUser.userId, 'bulk_index_register'); // 등록 성공 후 차감(미활성이면 no-op)
 
   submitSitemapForUser(paid.authUser.userId).catch((err) => {
     console.warn('[google-indexing/bulk-register] sitemap submit 실패:', err instanceof Error ? err.message : err);

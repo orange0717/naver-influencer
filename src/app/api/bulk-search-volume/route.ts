@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { fetchNaverKeywordTool, mapNaverKeywordToResult, type NaverKeyword, type KeywordResult } from '@/lib/naver-searchad';
 import { bulkKeywordLimiter } from '@/lib/rate-limit';
 
@@ -84,6 +85,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'API 키가 설정되지 않았습니다.' }, { status: 503 });
   }
 
+  const creditDenied = await assertCreditFor(auth.authUser.userId, 'bulk_search_volume');
+  if (creditDenied) return creditDenied;
+
   // 5개씩 배치 처리
   const results: KeywordResult[] = [];
   for (let i = 0; i < keywords.length; i += BATCH_SIZE) {
@@ -96,5 +100,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  await chargeCreditIfEnabled(auth.authUser.userId, 'bulk_search_volume'); // 성공 후 차감(미활성이면 no-op)
   return NextResponse.json({ results, total: results.length });
 }

@@ -11,6 +11,7 @@ import {
 import { chatbookMessageLimiter, getClientIp } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { getAnthropicClient, CLAUDE_MODEL_HAIKU as MODEL_HAIKU, CLAUDE_MODEL_OPUS as MODEL_OPUS } from '@/lib/claude-client';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 90; // Opus 응답이 더 느리므로 여유
@@ -153,6 +154,12 @@ export async function POST(
     return NextResponse.json({ error: '메시지 형식이 올바르지 않습니다.' }, { status: 400 });
   }
 
+  // Opus(결제자) 경로만 크레딧 확인 — Haiku(무료체험)는 free-trial 카운트로 제어(미활성이면 통과).
+  if (user.isPaid) {
+    const creditDenied = await assertCreditFor(user.userId, 'ai_dashboard_opus');
+    if (creditDenied) return creditDenied;
+  }
+
   // 사용자 메시지 저장 (Claude 호출 전에)
   const { data: userMsg } = await supabase
     .from('claude_messages')
@@ -195,6 +202,10 @@ export async function POST(
 
   if (!replyText) {
     return NextResponse.json({ error: '응답을 받지 못했습니다.' }, { status: 502 });
+  }
+
+  if (user.isPaid) {
+    await chargeCreditIfEnabled(user.userId, 'ai_dashboard_opus'); // Opus 응답 성공 후 차감(미활성이면 no-op)
   }
 
   const { data: saved } = await supabase

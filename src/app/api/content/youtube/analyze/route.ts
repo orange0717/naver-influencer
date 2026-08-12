@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { contentAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { ClaudeApiKeyMissingError } from '@/lib/claude-client';
@@ -47,6 +48,9 @@ export async function POST(request: NextRequest) {
     );
   }
   const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  const creditDenied = await assertCreditFor(auth.authUser.userId, 'ai_youtube_analyze');
+  if (creditDenied) return creditDenied;
 
   // 1) 메타데이터 (조회수/좋아요/댓글/길이 등 — YouTube Data API v3)
   let metadata;
@@ -103,6 +107,8 @@ export async function POST(request: NextRequest) {
     console.error('[content/youtube/analyze] Claude 분석 실패:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: '콘텐츠 분석에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
   }
+
+  await chargeCreditIfEnabled(auth.authUser.userId, 'ai_youtube_analyze'); // Claude 분석 성공 후 차감(미활성이면 no-op)
 
   // 5) 저장 (실패해도 사용자에게는 분석 결과를 그대로 반환 — 이력 저장은 부가 기능)
   let contentItemId: string | null = null;

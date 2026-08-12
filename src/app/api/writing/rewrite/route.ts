@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
 
@@ -83,6 +84,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'AI 서비스를 사용할 수 없습니다.' }, { status: 503 });
   }
 
+  const creditDenied = await assertCreditFor(auth.authUser.userId, 'ai_rewrite');
+  if (creditDenied) return creditDenied;
+
   try {
     const message = await anthropic.messages.create({
       model: CLAUDE_MODEL_HAIKU,
@@ -102,6 +106,7 @@ export async function POST(request: NextRequest) {
       parsed = { correctionNotes: [], result: raw };
     }
 
+    await chargeCreditIfEnabled(auth.authUser.userId, 'ai_rewrite'); // 성공 후 차감(미활성이면 no-op)
     return NextResponse.json({
       result: parsed.result || raw,
       correctionNotes: Array.isArray(parsed.correctionNotes) ? parsed.correctionNotes : [],
