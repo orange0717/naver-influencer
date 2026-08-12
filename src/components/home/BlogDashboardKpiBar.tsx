@@ -40,6 +40,8 @@ const ICONS = {
 
 // KPI 카드 표시 메타(라벨·단위·아이콘·정상값 색상). 데이터/상태는 서버 metric에서 온다.
 // challenge(키워드챌린지)는 블로그 데이터가 아니므로 이 목록에 없음 — 인플루언서 대시보드(/my)로 분리됨.
+// AI 브리핑 인용·AI 탭 노출은 KPI 카드로 표시한다. 단, 상세 요약 패널(AiExposureSummary)은
+// 대시보드에서 제거되어 상세는 별도 'AI 브리핑 · AI 탭 인용' 탭(/my/naver-mate)에서 확인한다.
 const CARD_META: Record<string, { label: string; suffix: string; icon: React.ReactNode; color: 'accent' | 'up' | 'down' | 'gold' | 'dim' }> = {
   blog_today_visitors: { label: '오늘 방문자', suffix: '명', icon: ICONS.visitor, color: 'accent' },
   blog_30day_visitors: { label: '최근 30일 방문자', suffix: '명', icon: ICONS.visitor, color: 'accent' },

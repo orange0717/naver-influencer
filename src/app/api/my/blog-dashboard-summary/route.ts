@@ -277,6 +277,10 @@ export async function GET(request: NextRequest) {
     }),
   };
 
+  // 대시보드 KPI 렌더 순서 — 블로그 핵심 지표 + AI 브리핑·AI 탭 KPI 카드.
+  // AI 브리핑·AI 탭은 KPI 바에 카드로 표시하되, 상세 요약 패널(AiExposureSummary)은
+  // 대시보드에서 제거됨 → 상세는 별도 'AI 브리핑 · AI 탭 인용' 탭(/my/naver-mate)에서 확인.
+  // aiExposure 집계는 그대로 유지되어 별도 탭·통합 합산이 계속 사용한다.
   const order = [
     'blog_today_visitors',
     'blog_30day_visitors',

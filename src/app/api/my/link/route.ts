@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { validateBody, linkInfluencerSchema } from '@/lib/validations';
 import { isRestricted } from '@/lib/admin';
+import { ensureInfluencerBlogId } from '@/lib/influencer-blog';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,20 @@ export async function POST(request: NextRequest) {
   if (updateError) {
     console.error('[my/link] Update error:', updateError.message);
     return NextResponse.json({ error: '연결에 실패했습니다.' }, { status: 500 });
+  }
+
+  // 연결 직후 인플루언서의 "실제 블로그"를 in.naver.com에서 해석해 blog_id로 저장한다.
+  // naver_id와 실제 blog_id가 다른 경우(예: orangelibrary → orangelibrary_) 대시보드가 엉뚱한
+  // 블로그를 매칭하는 것을 방지한다. blog_id가 비었거나 naver_id로 잘못 저장된 경우만 교정한다.
+  try {
+    const { data: cur } = await supabase
+      .from('users')
+      .select('blog_id')
+      .eq('auth_id', authUser.id)
+      .maybeSingle();
+    await ensureInfluencerBlogId(supabase, authUser.id, cur?.blog_id ?? null, naverId);
+  } catch (e) {
+    console.error('[my/link] blog_id 자동 해석 실패:', e);
   }
 
   const { data: userRow } = await supabase
