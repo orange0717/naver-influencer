@@ -52,6 +52,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '인플루언서', href: '#influencer', heading: true, subgroup: true },
       { label: '대시보드', href: '/my', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '맞팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '포스팅', href: '#posting', heading: true, subgroup: true },
       { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true, indent: true },
       // 글 심층피드백 = 기존 블로그 심층피드백 + AI글 적합도 + 인플루언서 글 적합도를 한 번의

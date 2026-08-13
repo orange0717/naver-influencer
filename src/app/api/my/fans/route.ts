@@ -15,24 +15,24 @@ interface FanRow {
   last_seen_at: string;
 }
 
+// 사람별 관계는 "확정값"만 존재한다(내 인증 목록의 집합연산이므로 추정 없음, 스펙 16-1·16-2).
+//   mutual        = 맞팬
+//   onlyIFollow   = 내가 팬함
+//   onlyFollowsMe = 상대만 팬함
+// '관계 없음/확인 중/확인 실패'는 사람별이 아니라 데이터셋(syncState) 수준 개념이다.
+type Relationship = 'mutual' | 'onlyIFollow' | 'onlyFollowsMe';
+
 interface FanItem {
   urlId: string;
   nickname: string;
   imageUrl: string;
   category: string;
   followerCount: number;
-  firstSeenAt: string;
-}
-
-function toItem(row: FanRow): FanItem {
-  return {
-    urlId: row.target_url_id,
-    nickname: row.target_nickname || row.target_url_id,
-    imageUrl: row.target_image_url || '',
-    category: row.target_category || '',
-    followerCount: row.target_follower_count ?? 0,
-    firstSeenAt: row.first_seen_at,
-  };
+  relationship: Relationship;
+  myFollow: boolean;    // 내가 상대를 팬함
+  theirFollow: boolean; // 상대가 나를 팬함
+  firstSeenAt: string;  // 두 방향 중 가장 이른 최초 관측
+  lastSeenAt: string;   // 두 방향 중 가장 최근 관측(마지막 확인)
 }
 
 export async function GET(request: NextRequest) {
@@ -63,28 +63,46 @@ export async function GET(request: NextRequest) {
     byUrlId.set(r.target_url_id, slot);
   }
 
-  const mutual: FanItem[] = [];
-  const onlyIFollow: FanItem[] = [];     // 내가만 팬 (일방적으로 내가 팬)
-  const onlyFollowsMe: FanItem[] = [];   // 나를만 팬 (일방적으로 나를 팬)
+  const items: FanItem[] = [];
+  const summary = { total: 0, mutual: 0, onlyIFollow: 0, onlyFollowsMe: 0 };
 
   for (const slot of byUrlId.values()) {
-    if (slot.iFollow && slot.followsMe) {
-      // 두 쪽 다 있으면 더 최근 정보 기준으로 표시
-      const newer = new Date(slot.iFollow.last_seen_at) > new Date(slot.followsMe.last_seen_at)
-        ? slot.iFollow : slot.followsMe;
-      mutual.push(toItem(newer));
-    } else if (slot.iFollow) {
-      onlyIFollow.push(toItem(slot.iFollow));
-    } else if (slot.followsMe) {
-      onlyFollowsMe.push(toItem(slot.followsMe));
-    }
+    const myFollow = !!slot.iFollow;
+    const theirFollow = !!slot.followsMe;
+    const relationship: Relationship = myFollow && theirFollow
+      ? 'mutual'
+      : myFollow ? 'onlyIFollow' : 'onlyFollowsMe';
+
+    // 표시용 프로필은 더 최근에 관측된 행 기준
+    const rowsForItem = [slot.iFollow, slot.followsMe].filter(Boolean) as FanRow[];
+    const newer = rowsForItem.reduce((a, b) =>
+      new Date(a.last_seen_at) >= new Date(b.last_seen_at) ? a : b);
+    const firstSeen = rowsForItem.reduce((min, r) =>
+      new Date(r.first_seen_at) < new Date(min) ? r.first_seen_at : min, rowsForItem[0].first_seen_at);
+    const lastSeen = rowsForItem.reduce((max, r) =>
+      new Date(r.last_seen_at) > new Date(max) ? r.last_seen_at : max, rowsForItem[0].last_seen_at);
+
+    items.push({
+      urlId: newer.target_url_id,
+      nickname: newer.target_nickname || newer.target_url_id,
+      imageUrl: newer.target_image_url || '',
+      category: newer.target_category || '',
+      followerCount: newer.target_follower_count ?? 0,
+      relationship,
+      myFollow,
+      theirFollow,
+      firstSeenAt: firstSeen,
+      lastSeenAt: lastSeen,
+    });
+
+    summary.total += 1;
+    summary[relationship] += 1;
   }
 
-  // 정렬: 팬 수 내림차순
-  const sortByFanDesc = (a: FanItem, b: FanItem) => b.followerCount - a.followerCount;
-  mutual.sort(sortByFanDesc);
-  onlyIFollow.sort(sortByFanDesc);
-  onlyFollowsMe.sort(sortByFanDesc);
+  // 기본 정렬: 맞팬 우선 → 팬 수 내림차순
+  const rank: Record<Relationship, number> = { mutual: 0, onlyIFollow: 1, onlyFollowsMe: 2 };
+  items.sort((a, b) =>
+    rank[a.relationship] - rank[b.relationship] || b.followerCount - a.followerCount);
 
   // 마지막 동기화 정보
   const { data: lastSync } = await supabase
@@ -95,17 +113,19 @@ export async function GET(request: NextRequest) {
     .limit(1)
     .maybeSingle();
 
+  // 데이터셋 수준 확인 상태(스펙 5·16): 절대 맞팬으로 추정하지 않고 정직하게 구분한다.
+  //   never  = 한 번도 동기화 안 함 → 전체가 '확인 중'
+  //   failed = 마지막 동기화 실패   → '확인 실패'(기존 데이터는 보존)
+  //   ok     = 정상 확인됨
+  const syncState: 'never' | 'ok' | 'failed' =
+    !lastSync && summary.total === 0 ? 'never'
+    : lastSync?.status === 'failed' ? 'failed'
+    : 'ok';
+
   return NextResponse.json({
-    counts: {
-      mutual: mutual.length,
-      onlyIFollow: onlyIFollow.length,
-      onlyFollowsMe: onlyFollowsMe.length,
-      totalIFollow: mutual.length + onlyIFollow.length,
-      totalFollowsMe: mutual.length + onlyFollowsMe.length,
-    },
-    mutual,
-    onlyIFollow,
-    onlyFollowsMe,
+    summary,
+    syncState,
+    items,
     lastSync: lastSync || null,
   });
 }

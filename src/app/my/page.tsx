@@ -12,6 +12,7 @@ import RankTrendSection from '@/components/dashboard/RankTrendSection';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import DashboardHubCards from '@/components/dashboard/DashboardHubCards';
+import FanRelationSummaryCard from '@/components/dashboard/FanRelationSummaryCard';
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
 import TopicPerformanceSection, { type TopicPerformanceRow } from '@/components/dashboard/TopicPerformanceSection';
@@ -781,6 +782,9 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         topic={{ count: homeTopics.count, topTitles: homeTopics.topTitles, lastSyncedAt: homeTopics.lastSyncedAt }}
         canSync={!!naverId}
       />
+
+      {/* ─── 팬 관계 요약(스펙 15) — 클릭 시 /my/fans 상세 ─── */}
+      <FanRelationSummaryCard />
 
       {/* ─── 활동 현황 + 순위별 키워드 분포 ─── */}
       <DashboardCard title="활동 현황">
