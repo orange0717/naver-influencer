@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
+import { consumePaidDailyCap } from '@/lib/free-quota';
 import { contentAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { ClaudeApiKeyMissingError } from '@/lib/claude-client';
@@ -18,6 +19,21 @@ export async function POST(request: NextRequest) {
 
   const auth = await requireInfluencerPlan(request);
   if (auth.error) return auth.error;
+
+  // 릴스·쇼츠 분석은 외부 에이전트(Manus)로 실제 영상을 열람해 콜당 원가가 매우 높다(~2,000원).
+  // 정식 애드온 과금(건당/월정액 SKU) 전까지는 사용자당 하루 상한으로 남용을 막아 마진을 보호한다.
+  const cap = await consumePaidDailyCap({ userId: auth.authUser.userId, actionId: 'shortform_analyze', max: 3 });
+  if (!cap.allowed) {
+    return NextResponse.json(
+      {
+        error: `릴스·쇼츠 분석은 원가가 높은 기능이라 하루 ${cap.limit}회까지 이용할 수 있습니다.`,
+        quotaExceeded: true,
+        used: cap.used,
+        limit: cap.limit,
+      },
+      { status: 402 },
+    );
+  }
 
   let body: { url?: unknown };
   try {

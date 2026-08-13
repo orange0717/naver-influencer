@@ -21,20 +21,25 @@ export type CreditFeature =
   | 'bulk_top3'          // 대량 TOP3 순위 조회 (≤50, 네이버 API)
   | 'bulk_index_register'; // 대량 구글 색인등록 (≤300, GSC API)
 
-/** 기능별 차감 크레딧 (초안). 0 = 크레딧 미차감(구독 권한만으로 이용). */
+/**
+ * 기능별 차감 크레딧. 0 = 크레딧 미차감(구독 권한만으로 이용).
+ * 스케일 기준: 콜당 원가에 비례한 1~8 단위(2026-08-13 요금제 재정합).
+ * 크레딧 소매가 ~10원/개이므로 (차감크레딧 × 10원) ≥ 콜당 AI원가 를 만족한다.
+ * 예: 제목 2크레딧(≈20원) vs 원가 7원, 심층피드백 7크레딧 vs 22원.
+ */
 export const CREDIT_COSTS: Record<CreditFeature, number> = {
-  ai_titles: 5,
-  ai_content_angles: 5,
-  ai_body: 20,
-  ai_rewrite: 10,
-  ai_blog_analyze: 10,
-  ai_youtube_analyze: 15,
-  ai_seo_diagnose: 5,
-  ai_dashboard_opus: 30,
-  ai_consultant: 0,
-  bulk_search_volume: 50,
-  bulk_top3: 30,
-  bulk_index_register: 50,
+  ai_titles: 2,          // 제목 생성 — 원가 ~7원
+  ai_content_angles: 4,  // 글감 찾기 — ~13원
+  ai_body: 8,            // 본문 생성 — 최대 토큰, 최고가
+  ai_rewrite: 4,         // 맞춤법 보정 — ~12원
+  ai_blog_analyze: 7,    // 글 심층 피드백 — ~22원
+  ai_youtube_analyze: 8, // 유튜브 숏츠 분석 — ~25원
+  ai_seo_diagnose: 4,    // 미노출/SEO 진단 — ~11원
+  ai_dashboard_opus: 6,  // AI 브리핑(Opus) — ~18원
+  ai_consultant: 0,      // AI 상담 — 무료(하루 3회 정책)
+  bulk_search_volume: 8, // 대량 검색량(≤100건 배치)
+  bulk_top3: 5,          // 대량 TOP3(≤50건 배치)
+  bulk_index_register: 8,// 대량 색인등록(≤300건 배치)
 };
 
 /** 사용자에게 보여줄 기능 한글명 (거래내역/부족 안내용) */
@@ -61,10 +66,10 @@ export interface CreditPackage {
   name: string;
 }
 export const CREDIT_PACKAGES: CreditPackage[] = [
-  { key: 'CREDIT_100',  credits: 100,  amount: 1100,  name: '크레딧 100' },
-  { key: 'CREDIT_500',  credits: 500,  amount: 5000,  name: '크레딧 500' },
-  { key: 'CREDIT_1000', credits: 1000, amount: 9500,  name: '크레딧 1,000' },
-  { key: 'CREDIT_3000', credits: 3000, amount: 27000, name: '크레딧 3,000' },
+  { key: 'CREDIT_100',  credits: 100,  amount: 1000,  name: '크레딧 100' },   // 10.0원/개
+  { key: 'CREDIT_500',  credits: 500,  amount: 4500,  name: '크레딧 500' },   // 9.0원/개
+  { key: 'CREDIT_1000', credits: 1000, amount: 8500,  name: '크레딧 1,000' }, // 8.5원/개
+  { key: 'CREDIT_3000', credits: 3000, amount: 24000, name: '크레딧 3,000' }, // 8.0원/개
 ];
 
 export function getCreditPackage(key: string): CreditPackage | null {
@@ -77,9 +82,12 @@ export function getCreditPackage(key: string): CreditPackage | null {
  * plan tier 는 payment-config.ts PlanDef.tier ('blogger' | 'influencer') 기준.
  */
 export const PLAN_MONTHLY_CREDITS: Record<string, number> = {
-  blogger: 500,
-  influencer: 1500,
+  blogger: 400,     // 5,500 플랜: 풀사용 시 소모 ≈390 (여유)
+  influencer: 800,  // 9,900 플랜: 풀사용 시 소모 ≈1,060 → 헤비유저는 추가충전 유도
 };
 
-/** 신규 가입 1회성 무료 체험 크레딧 (초안). */
-export const SIGNUP_BONUS_CREDITS = 100;
+/**
+ * 신규 가입 1회성 무료 체험 크레딧. 무료 상시 이용은 하루 3회 quota(free-quota.ts)로
+ * 별도 처리되므로, 이 보너스는 "유료 기능 맛보기"용 소액. (조정 가능 · 켜기 전 확정)
+ */
+export const SIGNUP_BONUS_CREDITS = 20;

@@ -131,11 +131,11 @@ export default function PrivacyContent() {
       <section className="space-y-2">
         <h2 className="text-base font-bold text-text">11. 제3자 블로그 공개정보 수집 (순위 서비스)</h2>
         <p>
-          서비스는 블로거 순위·카테고리 통계 제공을 위해 네이버 공식 Open API 를 이용하여 공개된 블로그 정보를 수집합니다.
+          서비스는 블로거 순위·카테고리 통계 제공을 위해 네이버 공식 Open API 와 공개된 검색·블로그 페이지를 이용하여 공개된 블로그 정보를 수집합니다.
         </p>
         <ul className="list-disc list-inside pl-2 space-y-1">
           <li><strong>수집 항목:</strong> 블로그 ID(공개된 URL 식별자), 블로그 닉네임, 최근 포스팅 날짜, 발견 경로 키워드</li>
-          <li><strong>수집 방법:</strong> 네이버 Open API (openapi.naver.com) 만 사용. HTML 스크래핑·비공식 API 호출 없음.</li>
+          <li><strong>수집 방법:</strong> 네이버 Open API (openapi.naver.com) 및 로그인 없이 접근 가능한 공개 웹페이지 파싱. 로그인이 필요한 비공개 정보나 비공식 내부 API 는 이용하지 않습니다.</li>
           <li><strong>수집하지 않는 정보:</strong> 이메일·전화번호 등 개인 연락처, 비공개 포스트 내용, 로그인이 필요한 정보</li>
           <li><strong>수집 원칙:</strong> robots.txt 준수, 네이버 일일 할당량의 80% 이내 사용, 요청 간격 250ms 이상</li>
           <li><strong>이용 목적:</strong> 블로거 순위 산정·카테고리별 통계 제공 서비스 운영 (수집한 데이터의 제3자 판매·재배포 금지)</li>

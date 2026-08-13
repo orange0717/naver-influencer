@@ -56,7 +56,7 @@ export default function TermsContent() {
         <ol className="list-decimal list-inside space-y-1 pl-2">
           <li>예비 인플루언서 이용권(1/3/6/9/12개월) 또는 인플루언서 이용권(1/3/6/9/12개월) 구매 시 해당 플랜의 기능을 이용할 수 있습니다.</li>
           <li>이용권 가격 및 기간은 이용권 페이지에 표시된 바에 따릅니다.</li>
-          <li>7일 무료 체험은 1회에 한하여 제공됩니다.</li>
+          <li>무료 회원은 하루 3회까지 주요 기능을 체험할 수 있으며, 이용권 구매 시 해당 플랜 한도에 따라 이용할 수 있습니다.</li>
         </ol>
       </section>
 
@@ -69,7 +69,7 @@ export default function TermsContent() {
           <li>연간 이용권: 월할 계산(결제금액 / 12개월 x 잔여 월수)으로 환불합니다.</li>
           <li>환불 신청은 마이페이지 또는 이메일(orange@orangelibrary.co.kr)로 가능합니다.</li>
           <li>환불은 신청일로부터 영업일 기준 3~5일 이내에 원래 결제 수단으로 처리됩니다.</li>
-          <li>무료 체험 기간 중에는 별도의 환불 절차 없이 이용이 종료됩니다.</li>
+          <li>무료 이용(하루 3회) 분에 대해서는 결제가 발생하지 않으므로 환불 대상이 아닙니다.</li>
         </ol>
       </section>
 
