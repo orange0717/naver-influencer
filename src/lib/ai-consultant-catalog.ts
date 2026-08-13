@@ -75,14 +75,9 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
     href: '/dashboard/writing/titles',
     authOnly: true,
   },
-  {
-    id: 'body-generator',
-    label: '본문 생성',
-    toolDescription: '주제/제목으로 블로그 본문 초안을 생성한다. "글 쓰는 게 막막하다" 질문에 적합.',
-    reasonHint: '블로그 본문 초안을 만들어드립니다',
-    href: '/dashboard/writing/body',
-    authOnly: true,
-  },
+  // 본문 생성(/dashboard/writing/body)은 2026-08-13 카탈로그에서 비노출 처리.
+  // AI가 글 전체를 대필하는 최고원가(ai_body) 기능이라 추천/바로가기에서 내림.
+  // 페이지·라우트(9,900 게이트)는 유지 — 직접 링크로는 접근 가능(되돌리려면 이 항목 복원).
   {
     id: 'spellcheck',
     label: '맞춤법 검사',
