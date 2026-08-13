@@ -117,20 +117,34 @@ const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger', '/keywords/blog-ranking'];
  * 활성 PRO 이용권이 없는 회원을 /subscribe?needsPro=1 로 보낸다.
  * 로그인 자체가 안 된 사용자는 MEMBER_ONLY_GATE_PREFIXES 등 기존 게이트가 먼저 처리한다.
  */
+// 2026-08-13: 무료 하루 3회 정책 적용 화면(키워드/순위/유입 분석)은 이 하드 유료 게이트에서 제외하고,
+// 각 화면의 주요 데이터 API에서 withAnalysisView 로 "무료 3회" 를 서버 강제한다.
+// (/rankings/blogger, /naver-mate-ranking 은 제거, /my/post-analysis 는 아래 EXEMPT 로 예외)
 const PAID_PLAN_GATE_PREFIXES = [
   '/my',
-  '/rankings/blogger',
   '/rankings/influencer',
-  '/naver-mate-ranking',
   '/keywords/bulk',
   '/keywords/recommend',
   '/competitor',
 ];
-// /my 하위이지만 결제 여부와 무관하게 계정 연결 자체는 열어둬야 하는 경로
-const PAID_PLAN_GATE_EXEMPT = ['/my/link', '/my/link-blog'];
+// /my 하위이지만 유료 게이트에서 예외인 경로:
+//  - 계정 연결(link)은 결제 무관하게 열어둠
+//  - /my/post-analysis(유입 분석)는 무료 하루 3회 정책 대상 → 페이지 접근 허용(데이터는 서버가 3회로 캡)
+const PAID_PLAN_GATE_EXEMPT = ['/my/link', '/my/link-blog', '/my/post-analysis', '/my/missing-posts', '/my/keyword-ranking'];
 
 const PAID_PLAN_GATE_API_PREFIXES = ['/api/my'];
 const PAID_PLAN_GATE_API_EXEMPT = ['/api/my/link', '/api/my/link-blog'];
+
+// 2026-08-13 무료 하루 3회 정책: 전용 분석 화면(/my/missing-posts, /my/keyword-ranking)이
+// 마운트 시 조회하는 /api/my 데이터. GET + X-View-Token 헤더가 있으면 유료 하드 게이트를 건너뛰고,
+// 라우트의 withAnalysisView(requireToken)가 "무료 3회"를 서버 강제한다. (토큰 없는 대시보드/북마크
+// 호출과 GET 외 메서드(저장 등)는 기존대로 유료 게이트 유지 — 토큰 스푸핑으로 결제 우회 불가.)
+const VIEW_TOKEN_GATED_API_PREFIXES = [
+  '/api/my/post-missing-state',
+  '/api/my/post-missing-history',
+  '/api/my/keyword-ranking-state',
+  '/api/my/representative-keywords-state',
+];
 
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -390,27 +404,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
-  // 네이버메이트 랭킹 API: 회원 전용 페이지(/naver-mate-ranking)와 동일하게 보호
-  const isNaverMateRankingApi = pathname.startsWith('/api/rankings/naver-mate');
-  if (isNaverMateRankingApi && !user) {
-    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-  }
-  // 로그인된 사용자는 유료 플랜(체험 포함)까지 확인
-  if (isNaverMateRankingApi && user) {
+  // 유료 리스트 API(/api/influencers, 팬수·챌린지·TOP3·순위 전체)는 유료 인플루언서 플랜 전용.
+  // 페이지(/influencers)는 requireInfluencerPlusPage로 이미 막지만, 원본 데이터 API가 로그인만
+  // 하면 열려 있어 무료 회원이 직접 호출해 전체 유료 데이터를 긁어갈 수 있었다(2026-08-13 차단).
+  // - 계정 연결 검색은 별도 경량 엔드포인트(/api/influencers/search)로 분리돼 영향 없음.
+  // - 상세(/api/influencers/[id] 등)는 공개 OG 페이지용이라 exact match로만 스코프한다.
+  if (pathname === '/api/influencers' && user) {
     const ctx = await withTimeout(
       getPaywallContext(user.id, user.email),
       4000,
       { isAdminUser: false, hasActivePaidPlan: true, plan: null, expiresAt: null, userId: null },
     );
     if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
-      return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 });
+      return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'influencer' }, { status: 402 });
     }
   }
 
+  // 네이버메이트 랭킹 API: 로그인만 필요(회원 전용). 무료회원 하루 3회 제한은
+  // 라우트(/api/rankings/naver-mate)의 withAnalysisView 가 서버에서 강제한다(2026-08-13 무료 3회 정책).
+  const isNaverMateRankingApi = pathname.startsWith('/api/rankings/naver-mate');
+  if (isNaverMateRankingApi && !user) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
   // /my API 전반: 계정 연결(/api/my/link, /api/my/link-blog)은 결제 여부와 무관하게 열어둔다
+  // 무료 3회 정책 대상 조회(GET + X-View-Token)는 유료 하드 게이트를 건너뛰고 라우트가 3회를 강제한다.
+  const isViewTokenDeferredApi =
+    request.method === 'GET' &&
+    !!request.headers.get('x-view-token') &&
+    VIEW_TOKEN_GATED_API_PREFIXES.some(p => matchesPathPrefix(pathname, p));
   const isPaidPlanGateApi =
     PAID_PLAN_GATE_API_PREFIXES.some(p => matchesPathPrefix(pathname, p)) &&
-    !PAID_PLAN_GATE_API_EXEMPT.some(p => matchesPathPrefix(pathname, p));
+    !PAID_PLAN_GATE_API_EXEMPT.some(p => matchesPathPrefix(pathname, p)) &&
+    !isViewTokenDeferredApi;
   if (isPaidPlanGateApi && user) {
     const ctx = await withTimeout(
       getPaywallContext(user.id, user.email),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { analyzePost, type PostAnalysis } from '@/lib/post-structure-analyzer';
+import { withAnalysisView } from '@/lib/analysis-quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,8 +64,10 @@ export interface BlogAnalysisResult {
 /**
  * GET /api/blog/analyze?blogId=xxx&postIds=111,222,333
  * 또는 GET /api/blog/analyze?blogId=xxx&count=5  (최근 글 5개 자동 분석)
+ *
+ * 무료회원 하루 3회 조회 제한(유입/글 분석). PRO·관리자·비회원은 통과. 서버/DB 원자 카운트.
  */
-export async function GET(request: NextRequest) {
+export const GET = withAnalysisView('inflow_analysis', async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const blogId = searchParams.get('blogId');
@@ -216,4 +219,4 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: '블로그 글 분석 중 오류가 발생했습니다.' }, { status: 500 });
   }
-}
+});

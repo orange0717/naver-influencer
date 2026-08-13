@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { withAnalysisView } from '@/lib/analysis-quota';
 
 export const dynamic = 'force-dynamic';
 
-/** 블로거 순위 Top N 조회 */
-export async function GET(req: NextRequest) {
+/** 블로거 순위 Top N 조회 — 무료회원 하루 3회 조회 제한(순위 분석). PRO·관리자·비회원 통과. */
+export const GET = withAnalysisView('rank_analysis', async (req: NextRequest) => {
   try {
     const category = req.nextUrl.searchParams.get('category') || null;
     const limit = Math.min(Number(req.nextUrl.searchParams.get('limit')) || 50, 200);
@@ -37,4 +38,4 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
-}
+});

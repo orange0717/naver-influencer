@@ -49,7 +49,7 @@ export default function LinkInfluencerClient() {
 
     setSearching(true);
     try {
-      const res = await fetch(`/api/influencers?search=${encodeURIComponent(q)}&limit=5`);
+      const res = await fetch(`/api/influencers/search?search=${encodeURIComponent(q)}&limit=5`);
       const data = await res.json();
       setResults(data.influencers || []);
       if ((data.influencers || []).length === 0) {

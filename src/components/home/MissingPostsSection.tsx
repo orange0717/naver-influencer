@@ -9,6 +9,8 @@ import { verdictLabel, confidenceLabel, type ExposureVerdict } from '@/lib/expos
 import { parseNaverPostDate } from '@/lib/naver-date';
 import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
 import { fetchWithTimeout, getProfileFromApi, CHECK_FRESH_MS } from './BlogAnalysisSection.helpers';
+import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
+import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 
 const PERIOD_OPTIONS = [7, 15, 30, 90, 120, 0] as const; // 0 = 전체(일수 기준 아님)
 type Period = typeof PERIOD_OPTIONS[number];
@@ -126,6 +128,9 @@ function StatusBadge({ post, mr, isChecking, now }: { post: PostLike; mr?: PostM
 
 export default function MissingPostsSection() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  // 이 화면 mount 당 조회 토큰 1개 (미노출 분석 데이터 요청에 공통 사용)
+  const [viewToken] = useState(() => newViewToken());
   const [period, setPeriod] = useState<Period>(30);
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -201,24 +206,34 @@ export default function MissingPostsSection() {
 
   const fetchMissingState = useCallback(async (blogId: string) => {
     try {
-      const res = await fetchWithTimeout(`/api/my/post-missing-state?blogId=${encodeURIComponent(blogId)}`);
-      if (!res.ok) return;
+      const res = await fetchWithTimeout(
+        `/api/my/post-missing-state?blogId=${encodeURIComponent(blogId)}`,
+        { headers: viewHeaders(viewToken) },
+      );
+      if (!res.ok) {
+        const exceeded = await readQuotaExceeded(res);
+        if (exceeded) setQuota(exceeded);
+        return;
+      }
       const data = await res.json();
       setMissingResults(data.results || {});
     } catch { /* ignore */ }
-  }, []);
+  }, [viewToken]);
 
   // §7 특정 포스트의 노출↔미노출 전환 이력 로드 (상세 모달용)
   const fetchDetailHistory = useCallback(async (blogId: string, postId: string) => {
     setHistoryLoading(true);
     try {
-      const res = await fetchWithTimeout(`/api/my/post-missing-history?blogId=${encodeURIComponent(blogId)}&postId=${encodeURIComponent(postId)}`);
+      const res = await fetchWithTimeout(
+        `/api/my/post-missing-history?blogId=${encodeURIComponent(blogId)}&postId=${encodeURIComponent(postId)}`,
+        { headers: viewHeaders(viewToken) },
+      );
       if (!res.ok) { setDetailHistory([]); return; }
       const data = await res.json();
       setDetailHistory(Array.isArray(data.history) ? data.history : []);
     } catch { setDetailHistory([]); }
     finally { setHistoryLoading(false); }
-  }, []);
+  }, [viewToken]);
 
   useEffect(() => {
     if (!profile) return;
@@ -421,6 +436,11 @@ export default function MissingPostsSection() {
     setDetailPostId(null);
     setDetailError('');
   }, []);
+
+  // 무료 하루 3회 조회 초과 — 데이터 대신 안내 화면 (서버가 402로 미노출 데이터를 반환하지 않음)
+  if (quota) {
+    return <AnalysisQuotaNotice quota={quota} />;
+  }
 
   return (
     <div className="space-y-6">

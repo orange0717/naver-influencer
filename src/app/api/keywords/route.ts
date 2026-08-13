@@ -7,10 +7,12 @@ import {
 } from '@/lib/naver-api';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCompetitionLevel, getCompetitionLevelAdvanced } from '@/lib/constants';
+import { withAnalysisView } from '@/lib/analysis-quota';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+// 무료회원 하루 3회 조회 제한(키워드 분석 화면). PRO·관리자·비회원은 통과. 서버/DB 원자 카운트.
+export const GET = withAnalysisView('keyword_analysis', async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 100);
   const category = searchParams.get('category')?.slice(0, 50) || undefined;
@@ -117,7 +119,7 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
 
 function toUIKeyword(kw: { id: number; name: string; categoryName: string; participantCount: number }) {
   return {

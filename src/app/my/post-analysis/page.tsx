@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import type { BloggerProfile, BlogPost, PostAnalysis, AiResult, PlagiarismResult, TextAnalysisResult } from './page.helpers';
 import { getAiBadge, sentenceTypeLabel, getProfileFromApi } from './page.helpers';
+import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
+import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 
 export default function PostAnalysisPage() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
@@ -25,6 +27,9 @@ export default function PostAnalysisPage() {
   const [textResults, setTextResults] = useState<Map<string, TextAnalysisResult>>(new Map());
   const [analyzingText, setAnalyzingText] = useState<string | null>(null);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  // 이 화면 mount 당 조회 토큰 1개 (유입/글 분석 데이터 요청에 공통 사용)
+  const [viewToken] = useState(() => newViewToken());
 
   const { user } = useAuth();
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
@@ -108,7 +113,9 @@ export default function PostAnalysisPage() {
   const fetchBasicAnalysis = useCallback(async (blogId: string) => {
     setAnalysisLoading(true);
     try {
-      const res = await fetch(`/api/blog/analyze?blogId=${encodeURIComponent(blogId)}&count=15`);
+      const res = await fetch(`/api/blog/analyze?blogId=${encodeURIComponent(blogId)}&count=15`, {
+        headers: viewHeaders(viewToken),
+      });
       if (res.ok) {
         const data = await res.json();
         const map = new Map<string, PostAnalysis>();
@@ -116,10 +123,13 @@ export default function PostAnalysisPage() {
           if (post.success) map.set(post.postId, post);
         }
         setAnalyses(map);
+      } else {
+        const exceeded = await readQuotaExceeded(res);
+        if (exceeded) setQuota(exceeded);
       }
     } catch { /* ignore */ }
     finally { setAnalysisLoading(false); }
-  }, []);
+  }, [viewToken]);
 
   // 프로필 로드 후 데이터 fetch
   useEffect(() => {
@@ -295,6 +305,15 @@ export default function PostAnalysisPage() {
         <div className="flex items-center justify-center py-20">
           <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
+      </div>
+    );
+  }
+
+  // 무료 하루 3회 조회 초과 — 데이터 대신 안내 화면 (서버가 402로 분석 데이터를 반환하지 않음)
+  if (quota) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <AnalysisQuotaNotice quota={quota} />
       </div>
     );
   }

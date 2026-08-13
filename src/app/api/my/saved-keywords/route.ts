@@ -6,7 +6,7 @@ import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-lim
 
 export const dynamic = 'force-dynamic';
 
-/** GET: 저장된 검색 키워드 목록 */
+/** GET: 저장된 검색 키워드 목록 (북마크 훅·대시보드·블로거 클라이언트 공용 — 조회 제한 대상 아님) */
 export async function GET(request: NextRequest) {
   if (await dashboardLimiter.check(getClientIp(request))) {
     return rateLimitResponse();

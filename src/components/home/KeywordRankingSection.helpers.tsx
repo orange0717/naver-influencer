@@ -89,17 +89,27 @@ export interface RepKeywordEntry {
 }
 
 // 영속화된(post_representative_keywords) 포스트별 대표 키워드를 블로그 단위로 한 번에 복원
-export async function fetchRepKeywordsState(blogId: string): Promise<Record<string, RepKeywordEntry>> {
-  const res = await fetch(`${REP_STATE_API}?blogId=${encodeURIComponent(blogId)}`);
-  if (!res.ok) throw new Error('대표 키워드 상태 로드 실패');
+// headers: 전용 화면(/my/keyword-ranking)이 무료 조회 토큰(X-View-Token)을 실어 보낼 때만 전달.
+export async function fetchRepKeywordsState(blogId: string, headers?: Record<string, string>): Promise<Record<string, RepKeywordEntry>> {
+  const res = await fetch(`${REP_STATE_API}?blogId=${encodeURIComponent(blogId)}`, headers ? { headers } : undefined);
+  if (!res.ok) {
+    const e = new Error('대표 키워드 상태 로드 실패') as Error & { status?: number };
+    e.status = res.status;
+    throw e;
+  }
   const data = await res.json();
   return data.results || {};
 }
 
 // 서버(DB)에서 저장된 키워드/순위 상태를 복원한다. (기기 간 동기화의 핵심)
-export async function fetchRankingState(blogId: string): Promise<SyncedState> {
-  const res = await fetch(`${STATE_API}?blogId=${encodeURIComponent(blogId)}`);
-  if (!res.ok) throw new Error('상태 로드 실패');
+// headers: 전용 화면(/my/keyword-ranking)이 무료 조회 토큰(X-View-Token)을 실어 보낼 때만 전달.
+export async function fetchRankingState(blogId: string, headers?: Record<string, string>): Promise<SyncedState> {
+  const res = await fetch(`${STATE_API}?blogId=${encodeURIComponent(blogId)}`, headers ? { headers } : undefined);
+  if (!res.ok) {
+    const e = new Error('상태 로드 실패') as Error & { status?: number };
+    e.status = res.status;
+    throw e;
+  }
   return res.json();
 }
 

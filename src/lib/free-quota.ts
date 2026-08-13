@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import type { NextRequest } from 'next/server';
 import { createServiceClient } from './supabase-server';
 import { getClientIp } from './rate-limit';
+import { getFreeDailyLimit } from './settings';
 
 /**
  * "하루 3회 무료" 전역 사용량 카운터 (2026-08-08 프리미엄 모델 전환).
@@ -57,7 +58,8 @@ export async function consumeFreeDailyQuota(opts: {
   }
 
   const subjectKey = userId ? memberSubjectKey(userId) : anonSubjectKey(request!);
-  const limit = userId ? MEMBER_DAILY_FREE_LIMIT : ANON_DAILY_FREE_LIMIT;
+  // 한도는 관리자 설정(settings)에서 읽되, 조회 실패 시 코드 기본값으로 폴백(=기존 동작).
+  const limit = await getFreeDailyLimit(!!userId);
 
   try {
     const supabase = createServiceClient();
@@ -138,7 +140,7 @@ export async function getFreeDailyUsage(opts: {
   if (isPro) return { used: 0, limit: Infinity };
 
   const subjectKey = userId ? memberSubjectKey(userId) : anonSubjectKey(request!);
-  const limit = userId ? MEMBER_DAILY_FREE_LIMIT : ANON_DAILY_FREE_LIMIT;
+  const limit = await getFreeDailyLimit(!!userId);
 
   try {
     const supabase = createServiceClient();

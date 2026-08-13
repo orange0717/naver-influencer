@@ -8,6 +8,8 @@ import CategoryFilter from '@/components/CategoryFilter';
 import BookmarkButton from '@/components/keywords/BookmarkButton';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { useAuth } from '@/hooks/useAuth';
+import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
+import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 
 const compTextMap: Record<string, string> = { low: '낮음', medium: '보통', high: '높음' };
 
@@ -59,10 +61,13 @@ interface RelatedKeyword {
 export default function KeywordsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  // 키워드 챌린지 리스트 = 인플루언서 플랜 + 관리자 전용
-  const planAllowed = user.isAdmin || (user.subscriptionActive && user.subscriptionPlan === 'INFLUENCER');
+  // 키워드 분석 = 로그인 회원 누구나(무료 포함). 무료회원은 서버에서 하루 3회로 제한(withAnalysisView),
+  // PRO·관리자는 무제한. 다운로드(CSV)는 기존대로 유료 전용 유지.
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
   const [downloading, setDownloading] = useState(false);
+  // 이 화면 mount 당 조회 토큰 1개 — 필터/검색/정렬/페이지네이션 재요청은 같은 조회로 dedup
+  const [viewToken] = useState(() => newViewToken());
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -70,9 +75,7 @@ export default function KeywordsPage() {
       router.replace('/auth/login?redirect=/keywords');
       return;
     }
-    if (planAllowed) return;
-    router.replace('/subscribe?highlight=influencer');
-  }, [authLoading, user.id, planAllowed, router]);
+  }, [authLoading, user.id, router]);
 
   const handleDownload = async () => {
     if (!canDownload || downloading) return;
@@ -253,8 +256,17 @@ export default function KeywordsPage() {
 
       if (searchQuery) params.set('search', searchQuery);
 
-      const res = await fetch(`/api/keywords?${params}`);
-      if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
+      const res = await fetch(`/api/keywords?${params}`, {
+        headers: viewHeaders(viewToken),
+      });
+      if (!res.ok) {
+        const exceeded = await readQuotaExceeded(res);
+        if (exceeded) {
+          setQuota(exceeded);
+          return;
+        }
+        throw new Error('데이터를 불러오지 못했습니다.');
+      }
       const data = await res.json();
 
       setKeywords(data.keywords || []);
@@ -268,7 +280,7 @@ export default function KeywordsPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, currentPageIndex, sortKey, sortOrder]);
+  }, [category, currentPageIndex, sortKey, sortOrder, viewToken]);
 
   // 카테고리/페이지/정렬 변경 시 fetch
   useEffect(() => {
@@ -391,13 +403,18 @@ export default function KeywordsPage() {
     return list;
   }, [keywords, subFilter, sortKey, sortOrder, search]);
 
-  if (authLoading || !user.id || !planAllowed) {
+  if (authLoading || !user.id) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center">
         <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
         <p className="text-sm text-dim">권한을 확인하는 중...</p>
       </div>
     );
+  }
+
+  // 무료 하루 3회 조회 초과 — 데이터 대신 안내 화면 (서버가 402로 데이터를 반환하지 않음)
+  if (quota) {
+    return <AnalysisQuotaNotice quota={quota} />;
   }
 
   return (

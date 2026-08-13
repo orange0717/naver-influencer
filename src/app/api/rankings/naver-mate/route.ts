@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { sortByMateOrder } from '@/lib/naver-mate-categories';
+import { withAnalysisView } from '@/lib/analysis-quota';
 
-export async function GET(request: NextRequest) {
+export const dynamic = 'force-dynamic';
+
+// 무료회원 하루 3회 조회 제한(메이트 랭킹 분석). PRO·관리자·비회원 통과.
+export const GET = withAnalysisView('rank_analysis', async (request: NextRequest) => {
   const url = new URL(request.url);
   const category = url.searchParams.get('category')?.trim() || null;
   const limit = Math.max(1, Math.min(500, parseInt(url.searchParams.get('limit') || '100', 10) || 100));
@@ -74,4 +78,4 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json({ year, month, categories, items });
-}
+});

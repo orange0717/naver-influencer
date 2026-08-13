@@ -11,11 +11,8 @@
  */
 
 import { createServiceClient } from '@/lib/supabase-server';
-import {
-  CREDIT_COSTS,
-  SIGNUP_BONUS_CREDITS,
-  type CreditFeature,
-} from '@/lib/credit-config';
+import { type CreditFeature } from '@/lib/credit-config';
+import { getCreditCost, getSignupBonusCredits } from '@/lib/settings';
 
 /** 크레딧 부족 시 API 가 내려줄 표준 응답 바디 (명세 6: "크레딧이 부족합니다") */
 export interface InsufficientCreditBody {
@@ -39,9 +36,10 @@ export function insufficientCreditBody(required: number, balance: number): Insuf
  */
 export async function getCreditBalance(authUserId: string): Promise<number> {
   const supa = createServiceClient();
+  const signupBonus = await getSignupBonusCredits();
   const { data, error } = await supa.rpc('ensure_credit_account', {
     p_user_id: authUserId,
-    p_signup_bonus: SIGNUP_BONUS_CREDITS,
+    p_signup_bonus: signupBonus,
   });
   if (error) {
     console.error('[Credits] ensure_credit_account failed:', error);
@@ -57,7 +55,7 @@ export async function hasEnoughCredit(
   authUserId: string,
   feature: CreditFeature,
 ): Promise<{ ok: boolean; balance: number; required: number }> {
-  const required = CREDIT_COSTS[feature] ?? 0;
+  const required = await getCreditCost(feature);
   const balance = await getCreditBalance(authUserId);
   return { ok: balance >= required, balance, required };
 }
@@ -77,7 +75,7 @@ export async function chargeCredit(
   | { ok: true; balance: number; charged: number; idempotent?: boolean }
   | { ok: false; reason: 'insufficient_credit'; balance: number; required: number }
 > {
-  const amount = opts?.amountOverride ?? CREDIT_COSTS[feature] ?? 0;
+  const amount = opts?.amountOverride ?? (await getCreditCost(feature));
   const supa = createServiceClient();
 
   // 계정 보장(가입 보너스 포함) — 신규 사용자가 첫 기능에서 계정 없이 실패하지 않도록.

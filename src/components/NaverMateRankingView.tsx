@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { formatCountK as formatCount } from '@/lib/format';
+import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
+import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 
 interface Item {
   id: string;
@@ -28,6 +30,7 @@ type LoadState =
   | { kind: 'loading' }
   | { kind: 'empty' }
   | { kind: 'error'; message: string }
+  | { kind: 'quota'; quota: QuotaInfo }
   | { kind: 'ok'; data: ApiResponse };
 
 const PLATFORM_LABEL: Record<Item['platform'], string> = {
@@ -40,6 +43,8 @@ const PLATFORM_LABEL: Record<Item['platform'], string> = {
 export default function NaverMateRankingView() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [category, setCategory] = useState<string>('');
+  // 이 화면 mount 당 조회 토큰 1개 — 카테고리 전환 재요청은 같은 조회로 dedup
+  const [viewToken] = useState(() => newViewToken());
 
   useEffect(() => {
     let cancelled = false;
@@ -48,9 +53,16 @@ export default function NaverMateRankingView() {
         const params = new URLSearchParams();
         if (category) params.set('category', category);
         params.set('limit', '200');
-        const res = await fetch(`/api/rankings/naver-mate?${params.toString()}`);
+        const res = await fetch(`/api/rankings/naver-mate?${params.toString()}`, {
+          headers: viewHeaders(viewToken),
+        });
         if (cancelled) return;
         if (!res.ok) {
+          const exceeded = await readQuotaExceeded(res);
+          if (exceeded) {
+            setState({ kind: 'quota', quota: exceeded });
+            return;
+          }
           const body = await res.json().catch(() => ({}));
           setState({ kind: 'error', message: body?.error || '데이터를 불러오지 못했습니다.' });
           return;
@@ -68,7 +80,11 @@ export default function NaverMateRankingView() {
     return () => {
       cancelled = true;
     };
-  }, [category]);
+  }, [category, viewToken]);
+
+  if (state.kind === 'quota') {
+    return <AnalysisQuotaNotice quota={state.quota} />;
+  }
 
   if (state.kind === 'loading') {
     return <div className="text-center text-dim py-12">불러오는 중...</div>;

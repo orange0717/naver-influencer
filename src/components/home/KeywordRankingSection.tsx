@@ -11,6 +11,8 @@ import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow, RepKeywordEntry, AutoKeyword, KeywordMeta } from './KeywordRankingSection.helpers';
+import { newViewToken, viewHeaders, type QuotaInfo } from '@/lib/analysis-view';
+import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 import {
   STATE_API,
   FLASH_MS,
@@ -31,6 +33,9 @@ import {
 export default function KeywordRankingSection() {
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  // 이 화면 mount 당 조회 토큰 1개 (내 순위 상태 조회 요청에 공통 사용)
+  const [viewToken] = useState(() => newViewToken());
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -263,19 +268,27 @@ export default function KeywordRankingSection() {
   }, [fetchBlogPosts]);
 
   // DB에서 저장된 키워드/순위 상태 복원 (기기 간 동기화). staleTime으로 재방문 시 재요청 최소화.
-  const { data: syncedState } = useQuery({
+  // 무료 하루 3회 조회 제한 대상 — X-View-Token 을 실어 보내고, 402(초과)는 아래 effect 에서 안내 화면으로 전환.
+  const { data: syncedState, error: syncedError } = useQuery({
     queryKey: ['keyword-ranking-state', profile?.blogId],
-    queryFn: () => fetchRankingState(profile!.blogId),
+    queryFn: () => fetchRankingState(profile!.blogId, viewHeaders(viewToken)),
     enabled: !!profile?.blogId,
     staleTime: 5 * 60 * 1000,
+    retry: false, // 402(무료 초과)는 재시도하지 않고 즉시 안내
   });
+
+  useEffect(() => {
+    const status = (syncedError as (Error & { status?: number }) | null)?.status;
+    if (status === 402) setQuota({ used: 3, limit: 3, needsSignup: false });
+  }, [syncedError]);
 
   // 영속화된 대표 키워드 복원 (post_representative_keywords, blog_id 기준 공용 — 크롤링 없이 즉시 조회)
   const { data: repState } = useQuery({
     queryKey: ['rep-keywords-state', profile?.blogId],
-    queryFn: () => fetchRepKeywordsState(profile!.blogId),
+    queryFn: () => fetchRepKeywordsState(profile!.blogId, viewHeaders(viewToken)),
     enabled: !!profile?.blogId,
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 
   useEffect(() => {
@@ -768,6 +781,11 @@ export default function KeywordRankingSection() {
         </div>
       </div>
     );
+  }
+
+  // 무료 하루 3회 조회 초과 — 데이터 대신 안내 화면 (서버가 402로 순위 데이터를 반환하지 않음)
+  if (quota) {
+    return <AnalysisQuotaNotice quota={quota} />;
   }
 
   // 비로그인(게스트): 강제 리다이렉트 없이 로그인 유도 빈 상태 — /my 게스트 화면과 동일 톤

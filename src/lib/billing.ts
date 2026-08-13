@@ -14,18 +14,20 @@ import {
   type BillingChargeResult,
 } from '@/lib/portone';
 import { grantCredit } from '@/lib/credits';
-import { PLAN_MONTHLY_CREDITS } from '@/lib/credit-config';
+import { getPlanMonthlyCredits } from '@/lib/settings';
+import { accrueSubscriptionNcash } from '@/lib/n-cash';
 
 const MAX_FAILED_CHARGES = 3;
 
 /**
  * 구독 결제/갱신 성공 시 플랜 월 크레딧을 멱등 지급한다(payment_id 기준).
+ * 지급량은 관리자 설정(settings.getPlanMonthlyCredits, 폴백 credit-config PLAN_MONTHLY_CREDITS).
  * 크레딧 지급 실패는 결제 자체를 실패시키지 않는다 (원장에서 사후 보정 가능).
  */
 async function grantSubscriptionCredits(userId: string, planTier: string, paymentId: string): Promise<void> {
-  const monthly = PLAN_MONTHLY_CREDITS[planTier];
-  if (!monthly || monthly <= 0) return;
   try {
+    const monthly = await getPlanMonthlyCredits(planTier);
+    if (!monthly || monthly <= 0) return;
     await grantCredit(userId, monthly, 'subscription_grant', { referenceId: `subgrant:${paymentId}` });
   } catch (e) {
     console.error('[Billing] subscription credit grant failed:', e, { userId, planTier, paymentId });
@@ -202,6 +204,9 @@ export async function completeBillingKeyIssue(opts: {
   // 7. 플랜 월 크레딧 지급 (멱등 — payment_id 기준)
   await grantSubscriptionCredits(opts.userId, plan.tier, opts.paymentId);
 
+  // 8. N캐시 적립 (결제금액 × 적립률, 멱등 — payment_id 기준). 검증된 결제금액 intent.amount 사용.
+  await accrueSubscriptionNcash(opts.userId, Number(intent.amount), opts.paymentId);
+
   return { ok: true, subscriptionId: sub.id };
 }
 
@@ -315,6 +320,9 @@ async function chargePlan(opts: {
 
   // 6. 플랜 월 크레딧 지급 (멱등 — payment_id 기준). 갱신 결제마다 매월 지급된다.
   await grantSubscriptionCredits(opts.userId, plan.tier, paymentId);
+
+  // 7. N캐시 적립 (결제금액 × 적립률, 멱등 — payment_id 기준). 갱신 결제마다 적립된다.
+  await accrueSubscriptionNcash(opts.userId, Number(plan.amount), paymentId);
 
   return { ok: true, paymentId };
 }

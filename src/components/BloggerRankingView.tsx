@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
+import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 
 interface RankingRow {
   rank_pos: number;
@@ -45,18 +47,36 @@ export default function BloggerRankingView() {
   const [myRank, setMyRank] = useState<MyRank | null>(null);
   const [searching, setSearching] = useState(false);
   const [nameHits, setNameHits] = useState<NameHit[] | null>(null);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  // 이 화면 mount 당 조회 토큰 1개
+  const [viewToken] = useState(() => newViewToken());
 
   useEffect(() => {
     // 이 화면은 활성 블로거 총계(total_active)만 표시한다(Top 50 목록은 "준비 중").
     // 과거엔 limit=50으로 순위 50건을 받아 rows에 담았지만 렌더에 쓰지 않아 버려졌다 → limit=1로 축소.
-    fetch('/api/rankings/top?limit=1')
-      .then((r) => r.json())
-      .then((d) => {
+    (async () => {
+      try {
+        const res = await fetch('/api/rankings/top?limit=1', {
+          headers: viewHeaders(viewToken),
+        });
+        if (!res.ok) {
+          const exceeded = await readQuotaExceeded(res);
+          if (exceeded) {
+            setQuota(exceeded);
+            return;
+          }
+          return;
+        }
+        const d = await res.json();
         setRows(d.rankings || []);
         setTotalActive(d.total_active || 0);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+      } catch {
+        /* noop */
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [viewToken]);
 
   // 영숫자·언더스코어·하이픈만 있으면 블로그 ID로 간주
   const isLikelyBlogId = (s: string) => /^[a-zA-Z0-9_-]+$/.test(s);
@@ -119,6 +139,10 @@ export default function BloggerRankingView() {
       setSearching(false);
     }
   };
+
+  if (quota) {
+    return <AnalysisQuotaNotice quota={quota} />;
+  }
 
   return (
     <>
