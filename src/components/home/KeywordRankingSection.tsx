@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
+import KeywordDetailDrawer from './KeywordDetailDrawer';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow, RepKeywordEntry } from './KeywordRankingSection.helpers';
+import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow, RepKeywordEntry, AutoKeyword, KeywordMeta } from './KeywordRankingSection.helpers';
 import {
   STATE_API,
   FLASH_MS,
@@ -45,6 +46,8 @@ export default function KeywordRankingSection() {
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
   // "postId::keyword" → RankDelta (전일대비/7일대비 계산 근거, get_keyword_rank_deltas RPC)
   const [rankDeltas, setRankDeltas] = useState<Record<string, RankDelta>>({});
+  // "postId::keyword" → 키워드 메타(종류/대표여부/변형원본/포스팅URL) — 상세·렌더용 (스펙 #11)
+  const [keywordMeta, setKeywordMeta] = useState<Record<string, KeywordMeta>>({});
   // postId → 영속화된 대표 키워드(post_representative_keywords) — 자동추출, 사용자가 직접 입력하는 커스텀 키워드와 별개
   const [repKeywords, setRepKeywords] = useState<Record<string, RepKeywordEntry>>({});
   const [extractingRepId, setExtractingRepId] = useState('');
@@ -58,6 +61,10 @@ export default function KeywordRankingSection() {
   const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState('');
   const [showKeywordSearch, setShowKeywordSearch] = useState(false);
+  // 포스팅별 "직접 키워드 편집" 열림 상태 (스펙 #26: 수동 입력란은 기본 숨김, 편집 토글로만 노출)
+  const [editOpen, setEditOpen] = useState<Set<string>>(new Set());
+  // 키워드 상세 드로어 대상 (스펙 #27)
+  const [detail, setDetail] = useState<{ post: BlogPost; keyword: string } | null>(null);
   const abortRef = useRef(false);
   const extractAbortRef = useRef(false);
   const refreshingRef = useRef(false);
@@ -280,6 +287,7 @@ export default function KeywordRankingSection() {
       setPostKeywords(syncedState.postKeywords);
       setRankingResults(syncedState.rankingResults);
       setRankDeltas(syncedState.rankDeltas || {});
+      setKeywordMeta(syncedState.keywordMeta || {});
       setStateReady(true);
       // 서버 상태가 도착한 시점에만 편집 중 입력을 서버 값으로 맞춘다.
       // (postKeywords를 의존성으로 두면 다른 포스트 저장 시마다 전체가 재초기화되어
@@ -330,6 +338,7 @@ export default function KeywordRankingSection() {
     post: BlogPost,
     keyword: string,
     force = false,
+    meta?: KeywordMeta,
   ): Promise<{ ok: boolean; status: number; cached: boolean }> => {
     if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false };
     const key = rankKey(post.id, keyword.trim());
@@ -379,7 +388,9 @@ export default function KeywordRankingSection() {
         );
         // DB에 순위 결과 갱신 (기기 간 동기화). 저장 실패 시 화면에 표시된 값이 DB와 어긋나므로
         // 캐시를 무효화해 다음 조회 시점에 DB 실제 값으로 다시 맞춘다.
-        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), nextResult).then(ok => {
+        // meta(키워드 종류/대표여부/변형원본/포스팅URL)를 함께 저장(스펙 #11) — post_url은 항상 채운다.
+        const mergedMeta: KeywordMeta = { postUrl: post.url, ...(meta || {}) };
+        saveRankResultToDb(profile.blogId, post.id, keyword.trim(), nextResult, mergedMeta).then(ok => {
           if (!ok) queryClient.invalidateQueries({ queryKey: ['keyword-ranking-state', profile.blogId] });
         });
         // 저장된 키워드라면 saved_search_keywords 최신 순위 캐시도 갱신 (실패 무시)
@@ -427,8 +438,10 @@ export default function KeywordRankingSection() {
         source?: string;
         keywords?: string[];
         candidateScreen?: { keyword: string; exposed: boolean; rank: number | null }[];
+        autoKeywords?: AutoKeyword[];
       } = await res.json();
       const keyword = data.representativeKeyword || null;
+      const autoKeywords = data.autoKeywords || [];
       setRepKeywords(prev => ({
         ...prev,
         [post.id]: {
@@ -436,9 +449,16 @@ export default function KeywordRankingSection() {
           source: data.source,
           candidates: data.keywords || [],
           candidateScreen: data.candidateScreen || [],
+          autoKeywords,
         },
       }));
-      if (keyword) await checkSingleKeyword(post, keyword);
+      // 대표 키워드는 즉시 확인(메타 포함). 보조/변형은 백그라운드 scanAndRefresh가 순차(7초 간격)로 채운다 — 비용 방어(스펙 #24).
+      if (keyword) {
+        const primaryMeta = autoKeywords.find(a => a.isPrimary);
+        await checkSingleKeyword(post, keyword, false, primaryMeta
+          ? { keywordType: primaryMeta.keywordType, isPrimary: true, baseKeyword: primaryMeta.baseKeyword, postUrl: post.url }
+          : { keywordType: 'primary', isPrimary: true, postUrl: post.url });
+      }
     } catch {
       showError('네트워크 오류로 대표 키워드를 추출하지 못했습니다.', 4000);
     } finally {
@@ -464,9 +484,22 @@ export default function KeywordRankingSection() {
 
   const stopExtractingAll = () => { extractAbortRef.current = true; };
 
+  // 포스팅의 자동 조회 키워드 pair(대표+보조+변형, 메타 포함). autoKeywords가 없으면 대표만.
+  const autoPairsFor = useCallback((post: BlogPost): { post: BlogPost; keyword: string; meta: KeywordMeta }[] => {
+    const entry = repKeywordsRef.current[post.id];
+    const list: AutoKeyword[] = entry?.autoKeywords && entry.autoKeywords.length > 0
+      ? entry.autoKeywords
+      : (entry?.keyword ? [{ keyword: entry.keyword, normalized: entry.keyword, keywordType: 'primary', isPrimary: true, baseKeyword: entry.keyword }] : []);
+    return list.map(ak => ({
+      post,
+      keyword: ak.keyword,
+      meta: { keywordType: ak.keywordType, isPrimary: ak.isPrimary, baseKeyword: ak.baseKeyword, postUrl: post.url },
+    }));
+  }, []);
+
   // 자동 백그라운드 갱신 + 관리자 수동 강제 새로고침이 공유하는 순차 실행기
   const runBatch = useCallback(async (
-    pairs: { post: BlogPost; keyword: string }[],
+    pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[],
     opts: { force?: boolean } = {},
   ) => {
     if (pairs.length === 0 || refreshingRef.current) return;
@@ -478,7 +511,7 @@ export default function KeywordRankingSection() {
     for (let i = 0; i < pairs.length; i++) {
       if (abortRef.current) break;
       setCheckProgress({ current: i + 1, total: pairs.length });
-      const r = await checkSingleKeyword(pairs[i].post, pairs[i].keyword, !!opts.force);
+      const r = await checkSingleKeyword(pairs[i].post, pairs[i].keyword, !!opts.force, pairs[i].meta);
       if (r.status === 429) {
         showError(`요청 한도 초과로 ${i + 1}/${pairs.length}에서 중단했습니다. 5분 후 다시 시도해주세요.`, 8000);
         break;
@@ -576,21 +609,23 @@ export default function KeywordRankingSection() {
   // 화면을 막지 않는 자동 새로고침: 저장된 키워드 중 10분 이상 지났거나 아직 확인 안 된 것만 백그라운드로 조회
   const scanAndRefresh = useCallback(() => {
     if (refreshingRef.current) return;
-    const pairs: { post: BlogPost; keyword: string }[] = [];
+    const pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[] = [];
+    const seen = new Set<string>();
     for (const post of blogPosts) {
+      // 사용자 수동 키워드
       const kws = (postKeywordsRef.current[post.id] || []).map(k => k.trim()).filter(Boolean);
       for (const kw of kws) {
         const key = rankKey(post.id, kw);
-        if (isStale(rankingResultsRef.current[key])) pairs.push({ post, keyword: kw });
+        if (isStale(rankingResultsRef.current[key]) && !seen.has(key)) { seen.add(key); pairs.push({ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }); }
       }
-      const repKw = repKeywordsRef.current[post.id]?.keyword;
-      if (repKw) {
-        const key = rankKey(post.id, repKw);
-        if (isStale(rankingResultsRef.current[key])) pairs.push({ post, keyword: repKw });
+      // 자동 추출(대표+보조+변형)
+      for (const p of autoPairsFor(post)) {
+        const key = rankKey(post.id, p.keyword);
+        if (isStale(rankingResultsRef.current[key]) && !seen.has(key)) { seen.add(key); pairs.push(p); }
       }
     }
     if (pairs.length > 0) runBatch(pairs);
-  }, [blogPosts, runBatch]);
+  }, [blogPosts, runBatch, autoPairsFor]);
 
   useEffect(() => {
     if (!profile || !stateReady || blogPosts.length === 0) return;
@@ -662,13 +697,19 @@ export default function KeywordRankingSection() {
       return;
     }
 
-    // 2) 게이트 통과 → 현재 페이지 전체 키워드를 강제 재조회
-    const pairs: { post: BlogPost; keyword: string }[] = [];
+    // 2) 게이트 통과 → 현재 페이지 전체 키워드를 강제 재조회 (대표+보조+변형 + 수동)
+    const pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[] = [];
+    const seen = new Set<string>();
     for (const post of blogPosts) {
       const kws = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
-      for (const kw of kws) pairs.push({ post, keyword: kw });
-      const repKw = repKeywords[post.id]?.keyword;
-      if (repKw) pairs.push({ post, keyword: repKw });
+      for (const kw of kws) {
+        const key = rankKey(post.id, kw);
+        if (!seen.has(key)) { seen.add(key); pairs.push({ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }); }
+      }
+      for (const p of autoPairsFor(post)) {
+        const key = rankKey(post.id, p.keyword);
+        if (!seen.has(key)) { seen.add(key); pairs.push(p); }
+      }
     }
     if (pairs.length > 0) runBatch(pairs, { force: true });
   };
@@ -686,6 +727,34 @@ export default function KeywordRankingSection() {
     () => blogPosts.filter(p => !repKeywords[p.id]?.keyword).length,
     [blogPosts, repKeywords],
   );
+
+  const toggleEdit = (postId: string) => setEditOpen(prev => {
+    const next = new Set(prev);
+    if (next.has(postId)) next.delete(postId); else next.add(postId);
+    return next;
+  });
+
+  // 순위 3탭(통합/블로그/인플루언서) + 전일대비 + 7일대비 + 검색량 = 6개 <td> 공용 렌더.
+  // 대표/보조/변형 행이 동일하게 사용한다(스펙 #8·#10·#16 일관 표시).
+  const renderTrailingCells = (result: RankingResult | undefined, delta: RankDelta | undefined, flashing: boolean) => {
+    const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
+    const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
+    const flash = flashing ? 'bg-accent/15' : '';
+    return (
+      <>
+        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flash}`}>{renderRankTab(result, result?.viewTab)}</td>
+        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flash}`}>{renderRankTab(result, result?.blogTab)}</td>
+        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${flash}`}>{renderRankTab(result, result?.influencerTab)}</td>
+        <td className="text-center px-3 py-1.5">
+          {prevDelta ? <span className={`text-xs font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>{prevDelta.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
+        </td>
+        <td className="text-center px-3 py-1.5">
+          {weekDelta ? <span className={`text-xs font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>{weekDelta.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
+        </td>
+        <td className="text-center px-3 py-1.5 text-xs text-dim">{result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}</td>
+      </>
+    );
+  };
 
   // 로딩
   if (loading) {
@@ -890,14 +959,16 @@ export default function KeywordRankingSection() {
                 <tbody className="divide-y divide-border/20">
                   {blogPosts.map((post, i) => {
                     const keywords = editingKeywords[post.id] || [];
-                    const rowCount = Math.max(keywords.length, 1) + 1; // +1: 대표 키워드 행
                     const repEntry = repKeywords[post.id];
                     const repKeyword = repEntry?.keyword || null;
+                    // 보조/변형 자동 키워드(대표 제외) — 읽기전용 행으로 표시(스펙 #26)
+                    const autoSecondaries = (repEntry?.autoKeywords || []).filter(a => !a.isPrimary);
+                    const isEditing = editOpen.has(post.id);
+                    // 렌더되는 행 수 = 대표(1) + 보조/변형 + (편집 중일 때만 수동 입력행)
+                    const rowCount = 1 + autoSecondaries.length + (isEditing ? Math.max(keywords.length, 1) : 0);
                     const repKey = repKeyword ? rankKey(post.id, repKeyword) : '';
                     const repResult = repKeyword ? rankingResults[repKey] : undefined;
                     const repDelta = repKeyword ? rankDeltas[repKey] : undefined;
-                    const repPrevDelta = repResult ? computeDeltaDisplay(repResult.viewTab.exposed, repResult.viewTab.rank, repDelta?.prevRank ?? null, repDelta?.prevCheckedAt ?? null) : null;
-                    const repWeekDelta = repResult ? computeDeltaDisplay(repResult.viewTab.exposed, repResult.viewTab.rank, repDelta?.weekRank ?? null, repDelta?.weekCheckedAt ?? null) : null;
                     const repFlashing = repKeyword ? flashKeys.has(repKey) : false;
                     const isExtracting = extractingRepId === post.id;
 
@@ -918,13 +989,11 @@ export default function KeywordRankingSection() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1.5">
-                            {keywords.length < 5 && (
-                              <button onClick={() => addKeyword(post.id)}
-                                className="text-xs text-accent cursor-pointer hover:underline">
-                                + 키워드 추가
-                              </button>
-                            )}
-                            {keywords.some(k => k.trim()) && (
+                            <button onClick={() => toggleEdit(post.id)}
+                              className="text-xs text-accent cursor-pointer hover:underline">
+                              {isEditing ? '편집 닫기' : '직접 키워드 편집'}
+                            </button>
+                            {isEditing && keywords.some(k => k.trim()) && (
                               <button onClick={() => handleClearPostKeywords(post.id)}
                                 className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">
                                 초기화
@@ -942,10 +1011,17 @@ export default function KeywordRankingSection() {
                           <div className="flex items-center gap-1.5">
                             <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0">대표</span>
                             {repKeyword ? (
-                              <span className="text-xs font-semibold truncate" title={repKeyword}>{repKeyword}</span>
+                              <button onClick={() => setDetail({ post, keyword: repKeyword })}
+                                className="text-xs font-semibold truncate hover:text-accent hover:underline cursor-pointer text-left" title={`${repKeyword} — 상세 보기`}>
+                                {repKeyword}
+                              </button>
                             ) : (
-                              <span className="text-xs text-dim">미확인</span>
+                              <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '미확인'}</span>
                             )}
+                            {(() => {
+                              const v = (repEntry?.autoKeywords || []).find(a => a.keywordType === 'variant' && a.baseKeyword === repKeyword);
+                              return v ? <span className="text-[10px] text-dim shrink-0" title="공백제거 변형">/ {v.keyword}</span> : null;
+                            })()}
                             <button
                               onClick={() => handleExtractRepresentative(post)}
                               disabled={isExtracting}
@@ -978,32 +1054,7 @@ export default function KeywordRankingSection() {
                             </div>
                           )}
                         </td>
-                        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
-                          {renderRankTab(repResult, repResult?.viewTab)}
-                        </td>
-                        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
-                          {renderRankTab(repResult, repResult?.blogTab)}
-                        </td>
-                        <td className={`text-center px-3 py-1.5 transition-colors duration-700 ${repFlashing ? 'bg-accent/15' : ''}`}>
-                          {renderRankTab(repResult, repResult?.influencerTab)}
-                        </td>
-                        <td className="text-center px-3 py-1.5">
-                          {repPrevDelta ? (
-                            <span className={`text-xs font-bold ${repPrevDelta.colorClass}`} title={repPrevDelta.tooltip}>
-                              {repPrevDelta.label}
-                            </span>
-                          ) : <span className="text-[10px] text-dim/50">--</span>}
-                        </td>
-                        <td className="text-center px-3 py-1.5">
-                          {repWeekDelta ? (
-                            <span className={`text-xs font-bold ${repWeekDelta.colorClass}`} title={repWeekDelta.tooltip}>
-                              {repWeekDelta.label}
-                            </span>
-                          ) : <span className="text-[10px] text-dim/50">--</span>}
-                        </td>
-                        <td className="text-center px-3 py-1.5 text-xs text-dim">
-                          {repResult?.searchVolume ? repResult.searchVolume.toLocaleString() : '--'}
-                        </td>
+                        {renderTrailingCells(repResult, repDelta, repFlashing)}
                         <td className="text-center px-4 py-1.5">
                           <span
                             className="text-[10px] text-dim"
@@ -1014,6 +1065,38 @@ export default function KeywordRankingSection() {
                         </td>
                       </tr>
                     );
+
+                    // 보조/변형 자동 키워드 읽기전용 행 (스펙 #4/#26)
+                    const secondaryRows = autoSecondaries.map((ak) => {
+                      const key = rankKey(post.id, ak.keyword);
+                      const result = rankingResults[key];
+                      const delta = rankDeltas[key];
+                      const flashing = flashKeys.has(key);
+                      const badge = ak.keywordType === 'variant' ? '변형' : '보조';
+                      return (
+                        <tr key={`${post.id}-auto-${ak.keyword}`} className="hover:bg-surface-hover transition !border-b-0">
+                          <td className="px-3 py-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] font-bold text-dim bg-bg px-1.5 py-0.5 rounded-full shrink-0">{badge}</span>
+                              <button onClick={() => setDetail({ post, keyword: ak.keyword })}
+                                className="text-xs truncate hover:text-accent hover:underline cursor-pointer text-left" title={`${ak.keyword} — 상세 보기`}>
+                                {ak.keyword}
+                              </button>
+                            </div>
+                          </td>
+                          {renderTrailingCells(result, delta, flashing)}
+                          <td className="text-center px-4 py-1.5">
+                            {checkingKey === key ? (
+                              <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                            ) : (
+                              <span className="text-[10px] text-dim" title={result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : ''}>
+                                {result?.checkedAt ? timeAgo(result.checkedAt) : '--'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    });
 
                     const keywordRows = keywords.map((kw, kwIdx) => {
                       const key = rankKey(post.id, kw.trim());
@@ -1103,7 +1186,8 @@ export default function KeywordRankingSection() {
                       );
                     });
 
-                    return [repRow, ...keywordRows];
+                    // 자동 추출 우선 표시(대표+보조/변형). 수동 입력행은 "직접 키워드 편집"을 열었을 때만(스펙 #26).
+                    return [repRow, ...secondaryRows, ...(isEditing ? keywordRows : [])];
                   })}
                 </tbody>
               </table>
@@ -1115,6 +1199,9 @@ export default function KeywordRankingSection() {
                 const keywords = editingKeywords[post.id] || [];
                 const repEntry = repKeywords[post.id];
                 const repKeyword = repEntry?.keyword || null;
+                const autoSecondaries = (repEntry?.autoKeywords || []).filter(a => !a.isPrimary);
+                const isEditing = editOpen.has(post.id);
+                const repVariant = (repEntry?.autoKeywords || []).find(a => a.keywordType === 'variant' && a.baseKeyword === repKeyword);
                 const repKey = repKeyword ? rankKey(post.id, repKeyword) : '';
                 const repResult = repKeyword ? rankingResults[repKey] : undefined;
                 const repDelta = repKeyword ? rankDeltas[repKey] : undefined;
@@ -1142,10 +1229,14 @@ export default function KeywordRankingSection() {
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0">대표</span>
                         {repKeyword ? (
-                          <span className="text-xs font-semibold truncate" title={repKeyword}>{repKeyword}</span>
+                          <button onClick={() => setDetail({ post, keyword: repKeyword })}
+                            className="text-xs font-semibold truncate hover:text-accent hover:underline cursor-pointer text-left" title={`${repKeyword} — 상세 보기`}>
+                            {repKeyword}
+                          </button>
                         ) : (
-                          <span className="text-xs text-dim">미확인</span>
+                          <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '미확인'}</span>
                         )}
+                        {repVariant && <span className="text-[10px] text-dim shrink-0" title="공백제거 변형">/ {repVariant.keyword}</span>}
                         <button
                           onClick={() => handleExtractRepresentative(post)}
                           disabled={isExtracting}
@@ -1197,7 +1288,51 @@ export default function KeywordRankingSection() {
                       )}
                     </div>
 
+                    {/* 보조/변형 자동 키워드 (읽기전용, 스펙 #4/#26) */}
+                    {autoSecondaries.map((ak) => {
+                      const key = rankKey(post.id, ak.keyword);
+                      const result = rankingResults[key];
+                      const delta = rankDeltas[key];
+                      const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
+                      const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
+                      const flashing = flashKeys.has(key);
+                      return (
+                        <div key={`auto-${ak.keyword}`} className={`ml-7 rounded-lg p-2 space-y-1 bg-bg/60 transition-colors duration-700 ${flashing ? '!bg-accent/15' : ''}`}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-dim bg-surface px-1.5 py-0.5 rounded-full shrink-0">{ak.keywordType === 'variant' ? '변형' : '보조'}</span>
+                            <button onClick={() => setDetail({ post, keyword: ak.keyword })}
+                              className="text-xs truncate hover:text-accent hover:underline cursor-pointer text-left" title={`${ak.keyword} — 상세 보기`}>
+                              {ak.keyword}
+                            </button>
+                            <span className="text-[10px] text-dim ml-auto shrink-0">{result?.checkedAt ? timeAgo(result.checkedAt) : '--'}</span>
+                          </div>
+                          {result && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {renderRankPill('통합', result, result.viewTab)}
+                              {renderRankPill('블로그', result, result.blogTab)}
+                              {renderRankPill('인플루언서', result, result.influencerTab)}
+                              {result.searchVolume ? <span className="text-[10px] text-dim">{result.searchVolume.toLocaleString()}</span> : null}
+                            </div>
+                          )}
+                          {result && prevDelta && weekDelta && (
+                            <div className="flex items-center gap-2 text-[10px]">
+                              <span className={`font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>전일 {prevDelta.label}</span>
+                              <span className={`font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>7일 {weekDelta.label}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* 직접 키워드 편집 (스펙 #26: 기본 숨김) */}
+                    <div className="pl-7">
+                      <button onClick={() => toggleEdit(post.id)} className="text-xs text-accent cursor-pointer hover:underline">
+                        {isEditing ? '편집 닫기' : '직접 키워드 편집'}
+                      </button>
+                    </div>
+
                     {/* 키워드별 행 */}
+                    {isEditing && (
                     <div className="space-y-1.5 pl-7">
                       {keywords.map((kw, kwIdx) => {
                         const key = rankKey(post.id, kw.trim());
@@ -1284,6 +1419,7 @@ export default function KeywordRankingSection() {
                         )}
                       </div>
                     </div>
+                    )}
                   </div>
                 );
               })}
@@ -1331,6 +1467,20 @@ export default function KeywordRankingSection() {
           </div>
         )}
       </GlassCard>
+
+      {/* 키워드 상세 드로어 (스펙 #27) */}
+      {detail && profile && (
+        <KeywordDetailDrawer
+          key={`${detail.post.id}::${detail.keyword}`}
+          blogId={profile.blogId}
+          post={detail.post}
+          keyword={detail.keyword}
+          result={rankingResults[rankKey(detail.post.id, detail.keyword)]}
+          delta={rankDeltas[rankKey(detail.post.id, detail.keyword)]}
+          meta={keywordMeta[rankKey(detail.post.id, detail.keyword)]}
+          onClose={() => setDetail(null)}
+        />
+      )}
     </div>
   );
 }

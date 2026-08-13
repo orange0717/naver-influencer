@@ -65,11 +65,30 @@ export interface BlogMetric {
   href?: string;
 }
 
+/** 포스팅별 대표 키워드 최신순위(스펙 #20) — 키워드순위 화면과 동일한 keyword_rank_lookups를 재집계 */
+export interface PostKeywordRank {
+  postId: string;
+  postUrl: string | null;
+  title: string | null;
+  keyword: string;
+  integrated: { exposed: boolean | null; rank: number | null; scannedDepth: number | null };
+  blog: { exposed: boolean | null; rank: number | null; scannedDepth: number | null };
+  searchVolume: number | null;
+  /** 통합검색 전일/7일 전 순위(get_keyword_rank_deltas) — 프론트가 델타 라벨을 계산 */
+  prevRank: number | null;
+  prevCheckedAt: string | null;
+  weekRank: number | null;
+  weekCheckedAt: string | null;
+  checkedAt: string | null;
+}
+
 export interface BlogDashboardSummary {
   /** KPI 카드 — metric_key로 접근. 렌더 순서는 order 배열을 따른다. */
   metrics: Record<string, BlogMetric>;
   /** KPI 카드 표시 순서 */
   order: string[];
+  /** 포스팅별 대표 키워드 최신순위(스펙 #20) — 최근 확인순 최대 50건 */
+  postKeywordRanks: PostKeywordRank[];
   // 'AI 브리핑·AI 탭 현황' 상세 요약 — 대시보드 상세 표(AiBriefingSection)와 동일 소스(ai_briefing_exposures)
   aiExposure: {
     analyzedPostCount: number;      // 확인 완료(check_status='ok') 포스팅 수(distinct post_id)
@@ -112,7 +131,7 @@ export async function GET(request: NextRequest) {
 
   // ── 각 전문 기능이 저장해둔 BLOG_* 결과만 병렬 조회한다(스펙 16항: 재수집·재계산 금지) ──
   // 조회 실패/에러를 '실제 0'과 구분하기 위해 각 소스를 {data, error} 형태로 보존한다.
-  const [profileStats, briefing, rank, missing] = await Promise.all([
+  const [profileStats, briefing, rank, missing, repTitles, rankDeltaRows] = await Promise.all([
     fetchBlogProfileStats(blogId).catch(() => null),
     supabase
       .from('ai_briefing_exposures')
@@ -122,7 +141,7 @@ export async function GET(request: NextRequest) {
       .then(({ data, error }) => ({ rows: data ?? [], ok: !error })),
     supabase
       .from('keyword_rank_lookups')
-      .select('view_rank, blog_rank, checked_at')
+      .select('post_id, keyword, is_primary, post_url, view_rank, view_exposed, view_scanned_depth, blog_rank, blog_exposed, blog_scanned_depth, search_volume, checked_at')
       .eq('user_id', auth.userId)
       .eq('blog_id', blogId)
       .then(({ data, error }) => ({ rows: data ?? [], ok: !error })),
@@ -133,6 +152,15 @@ export async function GET(request: NextRequest) {
       .eq('blog_id', blogId)
       .not('checked_at', 'is', null)
       .then(({ data, error }) => ({ rows: data ?? [], ok: !error })),
+    // 포스팅별 대표 키워드 순위(스펙 #20) 표시용 제목 — post_representative_keywords(공용, blog_id 기준)
+    supabase
+      .from('post_representative_keywords')
+      .select('post_id, post_title')
+      .eq('blog_id', blogId)
+      .then(({ data }) => data ?? []),
+    // 전일/7일대비(통합검색 기준) — 키워드순위 화면과 동일 RPC를 사용해 숫자를 일치시킨다
+    supabase.rpc('get_keyword_rank_deltas', { p_user_id: auth.userId, p_blog_id: blogId })
+      .then(({ data }) => data ?? []),
   ]);
 
   // 방문자(BLOG_VISITOR) KPI는 대시보드에서 제거됨 — 이 대시보드는 방문자 통계가 아니라
@@ -199,6 +227,44 @@ export async function GET(request: NextRequest) {
   }, null);
   // 상태: 조회 실패→ERROR, 확인된 순위 0건이면→'미확인'(아직 순위검사 안 함), 그 외 FRESH
   const rankStatus: BlogMetricStatus = !rank.ok ? 'ERROR' : bestRanks.length === 0 ? 'UNVERIFIED' : 'FRESH';
+
+  // ─────────────────── 포스팅별 대표 키워드 최신순위 (스펙 #20) ───────────────────
+  // 키워드순위 화면과 "동일 소스"(keyword_rank_lookups)를 재집계 — 별도 순위 데이터 생성 금지(스펙 #18·#19).
+  type RankRow = {
+    post_id: string; keyword: string; is_primary: boolean | null; post_url: string | null;
+    view_rank: number | null; view_exposed: boolean | null; view_scanned_depth: number | null;
+    blog_rank: number | null; blog_exposed: boolean | null; blog_scanned_depth: number | null;
+    search_volume: number | null; checked_at: string | null;
+  };
+  const titleByPost = new Map<string, string | null>();
+  for (const t of repTitles as Array<{ post_id: string; post_title: string | null }>) titleByPost.set(t.post_id, t.post_title);
+  // 통합검색 델타(전일/7일 전 순위)만 사용 — 키워드순위 화면과 동일 규칙
+  const deltaByKey = new Map<string, { prev: number | null; prevAt: string | null; week: number | null; weekAt: string | null }>();
+  for (const d of rankDeltaRows as Array<{ post_id: string; keyword: string; search_type: string; prev_rank: number | null; prev_checked_at: string | null; week_rank: number | null; week_checked_at: string | null }>) {
+    if (d.search_type !== 'integrated') continue;
+    deltaByKey.set(`${d.post_id}::${d.keyword}`, { prev: d.prev_rank, prevAt: d.prev_checked_at, week: d.week_rank, weekAt: d.week_checked_at });
+  }
+  const postKeywordRanks: PostKeywordRank[] = (rankRows as RankRow[])
+    .filter(r => r.is_primary === true && r.checked_at)
+    .sort((a, b) => (b.checked_at! > a.checked_at! ? 1 : -1))
+    .slice(0, 50)
+    .map(r => {
+      const delta = deltaByKey.get(`${r.post_id}::${r.keyword}`);
+      return {
+        postId: r.post_id,
+        postUrl: r.post_url,
+        title: titleByPost.get(r.post_id) ?? null,
+        keyword: r.keyword,
+        integrated: { exposed: r.view_exposed, rank: r.view_rank, scannedDepth: r.view_scanned_depth },
+        blog: { exposed: r.blog_exposed, rank: r.blog_rank, scannedDepth: r.blog_scanned_depth },
+        searchVolume: r.search_volume,
+        prevRank: delta?.prev ?? null,
+        prevCheckedAt: delta?.prevAt ?? null,
+        weekRank: delta?.week ?? null,
+        weekCheckedAt: delta?.weekAt ?? null,
+        checkedAt: r.checked_at,
+      };
+    });
 
   // ─────────────────── 미노출 (BLOG_NON_EXPOSURE) ───────────────────
   const missingCheckRows = missing.rows;
@@ -281,7 +347,7 @@ export async function GET(request: NextRequest) {
     'blog_avg_rank',
   ];
 
-  const summary: BlogDashboardSummary = { metrics, order, aiExposure };
+  const summary: BlogDashboardSummary = { metrics, order, postKeywordRanks, aiExposure };
 
   return NextResponse.json(summary);
 }

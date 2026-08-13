@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { buildAutoKeywords, type AutoKeyword } from '@/lib/keyword-normalize';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,14 +41,19 @@ export async function GET(request: NextRequest) {
     extractedAt: string | null;
     candidates: string[];
     candidateScreen: { keyword: string; exposed: boolean; rank: number | null }[];
+    autoKeywords: AutoKeyword[];
   }> = {};
   for (const r of (data ?? []) as StoredRow[]) {
+    const candidates = r.candidates || [];
+    const candidateScreen = r.candidate_screen || [];
     results[r.post_id] = {
       keyword: r.representative_keyword,
       source: r.keyword_source,
       extractedAt: r.extracted_at,
-      candidates: r.candidates || [],
-      candidateScreen: r.candidate_screen || [],
+      candidates,
+      candidateScreen,
+      // 대표+보조(+변형) 자동 조회 집합 — 단일 추출 라우트와 동일 규칙으로 재구성(스펙 #4/#14)
+      autoKeywords: buildAutoKeywords(r.representative_keyword, candidates, candidateScreen),
     };
   }
 

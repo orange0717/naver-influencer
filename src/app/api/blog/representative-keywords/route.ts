@@ -3,6 +3,7 @@ import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getOrPersistRepresentativeKeyword } from '@/lib/post-keyword-extractor';
 import { evaluateCandidates, type CandidateScreenEntry } from '@/lib/candidate-keyword-ranker';
+import { buildAutoKeywords } from '@/lib/keyword-normalize';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -61,10 +62,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 자동 조회 키워드 집합: 대표 1(+변형) + 보조 최대 2(+변형) — 스펙 #4/#5/#14
+    const autoKeywords = buildAutoKeywords(representativeKeyword, extraction.candidates, candidateScreen);
+
     return NextResponse.json({
       keywords: extraction.candidates,
       representativeKeyword,
       candidateScreen,
+      autoKeywords,
       source: extraction.source,
       cached: extraction.cached,
     });

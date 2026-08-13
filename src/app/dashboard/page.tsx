@@ -3,6 +3,7 @@ import { createRouteHandlerClient, createServiceClient, getUserWithTimeout, hasS
 import { isRestricted, getPaywallContext } from '@/lib/admin';
 import { ensureInfluencerBlogId } from '@/lib/influencer-blog';
 import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
+import BlogKeywordRankTable from '@/components/home/BlogKeywordRankTable';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
 import BlogConnectCta from '@/components/home/BlogConnectCta';
 
@@ -85,6 +86,7 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto">
           {[
             { href: '#dashboard-summary', label: 'KPI 요약' },
+            { href: '#keyword-ranks', label: '키워드 순위' },
             { href: '#blog-analysis', label: '블로그 분석' },
           ].map(t => (
             <a
@@ -101,6 +103,11 @@ export default async function DashboardPage() {
       <section id="dashboard-summary" className="scroll-mt-24 space-y-3">
         <h2 className="text-sm font-bold text-text px-1">KPI 요약</h2>
         <BlogDashboardKpiBar blogId={effectiveBlogId} />
+      </section>
+      {/* 포스팅별 대표 키워드 순위(스펙 #20) — 키워드순위 화면과 동일한 keyword_rank_lookups 소스 재집계 */}
+      <section id="keyword-ranks" className="scroll-mt-24 space-y-3">
+        <h2 className="text-sm font-bold text-text px-1">포스팅별 대표 키워드 순위</h2>
+        <BlogKeywordRankTable blogId={effectiveBlogId} />
       </section>
       {/* 'AI 브리핑·AI 탭 현황' 상세 요약 패널은 대시보드에서 제거됨(스펙 6·9항: 중복 노출 방지).
           상세는 별도 'AI 브리핑 · AI 탭 인용' 탭(/my/naver-mate = AiBriefingSection)에서 확인한다.

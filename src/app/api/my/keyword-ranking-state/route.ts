@@ -3,18 +3,30 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
 import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { normalizeKeyword } from '@/lib/keyword-normalize';
 
 export const dynamic = 'force-dynamic';
 
+type TabResult = { exposed: boolean | null; rank: number | null; scannedDepth?: number | null };
+
 type RankingResult = {
-  blogTab: { exposed: boolean | null; rank: number | null };
-  viewTab: { exposed: boolean | null; rank: number | null };
-  influencerTab: { exposed: boolean | null; rank: number | null };
+  blogTab: TabResult;
+  viewTab: TabResult;
+  influencerTab: TabResult;
   query: string;
   searchVolume?: number;
   // 'ok' = 조회 성공 / 'error' = 일시적 오류(미노출로 오판 금지, 저장 생략) / 'unanalyzable' = 분석불가
   status?: 'ok' | 'error' | 'unanalyzable';
   checkedAt?: string | null;
+};
+
+// 키워드 메타(스펙 #11) — primary/secondary/variant/manual, 대표 여부, 변형 원본, 포스팅 URL
+type KeywordMeta = {
+  keywordType?: 'primary' | 'secondary' | 'variant' | 'manual';
+  isPrimary?: boolean;
+  baseKeyword?: string | null;
+  normalizedKeyword?: string | null;
+  postUrl?: string | null;
 };
 
 type RankDelta = {
@@ -46,7 +58,7 @@ export async function GET(request: NextRequest) {
   const [{ data, error }, { data: deltaRows, error: deltaError }] = await Promise.all([
     supabase
       .from('keyword_rank_lookups')
-      .select('post_id, keyword, view_rank, view_exposed, blog_rank, blog_exposed, influencer_rank, influencer_exposed, search_volume, status, checked_at')
+      .select('post_id, keyword, normalized_keyword, keyword_type, is_primary, base_keyword, post_url, view_rank, view_exposed, view_scanned_depth, blog_rank, blog_exposed, blog_scanned_depth, influencer_rank, influencer_exposed, influencer_scanned_depth, search_volume, status, checked_at')
       .eq('user_id', g.userId)
       .eq('blog_id', blogId),
     supabase.rpc('get_keyword_rank_deltas', { p_user_id: g.userId, p_blog_id: blogId }),
@@ -56,24 +68,35 @@ export async function GET(request: NextRequest) {
   // 이력 RPC는 부가 정보(전일/7일대비)이므로 실패해도 나머지 응답은 그대로 반환
   if (deltaError) console.error('[keyword-ranking-state] get_keyword_rank_deltas 실패:', deltaError);
 
-  // 클라이언트 모델로 정리: postKeywords(postId→키워드[]) + rankingResults("postId::keyword"→결과)
+  // 클라이언트 모델로 정리: postKeywords(postId→키워드[]) + rankingResults("postId::keyword"→결과) + keywordMeta
   const postKeywords: Record<string, string[]> = {};
   const rankingResults: Record<string, RankingResult> = {};
+  const keywordMeta: Record<string, KeywordMeta> = {};
   for (const r of (data ?? []) as Array<{
     post_id: string; keyword: string;
-    view_rank: number | null; view_exposed: boolean | null;
-    blog_rank: number | null; blog_exposed: boolean | null;
-    influencer_rank: number | null; influencer_exposed: boolean | null;
+    normalized_keyword: string | null; keyword_type: string | null; is_primary: boolean | null;
+    base_keyword: string | null; post_url: string | null;
+    view_rank: number | null; view_exposed: boolean | null; view_scanned_depth: number | null;
+    blog_rank: number | null; blog_exposed: boolean | null; blog_scanned_depth: number | null;
+    influencer_rank: number | null; influencer_exposed: boolean | null; influencer_scanned_depth: number | null;
     search_volume: number | null; status: string | null; checked_at: string | null;
   }>) {
     (postKeywords[r.post_id] ??= []).push(r.keyword);
+    const kt = (r.keyword_type === 'primary' || r.keyword_type === 'secondary' || r.keyword_type === 'variant' || r.keyword_type === 'manual') ? r.keyword_type : undefined;
+    keywordMeta[`${r.post_id}::${r.keyword}`] = {
+      keywordType: kt,
+      isPrimary: r.is_primary ?? undefined,
+      baseKeyword: r.base_keyword,
+      normalizedKeyword: r.normalized_keyword,
+      postUrl: r.post_url,
+    };
     // checked_at이 없어도 분석불가(unanalyzable)는 상태 배지를 그려야 하므로 결과에 포함한다.
     if (r.checked_at || r.status === 'unanalyzable') {
       rankingResults[`${r.post_id}::${r.keyword}`] = {
         query: r.keyword,
-        viewTab: { exposed: r.view_exposed, rank: r.view_rank },
-        blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
-        influencerTab: { exposed: r.influencer_exposed, rank: r.influencer_rank },
+        viewTab: { exposed: r.view_exposed, rank: r.view_rank, scannedDepth: r.view_scanned_depth },
+        blogTab: { exposed: r.blog_exposed, rank: r.blog_rank, scannedDepth: r.blog_scanned_depth },
+        influencerTab: { exposed: r.influencer_exposed, rank: r.influencer_rank, scannedDepth: r.influencer_scanned_depth },
         searchVolume: r.search_volume ?? undefined,
         status: (r.status === 'ok' || r.status === 'error' || r.status === 'unanalyzable') ? r.status : undefined,
         checkedAt: r.checked_at,
@@ -97,30 +120,55 @@ export async function GET(request: NextRequest) {
     };
   }
 
-  return NextResponse.json({ postKeywords, rankingResults, rankDeltas });
+  return NextResponse.json({ postKeywords, rankingResults, rankDeltas, keywordMeta });
 }
 
-/** PUT: 한 포스트의 키워드 할당을 저장 (신규 upsert + 제거된 키워드 삭제). 기존 순위는 보존. */
+/** PUT: 한 포스트의 키워드 할당을 저장 (신규 upsert + 제거된 키워드 삭제). 기존 순위는 보존.
+ *  keywords 항목은 문자열(사용자 수동 키워드) 또는 메타 객체({keyword, keywordType, isPrimary, baseKeyword, postUrl})를 받는다(스펙 #6/#11). */
 export async function PUT(request: NextRequest) {
   const g = await guard(request);
   if ('res' in g) return g.res;
 
-  const { blogId, postId, keywords } = await request.json();
+  const { blogId, postId, keywords, postUrl } = await request.json();
   if (typeof blogId !== 'string' || typeof postId !== 'string' || !Array.isArray(keywords)) {
     return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
 
-  const clean = [...new Set(
-    keywords.map((k: unknown) => (typeof k === 'string' ? k.trim() : '')).filter(Boolean),
-  )].slice(0, 20);
+  // 문자열/객체 혼용 정규화 → {keyword, meta}
+  type Item = { keyword: string; keywordType: 'primary' | 'secondary' | 'variant' | 'manual'; isPrimary: boolean; baseKeyword: string | null; postUrl: string | null };
+  const seen = new Set<string>();
+  const items: Item[] = [];
+  for (const raw of keywords as unknown[]) {
+    const kw = typeof raw === 'string' ? raw.trim() : (raw && typeof raw === 'object' && typeof (raw as { keyword?: unknown }).keyword === 'string' ? String((raw as { keyword: string }).keyword).trim() : '');
+    if (!kw || seen.has(kw)) continue;
+    seen.add(kw);
+    const m = (raw && typeof raw === 'object') ? raw as Record<string, unknown> : {};
+    const kt = m.keywordType;
+    items.push({
+      keyword: kw,
+      keywordType: (kt === 'primary' || kt === 'secondary' || kt === 'variant') ? kt : 'manual',
+      isPrimary: Boolean(m.isPrimary),
+      baseKeyword: typeof m.baseKeyword === 'string' ? m.baseKeyword : null,
+      postUrl: typeof m.postUrl === 'string' ? m.postUrl : (typeof postUrl === 'string' ? postUrl : null),
+    });
+    if (items.length >= 20) break;
+  }
+  const clean = items.map(i => i.keyword);
 
   const supabase = createServiceClient();
 
-  if (clean.length > 0) {
+  if (items.length > 0) {
     const { error: upsertErr } = await supabase
       .from('keyword_rank_lookups')
       .upsert(
-        clean.map(keyword => ({ user_id: g.userId, blog_id: blogId, post_id: postId, keyword })),
+        items.map(i => ({
+          user_id: g.userId, blog_id: blogId, post_id: postId, keyword: i.keyword,
+          normalized_keyword: normalizeKeyword(i.keyword),
+          keyword_type: i.keywordType,
+          is_primary: i.isPrimary,
+          base_keyword: i.baseKeyword,
+          post_url: i.postUrl,
+        })),
         { onConflict: 'user_id,post_id,keyword', ignoreDuplicates: true },
       );
     if (upsertErr) return NextResponse.json({ error: '저장에 실패했습니다.' }, { status: 500 });
@@ -154,12 +202,13 @@ export async function PATCH(request: NextRequest) {
   const g = await guard(request);
   if ('res' in g) return g.res;
 
-  const { blogId, postId, keyword, result } = await request.json();
+  const { blogId, postId, keyword, result, meta } = await request.json();
   if (typeof blogId !== 'string' || typeof postId !== 'string' || typeof keyword !== 'string' || !keyword.trim()) {
     return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
 
   const r = (result ?? {}) as Partial<RankingResult>;
+  const m = (meta ?? {}) as KeywordMeta;
   const supabase = createServiceClient();
   const trimmedKeyword = keyword.trim();
   const checkedAt = typeof r.checkedAt === 'string' && r.checkedAt ? r.checkedAt : new Date().toISOString();
@@ -171,26 +220,37 @@ export async function PATCH(request: NextRequest) {
   }
   const status: 'ok' | 'unanalyzable' = r.status === 'unanalyzable' ? 'unanalyzable' : 'ok';
 
+  const payload: Record<string, unknown> = {
+    user_id: g.userId,
+    blog_id: blogId,
+    post_id: postId,
+    keyword: trimmedKeyword,
+    normalized_keyword: typeof m.normalizedKeyword === 'string' && m.normalizedKeyword ? m.normalizedKeyword : normalizeKeyword(trimmedKeyword),
+    view_rank: typeof r.viewTab?.rank === 'number' ? r.viewTab.rank : null,
+    view_exposed: typeof r.viewTab?.exposed === 'boolean' ? r.viewTab.exposed : null,
+    view_scanned_depth: typeof r.viewTab?.scannedDepth === 'number' ? r.viewTab.scannedDepth : null,
+    blog_rank: typeof r.blogTab?.rank === 'number' ? r.blogTab.rank : null,
+    blog_exposed: typeof r.blogTab?.exposed === 'boolean' ? r.blogTab.exposed : null,
+    blog_scanned_depth: typeof r.blogTab?.scannedDepth === 'number' ? r.blogTab.scannedDepth : null,
+    influencer_rank: typeof r.influencerTab?.rank === 'number' ? r.influencerTab.rank : null,
+    influencer_exposed: typeof r.influencerTab?.exposed === 'boolean' ? r.influencerTab.exposed : null,
+    influencer_scanned_depth: typeof r.influencerTab?.scannedDepth === 'number' ? r.influencerTab.scannedDepth : null,
+    search_volume: typeof r.searchVolume === 'number' ? r.searchVolume : null,
+    status,
+    fail_count: 0,
+    // 캐시 히트로 받은 결과는 실제 조회 시각(checkedAt)이 과거일 수 있으므로 그대로 보존
+    checked_at: checkedAt,
+    updated_at: new Date().toISOString(),
+  };
+  // 메타는 제공된 경우에만 갱신 — 기존 값(특히 수동 keyword_type)을 임의로 덮지 않는다(스펙 #6).
+  if (m.keywordType === 'primary' || m.keywordType === 'secondary' || m.keywordType === 'variant' || m.keywordType === 'manual') payload.keyword_type = m.keywordType;
+  if (typeof m.isPrimary === 'boolean') payload.is_primary = m.isPrimary;
+  if (typeof m.baseKeyword === 'string') payload.base_keyword = m.baseKeyword;
+  if (typeof m.postUrl === 'string') payload.post_url = m.postUrl;
+
   const { error } = await supabase
     .from('keyword_rank_lookups')
-    .upsert({
-      user_id: g.userId,
-      blog_id: blogId,
-      post_id: postId,
-      keyword: trimmedKeyword,
-      view_rank: typeof r.viewTab?.rank === 'number' ? r.viewTab.rank : null,
-      view_exposed: typeof r.viewTab?.exposed === 'boolean' ? r.viewTab.exposed : null,
-      blog_rank: typeof r.blogTab?.rank === 'number' ? r.blogTab.rank : null,
-      blog_exposed: typeof r.blogTab?.exposed === 'boolean' ? r.blogTab.exposed : null,
-      influencer_rank: typeof r.influencerTab?.rank === 'number' ? r.influencerTab.rank : null,
-      influencer_exposed: typeof r.influencerTab?.exposed === 'boolean' ? r.influencerTab.exposed : null,
-      search_volume: typeof r.searchVolume === 'number' ? r.searchVolume : null,
-      status,
-      fail_count: 0,
-      // 캐시 히트로 받은 결과는 실제 조회 시각(checkedAt)이 과거일 수 있으므로 그대로 보존
-      checked_at: checkedAt,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,post_id,keyword' });
+    .upsert(payload, { onConflict: 'user_id,post_id,keyword' });
 
   if (error) return NextResponse.json({ error: '갱신에 실패했습니다.' }, { status: 500 });
 

@@ -15,10 +15,21 @@ export interface BlogPost {
   isPublic: boolean;
 }
 
-// 노출 상태 4구분(스펙 #8): exposed=true(노출) / false(미노출·확정) / null(미확인·일시오류)
+// 노출 상태 구분(스펙 #8·#10·#21): exposed=true(노출) / false(미노출·조회범위밖) / null(미확인·일시오류)
 //   + status로 'ok'(확인완료) / 'error'(일시적 오류) / 'unanalyzable'(분석불가)를 구분한다.
-export type RankTab = { exposed: boolean | null; rank: number | null };
+//   scannedDepth: exposed=false && 존재 → "N위 밖"(조회 범위 밖). 없으면 일반 미노출.
+export type RankTab = { exposed: boolean | null; rank: number | null; scannedDepth?: number | null };
 export type RankStatus = 'ok' | 'error' | 'unanalyzable';
+
+// 키워드 메타(스펙 #11) — 대표/보조/변형/수동 구분
+export type KeywordType = 'primary' | 'secondary' | 'variant' | 'manual';
+export interface KeywordMeta {
+  keywordType?: KeywordType;
+  isPrimary?: boolean;
+  baseKeyword?: string | null;
+  normalizedKeyword?: string | null;
+  postUrl?: string | null;
+}
 
 export interface RankingResult {
   blogTab: RankTab;
@@ -42,7 +53,17 @@ export type SyncedState = {
   postKeywords: Record<string, string[]>;
   rankingResults: Record<string, RankingResult>;
   rankDeltas: Record<string, RankDelta>;
+  keywordMeta?: Record<string, KeywordMeta>;
 };
+
+// 자동 추출 키워드(대표/보조/변형) — representative-keywords(-state) API 응답 항목 (스펙 #4/#14)
+export interface AutoKeyword {
+  keyword: string;
+  normalized: string;
+  keywordType: 'primary' | 'secondary' | 'variant';
+  isPrimary: boolean;
+  baseKeyword: string;
+}
 
 export const STATE_API = '/api/my/keyword-ranking-state';
 export const REP_STATE_API = '/api/my/representative-keywords-state';
@@ -63,6 +84,8 @@ export interface RepKeywordEntry {
   // AI가 뽑은 후보 3~5개 전체(대표 포함) — 통합검색 1페이지 스크리닝 결과와 함께 태그로 표시
   candidates?: string[];
   candidateScreen?: CandidateScreenEntry[];
+  // 자동 조회 키워드 집합: 대표 1(+변형) + 보조 1~2(+변형) (스펙 #4/#14)
+  autoKeywords?: AutoKeyword[];
 }
 
 // 영속화된(post_representative_keywords) 포스트별 대표 키워드를 블로그 단위로 한 번에 복원
@@ -98,12 +121,12 @@ export async function saveKeywordsToDb(blogId: string, postId: string, keywords:
 
 // 단일 (post, keyword) 순위 결과를 DB에 갱신. 화면엔 이미 최신 결과가 표시된 뒤 백그라운드로 저장하므로,
 // 실패 시에도 화면을 되돌리진 않되 반드시 로그를 남겨 "화면엔 보이는데 DB엔 없는" 상태를 진단할 수 있게 한다.
-export async function saveRankResultToDb(blogId: string, postId: string, keyword: string, result: RankingResult): Promise<boolean> {
+export async function saveRankResultToDb(blogId: string, postId: string, keyword: string, result: RankingResult, meta?: KeywordMeta): Promise<boolean> {
   try {
     const res = await fetch(STATE_API, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blogId, postId, keyword, result }),
+      body: JSON.stringify({ blogId, postId, keyword, result, meta }),
       keepalive: true,
     });
     if (!res.ok) {
@@ -170,10 +193,11 @@ export function computeDeltaDisplay(
     return { label: '-', colorClass: 'text-dim', tooltip: '비교할 이전 데이터가 없습니다' };
   }
   if (currentExposed && refRank != null && currentRank != null) {
+    // 순위 숫자는 낮을수록 좋음 → 이전-현재가 양수면 상승(+N), 음수면 하락(−N) (스펙 #16/#17)
     const delta = refRank - currentRank;
-    if (delta > 0) return { label: `▲${delta}`, colorClass: 'text-up', tooltip: `${refRank}위 → ${currentRank}위 (▲${delta})` };
-    if (delta < 0) return { label: `▼${Math.abs(delta)}`, colorClass: 'text-down', tooltip: `${refRank}위 → ${currentRank}위 (▼${Math.abs(delta)})` };
-    return { label: '-', colorClass: 'text-dim', tooltip: `${refRank}위 → ${currentRank}위 (변동 없음)` };
+    if (delta > 0) return { label: `+${delta}`, colorClass: 'text-up', tooltip: `${refRank}위 → ${currentRank}위 (${delta}계단 상승)` };
+    if (delta < 0) return { label: `−${Math.abs(delta)}`, colorClass: 'text-down', tooltip: `${refRank}위 → ${currentRank}위 (${Math.abs(delta)}계단 하락)` };
+    return { label: '0', colorClass: 'text-dim', tooltip: `${refRank}위 → ${currentRank}위 (변동 없음)` };
   }
   if (currentExposed && refRank == null) {
     return { label: 'NEW', colorClass: 'text-blue-600', tooltip: '이전에는 미노출, 현재 신규 진입' };
@@ -184,9 +208,18 @@ export function computeDeltaDisplay(
   return { label: '-', colorClass: 'text-dim', tooltip: '미노출 상태 유지' };
 }
 
-// 순위 셀 4구분 렌더 (스펙 #8) — 임의 숫자(0위/999위) 금지, 상태를 명시적으로 구분한다.
-//   노출(N위) / 미노출(-) / 분석중(--) / 분석불가 / 일시오류
-// tab.exposed: true=노출, false=미노출(확정), null=미확인. result.status로 error/unanalyzable 구분.
+// 미노출(exposed=false) 셀의 텍스트: 조회 범위(scannedDepth)를 알면 "N위 밖"(조회 범위 밖, 스펙 #10/#21), 모르면 "순위권 밖".
+function missLabel(tab: RankTab): { text: string; title: string } {
+  const d = tab.scannedDepth;
+  if (typeof d === 'number' && d > 0) {
+    return { text: `${d}위 밖`, title: `조회 범위 밖 — 상위 ${d}위까지 확인했으나 발견되지 않았습니다(미노출 확정 아님)` };
+  }
+  return { text: '순위권 밖', title: '조회 범위 밖 — 확인한 상위 결과에서 발견되지 않았습니다' };
+}
+
+// 순위 셀 5구분 렌더 (스펙 #8·#10·#21) — 임의 숫자(0위/999위) 금지, 상태를 명시적으로 구분한다.
+//   노출(N위) / 조회 범위 밖(N위 밖) / 분석중(--) / 분석불가 / 일시오류
+// tab.exposed: true=노출, false=미노출/조회범위밖, null=미확인. result.status로 error/unanalyzable 구분.
 export function renderRankTab(result: RankingResult | undefined, tab: RankTab | null | undefined): ReactNode {
   if (!result) return <span className="text-[10px] text-dim/50" title="분석중 — 아직 순위를 확인하지 않았습니다">--</span>;
   if (result.status === 'unanalyzable') {
@@ -199,19 +232,20 @@ export function renderRankTab(result: RankingResult | undefined, tab: RankTab | 
   if (tab.exposed === true) {
     return <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">{tab.rank}위</span>;
   }
-  return <span className="text-xs text-dim" title="미노출 — 검색결과 상위에서 찾지 못했습니다">-</span>;
+  const miss = missLabel(tab);
+  return <span className="text-[10px] text-dim" title={miss.title}>{miss.text}</span>;
 }
 
-// CSV/텍스트용 4구분 라벨 — 노출(N위)/미노출(-)/분석중(--)/분석불가/일시오류.
+// CSV/텍스트용 라벨 — 노출(N위)/조회범위밖(N위 밖)/분석중(--)/분석불가/일시오류.
 export function rankCellText(result: RankingResult | undefined, tab: RankTab | null | undefined): string {
   if (!result) return '--';
   if (result.status === 'unanalyzable') return '분석불가';
   if (result.status === 'error' || !tab || tab.exposed === null || tab.exposed === undefined) return '일시오류';
   if (tab.exposed === true) return `${tab.rank}위`;
-  return '-';
+  return missLabel(tab).text;
 }
 
-// 모바일 카드용 라벨 pill 버전 (통합/블로그/인플루언서) — 데스크톱 renderRankTab과 동일한 4구분.
+// 모바일 카드용 라벨 pill 버전 (통합/블로그/인플루언서) — 데스크톱 renderRankTab과 동일한 5구분.
 export function renderRankPill(label: string, result: RankingResult | undefined, tab: RankTab | null | undefined): ReactNode {
   const base = 'text-[10px] font-bold px-1.5 py-0.5 rounded-full';
   if (!result) return <span className={`${base} bg-bg text-dim`}>{label} --</span>;
@@ -220,7 +254,8 @@ export function renderRankPill(label: string, result: RankingResult | undefined,
     return <span className={`${base} bg-bg text-down/70`} title="일시적 오류 — 잠시 후 자동 재조회">{label} 일시오류</span>;
   }
   if (tab.exposed === true) return <span className={`${base} bg-up/10 text-up`}>{label} {tab.rank}위</span>;
-  return <span className={`${base} bg-bg text-dim`} title="미노출">{label} -</span>;
+  const miss = missLabel(tab);
+  return <span className={`${base} bg-bg text-dim`} title={miss.title}>{label} {miss.text}</span>;
 }
 
 export async function getProfileFromApi(): Promise<BloggerProfile | null> {
