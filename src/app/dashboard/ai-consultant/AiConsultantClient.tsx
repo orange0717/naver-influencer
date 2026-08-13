@@ -21,6 +21,16 @@ interface Recommendation {
 interface ConsultResult {
   interpretation: string;
   recommendations: Recommendation[];
+  /** 이번 답변이 N인플 실제 데이터를 근거로 했는지 (§17 데이터 근거 뱃지용). */
+  dataUsed?: boolean;
+  /** 사용된 N인플 데이터 출처 라벨 (예: "인플루언서 랭킹", "미노출 분석"). */
+  dataSources?: string[];
+}
+
+/** 멀티턴 맥락 — 같은 세션에서 오간 대화. 서버로 함께 보내 앞선 업종·타깃 등을 기억하게 한다. */
+interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 interface RecentQuery {
@@ -50,6 +60,9 @@ export default function AiConsultantClient() {
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentQuery[] | null>(null);
   const [activeRecentId, setActiveRecentId] = useState<string | null>(null);
+  // 세션 내 멀티턴 맥락. 화면에는 최신 답변만 보여주되, 서버에는 이전 대화를 함께 보내
+  // 사용자가 앞서 밝힌 업종·타깃을 기억하게 한다(§8·§15). "새 분석" 시 초기화.
+  const [turns, setTurns] = useState<ConversationTurn[]>([]);
 
   const loadRecent = async () => {
     try {
@@ -78,7 +91,7 @@ export default function AiConsultantClient() {
       const res = await fetch('/api/ai-consultant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({ query: q, history: turns }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -92,6 +105,8 @@ export default function AiConsultantClient() {
       } else {
         setResult(data);
         if (data.id) setActiveRecentId(data.id);
+        // 이번 질문/답변을 세션 맥락에 누적 (다음 질문이 이 맥락을 기억하도록)
+        setTurns((prev) => [...prev, { role: 'user', content: q }, { role: 'assistant', content: data.interpretation || '' }]);
         loadRecent();
       }
     } catch {
@@ -107,6 +122,8 @@ export default function AiConsultantClient() {
     setInput(item.query);
     setResult({ interpretation: item.interpretation, recommendations: item.recommendations });
     setActiveRecentId(item.id);
+    // 저장된 이력을 열면 그 질문/답변을 새 세션 맥락의 시작점으로 삼는다.
+    setTurns([{ role: 'user', content: item.query }, { role: 'assistant', content: item.interpretation }]);
   };
 
   const startNew = () => {
@@ -115,6 +132,7 @@ export default function AiConsultantClient() {
     setInput('');
     setSubmittedQuery('');
     setActiveRecentId(null);
+    setTurns([]);
   };
 
   // 결과/로딩/에러가 없는 초기 화면은 ChatGPT·Claude처럼 화면 중앙에 오도록,
@@ -237,7 +255,20 @@ export default function AiConsultantClient() {
       {result && (
         <div className="space-y-4">
           <div className="bg-surface border border-border rounded-2xl p-5 space-y-1.5 shadow-sm">
-            <p className="text-[11px] font-bold text-accent">N인플 AI 답변</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[11px] font-bold text-accent">N인플 AI 답변</p>
+              {result.dataUsed && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-up/10 text-up text-[10px] font-bold">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  N인플 데이터 근거
+                  {result.dataSources && result.dataSources.length > 0 && (
+                    <span className="font-medium opacity-80">· {result.dataSources.join(', ')}</span>
+                  )}
+                </span>
+              )}
+            </div>
             <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">{result.interpretation}</p>
           </div>
 
