@@ -134,17 +134,26 @@ export async function GET(request: NextRequest) {
         }
         if (posts.length === 0) continue;
 
-        // 2) 기존 검사 신선도 조회 (블로그 단위 1회)
-        const { data: existing } = await supabase
+        // 2) 기존 검사 신선도 조회 (블로그 단위 1회). overall_status/next_check_at 은 migration-146 이후 컬럼이라
+        //    미적용 DB 에서도 안전하도록 실패 시 레거시 컬럼으로 폴백.
+        const freshFull = await supabase
           .from('post_missing_checks')
-          .select('post_id, checked_at, status')
+          .select('post_id, checked_at, status, overall_status, next_check_at')
           .eq('blog_id', blogId);
-        const lastChecked = new Map<string, { checkedAt: number; status: string }>();
-        for (const e of existing || []) {
-          lastChecked.set(e.post_id, { checkedAt: e.checked_at ? new Date(e.checked_at).getTime() : 0, status: e.status });
+        const freshRes = freshFull.error
+          ? await supabase.from('post_missing_checks').select('post_id, checked_at, status').eq('blog_id', blogId)
+          : freshFull;
+        const lastChecked = new Map<string, { checkedAt: number; status: string; overall: string | null; nextCheckAt: number | null }>();
+        for (const e of (freshRes.data || []) as Record<string, unknown>[]) {
+          lastChecked.set(e.post_id as string, {
+            checkedAt: e.checked_at ? new Date(e.checked_at as string).getTime() : 0,
+            status: e.status as string,
+            overall: (e.overall_status as string | null) ?? null,
+            nextCheckAt: e.next_check_at ? new Date(e.next_check_at as string).getTime() : null,
+          });
         }
 
-        // 3) 검사 대상 선별: 공개 + lookback 이내 + 색인유예 경과 + 최근 검사 아님
+        // 3) 검사 대상 선별: 공개 + lookback 이내 + 색인유예 경과 + (최근 검사 아님 OR 재검증 예정 도래)
         const candidates = posts.filter(p => {
           if (!p.isPublic) return false;
           if (p.publishedAt != null) {
@@ -153,7 +162,13 @@ export async function GET(request: NextRequest) {
             if (p.publishedAt < lookbackCutoff) return false; // 너무 오래됨
           }
           const prev = lastChecked.get(p.id);
-          if (prev && prev.status !== 'error' && now - prev.checkedAt < RECHECK_AFTER_MS) return false; // 최근 검사됨
+          if (!prev) return true;
+          if (prev.status === 'error') return true;                    // 지난번 오류 → 재확인
+          // §11 재검증 대기(recheck)는 next_check_at 도래 시 우선 재검사(20h 신선도 스킵 무시)
+          if (prev.overall === 'recheck') {
+            return prev.nextCheckAt == null || prev.nextCheckAt <= now;
+          }
+          if (now - prev.checkedAt < RECHECK_AFTER_MS) return false;    // 최근 검사됨
           return true;
         }).slice(0, PER_USER_POST_CAP);
 
@@ -170,10 +185,10 @@ export async function GET(request: NextRequest) {
             });
             // 일시적 오류(수집 실패)는 저장하지 않는다 — 이전 정상 기록을 NULL 로 덮지 않기 위함.
             if (result.status !== 'error') {
-              await recordPostExposure(blogId, post.id, post.title, result, supabase);
+              const recorded = await recordPostExposure(blogId, post.id, post.title, result, supabase);
               totalPostsChecked++;
-              const missing = result.viewTab.exposed === false || result.blogTab.exposed === false || result.influencerTab.exposed === false;
-              if (missing) totalMissing++;
+              // 확정 미노출만 집계(재검증 통과분). recheck/확인중은 아직 미노출 아님(§10·§11).
+              if (recorded.overallStatus === 'missing') totalMissing++;
             } else {
               totalFailed++;
             }

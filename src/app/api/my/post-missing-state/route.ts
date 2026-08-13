@@ -18,6 +18,10 @@ type StoredRow = {
   influencer_rank: number | null;
   search_volume: number | null;
   status: string;
+  overall_status: string | null;
+  confidence: string | null;
+  evidence: unknown;
+  first_all_missing_at: string | null;
   checked_at: string | null;
 };
 
@@ -30,12 +34,16 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from('post_missing_checks')
-    .select('post_id, post_title, query, search_candidates, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, checked_at')
-    .eq('blog_id', blogId);
+  // overall_status/confidence/evidence 는 migration-146 이후 컬럼 — 미적용 DB 에서도 깨지지 않도록 실패 시 폴백 조회.
+  const FULL_COLS = 'post_id, post_title, query, search_candidates, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, overall_status, confidence, evidence, first_all_missing_at, checked_at';
+  const LEGACY_COLS = 'post_id, post_title, query, search_candidates, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, checked_at';
 
-  if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
+  const full = await supabase.from('post_missing_checks').select(FULL_COLS).eq('blog_id', blogId);
+  const fell = full.error
+    ? await supabase.from('post_missing_checks').select(LEGACY_COLS).eq('blog_id', blogId)
+    : full;
+  const data = fell.data as Record<string, unknown>[] | null;
+  if (fell.error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
 
   const results: Record<string, {
     blogTab: { exposed: boolean | null; rank: number | null };
@@ -45,10 +53,14 @@ export async function GET(request: NextRequest) {
     candidates: string[];
     searchVolume: number | null;
     status: string;
+    overallStatus: string | null;
+    confidence: string | null;
+    evidence: unknown;
+    firstAllMissingAt: string | null;
     checkedAt: string | null;
   }> = {};
 
-  for (const r of (data ?? []) as StoredRow[]) {
+  for (const r of (data ?? []) as unknown as StoredRow[]) {
     results[r.post_id] = {
       blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
       viewTab: { exposed: r.view_exposed, rank: r.view_rank },
@@ -57,6 +69,10 @@ export async function GET(request: NextRequest) {
       candidates: r.search_candidates ?? (r.query ? [r.query] : []),
       searchVolume: r.search_volume,
       status: r.status,
+      overallStatus: r.overall_status ?? null,
+      confidence: r.confidence ?? null,
+      evidence: r.evidence ?? null,
+      firstAllMissingAt: r.first_all_missing_at ?? null,
       checkedAt: r.checked_at,
     };
   }

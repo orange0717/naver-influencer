@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import Modal from '@/components/ui/Modal';
-import { filterMissing, countMissing, countMissingInArea, countIndexingWait, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea } from '@/lib/missing-rate';
+import { countMissing, countMissingInArea, countIndexingWait, displayVerdict, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea, type PostLike } from '@/lib/missing-rate';
+import { verdictLabel, confidenceLabel, type ExposureVerdict } from '@/lib/exposure-verdict';
 import { parseNaverPostDate } from '@/lib/naver-date';
 import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
 import { fetchWithTimeout, getProfileFromApi, CHECK_FRESH_MS } from './BlogAnalysisSection.helpers';
@@ -27,6 +28,7 @@ type PostMissingEntry = MissingState;
 type HistoryEntry = {
   prevState: 'exposed' | 'missing';
   newState: 'exposed' | 'missing';
+  changedReason?: string | null;
   changedAt: string;
 };
 
@@ -100,21 +102,26 @@ function ExposureBadge({ exposed }: { exposed: boolean | null | undefined }) {
   return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
 }
 
-// 스펙 §3 상태값 5종: 노출 / 미노출 / 분석중 / 분석불가 / 일시적 오류
-// 분석불가/일시적 오류는 절대 미노출로 표시하지 않는다.
-function StatusBadge({ mr, isChecking, isPublic }: { mr?: PostMissingEntry; isChecking: boolean; isPublic?: boolean }) {
+// §19 화면 상태 5종: 🟢노출 / 🔴미노출 / 🟡재검사 / ⚪확인 중 / ⚫확인 불가(+분석 불가)
+// 확인 불가·분석 불가·재검사는 절대 미노출로 표기하지 않는다(§15). 확정 판정은 서버 상태머신이 낸 overall_status 를 신뢰.
+const VERDICT_STYLE: Record<ExposureVerdict, string> = {
+  exposed:      'text-up bg-up/10',
+  missing:      'text-down bg-down/10',
+  recheck:      'text-amber-600 bg-amber-500/15',
+  checking:     'text-blue bg-blue/10',
+  error:        'text-dim bg-border/40',
+  unanalyzable: 'text-dim bg-border/40',
+};
+
+function StatusBadge({ post, mr, isChecking, now }: { post: PostLike; mr?: PostMissingEntry; isChecking: boolean; now: number }) {
   if (isChecking) return <span className="text-[11px] font-bold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔵 분석중</span>;
-  if (isPublic === false || mr?.status === 'unanalyzable')
-    return <span className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap">⚪ 분석불가</span>;
-  if (mr?.status === 'error')
-    return <span className="text-[11px] font-bold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full whitespace-nowrap">🟠 일시적 오류</span>;
-  if (mr?.status === 'failed')
+  // 재시도 소진 실패(일시적) — 확정 판정 전이라면 재검사 필요로 안내
+  if (mr?.status === 'failed' && mr.overallStatus == null)
     return <span className="text-[11px] font-bold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full whitespace-nowrap">🟡 재검사 필요</span>;
-  if (!mr) return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
-  if (missingAreaCount(mr) > 0) return <span className="text-[11px] font-bold text-down bg-down/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔴 미노출</span>;
-  const anyChecked = mr.viewTab.exposed !== null || mr.blogTab.exposed !== null || (mr.influencerTab?.exposed ?? null) !== null;
-  if (anyChecked) return <span className="text-[11px] font-bold text-up bg-up/10 px-2 py-0.5 rounded-full whitespace-nowrap">🟢 노출</span>;
-  return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
+  const v = displayVerdict(post, mr, now);
+  if (!v) return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
+  const { emoji, text } = verdictLabel(v);
+  return <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${VERDICT_STYLE[v]}`}>{emoji} {text}</span>;
 }
 
 export default function MissingPostsSection() {
@@ -343,11 +350,22 @@ export default function MissingPostsSection() {
   const recent30Missing = useMemo(() => countMissing(recent30PostsDated, missingResults), [recent30PostsDated, missingResults]);
   // 발행 후 유예 기간 내라 미노출 집계에서 제외된 게시글 수(투명성 안내용)
   const indexingWaitCount = useMemo(() => countIndexingWait(periodPostsDated, missingResults), [periodPostsDated, missingResults]);
+  // §11 모든 영역 미노출 1회 관측 후 재검증 대기 중인 글 수(아직 미노출 확정 아님)
+  const recheckCount = useMemo(() => {
+    const now = Date.now();
+    return periodPostsDated.filter(p => displayVerdict(p, missingResults[p.id], now) === 'recheck').length;
+  }, [periodPostsDated, missingResults]);
 
   const pct = (n: number) => periodPosts.length === 0 ? 0 : Math.round((n / periodPosts.length) * 100);
 
+  // 목록에는 확정 미노출(🔴) + 재검증 대기(🟡재검사) 글을 함께 보여준다 — 재검사 상태를 사용자가 인지하도록(§19).
+  // '전체 미노출' 카운트는 별개로 확정 미노출만 집계(countMissing)한다.
   const missingList = useMemo(() => {
-    let list = filterMissing(periodPostsDated, missingResults);
+    const now = Date.now();
+    let list = periodPostsDated.filter(p => {
+      const v = displayVerdict(p, missingResults[p.id], now);
+      return v === 'missing' || v === 'recheck';
+    });
     if (areaFilter !== 'all') {
       list = list.filter(p => {
         const mr = missingResults[p.id];
@@ -388,6 +406,10 @@ export default function MissingPostsSection() {
   const detailPost = useMemo(() => posts.find(p => p.id === detailPostId) || null, [posts, detailPostId]);
   const detailMr = detailPostId ? missingResults[detailPostId] : undefined;
   const detailCauses = useMemo(() => buildCauseAnalysis(detailMr), [detailMr]);
+  const detailVerdict = useMemo<ExposureVerdict | null>(() => {
+    if (!detailPost) return null;
+    return displayVerdict({ ...detailPost, publishedAt: parsePostDate(detailPost.date) }, detailMr, Date.now());
+  }, [detailPost, detailMr]);
 
   // 상세 모달이 열릴 때 해당 포스트의 전환 이력을 불러온다
   useEffect(() => {
@@ -438,11 +460,12 @@ export default function MissingPostsSection() {
 
       {/* 1. 미노출 정의 안내 */}
       <GlassCard padding="sm" className="text-xs text-dim leading-relaxed">
-        <p className="font-bold text-text mb-1">미노출 정의</p>
-        <p>선택한 기간에 발행한 게시글 중 <b className="text-text">네이버 통합검색 · 네이버 블로그 · 네이버 인플루언서</b> 검색 결과에서 확인되지 않는 게시글입니다.</p>
-        <p className="mt-1">※ 검색 기준은 항상 <b className="text-text">포스팅 제목</b>입니다. 제목이 길면 의미를 유지한 채 자연스럽게 분리한 검색어 여러 개로 확인하며, 그중 하나라도 노출되면 &apos;노출&apos;로 처리합니다. 정상 수집된 게시글만 검사합니다.</p>
-        <p className="mt-1">※ 발행 후 {INDEXING_GRACE_HOURS}시간 이내 게시글은 네이버 색인 지연으로 인한 오탐을 막기 위해 미노출 집계·목록에서 제외합니다.
-          {indexingWaitCount > 0 && <span className="text-accent font-semibold"> (현재 인덱싱 대기 중 {indexingWaitCount}개)</span>}
+        <p className="font-bold text-text mb-1">미노출 정의 (교차검증)</p>
+        <p><b className="text-text">통합검색 · 블로그 · 인플루언서</b> 중 <b className="text-text">한 곳이라도 노출되면 &apos;노출&apos;</b>로 봅니다. 세 영역 모두에서 확인되지 않는 경우에만 미노출 후보이며, 곧바로 확정하지 않고 <b className="text-text">2차 재검증</b>까지 통과한 글만 &apos;미노출&apos;로 확정합니다(실제 노출 글을 미노출로 잘못 표시하지 않기 위함).</p>
+        <p className="mt-1">※ 검색 기준은 항상 <b className="text-text">포스팅 제목(또는 등록한 키워드)</b>이며, 검색 결과의 <b className="text-text">포스팅 URL·블로그 ID</b>가 내 것과 일치하는지까지 확인합니다. 검색 오류·요청 실패는 <b className="text-text">&apos;확인 불가&apos;</b>로 처리하며 절대 미노출로 집계하지 않습니다.</p>
+        <p className="mt-1">※ 발행 후 {INDEXING_GRACE_HOURS}시간 이내 게시글은 네이버 색인 지연으로 인한 오탐을 막기 위해 &apos;확인 중&apos;으로 두고 미노출 집계에서 제외합니다.
+          {indexingWaitCount > 0 && <span className="text-accent font-semibold"> (색인 대기 중 {indexingWaitCount}개)</span>}
+          {recheckCount > 0 && <span className="text-amber-600 font-semibold"> · 재검증 대기 {recheckCount}개</span>}
         </p>
       </GlassCard>
 
@@ -561,6 +584,7 @@ export default function MissingPostsSection() {
                   {missingList.map(post => {
                     const mr = missingResults[post.id];
                     const isChecking = checkingAll && checkingPostId === post.id;
+                    const now = Date.now();
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition">
                         <td className="px-3 py-3.5 text-center">
@@ -577,7 +601,7 @@ export default function MissingPostsSection() {
                         <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.blogTab.exposed} /></td>
                         <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.influencerTab?.exposed} /></td>
                         <td className="px-2 py-3.5 text-right text-dim text-xs">{mr?.searchVolume != null ? mr.searchVolume.toLocaleString() : '—'}</td>
-                        <td className="px-3 py-3.5"><StatusBadge mr={mr} isChecking={isChecking} isPublic={post.isPublic} /></td>
+                        <td className="px-3 py-3.5"><StatusBadge post={post} mr={mr} isChecking={isChecking} now={now} /></td>
                         <td className="px-5 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -601,6 +625,7 @@ export default function MissingPostsSection() {
               {missingList.map(post => {
                 const mr = missingResults[post.id];
                 const isChecking = checkingAll && checkingPostId === post.id;
+                const now = Date.now();
                 return (
                   <div key={post.id} className="p-4 space-y-2">
                     <div className="flex items-start gap-2">
@@ -618,7 +643,7 @@ export default function MissingPostsSection() {
                       <ExposureBadge exposed={mr?.influencerTab?.exposed} />
                     </div>
                     <div className="flex items-center justify-between">
-                      <StatusBadge mr={mr} isChecking={isChecking} isPublic={post.isPublic} />
+                      <StatusBadge post={post} mr={mr} isChecking={isChecking} now={now} />
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => { setDetailPostId(post.id); setDetailError(''); }}
@@ -666,6 +691,44 @@ export default function MissingPostsSection() {
               ))}
             </div>
 
+            {/* §14/§19 최종 판정 + 신뢰도 + 1·2차 검사 시각 */}
+            {detailVerdict && (
+              <div className="bg-bg rounded-lg px-3 py-2.5 mb-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-dim">최종 판정</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${VERDICT_STYLE[detailVerdict]}`}>
+                    {verdictLabel(detailVerdict).emoji} {verdictLabel(detailVerdict).text}
+                  </span>
+                </div>
+                {detailVerdict === 'missing' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-dim">판정 신뢰도</span>
+                    <span className="text-xs font-semibold text-text">{confidenceLabel(detailMr?.confidence ?? null)}</span>
+                  </div>
+                )}
+                {detailVerdict === 'recheck' && (
+                  <p className="text-[11px] text-amber-600">모든 영역 미노출이 1회 감지되어 재검증 대기 중입니다. 2차 검사에서도 동일하면 미노출로 확정됩니다.</p>
+                )}
+                {detailMr?.firstAllMissingAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-dim">1차 검사(최초 미노출 감지)</span>
+                    <span className="text-[11px] text-dim">{formatCheckedAt(detailMr.firstAllMissingAt)}</span>
+                  </div>
+                )}
+                {detailMr?.checkedAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-dim">최근 검사</span>
+                    <span className="text-[11px] text-dim">{formatCheckedAt(detailMr.checkedAt)}</span>
+                  </div>
+                )}
+                {detailMr?.evidence?.reverified && (
+                  <p className="text-[11px] text-dim pt-0.5">
+                    ✓ 이번 검사에서 2차 재검증을 수행했습니다{detailMr.evidence.reverifyFlippedToExposed ? ' — 재검증에서 노출로 정정됨.' : '.'}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="text-xs text-dim bg-bg rounded-lg px-3 py-2 mb-4 space-y-1">
               <p>검색 기준: <b className="text-text">포스팅 제목</b></p>
               {detailMr?.candidates && detailMr.candidates.length > 0 && (
@@ -701,11 +764,14 @@ export default function MissingPostsSection() {
               ) : (
                 <ul className="space-y-1.5">
                   {detailHistory.map((h, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs">
-                      <span className="text-[10px] text-dim w-28 shrink-0">{formatCheckedAt(h.changedAt)}</span>
-                      <ExposureBadge exposed={h.prevState === 'exposed'} />
-                      <span className="text-dim">→</span>
-                      <ExposureBadge exposed={h.newState === 'exposed'} />
+                    <li key={i} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-dim w-28 shrink-0">{formatCheckedAt(h.changedAt)}</span>
+                        <ExposureBadge exposed={h.prevState === 'exposed'} />
+                        <span className="text-dim">→</span>
+                        <ExposureBadge exposed={h.newState === 'exposed'} />
+                      </div>
+                      {h.changedReason && <p className="text-[10px] text-dim mt-0.5 ml-[120px] leading-snug">{h.changedReason}</p>}
                     </li>
                   ))}
                 </ul>

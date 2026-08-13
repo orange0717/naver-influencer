@@ -83,22 +83,27 @@ export async function POST(request: NextRequest) {
           keyword,
           checkInfluencer,
           displayName,
+          force: Boolean(force), // 사용자 강제 재조회 시 HTML 공유 캐시까지 우회(스펙 #24)
         });
-
-        // 오류 응답은 캐시하지 않는다(다음 시도에서 정상 재확인되도록). 정상 결과만 공유 캐시에 저장.
-        if (result.status !== 'error') {
-          await cacheSet(cacheKey, result, CACHE_TTL_SEC);
-        }
 
         // 검사 결과 즉시 DB 반영. ⚠️ 일시적 오류(status='error')는 저장하지 않는다 —
         // 이전의 정상 노출/미노출 기록을 null 로 덮어쓰지 않기 위함(다음 재검사 때 정상 확인되면 그때 기록).
+        // 확정 판정(overall_status/confidence)은 저장 로직이 재검증·연속카운터로 계산 → 응답에 실어 클라가 즉시 반영하게 한다.
         if (postId && result.status !== 'error') {
           try {
             const supabase = createServiceClient();
-            await recordPostExposure(blogId, String(postId), postTitle || null, result, supabase);
+            const recorded = await recordPostExposure(blogId, String(postId), postTitle || null, result, supabase);
+            result.overallStatus = recorded.overallStatus;
+            result.confidence = recorded.confidence;
           } catch (err) {
             console.error(`[check-missing] post_missing_checks 저장 실패 blogId=${blogId} postId=${postId}:`, err);
           }
+        }
+
+        // 오류 응답은 캐시하지 않는다(다음 시도에서 정상 재확인되도록). 정상 결과만 공유 캐시에 저장.
+        // 확정 판정(overall_status/confidence)까지 채운 뒤 캐시해야 캐시 히트 시에도 클라가 동일 상태를 받는다.
+        if (result.status !== 'error') {
+          await cacheSet(cacheKey, result, CACHE_TTL_SEC);
         }
 
         return result;

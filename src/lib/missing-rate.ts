@@ -1,3 +1,6 @@
+import { computeRawAreaState, type ExposureVerdict, type Confidence } from './exposure-verdict';
+import type { ExposureEvidence } from './post-exposure-check';
+
 export interface MissingState {
   blogTab: { exposed: boolean | null; rank: number | null };
   viewTab: { exposed: boolean | null; rank: number | null };
@@ -8,6 +11,14 @@ export interface MissingState {
   candidates?: string[] | null;
   searchVolume?: number | null;
   status?: string;
+  // §10/§19 확정 판정(서버 상태머신). 레거시 행은 undefined → 영역값으로 폴백 판정
+  overallStatus?: ExposureVerdict | null;
+  // §14 판정 신뢰도
+  confidence?: Confidence | null;
+  // §13 검사 근거 데이터(상세 화면용)
+  evidence?: ExposureEvidence | null;
+  // §11/§19 처음으로 모든 영역 미노출이 감지된 시각(1차 검사 시각 표시용)
+  firstAllMissingAt?: string | null;
   checkedAt?: string | null;
 }
 
@@ -35,21 +46,49 @@ function inIndexingGracePeriod(post: PostLike, now: number): boolean {
   return age >= 0 && age < INDEXING_GRACE_HOURS * 60 * 60 * 1000;
 }
 
-// 누락 정의: 통합검색·블로그탭·인플루언서탭 중 하나라도 명시적으로 미노출(false)
-// exposed=null 또는 undefined(미검사·DB 미반환)는 "알 수 없음"으로 처리해 누락으로 카운트하지 않음
-// publishedAt이 있고 발행 후 INDEXING_GRACE_HOURS 이내면 색인 지연으로 보고 누락 판정에서 제외(오탐 방지)
+// 미노출 정의(§10 오탐 최소화): "검사한 모든 영역이 미노출"이 재검증으로 확정된 경우에만 미노출.
+//   - 서버 상태머신이 낸 overall_status 가 있으면 그것을 그대로 신뢰한다.
+//     · 'missing'  → 미노출 확정(재검증 통과)
+//     · 그 외('exposed'/'recheck'/'checking'/'error'/'unanalyzable') → 미노출 아님
+//   - overall_status 가 없는 레거시 행만 영역값으로 폴백하되, 과거의 OR("하나라도 false→미노출")이 아니라
+//     "검사된 전 영역이 false"(AND)일 때만 미노출로 본다 — 인플루언서탭만 빠진 정상 노출글의 오탐 제거.
+//   - publishedAt 이 색인 유예(INDEXING_GRACE_HOURS) 이내면 미노출 판정에서 제외(§18 오탐 방지).
 export function isPostMissing(post: PostLike, results: MissingResultsMap, now: number = Date.now()): boolean {
   const mr = results[post.id];
   if (!mr) return false;
+  if (inIndexingGracePeriod(post, now)) return false;
+
+  if (mr.overallStatus != null) return mr.overallStatus === 'missing';
+
+  // 레거시 폴백: AND 규칙
   const viewExp = mr.viewTab.exposed;
   const blogExp = mr.blogTab.exposed;
   const infExp = mr.influencerTab?.exposed ?? null;
-  // 셋 다 null이면 아직 확인 전 → 누락 아님
-  if (viewExp === null && blogExp === null && infExp === null) return false;
-  const missing = viewExp === false || blogExp === false || infExp === false;
-  if (!missing) return false;
-  if (inIndexingGracePeriod(post, now)) return false;
-  return true;
+  return computeRawAreaState(viewExp, blogExp, infExp) === 'all-missing';
+}
+
+/**
+ * §19 화면 표기용 최종 판정. 저장된 overall_status 를 신뢰하되,
+ * 발행 직후(색인 유예) all-missing/recheck 는 '확인 중'으로 오버레이한다.
+ * 레거시(overall_status 없음) 행은 영역값으로 폴백 계산한다.
+ */
+export function displayVerdict(post: PostLike, mr: MissingState | undefined, now: number = Date.now()): ExposureVerdict | null {
+  if (!mr) return null;
+  const inGrace = inIndexingGracePeriod(post, now);
+
+  if (mr.overallStatus != null) {
+    if (inGrace && (mr.overallStatus === 'missing' || mr.overallStatus === 'recheck')) return 'checking';
+    return mr.overallStatus;
+  }
+
+  // 레거시 폴백
+  if (mr.status === 'error') return 'error';
+  if (mr.status === 'unanalyzable') return 'unanalyzable';
+  const raw = computeRawAreaState(mr.viewTab.exposed, mr.blogTab.exposed, mr.influencerTab?.exposed ?? null);
+  if (raw === 'exposed') return 'exposed';
+  if (raw === 'unknown') return null;
+  // all-missing
+  return inGrace ? 'checking' : 'missing';
 }
 
 // 특정 영역(통합검색/블로그/인플루언서) 하나만 놓고 미노출 여부 판정 — 요약 통계 카드용
@@ -78,17 +117,18 @@ export function countMissing(posts: PostLike[], results: MissingResultsMap, now:
   return n;
 }
 
-// 발행 후 유예 기간 내인데 미노출로 잡힐 뻔한(=색인 대기 중인) 게시글 수 — 투명성 안내용
+// 발행 후 유예 기간 내인데 (전 영역 미노출이라) 미노출로 잡힐 뻔한 = 색인 대기 중인 게시글 수 — 투명성 안내용
 export function countIndexingWait(posts: PostLike[], results: MissingResultsMap, now: number = Date.now()): number {
   let n = 0;
   for (const post of posts) {
     const mr = results[post.id];
     if (!mr) continue;
     if (!inIndexingGracePeriod(post, now)) continue;
-    const viewExp = mr.viewTab.exposed;
-    const blogExp = mr.blogTab.exposed;
-    const infExp = mr.influencerTab?.exposed ?? null;
-    if (viewExp === false || blogExp === false || infExp === false) n++;
+    // overall_status 가 있으면 그걸(missing/recheck) 신뢰, 없으면 영역값 all-missing 폴백
+    const isAllMissing = mr.overallStatus != null
+      ? (mr.overallStatus === 'missing' || mr.overallStatus === 'recheck')
+      : computeRawAreaState(mr.viewTab.exposed, mr.blogTab.exposed, mr.influencerTab?.exposed ?? null) === 'all-missing';
+    if (isAllMissing) n++;
   }
   return n;
 }

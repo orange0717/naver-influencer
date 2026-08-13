@@ -13,8 +13,48 @@ export const CACHE_TTL_SEC = 10 * 60;
 // 검색량 공유 캐시 (24시간)
 const VOLUME_CACHE_TTL_SEC = 24 * 60 * 60;
 
+// 검색 결과 HTML 공유 캐시 (스펙 #24: 같은 키워드를 여러 포스팅이 조회할 때 네이버 요청 1회를 재사용).
+// 매칭(포스팅별 순위 계산)은 캐시된 HTML을 각 포스팅별로 다시 파싱하므로 정확도에 영향 없음.
+// TTL은 짧게(3분) — 순위가 실시간에 가깝게 유지되도록. force=true면 캐시를 건너뛴다.
+const HTML_CACHE_TTL_SEC = 3 * 60;
+const HTML_CACHE_MAX_BYTES = 500_000; // 과도한 Redis 사용 방지
+
+export interface TabFetchOpts {
+  /** true면 HTML 공유 캐시를 건너뛰고 네이버에서 강제 재조회 */
+  force?: boolean;
+}
+
+/**
+ * 검색 결과 페이지 HTML을 가져온다. 같은 URL(=같은 키워드·탭·페이지)은 짧은 TTL 동안 공유 캐시에서 재사용(스펙 #24).
+ * 반환 null = 응답 비정상/네트워크 오류(호출측이 '일시적 오류'로 처리).
+ */
+async function fetchSearchHtml(url: string, opts?: TabFetchOpts): Promise<string | null> {
+  const cacheKey = `srchhtml:${url}`;
+  if (!opts?.force) {
+    const cached = await cacheGet<string>(cacheKey);
+    if (cached !== null) return cached;
+  }
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'ko-KR,ko;q=0.9',
+      'Accept-Encoding': 'gzip, deflate',
+      'Referer': 'https://search.naver.com/',
+    },
+  });
+  if (!res.ok) return null;
+  const html = await res.text();
+  if (html.length <= HTML_CACHE_MAX_BYTES) {
+    await cacheSet(cacheKey, html, HTML_CACHE_TTL_SEC);
+  }
+  return html;
+}
+
 // 탭 조회 결과 — error:true = 전 페이지 로드 실패(일시적 오류). 미노출(exposed:false)과 구분해야 오판을 막는다.
-export type TabCheckResult = { exposed: boolean; rank: number | null; error?: boolean };
+//   scannedDepth = "조회 범위 밖"(스펙 #10/#21) 판정용 — 조회 성공했으나 미발견 시 확인한 상위 순위 범위(예: 30).
+//   exposed=false && scannedDepth 존재 → "N위 밖", scannedDepth 없으면 일반 미노출.
+export type TabCheckResult = { exposed: boolean; rank: number | null; error?: boolean; scannedDepth?: number };
 
 export type RankCheckResult = {
   blogTab: TabCheckResult;
@@ -57,11 +97,7 @@ function matchInfluencerContentByHandle(html: string, blogIdLower: string, rankB
  * data-cr-on="r=순위" 속성에서 네이버 공식 순위를 추출 (정확도 높음)
  * 폴백: <a> href에서 blog.naver.com 링크 수동 카운트
  */
-export async function checkBlogTab(query: string, blogId: string, postId: string): Promise<{
-  exposed: boolean;
-  rank: number | null;
-  error?: boolean;
-}> {
+export async function checkBlogTab(query: string, blogId: string, postId: string, opts?: TabFetchOpts): Promise<TabCheckResult> {
   if (!blogId || !postId) {
     return { exposed: false, rank: null };
   }
@@ -73,28 +109,21 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
   // 한 페이지라도 정상 로드됐는지 추적 — 전 페이지가 실패하면 "미노출"이 아니라 "일시적 오류"로 신호한다
   // (네이버 다운/차단으로 인한 오탐을 미노출로 잘못 집계하지 않기 위함)
   let anyPageLoaded = false;
+  let pagesLoaded = 0; // "조회 범위 밖"(스펙 #10) 판정용 — 정상 로드된 페이지 수 × 10 = 확인한 상위 순위 범위
 
   for (let page = 1; page <= 3; page++) {
     const start = (page - 1) * 10 + 1;
     const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
 
     try {
-      const res = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          'Accept-Encoding': 'gzip, deflate',
-          'Referer': 'https://search.naver.com/',
-        },
-      });
-      if (!res.ok) {
-        console.warn(`[keyword-rank-check] checkBlogTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
+      const html = await fetchSearchHtml(pageUrl, opts);
+      if (html === null) {
+        console.warn(`[keyword-rank-check] checkBlogTab 네이버 응답 비정상 query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
         continue;
       }
 
-      const html = await res.text();
       anyPageLoaded = true;
+      pagesLoaded++;
 
       // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
       // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
@@ -152,8 +181,9 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
     console.warn(`[keyword-rank-check] checkBlogTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
     return { exposed: false, rank: null, error: true };
   }
-  console.info(`[keyword-rank-check] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (3페이지 내 매칭 없음)`);
-  return { exposed: false, rank: null };
+  console.info(`[keyword-rank-check] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (상위 ${pagesLoaded * 10}위 내 매칭 없음)`);
+  // 정상 조회했으나 확인 범위(상위 pagesLoaded*10위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21)
+  return { exposed: false, rank: null, scannedDepth: pagesLoaded * 10 };
 }
 
 /**
@@ -162,11 +192,7 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
  * 폴백: <a> href에서 blog.naver.com 링크 수동 카운트
  * (URL 구조·파싱 로직은 /api/keywords/blog-top의 crawlInfluencerTab과 동일 사이트 렌더링을 사용)
  */
-export async function checkInfluencerTab(query: string, blogId: string, postId: string): Promise<{
-  exposed: boolean;
-  rank: number | null;
-  error?: boolean;
-}> {
+export async function checkInfluencerTab(query: string, blogId: string, postId: string, opts?: TabFetchOpts): Promise<TabCheckResult> {
   // 인플루언서 콘텐츠는 in.naver.com handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
   if (!blogId) {
     return { exposed: false, rank: null };
@@ -180,22 +206,13 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
   // 따라서 1페이지만 조회하고 등장순서/r= 값을 그대로 순위로 사용한다.
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.influencer.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
+  let html: string | null = null;
   try {
-    const res = await fetch(baseUrl, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ko-KR,ko;q=0.9',
-        'Accept-Encoding': 'gzip, deflate',
-        'Referer': 'https://search.naver.com/',
-      },
-    });
-    if (!res.ok) {
-      console.warn(`[keyword-rank-check] checkInfluencerTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId}`);
+    html = await fetchSearchHtml(baseUrl, opts);
+    if (html === null) {
+      console.warn(`[keyword-rank-check] checkInfluencerTab 네이버 응답 비정상 query="${query}" blogId=${blogId} postId=${postId}`);
       return { exposed: false, rank: null, error: true };
     }
-
-    const html = await res.text();
 
     // 신형 인플루언서 탭(fender-ui SDS)은 결과가 in.naver.com/{handle}/contents/internal/{id} 링크로 노출되고
     // data-cr-on="r=" 순위 속성이 없다. 등장 순서(dedupe 후)를 순위로 사용하고 handle(=blogId)로 매칭한다.
@@ -247,18 +264,27 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
   }
 
   console.info(`[keyword-rank-check] checkInfluencerTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (인플루언서 1페이지 내 매칭 없음)`);
-  return { exposed: false, rank: null };
+  // "조회 범위 밖" 판정용: 이 페이지에서 확인한 인플루언서 콘텐츠 개수를 스캔 깊이로 기록(0이면 미기록)
+  const inCount = html ? countInfluencerEntries(html) : 0;
+  return inCount > 0
+    ? { exposed: false, rank: null, scannedDepth: inCount }
+    : { exposed: false, rank: null };
+}
+
+/** 인플루언서탭 결과에서 서로 다른 in.naver.com 콘텐츠 개수 — 조회 범위(스캔 깊이) 산정용 */
+function countInfluencerEntries(html: string): number {
+  const inRegex = /in\.naver\.com\/([a-zA-Z0-9_-]+)\/contents\/internal\/(\d+)/g;
+  const seen = new Set<string>();
+  let m;
+  while ((m = inRegex.exec(html)) !== null) seen.add(`${m[1]}/${m[2]}`);
+  return seen.size;
 }
 
 /**
  * 네이버 통합검색(VIEW) — 검색 결과 페이지 직접 파싱
  * data-cr-on="r=순위" 속성에서 네이버 공식 순위 추출
  */
-export async function checkViewTab(query: string, blogId: string, postId?: string, maxPages: number = 3): Promise<{
-  exposed: boolean;
-  rank: number | null;
-  error?: boolean;
-}> {
+export async function checkViewTab(query: string, blogId: string, postId?: string, maxPages: number = 3, opts?: TabFetchOpts): Promise<TabCheckResult> {
   // 인플루언서 콘텐츠(in.naver.com)는 handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
   if (!blogId) {
     return { exposed: false, rank: null };
@@ -273,23 +299,15 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   // maxPages는 이제 "webkr OpenAPI 폴백 사용 여부(정밀조회=3 / 스크리닝=1)" 플래그로만 쓴다.
   const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
+  // "조회 범위 밖"(스펙 #10) 스캔 깊이 — 통합검색 HTML 1페이지는 통상 상위 30위 범위. webkr OpenAPI 폴백(display=100)까지 쓰면 100.
+  let scannedDepth = 30;
   try {
-    const res = await fetch(baseUrl, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ko-KR,ko;q=0.9',
-        'Accept-Encoding': 'gzip, deflate',
-        'Referer': 'https://search.naver.com/',
-      },
-    });
-    if (!res.ok) {
+    const html = await fetchSearchHtml(baseUrl, opts);
+    if (html === null) {
       // 단일 페이지 조회이므로 이 페이지 실패 = 조회 실패 → 미노출로 오판하지 않고 일시적 오류로 신호(스펙 #8)
-      console.warn(`[keyword-rank-check] checkViewTab 네이버 응답 비정상 status=${res.status} query="${query}" blogId=${blogId} postId=${postId}`);
+      console.warn(`[keyword-rank-check] checkViewTab 네이버 응답 비정상 query="${query}" blogId=${blogId} postId=${postId}`);
       return { exposed: false, rank: null, error: true };
     }
-
-    const html = await res.text();
 
     // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..." (postId 정밀 매칭 우선)
     // r= 값은 이미 절대순위이므로 페이지 오프셋을 더하지 않고 그대로 사용한다.
@@ -329,6 +347,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
         if (apiRes.ok) {
           const apiData = await apiRes.json();
           const items = apiData.items || [];
+          scannedDepth = 100; // API 폴백까지 확인 → 조회 범위를 상위 100위로 확장
           let rank = 0;
           for (const item of items) {
             const link = item.link || '';
@@ -349,8 +368,9 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
     return { exposed: false, rank: null, error: true };
   }
 
-  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (통합검색 1페이지 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
-  return { exposed: false, rank: null };
+  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (통합검색 상위 ${scannedDepth}위 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
+  // 정상 조회했으나 확인 범위(상위 scannedDepth위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21)
+  return { exposed: false, rank: null, scannedDepth };
 }
 
 /**

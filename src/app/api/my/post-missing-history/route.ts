@@ -12,6 +12,8 @@ type HistoryRow = {
   view_exposed: boolean | null;
   blog_exposed: boolean | null;
   influencer_exposed: boolean | null;
+  changed_reason: string | null;
+  confidence: string | null;
   changed_at: string;
 };
 
@@ -29,24 +31,25 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   const supabase = createServiceClient();
-  let q = supabase
-    .from('post_missing_history')
-    .select('post_id, post_title, prev_state, new_state, view_exposed, blog_exposed, influencer_exposed, changed_at')
-    .eq('blog_id', blogId)
-    .order('changed_at', { ascending: false });
+  // changed_reason/confidence 는 migration-146 이후 컬럼 — 미적용 DB 에서도 이력이 사라지지 않도록 실패 시 폴백.
+  const FULL = 'post_id, post_title, prev_state, new_state, view_exposed, blog_exposed, influencer_exposed, changed_reason, confidence, changed_at';
+  const LEGACY = 'post_id, post_title, prev_state, new_state, view_exposed, blog_exposed, influencer_exposed, changed_at';
+  const run = (cols: string) => {
+    let q = supabase.from('post_missing_history').select(cols).eq('blog_id', blogId).order('changed_at', { ascending: false });
+    q = postId ? q.eq('post_id', postId).limit(50) : q.limit(100);
+    return q;
+  };
 
-  if (postId) q = q.eq('post_id', postId).limit(50);
-  else q = q.limit(100);
-
-  const { data, error } = await q;
+  const full = await run(FULL);
+  const res = full.error ? await run(LEGACY) : full;
 
   // 테이블이 아직 없거나(마이그레이션 미적용) 조회 실패 시에도 빈 이력으로 응답해 UI가 깨지지 않게 한다.
-  if (error) {
-    console.error(`[post-missing-history] 조회 실패 blogId=${blogId}:`, error.message);
+  if (res.error) {
+    console.error(`[post-missing-history] 조회 실패 blogId=${blogId}:`, res.error.message);
     return NextResponse.json({ history: [] });
   }
 
-  const history = ((data ?? []) as HistoryRow[]).map(r => ({
+  const history = ((res.data ?? []) as unknown as HistoryRow[]).map(r => ({
     postId: r.post_id,
     postTitle: r.post_title,
     prevState: r.prev_state,
@@ -54,6 +57,8 @@ export async function GET(request: NextRequest) {
     viewExposed: r.view_exposed,
     blogExposed: r.blog_exposed,
     influencerExposed: r.influencer_exposed,
+    changedReason: r.changed_reason ?? null,
+    confidence: r.confidence ?? null,
     changedAt: r.changed_at,
   }));
 
