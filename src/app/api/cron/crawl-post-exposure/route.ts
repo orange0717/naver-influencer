@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob, sleep, tryAcquireCronLock, releaseCronLock } from '@/lib/crawler';
 import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 import { computePostExposure, recordPostExposure } from '@/lib/post-exposure-check';
+import { getOrPersistRepresentativeKeyword } from '@/lib/post-keyword-extractor';
 import { parseNaverPostDate } from '@/lib/naver-date';
 
 export const dynamic = 'force-dynamic';
@@ -176,10 +177,19 @@ export async function GET(request: NextRequest) {
         for (const post of candidates) {
           if (Date.now() - startedAt > TIME_BUDGET_MS) break;
           try {
+            // §3·§5 대표/연관 키워드를 검색 후보로 함께 사용(제목만으론 못 잡는 노출 방지, 예: 인플루언서탭 상위)
+            let keywordCandidates: string[] | undefined;
+            try {
+              const rep = await getOrPersistRepresentativeKeyword(blogId, post.id, post.title);
+              keywordCandidates = [rep.representativeKeyword, ...(rep.candidates || [])].filter((k): k is string => Boolean(k));
+            } catch (e) {
+              console.warn(`[crawl-post-exposure] 대표 키워드 조회 실패 ${blogId}/${post.id}:`, e);
+            }
             const result = await computePostExposure({
               blogId,
               postTitle: post.title,
               postId: post.id,
+              keywordCandidates,
               checkInfluencer: true,
               displayName,
             });

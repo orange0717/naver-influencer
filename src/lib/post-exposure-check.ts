@@ -158,6 +158,12 @@ export interface ComputeExposureInput {
   /** blog_scores.blog_name — 검색어에서 블로그명 오염 제거용 */
   displayName?: string;
   /**
+   * §3·§5 추출한 대표/연관 키워드(순위순). 제목 전체만으로는 못 잡는 노출(예: 인플루언서탭 상위)을
+   * 대표 키워드로 잡기 위함. URL(blogId+postId) 매칭이라 넓은 키워드를 써도 오탐은 늘지 않고 미탐만 준다.
+   * 호출측이 getOrPersistRepresentativeKeyword 로 채워 넘긴다.
+   */
+  keywordCandidates?: string[];
+  /**
    * §11 모든 영역 미노출 감지 시 곧바로 확정하지 않고 in-request 2차 재검증을 1회 수행할지(기본 true).
    * 일시적 검색 변동으로 인한 오탐(실제 노출인데 미노출)을 한 번 더 걸러낸다.
    */
@@ -178,12 +184,24 @@ function matchedUrlFor(area: 'view' | 'blog' | 'influencer', exposed: boolean | 
  * 캐시/inFlight/레이트리밋 은 호출측(라우트) 책임 — 이 함수는 순수 판정만 수행한다.
  */
 export async function computePostExposure(input: ComputeExposureInput): Promise<PostExposureResult> {
-  const { blogId, postTitle, postId, keyword, checkInfluencer, displayName, force } = input;
+  const { blogId, postTitle, postId, keyword, checkInfluencer, displayName, force, keywordCandidates } = input;
   const reverifyOnAllMissing = input.reverifyOnAllMissing !== false;
 
-  const candidates: string[] = keyword && keyword.trim()
-    ? [keyword.trim()]
-    : buildTitleSearchCandidates(postTitle, blogId, displayName);
+  // 검색 후보 우선순위(§3·§4·§5): ①사용자 등록 키워드 → ②추출 대표/연관 키워드 → ③제목 기반.
+  // URL(blogId+postId) 매칭이므로 넓은 키워드를 섞어도 오탐(FP)은 안 늘고 미탐(FN)만 줄어든다.
+  // 어느 후보에서든 노출이 확인되면 '노출'로 처리한다.
+  const userKw = keyword && keyword.trim() ? keyword.trim() : null;
+  const repKws = (keywordCandidates || []).map(k => (k || '').trim()).filter(Boolean);
+  const titleKws = buildTitleSearchCandidates(postTitle, blogId, displayName);
+  const seenCand = new Set<string>();
+  const candidates: string[] = [];
+  for (const cand of [...(userKw ? [userKw] : []), ...repKws, ...titleKws]) {
+    const key = cand.toLowerCase();
+    if (!cand || seenCand.has(key)) continue;
+    seenCand.add(key);
+    candidates.push(cand);
+    if (candidates.length >= 4) break; // 네이버 요청량 상한(§12)
+  }
 
   // 검색 후보를 하나도 만들 수 없으면(제목이 전부 노이즈) → 분석불가
   if (candidates.length === 0 || !candidates[0]) {

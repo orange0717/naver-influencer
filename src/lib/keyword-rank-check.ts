@@ -22,6 +22,22 @@ const HTML_CACHE_MAX_BYTES = 500_000; // 과도한 Redis 사용 방지
 export interface TabFetchOpts {
   /** true면 HTML 공유 캐시를 건너뛰고 네이버에서 강제 재조회 */
   force?: boolean;
+  /**
+   * 인플루언서 콘텐츠(in.naver.com/{handle}) 매칭용 핸들(=naver_id). blog_id 와 다를 수 있어
+   * (예: 블로그 orangelibrary_ ↔ 인플루언서 handle orangelibrary) 별도로 받는다.
+   * 미지정 시 blog_id 와 blog_id 의 뒤 '_' 제거형까지 허용한다.
+   */
+  influencerHandle?: string;
+}
+
+/** in.naver 콘텐츠 매칭에 허용할 핸들 집합 — blog_id, 뒤 '_' 제거형, 명시된 influencerHandle */
+function buildHandleSet(blogId: string, influencerHandle?: string): Set<string> {
+  const s = new Set<string>();
+  const b = blogId.toLowerCase();
+  if (b) { s.add(b); s.add(b.replace(/_+$/, '')); }
+  if (influencerHandle) s.add(influencerHandle.toLowerCase());
+  s.delete('');
+  return s;
 }
 
 /**
@@ -69,11 +85,11 @@ export type RankCheckResult = {
 
 /**
  * 신형 인플루언서 콘텐츠(in.naver.com/{handle}/contents/internal/{id}) 링크를 등장 순서로 세어
- * handle(=blogId)이 일치하는 첫 항목의 순위를 반환한다. 없으면 null.
+ * handle 이 handles 집합(blog_id·naver_id 등)에 속하는 첫 항목의 순위를 반환한다. 없으면 null.
  * 신형 마크업엔 data-cr-on="r=" 순위 속성이 없어 DOM 등장 순서를 순위로 사용한다.
  * (blog logNo ↔ 인플루언서 contentId는 체계가 달라 글 단위 정밀 매칭은 불가 — handle 기준 근사)
  */
-function matchInfluencerContentByHandle(html: string, blogIdLower: string, rankBase: number): number | null {
+function matchInfluencerContentByHandle(html: string, handles: Set<string>, rankBase: number): number | null {
   const inRegex = /in\.naver\.com\/([a-zA-Z0-9_-]+)\/contents\/internal\/(\d+)/g;
   const seen = new Set<string>();
   let rank = rankBase;
@@ -85,7 +101,7 @@ function matchInfluencerContentByHandle(html: string, blogIdLower: string, rankB
     if (seen.has(key)) continue;
     seen.add(key);
     rank++;
-    if (handle.toLowerCase() === blogIdLower) {
+    if (handles.has(handle.toLowerCase())) {
       return rank;
     }
   }
@@ -199,6 +215,7 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
   }
 
   const blogIdLower = blogId.toLowerCase();
+  const handleSet = buildHandleSet(blogId, opts?.influencerHandle);
   const postIdStr = String(postId || '');
   // 인플루언서 탭도 통합검색과 마찬가지로 &start= 파라미터를 무시하고 항상 1페이지 결과를 반환한다
   // (scripts/probe-influencer-tab.mjs로 확증 — page1=page2=page3 동일). 과거엔 이를 페이지2/3으로 오인해
@@ -215,8 +232,8 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
     }
 
     // 신형 인플루언서 탭(fender-ui SDS)은 결과가 in.naver.com/{handle}/contents/internal/{id} 링크로 노출되고
-    // data-cr-on="r=" 순위 속성이 없다. 등장 순서(dedupe 후)를 순위로 사용하고 handle(=blogId)로 매칭한다.
-    const inRank = matchInfluencerContentByHandle(html, blogIdLower, 0);
+    // data-cr-on="r=" 순위 속성이 없다. 등장 순서(dedupe 후)를 순위로 사용하고 handle(blog_id·naver_id)로 매칭한다.
+    const inRank = matchInfluencerContentByHandle(html, handleSet, 0);
     if (inRank !== null) {
       return { exposed: true, rank: inRank };
     }
@@ -291,6 +308,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   }
 
   const blogIdLower = blogId.toLowerCase();
+  const handleSet = buildHandleSet(blogId, opts?.influencerHandle);
   const postIdStr = String(postId || '');
   // 네이버 통합검색(where=webkr)은 &start= 파라미터를 무시하고 항상 1페이지 결과를 반환하며,
   // data-cr-on="r=" 값이 이미 최종(절대) 순위다. 과거엔 이를 페이지2/3으로 오인해 start 오프셋(+10/+20)을
@@ -329,7 +347,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
     }
 
     // 인플루언서 콘텐츠(in.naver.com)로 통합검색에 노출된 경우 — handle 기준 등장순서 매칭(1페이지 기준)
-    const inRank = matchInfluencerContentByHandle(html, blogIdLower, 0);
+    const inRank = matchInfluencerContentByHandle(html, handleSet, 0);
     if (inRank !== null) {
       return { exposed: true, rank: inRank };
     }

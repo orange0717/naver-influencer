@@ -5,6 +5,7 @@ import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
 import { CACHE_TTL_SEC } from '@/lib/keyword-rank-check';
 import { computePostExposure, recordPostExposure, type PostExposureResult } from '@/lib/post-exposure-check';
+import { getOrPersistRepresentativeKeyword } from '@/lib/post-keyword-extractor';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,11 +77,22 @@ export async function POST(request: NextRequest) {
     if (!promise) {
       promise = (async (): Promise<PostExposureResult> => {
         const displayName = await getDisplayName(blogId);
+        // §3·§5 사용자 키워드가 없으면 추출된 대표/연관 키워드를 검색 후보로 함께 사용(제목만으론 못 잡는 노출 방지)
+        let keywordCandidates: string[] | undefined;
+        if (!keyword && postId) {
+          try {
+            const rep = await getOrPersistRepresentativeKeyword(blogId, String(postId), postTitle || '');
+            keywordCandidates = [rep.representativeKeyword, ...(rep.candidates || [])].filter((k): k is string => Boolean(k));
+          } catch (e) {
+            console.warn(`[check-missing] 대표 키워드 조회 실패 blogId=${blogId} postId=${postId}:`, e);
+          }
+        }
         const result = await computePostExposure({
           blogId,
           postTitle,
           postId,
           keyword,
+          keywordCandidates,
           checkInfluencer,
           displayName,
           force: Boolean(force), // 사용자 강제 재조회 시 HTML 공유 캐시까지 우회(스펙 #24)
