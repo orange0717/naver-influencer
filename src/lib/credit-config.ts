@@ -14,6 +14,7 @@ export type CreditFeature =
   | 'ai_rewrite'         // 교정·교열·윤문 (Haiku)
   | 'ai_blog_analyze'    // 블로그 글 AI 감지 (Haiku)
   | 'ai_youtube_analyze' // 유튜브 콘텐츠 분석 (Haiku)
+  | 'ai_shortform_analyze' // 릴스/쇼츠 분석 (Manus 영상열람 — 최고원가)
   | 'ai_seo_diagnose'    // 미색인 SEO 진단 (Haiku)
   | 'ai_dashboard_opus'  // AI 대시보드 대화 (결제자 Opus, 고비용)
   | 'ai_consultant'      // AI 컨설턴트 (구독만 — 크레딧 미차감, 무료 5회/일 정책 유지)
@@ -34,6 +35,7 @@ export const CREDIT_COSTS: Record<CreditFeature, number> = {
   ai_rewrite: 4,         // 맞춤법 보정 — ~12원
   ai_blog_analyze: 7,    // 글 심층 피드백 — ~22원
   ai_youtube_analyze: 8, // 유튜브 숏츠 분석 — ~25원
+  ai_shortform_analyze: 250, // 릴스/쇼츠 — Manus 영상열람 ~2,000원, 고단가(≈원가 커버+마진)
   ai_seo_diagnose: 4,    // 미노출/SEO 진단 — ~11원
   ai_dashboard_opus: 6,  // AI 브리핑(Opus) — ~18원
   ai_consultant: 0,      // AI 상담 — 무료(하루 3회 정책)
@@ -50,6 +52,7 @@ export const CREDIT_FEATURE_LABELS: Record<CreditFeature, string> = {
   ai_rewrite: 'AI 교정·교열·윤문',
   ai_blog_analyze: '블로그 AI 분석',
   ai_youtube_analyze: '유튜브 콘텐츠 분석',
+  ai_shortform_analyze: '릴스·쇼츠 분석',
   ai_seo_diagnose: 'SEO 미색인 진단',
   ai_dashboard_opus: 'AI 대시보드 대화',
   ai_consultant: 'AI 컨설턴트',

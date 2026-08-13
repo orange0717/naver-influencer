@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInfluencerPlan } from '@/lib/admin';
 import { consumePaidDailyCap } from '@/lib/free-quota';
+import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { contentAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { ClaudeApiKeyMissingError } from '@/lib/claude-client';
@@ -57,6 +58,10 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // 크레딧 잔액 확인(미활성이면 통과). 고단가 기능이라 Manus 열람 전에 먼저 검사한다.
+  const creditDenied = await assertCreditFor(auth.authUser.userId, 'ai_shortform_analyze');
+  if (creditDenied) return creditDenied;
 
   // 1) Manus로 원본 수집(대본/화면자막/캡션/해시태그/화면 지표)
   let source;
@@ -136,6 +141,9 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('[content/shortform/analyze] 저장 실패(응답은 계속 반환):', err instanceof Error ? err.message : err);
   }
+
+  // 분석 성공 — 크레딧 차감(미활성이면 no-op). contentItemId를 멱등키로 중복차감 방지.
+  await chargeCreditIfEnabled(auth.authUser.userId, 'ai_shortform_analyze', contentItemId ?? undefined);
 
   return NextResponse.json({
     contentItemId,
