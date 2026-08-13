@@ -252,7 +252,7 @@ export default function SubscribeClient() {
               href="/auth/signup"
               className="block text-center py-3 bg-accent text-white font-bold text-sm rounded-xl hover:bg-accent-hover transition"
             >
-              7일 무료체험
+              무료로 시작하기
             </Link>
           )}
 
@@ -296,7 +296,7 @@ export default function SubscribeClient() {
               href="/auth/signup"
               className="block text-center py-3 bg-accent/10 text-accent font-bold text-sm rounded-xl hover:bg-accent/20 transition"
             >
-              7일 무료체험
+              무료로 시작하기
             </Link>
           )}
 
@@ -530,8 +530,8 @@ export default function SubscribeClient() {
               <p className="font-semibold">신용/체크카드 단건 결제 (PortOne)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
-              <p className="text-dim">무료 체험</p>
-              <p className="font-semibold">7일 (가입 전 인플루언서/블로그 주소 입력)</p>
+              <p className="text-dim">무료 이용</p>
+              <p className="font-semibold">하루 3회 (회원가입 시 매일)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 주기</p>
