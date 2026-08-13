@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requirePaidPlan } from '@/lib/admin';
 import { consumePaidDailyCap } from '@/lib/free-quota';
 import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { titleGenerateLimiter, getClientIp } from '@/lib/rate-limit';
@@ -15,7 +15,7 @@ const MAX_RELATED = 15;
 export async function GET(request: NextRequest) {
   if (AI_DISABLED) return aiDisabledResponse();
 
-  const auth = await requireInfluencerPlan(request);
+  const auth = await requirePaidPlan(request);
   if (auth.error) return auth.error;
 
   const ip = getClientIp(request);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requirePaidPlan } from '@/lib/admin';
 import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getAnthropicClient, CLAUDE_MODEL_HAIKU } from '@/lib/claude-client';
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requireInfluencerPlan(request);
+  const auth = await requirePaidPlan(request);
   if (auth.error) return auth.error;
 
   let body: { text?: string; style?: string };

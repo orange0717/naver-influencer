@@ -261,6 +261,7 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 포스팅 분석</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>제목 생성 (AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>맞춤법 검사 <span className="text-[10px] text-dim">(데모 제외)</span></span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (1회 500건)</span></li>
@@ -445,6 +446,12 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
+                <td className="py-2.5 px-2">키워드 추천 (AI)</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
                 <td className="py-2.5 px-2">키워드 데이터 다운로드</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
@@ -456,9 +463,21 @@ export default function SubscribeClient() {
                 <td className="py-2.5 px-2 font-semibold text-dim pt-5" colSpan={4}>글쓰기</td>
               </tr>
               <tr>
+                <td className="py-2.5 px-2">제목 생성 (AI)</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
                 <td className="py-2.5 px-2">맞춤법 검사 <span className="text-[10px] text-dim">(데모 제외)</span></td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">글감 찾기 (AI)</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
@@ -477,6 +496,12 @@ export default function SubscribeClient() {
                 <td className="text-center text-[11px] text-dim">1일 1회</td>
                 <td className="text-center text-[11px] text-accent font-semibold">1일 5회</td>
                 <td className="text-center text-[11px] text-accent font-semibold">무제한</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-2">릴스·쇼츠 분석 (AI)</td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               <tr>
                 <td className="py-2.5 px-2">커뮤니티</td>
