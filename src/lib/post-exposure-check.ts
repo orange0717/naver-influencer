@@ -1,5 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { checkBlogTab, checkViewTab, checkInfluencerTab, getSearchVolume } from '@/lib/keyword-rank-check';
+import { corroborateBlogExposure } from '@/lib/naver-blog-search-api';
+import { logExposureCheck } from '@/lib/exposure-check-log';
 import {
   computeRawAreaState,
   computeVerdict,
@@ -39,6 +41,8 @@ export interface ExposureEvidence {
   reverified: boolean;
   /** 2차 재검증에서 노출로 뒤집혔는가(즉 1차는 오탐이었음) */
   reverifyFlippedToExposed: boolean;
+  /** §6 블로그 노출이 공식 검색 API(보조 채널)로 확인됐는가 — SERP엔 없지만 공식 색인엔 존재 */
+  blogApiCorroborated?: boolean;
   checkedAt: string;
 }
 
@@ -244,6 +248,7 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
   // 일시적 검색 변동으로 인한 오탐(실제 노출인데 미노출)을 즉시 뒤집기 위함. 노출이 하나라도 확인되면 결과를 갱신한다.
   let reverified = false;
   let reverifyFlippedToExposed = false;
+  let blogApiCorroborated = false;
   const raw1 = computeRawAreaState(viewExposed, blogExposed, infExposed);
   if (reverifyOnAllMissing && status === 'ok' && raw1 === 'all-missing') {
     reverified = true;
@@ -257,6 +262,18 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
     if (!rBlog.error && rBlog.exposed) { blogExposed = true; blog.rank = rBlog.rank; reverifyFlippedToExposed = true; }
     if (!rView.error && rView.exposed) { viewExposed = true; view.rank = rView.rank; reverifyFlippedToExposed = true; }
     if (hasKeyword && !rInf.error && rInf.exposed) { infExposed = true; inf.rank = rInf.rank; reverifyFlippedToExposed = true; }
+
+    // §6 공식 블로그 검색 API 보조 교차검증 — HTML 재검증 후에도 블로그 미노출이면, 공식 색인엔 존재하는지 확인.
+    // "한 곳이라도 노출 → 노출"(§10) 원칙에 따라, 공식 색인에서 내 글이 확인되면 미노출 오탐을 걷어낸다.
+    if (blogExposed === false) {
+      const corr = await corroborateBlogExposure(query, blogId, postId);
+      if (!corr.error && corr.exposed) {
+        blogExposed = true;
+        if (blog.rank == null) blog.rank = corr.rank;
+        reverifyFlippedToExposed = true;
+        blogApiCorroborated = true;
+      }
+    }
   }
 
   const rawState = computeRawAreaState(viewExposed, blogExposed, infExposed);
@@ -286,6 +303,7 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
       candidates,
       reverified,
       reverifyFlippedToExposed,
+      blogApiCorroborated,
       checkedAt,
     },
     checkedAt,
@@ -426,6 +444,9 @@ export async function recordPostExposure(
     });
     if (histErr) console.error(`[post-exposure] post_missing_history 저장 실패 blogId=${blogId} postId=${postId}:`, histErr);
   }
+
+  // §22 검사 로그 적재(best-effort — 실패해도 판정 흐름에 영향 없음)
+  await logExposureCheck(supabase, { blogId, postId, result, verdict, confidence, consecutiveMissing });
 
   return { overallStatus: verdict, confidence, consecutiveMissing };
 }
