@@ -25,7 +25,7 @@ const ALL_NAV_HREFS = [SIDEBAR_HOME.href, ...SIDEBAR_GROUPS.flatMap((group) => g
 
 function LockIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true" className="shrink-0">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
       <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
       <path d="M8 11V7a4 4 0 018 0v4" />
     </svg>
@@ -42,14 +42,14 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
   // subgroup(블로그/인플루언서)은 두 하위그룹 경계를 분명히 하도록 더 굵고 진하게, 위 여백도 크게(스펙 24항).
   if (subgroup) {
     return (
-      <div className="flex items-center gap-1.5 pl-[10px] pr-3 pt-3 pb-1 first:pt-1">
+      <div className="flex items-center gap-1.5 pl-[10px] pr-3 pt-2 pb-0.5 first:pt-0.5">
         <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />
-        <span className="text-[13px] font-medium text-text tracking-wide truncate">{label}</span>
+        <span className="text-[12px] font-normal text-[#333333] tracking-wide truncate">{label}</span>
       </div>
     );
   }
   return (
-    <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[12px] font-medium text-dim tracking-wide truncate`}>
+    <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[11px] font-normal text-dim tracking-wide truncate`}>
       {label}
     </div>
   );
@@ -71,6 +71,10 @@ function NavLink({
   const router = useRouter();
   const { openGate } = useMemberOnlyGate();
   const padding = itemPadding(item.indent);
+  // 하위 메뉴(indent)는 11px·조금 연한 색, 주요 메뉴는 12px·진한 색 — 크기보다 색/들여쓰기로 계층을 표현한다.
+  const sizeClass = item.indent ? 'text-[11px]' : 'text-[12px]';
+  const padY = item.indent ? 'py-1' : 'py-1.5';
+  const inactiveColor = item.indent ? 'text-[#666666]' : 'text-[#333333]';
 
   if (item.heading) {
     return <NavHeading label={item.label} subgroup={item.subgroup} />;
@@ -78,7 +82,7 @@ function NavLink({
 
   if (item.disabled) {
     return (
-      <span className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
+      <span className={`flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
         {item.label}
         <span className="ml-auto text-[10px] font-normal text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
       </span>
@@ -94,7 +98,7 @@ function NavLink({
           onNavigate();
           openGate(item.href);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] font-normal text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-[#888888] border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-dim/60"><LockIcon /></span>
@@ -112,7 +116,7 @@ function NavLink({
           onNavigate();
           router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] font-normal text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-[#888888] border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-accent"><LockIcon /></span>
@@ -124,10 +128,10 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] border-l-2 transition-colors ${
+      className={`flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} border-l-2 transition-colors ${
         active
-          ? 'bg-accent/15 text-accent border-accent font-medium'
-          : 'text-dim border-transparent font-normal hover:text-text hover:bg-bg'
+          ? 'bg-accent/15 text-accent border-accent font-normal'
+          : `${inactiveColor} border-transparent font-normal hover:text-text hover:bg-bg`
       }`}
     >
       <span className="truncate">{item.label}</span>
@@ -208,10 +212,10 @@ function SidebarContent({
   return (
     <>
       {/* "AI 서비스"가 아니라 데이터 분석 툴이라는 정체성을 사이드바 상단에서도 짧게 각인 (2026-08-09) */}
-      <p className="px-[10px] pt-2 pb-0.5 text-[10px] font-semibold text-dim/70 tracking-wide">
+      <p className="px-[10px] pt-2 pb-0.5 text-[10px] font-medium text-dim/70 tracking-wide">
         네이버 검색 데이터 분석
       </p>
-      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1.5">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1">
         <NavLink
           item={SIDEBAR_HOME}
           active={SIDEBAR_HOME.href === activeHref}
@@ -228,8 +232,8 @@ function SidebarContent({
                 type="button"
                 onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
-                className="w-full flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px] font-medium tracking-wide hover:bg-bg transition-colors cursor-pointer"
-                style={{ color: '#BF8888' }}
+                className="w-full flex items-center gap-1 px-3 py-1 rounded-lg text-[12px] font-medium tracking-wide hover:bg-bg transition-colors cursor-pointer"
+                style={{ color: '#555555' }}
               >
                 <span className="truncate">{group.label}</span>
                 <span className="ml-auto text-dim/60"><ChevronIcon open={isOpen} /></span>
@@ -261,7 +265,7 @@ function SidebarContent({
               key={link.href}
               href={link.href}
               onClick={onNavigate}
-              className={`block px-3 py-1 rounded-lg text-[13px] font-normal transition-colors ${
+              className={`block px-3 py-1 rounded-lg text-[12px] font-normal transition-colors ${
                 pathname.startsWith(link.href) ? 'text-accent' : 'text-dim hover:text-text'
               }`}
             >
