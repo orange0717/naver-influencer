@@ -43,14 +43,14 @@
   --color-point: #CC9486;
   --color-point-bg: rgba(204, 148, 134, 0.10);
 
-  /* 폰트 — 역할 분리 (2026-08-15 타이포그래피 개편)
-     · sans  = Pretendard — 본문·UI·데이터·표·배지·상태값 (기능 영역 전부)
-     · serif = EB Garamond(영문) → Pretendard(한글) 순 글리프 폴백.
-       영문 글리프는 EB Garamond의 에디토리얼 세리프로, 한글은 세리프 글리프를
-       무리하게 쓰지 않고 Pretendard로 자연스럽게 연결된다.
-       → 제목/인사말(.font-title)에만 사용. 예: "N인플 AI"의 N·AI=EB Garamond, 인플=Pretendard.
-     · mono  = 순위/통계 숫자 전용 (.font-rank, .stat-value) */
-  --font-sans: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+  /* 폰트 — 앱 전체 메인 글자체 (2026-08-15 개편, 08-16 전역 확대)
+     · sans/serif 공통 = EB Garamond(영문) → Pretendard(한글) 글리프 폴백.
+       영문 글리프는 EB Garamond의 에디토리얼 세리프, 한글은 세리프 글리프를
+       무리하게 쓰지 않고 Pretendard로 자연스럽게 연결된다(글리프 단위 폴백).
+       예: "N인플 AI"의 N·AI=EB Garamond, 인플=Pretendard. → 전 화면 본문·UI·제목이
+       하나의 글자체 정체성을 공유한다. (제목은 .font-title이 굵기·자간으로만 구분)
+     · mono  = 순위/통계 숫자 전용 (.font-rank, .stat-value) — 데이터 가독성 위해 정렬 숫자 유지 */
+  --font-sans: 'EB Garamond', 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
   --font-serif: 'EB Garamond', 'Pretendard Variable', 'Pretendard', Georgia, serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
 
@@ -85,6 +85,11 @@ body {
   /* 한글 Pretendard 본문: 살짝 좁힌 자간 + 넉넉한 행간으로 뭉침 방지 */
   letter-spacing: -0.01em;
   line-height: 1.6;
+  /* EB Garamond 기본 숫자는 올드스타일(들쭉날쭉)이라 데이터 UI에 부적합 →
+     전역에서 정렬(lining) + 등폭(tabular) 숫자로 강제해 가독성 확보.
+     한글/큰 데이터 숫자(.stat-value·.font-rank)는 mono라 영향 없음. */
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
   word-break: keep-all;
   overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
