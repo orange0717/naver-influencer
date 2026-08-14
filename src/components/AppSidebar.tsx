@@ -44,12 +44,12 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
     return (
       <div className="flex items-center gap-1.5 pl-[10px] pr-3 pt-3 pb-1 first:pt-1">
         <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />
-        <span className="text-[12px] font-extrabold text-text tracking-wide truncate">{label}</span>
+        <span className="text-[13px] font-medium text-text tracking-wide truncate">{label}</span>
       </div>
     );
   }
   return (
-    <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[11px] font-bold text-dim/60 uppercase tracking-wide truncate`}>
+    <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[12px] font-medium text-dim tracking-wide truncate`}>
       {label}
     </div>
   );
@@ -78,9 +78,9 @@ function NavLink({
 
   if (item.disabled) {
     return (
-      <span className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
+      <span className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
         {item.label}
-        <span className="ml-auto text-[10px] font-bold text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
+        <span className="ml-auto text-[10px] font-normal text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
       </span>
     );
   }
@@ -94,7 +94,7 @@ function NavLink({
           onNavigate();
           openGate(item.href);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] font-normal text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-dim/60"><LockIcon /></span>
@@ -112,7 +112,7 @@ function NavLink({
           onNavigate();
           router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] font-semibold text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] font-normal text-dim border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-accent"><LockIcon /></span>
@@ -124,10 +124,10 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[13px] font-semibold border-l-2 transition-colors ${
+      className={`flex items-center gap-2 ${padding} pr-3 py-1.5 rounded-lg text-[14px] border-l-2 transition-colors ${
         active
-          ? 'bg-accent/15 text-accent border-accent'
-          : 'text-dim border-transparent hover:text-text hover:bg-bg'
+          ? 'bg-accent/15 text-accent border-accent font-medium'
+          : 'text-dim border-transparent font-normal hover:text-text hover:bg-bg'
       }`}
     >
       <span className="truncate">{item.label}</span>
@@ -228,7 +228,7 @@ function SidebarContent({
                 type="button"
                 onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
-                className="w-full flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide hover:bg-bg transition-colors cursor-pointer"
+                className="w-full flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px] font-medium tracking-wide hover:bg-bg transition-colors cursor-pointer"
                 style={{ color: '#BF8888' }}
               >
                 <span className="truncate">{group.label}</span>
@@ -261,7 +261,7 @@ function SidebarContent({
               key={link.href}
               href={link.href}
               onClick={onNavigate}
-              className={`block px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              className={`block px-3 py-1 rounded-lg text-[13px] font-normal transition-colors ${
                 pathname.startsWith(link.href) ? 'text-accent' : 'text-dim hover:text-text'
               }`}
             >

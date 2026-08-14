@@ -81,7 +81,7 @@ export default function HeaderSearch() {
         onClick={() => setOpen((v) => !v)}
         aria-label="메뉴 검색"
         title="메뉴 검색"
-        className="flex items-center justify-center w-8 h-8 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="flex items-center justify-center w-8 h-8 rounded-lg text-[#333333] hover:bg-black/[0.04] transition-colors cursor-pointer"
       >
         <SearchIcon />
       </button>

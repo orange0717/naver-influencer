@@ -448,8 +448,8 @@ export default function AiConsultantClient() {
               </button>
             )}
             <div className="text-center space-y-1.5">
-              <h1 className="font-title text-2xl font-bold text-text">N인플 AI</h1>
-              <p className="text-sm text-dim">무엇을 도와드릴까요?</p>
+              <h1 className="font-title text-[30px] font-normal text-[#222222]">N인플 AI</h1>
+              <p className="text-[15px] font-normal text-[#777777]">무엇을 도와드릴까요?</p>
             </div>
             {(result || error) && (
               <button
@@ -475,7 +475,7 @@ export default function AiConsultantClient() {
               <button
                 onClick={() => runConsult(input)}
                 disabled={loading || !input.trim()}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default shrink-0"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-sm font-normal bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default shrink-0"
               >
                 {loading ? '분석 중...' : 'AI에게 물어보기'}
               </button>
@@ -487,7 +487,7 @@ export default function AiConsultantClient() {
 
           {!result && !loading && (
             <div className="space-y-2.5 pt-3 mt-2 border-t border-border/60">
-              <p className="text-xs font-bold text-dim">추천 분석 — N인플 기능 바로가기</p>
+              <p className="text-xs font-medium text-dim">추천 분석 — N인플 기능 바로가기</p>
               <div className="flex flex-wrap gap-2">
                 {FEATURE_SHORTCUTS.map((f) => (
                   <Link

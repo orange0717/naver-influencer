@@ -37,9 +37,9 @@ export default function CreditBadge() {
     <Link
       href="/subscribe"
       title={`보유 크레딧 ${balance.toLocaleString()} · 충전하기`}
-      className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold leading-none bg-white/15 text-white/90 hover:bg-white/25 transition-colors shrink-0"
+      className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-normal leading-none bg-black/[0.04] text-[#555555] hover:bg-black/[0.07] transition-colors shrink-0"
     >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v10M9 9.5h4a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h4" />
       </svg>
