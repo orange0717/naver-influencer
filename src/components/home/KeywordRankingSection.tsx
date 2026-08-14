@@ -1274,9 +1274,12 @@ export default function KeywordRankingSection() {
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미추출'}</span>
+                                <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미확인'}</span>
                                 {!isExtracting && (
-                                  <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">추출</button>
+                                  <>
+                                    <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">추출</button>
+                                    <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer" title="대표키워드를 직접 입력합니다">직접 설정</button>
+                                  </>
                                 )}
                               </div>
                             )}
@@ -1371,8 +1374,13 @@ export default function KeywordRankingSection() {
                         </>
                       ) : (
                         <>
-                          <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미추출'}</span>
-                          {!isExtracting && <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer ml-auto">추출</button>}
+                          <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미확인'}</span>
+                          {!isExtracting && (
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">추출</button>
+                              <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer">직접 설정</button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
