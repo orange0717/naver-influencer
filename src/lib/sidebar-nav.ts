@@ -67,7 +67,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '데',
     items: [
       { label: '랭킹', href: '#ranking', heading: true, subgroup: true },
-      { label: '랭킹 - 메이트 랭킹', href: '/naver-mate-ranking', authOnly: true, indent: true },
+      { label: '네이버 메이트', href: '/naver-mate-ranking', authOnly: true, indent: true },
       { label: '연도별 선정 현황', href: '/stats', indent: true },
       { label: '키워드', href: '#keyword', heading: true, subgroup: true },
       // '키워드 챌린지'(/keywords)는 순위가 아니라 키워드 전체 목록 성격 → 키워드 그룹으로 이동(사용자 요청 2026-08-12)

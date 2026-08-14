@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { sortByMateOrder } from '@/lib/naver-mate-categories';
+import { sortByMateOrder, MATE_CATEGORIES } from '@/lib/naver-mate-categories';
 import { withAnalysisView } from '@/lib/analysis-quota';
 
 export const dynamic = 'force-dynamic';
@@ -33,12 +33,13 @@ export const GET = withAnalysisView('rank_analysis', async (request: NextRequest
     .select('naver_mates!inner(category)')
     .eq('year', year)
     .eq('month', month);
-  const categorySet = new Set<string>();
+  // 네이버 메이트 공식 분야 25개를 항상 전부 노출(데이터 미수집 분야 포함) + 공식 목록에 없는
+  // 과거 데이터 분야는 뒤에 덧붙인다. 공식 순서로 정렬(임의의 가나다순 아님).
+  const categorySet = new Set<string>(MATE_CATEGORIES);
   (catRows || []).forEach((r) => {
     const mate = Array.isArray(r.naver_mates) ? r.naver_mates[0] : r.naver_mates;
     if (mate?.category) categorySet.add(mate.category);
   });
-  // 네이버 메이트 공식 분야 순서로 정렬(임의의 가나다순 아님). 데이터에 존재하는 분야만 노출.
   const categories = sortByMateOrder(Array.from(categorySet));
 
   let query = supabase
