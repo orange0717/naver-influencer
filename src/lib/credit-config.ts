@@ -21,7 +21,9 @@ export type CreditFeature =
   | 'bulk_search_volume' // 대량 검색량 조회 (≤100, 네이버 검색광고 API)
   | 'bulk_top3'          // 대량 TOP3 순위 조회 (≤50, 네이버 API)
   | 'bulk_index_register' // 대량 구글 색인등록 (≤300, GSC API)
-  | 'bulk_exposure_check'; // 노출 현황 30일 이전 확장 조회 (초과 1개당 과금 — amountOverride 로 개수×단가)
+  | 'bulk_exposure_check' // 노출 현황 30일 이전 확장 조회 (초과 1개당 과금 — amountOverride 로 개수×단가)
+  | 'bulk_keyword_rank'   // 키워드 순위 30일 이전 확장 조회 (초과 1개당 과금 — 공통 billing, analytics-lookup)
+  | 'bulk_ai_citation';   // AI 브리핑·AI 탭 30일 이전 확장 조회 (초과 1개당 과금 — 공통 billing, analytics-lookup)
 
 /**
  * 기능별 차감 크레딧. 0 = 크레딧 미차감(구독 권한만으로 이용).
@@ -44,6 +46,8 @@ export const CREDIT_COSTS: Record<CreditFeature, number> = {
   bulk_top3: 5,          // 대량 TOP3(≤50건 배치)
   bulk_index_register: 8,// 대량 색인등록(≤300건 배치)
   bulk_exposure_check: 1,// 노출 현황 확장 조회 — 무료 90개 초과분 "1개당" 단가(amountOverride=초과개수×이 값)
+  bulk_keyword_rank: 1,  // 키워드 순위 확장 조회 — 무료 90개 초과분 1개당 단가(노출 현황과 동일 정책)
+  bulk_ai_citation: 1,   // AI 브리핑 확장 조회 — 무료 90개 초과분 1개당 단가(노출 현황과 동일 정책)
 };
 
 /** 사용자에게 보여줄 기능 한글명 (거래내역/부족 안내용) */
@@ -62,6 +66,8 @@ export const CREDIT_FEATURE_LABELS: Record<CreditFeature, string> = {
   bulk_top3: '대량 TOP3 순위 조회',
   bulk_index_register: '대량 색인 등록',
   bulk_exposure_check: '노출 현황 확장 조회',
+  bulk_keyword_rank: '키워드 순위 확장 조회',
+  bulk_ai_citation: 'AI 브리핑 확장 조회',
 };
 
 /** 크레딧 충전 상품 (초안). 가격은 원(KRW). 크레딧당 약 9~11원. */
