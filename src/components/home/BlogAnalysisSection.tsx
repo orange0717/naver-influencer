@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
@@ -51,6 +52,11 @@ export default function BlogAnalysisSection() {
   const [postAnalysis, setPostAnalysis] = useState<{ metrics: BlogAnalysisMetrics; averages: BlogAnalysisAverages } | null>(null);
   const [blogStats, setBlogStats] = useState<{ totalVisitor: number; todayVisitor: number; subscriberCount: number; postCount: number; isOfficialBlog: boolean } | null>(null);
   const [visitorData, setVisitorData] = useState<{ avgVisitors: number; totalVisitors: number; trend: number; collectedDays: number; lastCollectedDate: string | null }>({ avgVisitors: 0, totalVisitors: 0, trend: 0, collectedDays: 0, lastCollectedDate: null });
+
+  // '블로그 정보' 카드를 대시보드 최상단 슬롯(#blog-info-top-slot)으로 포탈 렌더한다(있을 때만).
+  // /my/blogger처럼 슬롯이 없는 곳에서는 아래 폴백으로 기존 위치에 인라인 렌더된다.
+  const [infoSlot, setInfoSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setInfoSlot(document.getElementById('blog-info-top-slot')); }, []);
 
   // AI 브리핑·AI탭 상태 — AiBriefingSection과 동일 queryKey를 사용해 캐시를 공유(중복 요청 없음)
   const { data: aiBriefingByKeyword } = useQuery({
@@ -617,11 +623,9 @@ export default function BlogAnalysisSection() {
     );
   }
 
-  return (
-    <div className="space-y-4">
-
-      {/* ─── 1. 프로필 헤더 (카테고리 선택을 하단 슬롯으로 통합해 카드 1개로 축소) ─── */}
-      <div className="space-y-3">
+  // '블로그 정보' 신원 카드 — 최상단 슬롯이 있으면 그곳으로 포탈, 없으면 아래 기존 위치에 인라인 렌더.
+  const blogInfoCard = (
+    <div className="space-y-3">
       <h2 className="text-sm font-bold text-text px-1">블로그 정보</h2>
       <ProfileHeader
         displayName={customProfile.displayName || profile.displayName}
@@ -664,7 +668,14 @@ export default function BlogAnalysisSection() {
           </div>
         )}
       </ProfileHeader>
-      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+
+      {/* ─── 1. 프로필 헤더 — 최상단 슬롯(#blog-info-top-slot)으로 포탈, 슬롯 없으면 인라인 ─── */}
+      {infoSlot ? createPortal(blogInfoCard, infoSlot) : blogInfoCard}
 
       {/* ─── 2. 대시보드 카드 ─── */}
       {/* TODAY 방문자·30일 방문자수·이웃수는 위쪽 KPI 요약(BlogDashboardKpiBar)과 중복되어 제거 (2026-07-15) */}

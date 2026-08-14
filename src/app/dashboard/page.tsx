@@ -85,6 +85,7 @@ export default async function DashboardPage() {
       <nav className="pt-4">
         <div className="flex items-center gap-1.5 overflow-x-auto">
           {[
+            { href: '#blog-info', label: '블로그 정보' },
             { href: '#dashboard-summary', label: 'KPI 요약' },
             { href: '#keyword-ranks', label: '키워드 순위' },
             { href: '#blog-analysis', label: '블로그 분석' },
@@ -99,6 +100,12 @@ export default async function DashboardPage() {
           ))}
         </div>
       </nav>
+
+      {/* '블로그 정보' 신원 카드 슬롯 — BlogAnalysisSection(클라이언트)이 이 슬롯으로 포탈 렌더한다.
+          카드가 이 컴포넌트 상태(profile·category·blogStats)에 묶여 있어 중복 fetch 없이 포탈로 최상단에 올린다. */}
+      <section id="blog-info" className="scroll-mt-24 empty:hidden">
+        <div id="blog-info-top-slot" className="empty:hidden" />
+      </section>
 
       <section id="dashboard-summary" className="scroll-mt-24 space-y-3">
         <h2 className="text-sm font-bold text-text px-1">KPI 요약</h2>
