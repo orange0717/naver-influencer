@@ -5,22 +5,37 @@ import { isAdminFromProfile, isRestricted } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * DB 조회 자체가 실패했음을 나타내는 오류. "프로필이 없음(비회원/미가입)"과
+ * "일시적 백엔드 장애"를 구분하기 위해 사용한다. 장애를 프로필 없음으로 오인하면
+ * 정상 로그인 사용자가 회원가입 화면으로 튕긴다(요구사항 #10 D vs E).
+ */
+class AuthBackendError extends Error {
+  constructor() {
+    super('auth_backend_unavailable');
+    this.name = 'AuthBackendError';
+  }
+}
+
 /** Supabase Auth 유저로부터 프로필 + 인플루언서 정보를 조회 */
 async function getUserFromAuth(authUserId: string, email?: string | null) {
   const supabase = createServiceClient();
-  let { data: profile } = await supabase
+  const { data: byAuthId, error: authIdErr } = await supabase
     .from('users')
     .select('id, nickname, email, linked_influencer_id, subscription_plan, subscription_expires_at, blog_id, is_admin')
     .eq('auth_id', authUserId)
     .maybeSingle();
+  if (authIdErr) throw new AuthBackendError();
+  let profile = byAuthId;
 
   // auth_id 매칭 실패 시 email로 재조회 (auth.users/public.users 동기화 누락 대비)
   if (!profile && email) {
-    const { data: byEmail } = await supabase
+    const { data: byEmail, error: byEmailErr } = await supabase
       .from('users')
       .select('id, nickname, email, linked_influencer_id, subscription_plan, subscription_expires_at, blog_id, is_admin')
       .eq('email', email.toLowerCase())
       .maybeSingle();
+    if (byEmailErr) throw new AuthBackendError();
     profile = byEmail;
   }
 
@@ -96,8 +111,12 @@ export async function GET(request: NextRequest) {
           const result = await getUserFromAuth(tokenUser.id, tokenUser.email);
           if (result) return NextResponse.json(result);
         }
-      } catch {
-        // Bearer 토큰 실패 시 다음 방법으로
+      } catch (e) {
+        // DB 장애는 "비회원"으로 폴백하지 않고 503 으로 알린다(요구사항 #10 E).
+        if (e instanceof AuthBackendError) {
+          return NextResponse.json({ error: 'auth_backend_unavailable' }, { status: 503 });
+        }
+        // 그 외(토큰 검증 실패 등)는 다음 방법으로
       }
     }
 
@@ -109,7 +128,10 @@ export async function GET(request: NextRequest) {
         const result = await getUserFromAuth(authUser.id, authUser.email);
         if (result) return NextResponse.json(result);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof AuthBackendError) {
+        return NextResponse.json({ error: 'auth_backend_unavailable' }, { status: 503 });
+      }
       // Supabase Auth 실패 시 쿠키 기반으로 폴백
     }
 
@@ -189,7 +211,12 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ type: null, id: null, name: null });
-  } catch {
+  } catch (e) {
+    // DB 장애(AuthBackendError)는 "비회원"과 구분해 503 으로 응답한다 — 클라이언트가
+    // 로그아웃 상태로 오인해 회원가입 화면을 띄우지 않도록.
+    if (e instanceof AuthBackendError) {
+      return NextResponse.json({ error: 'auth_backend_unavailable' }, { status: 503 });
+    }
     return NextResponse.json({ type: null, id: null, name: null });
   }
 }

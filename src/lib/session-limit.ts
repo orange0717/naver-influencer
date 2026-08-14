@@ -140,12 +140,19 @@ export async function verifySession(
   if (cached !== null) return cached;
 
   const supabase = createServiceClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('user_sessions')
     .select('id')
     .eq('user_id', authUserId)
     .eq('device_id', deviceId)
     .maybeSingle();
+
+  // DB 오류(일시적 장애·타임아웃)는 "세션 없음"과 구분한다. 오류를 false 로 취급하면
+  // 미들웨어가 정상 로그인 사용자를 강제 로그아웃시키고 그 결과를 30초간 캐시해버린다.
+  // → 가용성 우선으로 true 를 반환하되 캐시하지 않아, 다음 요청에서 즉시 재확인한다.
+  if (error) {
+    return true;
+  }
 
   if (!data) {
     _cacheSet(cacheKey, false, now);

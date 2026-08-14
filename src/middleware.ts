@@ -151,6 +151,15 @@ function matchesPathPrefix(pathname: string, prefix: string): boolean {
 }
 
 /**
+ * @supabase/ssr 세션 쿠키(sb-<ref>-auth-token, 청크 시 .0/.1 …) 존재 여부.
+ * "한 번이라도 로그인해 세션 쿠키를 들고 있는 사용자"와 "세션 쿠키가 아예 없는
+ * 순수 비회원"을 구분하는 신호로 쓴다. code-verifier(OAuth 진행 중)는 제외한다.
+ */
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some((c) => /^sb-.+-auth-token(\.\d+)?$/.test(c.name));
+}
+
+/**
  * sidebar-nav.ts에서 authOnly로 선언됐지만 MEMBER_ONLY_GATE_PREFIXES가 아닌
  * 다른 방식으로 이미 보호되고 있어 이 목록에 넣지 않는 경로 — 반드시 "왜"를 남길 것.
  * 아래 목록에도 MEMBER_ONLY_GATE_PREFIXES에도 없는 authOnly 경로는 실제로 새는 것이니
@@ -311,12 +320,22 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // 세션 토큰 갱신 + 사용자 조회 (지연/동시 갱신 충돌 시 비로그인으로 폴백 — 미들웨어 hang·crash 방지)
+  // 세션 토큰 갱신 + 사용자 조회 (지연/동시 갱신 충돌 시 미들웨어 hang·crash 방지를 위해 null 폴백)
   const user = await withTimeout(
     getUserDeduped(supabase, request.headers.get('cookie') || ''),
     8000,
     null,
   );
+
+  // "확정 비회원" vs "인증 불확정" 구분.
+  // user 가 null 인 이유는 두 가지다:
+  //   (1) 세션 쿠키 자체가 없음 → 진짜 비회원 → 게이트/리다이렉트가 맞다.
+  //   (2) 세션 쿠키는 있으나 getUser 가 지연·동시 갱신 충돌(429/409)·일시 오류로 실패 →
+  //       실제로는 로그인 사용자일 가능성이 높다. 이때 로그인/회원가입 화면으로 되돌리면
+  //       "로그인했는데 다시 회원가입 화면" 버그가 된다. → 페이지 리다이렉트를 건너뛰고
+  //       통과시켜(가용성 우선) 클라이언트 useAuth 가 세션을 재확인하도록 한다.
+  //       (데이터 API 는 여전히 401 로 보호되므로 유료/회원 데이터가 새지 않는다.)
+  const authIndeterminate = !user && hasSupabaseAuthCookie(request);
 
   // 동시 로그인 기기 제한 검증 (전 플랜 1대 공통)
   const pathname = request.nextUrl.pathname;
@@ -328,7 +347,7 @@ export async function middleware(request: NextRequest) {
     acceptsHtml &&
     AUTH_REQUIRED_PAGE_PREFIXES.some(p => matchesPathPrefix(pathname, p));
 
-  if (needsLoginPage && !user) {
+  if (needsLoginPage && !user && !authIndeterminate) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
@@ -342,7 +361,7 @@ export async function middleware(request: NextRequest) {
     acceptsHtml &&
     matchesPathPrefix(pathname, '/keywords') &&
     !PUBLIC_KEYWORDS_PATHS.some(p => matchesPathPrefix(pathname, p));
-  if (needsKeywordsLogin && !user) {
+  if (needsKeywordsLogin && !user && !authIndeterminate) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
@@ -355,7 +374,7 @@ export async function middleware(request: NextRequest) {
     acceptsHtml &&
     (pathname === '/influencers' ||
       MEMBER_ONLY_GATE_PREFIXES.some(p => matchesPathPrefix(pathname, p)));
-  if (needsMemberOnlyGate && !user) {
+  if (needsMemberOnlyGate && !user && !authIndeterminate) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
