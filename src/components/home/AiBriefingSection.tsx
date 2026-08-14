@@ -6,6 +6,9 @@ import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import SectionHeader from '@/components/dashboard/SectionHeader';
+import PeriodFilter from '@/components/analytics/PeriodFilter';
+import SegmentedFilter, { type SegmentOption } from '@/components/analytics/SegmentedFilter';
+import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import type { BloggerProfile, BlogPost, PostScore, SubScores, BriefingResult, AnalysisEntry } from './AiBriefingSection.helpers';
@@ -85,6 +88,13 @@ export default function AiBriefingSection() {
   const [improvePanelPostId, setImprovePanelPostId] = useState('');
   // 상태 필터(스펙 #17): 전체/인용/일부 인용/미인용/미확인/확인실패
   const [filter, setFilter] = useState<CitationFilter>('all');
+  // 기간·검색·정렬 필터 — 키워드순위 화면과 동일 UX로 통일(스펙 #1)
+  const [period, setPeriod] = useState(30);
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'title'>('latest');
+  const usingCustomRange = !!(customFrom || customTo);
 
   // 대표키워드 공용 소스(post_representative_keywords) — 키워드순위 화면과 동일 데이터(스펙 #2/#3)
   const [repKeywords, setRepKeywords] = useState<Record<string, { keyword: string | null; source: string | null; confidence?: number | null }>>({});
@@ -667,10 +677,47 @@ export default function AiBriefingSection() {
   const countOf = (s: CitationState) => statusCounts[s] || 0;
   const citedTotal = countOf('cited') + countOf('partial');
 
-  // 상태 필터(스펙 #17) — 전체 블로그 목록에 적용
-  const filteredPosts = filter === 'all'
-    ? blogPosts
-    : blogPosts.filter(post => rollupPostCitationStatus(postStatusInputs(post.id)) === filter);
+  // 기간 → 검색 → 상태 → 정렬 순으로 필터(키워드순위 화면과 동일 로직, 스펙 #1/#17).
+  // 초기 return 이후에도 안전하도록 훅이 아닌 일반 계산으로 둔다(rules-of-hooks).
+  const filteredPosts = ((): BlogPost[] => {
+    const now = Date.now();
+    const DAY = 86_400_000;
+    let from = 0;
+    let to = Infinity;
+    if (usingCustomRange) {
+      from = customFrom ? new Date(customFrom).getTime() : 0;
+      to = customTo ? new Date(customTo).getTime() + DAY : Infinity;
+    } else if (period !== 0) {
+      from = now - period * DAY;
+    }
+    let list = blogPosts.filter(p => {
+      const t = new Date((p.date || '').replace(/\./g, '-')).getTime();
+      if (isNaN(t)) return true; // 날짜 파싱 실패 시 포함(누락 방지)
+      return t >= from && t <= to;
+    });
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(p => {
+        if ((p.title || '').toLowerCase().includes(q)) return true;
+        const kw = repKeywords[p.id]?.keyword;
+        return !!kw && kw.toLowerCase().includes(q);
+      });
+    }
+
+    if (filter !== 'all') {
+      list = list.filter(post => rollupPostCitationStatus(postStatusInputs(post.id)) === filter);
+    }
+
+    const arr = [...list];
+    arr.sort((a, b) => {
+      if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
+      const ta = new Date((a.date || '').replace(/\./g, '-')).getTime() || 0;
+      const tb = new Date((b.date || '').replace(/\./g, '-')).getTime() || 0;
+      return sortBy === 'oldest' ? ta - tb : tb - ta;
+    });
+    return arr;
+  })();
 
   // 클라이언트 페이지네이션(전체 목록 로드 후 화면만 분할)
   const totalPages = Math.max(1, Math.ceil(filteredPosts.length / postsPerPage));
@@ -1303,21 +1350,30 @@ export default function AiBriefingSection() {
         </span>
       </div>
 
-      {/* 상태 필터(스펙 #17) — 전체 블로그 기준 */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {CITATION_FILTER_OPTIONS.map(opt => (
-          <button
-            key={opt.key}
-            onClick={() => { setFilter(opt.key); setCurrentPage(1); }}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border ${
-              filter === opt.key
-                ? 'bg-accent text-white border-accent'
-                : 'bg-surface text-dim border-border hover:border-accent/50'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* 필터 영역 — 키워드순위 화면과 동일 구성(기간·상태·검색·정렬) (스펙 #1/#17) */}
+      <div className="flex flex-col gap-3">
+        <PeriodFilter
+          period={period}
+          onPeriod={p => { setPeriod(p); setCurrentPage(1); }}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomFrom={v => { setCustomFrom(v); setCurrentPage(1); }}
+          onCustomTo={v => { setCustomTo(v); setCurrentPage(1); }}
+          usingCustomRange={usingCustomRange}
+          onResetCustom={() => { setCustomFrom(''); setCustomTo(''); setCurrentPage(1); }}
+        />
+        <SegmentedFilter
+          options={CITATION_FILTER_OPTIONS.map((o): SegmentOption<CitationFilter> => ({ value: o.key, label: o.label }))}
+          value={filter}
+          onChange={v => { setFilter(v); setCurrentPage(1); }}
+        />
+        <PostSearchBar value={searchQuery} onChange={v => { setSearchQuery(v); setCurrentPage(1); }} placeholder="게시글 제목·대표키워드 검색">
+          <select value={sortBy} onChange={e => setSortBy(e.target.value as 'latest' | 'oldest' | 'title')} className={selectClass}>
+            <option value="latest">최신순</option>
+            <option value="oldest">오래된순</option>
+            <option value="title">제목순</option>
+          </select>
+        </PostSearchBar>
       </div>
 
       {/* 테이블 */}
