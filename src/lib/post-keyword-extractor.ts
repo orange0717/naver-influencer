@@ -5,6 +5,8 @@ import { extractKeywordCandidates } from './keyword-candidates';
 export interface RepresentativeKeywordResult {
   keywords: string[];
   source: 'title+body' | 'title' | 'fallback' | 'none' | 'manual';
+  /** 대표 키워드 신뢰도 0~1 (스펙 #12/#13). 낮으면 UI가 '확인 필요'로 표시한다. */
+  confidence: number;
 }
 
 /** 대표 키워드 추출 옵션 — 제목 외 보조 신호(태그/카테고리/브랜드/사용자키워드)와 본문 보정 허용 여부. */
@@ -129,7 +131,7 @@ export async function extractRepresentativeKeywords(
 
   // 제목만으로 확신이 서면(애매하지 않으면) 본문 크롤링 없이 확정 — 대량 자동추출 저비용(스펙 #5).
   if (base.primary && !(opts.allowBody && base.ambiguous)) {
-    return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title' };
+    return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title', confidence: base.confidence };
   }
 
   // 애매한 경우에만 본문을 크롤링해 상위 빈도 명사구로 보정한다.
@@ -138,27 +140,59 @@ export async function extractRepresentativeKeywords(
     if (body) {
       const withBody = extractKeywordCandidates({ ...input, bodyText: body.fullText });
       if (withBody.primary) {
-        return { keywords: dedupeKeywords([withBody.primary, ...withBody.secondaries]), source: 'title+body' };
+        return { keywords: dedupeKeywords([withBody.primary, ...withBody.secondaries]), source: 'title+body', confidence: withBody.confidence };
       }
     }
   }
 
   if (base.primary) {
-    return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title' };
+    return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title', confidence: base.confidence };
   }
-  return { keywords: [], source: 'none' };
+  return { keywords: [], source: 'none', confidence: 0 };
 }
 
 export interface PersistedRepresentativeKeyword {
   representativeKeyword: string | null;
   candidates: string[];
   source: RepresentativeKeywordResult['source'];
+  /** 대표 키워드 신뢰도 0~1 (스펙 #12/#13). manual/cached는 저장값을 그대로 돌려준다. */
+  confidence: number;
   cached: boolean;
 }
 
 // 포스팅 발행 후 내용이 거의 바뀌지 않는다는 전제 + 매번 네이버 포스트 본문을 크롤링하는 비용을 피하기 위해
 // 30일간은 저장된 대표 키워드를 그대로 재사용한다(post_representative_keywords, migration-130).
 const REP_KEYWORD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+// migration-154(confidence, keyword_changed_at)가 아직 적용되지 않은 환경에서도 안전하게 저장되도록
+// 추가 컬럼이 없으면 그 키만 빼고 재시도한다(무중단 배포 — 마이그레이션은 나중에 활성화만).
+const ADDITIVE_REP_COLUMNS = ['confidence', 'keyword_changed_at'];
+
+function isMissingColumnError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST204' || /confidence|keyword_changed_at|could not find|does not exist|schema cache/i.test(error.message || '');
+}
+
+/**
+ * post_representative_keywords에 upsert하되, migration-154 미적용(추가 컬럼 없음) 환경에서는
+ * 추가 컬럼을 제거하고 한 번 더 시도한다. 반환값은 최종 에러(성공 시 null).
+ */
+export async function upsertRepresentativeRows(
+  supabase: ReturnType<typeof createServiceClient>,
+  rows: Record<string, unknown>[],
+): Promise<{ code?: string; message?: string } | null> {
+  if (rows.length === 0) return null;
+  let { error } = await supabase.from('post_representative_keywords').upsert(rows, { onConflict: 'blog_id,post_id' });
+  if (isMissingColumnError(error)) {
+    const trimmed = rows.map(r => {
+      const copy = { ...r };
+      for (const k of ADDITIVE_REP_COLUMNS) delete copy[k];
+      return copy;
+    });
+    ({ error } = await supabase.from('post_representative_keywords').upsert(trimmed, { onConflict: 'blog_id,post_id' }));
+  }
+  return error;
+}
 
 /**
  * 대표 키워드를 (blog_id, post_id) 기준으로 조회 → 없거나 오래됐으면 추출 후 저장.
@@ -171,15 +205,16 @@ export async function getOrPersistRepresentativeKeyword(
   opts: RepKeywordExtractOpts = {},
 ): Promise<PersistedRepresentativeKeyword> {
   const supabase = createServiceClient();
+  // select('*')로 조회 — migration-154(confidence 등) 미적용 환경에서도 컬럼 부재로 실패하지 않게(무중단).
   const { data: existing } = await supabase
     .from('post_representative_keywords')
-    .select('representative_keyword, candidates, keyword_source, extracted_at')
+    .select('*')
     .eq('blog_id', blogId)
     .eq('post_id', postId)
-    .maybeSingle();
+    .maybeSingle() as { data: { representative_keyword: string | null; candidates: string[] | null; keyword_source: string | null; extracted_at: string | null; confidence: number | null } | null };
 
   // 사용자가 직접 수정한 대표 키워드(keyword_source='manual')는 항상 최우선 — TTL 만료와 무관하게
-  // 자동 추출로 절대 덮어쓰지 않는다(스펙 #3). 저장된 값을 그대로 반환한다.
+  // 자동 추출로 절대 덮어쓰지 않는다(스펙 #3/#19). 저장된 값을 그대로 반환한다.
   if (existing && existing.keyword_source === 'manual') {
     const manualKeyword = existing.representative_keyword;
     return {
@@ -188,6 +223,7 @@ export async function getOrPersistRepresentativeKeyword(
         ? existing.candidates
         : (manualKeyword ? [manualKeyword] : []),
       source: 'manual',
+      confidence: 1,
       cached: true,
     };
   }
@@ -197,6 +233,7 @@ export async function getOrPersistRepresentativeKeyword(
       representativeKeyword: existing.representative_keyword,
       candidates: existing.candidates || [],
       source: (existing.keyword_source as RepresentativeKeywordResult['source']) || 'none',
+      confidence: typeof existing.confidence === 'number' ? existing.confidence : 0.5,
       cached: true,
     };
   }
@@ -204,17 +241,23 @@ export async function getOrPersistRepresentativeKeyword(
   const result = await extractRepresentativeKeywords(blogId, postId, title, opts);
   const representativeKeyword = result.keywords[0] || null;
 
-  await supabase.from('post_representative_keywords').upsert({
+  // 대표 키워드가 바뀌면 keyword_changed_at을 갱신해 하위 순위/AI 인용 결과를 '재확인 필요'로 판단할 수 있게 한다(스펙 #23).
+  const changed = !!existing && (existing.representative_keyword || null) !== (representativeKeyword || null);
+  const nowIso = new Date().toISOString();
+
+  await upsertRepresentativeRows(supabase, [{
     blog_id: blogId,
     post_id: postId,
     post_title: title || null,
     representative_keyword: representativeKeyword,
     candidates: result.keywords,
     keyword_source: result.source,
-    extracted_at: new Date().toISOString(),
-  }, { onConflict: 'blog_id,post_id' });
+    confidence: result.confidence,
+    extracted_at: nowIso,
+    ...(changed ? { keyword_changed_at: nowIso } : {}),
+  }]);
 
-  return { representativeKeyword, candidates: result.keywords, source: result.source, cached: false };
+  return { representativeKeyword, candidates: result.keywords, source: result.source, confidence: result.confidence, cached: false };
 }
 
 /**

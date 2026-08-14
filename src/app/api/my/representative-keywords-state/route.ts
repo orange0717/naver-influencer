@@ -10,6 +10,8 @@ type StoredRow = {
   representative_keyword: string | null;
   keyword_source: string | null;
   extracted_at: string | null;
+  confidence: number | null;
+  keyword_changed_at: string | null;
   candidates: string[] | null;
   candidate_screen: { keyword: string; exposed: boolean; rank: number | null }[] | null;
 };
@@ -28,9 +30,10 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   const supabase = createServiceClient();
+  // select('*') — migration-154(confidence, keyword_changed_at) 미적용 환경에서도 안전(무중단 배포).
   const { data, error } = await supabase
     .from('post_representative_keywords')
-    .select('post_id, representative_keyword, keyword_source, extracted_at, candidates, candidate_screen')
+    .select('*')
     .eq('blog_id', blogId);
 
   if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
@@ -39,6 +42,8 @@ export async function GET(request: NextRequest) {
     keyword: string | null;
     source: string | null;
     extractedAt: string | null;
+    confidence: number | null;
+    keywordChangedAt: string | null;
     candidates: string[];
     candidateScreen: { keyword: string; exposed: boolean; rank: number | null }[];
     autoKeywords: AutoKeyword[];
@@ -50,6 +55,8 @@ export async function GET(request: NextRequest) {
       keyword: r.representative_keyword,
       source: r.keyword_source,
       extractedAt: r.extracted_at,
+      confidence: typeof r.confidence === 'number' ? r.confidence : null,
+      keywordChangedAt: r.keyword_changed_at,
       candidates,
       candidateScreen,
       // 대표+보조(+변형) 자동 조회 집합 — 단일 추출 라우트와 동일 규칙으로 재구성(스펙 #4/#14)

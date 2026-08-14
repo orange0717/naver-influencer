@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
@@ -69,10 +69,8 @@ export default function AiBriefingSection() {
   const [postsLoading, setPostsLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  // postId → 타겟 키워드 배열
+  // postId → 확인 대상 키워드(대표키워드 1개) — 인용 확인 결과의 연결 키. 대표키워드가 바뀌면 갱신된다.
   const [postKeywords, setPostKeywords] = useState<Record<string, string[]>>({});
-  // postId → 타겟 키워드 배열 (편집 중)
-  const [editingKeywords, setEditingKeywords] = useState<Record<string, string[]>>({});
   // "postId::keyword" → BriefingResult
   const [briefingResults, setBriefingResults] = useState<Record<string, BriefingResult>>({});
   const [checkingKey, setCheckingKey] = useState('');
@@ -89,7 +87,7 @@ export default function AiBriefingSection() {
   const [filter, setFilter] = useState<CitationFilter>('all');
 
   // 대표키워드 공용 소스(post_representative_keywords) — 키워드순위 화면과 동일 데이터(스펙 #2/#3)
-  const [repKeywords, setRepKeywords] = useState<Record<string, { keyword: string | null; source: string | null }>>({});
+  const [repKeywords, setRepKeywords] = useState<Record<string, { keyword: string | null; source: string | null; confidence?: number | null }>>({});
   // 대표키워드 인라인 수동 편집(스펙 #3)
   const [editingRepPost, setEditingRepPost] = useState('');
   const [repDraft, setRepDraft] = useState('');
@@ -104,6 +102,18 @@ export default function AiBriefingSection() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string }>({ done: 0, total: 0, current: '' });
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const bulkAbortRef = useRef(false);
+
+  // 대표키워드 점검·재추출(스펙 #18~21) — 규칙 기반(네이버 무호출).
+  type KeywordAudit = {
+    total: number;
+    counts: { normal: number; suspicious: number; missing: number; manual: number };
+    reextractTarget: number;
+    samples: { postId: string; title: string | null; stored: string | null; suggested: string | null; reason: string | null }[];
+  };
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditData, setAuditData] = useState<KeywordAudit | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [reextracting, setReextracting] = useState(false);
 
   // 상단 키워드 검색 + 자동 분석
   const [analyzeKeyword, setAnalyzeKeyword] = useState('');
@@ -190,13 +200,6 @@ export default function AiBriefingSection() {
     if (!confirm('모든 포스팅의 타겟 키워드와 AI 브리핑 확인 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
 
     try {
-      setEditingKeywords(prev => {
-        const updated = { ...prev };
-        if (blogPosts && blogPosts.length > 0) {
-          blogPosts.forEach(post => { updated[post.id] = ['']; });
-        }
-        return updated;
-      });
       setPostKeywords({});
       setBriefingResults({});
 
@@ -207,26 +210,7 @@ export default function AiBriefingSection() {
       showError('초기화 중 오류가 발생했습니다.', 3000);
       console.error('Reset error:', err);
     }
-  }, [profile, blogPosts, showError]);
-
-  const handleClearPostKeywords = (postId: string) => {
-    if (!profile) return;
-    if (!confirm('이 포스팅의 모든 타겟 키워드를 삭제하시겠습니까?')) return;
-
-    setEditingKeywords(prev => ({ ...prev, [postId]: [''] }));
-    const updated = { ...postKeywords };
-    delete updated[postId];
-    setPostKeywords(updated);
-
-    const newResults = { ...briefingResults };
-    for (const key of Object.keys(newResults)) {
-      if (key.startsWith(`${postId}::`)) delete newResults[key];
-    }
-    setBriefingResults(newResults);
-
-    saveKeywordsToDb(profile.blogId, postId, []);
-    showError('포스팅의 타겟 키워드가 초기화되었습니다.', 3000);
-  };
+  }, [profile, showError]);
 
   // 전체 포스팅을 한 번에 로드(스펙 #1) — 네이버 PostList가 최신 발행순으로 반환하므로 그 순서를 유지한다.
   // 이후 페이지네이션·필터·KPI는 이 전체 목록을 클라이언트에서 처리한다(전체 블로그 기준).
@@ -271,7 +255,7 @@ export default function AiBriefingSection() {
     queryFn: async () => {
       const res = await fetch(`/api/my/representative-keywords-state?blogId=${encodeURIComponent(profile!.blogId)}`);
       if (!res.ok) throw new Error('대표키워드 로드 실패');
-      return res.json() as Promise<{ results: Record<string, { keyword: string | null; source: string | null }> }>;
+      return res.json() as Promise<{ results: Record<string, { keyword: string | null; source: string | null; confidence?: number | null }> }>;
     },
     enabled: !!profile?.blogId,
     staleTime: 5 * 60 * 1000,
@@ -279,8 +263,8 @@ export default function AiBriefingSection() {
 
   useEffect(() => {
     if (repState?.results) {
-      const map: Record<string, { keyword: string | null; source: string | null }> = {};
-      for (const [pid, v] of Object.entries(repState.results)) map[pid] = { keyword: v.keyword, source: v.source };
+      const map: Record<string, { keyword: string | null; source: string | null; confidence?: number | null }> = {};
+      for (const [pid, v] of Object.entries(repState.results)) map[pid] = { keyword: v.keyword, source: v.source, confidence: v.confidence ?? null };
       setRepKeywords(map);
     }
   }, [repState]);
@@ -384,91 +368,6 @@ export default function AiBriefingSection() {
       setBriefingResults(syncedState.briefingResults || {});
     }
   }, [syncedState]);
-
-  // 포스트 로드 시 타겟 키워드 초기화
-  // 우선순위: 저장된 타겟 키워드 > 자동 추출된 대표 키워드(post_ai_scores) > 빈 입력.
-  // 대표 키워드를 타겟 입력에 자동 채워 오렌지가 직접 타이핑하지 않아도 되게 한다(완전 자동화).
-  // 단, DB 저장(및 네이버 확인)은 "확인" 클릭 시점까지 미뤄 불필요한 쓰기/크롤을 막는다(수동 우선).
-  useEffect(() => {
-    if (!profile || blogPosts.length === 0) return;
-    setEditingKeywords(prev => {
-      const next = { ...prev };
-      for (const post of blogPosts) {
-        const saved = postKeywords[post.id];
-        if (saved && saved.length > 0) {
-          next[post.id] = [...saved];
-          continue;
-        }
-        // 이미 사용자가 입력 중인 값(빈 문자열이 아님)은 덮어쓰지 않는다.
-        const current = prev[post.id];
-        const userTyped = current && current.some(k => k.trim());
-        if (userTyped) continue;
-        // 대표키워드는 공용 소스(repKeywords)를 최우선으로 — 키워드순위 화면과 동일한 값(스펙 #2).
-        const rep = (repKeywords[post.id]?.keyword || postScores[post.id]?.representativeKeyword)?.trim();
-        next[post.id] = rep ? [rep] : [''];
-      }
-      return next;
-    });
-  }, [profile, blogPosts, postKeywords, postScores, repKeywords]);
-
-  const handleKeywordChange = (postId: string, kwIndex: number, value: string) => {
-    setEditingKeywords(prev => {
-      const kws = [...(prev[postId] || [])];
-      kws[kwIndex] = value;
-      return { ...prev, [postId]: kws };
-    });
-  };
-
-  const handleKeywordSave = (postId: string) => {
-    if (!profile) return;
-    const kws = (editingKeywords[postId] || []).map(k => k.trim()).filter(Boolean);
-    if (kws.length > 0) {
-      setPostKeywords(prev => ({ ...prev, [postId]: kws }));
-      saveKeywordsToDb(profile.blogId, postId, kws);
-    }
-  };
-
-  // 포스팅 제목/본문을 분석해 대표 키워드를 자동 추출 — 입력칸만 채우고 저장은 사용자가 blur/Enter로 확정
-  const handleAutoExtract = async (post: BlogPost) => {
-    setExtractingPostId(post.id);
-    try {
-      const res = await fetch(
-        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile!.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}`,
-      );
-      if (!res.ok) {
-        showError('대표 키워드 자동 추출에 실패했습니다.', 5000);
-        return;
-      }
-      const data: { keywords?: string[] } = await res.json();
-      if (!data.keywords || data.keywords.length === 0) {
-        showError('이 포스팅에서 대표 키워드를 찾지 못했습니다. 직접 입력해주세요.', 5000);
-        return;
-      }
-      setEditingKeywords(prev => ({ ...prev, [post.id]: data.keywords!.slice(0, 5) }));
-    } catch {
-      showError('네트워크 오류로 대표 키워드를 추출하지 못했습니다.', 5000);
-    } finally {
-      setExtractingPostId('');
-    }
-  };
-
-  const addKeyword = (postId: string) => {
-    setEditingKeywords(prev => {
-      const kws = [...(prev[postId] || []), ''];
-      return { ...prev, [postId]: kws };
-    });
-  };
-
-  const removeKeyword = (postId: string, kwIndex: number) => {
-    if (!profile) return;
-    setEditingKeywords(prev => {
-      const kws = [...(prev[postId] || [])];
-      kws.splice(kwIndex, 1);
-      if (kws.length === 0) return prev;
-      return { ...prev, [postId]: kws };
-    });
-    setTimeout(() => handleKeywordSave(postId), 0);
-  };
 
   // 2026-07-04(6차) 오렌지 지시: 진행 단계를 실시간으로 보여주기 위해 NDJSON 스트리밍 응답을 소비.
   // 캐시 적중/검증 실패/접근 거부 등은 서버가 여전히 일반 JSON으로 즉시 응답하므로
@@ -795,16 +694,17 @@ export default function AiBriefingSection() {
       if (!res.ok) return null;
       const data = await res.json();
       const kw = (data.representativeKeyword || data.keywords?.[0] || '').trim();
-      if (kw) setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: data.source || null } }));
+      if (kw) setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: data.source || null, confidence: data.confidence ?? null } }));
       return kw || null;
     } catch { return null; }
   };
 
-  // 대표키워드를 타겟 키워드로 등록(확인 결과가 이 키워드에 연결되고 목록/집계에 반영되도록).
+  // 대표키워드를 확인 대상 키워드로 등록(확인 결과가 이 키워드에 연결되고 목록/집계에 반영되도록).
+  // 대표키워드가 바뀌면 이전 키워드에 매인 확인 결과 대신 현재 대표키워드로 재확인하도록 갱신한다(스펙 #23).
   const registerTargetKeyword = (post: BlogPost, kw: string) => {
-    if (!(postKeywords[post.id]?.some(k => k.trim()))) {
+    const existing = postKeywords[post.id] || [];
+    if (existing.length !== 1 || existing[0].trim() !== kw) {
       setPostKeywords(prev => ({ ...prev, [post.id]: [kw] }));
-      setEditingKeywords(prev => ({ ...prev, [post.id]: [kw] }));
       saveKeywordsToDb(profile!.blogId, post.id, [kw]);
     }
   };
@@ -871,7 +771,7 @@ export default function AiBriefingSection() {
     const kw = repDraft.trim();
     setEditingRepPost('');
     if (!kw || !profile) return;
-    setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: 'manual' } }));
+    setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: 'manual', confidence: 1 } }));
     try {
       await fetch('/api/blog/representative-keywords', {
         method: 'PATCH',
@@ -880,6 +780,73 @@ export default function AiBriefingSection() {
       });
       queryClient.invalidateQueries({ queryKey: ['rep-keywords-state', profile.blogId] });
     } catch { /* 낙관적 UI */ }
+  };
+
+  // 대표키워드 점검 결과를 불러와 모달을 연다(재추출 전 카운트 확인, 스펙 #20/#21).
+  const openAuditModal = async () => {
+    if (!profile || auditLoading) return;
+    setAuditOpen(true);
+    setAuditData(null);
+    setAuditLoading(true);
+    try {
+      const res = await fetch(`/api/my/representative-keywords/audit?blogId=${encodeURIComponent(profile.blogId)}`);
+      if (res.ok) setAuditData(await res.json());
+      else { showError('대표키워드 점검에 실패했습니다.'); setAuditOpen(false); }
+    } catch {
+      showError('대표키워드 점검에 실패했습니다.'); setAuditOpen(false);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  // 사용자 확인 후에만 자동 추출분을 재추출한다(manual 제외, 네이버 무호출, 스펙 #19/#21).
+  const runReextract = async () => {
+    if (!profile || reextracting) return;
+    setReextracting(true);
+    try {
+      const res = await fetch('/api/my/representative-keywords/reextract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, confirm: true }),
+      });
+      if (!res.ok) { showError('재추출 중 오류가 발생했습니다.'); return; }
+      const data: { reextracted: number; changed: number; skippedManual: number } = await res.json();
+      setAuditOpen(false);
+      setAuditData(null);
+      // 공용 소스가 바뀌었으니 대표키워드 상태를 새로고침해 키워드순위 화면과 즉시 동일 값이 되게 한다(스펙 #22).
+      queryClient.invalidateQueries({ queryKey: ['rep-keywords-state', profile.blogId] });
+      setBulkNotice(`대표키워드 ${data.reextracted}건 재추출 완료(${data.changed}건 변경). 변경된 포스팅은 순위·AI 인용을 다시 확인하면 새 키워드 기준으로 갱신됩니다.`);
+    } catch {
+      showError('재추출 중 오류가 발생했습니다.');
+    } finally {
+      setReextracting(false);
+    }
+  };
+
+  // 대표키워드 1개로 AI 브리핑·AI 탭 인용을 확인(스펙 #16/#26) — 여러 타겟 입력 대신 단일 대표키워드만 사용.
+  const checkRepKeyword = (post: BlogPost) => {
+    const kw = getPrimaryKeyword(post);
+    if (!kw || !!checkingKey) return;
+    registerTargetKeyword(post, kw);
+    checkSingleKeyword(post, kw);
+  };
+
+  // 대표키워드가 없을 때 제목 기반 자동 추출로 채운다(공용 소스에 저장, 스펙 #2/#3).
+  const autoExtractRep = async (post: BlogPost) => {
+    setExtractingPostId(post.id);
+    try {
+      const kw = await ensureRepKeyword(post);
+      if (!kw) showError('이 포스팅에서 대표 키워드를 찾지 못했습니다. 직접 입력해주세요.', 5000);
+    } finally {
+      setExtractingPostId('');
+    }
+  };
+
+  // 대표키워드 신뢰도가 낮으면(규칙 기반 추출이 애매) '확인 필요'로 표시(스펙 #13) — manual/충분히 확실하면 숨김.
+  const repNeedsReview = (post: BlogPost): boolean => {
+    const rk = repKeywords[post.id];
+    if (!rk || rk.source === 'manual' || !rk.keyword) return false;
+    return typeof rk.confidence === 'number' && rk.confidence < 0.6;
   };
 
   return (
@@ -930,6 +897,14 @@ export default function AiBriefingSection() {
               중단
             </button>
           )}
+          <button
+            onClick={openAuditModal}
+            disabled={blogPosts.length === 0 || auditLoading}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
+            title="저장된 대표키워드를 점검해 잘못 추출된 것만 다시 추출합니다(무료·네이버 무호출)."
+          >
+            {auditLoading ? '점검 중...' : '대표키워드 점검'}
+          </button>
           {canDownload && (
             <button
               onClick={handleDownload}
@@ -978,6 +953,65 @@ export default function AiBriefingSection() {
         <div className="px-4 py-3 rounded-xl bg-gold/10 border border-gold/30 text-xs text-text flex items-start gap-2">
           <span className="flex-1">{bulkNotice}</span>
           <button onClick={() => setBulkNotice(null)} className="text-dim hover:text-text cursor-pointer shrink-0" aria-label="닫기">✕</button>
+        </div>
+      )}
+
+      {/* 대표키워드 점검·재추출 확인 모달(스펙 #18~21) */}
+      {auditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAuditOpen(false)}>
+          <div className="bg-surface rounded-2xl border border-border shadow-xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-title text-lg font-extrabold">대표키워드 점검 결과</h3>
+            {auditLoading || !auditData ? (
+              <div className="py-8 text-center text-dim text-sm">저장된 대표키워드를 점검 중...</div>
+            ) : (
+              <>
+                <div className="space-y-1.5 text-sm">
+                  {[
+                    ['전체 포스팅', auditData.total],
+                    ['정상', auditData.counts.normal],
+                    ['재추출 권장', auditData.counts.suspicious],
+                    ['미추출', auditData.counts.missing],
+                    ['직접 지정(보호)', auditData.counts.manual],
+                  ].map(([label, v]) => (
+                    <div key={label} className="flex items-center justify-between">
+                      <span className="text-dim">{label}</span>
+                      <span className="font-rank font-bold">{v}</span>
+                    </div>
+                  ))}
+                </div>
+                {auditData.samples.length > 0 && (
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/40">
+                    {auditData.samples.slice(0, 12).map(s => (
+                      <div key={s.postId} className="px-2.5 py-1.5 text-[11px]">
+                        <div className="truncate text-dim" title={s.title || ''}>{s.title || '(제목 없음)'}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-down line-through">{s.stored || '없음'}</span>
+                          <span className="text-dim">→</span>
+                          <span className="text-up font-medium">{s.suggested || '미확인'}</span>
+                          {s.reason && <span className="text-[9px] text-dim">({s.reason})</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-dim leading-relaxed">
+                  총 <b className="text-text">{auditData.reextractTarget}</b>개의 대표키워드를 제목 기준으로 다시 추출합니다.
+                  직접 지정한 키워드는 건드리지 않습니다. 네이버 호출이 없어 <b className="text-text">비용이 발생하지 않습니다</b>.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={() => setAuditOpen(false)}
+                    className="flex-1 px-3 py-2 rounded-xl text-xs font-bold border border-border hover:bg-surface-hover transition cursor-pointer">
+                    취소
+                  </button>
+                  <button onClick={runReextract}
+                    disabled={reextracting || auditData.reextractTarget === 0}
+                    className="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
+                    {reextracting ? '재추출 중...' : '대표키워드 다시 추출'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -1301,8 +1335,7 @@ export default function AiBriefingSection() {
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
                     <th className="text-left px-4 py-3 font-semibold w-10">#</th>
                     <th className="text-left px-3 py-3 font-semibold">제목</th>
-                    <th className="text-left px-3 py-3 font-semibold w-28">대표키워드</th>
-                    <th className="text-left px-3 py-3 font-semibold w-40">타겟 키워드</th>
+                    <th className="text-left px-3 py-3 font-semibold w-44">대표키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">AI브리핑</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">AI탭</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">종합상태</th>
@@ -1318,155 +1351,93 @@ export default function AiBriefingSection() {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {pagePosts.map((post, i) => {
-                    const keywords = editingKeywords[post.id] || [];
-                    const rowCount = Math.max(keywords.length, 1);
                     const score = postScores[post.id];
                     const citation = postCitationStatus(post.id);
-                    return keywords.map((kw, kwIdx) => {
-                      const key = rankKey(post.id, kw.trim());
-                      const result = briefingResults[key];
-                      const isFirst = kwIdx === 0;
-                      const isLast = kwIdx === rowCount - 1;
-                      return (
-                        <>
-                        <tr key={`${post.id}-${kwIdx}`} className={`hover:bg-surface-hover transition ${!isLast ? '!border-b-0' : ''}`}>
-                          {isFirst && (
-                            <>
-                              <td className="px-4 py-3 text-dim text-xs align-top" rowSpan={rowCount}>
-                                {(safePage - 1) * postsPerPage + i + 1}
-                              </td>
-                              <td className="px-3 py-3 align-top" rowSpan={rowCount}>
-                                <a href={post.url} target="_blank" rel="noopener noreferrer"
-                                  className="font-semibold hover:text-accent transition truncate block max-w-[280px]" title={post.title}>
-                                  {post.title}
-                                </a>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                  {post.commentCount > 0 && (
-                                    <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                  {!keywords.some(k => k.trim()) && (
-                                    <button onClick={() => handleAutoExtract(post)}
-                                      disabled={extractingPostId === post.id}
-                                      className="text-xs text-accent cursor-pointer hover:underline disabled:opacity-50">
-                                      {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
-                                    </button>
-                                  )}
-                                  {keywords.length < 5 && (
-                                    <button onClick={() => addKeyword(post.id)}
-                                      className="text-xs text-accent cursor-pointer hover:underline">
-                                      + 키워드 추가
-                                    </button>
-                                  )}
-                                  {keywords.some(k => k.trim()) && (
-                                    <button onClick={() => handleClearPostKeywords(post.id)}
-                                      className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">
-                                      초기화
-                                    </button>
-                                  )}
-                                  <button onClick={() => setDetailPostId(prev => prev === post.id ? '' : post.id)}
-                                    className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">
-                                    {detailPostId === post.id ? '상세 닫기' : '상세'}
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="px-3 py-3 align-top" rowSpan={rowCount}>
-                                {editingRepPost === post.id ? (
-                                  <input
-                                    autoFocus
-                                    value={repDraft}
-                                    onChange={e => setRepDraft(e.target.value)}
-                                    onBlur={() => saveRepKeyword(post)}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); saveRepKeyword(post); }
-                                      if (e.key === 'Escape') setEditingRepPost('');
-                                    }}
-                                    className="w-full px-2 py-1 text-xs bg-bg border border-accent rounded-lg outline-none"
-                                    placeholder="대표키워드"
-                                  />
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => { setEditingRepPost(post.id); setRepDraft(getPrimaryKeyword(post) || ''); }}
-                                    className="text-left group/rep"
-                                    title="클릭해서 대표키워드 직접 수정(수정 시 항상 우선)"
-                                  >
-                                    <span className="text-xs text-text group-hover/rep:text-accent transition">
-                                      {getPrimaryKeyword(post) || <span className="text-dim">— 지정</span>}
-                                    </span>
-                                    {repKeywords[post.id]?.source === 'manual' && (
-                                      <span className="block text-[9px] text-accent">직접 지정</span>
-                                    )}
-                                  </button>
-                                )}
-                              </td>
-                            </>
-                          )}
-                          <td className="px-3 py-1.5">
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="text"
-                                value={kw}
-                                onChange={e => handleKeywordChange(post.id, kwIdx, e.target.value)}
-                                onBlur={() => handleKeywordSave(post.id)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                                    e.preventDefault();
-                                    handleKeywordSave(post.id);
-                                    checkSingleKeyword(post, kw);
-                                  }
-                                }}
-                                className="flex-1 px-2 py-1.5 text-xs bg-bg border border-border rounded-lg focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition"
-                                placeholder="타겟 키워드"
-                              />
-                              {keywords.length > 1 && (
-                                <button onClick={() => removeKeyword(post.id, kwIdx)}
-                                  className="text-dim hover:text-down text-xs cursor-pointer shrink-0 px-1">
-                                  x
-                                </button>
+                    const repKw = getPrimaryKeyword(post);
+                    const key = repKw ? rankKey(post.id, repKw) : '';
+                    const result = key ? briefingResults[key] : undefined;
+                    const needsReview = repNeedsReview(post);
+                    return (
+                      <Fragment key={post.id}>
+                        <tr className="hover:bg-surface-hover transition">
+                          <td className="px-4 py-3 text-dim text-xs align-top">
+                            {(safePage - 1) * postsPerPage + i + 1}
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <a href={post.url} target="_blank" rel="noopener noreferrer"
+                              className="font-semibold hover:text-accent transition truncate block max-w-[300px]" title={post.title}>
+                              {post.title}
+                            </a>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {post.commentCount > 0 && (
+                                <span className="text-[10px] text-accent">댓글 {post.commentCount}</span>
                               )}
+                              <button onClick={() => setDetailPostId(prev => prev === post.id ? '' : post.id)}
+                                className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">
+                                {detailPostId === post.id ? '상세 닫기' : '상세'}
+                              </button>
                             </div>
                           </td>
-                          <td className="text-center px-3 py-1.5">
-                            <BriefingLabelBadge result={result} />
+                          <td className="px-3 py-3 align-top">
+                            {editingRepPost === post.id ? (
+                              <input
+                                autoFocus
+                                value={repDraft}
+                                onChange={e => setRepDraft(e.target.value)}
+                                onBlur={() => saveRepKeyword(post)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); saveRepKeyword(post); }
+                                  if (e.key === 'Escape') setEditingRepPost('');
+                                }}
+                                className="w-full px-2 py-1 text-xs bg-bg border border-accent rounded-lg outline-none"
+                                placeholder="대표키워드"
+                              />
+                            ) : repKw ? (
+                              <div className="flex flex-col gap-0.5 items-start">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-text">{repKw}</span>
+                                  <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(repKw); }}
+                                    className="text-[10px] text-dim hover:text-accent cursor-pointer hover:underline shrink-0"
+                                    title="대표키워드 직접 수정(수정 시 항상 우선)">수정</button>
+                                </div>
+                                {repKeywords[post.id]?.source === 'manual' ? (
+                                  <span className="text-[9px] text-accent">직접 지정</span>
+                                ) : needsReview ? (
+                                  <span className="text-[9px] text-down">확인 필요</span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <button onClick={() => autoExtractRep(post)}
+                                  disabled={extractingPostId === post.id}
+                                  className="text-xs text-accent cursor-pointer hover:underline disabled:opacity-50">
+                                  {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
+                                </button>
+                                <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
+                                  className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">직접 입력</button>
+                              </div>
+                            )}
                           </td>
-                          <td className="text-center px-3 py-1.5">
-                            <AiTabBadge result={result} />
+                          <td className="text-center px-3 py-1.5"><BriefingLabelBadge result={result} /></td>
+                          <td className="text-center px-3 py-1.5"><AiTabBadge result={result} /></td>
+                          <td className="text-center px-3 py-1.5"><CitationStatusBadge state={citation} /></td>
+                          <td className="text-center px-2 py-1.5"><ScoreCell score={score?.aiScore} /></td>
+                          <td className="text-center px-2 py-1.5"><ScoreCell score={score?.seoScore} /></td>
+                          <td className="text-center px-2 py-1.5"><ScoreCell score={score?.geoScore} /></td>
+                          <td className="text-center px-2 py-1.5"><ScoreCell score={score?.aeoScore} /></td>
+                          <td className="text-center px-3 py-1.5 text-xs text-dim">
+                            {typeof post.viewCount === 'number' ? post.viewCount.toLocaleString() : '—'}
                           </td>
-                          {isFirst && (
-                            <>
-                              <td className="text-center px-3 py-1.5 align-top" rowSpan={rowCount}>
-                                <CitationStatusBadge state={citation} />
-                              </td>
-                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
-                                <ScoreCell score={score?.aiScore} />
-                              </td>
-                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
-                                <ScoreCell score={score?.seoScore} />
-                              </td>
-                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
-                                <ScoreCell score={score?.geoScore} />
-                              </td>
-                              <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
-                                <ScoreCell score={score?.aeoScore} />
-                              </td>
-                              <td className="text-center px-3 py-1.5 align-top text-xs text-dim" rowSpan={rowCount}>
-                                {typeof post.viewCount === 'number' ? post.viewCount.toLocaleString() : '—'}
-                              </td>
-                              <td className="text-center px-3 py-1.5 align-top text-[10px] text-dim" rowSpan={rowCount}>
-                                {post.date}
-                              </td>
-                            </>
-                          )}
+                          <td className="text-center px-3 py-1.5 text-[10px] text-dim">{post.date}</td>
                           <td className="text-center px-3 py-1.5">
                             <div className="flex flex-col items-center gap-0.5">
                               <button
-                                onClick={() => checkSingleKeyword(post, kw)}
-                                disabled={!!checkingKey || !kw.trim()}
+                                onClick={() => checkRepKeyword(post)}
+                                disabled={!!checkingKey || !repKw}
                                 className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                                title={repKw ? undefined : '대표키워드를 먼저 지정하세요'}
                               >
-                                {checkingKey === key ? (
+                                {checkingKey === key && key ? (
                                   <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
                                 ) : result ? '재확인' : '확인'}
                               </button>
@@ -1477,33 +1448,31 @@ export default function AiBriefingSection() {
                               )}
                             </div>
                           </td>
-                          {isFirst && (
-                            <td className="text-center px-3 py-1.5 align-top" rowSpan={rowCount}>
-                              <div className="flex flex-col gap-1 items-center">
-                                {!score ? (
-                                  <button
-                                    onClick={() => handleAnalyzeScore(post)}
-                                    disabled={scoringPostId === post.id}
-                                    className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
-                                  >
-                                    {scoringPostId === post.id ? '분석 중...' : '분석하기'}
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
-                                    className="text-[11px] text-accent hover:underline cursor-pointer"
-                                  >
-                                    개선하기<br /><span className="text-[9px] text-dim">(기초 진단)</span>
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          )}
+                          <td className="text-center px-3 py-1.5">
+                            <div className="flex flex-col gap-1 items-center">
+                              {!score ? (
+                                <button
+                                  onClick={() => handleAnalyzeScore(post)}
+                                  disabled={scoringPostId === post.id}
+                                  className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                                >
+                                  {scoringPostId === post.id ? '분석 중...' : '분석하기'}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setImprovePanelPostId(prev => prev === post.id ? '' : post.id)}
+                                  className="text-[11px] text-accent hover:underline cursor-pointer"
+                                >
+                                  개선하기<br /><span className="text-[9px] text-dim">(기초 진단)</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
-                        {isFirst && score && score.causeTags.length > 0 && (
-                          <tr key={`${post.id}-causes`} className={!isLast ? '!border-b-0' : ''}>
+                        {score && score.causeTags.length > 0 && (
+                          <tr>
                             <td colSpan={2} />
-                            <td colSpan={13} className="px-3 pb-2 pt-0">
+                            <td colSpan={12} className="px-3 pb-2 pt-0">
                               <div className="flex items-center gap-1 flex-wrap">
                                 {score.causeTags.map(tag => (
                                   <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-down/10 text-down">
@@ -1514,28 +1483,27 @@ export default function AiBriefingSection() {
                             </td>
                           </tr>
                         )}
-                        {isFirst && detailPostId === post.id && (
-                          <tr key={`${post.id}-detail`} className={!isLast ? '!border-b-0' : ''}>
-                            <td colSpan={15} className="px-4 pb-4 pt-1 bg-bg/30">
+                        {detailPostId === post.id && (
+                          <tr>
+                            <td colSpan={14} className="px-4 pb-4 pt-1 bg-bg/30">
                               <CitationDetailPanel
                                 post={post}
                                 keywords={(postKeywords[post.id] || [])}
                                 results={briefingResults}
-                                repKeyword={getPrimaryKeyword(post)}
+                                repKeyword={repKw}
                               />
                             </td>
                           </tr>
                         )}
-                        {isFirst && improvePanelPostId === post.id && score && (
-                          <tr key={`${post.id}-improve`} className={!isLast ? '!border-b-0' : ''}>
-                            <td colSpan={15} className="px-4 pb-4 pt-1 bg-bg/30">
+                        {improvePanelPostId === post.id && score && (
+                          <tr>
+                            <td colSpan={14} className="px-4 pb-4 pt-1 bg-bg/30">
                               <ImprovePanel score={score} />
                             </td>
                           </tr>
                         )}
-                        </>
-                      );
-                    });
+                      </Fragment>
+                    );
                   })}
                 </tbody>
               </table>
@@ -1544,10 +1512,12 @@ export default function AiBriefingSection() {
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
               {pagePosts.map((post, i) => {
-                const keywords = editingKeywords[post.id] || [];
                 const score = postScores[post.id];
                 const citation = postCitationStatus(post.id);
                 const repKw = getPrimaryKeyword(post);
+                const mKey = repKw ? rankKey(post.id, repKw) : '';
+                const mResult = mKey ? briefingResults[mKey] : undefined;
+                const needsReview = repNeedsReview(post);
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
                     <div className="flex items-start gap-2">
@@ -1586,6 +1556,13 @@ export default function AiBriefingSection() {
                           placeholder="대표키워드"
                         />
                       )}
+                      {!repKw && editingRepPost !== post.id && (
+                        <button onClick={() => autoExtractRep(post)} disabled={extractingPostId === post.id}
+                          className="text-accent hover:underline disabled:opacity-50">
+                          {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
+                        </button>
+                      )}
+                      {needsReview && <span className="text-down">확인 필요</span>}
                       {typeof post.viewCount === 'number' && <span>조회수 {post.viewCount.toLocaleString()}</span>}
                     </div>
 
@@ -1608,76 +1585,25 @@ export default function AiBriefingSection() {
                       </div>
                     )}
 
-                    <div className="space-y-1.5 pl-7">
-                      {keywords.map((kw, kwIdx) => {
-                        const key = rankKey(post.id, kw.trim());
-                        const result = briefingResults[key];
-                        return (
-                          <div key={kwIdx} className="space-y-1">
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="text"
-                                value={kw}
-                                onChange={e => handleKeywordChange(post.id, kwIdx, e.target.value)}
-                                onBlur={() => handleKeywordSave(post.id)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                                    e.preventDefault();
-                                    handleKeywordSave(post.id);
-                                    checkSingleKeyword(post, kw);
-                                  }
-                                }}
-                                className="flex-1 px-2.5 py-1.5 text-sm bg-bg border border-border rounded-lg focus:border-accent outline-none"
-                                placeholder="타겟 키워드"
-                              />
-                              <button
-                                onClick={() => checkSingleKeyword(post, kw)}
-                                disabled={!!checkingKey || !kw.trim()}
-                                className="px-2.5 py-1.5 text-[11px] text-accent border border-accent/30 rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
-                              >
-                                {checkingKey === key ? (
-                                  <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                                ) : result ? '재확인' : '확인'}
-                              </button>
-                              {keywords.length > 1 && (
-                                <button onClick={() => removeKeyword(post.id, kwIdx)}
-                                  className="text-dim hover:text-down text-xs cursor-pointer px-1">
-                                  x
-                                </button>
-                              )}
-                            </div>
-                            {result && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-dim">브리핑</span>
-                                <BriefingLabelBadge result={result} />
-                                <span className="text-[10px] text-dim">탭</span>
-                                <AiTabBadge result={result} />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {!keywords.some(k => k.trim()) && (
-                          <button onClick={() => handleAutoExtract(post)}
-                            disabled={extractingPostId === post.id}
-                            className="text-xs text-accent cursor-pointer hover:underline disabled:opacity-50">
-                            {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
-                          </button>
-                        )}
-                        {keywords.length < 5 && (
-                          <button onClick={() => addKeyword(post.id)}
-                            className="text-xs text-accent cursor-pointer hover:underline">
-                            + 키워드 추가
-                          </button>
-                        )}
-                        {keywords.some(k => k.trim()) && (
-                          <button onClick={() => handleClearPostKeywords(post.id)}
-                            className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">
-                            초기화
-                          </button>
-                        )}
-                      </div>
+                    <div className="pl-7 flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => checkRepKeyword(post)}
+                        disabled={!!checkingKey || !repKw}
+                        className="px-2.5 py-1.5 text-[11px] text-accent border border-accent/30 rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
+                        title={repKw ? undefined : '대표키워드를 먼저 지정하세요'}
+                      >
+                        {checkingKey === mKey && mKey ? (
+                          <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                        ) : mResult ? 'AI 인용 재확인' : 'AI 인용 확인'}
+                      </button>
+                      {mResult && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-dim">브리핑</span>
+                          <BriefingLabelBadge result={mResult} />
+                          <span className="text-[10px] text-dim">탭</span>
+                          <AiTabBadge result={mResult} />
+                        </div>
+                      )}
                     </div>
 
                     <div className="pl-7 pt-0.5 flex items-center gap-3 flex-wrap">

@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
       candidateScreen,
       autoKeywords,
       source: extraction.source,
+      confidence: extraction.confidence,
       cached: extraction.cached,
     });
   } catch (error) {
