@@ -46,7 +46,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { label: '블로그', href: '#blog', heading: true, subgroup: true },
       { label: '대시보드', href: '/dashboard', authOnly: true, indent: true },
-      { label: '미노출', href: '/my/missing-posts', authOnly: true, indent: true },
+      { label: '노출 현황', href: '/my/missing-posts', authOnly: true, indent: true },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true, indent: true },
       { label: 'AI 브리핑 · AI 탭 인용', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '인플루언서', href: '#influencer', heading: true, subgroup: true },

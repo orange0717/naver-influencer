@@ -6,6 +6,8 @@ import {
   countMissing,
   countIndexingWait,
   calculateMissingRate,
+  classifyExposure,
+  countByExposureClass,
   displayVerdict,
   INDEXING_GRACE_HOURS,
   type MissingResultsMap,
@@ -65,6 +67,47 @@ describe('displayVerdict — §19 화면 상태', () => {
     expect(displayVerdict(post('a'), { viewTab: exposed, blogTab: missing })).toBe('exposed');
     expect(displayVerdict(post('a'), { viewTab: missing, blogTab: missing })).toBe('missing');
     expect(displayVerdict(post('a'), { viewTab: missing, blogTab: missing, status: 'error' })).toBe('error');
+  });
+});
+
+describe('classifyExposure — §5 종합 상태(노출 현황 페이지)', () => {
+  const now = Date.now();
+  it('전 영역 노출 → normal(정상)', () => {
+    expect(classifyExposure(post('a'), { viewTab: exposed, blogTab: exposed, influencerTab: exposed }, now)).toBe('normal');
+  });
+  it('일부만 노출 → partial(일부 노출)', () => {
+    expect(classifyExposure(post('a'), { viewTab: exposed, blogTab: exposed, influencerTab: missing }, now)).toBe('partial');
+  });
+  it('전 영역 미노출 확정 → missing', () => {
+    expect(classifyExposure(post('a'), { viewTab: missing, blogTab: missing, influencerTab: missing, overallStatus: 'missing' }, now)).toBe('missing');
+  });
+  it('재검증 대기(recheck)는 missing 아님 → checking(미확인/확인중)', () => {
+    expect(classifyExposure(post('a'), { viewTab: missing, blogTab: missing, overallStatus: 'recheck' }, now)).toBe('checking');
+  });
+  it('검사 기록 없음 → unchecked(미확인)', () => {
+    expect(classifyExposure(post('a'), undefined, now)).toBe('unchecked');
+  });
+  it('오류/실패는 절대 missing 아님 → error(확인 실패)', () => {
+    expect(classifyExposure(post('a'), { viewTab: { exposed: null, rank: null }, blogTab: { exposed: null, rank: null }, status: 'error' }, now)).toBe('error');
+    expect(classifyExposure(post('a'), { viewTab: { exposed: null, rank: null }, blogTab: { exposed: null, rank: null }, status: 'failed' }, now)).toBe('error');
+  });
+  it('색인 유예 내 전영역 미노출 → checking(미노출로 세지 않음)', () => {
+    const r = { viewTab: missing, blogTab: missing, overallStatus: 'missing' as const };
+    expect(classifyExposure(postAt('a', new Date(now - 1 * HOUR_MS)), r, now)).toBe('checking');
+  });
+  it('countByExposureClass: 네 상태 합이 전체와 일치하고 missing 은 countMissing 과 같다', () => {
+    const r: MissingResultsMap = {
+      n: { viewTab: exposed, blogTab: exposed, influencerTab: exposed },
+      p: { viewTab: exposed, blogTab: missing, influencerTab: missing },
+      m: { viewTab: missing, blogTab: missing, influencerTab: missing, overallStatus: 'missing' },
+      rc: { viewTab: missing, blogTab: missing, overallStatus: 'recheck' },
+    };
+    const posts = [post('n'), post('p'), post('m'), post('rc'), post('unchecked')];
+    const c = countByExposureClass(posts, r, now);
+    expect(c).toMatchObject({ normal: 1, partial: 1, missing: 1, checking: 1, unchecked: 1 });
+    const sum = c.normal + c.partial + c.missing + c.checking + c.error + c.unanalyzable + c.unchecked;
+    expect(sum).toBe(posts.length);
+    expect(c.missing).toBe(countMissing(posts, r, now)); // §12 대시보드와 동일 기준
   });
 });
 

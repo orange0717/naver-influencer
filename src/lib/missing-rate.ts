@@ -91,6 +91,44 @@ export function displayVerdict(post: PostLike, mr: MissingState | undefined, now
   return inGrace ? 'checking' : 'missing';
 }
 
+/**
+ * §5 종합 노출 상태(노출 현황 페이지 표시용) — 전체 포스팅을 한 눈에 분류한다.
+ *   normal       : 정상   — 검사된 모든 영역이 노출
+ *   partial      : 일부 노출 — 일부 영역만 노출, 나머지는 미노출
+ *   missing      : 미노출  — 검사된 모든 영역이 미노출(재검증 확정). isPostMissing 과 같은 기준 → 대시보드 숫자와 일치(§12)
+ *   checking     : 확인 중  — 발행 직후 색인 유예 / 재검증 대기(recheck) — 아직 미확정(미노출 아님)
+ *   error        : 확인 실패 — 네이버 조회/ API 오류(미노출 아님)
+ *   unanalyzable : 분석 불가 — 비공개/검색어 생성 불가
+ *   unchecked    : 미확인  — 아직 검사한 기록이 없음
+ *
+ * ⚠️ error/checking/unanalyzable/unchecked 은 절대 missing 으로 분류하지 않는다(§5).
+ */
+export type ExposureClass = 'normal' | 'partial' | 'missing' | 'checking' | 'error' | 'unanalyzable' | 'unchecked';
+
+export function classifyExposure(post: PostLike, mr: MissingState | undefined, now: number = Date.now()): ExposureClass {
+  if (!mr) return 'unchecked';
+  // 재시도 소진 실패(POST /post-missing-state) — 이전 확정 판정이 없으면 '확인 실패'(미노출 아님).
+  if (mr.status === 'failed' && mr.overallStatus == null) return 'error';
+  const v = displayVerdict(post, mr, now);
+  if (v === null) return 'unchecked';
+  if (v === 'error') return 'error';
+  if (v === 'unanalyzable') return 'unanalyzable';
+  if (v === 'checking' || v === 'recheck') return 'checking';
+  if (v === 'missing') return 'missing';
+  // v === 'exposed': 검사된(non-null) 영역이 전부 노출이면 정상, 하나라도 미노출이면 일부 노출
+  const checked = [mr.viewTab.exposed, mr.blogTab.exposed, mr.influencerTab?.exposed ?? null].filter(a => a !== null);
+  return checked.some(a => a === false) ? 'partial' : 'normal';
+}
+
+/** 종합 상태별 개수 집계 — 노출 현황 상단 카드용(§2). 반환 객체의 키 합 = posts.length. */
+export function countByExposureClass(posts: PostLike[], results: MissingResultsMap, now: number = Date.now()): Record<ExposureClass, number> {
+  const counts: Record<ExposureClass, number> = {
+    normal: 0, partial: 0, missing: 0, checking: 0, error: 0, unanalyzable: 0, unchecked: 0,
+  };
+  for (const p of posts) counts[classifyExposure(p, results[p.id], now)]++;
+  return counts;
+}
+
 // 특정 영역(통합검색/블로그/인플루언서) 하나만 놓고 미노출 여부 판정 — 요약 통계 카드용
 export function isPostMissingInArea(post: PostLike, results: MissingResultsMap, area: MissingArea, now: number = Date.now()): boolean {
   const mr = results[post.id];

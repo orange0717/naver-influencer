@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import Modal from '@/components/ui/Modal';
-import { countMissing, countMissingInArea, countIndexingWait, displayVerdict, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea, type PostLike } from '@/lib/missing-rate';
+import { countIndexingWait, displayVerdict, classifyExposure, countByExposureClass, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea, type ExposureClass, type PostLike } from '@/lib/missing-rate';
 import { verdictLabel, confidenceLabel, type ExposureVerdict } from '@/lib/exposure-verdict';
 import { parseNaverPostDate } from '@/lib/naver-date';
 import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
@@ -23,6 +23,15 @@ const AUTO_CHECK_LIMIT = 30;
 
 type SortKey = 'latest' | 'oldest' | 'title' | 'missingRate';
 type AreaFilter = 'all' | MissingArea;
+// §3 빠른 상태 필터 — 전체/노출(정상)/미노출/일부 노출/미확인
+type StatusFilter = 'all' | 'normal' | 'partial' | 'missing' | 'unchecked';
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: '전체' },
+  { key: 'normal', label: '노출' },
+  { key: 'missing', label: '미노출' },
+  { key: 'partial', label: '일부 노출' },
+  { key: 'unchecked', label: '미확인' },
+];
 
 type PostMissingEntry = MissingState;
 
@@ -98,14 +107,39 @@ function buildCauseAnalysis(mr?: PostMissingEntry): string[] {
   return notes;
 }
 
-function ExposureBadge({ exposed }: { exposed: boolean | null | undefined }) {
+// §4 게시글별 채널 노출 상태 배지 — 노출/미노출 + null 은 종합 상태(class)에 따라 확인중/확인실패/분석불가/미확인으로 구분.
+// null 을 무조건 '미노출'로 표기하지 않는다(§4·§5).
+function ExposureBadge({ exposed, post, mr, now = 0 }: { exposed: boolean | null | undefined; post?: PostLike; mr?: PostMissingEntry; now?: number }) {
   if (exposed === true) return <span className="text-[11px] font-bold text-up bg-up/10 px-2 py-0.5 rounded-full whitespace-nowrap">🟢 노출</span>;
   if (exposed === false) return <span className="text-[11px] font-bold text-down bg-down/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔴 미노출</span>;
+  // exposed == null — 이 게시글의 종합 상태로 null 셀의 의미를 구분(확인중/확인실패/분석불가/미확인).
+  // post 가 있을 땐 호출측이 now 도 함께 넘긴다(목록 행). post 없는 상세 모달 셀은 'unchecked'로 처리.
+  const c = post ? classifyExposure(post, mr, now) : 'unchecked';
+  if (c === 'error') return <span className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap">⚫ 확인실패</span>;
+  if (c === 'checking') return <span className="text-[11px] font-semibold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">⚪ 확인중</span>;
+  if (c === 'unanalyzable') return <span className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap">⚫ 분석불가</span>;
   return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
 }
 
-// §19 화면 상태 5종: 🟢노출 / 🔴미노출 / 🟡재검사 / ⚪확인 중 / ⚫확인 불가(+분석 불가)
-// 확인 불가·분석 불가·재검사는 절대 미노출로 표기하지 않는다(§15). 확정 판정은 서버 상태머신이 낸 overall_status 를 신뢰.
+// §5 종합 상태(class) 표기 메타 — 정상/일부 노출/미노출/확인 중/확인 실패/분석 불가/미확인.
+// 확인 실패·분석 불가·확인 중·미확인은 절대 미노출로 표기하지 않는다(§5). 'missing' 은 isPostMissing 과 동일 기준(§12).
+const CLASS_META: Record<ExposureClass, { emoji: string; text: string; cls: string }> = {
+  normal:       { emoji: '🟢', text: '정상',      cls: 'text-up bg-up/10' },
+  partial:      { emoji: '🟡', text: '일부 노출', cls: 'text-amber-600 bg-amber-500/15' },
+  missing:      { emoji: '🔴', text: '미노출',    cls: 'text-down bg-down/10' },
+  checking:     { emoji: '⚪', text: '확인 중',   cls: 'text-blue bg-blue/10' },
+  error:        { emoji: '⚫', text: '확인 실패', cls: 'text-dim bg-border/40' },
+  unanalyzable: { emoji: '⚫', text: '분석 불가', cls: 'text-dim bg-border/40' },
+  unchecked:    { emoji: '⚪', text: '미확인',    cls: 'text-dim bg-border/30' },
+};
+
+function StatusBadge({ post, mr, isChecking, now }: { post: PostLike; mr?: PostMissingEntry; isChecking: boolean; now: number }) {
+  if (isChecking) return <span className="text-[11px] font-bold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔵 분석중</span>;
+  const meta = CLASS_META[classifyExposure(post, mr, now)];
+  return <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${meta.cls}`}>{meta.emoji} {meta.text}</span>;
+}
+
+// 상세 모달 '최종 판정'용 서버 상태머신 판정(§19) 색상 — 종합 상태와 별개로 세부 verdict 를 그대로 보여준다.
 const VERDICT_STYLE: Record<ExposureVerdict, string> = {
   exposed:      'text-up bg-up/10',
   missing:      'text-down bg-down/10',
@@ -114,17 +148,6 @@ const VERDICT_STYLE: Record<ExposureVerdict, string> = {
   error:        'text-dim bg-border/40',
   unanalyzable: 'text-dim bg-border/40',
 };
-
-function StatusBadge({ post, mr, isChecking, now }: { post: PostLike; mr?: PostMissingEntry; isChecking: boolean; now: number }) {
-  if (isChecking) return <span className="text-[11px] font-bold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔵 분석중</span>;
-  // 재시도 소진 실패(일시적) — 확정 판정 전이라면 재검사 필요로 안내
-  if (mr?.status === 'failed' && mr.overallStatus == null)
-    return <span className="text-[11px] font-bold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full whitespace-nowrap">🟡 재검사 필요</span>;
-  const v = displayVerdict(post, mr, now);
-  if (!v) return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
-  const { emoji, text } = verdictLabel(v);
-  return <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${VERDICT_STYLE[v]}`}>{emoji} {text}</span>;
-}
 
 export default function MissingPostsSection() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
@@ -147,6 +170,7 @@ export default function MissingPostsSection() {
   const [confirmBatch, setConfirmBatch] = useState<{ targets: BlogPost[]; toCheck: number; force: boolean } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all'); // §3 기본값 '전체'
   const [areaFilter, setAreaFilter] = useState<AreaFilter>('all');
   const [sortBy, setSortBy] = useState<SortKey>('latest');
   const [detailPostId, setDetailPostId] = useState<string | null>(null);
@@ -290,6 +314,15 @@ export default function MissingPostsSection() {
     setDetailChecking(false);
   }, [checkOne, profile, fetchDetailHistory]);
 
+  // §10 개별 게시글 '다시 검사' — 이 글 하나만 강제 재조회(전체 API 재호출 아님). 목록/카드는 checkOne 이 즉시 갱신.
+  const recheckSingle = useCallback(async (post: BlogPost) => {
+    if (checkingAll) return; // 배치 검사 중엔 개별 재검사 비활성
+    setCheckingPostId(post.id);
+    setBatchSummary(null);
+    await checkOne(post, { force: true });
+    setCheckingPostId(null);
+  }, [checkingAll, checkOne]);
+
   // 실제로 네이버 검색이 발생할 글만 센다 — 비공개(분석불가)·최근 성공검사(캐시 신선)는 호출이 없으므로 조회량 추정에서 제외
   const willHitNaver = useCallback((post: BlogPost, now: number): boolean => {
     if (post.isPublic === false) return false;
@@ -365,20 +398,17 @@ export default function MissingPostsSection() {
     return true;
   }), [posts, rangeFrom, rangeTo]);
 
-  const recent30Posts = useMemo(() => posts.filter(p => {
-    const d = parsePostDate(p.date);
-    return d ? d >= thirtyDaysAgo : false;
-  }), [posts, thirtyDaysAgo]);
-
   // 발행 시각(publishedAt)을 붙인 버전 — 색인 지연 유예 판정(missing-rate.ts)에 사용
   const periodPostsDated = useMemo(() => periodPosts.map(p => ({ ...p, publishedAt: parsePostDate(p.date) })), [periodPosts]);
-  const recent30PostsDated = useMemo(() => recent30Posts.map(p => ({ ...p, publishedAt: parsePostDate(p.date) })), [recent30Posts]);
 
-  const totalMissing = useMemo(() => countMissing(periodPostsDated, missingResults), [periodPostsDated, missingResults]);
-  const viewMissing = useMemo(() => countMissingInArea(periodPostsDated, missingResults, 'view'), [periodPostsDated, missingResults]);
-  const blogMissing = useMemo(() => countMissingInArea(periodPostsDated, missingResults, 'blog'), [periodPostsDated, missingResults]);
-  const influencerMissing = useMemo(() => countMissingInArea(periodPostsDated, missingResults, 'influencer'), [periodPostsDated, missingResults]);
-  const recent30Missing = useMemo(() => countMissing(recent30PostsDated, missingResults), [recent30PostsDated, missingResults]);
+  // §2 종합 상태별 집계 — 전체 포스팅을 정상/일부/미노출/미확인 등으로 분류(상단 카드·빠른 필터 공용).
+  // missing 은 countMissing(=대시보드)와 동일 기준이라 내 블로그 대시보드 미노출 수와 일치한다(§12).
+  const classCounts = useMemo(() => countByExposureClass(periodPostsDated, missingResults), [periodPostsDated, missingResults]);
+  const normalCount = classCounts.normal;
+  const partialCount = classCounts.partial;
+  const missingCount = classCounts.missing;
+  // '미확인' 카드 = 아직 확정 안 된 전부(미검사·확인 중·확인 실패·분석 불가) → 네 상태 카드 합 = 전체 포스팅
+  const unknownCount = classCounts.unchecked + classCounts.checking + classCounts.error + classCounts.unanalyzable;
   // 발행 후 유예 기간 내라 미노출 집계에서 제외된 게시글 수(투명성 안내용)
   const indexingWaitCount = useMemo(() => countIndexingWait(periodPostsDated, missingResults), [periodPostsDated, missingResults]);
   // §11 모든 영역 미노출 1회 관측 후 재검증 대기 중인 글 수(아직 미노출 확정 아님)
@@ -389,14 +419,21 @@ export default function MissingPostsSection() {
 
   const pct = (n: number) => periodPosts.length === 0 ? 0 : Math.round((n / periodPosts.length) * 100);
 
-  // 목록에는 확정 미노출(🔴) + 재검증 대기(🟡재검사) 글을 함께 보여준다 — 재검사 상태를 사용자가 인지하도록(§19).
-  // '전체 미노출' 카운트는 별개로 확정 미노출만 집계(countMissing)한다.
-  const missingList = useMemo(() => {
+  // §1 기본 목록 = 전체 포스팅. 빠른 상태 필터(§3)·영역 필터·제목 검색·정렬을 차례로 적용한다.
+  // (이전엔 미노출+재검사 글만 보여줬으나, 이제 전체 포스팅을 보여주고 필터로 좁힌다.)
+  const displayList = useMemo(() => {
     const now = Date.now();
-    let list = periodPostsDated.filter(p => {
-      const v = displayVerdict(p, missingResults[p.id], now);
-      return v === 'missing' || v === 'recheck';
-    });
+    let list = periodPostsDated;
+    // §3 종합 상태 빠른 필터
+    if (statusFilter !== 'all') {
+      list = list.filter(p => {
+        const c = classifyExposure(p, missingResults[p.id], now);
+        // '미확인' 필터엔 아직 확정 안 된 전부(미검사·확인 중·확인 실패·분석 불가)를 포함 — 상단 '미확인' 카드 숫자와 일치
+        if (statusFilter === 'unchecked') return c === 'unchecked' || c === 'checking' || c === 'error' || c === 'unanalyzable';
+        return c === statusFilter; // normal/partial/missing
+      });
+    }
+    // 영역 필터(통합검색/블로그/인플루언서 미노출만) — 기존 기능 유지(빠른 필터와 AND 결합)
     if (areaFilter !== 'all') {
       list = list.filter(p => {
         const mr = missingResults[p.id];
@@ -415,16 +452,18 @@ export default function MissingPostsSection() {
     else if (sortBy === 'title') arr.sort((a, b) => a.title.localeCompare(b.title, 'ko'));
     else if (sortBy === 'missingRate') arr.sort((a, b) => missingAreaCount(missingResults[b.id]) - missingAreaCount(missingResults[a.id]));
     return arr;
-  }, [periodPostsDated, missingResults, areaFilter, searchQuery, sortBy]);
+  }, [periodPostsDated, missingResults, statusFilter, areaFilter, searchQuery, sortBy]);
 
-  const uncheckedCount = useMemo(() => periodPosts.filter(p => !missingResults[p.id]).length, [periodPosts, missingResults]);
+  // §9 '미확인 n개 검사' 대상 = 실제 상태가 '미확인'(검사 기록 없음)인 글만.
+  const uncheckedPosts = useMemo(() => periodPostsDated.filter(p => classifyExposure(p, missingResults[p.id]) === 'unchecked'), [periodPostsDated, missingResults]);
+  const uncheckedCount = uncheckedPosts.length;
 
   const toggleOne = useCallback((id: string) => {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }, []);
-  const allVisibleSelected = missingList.length > 0 && missingList.every(p => selectedIds.has(p.id));
+  const allVisibleSelected = displayList.length > 0 && displayList.every(p => selectedIds.has(p.id));
   const toggleAll = useCallback(() => {
-    const visibleIds = missingList.map(p => p.id);
+    const visibleIds = displayList.map(p => p.id);
     setSelectedIds(prev => {
       const everySelected = visibleIds.length > 0 && visibleIds.every(id => prev.has(id));
       const n = new Set(prev);
@@ -432,7 +471,7 @@ export default function MissingPostsSection() {
       else visibleIds.forEach(id => n.add(id));
       return n;
     });
-  }, [missingList]);
+  }, [displayList]);
 
   const detailPost = useMemo(() => posts.find(p => p.id === detailPostId) || null, [posts, detailPostId]);
   const detailMr = detailPostId ? missingResults[detailPostId] : undefined;
@@ -462,8 +501,8 @@ export default function MissingPostsSection() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-bold">미노출</h2>
-          <p className="text-xs text-dim mt-1">선택한 기간 내 포스팅 중 통합검색·블로그·인플루언서에서 미노출된 글만 표시합니다.</p>
+          <h2 className="text-lg font-bold">노출 현황</h2>
+          <p className="text-xs text-dim mt-1">내 블로그 전체 포스팅의 네이버 검색(통합검색·블로그·인플루언서) 노출 상태를 확인합니다.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {checkingAll ? (
@@ -485,9 +524,11 @@ export default function MissingPostsSection() {
                   선택한 {selectedIds.size}개 재검사
                 </button>
               )}
-              <button onClick={() => requestBatch(periodPosts)} disabled={periodPosts.length === 0}
+              <button
+                onClick={() => uncheckedCount > 0 ? requestBatch(uncheckedPosts) : requestBatch(periodPosts, { force: true })}
+                disabled={periodPosts.length === 0}
                 className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs">
-                {uncheckedCount > 0 ? `미확인 ${uncheckedCount}개 검사` : '미노출 재검사'}
+                {uncheckedCount > 0 ? `미확인 ${uncheckedCount}개 검사` : '전체 재검사'}
               </button>
             </>
           )}
@@ -510,10 +551,10 @@ export default function MissingPostsSection() {
         </div>
       )}
 
-      {/* 1. 미노출 정의 안내 */}
+      {/* 1. 노출 현황 판정 안내 */}
       <GlassCard padding="sm" className="text-xs text-dim leading-relaxed">
-        <p className="font-bold text-text mb-1">미노출 정의 (교차검증)</p>
-        <p><b className="text-text">통합검색 · 블로그 · 인플루언서</b> 중 <b className="text-text">한 곳이라도 노출되면 &apos;노출&apos;</b>로 봅니다. 세 영역 모두에서 확인되지 않는 경우에만 미노출 후보이며, 곧바로 확정하지 않고 <b className="text-text">2차 재검증</b>까지 통과한 글만 &apos;미노출&apos;로 확정합니다(실제 노출 글을 미노출로 잘못 표시하지 않기 위함).</p>
+        <p className="font-bold text-text mb-1">노출 상태 판정 기준 (교차검증)</p>
+        <p><b className="text-text">정상</b>=검사한 영역이 모두 노출 · <b className="text-text">일부 노출</b>=일부만 노출 · <b className="text-text">미노출</b>=<b className="text-text">통합검색 · 블로그 · 인플루언서</b> 모두에서 확인 안 됨(<b className="text-text">2차 재검증</b>까지 통과한 글만 확정). 한 곳이라도 노출되면 미노출이 아닙니다.</p>
         <p className="mt-1">※ 검색 기준은 항상 <b className="text-text">포스팅 제목(또는 등록한 키워드)</b>이며, 검색 결과의 <b className="text-text">포스팅 URL·블로그 ID</b>가 내 것과 일치하는지까지 확인합니다. 검색 오류·요청 실패는 <b className="text-text">&apos;확인 불가&apos;</b>로 처리하며 절대 미노출로 집계하지 않습니다.</p>
         <p className="mt-1">※ 발행 후 {INDEXING_GRACE_HOURS}시간 이내 게시글은 네이버 색인 지연으로 인한 오탐을 막기 위해 &apos;확인 중&apos;으로 두고 미노출 집계에서 제외합니다.
           {indexingWaitCount > 0 && <span className="text-accent font-semibold"> (색인 대기 중 {indexingWaitCount}개)</span>}
@@ -521,23 +562,24 @@ export default function MissingPostsSection() {
         </p>
       </GlassCard>
 
-      {/* 2. 요약 통계 카드 — 데이터 로딩 전에는 0을 지어내지 않고 '—'로 표시(§13: undefined≠null≠0) */}
+      {/* 2. 전체 현황 카드 — 전체 포스팅 / 노출(정상) / 미노출 / 일부 노출 / 미확인.
+          네 상태 카드(노출·미노출·일부노출·미확인) 합 = 전체 포스팅. 로딩 전엔 0을 지어내지 않고 '—' 표시(§13). */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <AnimatedStatCard label="전체 미노출" value={totalMissing} color="down" size="kpi" placeholder="0"
+        <AnimatedStatCard label="전체 포스팅" value={periodPosts.length} color="accent" size="kpi" placeholder="0"
           statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `전체 ${periodPosts.length}개 중 ${pct(totalMissing)}%`} />
-        <AnimatedStatCard label="통합검색 미노출" value={viewMissing} color="down" size="kpi" placeholder="0"
+          description={postsLoading ? '불러오는 중...' : '선택 기간 발행 글'} />
+        <AnimatedStatCard label="노출" value={normalCount} color="up" size="kpi" placeholder="0"
           statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `${pct(viewMissing)}%`} />
-        <AnimatedStatCard label="블로그 미노출" value={blogMissing} color="down" size="kpi" placeholder="0"
+          description={postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출`} />
+        <AnimatedStatCard label="미노출" value={missingCount} color="down" size="kpi" placeholder="0"
           statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `${pct(blogMissing)}%`} />
-        <AnimatedStatCard label="인플루언서 미노출" value={influencerMissing} color="down" size="kpi" placeholder="0"
+          description={postsLoading ? '불러오는 중...' : `${pct(missingCount)}% · 전 영역 미노출`} />
+        <AnimatedStatCard label="일부 노출" value={partialCount} color="accent" size="kpi" placeholder="0"
           statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `${pct(influencerMissing)}%`} />
-        <AnimatedStatCard label="최근 30일 미노출" value={recent30Missing} color="accent" size="kpi" placeholder="0"
+          description={postsLoading ? '불러오는 중...' : `${pct(partialCount)}% · 일부 영역만`} />
+        <AnimatedStatCard label="미확인" value={unknownCount} color="dim" size="kpi" placeholder="0"
           statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `발행 ${recent30Posts.length}개 중`} />
+          description={postsLoading ? '불러오는 중...' : '미검사·확인 중·확인 실패'} />
       </div>
 
       {/* 3. 필터 · 검색 */}
@@ -561,6 +603,15 @@ export default function MissingPostsSection() {
               <button onClick={() => { setCustomFrom(''); setCustomTo(''); }} className="text-accent hover:underline font-semibold cursor-pointer">초기화</button>
             )}
           </div>
+        </div>
+        {/* §3 빠른 상태 필터 — 전체/노출/미노출/일부 노출/미확인 (기본값 전체) */}
+        <div className="flex rounded-lg border border-border overflow-hidden text-[11px] w-fit">
+          {STATUS_FILTERS.map(f => (
+            <button key={f.key} onClick={() => setStatusFilter(f.key)}
+              className={`px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === f.key ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'}`}>
+              {f.label}
+            </button>
+          ))}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -587,8 +638,8 @@ export default function MissingPostsSection() {
 
       <GlassCard padding="none">
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
-          <h3 className="font-bold text-[15px]">미노출 포스팅</h3>
-          <span className="text-xs text-dim">{postsLoading ? '불러오는 중...' : `${missingList.length}개`}</span>
+          <h3 className="font-bold text-[15px]">포스팅 목록</h3>
+          <span className="text-xs text-dim">{postsLoading ? '불러오는 중...' : `${displayList.length}개`}</span>
         </div>
 
         {postsLoading ? (
@@ -597,24 +648,28 @@ export default function MissingPostsSection() {
             포스트를 불러오는 중...
           </div>
         ) : !profile?.blogId ? (
-          <div className="text-center py-10 text-dim text-sm">블로그가 연결되지 않았습니다. 프로필에서 블로그를 연결하면 미노출 검사가 시작됩니다.</div>
+          <div className="text-center py-10 text-dim text-sm">블로그가 연결되지 않았습니다. 프로필에서 블로그를 연결하면 노출 상태 검사가 시작됩니다.</div>
         ) : posts.length === 0 ? (
           // 게시물 원본 수집 자체가 0건 — 기간 문제가 아니라 수집 실패(블로그 ID·네이버 응답 등). "발행 없음"과 명확히 구분한다.
           <div className="text-center py-10 text-dim text-sm">
             게시물을 수집하지 못했습니다.<br />
-            <span className="text-xs">블로그 연결 상태를 확인하거나 잠시 후 다시 시도해주세요. (수집된 게시물이 없어 미노출을 판정할 수 없습니다)</span>
+            <span className="text-xs">블로그 연결 상태를 확인하거나 잠시 후 다시 시도해주세요. (수집된 게시물이 없어 노출 상태를 판정할 수 없습니다)</span>
           </div>
         ) : periodPosts.length === 0 ? (
           <div className="text-center py-10 text-dim text-sm">선택한 기간에 발행된 포스트가 없습니다. (전체 {posts.length}개 수집됨 — 기간 필터를 넓혀보세요)</div>
-        ) : missingList.length === 0 ? (
+        ) : displayList.length === 0 ? (
           <div className="text-center py-10 text-dim text-sm">
-            {uncheckedCount > 0 ? '아직 검사하지 않은 포스팅이 있습니다. "미확인 검사"를 눌러 확인하세요.' : '미노출된 포스팅이 없습니다.'}
+            {statusFilter !== 'all'
+              ? '선택한 상태 필터에 해당하는 포스팅이 없습니다. 필터를 "전체"로 바꿔보세요.'
+              : searchQuery.trim()
+                ? '검색어와 일치하는 포스팅이 없습니다.'
+                : '표시할 포스팅이 없습니다.'}
           </div>
         ) : (
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[980px]">
+              <table className="w-full text-sm min-w-[1120px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-center px-3 py-3 font-semibold w-10">
@@ -628,14 +683,15 @@ export default function MissingPostsSection() {
                     <th className="text-center px-2 py-3 font-semibold w-24">블로그</th>
                     <th className="text-center px-2 py-3 font-semibold w-24">인플루언서</th>
                     <th className="text-right px-2 py-3 font-semibold w-20">검색량</th>
-                    <th className="text-left px-3 py-3 font-semibold w-28">상태</th>
-                    <th className="text-center px-5 py-3 font-semibold w-16">관리</th>
+                    <th className="text-left px-3 py-3 font-semibold w-24">상태</th>
+                    <th className="text-right px-3 py-3 font-semibold w-28">마지막 확인</th>
+                    <th className="text-center px-5 py-3 font-semibold w-28">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {missingList.map(post => {
+                  {displayList.map(post => {
                     const mr = missingResults[post.id];
-                    const isChecking = checkingAll && checkingPostId === post.id;
+                    const isChecking = checkingPostId === post.id;
                     const now = Date.now();
                     return (
                       <tr key={post.id} className="hover:bg-surface-hover transition">
@@ -645,15 +701,15 @@ export default function MissingPostsSection() {
                         </td>
                         <td className="px-5 py-3.5">
                           <span className="font-semibold truncate block max-w-[280px]" title={post.title}>{post.title}</span>
-                          {mr?.checkedAt && <span className="text-[10px] text-dim">최근 검사 {formatCheckedAt(mr.checkedAt)}</span>}
                         </td>
                         <td className="px-3 py-3.5 text-dim text-xs">{post.category || '—'}</td>
                         <td className="px-3 py-3.5 text-right text-dim text-xs">{post.date}</td>
-                        <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.viewTab.exposed} /></td>
-                        <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.blogTab.exposed} /></td>
-                        <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.influencerTab?.exposed} /></td>
+                        <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.viewTab.exposed} post={post} mr={mr} now={now} /></td>
+                        <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.blogTab.exposed} post={post} mr={mr} now={now} /></td>
+                        <td className="px-2 py-3.5 text-center"><ExposureBadge exposed={mr?.influencerTab?.exposed} post={post} mr={mr} now={now} /></td>
                         <td className="px-2 py-3.5 text-right text-dim text-xs">{mr?.searchVolume != null ? mr.searchVolume.toLocaleString() : '—'}</td>
                         <td className="px-3 py-3.5"><StatusBadge post={post} mr={mr} isChecking={isChecking} now={now} /></td>
+                        <td className="px-3 py-3.5 text-right text-[11px] text-dim whitespace-nowrap">{mr?.checkedAt ? formatCheckedAt(mr.checkedAt) : '—'}</td>
                         <td className="px-5 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -661,6 +717,13 @@ export default function MissingPostsSection() {
                               className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer"
                             >
                               상세
+                            </button>
+                            <button
+                              onClick={() => recheckSingle(post)}
+                              disabled={checkingAll || isChecking}
+                              className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {isChecking ? '검사 중' : '다시 검사'}
                             </button>
                             <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs font-semibold">보기</a>
                           </div>
@@ -674,9 +737,9 @@ export default function MissingPostsSection() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {missingList.map(post => {
+              {displayList.map(post => {
                 const mr = missingResults[post.id];
-                const isChecking = checkingAll && checkingPostId === post.id;
+                const isChecking = checkingPostId === post.id;
                 const now = Date.now();
                 return (
                   <div key={post.id} className="p-4 space-y-2">
@@ -684,18 +747,19 @@ export default function MissingPostsSection() {
                       <input type="checkbox" checked={selectedIds.has(post.id)} onChange={() => toggleOne(post.id)}
                         className="cursor-pointer accent-accent mt-1 shrink-0" aria-label={`${post.title} 선택`} />
                       <p className="font-semibold text-sm truncate flex-1" title={post.title}>{post.title}</p>
+                      <StatusBadge post={post} mr={mr} isChecking={isChecking} now={now} />
                     </div>
                     <div className="flex items-center justify-between text-xs text-dim">
                       <span>{post.category || '—'}</span>
                       <span>{post.date}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <ExposureBadge exposed={mr?.viewTab.exposed} />
-                      <ExposureBadge exposed={mr?.blogTab.exposed} />
-                      <ExposureBadge exposed={mr?.influencerTab?.exposed} />
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <div className="text-center"><p className="text-[9px] text-dim mb-0.5">통합검색</p><ExposureBadge exposed={mr?.viewTab.exposed} post={post} mr={mr} now={now} /></div>
+                      <div className="text-center"><p className="text-[9px] text-dim mb-0.5">블로그</p><ExposureBadge exposed={mr?.blogTab.exposed} post={post} mr={mr} now={now} /></div>
+                      <div className="text-center"><p className="text-[9px] text-dim mb-0.5">인플루언서</p><ExposureBadge exposed={mr?.influencerTab?.exposed} post={post} mr={mr} now={now} /></div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <StatusBadge post={post} mr={mr} isChecking={isChecking} now={now} />
+                      <span className="text-[10px] text-dim">{mr?.checkedAt ? `${formatCheckedAt(mr.checkedAt)} 확인` : '미확인'}</span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => { setDetailPostId(post.id); setDetailError(''); }}
@@ -703,10 +767,16 @@ export default function MissingPostsSection() {
                         >
                           상세
                         </button>
+                        <button
+                          onClick={() => recheckSingle(post)}
+                          disabled={checkingAll || isChecking}
+                          className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {isChecking ? '검사 중' : '다시 검사'}
+                        </button>
                         <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs font-semibold">보기</a>
                       </div>
                     </div>
-                    {mr?.checkedAt && <p className="text-[10px] text-dim">최근 검사 {formatCheckedAt(mr.checkedAt)}</p>}
                   </div>
                 );
               })}
