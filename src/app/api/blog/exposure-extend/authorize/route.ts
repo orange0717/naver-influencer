@@ -3,10 +3,10 @@ import { getAuthUser } from '@/lib/auth';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
-import { getCreditBalance, chargeCredit } from '@/lib/credits';
+import { getCreditBalance } from '@/lib/credits';
 import { CREDITS_ENABLED } from '@/lib/credit-gate';
 import { computeExtendedPlan, createJob, getJobByReference } from '@/lib/exposure-lookup';
-import { getExposureCreditPerPost, EXPOSURE_CREDIT_FEATURE } from '@/lib/exposure-policy';
+import { getExposureCreditPerPost } from '@/lib/exposure-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,25 +62,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // §20 실행시점 과금 모델: 실제 차감은 각 글을 조회하는 check-missing에서 (blogId:postId, 20h 버킷) 멱등 발생한다.
+  // 여기서는 사전 게이트(회원·잔액)만 담당하고 선차감하지 않는다 — authorize 선차감 + check-missing 실행차감의 이중 과금을 막기 위함.
+  // 작업(job)은 진행 상태 추적·멱등 승인 용도로만 남긴다(charged_credits=0).
   const job = await createJob(supabase, {
     userId: auth.userId, blogId, referenceId,
     totalNewChecks: plan.newChecks, chargeable: plan.chargeable,
   });
 
-  let charged = 0;
-  if (amount > 0) {
-    // 멱등 차감 — reference_id 로 이중 차감 방지. 실패(부족/오류)면 승인 취소 응답.
-    const res = await chargeCredit(auth.userId, EXPOSURE_CREDIT_FEATURE, { amountOverride: amount, referenceId });
-    if (!res.ok) {
-      if (job) await supabase.from('exposure_lookup_jobs').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', job.id);
-      return NextResponse.json({ code: 'insufficient_credit', required: res.required, balance: res.balance }, { status: 402 });
-    }
-    charged = amount;
-    if (job) await supabase.from('exposure_lookup_jobs').update({ charged_credits: amount, updated_at: new Date().toISOString() }).eq('id', job.id);
-  }
-
   return NextResponse.json({
     jobId: job?.id ?? null, referenceId, authorized: true,
-    newCheckIds: plan.newCheckIds, newChecks: plan.newChecks, chargeable: plan.chargeable, charged,
+    newCheckIds: plan.newCheckIds, newChecks: plan.newChecks, chargeable: plan.chargeable, charged: 0,
   });
 }

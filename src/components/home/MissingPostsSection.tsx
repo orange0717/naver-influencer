@@ -316,6 +316,14 @@ export default function MissingPostsSection() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, checkInfluencer: true, force: opts?.force }),
         });
+        // §20 30일 이전 글 과금 게이트 — 재시도·후속 배치 모두 같은 결과이므로 배치를 멈추고(abort) 한 번만 안내한다.
+        if (res.status === 401) { abortRef.current = true; openGate('/my/missing-posts'); return { status: 'failed', verdict: null }; }
+        if (res.status === 402) {
+          abortRef.current = true;
+          const d = await res.json().catch(() => ({}));
+          setExtendModal({ phase: 'insufficient', required: d.required ?? 0, balance: d.balance ?? 0 });
+          return { status: 'failed', verdict: null };
+        }
         if (res.ok) {
           const data = await res.json();
           // 서버가 반환한 status(ok/error/unanalyzable)를 그대로 존중한다 — 'error'(일시적 오류)를 미노출로 오판하지 않기 위함
@@ -329,7 +337,7 @@ export default function MissingPostsSection() {
       if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, 800 * attempt));
     }
     return { status: 'failed', verdict: null };
-  }, [profile]);
+  }, [profile, openGate]);
 
   // 상세 패널에서 포스팅 제목 기반으로 강제 재검사 (캐시 무시, 최신 노출 여부 재확인)
   const recheckDetail = useCallback(async (post: BlogPost) => {
@@ -823,6 +831,7 @@ export default function MissingPostsSection() {
                       <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll}
                         className="cursor-pointer accent-accent" aria-label="전체 선택" />
                     </th>
+                    <th className="text-center px-3 py-3 font-semibold w-12">No.</th>
                     <th className="text-left px-5 py-3 font-semibold">제목</th>
                     <th className="text-left px-3 py-3 font-semibold w-20">카테고리</th>
                     <th className="text-right px-3 py-3 font-semibold w-24">발행일</th>
@@ -836,7 +845,7 @@ export default function MissingPostsSection() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {displayList.map(post => {
+                  {displayList.map((post, idx) => {
                     const mr = missingResults[post.id];
                     const isChecking = checkingPostId === post.id;
                     const now = Date.now();
@@ -846,6 +855,7 @@ export default function MissingPostsSection() {
                           <input type="checkbox" checked={selectedIds.has(post.id)} onChange={() => toggleOne(post.id)}
                             className="cursor-pointer accent-accent" aria-label={`${post.title} 선택`} />
                         </td>
+                        <td className="px-3 py-3.5 text-center text-dim text-xs font-rank">{idx + 1}</td>
                         <td className="px-5 py-3.5">
                           <span className="font-semibold truncate block max-w-[280px]" title={post.title}>{post.title}</span>
                         </td>
@@ -884,7 +894,7 @@ export default function MissingPostsSection() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {displayList.map(post => {
+              {displayList.map((post, idx) => {
                 const mr = missingResults[post.id];
                 const isChecking = checkingPostId === post.id;
                 const now = Date.now();
@@ -893,6 +903,7 @@ export default function MissingPostsSection() {
                     <div className="flex items-start gap-2">
                       <input type="checkbox" checked={selectedIds.has(post.id)} onChange={() => toggleOne(post.id)}
                         className="cursor-pointer accent-accent mt-1 shrink-0" aria-label={`${post.title} 선택`} />
+                      <span className="text-dim text-xs font-rank mt-0.5 shrink-0">{idx + 1}.</span>
                       <p className="font-semibold text-sm truncate flex-1" title={post.title}>{post.title}</p>
                       <StatusBadge post={post} mr={mr} isChecking={isChecking} now={now} />
                     </div>

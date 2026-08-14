@@ -6,8 +6,62 @@ import { cacheGet, cacheSet } from '@/lib/kv-cache';
 import { CACHE_TTL_SEC } from '@/lib/keyword-rank-check';
 import { computePostExposure, recordPostExposure, type PostExposureResult } from '@/lib/post-exposure-check';
 import { getOrPersistRepresentativeKeyword } from '@/lib/post-keyword-extractor';
+import { getAuthUser } from '@/lib/auth';
+import { chargeCredit, insufficientCreditBody } from '@/lib/credits';
+import { CREDITS_ENABLED } from '@/lib/credit-gate';
+import { EXPOSURE_FREE_DAYS, EXPOSURE_RECHECK_FRESH_MS, EXPOSURE_CREDIT_FEATURE, getExposureCreditPerPost } from '@/lib/exposure-policy';
+import { fetchAllBlogPosts } from '@/lib/blog-posts-fetcher';
+import { parseNaverPostDate } from '@/lib/naver-date';
 
 export const dynamic = 'force-dynamic';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * §1·§9·§20 서버 기준 발행일을 조회한다(클라이언트가 보낸 날짜는 과금 결정에 신뢰하지 않음).
+ * 소스는 fetchAllBlogPosts — 페이지 단위 KV 캐시라 이미 목록을 불러온 뒤엔 추가 스크랩 없이 재사용된다.
+ * 찾지 못하거나 파싱 불가면 null(과금 판단은 fail-open: 과금하지 않고 통과).
+ */
+async function getPostPublishedAt(blogId: string, postId: string): Promise<Date | null> {
+  try {
+    const posts = await fetchAllBlogPosts(blogId);
+    const found = posts.find(p => String(p.id) === String(postId));
+    if (!found) return null;
+    const t = parseNaverPostDate(found.date);
+    return t == null ? null : new Date(t);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * §9·§12·§20 "30일 이전 글" 실행시점 멱등 과금 게이트.
+ * 실제 네이버 검사가 발생하기 직전에만 호출된다(캐시 히트는 과금하지 않음 — 신규 조회가 아니므로).
+ * - 30일 이내(무료 구간) 글: 통과(과금 없음).
+ * - 30일 이전 글: 비회원 → 401(MEMBER_ONLY). 회원 → 1건당 크레딧을 (blogId:postId, 20h 버킷) 멱등 차감.
+ *   같은 글을 20h 안에 여러 경로(기간버튼 배치/개별/선택 재검사)로 눌러도 한 번만 과금된다(§9 이중차감 방지).
+ * 반환: null=통과, 그 외=즉시 반환할 에러 응답(NextResponse).
+ */
+async function enforceExtendedLookupCharge(request: NextRequest, blogId: string, postId: string | undefined): Promise<NextResponse | null> {
+  if (!postId) return null; // 글 식별 불가 시 과금 판단 안 함(확장 조회는 항상 postId 동반)
+  const publishedAt = await getPostPublishedAt(blogId, String(postId));
+  if (!publishedAt) return null; // 발행일 미확인 → fail-open(과금하지 않음)
+  const isOlder = (Date.now() - publishedAt.getTime()) > EXPOSURE_FREE_DAYS * DAY_MS;
+  if (!isOlder) return null; // 무료 구간(최근 30일)
+
+  const auth = await getAuthUser(request);
+  if (!auth) return NextResponse.json({ error: '30일 이전 글 조회는 회원 전용입니다.', code: 'MEMBER_ONLY' }, { status: 401 });
+
+  if (!CREDITS_ENABLED) return null;
+  const unit = await getExposureCreditPerPost();
+  if (unit <= 0) return null;
+  // 20h 신선도 창 = 재검사 캐시 주기. 같은 창 안의 동일 글 재검사는 멱등(추가 과금 없음).
+  const bucket = Math.floor(Date.now() / EXPOSURE_RECHECK_FRESH_MS);
+  const referenceId = `exposure_check:${blogId}:${postId}:${bucket}`;
+  const res = await chargeCredit(auth.userId, EXPOSURE_CREDIT_FEATURE, { amountOverride: unit, referenceId });
+  if (!res.ok) return NextResponse.json(insufficientCreditBody(res.required, res.balance), { status: 402 });
+  return null;
+}
 
 // 동일 인스턴스 내 동시 요청 공유: 같은 cacheKey를 여러 사용자가 동시에 조회해도
 // 진행 중인 크롤링 하나만 수행하고 결과를 나눠 갖는다 (네이버 요청 중복 방지)
@@ -71,6 +125,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ...cached, cached: true });
       }
     }
+
+    // §9·§20 실제 검사(네이버 조회) 직전 과금 게이트 — 30일 이전 글이면 회원 전용 + 크레딧 멱등 차감.
+    // 캐시 히트는 위에서 이미 반환됐으므로 여기 도달한 요청만 신규 조회로 간주해 과금한다.
+    const chargeDenied = await enforceExtendedLookupCharge(request, String(blogId), postId ? String(postId) : undefined);
+    if (chargeDenied) return chargeDenied;
 
     // 같은 키에 대해 이미 진행 중인 조회가 있으면 그 결과를 공유 (동시 접속 사용자 간 중복 크롤링 방지)
     let promise = inFlight.get(cacheKey);
