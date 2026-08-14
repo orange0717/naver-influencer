@@ -6,6 +6,7 @@ import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-lim
 import { fetchBlogProfileStats } from '@/lib/blog-crawler';
 import { countMissing, type MissingResultsMap, type MissingState, type PostLike } from '@/lib/missing-rate';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { rollupPostCitationStatus } from '@/lib/ai-citation-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,10 +97,15 @@ export interface BlogDashboardSummary {
     briefingCitedCount: number;     // AI 브리핑 인용 포스팅 수(distinct)
     tabCitedCount: number;          // AI 탭 인용 포스팅 수(distinct)
     overallCitedCount: number;      // 브리핑·탭 중 하나라도 인용된 포스팅 수(distinct)
+    partialCitedCount: number;      // 일부 인용(브리핑·탭 중 하나만) 포스팅 수(distinct, 스펙 #21)
+    notCitedCount: number;          // 미인용(확인 완료했으나 어디에도 인용 안 됨) 포스팅 수(스펙 #21)
+    uncheckedCount: number;         // 미확인(키워드는 있으나 확인 안 됨) 포스팅 수(스펙 #21)
     briefingRate: number;           // 인용률 %(브리핑) = briefingCited / analyzed
     tabRate: number;                // 인용률 %(탭)
-    overallRate: number;            // 인용률 %(전체)
-    lastCheckedAt: string | null;   // 마지막 확인 시각
+    overallRate: number;            // 인용률 %(전체, 스펙 #23) — 분모는 확인 완료 포스팅만
+    lastCheckedAt: string | null;   // 마지막 확인 시각(스펙 #25)
+    /** 최근 AI 인용된 포스팅(스펙 #22) — 최근 확인순 최대 5건 */
+    recentCited: Array<{ postId: string; title: string | null; keyword: string; briefingCited: boolean; tabCited: boolean; checkedAt: string | null }>;
     /** ai_briefing_exposures 조회 자체가 실패했는지 — 상세 카드가 '확인 오류'를 구분하기 위함 */
     ok: boolean;
   };
@@ -190,12 +196,49 @@ export async function GET(request: NextRequest) {
   const overallCitedPosts = new Set(
     okRows.filter(r => r.exposed === true || r.tab_exposed === true).map(r => r.post_id),
   );
+
+  // 포스팅 단위 종합 상태(스펙 #18/#21) — AI 브리핑·AI 탭 화면과 "동일한" rollup 헬퍼로 계산해 숫자를 일치시킨다.
+  const rowsByPost = new Map<string, typeof briefingRows>();
+  for (const r of briefingRows) {
+    const list = rowsByPost.get(r.post_id) ?? [];
+    list.push(r);
+    rowsByPost.set(r.post_id, list);
+  }
+  let partialCitedCount = 0, notCitedCount = 0, uncheckedCount = 0;
+  for (const rows of rowsByPost.values()) {
+    const state = rollupPostCitationStatus(
+      rows.map(r => ({ exposed: r.exposed, tabExposed: r.tab_exposed, checkStatus: r.check_status, checkedAt: r.checked_at })),
+    );
+    if (state === 'partial') partialCitedCount++;
+    else if (state === 'not_cited') notCitedCount++;
+    else if (state === 'unchecked') uncheckedCount++;
+  }
+
   const pct = (n: number) => (analyzedPostCount > 0 ? Math.round((n / analyzedPostCount) * 1000) / 10 : 0);
   const aiLastCheckedAt = okRows.reduce<string | null>((max, r) => {
     const c = r.checked_at as string | null;
     if (!c) return max;
     return !max || c > max ? c : max;
   }, null);
+
+  // 최근 AI 인용된 포스팅(스펙 #22) — 브리핑·탭 중 하나라도 인용된 ok 행을 최근 확인순으로 최대 5건.
+  const titleForPost = new Map<string, string | null>();
+  for (const t of repTitles as Array<{ post_id: string; post_title: string | null }>) titleForPost.set(t.post_id, t.post_title);
+  const recentCitedSeen = new Set<string>();
+  const recentCited = okRows
+    .filter(r => (r.exposed === true || r.tab_exposed === true) && r.checked_at)
+    .sort((a, b) => ((b.checked_at as string) > (a.checked_at as string) ? 1 : -1))
+    .filter(r => { if (recentCitedSeen.has(r.post_id)) return false; recentCitedSeen.add(r.post_id); return true; })
+    .slice(0, 5)
+    .map(r => ({
+      postId: r.post_id,
+      title: titleForPost.get(r.post_id) ?? null,
+      keyword: r.keyword,
+      briefingCited: r.exposed === true,
+      tabCited: r.tab_exposed === true,
+      checkedAt: r.checked_at as string | null,
+    }));
+
   // 상태: 조회 실패→ERROR, 확인 완료 포스팅 0개면→'미확인'(아직 검사 안 함), 그 외 FRESH(0이면 실제 인용 0)
   const aiStatus: BlogMetricStatus = !briefing.ok ? 'ERROR' : analyzedPostCount === 0 ? 'UNVERIFIED' : 'FRESH';
 
@@ -205,10 +248,14 @@ export async function GET(request: NextRequest) {
     briefingCitedCount: briefingCitedPosts.size,
     tabCitedCount: tabCitedPosts.size,
     overallCitedCount: overallCitedPosts.size,
+    partialCitedCount,
+    notCitedCount,
+    uncheckedCount,
     briefingRate: pct(briefingCitedPosts.size),
     tabRate: pct(tabCitedPosts.size),
     overallRate: pct(overallCitedPosts.size),
     lastCheckedAt: aiLastCheckedAt,
+    recentCited,
     ok: briefing.ok,
   };
 
@@ -338,6 +385,18 @@ export async function GET(request: NextRequest) {
       source_updated_at: aiLastCheckedAt, href: '/my/naver-mate',
       calculation_rule: '확인 완료(check_status=ok) 중 AI 탭에 노출된 포스팅 수(distinct)',
     }),
+    blog_ai_overall_cited: m({
+      metric_key: 'blog_ai_overall_cited', source_type: 'BLOG_AI_CITATION', source_table: 'ai_briefing_exposures',
+      status: aiStatus, value: aiStatus === 'FRESH' ? overallCitedPosts.size : null,
+      source_updated_at: aiLastCheckedAt, href: '/my/naver-mate',
+      calculation_rule: '확인 완료 중 AI 브리핑·AI 탭 어느 하나라도 인용된 포스팅 수(distinct, 스펙 #21)',
+    }),
+    blog_ai_partial_cited: m({
+      metric_key: 'blog_ai_partial_cited', source_type: 'BLOG_AI_CITATION', source_table: 'ai_briefing_exposures',
+      status: aiStatus, value: aiStatus === 'FRESH' ? partialCitedCount : null,
+      source_updated_at: aiLastCheckedAt, href: '/my/naver-mate',
+      calculation_rule: '확인 완료 중 브리핑·탭 중 하나만 인용된 포스팅 수(distinct, 스펙 #21)',
+    }),
     blog_top10_keywords: m({
       metric_key: 'blog_top10_keywords', source_type: 'BLOG_KEYWORD_RANK', source_table: 'keyword_rank_lookups',
       status: rankStatus, value: rankStatus === 'FRESH' ? top10KeywordCount : null,
@@ -360,8 +419,10 @@ export async function GET(request: NextRequest) {
     'blog_neighbor_count',
     'blog_post_count',
     'blog_missing_count',
+    'blog_ai_overall_cited',
     'blog_ai_briefing_cited',
     'blog_ai_tab_exposed',
+    'blog_ai_partial_cited',
     'blog_top10_keywords',
     'blog_avg_rank',
   ];

@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { CITATION_STATUS_LABELS, citationStatusColor, type CitationState } from '@/lib/ai-citation-status';
 
 export interface BloggerProfile {
   blogId: string;
@@ -138,6 +139,10 @@ export interface BriefingResult {
   tabSourceIndex: number | null;
   tabSourceTotal: number | null;
   tabMatchedTitle: string | null;
+  // 인용 근거 URL(스펙 #8/#19) — 매칭된 내 글의 출처 URL. 미인용/미확인이면 null.
+  matchedUrl?: string | null;
+  tabMatchedUrl?: string | null;
+  postUrl?: string | null;
   error?: string;
   searchVolumeMonthly?: number | null;
   competition?: string | null;
@@ -174,12 +179,12 @@ export function saveKeywordsToDb(blogId: string, postId: string, keywords: strin
   }).catch(() => { /* 낙관적 UI — 실패는 다음 동작에서 재시도됨 */ });
 }
 
-// 단일 (post, keyword) AI 브리핑 확인 결과를 DB에 갱신
-export function saveBriefingResultToDb(blogId: string, postId: string, keyword: string, result: BriefingResult): void {
+// 단일 (post, keyword) AI 브리핑 확인 결과를 DB에 갱신. postUrl을 넘기면 인용 근거와 함께 post_url도 저장(스펙 #19).
+export function saveBriefingResultToDb(blogId: string, postId: string, keyword: string, result: BriefingResult, postUrl?: string): void {
   fetch(STATE_API, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blogId, postId, keyword, result }),
+    body: JSON.stringify({ blogId, postId, keyword, result, postUrl }),
   }).catch(() => { /* ignore */ });
 }
 
@@ -281,6 +286,30 @@ export function AiTabBadge({ result }: { result?: BriefingResult }) {
       )}
     </span>
   );
+}
+
+/**
+ * 종합 인용 상태 배지(스펙 #18) — 브리핑·탭을 합친 하나의 상태(인용/일부 인용/미인용/미확인/확인중/확인실패/지원안함).
+ * 색상·라벨은 ai-citation-status.ts의 단일 소스를 그대로 사용한다.
+ */
+export function CitationStatusBadge({ state }: { state: CitationState }) {
+  const label = CITATION_STATUS_LABELS[state];
+  const color = citationStatusColor(state);
+  const cls: Record<string, string> = {
+    up: 'text-up bg-up/10 font-bold',
+    gold: 'text-gold bg-gold/10 font-semibold',
+    accent: 'text-accent bg-accent/10 font-semibold',
+    dim: 'text-dim bg-bg',
+  };
+  if (state === 'checking') {
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${cls.accent}`}>
+        <span className="w-2.5 h-2.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+        {label}
+      </span>
+    );
+  }
+  return <span className={`text-xs px-2 py-0.5 rounded-full ${cls[color]}`}>{label}</span>;
 }
 
 /** 키워드 검색 결과 카드 — AnimatedStatCard와 동일한 톤이지만 ○/X·텍스트 값(경쟁도 등)도 표시 가능 */

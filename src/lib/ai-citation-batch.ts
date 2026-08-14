@@ -1,0 +1,23 @@
+/**
+ * AI 브리핑·AI 탭 "안전 배치 큐" 공용 상수 (스펙 #9~#15)
+ * ──────────────────────────────────────────────────────────────────────────
+ * AI 인용 확인은 공식 API가 없고 헤드리스 브라우저 실측뿐이라, 네이버가 반복 자동화를
+ * "잘못된 접근입니다"로 차단한다(naver-ai-briefing.ts 참고). 따라서 대량 확인은
+ * "1회 실행당 소수 + 건 사이 지연 + 재개형"으로만 안전하게 수행한다. 이 상수를 예상량 계산
+ * API(ai-citation-estimate)와 클라이언트 배치 큐(AiBriefingSection)가 공유해 숫자가 일치하도록 한다.
+ */
+
+/** 1회 '전체 업데이트' 실행에서 확인할 최대 포스팅 수(안전 캡). 나머지는 미확인으로 남기고 재개. */
+export const BULK_RUN_CAP = 10;
+
+/** 배치 큐에서 각 건 확인 사이의 지연(ms) — aiBriefingLimiter(10회/5분) + 네이버 자동화 탐지 완화. */
+export const BATCH_DELAY_MS = 9_000;
+
+/** DB에 저장된 확인 결과를 "최근 확인(캐시)"으로 간주해 재조회에서 제외하는 기간(스펙 #14). */
+export const CITATION_FRESH_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+
+/** 내부 rate limiter(aiBriefingLimiter) 설정 — 표기용(정직한 쿼터 안내, 스펙 #12). */
+export const AI_CITATION_LIMITER = { limit: 10, windowSec: 5 * 60 };
+
+/** 네이버 검색 OpenAPI 일일 무료 쿼터(대표키워드 추출·검색량 보조에만 사용) — 표기용. */
+export const NAVER_SEARCH_DAILY_QUOTA = 25_000;

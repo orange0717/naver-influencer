@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
-import { getOrPersistRepresentativeKeyword } from '@/lib/post-keyword-extractor';
+import { getOrPersistRepresentativeKeyword, setManualRepresentativeKeyword } from '@/lib/post-keyword-extractor';
 import { evaluateCandidates, type CandidateScreenEntry } from '@/lib/candidate-keyword-ranker';
 import { buildAutoKeywords } from '@/lib/keyword-normalize';
 import { createServiceClient } from '@/lib/supabase-server';
@@ -9,12 +9,13 @@ import { createServiceClient } from '@/lib/supabase-server';
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/blog/representative-keywords?blogId=&postId=&title=
- * 포스팅 제목/본문을 분석해 대표 키워드 후보(3~5개)를 추출하고,
- * 후보 각각의 실제 검색 성과(evaluateCandidates)를 반영해 대표 키워드를 자동 선정한다.
+ * GET /api/blog/representative-keywords?blogId=&postId=&title=[&screen=1][&refine=1]
+ * 포스팅 제목(+선택적 본문)을 규칙기반으로 분석해 대표 키워드 1개 + 보조 후보를 추출한다(스펙 #1~#6).
+ * 기본은 제목 우선·저비용(네이버 무호출)이라 대량 자동추출에 안전하다.
+ *   - refine=1: 제목이 애매할 때 본문 1회 크롤링 보정 허용(개별 재추출 버튼용, 스펙 #5).
+ *   - screen=1: 후보들의 실제 검색 성과(evaluateCandidates)로 대표를 재선정(네이버 호출, 옵트인).
  * post_representative_keywords(migration-130)에 (blog_id, post_id) 기준으로 영속화되어,
  * 미노출/키워드순위/AI브리핑·탭 메뉴가 모두 동일한 대표 키워드를 재크롤링 없이 공유한다.
- * 후보 평가(candidate_screen)는 추출과 같은 TTL(30일)로 캐시되어, 만료 전엔 재조회하지 않는다.
  */
 export async function GET(request: NextRequest) {
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();
@@ -22,6 +23,8 @@ export async function GET(request: NextRequest) {
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();
   const postId = request.nextUrl.searchParams.get('postId')?.trim();
   const title = request.nextUrl.searchParams.get('title') || '';
+  const doScreen = request.nextUrl.searchParams.get('screen') === '1';
+  const allowBody = request.nextUrl.searchParams.get('refine') === '1';
 
   if (!blogId || !postId) {
     return NextResponse.json({ error: 'blogId와 postId가 필요합니다.' }, { status: 400 });
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   try {
-    const extraction = await getOrPersistRepresentativeKeyword(blogId, postId, title);
+    const extraction = await getOrPersistRepresentativeKeyword(blogId, postId, title, { allowBody });
 
     let representativeKeyword = extraction.representativeKeyword;
     let candidateScreen: CandidateScreenEntry[] = [];
@@ -47,18 +50,24 @@ export async function GET(request: NextRequest) {
         .eq('post_id', postId)
         .maybeSingle();
       const cachedScreen = (row?.candidate_screen as CandidateScreenEntry[] | null) || [];
-      const screenIsFresh = extraction.cached && cachedScreen.length === extraction.candidates.length;
 
-      if (screenIsFresh) {
-        candidateScreen = cachedScreen;
+      // 대표 선정은 규칙기반(keyword-candidates)이 기본. screen=1일 때만 네이버 검색 성과로 재선정한다(옵트인).
+      // manual(사용자 지정)은 절대 재선정하지 않는다.
+      if (doScreen && extraction.source !== 'manual') {
+        const screenIsFresh = extraction.cached && cachedScreen.length === extraction.candidates.length;
+        if (screenIsFresh) {
+          candidateScreen = cachedScreen;
+        } else {
+          const evalResult = await evaluateCandidates(blogId, postId, title, extraction.candidates);
+          representativeKeyword = evalResult.representativeKeyword;
+          candidateScreen = evalResult.candidateScreen;
+          await supabase.from('post_representative_keywords').update({
+            representative_keyword: representativeKeyword,
+            candidate_screen: candidateScreen,
+          }).eq('blog_id', blogId).eq('post_id', postId);
+        }
       } else {
-        const evalResult = await evaluateCandidates(blogId, postId, title, extraction.candidates);
-        representativeKeyword = evalResult.representativeKeyword;
-        candidateScreen = evalResult.candidateScreen;
-        await supabase.from('post_representative_keywords').update({
-          representative_keyword: representativeKeyword,
-          candidate_screen: candidateScreen,
-        }).eq('blog_id', blogId).eq('post_id', postId);
+        candidateScreen = cachedScreen; // 있으면 표시용으로만 사용(네이버 무호출)
       }
     }
 
@@ -76,5 +85,52 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[representative-keywords] error:', error);
     return NextResponse.json({ error: '대표 키워드 추출 중 오류가 발생했습니다.' }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/blog/representative-keywords
+ * body: { blogId, postId, keyword, title? }
+ * 사용자가 직접 수정한 대표 키워드를 저장한다(keyword_source='manual'). 이후 자동 추출이 덮어쓰지 않는다(스펙 #3).
+ * 공용 post_representative_keywords 테이블에 저장되어 키워드순위/미노출 화면에도 즉시 반영된다(스펙 #24/#26).
+ */
+export async function PATCH(request: NextRequest) {
+  if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();
+
+  let body: { blogId?: string; postId?: string; keyword?: string; title?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+  }
+
+  const blogId = body.blogId?.trim();
+  const postId = body.postId?.trim();
+  const keyword = typeof body.keyword === 'string' ? body.keyword.trim() : '';
+
+  if (!blogId || !postId) {
+    return NextResponse.json({ error: 'blogId와 postId가 필요합니다.' }, { status: 400 });
+  }
+  if (!keyword || keyword.length > 40) {
+    return NextResponse.json({ error: '대표 키워드는 1~40자여야 합니다.' }, { status: 400 });
+  }
+
+  const denied = await assertBlogResourceAccess(request, blogId);
+  if (denied) return denied;
+
+  try {
+    await setManualRepresentativeKeyword(blogId, postId, keyword, body.title ?? null);
+    const autoKeywords = buildAutoKeywords(keyword, [keyword], []);
+    return NextResponse.json({
+      representativeKeyword: keyword,
+      keywords: [keyword],
+      candidateScreen: [],
+      autoKeywords,
+      source: 'manual',
+      cached: true,
+    });
+  } catch (error) {
+    console.error('[representative-keywords][PATCH] error:', error);
+    return NextResponse.json({ error: '대표 키워드 저장 중 오류가 발생했습니다.' }, { status: 500 });
   }
 }

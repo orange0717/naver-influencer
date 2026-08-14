@@ -19,6 +19,9 @@ type BriefingResult = {
   tabSourceIndex: number | null;
   tabSourceTotal: number | null;
   tabMatchedTitle: string | null;
+  matchedUrl?: string | null;
+  tabMatchedUrl?: string | null;
+  postUrl?: string | null;
   searchVolumeMonthly?: number | null;
   competition?: string | null;
   relatedKeywordCount?: number | null;
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('ai_briefing_exposures')
-    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, checked_at, search_volume_monthly, competition, related_keyword_count, check_status, last_error')
+    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, ai_briefing_source_url, ai_tab_source_url, post_url, checked_at, search_volume_monthly, competition, related_keyword_count, check_status, last_error')
     .eq('user_id', g.userId)
     .eq('blog_id', blogId);
 
@@ -65,6 +68,7 @@ export async function GET(request: NextRequest) {
     has_ai_tab: boolean | null; tab_exposed: boolean | null;
     tab_source_index: number | null; tab_source_total: number | null;
     tab_matched_title: string | null;
+    ai_briefing_source_url: string | null; ai_tab_source_url: string | null; post_url: string | null;
     checked_at: string | null;
     search_volume_monthly: number | null; competition: string | null; related_keyword_count: number | null;
     check_status: CheckStatus | null; last_error: string | null;
@@ -84,6 +88,9 @@ export async function GET(request: NextRequest) {
         tabSourceIndex: r.tab_source_index,
         tabSourceTotal: r.tab_source_total,
         tabMatchedTitle: r.tab_matched_title,
+        matchedUrl: r.ai_briefing_source_url,
+        tabMatchedUrl: r.ai_tab_source_url,
+        postUrl: r.post_url,
         searchVolumeMonthly: r.search_volume_monthly,
         competition: r.competition,
         relatedKeywordCount: r.related_keyword_count,
@@ -150,7 +157,7 @@ export async function PATCH(request: NextRequest) {
   const g = await guard(request);
   if ('res' in g) return g.res;
 
-  const { blogId, postId, keyword, result, searchVolume, relatedKeywordCount, checkStatus, error: checkError } = await request.json();
+  const { blogId, postId, keyword, result, searchVolume, relatedKeywordCount, checkStatus, error: checkError, postUrl } = await request.json();
   if (typeof blogId !== 'string' || typeof postId !== 'string' || typeof keyword !== 'string' || !keyword.trim()) {
     return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
@@ -205,6 +212,11 @@ export async function PATCH(request: NextRequest) {
       tab_source_index: tabSourceIndex,
       tab_source_total: typeof r.tabSourceTotal === 'number' ? r.tabSourceTotal : null,
       tab_matched_title: typeof r.tabMatchedTitle === 'string' ? r.tabMatchedTitle : null,
+      // 인용 근거 URL(스펙 #8/#19) — 매칭된 출처 URL. 미인용이면 null로 확실히 비운다.
+      ai_briefing_source_url: typeof r.matchedUrl === 'string' ? r.matchedUrl : null,
+      ai_tab_source_url: typeof r.tabMatchedUrl === 'string' ? r.tabMatchedUrl : null,
+      // post_url은 이번 PATCH에 값이 있을 때만 갱신(없으면 기존 값 보존)
+      ...(typeof postUrl === 'string' && postUrl ? { post_url: postUrl } : {}),
       // 검색량/관련키워드는 이번 PATCH에 값이 없으면(예: 개별 게시물 테이블의 기존 확인 흐름) 기존 값을 지우지 않도록 undefined로 두어 upsert에서 컬럼 자체를 생략
       ...(sv && typeof sv.total === 'number' ? { search_volume_monthly: sv.total, competition: sv.competition ?? null } : {}),
       ...(typeof relatedKeywordCount === 'number' ? { related_keyword_count: relatedKeywordCount } : {}),

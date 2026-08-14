@@ -130,10 +130,11 @@ interface SurfaceResult {
   sourceIndex: number | null;
   sourceTotal: number | null;
   matchedTitle: string | null;
+  matchedUrl: string | null;   // 인용 근거 URL(스펙 #8/#19) — 매칭된 내 글의 출처 URL
 }
 
 const EMPTY_SURFACE: SurfaceResult = {
-  has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null,
+  has: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null, matchedUrl: null,
 };
 
 export interface AiBriefingCheckResult {
@@ -142,17 +143,19 @@ export interface AiBriefingCheckResult {
   sourceIndex: number | null;     // AI 브리핑 출처 순번 (1부터)
   sourceTotal: number | null;     // AI 브리핑 출처 총 개수
   matchedTitle: string | null;    // AI 브리핑에서 매칭된 출처 표시 제목
+  matchedUrl: string | null;      // AI 브리핑 인용 근거 URL(스펙 #8/#19)
   hasAiTab: boolean;              // AI 탭 콘텐츠 생성 여부
   tabExposed: boolean;            // AI 탭 출처에 내 게시글 포함 여부
   tabSourceIndex: number | null;  // AI 탭 출처 순번
   tabSourceTotal: number | null;  // AI 탭 출처 총 개수
   tabMatchedTitle: string | null; // AI 탭에서 매칭된 출처 표시 제목
+  tabMatchedUrl: string | null;   // AI 탭 인용 근거 URL(스펙 #8/#19)
   error?: string;
 }
 
 const EMPTY_RESULT: Omit<AiBriefingCheckResult, 'error'> = {
-  hasAiBriefing: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null,
-  hasAiTab: false, tabExposed: false, tabSourceIndex: null, tabSourceTotal: null, tabMatchedTitle: null,
+  hasAiBriefing: false, exposed: false, sourceIndex: null, sourceTotal: null, matchedTitle: null, matchedUrl: null,
+  hasAiTab: false, tabExposed: false, tabSourceIndex: null, tabSourceTotal: null, tabMatchedTitle: null, tabMatchedUrl: null,
 };
 
 /** 브라우저 컨텍스트 안에서 실행 — document 전체 기준(AI 탭 전용, 탭 페이지는 콘텐츠가 전체 화면) */
@@ -316,6 +319,7 @@ function toSurfaceResult(evalResult: SurfaceEvalResult, blogId: string, postId: 
     sourceIndex: match?.index ?? null,
     sourceTotal: evalResult.sources.length || null,
     matchedTitle: match?.source.title || null,
+    matchedUrl: match?.source.url || null,
   };
 }
 
@@ -456,6 +460,34 @@ async function checkAiTab(page: Page, blogId: string, postId: string): Promise<S
 }
 
 /**
+ * ── AI 인용 확인 Provider 경계(스펙 #13, 정직성) ──────────────────────────────
+ * 네이버는 "AI 브리핑"·"AI 탭" **인용 결과를 조회하는 공식 API를 제공하지 않는다**
+ * (NAVER Developers / API HUB 어디에도 없음 — 2026-08 확인). 공식 검색 OpenAPI
+ * (openapi.naver.com/v1/search/*)는 일반 검색결과일 뿐 AI 인용과 무관하므로, 이를 AI 인용으로
+ * 간주하지 않는다(스펙 #6). 따라서 유일한 확인 수단은 아래 헤드리스 브라우저 실측 구현이다.
+ *
+ * 향후 공식 API(또는 API HUB)가 생기면 이 인터페이스만 새 구현으로 교체하면 되고, 호출측
+ * (check-ai-briefing route 등)은 그대로 둔다 — 검색 API 쪽 provider 추상화(naver-blog-search-api.ts)와 동일 패턴.
+ * ⚠️ 가짜/목업 데이터로 이 인터페이스를 구현하지 않는다(스펙 #13). 확인 불가는 error로 정직하게 반환한다.
+ */
+export interface NaverAiCitationProvider {
+  /** 공식 API 미제공. 'headless-scrape'가 현재 유일한 실측 구현임을 코드로 드러낸다. */
+  readonly kind: 'headless-scrape';
+  check(
+    keyword: string,
+    blogId: string,
+    postId: string,
+    onStage?: (stage: AiBriefingStage) => void,
+  ): Promise<AiBriefingCheckResult>;
+}
+
+/** 현재 활성 provider — 공식 API 이관 시 이 구현만 교체. */
+export const naverAiCitationProvider: NaverAiCitationProvider = {
+  kind: 'headless-scrape',
+  check: (keyword, blogId, postId, onStage) => checkAiBriefingExposure(keyword, blogId, postId, onStage),
+};
+
+/**
  * keyword로 (1) 통합검색 "AI 브리핑" 인라인 위젯과 (2) "AI" 탭을 각각 독립적으로 확인해
  * 콘텐츠 생성 여부 + 내 포스팅의 인용 여부(blogId+logNo 기준)를 반환한다.
  * `onStage` 콜백으로 진행 단계(searching→briefing→tab→comparing)를 실시간 전달할 수 있다.
@@ -558,11 +590,13 @@ async function checkOne(
       sourceIndex: briefing.sourceIndex,
       sourceTotal: briefing.sourceTotal,
       matchedTitle: briefing.matchedTitle,
+      matchedUrl: briefing.matchedUrl,
       hasAiTab: tab.has,
       tabExposed: tab.exposed,
       tabSourceIndex: tab.sourceIndex,
       tabSourceTotal: tab.sourceTotal,
       tabMatchedTitle: tab.matchedTitle,
+      tabMatchedUrl: tab.matchedUrl,
     };
     lap('compare');
     return result;

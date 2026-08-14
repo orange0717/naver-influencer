@@ -44,8 +44,10 @@ const CARD_META: Record<string, { label: string; suffix: string; icon: React.Rea
   blog_neighbor_count: { label: '이웃 수', suffix: '명', icon: ICONS.neighbor, color: 'accent' },
   blog_post_count: { label: '총 발행 수', suffix: '개', icon: ICONS.post, color: 'accent' },
   blog_missing_count: { label: '미노출', suffix: '건', icon: ICONS.missing, color: 'down' },
+  blog_ai_overall_cited: { label: 'AI 인용', suffix: '건', icon: ICONS.ai, color: 'up' },
   blog_ai_briefing_cited: { label: 'AI 브리핑 인용', suffix: '건', icon: ICONS.ai, color: 'up' },
   blog_ai_tab_exposed: { label: 'AI 탭 노출', suffix: '건', icon: ICONS.ai, color: 'up' },
+  blog_ai_partial_cited: { label: '일부 인용', suffix: '건', icon: ICONS.ai, color: 'gold' },
   blog_top10_keywords: { label: 'TOP10 키워드', suffix: '개', icon: ICONS.keyword, color: 'gold' },
   blog_avg_rank: { label: '평균 검색순위', suffix: '위', icon: ICONS.rank, color: 'accent' },
 };
@@ -72,7 +74,7 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
   if (isLoading) {
     return (
       <KpiGrid>
-        {Array.from({ length: 7 }).map((_, i) => (
+        {Array.from({ length: 9 }).map((_, i) => (
           <div key={i} className="bg-surface border border-border rounded-lg shadow-xs h-[150px] animate-pulse" />
         ))}
       </KpiGrid>

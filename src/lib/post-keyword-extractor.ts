@@ -1,35 +1,24 @@
 import * as cheerio from 'cheerio';
-import { STOPWORDS } from './blog-crawler';
 import { createServiceClient } from './supabase-server';
+import { extractKeywordCandidates } from './keyword-candidates';
 
 export interface RepresentativeKeywordResult {
   keywords: string[];
-  source: 'title+body' | 'title' | 'fallback' | 'none';
+  source: 'title+body' | 'title' | 'fallback' | 'none' | 'manual';
+}
+
+/** 대표 키워드 추출 옵션 — 제목 외 보조 신호(태그/카테고리/브랜드/사용자키워드)와 본문 보정 허용 여부. */
+export interface RepKeywordExtractOpts {
+  tags?: string[];
+  category?: string | null;
+  /** 브랜드/기관명 힌트(예: 블로그 대표 이름) — 일치 후보를 대표로 강하게 반영(스펙 #3). */
+  brandHints?: string[];
+  userKeyword?: string | null;
+  /** 애매한 경우에만 본문을 크롤링해 보정(기본 false — 대량 자동추출 비용 방지, 스펙 #5). */
+  allowBody?: boolean;
 }
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-
-/** 제목/본문 공용: 특수문자 제거 후 2글자 이상 어절로 분리 */
-function splitWords(text: string): string[] {
-  return text
-    .replace(/[^\w가-힣\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .filter(w => w.length >= 2);
-}
-
-/** 한 문자열에서 1~3어절 후보(n-gram) 생성 — 제목 후보 추출(STEP 1)에 사용 */
-function ngramCandidates(text: string): string[] {
-  const words = splitWords(text).filter(w => !STOPWORDS.has(w.toLowerCase()));
-  const candidates: string[] = [];
-  for (let i = 0; i < words.length; i++) {
-    candidates.push(words[i]);
-    if (i < words.length - 1) candidates.push(`${words[i]} ${words[i + 1]}`);
-    if (i < words.length - 2) candidates.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
-  }
-  return candidates;
-}
 
 interface PostBodyParts {
   fullText: string;
@@ -104,96 +93,60 @@ async function fetchPostBodyParts(blogId: string, postId: string): Promise<PostB
   }
 }
 
-/** 대표 키워드 형태 필터 — 너무 짧거나(1글자) 너무 긴 구(검색어로 부적절)는 제외 */
-function isSearchTermShaped(candidate: string): boolean {
-  const len = candidate.replace(/\s/g, '').length;
-  return len >= 2 && len <= 12;
+function dedupeKeywords(arr: (string | null | undefined)[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const k of arr) {
+    const t = (k || '').trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
 }
 
 /**
- * 포스팅 제목·본문을 분석해 대표 키워드 1~5개를 추출한다.
- * STEP 1(제목 후보) → STEP 2(본문: 빈도/강조/첫문단/마지막문단/H태그) → STEP 3(종합 점수) 순서.
- * 본문 수집에 실패해도 제목만으로 계속 진행하고, 그마저 없으면 폴백 체인(STEP 9)을 탄다.
+ * 포스팅 제목(+선택적 태그/카테고리/브랜드/사용자키워드)을 분석해 대표 키워드 1개 + 보조 여러 개를 추출한다(스펙 #1~#6).
+ * 규칙 기반(keyword-candidates)으로 "검색 가능한 1~4단어 핵심 명사구"를 뽑으며, 제목만으로 확신이 서면
+ * 본문 크롤링 없이 확정한다(저비용). opts.allowBody=true이고 제목이 애매할 때만 본문을 크롤링해 보정한다(스펙 #5).
+ * keywords[0]이 대표, 나머지가 보조. buildAutoKeywords 등 하위 로직은 이 순서를 그대로 사용한다.
  */
 export async function extractRepresentativeKeywords(
   blogId: string,
   postId: string,
   title: string,
+  opts: RepKeywordExtractOpts = {},
 ): Promise<RepresentativeKeywordResult> {
-  const titleCandidates = ngramCandidates(title || '');
-  const body = await fetchPostBodyParts(blogId, postId);
+  const input = {
+    title: title || '',
+    tags: opts.tags,
+    category: opts.category,
+    brandHints: opts.brandHints,
+    userKeyword: opts.userKeyword,
+  };
 
-  if (!body) {
-    if (titleCandidates.length === 0) return { keywords: [], source: 'none' };
-    return { keywords: rankByTitleOnly(titleCandidates), source: 'title' };
+  const base = extractKeywordCandidates(input);
+
+  // 제목만으로 확신이 서면(애매하지 않으면) 본문 크롤링 없이 확정 — 대량 자동추출 저비용(스펙 #5).
+  if (base.primary && !(opts.allowBody && base.ambiguous)) {
+    return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title' };
   }
 
-  const bodyWords = splitWords(body.fullText).filter(w => !STOPWORDS.has(w.toLowerCase()));
-  const freq = new Map<string, number>();
-  for (const w of bodyWords) freq.set(w, (freq.get(w) || 0) + 1);
-
-  const pool = new Set<string>(titleCandidates);
-  for (const [word, count] of freq) {
-    if (count >= 2) pool.add(word);
-  }
-
-  const scored = [...pool]
-    .filter(isSearchTermShaped)
-    .map(candidate => {
-      const inTitle = titleCandidates.includes(candidate);
-      const inHeading = body.headingText.includes(candidate);
-      const inEmphasis = body.emphasisText.includes(candidate);
-      const inFirst = body.firstParagraph.includes(candidate);
-      const inLast = body.lastParagraph.includes(candidate);
-      const frequency = freq.get(candidate) ?? (bodyWords.includes(candidate) ? 1 : 0);
-      const score =
-        frequency * 1 +
-        (inTitle ? 5 : 0) +
-        (inHeading ? 4 : 0) +
-        (inEmphasis ? 3 : 0) +
-        (inFirst ? 2 : 0) +
-        (inLast ? 1 : 0) +
-        (candidate.includes(' ') ? 1 : 0); // 복합어(검색어 형태) 보너스
-      return { candidate, score };
-    })
-    .filter(c => c.score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  if (scored.length === 0) {
-    if (titleCandidates.length === 0) {
-      // STEP 9 폴백: 제목 없음 → 첫 H태그 → 본문 첫 명사
-      const headingFirst = body.headingText.split(' ').find(w => w.length >= 2);
-      if (headingFirst) return { keywords: [headingFirst], source: 'fallback' };
-      const firstNoun = bodyWords[0];
-      return firstNoun ? { keywords: [firstNoun], source: 'fallback' } : { keywords: [], source: 'none' };
+  // 애매한 경우에만 본문을 크롤링해 상위 빈도 명사구로 보정한다.
+  if (opts.allowBody) {
+    const body = await fetchPostBodyParts(blogId, postId);
+    if (body) {
+      const withBody = extractKeywordCandidates({ ...input, bodyText: body.fullText });
+      if (withBody.primary) {
+        return { keywords: dedupeKeywords([withBody.primary, ...withBody.secondaries]), source: 'title+body' };
+      }
     }
-    return { keywords: rankByTitleOnly(titleCandidates), source: 'title' };
   }
 
-  // 상위 후보 중 서로 부분 문자열로 겹치는 것은 제외(예: "책"과 "책 추천"이 같이 뽑히지 않도록)
-  const picked: string[] = [];
-  for (const { candidate } of scored) {
-    if (picked.some(p => p.includes(candidate) || candidate.includes(p))) continue;
-    picked.push(candidate);
-    if (picked.length >= 5) break;
+  if (base.primary) {
+    return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title' };
   }
-
-  return { keywords: picked, source: 'title+body' };
-}
-
-function rankByTitleOnly(titleCandidates: string[]): string[] {
-  const freq = new Map<string, number>();
-  for (const c of titleCandidates) freq.set(c, (freq.get(c) || 0) + 1);
-  const picked: string[] = [];
-  const sorted = [...freq.entries()]
-    .filter(([c]) => isSearchTermShaped(c))
-    .sort((a, b) => (b[1] + (b[0].includes(' ') ? 1 : 0)) - (a[1] + (a[0].includes(' ') ? 1 : 0)));
-  for (const [candidate] of sorted) {
-    if (picked.some(p => p.includes(candidate) || candidate.includes(p))) continue;
-    picked.push(candidate);
-    if (picked.length >= 5) break;
-  }
-  return picked;
+  return { keywords: [], source: 'none' };
 }
 
 export interface PersistedRepresentativeKeyword {
@@ -215,6 +168,7 @@ export async function getOrPersistRepresentativeKeyword(
   blogId: string,
   postId: string,
   title: string,
+  opts: RepKeywordExtractOpts = {},
 ): Promise<PersistedRepresentativeKeyword> {
   const supabase = createServiceClient();
   const { data: existing } = await supabase
@@ -223,6 +177,20 @@ export async function getOrPersistRepresentativeKeyword(
     .eq('blog_id', blogId)
     .eq('post_id', postId)
     .maybeSingle();
+
+  // 사용자가 직접 수정한 대표 키워드(keyword_source='manual')는 항상 최우선 — TTL 만료와 무관하게
+  // 자동 추출로 절대 덮어쓰지 않는다(스펙 #3). 저장된 값을 그대로 반환한다.
+  if (existing && existing.keyword_source === 'manual') {
+    const manualKeyword = existing.representative_keyword;
+    return {
+      representativeKeyword: manualKeyword,
+      candidates: existing.candidates && existing.candidates.length > 0
+        ? existing.candidates
+        : (manualKeyword ? [manualKeyword] : []),
+      source: 'manual',
+      cached: true,
+    };
+  }
 
   if (existing?.extracted_at && Date.now() - new Date(existing.extracted_at).getTime() < REP_KEYWORD_TTL_MS) {
     return {
@@ -233,7 +201,7 @@ export async function getOrPersistRepresentativeKeyword(
     };
   }
 
-  const result = await extractRepresentativeKeywords(blogId, postId, title);
+  const result = await extractRepresentativeKeywords(blogId, postId, title, opts);
   const representativeKeyword = result.keywords[0] || null;
 
   await supabase.from('post_representative_keywords').upsert({
@@ -247,4 +215,30 @@ export async function getOrPersistRepresentativeKeyword(
   }, { onConflict: 'blog_id,post_id' });
 
   return { representativeKeyword, candidates: result.keywords, source: result.source, cached: false };
+}
+
+/**
+ * 사용자가 직접 지정한 대표 키워드를 (blog_id, post_id)에 저장한다(스펙 #3).
+ * keyword_source='manual'로 기록되어 이후 자동 추출이 덮어쓰지 않는다.
+ * 공용 테이블이므로 미노출/키워드순위/AI인용 화면 모두 이 값을 동일하게 공유한다(스펙 #24/#26).
+ * candidate_screen(후보 성과 캐시)은 수동 지정 시 의미가 없으므로 비운다.
+ */
+export async function setManualRepresentativeKeyword(
+  blogId: string,
+  postId: string,
+  keyword: string,
+  title?: string | null,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const kw = keyword.trim();
+  await supabase.from('post_representative_keywords').upsert({
+    blog_id: blogId,
+    post_id: postId,
+    ...(title != null ? { post_title: title } : {}),
+    representative_keyword: kw,
+    candidates: [kw],
+    candidate_screen: [],
+    keyword_source: 'manual',
+    extracted_at: new Date().toISOString(),
+  }, { onConflict: 'blog_id,post_id' });
 }

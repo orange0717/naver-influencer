@@ -28,7 +28,36 @@ import {
   BriefingLabelBadge,
   AiTabBadge,
   ResultStatCard,
+  CitationStatusBadge,
 } from './AiBriefingSection.helpers';
+import {
+  rollupPostCitationStatus,
+  CITATION_FILTER_OPTIONS,
+  type CitationFilter,
+  type CitationState,
+} from '@/lib/ai-citation-status';
+import { BULK_RUN_CAP, BATCH_DELAY_MS, CITATION_FRESH_TTL_MS } from '@/lib/ai-citation-batch';
+
+/** ai-citation-estimate API 응답(스펙 #9~#12) */
+interface BulkEstimate {
+  totalPosts: number;
+  repMissing: number;
+  unchecked: number;
+  staleChecked: number;
+  cacheSkipped: number;
+  newChecks: number;
+  estRepExtractions: number;
+  estApiCalls: number;
+  perRunCap: number;
+  runsNeeded: number;
+  betweenMs: number;
+  quota: {
+    aiCitation: { officialApi: boolean; note: string; limiterLimit: number; limiterWindowSec: number; perRunCap: number };
+    naverSearchOpenApi: { officialApi: boolean; dailyQuota: number; note: string };
+  };
+}
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 export default function AiBriefingSection() {
   const { user, isLoading: authLoading } = useAuth();
@@ -55,9 +84,23 @@ export default function AiBriefingSection() {
   const [postScores, setPostScores] = useState<Record<string, PostScore>>({});
   const [scoringPostId, setScoringPostId] = useState('');
   const [improvePanelPostId, setImprovePanelPostId] = useState('');
-  const [filter, setFilter] = useState<
-    'all' | 'briefingExposed' | 'briefingUnexposed' | 'tabExposed' | 'tabUnexposed' | 'needsImprovement' | 'highScore' | 'lowScore'
-  >('all');
+  // 상태 필터(스펙 #17): 전체/인용/일부 인용/미인용/미확인/확인실패
+  const [filter, setFilter] = useState<CitationFilter>('all');
+
+  // 대표키워드 공용 소스(post_representative_keywords) — 키워드순위 화면과 동일 데이터(스펙 #2/#3)
+  const [repKeywords, setRepKeywords] = useState<Record<string, { keyword: string | null; source: string | null }>>({});
+  // 대표키워드 인라인 수동 편집(스펙 #3)
+  const [editingRepPost, setEditingRepPost] = useState('');
+  const [repDraft, setRepDraft] = useState('');
+
+  // 안전 배치 큐(스펙 #9~#15)
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkEstimate, setBulkEstimate] = useState<BulkEstimate | null>(null);
+  const [bulkLoadingEstimate, setBulkLoadingEstimate] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string }>({ done: 0, total: 0, current: '' });
+  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
+  const bulkAbortRef = useRef(false);
 
   // 상단 키워드 검색 + 자동 분석
   const [analyzeKeyword, setAnalyzeKeyword] = useState('');
@@ -182,23 +225,26 @@ export default function AiBriefingSection() {
     showError('포스팅의 타겟 키워드가 초기화되었습니다.', 3000);
   };
 
-  const fetchBlogPosts = useCallback(async (blogId: string, page: number = 1) => {
+  // 전체 포스팅을 한 번에 로드(스펙 #1) — 네이버 PostList가 최신 발행순으로 반환하므로 그 순서를 유지한다.
+  // 이후 페이지네이션·필터·KPI는 이 전체 목록을 클라이언트에서 처리한다(전체 블로그 기준).
+  const fetchBlogPosts = useCallback(async (blogId: string) => {
     setPostsLoading(true);
     try {
-      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${postsPerPage}`);
+      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&all=true`);
       if (res.ok) {
         const data = await res.json();
-        setBlogPosts(data.posts || []);
-        setBlogPostsTotal(data.totalCount || 0);
-        setCurrentPage(page);
+        const posts: BlogPost[] = data.posts || [];
+        setBlogPosts(posts);
+        setBlogPostsTotal(data.totalCount || posts.length);
+        setCurrentPage(1);
       }
     } catch { /* ignore */ }
     finally { setPostsLoading(false); }
-  }, [postsPerPage]);
+  }, []);
 
   useEffect(() => {
     if (profile?.blogId) {
-      fetchBlogPosts(profile.blogId, 1);
+      fetchBlogPosts(profile.blogId);
     }
   }, [profile?.blogId, fetchBlogPosts]);
 
@@ -215,6 +261,26 @@ export default function AiBriefingSection() {
     enabled: !!profile?.blogId,
     staleTime: 5 * 60 * 1000,
   });
+
+  // 대표키워드 공용 소스(post_representative_keywords) — 키워드순위/미노출 화면과 "동일한" 대표키워드(스펙 #2/#3/#24).
+  const { data: repState } = useQuery({
+    queryKey: ['rep-keywords-state', profile?.blogId],
+    queryFn: async () => {
+      const res = await fetch(`/api/my/representative-keywords-state?blogId=${encodeURIComponent(profile!.blogId)}`);
+      if (!res.ok) throw new Error('대표키워드 로드 실패');
+      return res.json() as Promise<{ results: Record<string, { keyword: string | null; source: string | null }> }>;
+    },
+    enabled: !!profile?.blogId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (repState?.results) {
+      const map: Record<string, { keyword: string | null; source: string | null }> = {};
+      for (const [pid, v] of Object.entries(repState.results)) map[pid] = { keyword: v.keyword, source: v.source };
+      setRepKeywords(map);
+    }
+  }, [repState]);
 
   const { data: syncedScores } = useQuery({
     queryKey: ['post-ai-scores', profile?.blogId],
@@ -334,12 +400,13 @@ export default function AiBriefingSection() {
         const current = prev[post.id];
         const userTyped = current && current.some(k => k.trim());
         if (userTyped) continue;
-        const rep = postScores[post.id]?.representativeKeyword?.trim();
+        // 대표키워드는 공용 소스(repKeywords)를 최우선으로 — 키워드순위 화면과 동일한 값(스펙 #2).
+        const rep = (repKeywords[post.id]?.keyword || postScores[post.id]?.representativeKeyword)?.trim();
         next[post.id] = rep ? [rep] : [''];
       }
       return next;
     });
-  }, [profile, blogPosts, postKeywords, postScores]);
+  }, [profile, blogPosts, postKeywords, postScores, repKeywords]);
 
   const handleKeywordChange = (postId: string, kwIndex: number, value: string) => {
     setEditingKeywords(prev => {
@@ -403,7 +470,7 @@ export default function AiBriefingSection() {
   // 2026-07-04(6차) 오렌지 지시: 진행 단계를 실시간으로 보여주기 위해 NDJSON 스트리밍 응답을 소비.
   // 캐시 적중/검증 실패/접근 거부 등은 서버가 여전히 일반 JSON으로 즉시 응답하므로
   // content-type으로 분기해서 두 경로 모두 처리한다.
-  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean; result: BriefingResult | null }> => {
+  const checkSingleKeyword = async (post: BlogPost, keyword: string): Promise<{ ok: boolean; status: number; cached: boolean; result: BriefingResult | null; errorMsg?: string | null }> => {
     if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false, result: null };
     const kw = keyword.trim();
     const key = rankKey(post.id, kw);
@@ -433,16 +500,19 @@ export default function AiBriefingSection() {
       });
 
       if (!res.ok) {
+        let errMsg = `AI 브리핑 확인 실패 (오류 ${res.status}).`;
         if (res.status === 429) {
           // 클라이언트 레이트리밋 — 네이버 확인 자체를 시도하지 않았으므로 상태를 남기지 않는다.
-          showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
+          errMsg = '요청이 너무 많습니다. 5분 후 다시 시도해주세요.';
+          showError(errMsg);
         } else {
           const body = await res.json().catch(() => null);
-          const msg = body?.error || `AI 브리핑 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`;
+          const msg = body?.error || `${errMsg} 잠시 후 다시 시도해주세요.`;
+          errMsg = msg;
           showError(msg, 8000);
           persistTransient(typeof body?.error === 'string' ? body.error : undefined);
         }
-        return { ok: false, status: res.status, cached: false, result: null };
+        return { ok: false, status: res.status, cached: false, result: null, errorMsg: errMsg };
       }
 
       const isStream = res.headers.get('content-type')?.includes('application/x-ndjson') && res.body;
@@ -450,7 +520,7 @@ export default function AiBriefingSection() {
         // 캐시 적중 등 — 일반 JSON 즉시 응답
         const data = await res.json();
         setBriefingResults(prev => ({ ...prev, [key]: data }));
-        saveBriefingResultToDb(profile.blogId, post.id, kw, data);
+        saveBriefingResultToDb(profile.blogId, post.id, kw, data, post.url);
         refreshHistorySoon();
         return { ok: true, status: res.status, cached: data?.cached === true, result: data };
       }
@@ -486,12 +556,12 @@ export default function AiBriefingSection() {
       if (streamError) {
         showError(streamError, 8000);
         persistTransient(streamError);
-        return { ok: false, status: res.status, cached: false, result: null };
+        return { ok: false, status: res.status, cached: false, result: null, errorMsg: streamError };
       }
       if (finalData) {
         const parsed = finalData as unknown as BriefingResult;
         setBriefingResults(prev => ({ ...prev, [key]: parsed }));
-        saveBriefingResultToDb(profile.blogId, post.id, kw, parsed);
+        saveBriefingResultToDb(profile.blogId, post.id, kw, parsed, post.url);
         refreshHistorySoon();
         return { ok: true, status: res.status, cached: false, result: parsed };
       }
@@ -665,64 +735,152 @@ export default function AiBriefingSection() {
     );
   }
 
-  const totalPages = Math.ceil(blogPostsTotal / postsPerPage);
+  // 대표키워드(공용 소스 우선) — 키워드순위 화면과 동일 값(스펙 #2). 없으면 점수 결과의 대표키워드로 폴백.
+  const getPrimaryKeyword = (post: BlogPost): string | null =>
+    (repKeywords[post.id]?.keyword || postScores[post.id]?.representativeKeyword || '').trim() || null;
 
-  // 포스트 단위 노출 상태 파생 (해당 포스트에 할당된 키워드 중 하나라도 인용/미인용이면 그 상태로 판정)
-  const postExposureState = (postId: string): { briefing: boolean | null; tab: boolean | null } => {
-    const keywords = (postKeywords || {})[postId] || [];
-    const results = keywords.map(kw => (briefingResults || {})[rankKey(postId, kw)]).filter(Boolean) as BriefingResult[];
-    if (results.length === 0) return { briefing: null, tab: null };
-    return {
-      briefing: results.some(r => r.exposed === true) ? true : results.some(r => r.exposed === false) ? false : null,
-      tab: results.some(r => r.tabExposed === true) ? true : results.some(r => r.tabExposed === false) ? false : null,
-    };
+  // 포스트에 할당된 타겟 키워드들의 확인 결과 → 종합 인용 상태 입력값(스펙 #18)
+  const postStatusInputs = (postId: string) =>
+    ((postKeywords || {})[postId] || [])
+      .map(kw => (briefingResults || {})[rankKey(postId, kw)])
+      .filter(Boolean)
+      .map(r => ({ exposed: r!.exposed, tabExposed: r!.tabExposed, checkStatus: r!.checkStatus, checkedAt: r!.checkedAt }));
+
+  // 표시용 종합 상태(확인 진행 중이면 checking 우선)
+  const postCitationStatus = (postId: string): CitationState => {
+    if (checkingKey && checkingKey.startsWith(`${postId}::`)) return 'checking';
+    return rollupPostCitationStatus(postStatusInputs(postId));
   };
 
-  const scoredPosts = Object.values(postScores);
-  const kpiAvg = (key: 'aiScore' | 'seoScore' | 'geoScore' | 'aeoScore'): number =>
-    scoredPosts.length === 0 ? 0 : Math.round(scoredPosts.reduce((s, p) => s + p[key], 0) / scoredPosts.length);
+  // 최근 확인(캐시 신선) 여부 — 배치 큐가 재조회 대상을 고를 때 사용(스펙 #14)
+  const isResultFresh = (r?: BriefingResult): boolean =>
+    !!r?.checkedAt && r.checkStatus === 'ok' && (Date.now() - new Date(r.checkedAt).getTime() < CITATION_FRESH_TTL_MS);
 
-  const kpiExposure = blogPosts.reduce(
-    (acc, post) => {
-      const st = postExposureState(post.id);
-      if (st.briefing === true) acc.briefingExposed++;
-      if (st.briefing === false) acc.briefingUnexposed++;
-      if (st.tab === true) acc.tabExposed++;
-      if (st.tab === false) acc.tabUnexposed++;
-      return acc;
-    },
-    { briefingExposed: 0, briefingUnexposed: 0, tabExposed: 0, tabUnexposed: 0 },
-  );
+  // 전체 블로그 기준 종합상태 카운트(스펙 #17/#21) — 확인 진행 중 상태는 제외하고 안정적으로 집계
+  const statusCounts = blogPosts.reduce((acc, post) => {
+    const s = rollupPostCitationStatus(postStatusInputs(post.id));
+    acc[s] = (acc[s] || 0) + 1;
+    return acc;
+  }, {} as Record<CitationState, number>);
+  const countOf = (s: CitationState) => statusCounts[s] || 0;
+  const citedTotal = countOf('cited') + countOf('partial');
 
-  const FILTER_OPTIONS: { key: typeof filter; label: string }[] = [
-    { key: 'all', label: '전체' },
-    { key: 'briefingExposed', label: 'AI브리핑 노출' },
-    { key: 'briefingUnexposed', label: 'AI브리핑 미노출' },
-    { key: 'tabExposed', label: 'AI탭 노출' },
-    { key: 'tabUnexposed', label: 'AI탭 미노출' },
-    { key: 'needsImprovement', label: '개선필요' },
-    { key: 'highScore', label: '점수높은글' },
-    { key: 'lowScore', label: '점수낮은글' },
-  ];
+  // 상태 필터(스펙 #17) — 전체 블로그 목록에 적용
+  const filteredPosts = filter === 'all'
+    ? blogPosts
+    : blogPosts.filter(post => rollupPostCitationStatus(postStatusInputs(post.id)) === filter);
 
-  const filteredPosts = blogPosts.filter(post => {
-    if (filter === 'all') return true;
-    const st = postExposureState(post.id);
-    const score = postScores[post.id];
-    switch (filter) {
-      case 'briefingExposed': return st.briefing === true;
-      case 'briefingUnexposed': return st.briefing === false;
-      case 'tabExposed': return st.tab === true;
-      case 'tabUnexposed': return st.tab === false;
-      case 'needsImprovement': return !!score && score.aiScore < 60;
-      case 'highScore': return !!score && score.aiScore >= 70;
-      case 'lowScore': return !!score && score.aiScore < 40;
-      default: return true;
+  // 클라이언트 페이지네이션(전체 목록 로드 후 화면만 분할)
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / postsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagePosts = filteredPosts.slice((safePage - 1) * postsPerPage, safePage * postsPerPage);
+
+  // ── 안전 배치 큐(스펙 #9~#15) ──────────────────────────────────────────────
+  // 대표키워드가 없으면 신규 추출 대상, 있으면 최근 확인(fresh)이 아니면 재조회 대상.
+  const needsBulkCheck = (post: BlogPost): boolean => {
+    const kw = getPrimaryKeyword(post);
+    if (!kw) return true;
+    return !isResultFresh(briefingResults[rankKey(post.id, kw)]);
+  };
+
+  // 대표키워드가 없는 포스트는 공용 추출 API로 확정(post_representative_keywords에 저장, 스펙 #2/#3).
+  const ensureRepKeyword = async (post: BlogPost): Promise<string | null> => {
+    try {
+      const res = await fetch(
+        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile!.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}`,
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      const kw = (data.representativeKeyword || data.keywords?.[0] || '').trim();
+      if (kw) setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: data.source || null } }));
+      return kw || null;
+    } catch { return null; }
+  };
+
+  // 대표키워드를 타겟 키워드로 등록(확인 결과가 이 키워드에 연결되고 목록/집계에 반영되도록).
+  const registerTargetKeyword = (post: BlogPost, kw: string) => {
+    if (!(postKeywords[post.id]?.some(k => k.trim()))) {
+      setPostKeywords(prev => ({ ...prev, [post.id]: [kw] }));
+      setEditingKeywords(prev => ({ ...prev, [post.id]: [kw] }));
+      saveKeywordsToDb(profile!.blogId, post.id, [kw]);
     }
-  });
+  };
+
+  // 예상 작업량/쿼터를 서버에서 계산해 확인 모달을 연다(즉시 900개 호출 금지, 스펙 #11).
+  const openBulkModal = async () => {
+    if (!profile || bulkRunning) return;
+    setBulkModalOpen(true);
+    setBulkEstimate(null);
+    setBulkLoadingEstimate(true);
+    try {
+      const res = await fetch(`/api/blog/ai-citation-estimate?blogId=${encodeURIComponent(profile.blogId)}`);
+      if (res.ok) setBulkEstimate(await res.json());
+      else { showError('예상 작업량을 불러오지 못했습니다.'); setBulkModalOpen(false); }
+    } catch {
+      showError('예상 작업량을 불러오지 못했습니다.'); setBulkModalOpen(false);
+    } finally {
+      setBulkLoadingEstimate(false);
+    }
+  };
+
+  // 실제 배치 실행: 신규 확인 대상 중 최신순 최대 BULK_RUN_CAP건을, 건당 지연을 두고 순차 확인(재개형).
+  const runBulk = async () => {
+    if (!profile || bulkRunning) return;
+    setBulkModalOpen(false);
+    setBulkNotice(null);
+    bulkAbortRef.current = false;
+    // 예상 모달은 전체 블로그 기준이므로, 배치도 현재 필터가 아니라 전체 목록(최신순)에서 대상을 고른다.
+    const targets = blogPosts.filter(needsBulkCheck).slice(0, BULK_RUN_CAP);
+    if (targets.length === 0) {
+      showError('새로 확인할 포스팅이 없습니다. (모두 최근 확인됨)', 4000);
+      return;
+    }
+    setBulkRunning(true);
+    setBulkProgress({ done: 0, total: targets.length, current: '' });
+    let halted = false;
+    for (let i = 0; i < targets.length; i++) {
+      if (bulkAbortRef.current) break;
+      const post = targets[i];
+      setBulkProgress(p => ({ ...p, current: post.title }));
+      let kw = getPrimaryKeyword(post);
+      if (!kw) kw = await ensureRepKeyword(post);
+      if (!kw) { setBulkProgress(p => ({ ...p, done: p.done + 1 })); continue; } // 대표키워드 없음 → 미확인 유지, 건너뜀
+      registerTargetKeyword(post, kw);
+      const res = await checkSingleKeyword(post, kw);
+      setBulkProgress(p => ({ ...p, done: p.done + 1 }));
+      if (!res.ok) {
+        const blocked = res.status === 429 || (!!res.errorMsg && /(접근|제한|너무 많)/.test(res.errorMsg));
+        if (blocked) { halted = true; break; }
+      }
+      if (i < targets.length - 1 && !bulkAbortRef.current) await sleep(BATCH_DELAY_MS);
+    }
+    setBulkRunning(false);
+    if (halted) {
+      setBulkNotice('네이버 접근이 일시적으로 제한되어 중단했습니다. 잠시 후 다시 "전체 업데이트"를 눌러 이어서 확인하세요. 미확인 포스팅은 그대로 유지됩니다.');
+    } else if (!bulkAbortRef.current) {
+      setBulkNotice('이번 배치 확인을 완료했습니다. 남은 포스팅이 있으면 다시 실행해 이어서 확인할 수 있습니다.');
+    }
+    queryClient.invalidateQueries({ queryKey: ['ai-briefing-state', profile.blogId] });
+  };
+
+  // 대표키워드 인라인 수동 저장(스펙 #3) — keyword_source='manual'로 공용 테이블에 저장.
+  const saveRepKeyword = async (post: BlogPost) => {
+    const kw = repDraft.trim();
+    setEditingRepPost('');
+    if (!kw || !profile) return;
+    setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: 'manual' } }));
+    try {
+      await fetch('/api/blog/representative-keywords', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, postId: post.id, keyword: kw, title: post.title }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['rep-keywords-state', profile.blogId] });
+    } catch { /* 낙관적 UI */ }
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto flex flex-col gap-6">
       {errorMessage && (
         <div className="px-4 py-3 rounded-xl bg-down/10 border border-down/30 text-down text-sm flex items-start gap-2">
           <span className="font-bold shrink-0">!</span>
@@ -747,16 +905,34 @@ export default function AiBriefingSection() {
         <div>
           <h1 className="font-title text-2xl font-extrabold">AI 브리핑 · AI 탭</h1>
           <p className="text-sm text-dim mt-1">
-            포스팅별 타겟 키워드를 지정하고 네이버 AI 브리핑(생성형 검색 답변) 인용 여부를 확인하세요
+            내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {!bulkRunning ? (
+            <button
+              onClick={openBulkModal}
+              disabled={blogPosts.length === 0 || bulkLoadingEstimate}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+              title="전체 포스팅을 안전 배치(1회 소수·순차)로 확인합니다. 예상 작업량을 먼저 보여드립니다."
+            >
+              {bulkLoadingEstimate ? '계산 중...' : '전체 업데이트'}
+            </button>
+          ) : (
+            <button
+              onClick={() => { bulkAbortRef.current = true; }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-down/10 text-down border border-down/30 hover:bg-down/20 transition cursor-pointer"
+              title="진행 중인 배치 확인을 중단합니다(이미 확인된 결과는 저장됩니다)."
+            >
+              중단
+            </button>
+          )}
           {canDownload && (
             <button
               onClick={handleDownload}
               disabled={blogPosts.length === 0}
               className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
-              title="현재 페이지 포스팅의 AI 브리핑 확인 결과를 CSV 다운로드 (최대 500건)"
+              title="포스팅의 AI 브리핑·AI 탭 확인 결과를 CSV 다운로드 (최대 500건)"
             >
               CSV 다운로드
             </button>
@@ -772,16 +948,90 @@ export default function AiBriefingSection() {
       </div>
 
       <p className="text-xs text-dim/80 -mt-3">
-        AI 브리핑(통합검색 인라인 위젯)과 AI 탭은 서로 완전히 다른 별개 서비스입니다 — 실제 브라우저로 두 화면을 순차 방문해
-        각각 콘텐츠 생성 여부와 내 게시글의 출처 인용 여부를 독립적으로 확인하기 때문에 건당 30~50초 정도 걸릴 수 있습니다.
-        한 번에 한 포스팅씩만 확인해주세요 — 짧은 시간에 반복 확인하면 네이버 측에서 일시적으로 접근이 제한될 수 있습니다.
-        같은 키워드라도 검색 시점에 따라 두 서비스 각각의 노출 여부와 출처 목록이 서로 다르게 나타날 수 있습니다.
+        AI 브리핑·AI 탭 인용 여부는 공식 API가 없어 실제 브라우저로 두 화면을 순차 방문해 확인하므로 건당 30~50초가 걸립니다.
+        네이버가 짧은 시간의 반복 자동화를 제한하기 때문에, &ldquo;전체 업데이트&rdquo;는 1회에 소수만 안전하게 확인하고 나머지는 미확인으로 두었다가
+        다시 눌러 이어서 채웁니다(재개형). 확인 불가·오류는 절대 &lsquo;미인용&rsquo;으로 처리하지 않습니다.
       </p>
 
-      {/* 키워드 검색 + 자동 분석 */}
-      <GlassCard padding="none">
+      {/* 배치 진행률(스펙 #15) */}
+      {bulkRunning && (
+        <div className="px-4 py-3 rounded-xl bg-accent/5 border border-accent/30 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-accent">
+              {blogPostsTotal.toLocaleString()}개 중 {bulkProgress.done}개 확인 완료
+              {bulkProgress.total > 0 && ` · ${Math.round((bulkProgress.done / bulkProgress.total) * 100)}%`}
+            </span>
+            <span className="text-dim truncate max-w-[50%]" title={bulkProgress.current}>{bulkProgress.current}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
+            <div
+              className="h-full bg-accent transition-all"
+              style={{ width: `${bulkProgress.total > 0 ? (bulkProgress.done / bulkProgress.total) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {bulkNotice && !bulkRunning && (
+        <div className="px-4 py-3 rounded-xl bg-gold/10 border border-gold/30 text-xs text-text flex items-start gap-2">
+          <span className="flex-1">{bulkNotice}</span>
+          <button onClick={() => setBulkNotice(null)} className="text-dim hover:text-text cursor-pointer shrink-0" aria-label="닫기">✕</button>
+        </div>
+      )}
+
+      {/* 예상 작업량 확인 모달(스펙 #9~#12) */}
+      {bulkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setBulkModalOpen(false)}>
+          <div className="bg-surface rounded-2xl border border-border shadow-xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-title text-lg font-extrabold">전체 업데이트 — 예상 작업량</h3>
+            {bulkLoadingEstimate || !bulkEstimate ? (
+              <div className="py-8 text-center text-dim text-sm">예상 작업량을 계산 중...</div>
+            ) : (
+              <>
+                <div className="space-y-1.5 text-sm">
+                  {[
+                    ['전체 포스팅', bulkEstimate.totalPosts],
+                    ['대표키워드 미추출', bulkEstimate.repMissing],
+                    ['인용 미확인', bulkEstimate.unchecked],
+                    ['최근 조회 캐시 제외', bulkEstimate.cacheSkipped],
+                  ].map(([label, v]) => (
+                    <div key={label} className="flex items-center justify-between">
+                      <span className="text-dim">{label}</span>
+                      <span className="font-rank font-semibold">{Number(v).toLocaleString()}개</span>
+                    </div>
+                  ))}
+                  <div className="h-px bg-border my-1" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-dim">예상 대표키워드 추출</span>
+                    <span className="font-rank font-semibold">{bulkEstimate.estRepExtractions.toLocaleString()}건</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-dim">예상 확인 호출</span>
+                    <span className="font-rank font-semibold">약 {bulkEstimate.estApiCalls.toLocaleString()}회</span>
+                  </div>
+                  <div className="flex items-center justify-between text-accent font-bold">
+                    <span>실제 신규 조회</span>
+                    <span className="font-rank">{bulkEstimate.newChecks.toLocaleString()}개</span>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-bg border border-border p-3 text-[11px] text-dim leading-relaxed space-y-1">
+                  <p>· 이번 실행은 최신 발행순 <b className="text-text">최대 {bulkEstimate.perRunCap}개</b>만 확인합니다(안전 캡). 전체를 채우려면 약 <b className="text-text">{bulkEstimate.runsNeeded}회</b> 나눠 실행하세요.</p>
+                  <p>· AI 인용 확인은 공식 API가 없어 헤드리스 브라우저로 실측합니다 — 공식 쿼터는 없고, 네이버 차단을 피하려 {Math.round(bulkEstimate.betweenMs / 1000)}초 간격·{bulkEstimate.quota.aiCitation.limiterLimit}회/{Math.round(bulkEstimate.quota.aiCitation.limiterWindowSec / 60)}분으로 제한합니다.</p>
+                  <p>· 대표키워드 추출·검색량 보조에 쓰는 네이버 검색 OpenAPI 일일 무료 쿼터는 {bulkEstimate.quota.naverSearchOpenApi.dailyQuota.toLocaleString()}회입니다.</p>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button onClick={() => setBulkModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-bg cursor-pointer">취소</button>
+                  <button onClick={runBulk} disabled={bulkEstimate.newChecks === 0} className="px-4 py-2 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover cursor-pointer disabled:opacity-50">조회 시작</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 단건 즉시 확인(보조 도구) — 전체 목록 아래로 배치(order-2). 특정 키워드 하나를 바로 분석할 때 사용. */}
+      <GlassCard padding="none" className="order-2">
         <div className="px-5 pt-5">
-          <SectionHeader title="AI 브리핑 · AI탭" subtitle="키워드를 입력하면 노출 여부·순위·검색량·경쟁도·관련 키워드를 자동으로 분석합니다" />
+          <SectionHeader title="단건 즉시 확인" subtitle="특정 키워드 하나를 바로 분석 — 노출 여부·순위·검색량·경쟁도·관련 키워드까지 확인합니다" />
         </div>
         <form
           onSubmit={e => { e.preventDefault(); handleAnalyze(); }}
@@ -894,9 +1144,9 @@ export default function AiBriefingSection() {
         )}
       </GlassCard>
 
-      {/* 결과 히스토리 */}
+      {/* 결과 히스토리 (단건 확인 이력) */}
       {analysisHistory.length > 0 && (
-        <GlassCard padding="none">
+        <GlassCard padding="none" className="order-3">
           <div className="px-5 py-4 border-b border-border bg-bg/30">
             <h3 className="font-bold text-[15px]">분석 히스토리</h3>
           </div>
@@ -985,51 +1235,43 @@ export default function AiBriefingSection() {
         </GlassCard>
       )}
 
-      {/* 게시물별 키워드 관리 — 자동 매칭의 근거 데이터(타겟 키워드 등록)이자, 개별 게시물 단위로 직접 확인하고 싶을 때 사용 */}
-      <details className="group">
-        <summary className="cursor-pointer select-none px-4 py-3 rounded-xl border border-border bg-surface text-sm font-bold flex items-center justify-between hover:border-accent/50 transition">
-          게시물별 키워드 관리
-          <span className="text-dim text-xs group-open:rotate-180 transition-transform">▾</span>
-        </summary>
-        <div className="mt-4 space-y-4">
+      {/* 전체 포스팅 목록 — 기본(항상 표시) 관리 화면(스펙 #1). order-1로 단건 도구보다 위에 배치. */}
+      <div className="order-1 space-y-4">
 
-      {/* KPI 바 — 현재 페이지 로드된 포스팅 기준(전체 블로그 합산 아님) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <AnimatedStatCard label="전체 포스팅" value={blogPosts.length} description="현재 페이지 기준" color="dim" />
-        <AnimatedStatCard label="AI브리핑 노출" value={kpiExposure.briefingExposed} color="up" />
-        <AnimatedStatCard label="AI브리핑 미노출" value={kpiExposure.briefingUnexposed} color="down" />
-        <AnimatedStatCard label="AI탭 노출" value={kpiExposure.tabExposed} color="up" />
-        <AnimatedStatCard label="AI탭 미노출" value={kpiExposure.tabUnexposed} color="down" />
-        <AnimatedStatCard label="평균 AI점수" value={kpiAvg('aiScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
-        <AnimatedStatCard label="평균 SEO점수" value={kpiAvg('seoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
-        <AnimatedStatCard label="평균 GEO점수" value={kpiAvg('geoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
-        <AnimatedStatCard label="평균 AEO점수" value={kpiAvg('aeoScore')} description={`${scoredPosts.length}개 분석됨`} color="accent" />
+      {/* KPI 바 — 전체 블로그 기준 종합 인용 상태(스펙 #17/#21) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <AnimatedStatCard label="전체 포스팅" value={blogPostsTotal} color="dim" />
+        <AnimatedStatCard label="AI 인용" value={citedTotal} description="브리핑·탭 중 1곳 이상" color="up" />
+        <AnimatedStatCard label="일부 인용" value={countOf('partial')} color="gold" />
+        <AnimatedStatCard label="미인용" value={countOf('not_cited')} color="down" />
+        <AnimatedStatCard label="미확인" value={countOf('unchecked')} color="dim" />
+        <AnimatedStatCard label="확인실패" value={countOf('failed')} color="gold" />
       </div>
 
-      {/* 포스팅 수 선택 */}
-      <div className="flex items-center gap-3">
+      {/* 포스팅 수(페이지당) 선택 + 총계 */}
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-surface rounded-lg border border-border p-0.5">
           {[30, 60, 90].map(n => (
-            <button key={n} onClick={() => { setPostsPerPage(n); setCurrentPage(1); if (profile) fetchBlogPosts(profile.blogId, 1); }}
+            <button key={n} onClick={() => { setPostsPerPage(n); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 postsPerPage === n ? 'bg-accent text-white' : 'text-dim hover:text-text'
               }`}
             >
-              {n}개
+              {n}개씩
             </button>
           ))}
         </div>
         <span className="text-xs text-dim">
-          총 {blogPostsTotal.toLocaleString()}개 포스팅
+          전체 {blogPostsTotal.toLocaleString()}개 · 필터 {filteredPosts.length.toLocaleString()}개
         </span>
       </div>
 
-      {/* 필터 (현재 로드된 페이지 데이터 기준 클라이언트 사이드 필터) */}
+      {/* 상태 필터(스펙 #17) — 전체 블로그 기준 */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        {FILTER_OPTIONS.map(opt => (
+        {CITATION_FILTER_OPTIONS.map(opt => (
           <button
             key={opt.key}
-            onClick={() => setFilter(opt.key)}
+            onClick={() => { setFilter(opt.key); setCurrentPage(1); }}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border ${
               filter === opt.key
                 ? 'bg-accent text-white border-accent'
@@ -1060,6 +1302,7 @@ export default function AiBriefingSection() {
                     <th className="text-left px-3 py-3 font-semibold w-40">타겟 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">AI브리핑</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">AI탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-20">종합상태</th>
                     <th className="text-center px-2 py-3 font-semibold w-12">AI</th>
                     <th className="text-center px-2 py-3 font-semibold w-12">SEO</th>
                     <th className="text-center px-2 py-3 font-semibold w-12">GEO</th>
@@ -1071,10 +1314,11 @@ export default function AiBriefingSection() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {filteredPosts.map((post, i) => {
+                  {pagePosts.map((post, i) => {
                     const keywords = editingKeywords[post.id] || [];
                     const rowCount = Math.max(keywords.length, 1);
                     const score = postScores[post.id];
+                    const citation = postCitationStatus(post.id);
                     return keywords.map((kw, kwIdx) => {
                       const key = rankKey(post.id, kw.trim());
                       const result = briefingResults[key];
@@ -1086,7 +1330,7 @@ export default function AiBriefingSection() {
                           {isFirst && (
                             <>
                               <td className="px-4 py-3 text-dim text-xs align-top" rowSpan={rowCount}>
-                                {(currentPage - 1) * postsPerPage + i + 1}
+                                {(safePage - 1) * postsPerPage + i + 1}
                               </td>
                               <td className="px-3 py-3 align-top" rowSpan={rowCount}>
                                 <a href={post.url} target="_blank" rel="noopener noreferrer"
@@ -1121,7 +1365,34 @@ export default function AiBriefingSection() {
                                 </div>
                               </td>
                               <td className="px-3 py-3 align-top" rowSpan={rowCount}>
-                                <span className="text-xs text-dim">{score?.representativeKeyword || '—'}</span>
+                                {editingRepPost === post.id ? (
+                                  <input
+                                    autoFocus
+                                    value={repDraft}
+                                    onChange={e => setRepDraft(e.target.value)}
+                                    onBlur={() => saveRepKeyword(post)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); saveRepKeyword(post); }
+                                      if (e.key === 'Escape') setEditingRepPost('');
+                                    }}
+                                    className="w-full px-2 py-1 text-xs bg-bg border border-accent rounded-lg outline-none"
+                                    placeholder="대표키워드"
+                                  />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setEditingRepPost(post.id); setRepDraft(getPrimaryKeyword(post) || ''); }}
+                                    className="text-left group/rep"
+                                    title="클릭해서 대표키워드 직접 수정(수정 시 항상 우선)"
+                                  >
+                                    <span className="text-xs text-text group-hover/rep:text-accent transition">
+                                      {getPrimaryKeyword(post) || <span className="text-dim">— 지정</span>}
+                                    </span>
+                                    {repKeywords[post.id]?.source === 'manual' && (
+                                      <span className="block text-[9px] text-accent">직접 지정</span>
+                                    )}
+                                  </button>
+                                )}
                               </td>
                             </>
                           )}
@@ -1158,6 +1429,9 @@ export default function AiBriefingSection() {
                           </td>
                           {isFirst && (
                             <>
+                              <td className="text-center px-3 py-1.5 align-top" rowSpan={rowCount}>
+                                <CitationStatusBadge state={citation} />
+                              </td>
                               <td className="text-center px-2 py-1.5 align-top" rowSpan={rowCount}>
                                 <ScoreCell score={score?.aiScore} />
                               </td>
@@ -1222,7 +1496,7 @@ export default function AiBriefingSection() {
                         {isFirst && score && score.causeTags.length > 0 && (
                           <tr key={`${post.id}-causes`} className={!isLast ? '!border-b-0' : ''}>
                             <td colSpan={2} />
-                            <td colSpan={12} className="px-3 pb-2 pt-0">
+                            <td colSpan={13} className="px-3 pb-2 pt-0">
                               <div className="flex items-center gap-1 flex-wrap">
                                 {score.causeTags.map(tag => (
                                   <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-down/10 text-down">
@@ -1235,7 +1509,7 @@ export default function AiBriefingSection() {
                         )}
                         {isFirst && improvePanelPostId === post.id && score && (
                           <tr key={`${post.id}-improve`} className={!isLast ? '!border-b-0' : ''}>
-                            <td colSpan={14} className="px-4 pb-4 pt-1 bg-bg/30">
+                            <td colSpan={15} className="px-4 pb-4 pt-1 bg-bg/30">
                               <ImprovePanel score={score} />
                             </td>
                           </tr>
@@ -1250,14 +1524,16 @@ export default function AiBriefingSection() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {filteredPosts.map((post, i) => {
+              {pagePosts.map((post, i) => {
                 const keywords = editingKeywords[post.id] || [];
                 const score = postScores[post.id];
+                const citation = postCitationStatus(post.id);
+                const repKw = getPrimaryKeyword(post);
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
                     <div className="flex items-start gap-2">
                       <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">
-                        {(currentPage - 1) * postsPerPage + i + 1}
+                        {(safePage - 1) * postsPerPage + i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
@@ -1266,11 +1542,30 @@ export default function AiBriefingSection() {
                         </a>
                         <span className="text-[10px] text-dim ml-1">{post.date}</span>
                       </div>
+                      <CitationStatusBadge state={citation} />
                     </div>
 
                     <div className="pl-7 flex items-center gap-2 flex-wrap text-[10px] text-dim">
-                      {score?.representativeKeyword && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-bg border border-border">대표키워드: {score.representativeKeyword}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingRepPost(post.id); setRepDraft(repKw || ''); }}
+                        className="px-1.5 py-0.5 rounded-full bg-bg border border-border hover:border-accent transition"
+                      >
+                        대표키워드: {repKw || '지정'}{repKeywords[post.id]?.source === 'manual' ? ' ·직접' : ''}
+                      </button>
+                      {editingRepPost === post.id && (
+                        <input
+                          autoFocus
+                          value={repDraft}
+                          onChange={e => setRepDraft(e.target.value)}
+                          onBlur={() => saveRepKeyword(post)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); saveRepKeyword(post); }
+                            if (e.key === 'Escape') setEditingRepPost('');
+                          }}
+                          className="px-2 py-1 text-xs bg-bg border border-accent rounded-lg outline-none"
+                          placeholder="대표키워드"
+                        />
                       )}
                       {typeof post.viewCount === 'number' && <span>조회수 {post.viewCount.toLocaleString()}</span>}
                     </div>
@@ -1394,20 +1689,20 @@ export default function AiBriefingSection() {
               })}
             </div>
 
-            {/* 페이지네이션 */}
+            {/* 페이지네이션 (클라이언트 사이드) */}
             {totalPages > 1 && (
               <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
                 <button
-                  onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); if (profile) fetchBlogPosts(profile.blogId, Math.max(1, currentPage - 1)); }}
-                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(() => Math.max(1, safePage - 1))}
+                  disabled={safePage === 1}
                   className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
                 >
                   이전
                 </button>
-                <span className="text-xs text-dim">{currentPage} / {totalPages}</span>
+                <span className="text-xs text-dim">{safePage} / {totalPages}</span>
                 <button
-                  onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); if (profile) fetchBlogPosts(profile.blogId, Math.min(totalPages, currentPage + 1)); }}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(() => Math.min(totalPages, safePage + 1))}
+                  disabled={safePage === totalPages}
                   className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
                 >
                   다음
@@ -1418,8 +1713,7 @@ export default function AiBriefingSection() {
         )}
       </GlassCard>
 
-        </div>
-      </details>
+      </div>
     </div>
   );
 }
