@@ -476,12 +476,12 @@ export default function KeywordRankingSection() {
   // refine=true면 제목이 애매할 때만 본문 1회 보정(개별 재추출 버튼용).
   const extractRepresentativeOnly = useCallback(async (
     post: BlogPost,
-    opts: { refine?: boolean } = {},
+    opts: { refine?: boolean; ai?: boolean } = {},
   ): Promise<{ keyword: string | null; autoKeywords: AutoKeyword[] } | null> => {
     if (!profile) return null;
     try {
       const res = await fetch(
-        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}${opts.refine ? '&refine=1' : ''}`,
+        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}${opts.refine ? '&refine=1' : ''}${opts.ai ? '&ai=1' : ''}`,
       );
       if (!res.ok) return null;
       const data: {
@@ -514,7 +514,8 @@ export default function KeywordRankingSection() {
     if (!profile) return;
     setExtractingRepId(post.id);
     try {
-      const result = await extractRepresentativeOnly(post, { refine: true });
+      // 개별 재추출은 사용자 명시 단건 액션 → 규칙+본문으로도 애매하면 AI 1회 보정 허용(스펙 #2/#5). 대량추출엔 미적용.
+      const result = await extractRepresentativeOnly(post, { refine: true, ai: true });
       if (!result) {
         showError('대표 키워드 자동추출에 실패했습니다.', 4000);
         return;
