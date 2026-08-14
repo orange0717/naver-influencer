@@ -226,9 +226,14 @@ export default function RootLayout({
   return (
     <html lang="ko" data-ninfl-commit={process.env.VERCEL_GIT_COMMIT_SHA ?? ''}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Noto+Serif+KR:wght@400;700;900&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        {/* 한글 UI 폰트 통일 — Pretendard (variable, 동적 서브셋). 굵기 400~900 지원 */}
+        <link
+          rel="stylesheet"
+          as="style"
+          crossOrigin="anonymous"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendard-variable-dynamic-subset.css"
+        />
         {/* JSON-LD: Organization */}
         <script
           type="application/ld+json"
