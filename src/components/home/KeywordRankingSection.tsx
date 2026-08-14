@@ -63,6 +63,14 @@ export default function KeywordRankingSection() {
   // 자동/수동 백그라운드 일괄 갱신 진행 여부 (화면을 막지 않는 작은 표시용)
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  // '지금 업데이트' 사전 예상치 확인(스펙 #11/#14) — 무조건 조회 대신 대상 수·예상 호출·캐시 제외를 먼저 보여준다.
+  const [refreshEstimate, setRefreshEstimate] = useState<{
+    pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[];
+    stalePairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[];
+    target: number; stale: number; fresh: number; estCalls: number;
+  } | null>(null);
+  const [refreshForceAll, setRefreshForceAll] = useState(false);
+  const [refreshStarting, setRefreshStarting] = useState(false);
   const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState('');
   const [showKeywordSearch, setShowKeywordSearch] = useState(false);
@@ -79,6 +87,10 @@ export default function KeywordRankingSection() {
   const postKeywordsRef = useRef<Record<string, string[]>>({});
   const editingKeywordsRef = useRef<Record<string, string[]>>({});
   const repKeywordsRef = useRef<Record<string, RepKeywordEntry>>({});
+  // 페이지 진입 시 자동 추출(스펙 #8) 제어용 — 중복 실행 방지 + 세션 내 재시도 방지 + 언마운트/페이지전환 중단
+  const autoExtractRunningRef = useRef(false);
+  const autoExtractAbortRef = useRef(false);
+  const autoExtractDoneRef = useRef<Set<string>>(new Set());
   // postId → 디바운스 자동저장 타이머 (블러/엔터를 기다리지 않고도 입력 후 일정 시간 뒤 자동 저장)
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // handleKeywordSave의 최신 버전을 항상 가리키는 ref (디바운스 타이머가 오래된 클로저를 호출하지 않도록)
@@ -435,17 +447,19 @@ export default function KeywordRankingSection() {
 
   // 포스팅 제목+본문을 분석해 대표 키워드를 자동추출(post_representative_keywords에 영속화)하고,
   // 곧바로 그 키워드로 순위까지 확인한다 — 사용자가 직접 입력하는 커스텀 키워드와 별개 트랙.
-  const handleExtractRepresentative = useCallback(async (post: BlogPost) => {
-    if (!profile) return;
-    setExtractingRepId(post.id);
+  // 대표 키워드 "추출만" — 규칙기반(제목 우선, 네이버 무호출)으로 대표+보조를 뽑아 저장·표시한다.
+  // 순위 조회(check-missing)는 트리거하지 않는다 → 추출과 순위조회 분리(스펙 #9). 대량 자동추출에도 안전.
+  // refine=true면 제목이 애매할 때만 본문 1회 보정(개별 재추출 버튼용).
+  const extractRepresentativeOnly = useCallback(async (
+    post: BlogPost,
+    opts: { refine?: boolean } = {},
+  ): Promise<{ keyword: string | null; autoKeywords: AutoKeyword[] } | null> => {
+    if (!profile) return null;
     try {
       const res = await fetch(
-        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}`,
+        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}${opts.refine ? '&refine=1' : ''}`,
       );
-      if (!res.ok) {
-        showError('대표 키워드 자동추출에 실패했습니다.', 4000);
-        return;
-      }
+      if (!res.ok) return null;
       const data: {
         representativeKeyword?: string | null;
         source?: string;
@@ -465,21 +479,35 @@ export default function KeywordRankingSection() {
           autoKeywords,
         },
       }));
-      // 대표 키워드는 즉시 확인(메타 포함). 보조/변형은 백그라운드 scanAndRefresh가 순차(7초 간격)로 채운다 — 비용 방어(스펙 #24).
+      return { keyword, autoKeywords };
+    } catch {
+      return null;
+    }
+  }, [profile]);
+
+  // 개별 재추출 버튼(⟳): 추출 + 대표 1개 즉시 순위확인(사용자의 명시적 단건 액션). 보조/변형은 백그라운드가 채운다.
+  const handleExtractRepresentative = useCallback(async (post: BlogPost) => {
+    if (!profile) return;
+    setExtractingRepId(post.id);
+    try {
+      const result = await extractRepresentativeOnly(post, { refine: true });
+      if (!result) {
+        showError('대표 키워드 자동추출에 실패했습니다.', 4000);
+        return;
+      }
+      const { keyword, autoKeywords } = result;
       if (keyword) {
         const primaryMeta = autoKeywords.find(a => a.isPrimary);
         await checkSingleKeyword(post, keyword, false, primaryMeta
           ? { keywordType: primaryMeta.keywordType, isPrimary: true, baseKeyword: primaryMeta.baseKeyword, postUrl: post.url }
           : { keywordType: 'primary', isPrimary: true, postUrl: post.url });
       }
-    } catch {
-      showError('네트워크 오류로 대표 키워드를 추출하지 못했습니다.', 4000);
     } finally {
       setExtractingRepId('');
     }
-  }, [profile, checkSingleKeyword, showError]);
+  }, [profile, extractRepresentativeOnly, checkSingleKeyword, showError]);
 
-  // 대표 키워드가 아직 없는 포스팅을 순차적으로 추출 (네이버 크롤링 + 순위확인이 겹치므로 2초 간격)
+  // 대표 키워드가 아직 없는 포스팅을 순차적으로 "추출만" 실행 (규칙기반이라 저비용 → 0.4초 간격). 순위조회는 별도(스펙 #9).
   const extractAllRepresentative = useCallback(async () => {
     const targets = blogPosts.filter(p => !repKeywordsRef.current[p.id]?.keyword);
     if (targets.length === 0 || extractingAll) return;
@@ -488,14 +516,41 @@ export default function KeywordRankingSection() {
     setExtractProgress({ current: 0, total: targets.length });
     for (let i = 0; i < targets.length; i++) {
       if (extractAbortRef.current) break;
-      await handleExtractRepresentative(targets[i]);
+      await extractRepresentativeOnly(targets[i]);
       setExtractProgress({ current: i + 1, total: targets.length });
-      if (i < targets.length - 1) await new Promise(r => setTimeout(r, 2000));
+      if (i < targets.length - 1) await new Promise(r => setTimeout(r, 400));
     }
     setExtractingAll(false);
-  }, [blogPosts, extractingAll, handleExtractRepresentative]);
+  }, [blogPosts, extractingAll, extractRepresentativeOnly]);
 
-  const stopExtractingAll = () => { extractAbortRef.current = true; };
+  const stopExtractingAll = () => { extractAbortRef.current = true; autoExtractAbortRef.current = true; };
+
+  // 페이지 진입 시(포스트+대표상태 로드 후) 대표 키워드가 없는 포스팅을 백그라운드로 자동 추출한다(스펙 #8).
+  // 규칙기반(제목 우선)이라 저비용이고, 순위 조회(네이버)는 트리거하지 않는다(스펙 #9) —
+  // 버튼을 누르지 않아도 '미확인'이 사라진다. 이미 시도한 포스트는 재시도하지 않고, 페이지 전환/언마운트 시 중단.
+  useEffect(() => {
+    if (!profile?.blogId || !repState || blogPosts.length === 0) return;
+    const known = repState;
+    const targets = blogPosts.filter(
+      p => !known[p.id]?.keyword && !repKeywordsRef.current[p.id]?.keyword && !autoExtractDoneRef.current.has(p.id),
+    );
+    if (targets.length === 0 || autoExtractRunningRef.current || extractingAll) return;
+
+    autoExtractRunningRef.current = true;
+    autoExtractAbortRef.current = false;
+    (async () => {
+      for (const post of targets) {
+        if (autoExtractAbortRef.current) break;
+        autoExtractDoneRef.current.add(post.id);
+        await extractRepresentativeOnly(post);
+        if (autoExtractAbortRef.current) break;
+        await new Promise(r => setTimeout(r, 400));
+      }
+      autoExtractRunningRef.current = false;
+    })();
+
+    return () => { autoExtractAbortRef.current = true; autoExtractRunningRef.current = false; };
+  }, [profile?.blogId, repState, blogPosts, extractingAll, extractRepresentativeOnly]);
 
   // 포스팅의 자동 조회 키워드 pair(대표+보조+변형, 메타 포함). autoKeywords가 없으면 대표만.
   const autoPairsFor = useCallback((post: BlogPost): { post: BlogPost; keyword: string; meta: KeywordMeta }[] => {
@@ -689,10 +744,50 @@ export default function KeywordRankingSection() {
 
   // 캐시 무시하고 현재 페이지 전체를 강제로 다시 조회
   // 사용자별 쿨다운(스펙 12항): 서버 게이트가 마지막 실행 후 30분 이내 재실행을 막는다.
-  const handleForceRefreshAll = async () => {
-    if (!profile || blogPosts.length === 0 || refreshingRef.current) return;
+  // 현재 페이지 전체 조회 대상(대표+보조+변형 + 수동 키워드) 페어를 중복 없이 구성한다.
+  const buildRefreshPairs = useCallback((): { post: BlogPost; keyword: string; meta?: KeywordMeta }[] => {
+    const pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[] = [];
+    const seen = new Set<string>();
+    for (const post of blogPosts) {
+      const kws = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
+      for (const kw of kws) {
+        const key = rankKey(post.id, kw);
+        if (!seen.has(key)) { seen.add(key); pairs.push({ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }); }
+      }
+      for (const p of autoPairsFor(post)) {
+        const key = rankKey(post.id, p.keyword);
+        if (!seen.has(key)) { seen.add(key); pairs.push(p); }
+      }
+    }
+    return pairs;
+  }, [blogPosts, postKeywords, autoPairsFor]);
 
-    // 1) 서버 쿨다운 게이트 확인 — 통과할 때만 실제 재수집을 시작한다.
+  // '지금 업데이트' 1단계: 무조건 조회하지 않고, 조회 대상·예상 호출·캐시 제외 수를 먼저 계산해 확인 패널을 띄운다(스펙 #11/#14).
+  const openRefreshEstimate = () => {
+    if (!profile || blogPosts.length === 0 || refreshingRef.current) return;
+    const pairs = buildRefreshPairs();
+    // 최근 10분 내 조회된(캐시 최신) 키워드는 다시 호출하지 않는다(스펙 #15) → 실제 조회 대상은 stale만.
+    const stalePairs = pairs.filter(p => isStale(rankingResultsRef.current[rankKey(p.post.id, p.keyword)]));
+    setRefreshForceAll(false);
+    setRefreshEstimate({
+      pairs,
+      stalePairs,
+      target: pairs.length,
+      stale: stalePairs.length,
+      fresh: pairs.length - stalePairs.length,
+      // 키워드당 통합·블로그·인플루언서 3탭을 HTML로 실측 → 대략 3배로 추정.
+      estCalls: stalePairs.length * 3,
+    });
+  };
+
+  // '지금 업데이트' 2단계: 사용자 확인 후 서버 쿨다운 게이트를 통과하면 배치 실행. 기본은 캐시 최신 제외(stale만),
+  // '캐시 무시하고 전체 재조회'를 택하면 전체를 강제 재조회한다(스펙 #15).
+  const confirmRefresh = async () => {
+    if (!refreshEstimate || refreshingRef.current) return;
+    const runPairs = refreshForceAll ? refreshEstimate.pairs : refreshEstimate.stalePairs;
+    if (runPairs.length === 0) { setRefreshEstimate(null); return; }
+
+    setRefreshStarting(true);
     try {
       const gateRes = await fetch('/api/my/keyword-ranking/refresh-gate', { method: 'POST' });
       if (gateRes.status === 429) {
@@ -708,23 +803,12 @@ export default function KeywordRankingSection() {
     } catch {
       showError('네트워크 오류로 업데이트를 시작하지 못했습니다.', 5000);
       return;
+    } finally {
+      setRefreshStarting(false);
     }
 
-    // 2) 게이트 통과 → 현재 페이지 전체 키워드를 강제 재조회 (대표+보조+변형 + 수동)
-    const pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[] = [];
-    const seen = new Set<string>();
-    for (const post of blogPosts) {
-      const kws = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
-      for (const kw of kws) {
-        const key = rankKey(post.id, kw);
-        if (!seen.has(key)) { seen.add(key); pairs.push({ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }); }
-      }
-      for (const p of autoPairsFor(post)) {
-        const key = rankKey(post.id, p.keyword);
-        if (!seen.has(key)) { seen.add(key); pairs.push(p); }
-      }
-    }
-    if (pairs.length > 0) runBatch(pairs, { force: true });
+    setRefreshEstimate(null);
+    runBatch(runPairs, { force: refreshForceAll });
   };
 
   // 헤더에 보여줄 전체 데이터의 마지막 갱신 시각 (가장 최근 checkedAt)
@@ -908,16 +992,53 @@ export default function KeywordRankingSection() {
               </button>
             ) : (
               <button
-                onClick={handleForceRefreshAll}
+                onClick={openRefreshEstimate}
                 disabled={postsLoading || blogPosts.length === 0}
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
-                title="등록된 키워드의 순위를 캐시 무시하고 전체 다시 조회합니다 (30분에 1회)"
+                title="조회 대상과 예상 요청 수를 먼저 확인한 뒤 순위를 갱신합니다 (30분에 1회)"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>
                 지금 업데이트
               </button>
             )}
           </div>
+          {refreshEstimate && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              onClick={() => { if (!refreshStarting) setRefreshEstimate(null); }}
+            >
+              <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+                <h3 className="text-base font-bold mb-1">순위 업데이트 확인</h3>
+                <p className="text-xs text-dim mb-4">무조건 전체를 조회하지 않고, 아래 대상만 네이버 검색으로 순위를 확인합니다.</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-dim">조회 대상</span><span className="font-bold">{refreshEstimate.target}개</span></div>
+                  <div className="flex justify-between"><span className="text-dim">최근 조회 캐시 제외</span><span className="font-bold">{refreshEstimate.fresh}개</span></div>
+                  <div className="flex justify-between"><span className="text-accent">순위 확인 필요</span><span className="font-bold text-accent">{refreshForceAll ? refreshEstimate.target : refreshEstimate.stale}개</span></div>
+                  <div className="flex justify-between"><span className="text-dim">예상 검색 요청</span><span className="font-bold">약 {(refreshForceAll ? refreshEstimate.target : refreshEstimate.stale) * 3}회</span></div>
+                </div>
+                <p className="text-[11px] text-dim mt-1.5">키워드당 통합·블로그·인플루언서 3개 탭을 검색결과 화면에서 실측(HTML)합니다.</p>
+                <label className="flex items-center gap-2 mt-3 text-xs text-dim cursor-pointer select-none">
+                  <input type="checkbox" checked={refreshForceAll} onChange={e => setRefreshForceAll(e.target.checked)} className="accent-accent w-3.5 h-3.5" />
+                  캐시 무시하고 전체({refreshEstimate.target}개) 다시 조회
+                </label>
+                {refreshEstimate.stale === 0 && !refreshForceAll && (
+                  <p className="text-[11px] text-accent mt-2">모든 키워드가 최신입니다(최근 10분 내 조회). 다시 조회하려면 위 옵션을 선택하세요.</p>
+                )}
+                <div className="flex gap-2 mt-5">
+                  <button
+                    onClick={() => setRefreshEstimate(null)}
+                    disabled={refreshStarting}
+                    className="flex-1 px-4 py-2 rounded-xl border border-border text-dim font-bold text-sm hover:bg-bg transition cursor-pointer disabled:opacity-50"
+                  >취소</button>
+                  <button
+                    onClick={confirmRefresh}
+                    disabled={refreshStarting || (refreshEstimate.stale === 0 && !refreshForceAll)}
+                    className="flex-1 px-4 py-2 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+                  >{refreshStarting ? '시작 중…' : '조회 시작'}</button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-1.5 text-[11px] text-dim h-4">
             {checkingAll && (
               <span className="w-2.5 h-2.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block shrink-0" />
