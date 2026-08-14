@@ -47,13 +47,17 @@ export async function GET(request: NextRequest) {
 
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
+  // 선택적 postId 필터 — 키워드 상세 드로어가 단건만 읽을 때 페이로드를 줄인다(스펙 #16).
+  const postId = request.nextUrl.searchParams.get('postId')?.trim();
 
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('ai_briefing_exposures')
     .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, ai_briefing_source_url, ai_tab_source_url, post_url, checked_at, search_volume_monthly, competition, related_keyword_count, check_status, last_error')
     .eq('user_id', g.userId)
     .eq('blog_id', blogId);
+  if (postId) query = query.eq('post_id', postId);
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
 

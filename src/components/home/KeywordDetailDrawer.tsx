@@ -24,6 +24,8 @@ interface Props {
 export default function KeywordDetailDrawer({ blogId, post, keyword, result, delta, meta, onClose }: Props) {
   const [series, setSeries] = useState<HistorySeries | null>(null);
   const [loading, setLoading] = useState(true);
+  // AI 브리핑/탭 노출(스펙 #16) — 저장된 결과만 읽는다(라이브 확인·AI 호출 없음, 스펙 #20).
+  const [cite, setCite] = useState<{ exposed: boolean | null; tabExposed: boolean | null; checkedAt: string | null } | null | undefined>(undefined);
 
   useEffect(() => {
     // 드로어는 상세 키워드마다 key로 새로 마운트되므로 loading 초기값(true)이 곧 이 요청의 로딩 상태다.
@@ -35,6 +37,21 @@ export default function KeywordDetailDrawer({ blogId, post, keyword, result, del
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [blogId, post.id, keyword]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/my/ai-briefing-state?blogId=${encodeURIComponent(blogId)}&postId=${encodeURIComponent(post.id)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (cancelled) return;
+        const results: Record<string, { exposed: boolean | null; tabExposed: boolean | null; checkedAt: string | null }> = data?.briefingResults ?? {};
+        // 대표키워드 기준으로 확인되므로 keyword → baseKeyword 순으로 매칭한다.
+        const hit = results[`${post.id}::${keyword}`] ?? (meta?.baseKeyword ? results[`${post.id}::${meta.baseKeyword}`] : undefined);
+        setCite(hit ?? null);
+      })
+      .catch(() => { if (!cancelled) setCite(null); });
+    return () => { cancelled = true; };
+  }, [blogId, post.id, keyword, meta?.baseKeyword]);
 
   const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
   const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
@@ -81,6 +98,18 @@ export default function KeywordDetailDrawer({ blogId, post, keyword, result, del
           </div>
         </div>
 
+        {/* AI 브리핑 / AI 탭 노출 (스펙 #16) — 저장된 확인 결과만 표시(라이브 확인 없음) */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-border p-3">
+            <div className="text-[11px] text-dim mb-1">AI 브리핑 노출</div>
+            <CiteBadge state={cite === undefined ? undefined : cite?.exposed ?? null} />
+          </div>
+          <div className="rounded-lg border border-border p-3">
+            <div className="text-[11px] text-dim mb-1">AI 탭 노출</div>
+            <CiteBadge state={cite === undefined ? undefined : cite?.tabExposed ?? null} />
+          </div>
+        </div>
+
         {/* 전일/7일 대비 (통합검색 기준) */}
         <div className="flex items-center gap-4 text-xs">
           <div>
@@ -108,6 +137,15 @@ export default function KeywordDetailDrawer({ blogId, post, keyword, result, del
       </div>
     </div>
   );
+}
+
+/** AI 브리핑/탭 노출 뱃지 — undefined=로딩, null=미확인, true=인용, false=미인용. */
+function CiteBadge({ state }: { state: boolean | null | undefined }) {
+  if (state === undefined) return <span className="text-sm text-dim">…</span>;
+  if (state === null) return <span className="text-sm font-bold text-dim">미확인</span>;
+  return state
+    ? <span className="text-sm font-bold text-up">인용 ○</span>
+    : <span className="text-sm font-bold text-down">미인용 ✕</span>;
 }
 
 /** 순위 스파크라인 — 순위 숫자가 낮을수록(좋을수록) 위로. 미노출(rank=null) 지점은 선을 끊는다. */
