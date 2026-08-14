@@ -20,7 +20,8 @@ export type CreditFeature =
   | 'ai_consultant'      // AI 컨설턴트 (구독만 — 크레딧 미차감, 무료 5회/일 정책 유지)
   | 'bulk_search_volume' // 대량 검색량 조회 (≤100, 네이버 검색광고 API)
   | 'bulk_top3'          // 대량 TOP3 순위 조회 (≤50, 네이버 API)
-  | 'bulk_index_register'; // 대량 구글 색인등록 (≤300, GSC API)
+  | 'bulk_index_register' // 대량 구글 색인등록 (≤300, GSC API)
+  | 'bulk_exposure_check'; // 노출 현황 30일 이전 확장 조회 (초과 1개당 과금 — amountOverride 로 개수×단가)
 
 /**
  * 기능별 차감 크레딧. 0 = 크레딧 미차감(구독 권한만으로 이용).
@@ -42,6 +43,7 @@ export const CREDIT_COSTS: Record<CreditFeature, number> = {
   bulk_search_volume: 8, // 대량 검색량(≤100건 배치)
   bulk_top3: 5,          // 대량 TOP3(≤50건 배치)
   bulk_index_register: 8,// 대량 색인등록(≤300건 배치)
+  bulk_exposure_check: 1,// 노출 현황 확장 조회 — 무료 90개 초과분 "1개당" 단가(amountOverride=초과개수×이 값)
 };
 
 /** 사용자에게 보여줄 기능 한글명 (거래내역/부족 안내용) */
@@ -59,6 +61,7 @@ export const CREDIT_FEATURE_LABELS: Record<CreditFeature, string> = {
   bulk_search_volume: '대량 검색량 조회',
   bulk_top3: '대량 TOP3 순위 조회',
   bulk_index_register: '대량 색인 등록',
+  bulk_exposure_check: '노출 현황 확장 조회',
 };
 
 /** 크레딧 충전 상품 (초안). 가격은 원(KRW). 크레딧당 약 9~11원. */

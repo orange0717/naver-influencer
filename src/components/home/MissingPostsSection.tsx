@@ -11,11 +11,18 @@ import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
 import { fetchWithTimeout, getProfileFromApi, CHECK_FRESH_MS } from './BlogAnalysisSection.helpers';
 import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
+import { useAuth } from '@/hooks/useAuth';
+import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
+import { useRouter } from 'next/navigation';
+
+// §1·§12·§19 최근 N일까지는 기본(무료) 조회, 초과는 회원 전용. 서버(exposure-policy.ts)가 과금·권한을 최종 강제하며
+// 여기 값은 UI 게이팅용(동일 기본값 30). 서버와 어긋나도 서버가 최종 판단하므로 안전.
+const FREE_DAYS = 30;
+// 확장(회원 전용): 기간이 '전체(0)'이거나 FREE_DAYS 초과면 30일 이전 조회 → 회원 전용 + 크레딧 정책 대상.
+function isExtendedPeriod(n: Period): boolean { return n === 0 || n > FREE_DAYS; }
 
 const PERIOD_OPTIONS = [7, 15, 30, 90, 120, 0] as const; // 0 = 전체(일수 기준 아님)
 type Period = typeof PERIOD_OPTIONS[number];
-const PER_PAGE = 30;
-const MAX_PAGES_ALL = 20; // 안전장치: 최대 600개까지만 조회
 const DAY_MS = 24 * 60 * 60 * 1000;
 // 페이지 진입 시 최근 발행글을 자동 검사하는 개수 — 최신 상태를 자동 갱신하되 대량 호출은 피한다.
 // 이미 최근(CHECK_FRESH_MS 내) 검사된 글은 runBatch가 건너뛰므로 실제 호출은 이보다 적다.
@@ -34,6 +41,19 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 
 type PostMissingEntry = MissingState;
+
+// /api/blog/exposure-extend/plan 응답 (§4·§5·§6)
+type ExtendPlan = {
+  creditsEnabled: boolean;
+  freeLimit: number;
+  totalCandidates: number;
+  cached: number;
+  newChecks: number;
+  chargeable: number;
+  unit: number;
+  estCredits: number;
+  balance: number;
+};
 
 // §7 노출↔미노출 전환 이력 (API /my/post-missing-history 응답)
 type HistoryEntry = {
@@ -181,6 +201,26 @@ export default function MissingPostsSection() {
   const abortRef = useRef(false);
   const autoCheckedRef = useRef(false); // 진입 자동검사 1회만 실행
 
+  // 회원/권한 (§3·§12·§13) + 크레딧 정책 모달 (§2·§6·§8)
+  const { user } = useAuth();
+  const isMember = !!user.id;
+  const { openGate } = useMemberOnlyGate();
+  const router = useRouter();
+  // §2 "이전 포스팅도 확인하시겠습니까?" 진입 프롬프트
+  const [showMorePrompt, setShowMorePrompt] = useState(false);
+  const morePromptDismissedRef = useRef(false); // 여기까지만 보기 → 세션 내 재노출 안 함
+  // 확장(30일 이전) 조회 게이트 모달 — confirm(무료 대량 안내)/credit(크레딧 안내)/insufficient(부족)
+  const [extendModal, setExtendModal] = useState<
+    | null
+    | { phase: 'confirm'; scopeDays: Period; candidates: BlogPost[]; plan: ExtendPlan }
+    | { phase: 'credit'; scopeDays: Period; candidates: BlogPost[]; plan: ExtendPlan }
+    | { phase: 'insufficient'; required: number; balance: number }
+  >(null);
+  const [extendBusy, setExtendBusy] = useState(false); // plan/authorize 요청 중
+  const [autoCheckDone, setAutoCheckDone] = useState(false); // 진입 자동검사(최근 30일) 완료 여부 — §2 프롬프트 트리거
+  const extendJobRef = useRef<{ jobId: string | null; newCheckIds: string[] } | null>(null);
+  const runningExtendedRef = useRef(false); // 중복 실행(이중 차감) 방지 가드 (§9)
+
   useEffect(() => () => { abortRef.current = true; }, []);
 
   useEffect(() => {
@@ -199,30 +239,17 @@ export default function MissingPostsSection() {
     return null;
   }, [customFrom, period]);
   const rangeTo = useMemo(() => (customTo ? new Date(`${customTo}T23:59:59`) : null), [customTo]);
-  const thirtyDaysAgo = useMemo(() => new Date(Date.now() - 30 * DAY_MS), []);
-  const fetchCutoff = useMemo(() => {
-    if (usingCustomRange) return rangeFrom; // 직접 선택 시엔 정확히 그 범위만
-    if (rangeFrom) return rangeFrom < thirtyDaysAgo ? rangeFrom : thirtyDaysAgo;
-    return null; // 전체
-  }, [usingCustomRange, rangeFrom, thirtyDaysAgo]);
+  const thirtyDaysAgo = useMemo(() => new Date(Date.now() - FREE_DAYS * DAY_MS), []);
 
-  const fetchPosts = useCallback(async (blogId: string, cutoff: Date | null) => {
+  // 전체 포스팅 목록을 한 번 로드한다(캐시됨). 목록 조회 자체는 과금 대상이 아니며(네이버 노출 "검사"만 과금),
+  // 이렇게 전체를 확보해야 30일 이전 개수·후보를 정확히 계산할 수 있다. 기간 필터는 클라이언트 표시용이다.
+  const fetchPosts = useCallback(async (blogId: string) => {
     setPostsLoading(true);
     try {
-      const all: BlogPost[] = [];
-      for (let page = 1; page <= MAX_PAGES_ALL; page++) {
-        const res = await fetchWithTimeout(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=${page}&count=${PER_PAGE}`);
-        if (!res.ok) break;
-        const data = await res.json();
-        const pagePosts: BlogPost[] = data.posts || [];
-        all.push(...pagePosts);
-        if (pagePosts.length < PER_PAGE) break; // 마지막 페이지
-        if (cutoff) {
-          const lastDate = parsePostDate(pagePosts[pagePosts.length - 1].date);
-          if (lastDate && lastDate < cutoff) break;
-        }
-      }
-      setPosts(all);
+      const res = await fetchWithTimeout(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&all=true`);
+      if (!res.ok) { setErrorMessage('포스트 목록을 불러오지 못했습니다.'); setPosts([]); return; }
+      const data = await res.json();
+      setPosts(Array.isArray(data.posts) ? data.posts : []);
     } catch {
       setErrorMessage('포스트 목록을 불러오지 못했습니다.');
     } finally {
@@ -263,9 +290,9 @@ export default function MissingPostsSection() {
 
   useEffect(() => {
     if (!profile) return;
-    fetchPosts(profile.blogId, fetchCutoff);
+    fetchPosts(profile.blogId);
     fetchMissingState(profile.blogId);
-  }, [profile, fetchCutoff, fetchPosts, fetchMissingState]);
+  }, [profile, fetchPosts, fetchMissingState]);
 
   // 검사 1건 결과 — status(성공/실패) + 서버가 확정한 판정(verdict). 배치 완료 요약(§12)에서 노출/미노출 집계에 쓴다.
   type CheckOutcome = { status: 'ok' | 'failed'; verdict: ExposureVerdict | null };
@@ -377,17 +404,112 @@ export default function MissingPostsSection() {
     setConfirmBatch({ targets, toCheck, force: !!opts?.force });
   }, [willHitNaver, runBatch]);
 
-  // 진입 시 최근 발행글 자동검사 (오렌지 지정) — 검사 안 됐거나 오래된(신선도 만료) 최근 글만 새 로직으로 갱신.
-  // runBatch가 willHitNaver로 이미 최근 검사된 글은 건너뛰므로, 하루 한 번꼴로만 실제 네이버 호출이 발생한다.
+  // §1·§20 진입 시 "최근 30일" 무료 구간만 자동검사한다. 30일 이전은 회원 전용 확장 흐름(beginExtended)에서만 검사.
   useEffect(() => {
     if (!profile || postsLoading || posts.length === 0 || autoCheckedRef.current) return;
     autoCheckedRef.current = true;
+    const freeCutoff = thirtyDaysAgo.getTime();
     const recent = [...posts]
+      .filter(p => (parsePostDate(p.date)?.getTime() ?? 0) >= freeCutoff) // 무료 구간(최근 30일)만
       .sort((a, b) => (parsePostDate(b.date)?.getTime() || 0) - (parsePostDate(a.date)?.getTime() || 0))
       .slice(0, AUTO_CHECK_LIMIT);
     const now = Date.now();
     if (recent.some(p => willHitNaver(p, now))) runBatch(recent);
-  }, [profile, postsLoading, posts, willHitNaver, runBatch]);
+    setAutoCheckDone(true);
+  }, [profile, postsLoading, posts, thirtyDaysAgo, willHitNaver, runBatch]);
+
+  // 30일 이전 공개 글 수(§2·§4 "추가 확인 가능") — 회원 확장 조회 후보의 최대 규모.
+  const olderCount = useMemo(() => {
+    const cutoff = thirtyDaysAgo.getTime();
+    return posts.filter(p => p.isPublic !== false && (parsePostDate(p.date)?.getTime() ?? Infinity) < cutoff).length;
+  }, [posts, thirtyDaysAgo]);
+
+  // §4·§18 30일 이전 후보: 선택 scope 내(scopeDays>0면 그 기간 이내) & 30일 이전 & 공개 글
+  const olderCandidatesFor = useCallback((scopeDays: Period): BlogPost[] => {
+    const now = Date.now();
+    const cutoff = now - FREE_DAYS * DAY_MS;
+    const scopeFrom = scopeDays > 0 ? now - scopeDays * DAY_MS : -Infinity;
+    return posts.filter(p => {
+      if (p.isPublic === false) return false;
+      const t = parsePostDate(p.date)?.getTime();
+      if (t == null) return false;
+      return t < cutoff && t >= scopeFrom;
+    });
+  }, [posts]);
+
+  // §9·§10·§20 확장 조회 실행: 서버 승인(과금) → 배치 검사 → 정산(환불). 승인 실패(부족)면 부족 모달.
+  const runExtended = useCallback(async (candidates: BlogPost[]) => {
+    if (!profile || candidates.length === 0) return;
+    if (runningExtendedRef.current) return; // §9 중복 클릭/동시 실행 차단 — 이중 차감 방지
+    runningExtendedRef.current = true;
+    const clientJobId = newViewToken(); // 멱등 키(uuid)
+    setExtendBusy(true);
+    try {
+      const res = await fetch('/api/blog/exposure-extend/authorize', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, candidatePostIds: candidates.map(p => p.id), clientJobId }),
+      });
+      if (res.status === 402) {
+        const d = await res.json().catch(() => ({}));
+        setExtendModal({ phase: 'insufficient', required: d.required ?? 0, balance: d.balance ?? 0 });
+        return;
+      }
+      if (!res.ok) { setErrorMessage('확장 조회 승인에 실패했습니다.'); return; }
+      const auth = await res.json();
+      const newIds: string[] = Array.isArray(auth.newCheckIds) ? auth.newCheckIds : [];
+      extendJobRef.current = { jobId: auth.jobId ?? null, newCheckIds: newIds };
+      const idSet = new Set(newIds);
+      const newPosts = candidates.filter(p => idSet.has(p.id));
+      setExtendModal(null);
+      setShowMorePrompt(false);
+      morePromptDismissedRef.current = true; // 확장 조회 시작 후엔 §2 프롬프트 재노출 안 함
+      await runBatch(newPosts, { force: false });
+      // §10 정산 — 완료/중단 무관하게 서버가 DB 근거로 미완료 과금분을 환불 산정
+      const jr = extendJobRef.current;
+      if (jr?.jobId) {
+        fetch('/api/blog/exposure-extend/settle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId: jr.jobId, blogId: profile.blogId, newCheckIds: jr.newCheckIds, status: abortRef.current ? 'cancelled' : 'completed' }),
+        }).catch(() => {});
+      }
+    } catch { setErrorMessage('확장 조회 중 오류가 발생했습니다.'); }
+    finally { setExtendBusy(false); runningExtendedRef.current = false; }
+  }, [profile, runBatch]);
+
+  // §2·§3·§12·§20 확장 조회 시작(권한·계획·모달 분기).
+  const beginExtended = useCallback(async (scopeDays: Period, opts?: { fromPrompt?: boolean }) => {
+    if (!profile) return;
+    if (!isMember) { openGate('/my/missing-posts'); return; } // §3 비회원 → 로그인/회원가입 (API 호출 안 함)
+    setPeriod(scopeDays); setCustomFrom(''); setCustomTo(''); // 목록에 30일 이전 글 노출(미확인 상태)
+    const candidates = olderCandidatesFor(scopeDays);
+    if (candidates.length === 0) { setShowMorePrompt(false); return; }
+    setExtendBusy(true);
+    try {
+      const res = await fetch('/api/blog/exposure-extend/plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, candidatePostIds: candidates.map(p => p.id) }),
+      });
+      if (!res.ok) { setErrorMessage('조회 대상 계산에 실패했습니다.'); return; }
+      const plan: ExtendPlan = await res.json();
+      if (plan.newChecks === 0) { setShowMorePrompt(false); return; } // 이미 전부 캐시/확인됨 — 추가 조회 불필요
+      if (plan.creditsEnabled && plan.chargeable > 0) {
+        if (plan.balance < plan.estCredits) { setExtendModal({ phase: 'insufficient', required: plan.estCredits, balance: plan.balance }); return; }
+        setExtendModal({ phase: 'credit', scopeDays, candidates, plan }); return;
+      }
+      // 무료(≤90 또는 크레딧 비활성): §2 프롬프트 경유면 이미 동의 → 바로 실행. 기간버튼 경유면 대량 안내 확인.
+      if (opts?.fromPrompt) await runExtended(candidates);
+      else setExtendModal({ phase: 'confirm', scopeDays, candidates, plan });
+    } catch { setErrorMessage('조회 대상 계산 중 오류가 발생했습니다.'); }
+    finally { setExtendBusy(false); }
+  }, [profile, isMember, openGate, olderCandidatesFor, runExtended]);
+
+  // §2 최근 30일 자동검사 완료 후, 30일 이전 글이 있으면 "이전 포스팅도 확인하시겠습니까?" 프롬프트 노출(1회).
+  useEffect(() => {
+    if (!autoCheckDone || checkingAll || postsLoading) return;
+    if (morePromptDismissedRef.current) return;
+    if (isExtendedPeriod(period)) return; // 이미 확장 조회로 진입함
+    if (olderCount > 0) setShowMorePrompt(true);
+  }, [autoCheckDone, checkingAll, postsLoading, period, olderCount]);
 
   // 선택한 기간(직접 선택 포함)으로 정확히 트리밍 — fetchPosts는 안전을 위해 30일치를 항상 더 넉넉히 불러오므로 여기서 최종 필터링
   const periodPosts = useMemo(() => posts.filter(p => {
@@ -454,8 +576,16 @@ export default function MissingPostsSection() {
     return arr;
   }, [periodPostsDated, missingResults, statusFilter, areaFilter, searchQuery, sortBy]);
 
-  // §9 '미확인 n개 검사' 대상 = 실제 상태가 '미확인'(검사 기록 없음)인 글만.
-  const uncheckedPosts = useMemo(() => periodPostsDated.filter(p => classifyExposure(p, missingResults[p.id]) === 'unchecked'), [periodPostsDated, missingResults]);
+  // §9 '미확인 n개 검사' 대상 = 실제 상태가 '미확인'(검사 기록 없음)인 글만. 단, 무료 구간(최근 30일)만 —
+  // 30일 이전 미확인 글은 회원 전용 확장 조회(크레딧 정책)로만 검사되므로 이 무료 버튼 대상에서 제외한다.
+  const uncheckedPosts = useMemo(() => {
+    const freeCutoff = thirtyDaysAgo.getTime();
+    return periodPostsDated.filter(p => {
+      const t = p.publishedAt?.getTime();
+      if (t == null || t < freeCutoff) return false; // 30일 이전 제외
+      return classifyExposure(p, missingResults[p.id]) === 'unchecked';
+    });
+  }, [periodPostsDated, missingResults, thirtyDaysAgo]);
   const uncheckedCount = uncheckedPosts.length;
 
   const toggleOne = useCallback((id: string) => {
@@ -586,12 +716,24 @@ export default function MissingPostsSection() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
-            {PERIOD_OPTIONS.map(n => (
-              <button key={n} onClick={() => { setPeriod(n); setCustomFrom(''); setCustomTo(''); }}
-                className={`px-3 py-1.5 font-semibold transition cursor-pointer ${!usingCustomRange && period === n ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'}`}>
-                {n === 0 ? '전체' : `${n}일`}
-              </button>
-            ))}
+            {/* §12·§13 기간 필터 — 30일 이하는 누구나, 90/120/전체는 회원 전용(🔒). 회원이 선택하면 확장 조회 흐름 시작. */}
+            {PERIOD_OPTIONS.map(n => {
+              const extended = isExtendedPeriod(n);
+              const locked = extended && !isMember;
+              return (
+                <button key={n} disabled={extendBusy}
+                  title={locked ? '30일 이전 조회는 회원 전용입니다' : undefined}
+                  onClick={() => {
+                    if (extended) {
+                      if (!isMember) { openGate('/my/missing-posts'); return; } // §3·§13 비회원 → 로그인/회원가입
+                      beginExtended(n);
+                    } else { setPeriod(n); setCustomFrom(''); setCustomTo(''); }
+                  }}
+                  className={`px-3 py-1.5 font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${!usingCustomRange && period === n ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'}`}>
+                  {n === 0 ? '전체' : `${n}일`}{locked && ' 🔒'}
+                </button>
+              );
+            })}
           </div>
           <div className="flex items-center gap-1.5 text-[11px]">
             <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
@@ -603,7 +745,12 @@ export default function MissingPostsSection() {
               <button onClick={() => { setCustomFrom(''); setCustomTo(''); }} className="text-accent hover:underline font-semibold cursor-pointer">초기화</button>
             )}
           </div>
+          {extendBusy && <span className="text-[11px] text-accent font-semibold flex items-center gap-1"><span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />조회 대상 계산 중...</span>}
         </div>
+        {/* §16 이용 기준 안내(작게) */}
+        <p className="text-[11px] text-dim">
+          최근 {FREE_DAYS}일 기본 조회 · 30일 이전은 <b className="text-text">회원 전용</b> · 대량 조회 시 크레딧이 사용될 수 있습니다.
+        </p>
         {/* §3 빠른 상태 필터 — 전체/노출/미노출/일부 노출/미확인 (기본값 전체) */}
         <div className="flex rounded-lg border border-border overflow-hidden text-[11px] w-fit">
           {STATUS_FILTERS.map(f => (
@@ -952,6 +1099,88 @@ export default function MissingPostsSection() {
               <button onClick={() => { const c = confirmBatch; setConfirmBatch(null); runBatch(c.targets, { force: c.force }); }}
                 className="px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer">
                 분석 시작
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* §2 "이전 포스팅도 확인하시겠습니까?" 진입 프롬프트 — 최근 30일 완료 + 30일 이전 글 존재 시 */}
+      <Modal open={showMorePrompt} onClose={() => { morePromptDismissedRef.current = true; setShowMorePrompt(false); }} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+        <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md mx-4 p-6">
+          <h3 className="font-bold text-base mb-3">이전 포스팅도 확인하시겠습니까?</h3>
+          <div className="text-xs text-dim leading-relaxed space-y-2">
+            <p>최근 {FREE_DAYS}일 포스팅의 노출 상태 확인이 완료되었습니다.</p>
+            <p>{FREE_DAYS}일 이전 포스팅도 계속 확인할 수 있습니다. {FREE_DAYS}일 이전 데이터 조회는 <b className="text-text">회원 전용</b> 기능입니다.</p>
+            <div className="flex gap-4 pt-1">
+              <span>현재 확인 완료: <b className="text-text">{normalCount + partialCount + missingCount}개</b></span>
+              <span>추가 확인 가능: <b className="text-text">{olderCount}개</b></span>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-5">
+            <button onClick={() => { morePromptDismissedRef.current = true; setShowMorePrompt(false); }}
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-bg border border-border text-dim hover:border-accent/30 transition-colors cursor-pointer">
+              여기까지만 보기
+            </button>
+            <button disabled={extendBusy}
+              onClick={() => { setShowMorePrompt(false); if (!isMember) { openGate('/my/missing-posts'); return; } beginExtended(0, { fromPrompt: true }); }}
+              className="px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
+              이전 포스팅 더 확인하기
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* §6 크레딧 안내 / §2 무료 대량 확인 / §8 크레딧 부족 — 확장 조회 게이트 */}
+      <Modal open={!!extendModal} onClose={() => setExtendModal(null)} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+        {extendModal && (extendModal.phase === 'credit' || extendModal.phase === 'confirm') && (
+          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="font-bold text-base mb-3">
+              {extendModal.phase === 'credit' ? '추가 조회에 크레딧이 필요합니다' : '이전 포스팅을 확인합니다'}
+            </h3>
+            <div className="text-xs text-dim leading-relaxed space-y-2">
+              <p>이번에 새로 확인할 포스팅: <b className="text-text">{extendModal.plan.newChecks}개</b>
+                {extendModal.plan.cached > 0 && <span className="text-dim"> (이미 확인된 {extendModal.plan.cached}개 제외)</span>}</p>
+              {extendModal.phase === 'credit' ? (
+                <div className="p-2.5 rounded-lg bg-bg space-y-1">
+                  <div className="flex justify-between"><span>회원 기본(무료) 조회</span><b className="text-text">{extendModal.plan.freeLimit}개</b></div>
+                  <div className="flex justify-between"><span>추가(크레딧) 조회</span><b className="text-text">{extendModal.plan.chargeable}개</b></div>
+                  <div className="flex justify-between"><span>사용 예정 크레딧</span><b className="text-accent">{extendModal.plan.estCredits} 크레딧</b></div>
+                  <div className="flex justify-between border-t border-border pt-1 mt-1"><span>현재 보유 크레딧</span><b className="text-text">{extendModal.plan.balance} 크레딧</b></div>
+                </div>
+              ) : (
+                <p className="p-2.5 rounded-lg bg-amber-500/10 text-amber-700">글마다 통합검색·블로그·인플루언서를 조회하므로 다소 시간이 걸릴 수 있습니다. 무료 조회 범위({extendModal.plan.freeLimit}개) 내라 크레딧은 차감되지 않습니다.</p>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button onClick={() => setExtendModal(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-bg border border-border text-dim hover:border-accent/30 transition-colors cursor-pointer">
+                취소
+              </button>
+              <button disabled={extendBusy}
+                onClick={() => { const m = extendModal; if (m.phase === 'credit' || m.phase === 'confirm') runExtended(m.candidates); }}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
+                {extendModal.phase === 'credit' ? '크레딧 사용하고 계속' : '이전 포스팅 더 확인하기'}
+              </button>
+            </div>
+          </div>
+        )}
+        {extendModal && extendModal.phase === 'insufficient' && (
+          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-sm mx-4 p-6">
+            <h3 className="font-bold text-base mb-3">크레딧이 부족합니다</h3>
+            <div className="text-xs text-dim leading-relaxed space-y-1">
+              <div className="flex justify-between"><span>필요 크레딧</span><b className="text-text">{extendModal.required}</b></div>
+              <div className="flex justify-between"><span>현재 크레딧</span><b className="text-text">{extendModal.balance}</b></div>
+              <p className="pt-1 text-down font-semibold">{Math.max(0, extendModal.required - extendModal.balance)} 크레딧이 부족합니다.</p>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button onClick={() => setExtendModal(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-bg border border-border text-dim hover:border-accent/30 transition-colors cursor-pointer">
+                취소
+              </button>
+              <button onClick={() => { setExtendModal(null); router.push('/subscribe'); }}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer">
+                크레딧 충전하기
               </button>
             </div>
           </div>
