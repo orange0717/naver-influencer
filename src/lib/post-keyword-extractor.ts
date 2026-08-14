@@ -34,6 +34,35 @@ interface PostBodyParts {
   emphasisText: string;
   firstParagraph: string;
   lastParagraph: string;
+  /** 본문 HTML에서 함께 파싱한 태그(#제거) — 추가 크롤링 없이 스펙 #3③ 신호로 활용. */
+  tags: string[];
+  /** 본문 HTML에서 함께 파싱한 카테고리 — 스펙 #3④ 신호. 없으면 null. */
+  category: string | null;
+}
+
+/** 네이버 블로그 PostView HTML에서 태그 목록을 파싱(#접두 제거, 중복/과다 방지). 없으면 빈 배열. */
+function parsePostTags($: cheerio.CheerioAPI): string[] {
+  const selectors = ['.wrap_tag a', '.post_tag a', 'a.item_tag', '.tag_area a', '.se-module-tag a'];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const sel of selectors) {
+    $(sel).each((_, el) => {
+      const t = $(el).text().replace(/^#/, '').replace(/\s+/g, ' ').trim();
+      if (t && t.length <= 40 && !seen.has(t)) { seen.add(t); out.push(t); }
+    });
+    if (out.length > 0) break; // 첫 번째로 매칭된 셀렉터의 결과만 사용
+  }
+  return out.slice(0, 20);
+}
+
+/** 네이버 블로그 PostView HTML에서 카테고리명을 파싱. 없으면 null. */
+function parsePostCategory($: cheerio.CheerioAPI): string | null {
+  const selectors = ['.blog2_series .category', '.blog_category', '.se-module-category', '.category a', 'a.category'];
+  for (const sel of selectors) {
+    const t = $(sel).first().text().replace(/\s+/g, ' ').trim();
+    if (t && t.length <= 40) return t;
+  }
+  return null;
 }
 
 /** 포스트 본문을 가져와 구조별 텍스트로 분리(STEP 2: 반복빈도/강조/첫문단/마지막문단/H태그) */
@@ -95,10 +124,23 @@ async function fetchPostBodyParts(blogId: string, postId: string): Promise<PostB
       emphasisText,
       firstParagraph: fallbackParagraphs[0] || '',
       lastParagraph: fallbackParagraphs[fallbackParagraphs.length - 1] || '',
+      tags: parsePostTags($),
+      category: parsePostCategory($),
     };
   } catch {
     return null;
   }
+}
+
+/** 호출자 opts와 본문에서 파싱한 태그를 합쳐 중복 제거(호출자 지정 우선). */
+function mergeTags(fromOpts: string[] | undefined, fromBody: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of [...(fromOpts || []), ...fromBody]) {
+    const k = (t || '').trim();
+    if (k && !seen.has(k)) { seen.add(k); out.push(k); }
+  }
+  return out.slice(0, 20);
 }
 
 function dedupeKeywords(arr: (string | null | undefined)[]): string[] {
@@ -143,11 +185,16 @@ export async function extractRepresentativeKeywords(
   // 애매한 경우에만 본문을 크롤링해 상위 빈도 명사구로 보정한다.
   let bodyText: string | null = null;
   let withBody: ReturnType<typeof extractKeywordCandidates> | null = null;
+  // 본문에서 함께 파싱한 태그/카테고리(추가 크롤링 없음) — AI 보정 신호로도 재사용(스펙 #3③④).
+  let mergedTags = opts.tags;
+  let mergedCategory = opts.category ?? null;
   if (opts.allowBody) {
     const body = await fetchPostBodyParts(blogId, postId);
     if (body) {
       bodyText = body.fullText;
-      withBody = extractKeywordCandidates({ ...input, bodyText: body.fullText });
+      mergedTags = mergeTags(opts.tags, body.tags);
+      mergedCategory = mergedCategory || body.category;
+      withBody = extractKeywordCandidates({ ...input, tags: mergedTags, category: mergedCategory, bodyText: body.fullText });
       // 본문 보정으로 확신이 서면 확정(스펙 #2 본문 분석).
       if (withBody.primary && !withBody.ambiguous) {
         return { keywords: dedupeKeywords([withBody.primary, ...withBody.secondaries]), source: 'title+body', confidence: withBody.confidence };
@@ -157,7 +204,7 @@ export async function extractRepresentativeKeywords(
 
   // 규칙+본문으로도 애매하면 Claude Haiku로 1회 보정한다(하이브리드, 스펙 #2). 저신뢰 구간에만 진입.
   if (opts.allowAI) {
-    const ai = await aiExtractKeyword({ title, tags: opts.tags, category: opts.category ?? null, bodyText });
+    const ai = await aiExtractKeyword({ title, tags: mergedTags, category: mergedCategory, bodyText });
     if (ai) {
       return { keywords: dedupeKeywords([ai.primary, ...ai.secondaries]), source: 'ai', confidence: 0.9 };
     }
