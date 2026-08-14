@@ -47,6 +47,10 @@ const DATE_RE = /^\d+\s*(년|월|일)$/;
 // 순수 숫자(17). 구 중간이면 모델명으로 흡수(아이폰 17), 맨 앞이면 버린다.
 const BARE_NUMBER_RE = /^\d+$/;
 
+// 구(run) 경계 표식 — 괄호류(부가설명)를 제목 본류와 분리하기 위해 tokenizeTitle이 삽입한다(스펙 #1: 제목 우선).
+// 예) "인생명언 (전도서 말씀구절 中)" → "인생명언"이 본류, 괄호 안은 별개 run으로 분리.
+const RUN_BREAK = '§';
+
 // 어절 끝 조사 — 길이 내림차순으로 시도하며, 명사 어간이 2자 이상 남을 때만 제거(과대제거 방지).
 // 예) 솔로몬의 → 솔로몬 / 글귀를 → 글귀 / 사과(과) → 어간 1자라 제거 안 함.
 const JOSA_SUFFIXES = [
@@ -137,6 +141,7 @@ type TokenKind = 'content' | 'number' | 'skip';
 function classifyToken(token: string): TokenKind {
   const t = token.trim();
   if (!t) return 'skip';
+  if (t === RUN_BREAK) return 'skip'; // 괄호류 경계 — 부가설명을 제목 본류와 분리(스펙 #1)
   if (BARE_NUMBER_RE.test(t)) return 'number';
   if (isEpisodeOrDate(t)) return 'skip';
   if (isStopOrGeneric(t)) return 'skip';
@@ -149,8 +154,10 @@ function classifyToken(token: string): TokenKind {
 /** 제목에서 이모지·기호를 공백으로 치환하고 어절 배열로 분리(원형 유지 — 조사 미제거). */
 function tokenizeTitle(title: string): string[] {
   const cleaned = title
-    // 이모지/기호류 → 공백 (한글/영숫자/공백만 남김)
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    // 괄호류(부가설명)는 구 경계로 — 인생명언 (전도서…) 에서 대표는 앞 본류만(스펙 #1)
+    .replace(/[()[\]{}【】]/g, ` ${RUN_BREAK} `)
+    // 이모지/기호류 → 공백 (한글/영숫자/공백/구경계표식만 남김)
+    .replace(/[^\p{L}\p{N}\s§]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   return cleaned ? cleaned.split(' ').filter(Boolean) : [];

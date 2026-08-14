@@ -1,10 +1,11 @@
 import * as cheerio from 'cheerio';
 import { createServiceClient } from './supabase-server';
 import { extractKeywordCandidates } from './keyword-candidates';
+import { aiExtractKeyword } from './keyword-ai-extract';
 
 export interface RepresentativeKeywordResult {
   keywords: string[];
-  source: 'title+body' | 'title' | 'fallback' | 'none' | 'manual';
+  source: 'title+body' | 'title' | 'ai' | 'fallback' | 'none' | 'manual';
   /** 대표 키워드 신뢰도 0~1 (스펙 #12/#13). 낮으면 UI가 '확인 필요'로 표시한다. */
   confidence: number;
 }
@@ -18,6 +19,11 @@ export interface RepKeywordExtractOpts {
   userKeyword?: string | null;
   /** 애매한 경우에만 본문을 크롤링해 보정(기본 false — 대량 자동추출 비용 방지, 스펙 #5). */
   allowBody?: boolean;
+  /**
+   * 규칙+본문 보정으로도 애매할 때만 Claude Haiku로 1회 보정(하이브리드, 스펙 #2).
+   * 기본 false — 대량 자동추출 비용 방지. 조회 시점엔 캐시가 반환되므로 AI가 재호출되지 않는다(스펙 #20).
+   */
+  allowAI?: boolean;
 }
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -129,22 +135,38 @@ export async function extractRepresentativeKeywords(
 
   const base = extractKeywordCandidates(input);
 
-  // 제목만으로 확신이 서면(애매하지 않으면) 본문 크롤링 없이 확정 — 대량 자동추출 저비용(스펙 #5).
-  if (base.primary && !(opts.allowBody && base.ambiguous)) {
+  // 제목만으로 확신이 서면(애매하지 않으면) 본문/AI 없이 확정 — 대량 자동추출 저비용(스펙 #5/#20).
+  if (base.primary && !base.ambiguous) {
     return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title', confidence: base.confidence };
   }
 
   // 애매한 경우에만 본문을 크롤링해 상위 빈도 명사구로 보정한다.
+  let bodyText: string | null = null;
+  let withBody: ReturnType<typeof extractKeywordCandidates> | null = null;
   if (opts.allowBody) {
     const body = await fetchPostBodyParts(blogId, postId);
     if (body) {
-      const withBody = extractKeywordCandidates({ ...input, bodyText: body.fullText });
-      if (withBody.primary) {
+      bodyText = body.fullText;
+      withBody = extractKeywordCandidates({ ...input, bodyText: body.fullText });
+      // 본문 보정으로 확신이 서면 확정(스펙 #2 본문 분석).
+      if (withBody.primary && !withBody.ambiguous) {
         return { keywords: dedupeKeywords([withBody.primary, ...withBody.secondaries]), source: 'title+body', confidence: withBody.confidence };
       }
     }
   }
 
+  // 규칙+본문으로도 애매하면 Claude Haiku로 1회 보정한다(하이브리드, 스펙 #2). 저신뢰 구간에만 진입.
+  if (opts.allowAI) {
+    const ai = await aiExtractKeyword({ title, tags: opts.tags, category: opts.category ?? null, bodyText });
+    if (ai) {
+      return { keywords: dedupeKeywords([ai.primary, ...ai.secondaries]), source: 'ai', confidence: 0.9 };
+    }
+  }
+
+  // AI 미사용/실패 — 규칙 최선값으로 폴백(본문 보정값 > 제목값), 둘 다 없으면 미확인(스펙 #17).
+  if (withBody?.primary) {
+    return { keywords: dedupeKeywords([withBody.primary, ...withBody.secondaries]), source: 'title+body', confidence: withBody.confidence };
+  }
   if (base.primary) {
     return { keywords: dedupeKeywords([base.primary, ...base.secondaries]), source: 'title', confidence: base.confidence };
   }

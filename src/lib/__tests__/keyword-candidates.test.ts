@@ -109,6 +109,13 @@ describe('extractKeywordCandidates — 복합 고유명사를 쪼개지 않는�
     expect(r.primary).toContain('아이폰');
     expect(r.primary).toContain('17');
   });
+
+  it('예시 B(스펙 #24-2): "인생명언 (전도서 말씀구절 中)" → 인생명언(괄호 부가설명 분리)', () => {
+    const r = extractKeywordCandidates({ title: '인생명언 (전도서 말씀구절 中)' });
+    expect(r.primary).toBe('인생명언');
+    expect(r.primary).not.toContain('전도서');
+    expect(r.primary).not.toContain('말씀');
+  });
 });
 
 describe('extractKeywordCandidates — 회차/날짜/일반어를 대표로 뽑지 않는다(스펙 #4/#7)', () => {

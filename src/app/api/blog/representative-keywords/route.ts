@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
   const title = request.nextUrl.searchParams.get('title') || '';
   const doScreen = request.nextUrl.searchParams.get('screen') === '1';
   const allowBody = request.nextUrl.searchParams.get('refine') === '1';
+  // ai=1: 규칙+본문으로도 애매할 때만 Claude Haiku 1회 보정(하이브리드, 스펙 #2). 정밀 재추출 버튼 전용.
+  const allowAI = request.nextUrl.searchParams.get('ai') === '1';
 
   if (!blogId || !postId) {
     return NextResponse.json({ error: 'blogId와 postId가 필요합니다.' }, { status: 400 });
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   try {
-    const extraction = await getOrPersistRepresentativeKeyword(blogId, postId, title, { allowBody });
+    const extraction = await getOrPersistRepresentativeKeyword(blogId, postId, title, { allowBody, allowAI });
 
     let representativeKeyword = extraction.representativeKeyword;
     let candidateScreen: CandidateScreenEntry[] = [];
