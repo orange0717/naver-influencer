@@ -4,7 +4,7 @@ import { getAuthUser } from '@/lib/auth';
 import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { fetchBlogProfileStats } from '@/lib/blog-crawler';
-import { countMissing, type MissingResultsMap, type PostLike } from '@/lib/missing-rate';
+import { countMissing, type MissingResultsMap, type MissingState, type PostLike } from '@/lib/missing-rate';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 
 export const dynamic = 'force-dynamic';
@@ -145,13 +145,19 @@ export async function GET(request: NextRequest) {
       .eq('user_id', auth.userId)
       .eq('blog_id', blogId)
       .then(({ data, error }) => ({ rows: data ?? [], ok: !error })),
-    // 미노출 카드 — 미노출 메뉴가 이미 검사·저장해둔 post_missing_checks를 그대로 재집계(별도 재계산 금지, 스펙 8항)
-    supabase
-      .from('post_missing_checks')
-      .select('post_id, view_exposed, view_rank, blog_exposed, blog_rank, checked_at')
-      .eq('blog_id', blogId)
-      .not('checked_at', 'is', null)
-      .then(({ data, error }) => ({ rows: data ?? [], ok: !error })),
+    // 미노출 카드 — 미노출 메뉴가 이미 검사·저장해둔 post_missing_checks를 그대로 재집계(별도 재계산 금지, 스펙 8·9항).
+    // ⚠️ overall_status(migration-146 확정 판정)·influencer_exposed 까지 읽어와, 미노출 페이지(post-missing-state)와
+    //    "동일한 판정 로직"(isPostMissing)으로 집계한다(스펙 9·10항). 이 컬럼을 빼면 isPostMissing 이 레거시 AND 폴백으로
+    //    떨어져, 아직 확정 안 된 재검사(recheck) 글까지 미노출로 세어 미노출 페이지의 '전체 미노출' 카드보다 숫자가
+    //    커지는 불일치가 생긴다. overall_status 는 migration-146 컬럼이라 미적용 DB 에선 레거시 컬럼으로 폴백한다.
+    (async () => {
+      const FULL = 'post_id, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, overall_status, checked_at';
+      const LEGACY = 'post_id, view_exposed, view_rank, blog_exposed, blog_rank, checked_at';
+      const full = await supabase.from('post_missing_checks').select(FULL).eq('blog_id', blogId).not('checked_at', 'is', null);
+      if (!full.error) return { rows: full.data ?? [], ok: true };
+      const legacy = await supabase.from('post_missing_checks').select(LEGACY).eq('blog_id', blogId).not('checked_at', 'is', null);
+      return { rows: legacy.data ?? [], ok: !legacy.error };
+    })(),
     // 포스팅별 대표 키워드 순위(스펙 #20) 표시용 제목 — post_representative_keywords(공용, blog_id 기준)
     supabase
       .from('post_representative_keywords')
@@ -267,13 +273,26 @@ export async function GET(request: NextRequest) {
     });
 
   // ─────────────────── 미노출 (BLOG_NON_EXPOSURE) ───────────────────
-  const missingCheckRows = missing.rows;
+  // 미노출 페이지와 "완전히 동일한" 판정 규칙을 쓰기 위해 overall_status·influencer_exposed 까지 넣는다.
+  // isPostMissing 은 overall_status 가 있으면 그것만(= 'missing' 확정분만) 신뢰하고, 없는 레거시 행만
+  // (view·blog·influencer) AND 폴백으로 판정한다 — 두 화면이 같은 countMissing 을 호출하므로 숫자가 일치한다.
+  type MissingRow = {
+    post_id: string;
+    view_exposed: boolean | null; view_rank: number | null;
+    blog_exposed: boolean | null; blog_rank: number | null;
+    influencer_exposed?: boolean | null;
+    overall_status?: string | null;
+    checked_at: string | null;
+  };
+  const missingCheckRows = missing.rows as MissingRow[];
   const missingResults: MissingResultsMap = {};
   const missingPosts: PostLike[] = [];
   for (const r of missingCheckRows) {
     missingResults[r.post_id] = {
       blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
       viewTab: { exposed: r.view_exposed, rank: r.view_rank },
+      influencerTab: { exposed: r.influencer_exposed ?? null, rank: null },
+      overallStatus: (r.overall_status ?? null) as MissingState['overallStatus'],
     };
     missingPosts.push({ id: r.post_id });
   }

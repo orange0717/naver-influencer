@@ -139,6 +139,8 @@ export default function MissingPostsSection() {
   const [missingResults, setMissingResults] = useState<MissingResultsMap>({});
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  // §12 배치 검사 완료 요약 — "N개 확인 완료 · 노출 X · 미노출 Y". 다음 배치 시작 시 초기화.
+  const [batchSummary, setBatchSummary] = useState<{ checked: number; exposed: number; missing: number; other: number } | null>(null);
   const [checkingPostId, setCheckingPostId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // 대량 분석 확인 다이얼로그 대상 (§9~13) — 실제 네이버 검색이 발생할 글 수(toCheck)가 임계 이상일 때만 표시
@@ -241,8 +243,10 @@ export default function MissingPostsSection() {
     fetchMissingState(profile.blogId);
   }, [profile, fetchCutoff, fetchPosts, fetchMissingState]);
 
-  const checkOne = useCallback(async (post: BlogPost, opts?: { force?: boolean }): Promise<'ok' | 'failed'> => {
-    if (!profile) return 'failed';
+  // 검사 1건 결과 — status(성공/실패) + 서버가 확정한 판정(verdict). 배치 완료 요약(§12)에서 노출/미노출 집계에 쓴다.
+  type CheckOutcome = { status: 'ok' | 'failed'; verdict: ExposureVerdict | null };
+  const checkOne = useCallback(async (post: BlogPost, opts?: { force?: boolean }): Promise<CheckOutcome> => {
+    if (!profile) return { status: 'failed', verdict: null };
     // 비공개 글은 검색 노출 대상이 아니므로 네이버를 치지 않고 '분석불가'로 표시 (호출량·비용 절약)
     if (post.isPublic === false) {
       setMissingResults(prev => ({ ...prev, [post.id]: {
@@ -251,7 +255,7 @@ export default function MissingPostsSection() {
         influencerTab: { exposed: null, rank: null },
         status: 'unanalyzable', checkedAt: new Date().toISOString(),
       } }));
-      return 'ok';
+      return { status: 'ok', verdict: 'unanalyzable' };
     }
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -267,20 +271,21 @@ export default function MissingPostsSection() {
           const status = data.status || 'ok';
           setMissingResults(prev => ({ ...prev, [post.id]: { ...data, status, checkedAt: data.checkedAt || new Date().toISOString() } }));
           // 일시적 오류는 성공 검사로 치지 않는다 → 다음 재검사 때 다시 확인되도록 'failed' 취급(집계엔 영향 없음)
-          return status === 'error' ? 'failed' : 'ok';
+          if (status === 'error') return { status: 'failed', verdict: null };
+          return { status: 'ok', verdict: (data.overallStatus as ExposureVerdict | null) ?? null };
         }
       } catch { /* 재시도 */ }
       if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, 800 * attempt));
     }
-    return 'failed';
+    return { status: 'failed', verdict: null };
   }, [profile]);
 
   // 상세 패널에서 포스팅 제목 기반으로 강제 재검사 (캐시 무시, 최신 노출 여부 재확인)
   const recheckDetail = useCallback(async (post: BlogPost) => {
     setDetailChecking(true);
     setDetailError('');
-    const result = await checkOne(post, { force: true });
-    if (result === 'failed') setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    const { status } = await checkOne(post, { force: true });
+    if (status === 'failed') setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
     else if (profile) fetchDetailHistory(profile.blogId, post.id); // 전환이 기록됐을 수 있으니 이력 갱신
     setDetailChecking(false);
   }, [checkOne, profile, fetchDetailHistory]);
@@ -296,9 +301,12 @@ export default function MissingPostsSection() {
   const runBatch = useCallback(async (targets: BlogPost[], opts?: { force?: boolean }) => {
     if (!profile || targets.length === 0) return;
     setCheckingAll(true);
+    setBatchSummary(null); // 이전 요약 초기화 — 새 배치가 시작됨
     abortRef.current = false;
     setCheckProgress({ current: 0, total: targets.length });
     const now = Date.now();
+    // §12 완료 요약용 집계 — 실제로 이번 배치에서 확인(checkOne 호출)된 글만 센다(캐시로 건너뛴 글 제외).
+    const tally = { checked: 0, exposed: 0, missing: 0, other: 0 };
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
       const post = targets[i];
@@ -307,7 +315,14 @@ export default function MissingPostsSection() {
       if (hits || post.isPublic === false) {
         // 비공개 글은 checkOne이 네이버 호출 없이 '분석불가'로 표시하고 즉시 반환
         setCheckingPostId(post.id);
-        await checkOne(post, { force: opts?.force });
+        const { status, verdict } = await checkOne(post, { force: opts?.force });
+        // 노출/미노출만 개별 집계, 그 외(재검사·확인중·분석불가·실패)는 '기타'. 미확인을 미노출로 세지 않는다(§10).
+        if (status === 'ok') {
+          tally.checked++;
+          if (verdict === 'exposed') tally.exposed++;
+          else if (verdict === 'missing') tally.missing++;
+          else tally.other++;
+        }
         // 실제 네이버 호출이 있었던 경우에만 요청 간격을 둔다 (캐시/분석불가는 지연 불필요)
         if (hits && i < targets.length - 1) await new Promise(r => setTimeout(r, 2000));
       }
@@ -315,6 +330,7 @@ export default function MissingPostsSection() {
     }
     setCheckingPostId(null);
     setCheckingAll(false);
+    if (tally.checked > 0) setBatchSummary(tally);
   }, [profile, willHitNaver, checkOne]);
 
   // 대량 분석 게이트 (§9~13): 실제 검색이 발생할 글이 10개 이하면 즉시, 그 이상이면 비용 안내 확인 후 실행
@@ -477,6 +493,22 @@ export default function MissingPostsSection() {
           )}
         </div>
       </div>
+
+      {/* §12 배치 검사 완료 요약 — "N개 확인 완료 · 노출 X · 미노출 Y" */}
+      {!checkingAll && batchSummary && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-xs">
+          <span className="text-text">
+            <b className="font-bold">{batchSummary.checked}개 확인 완료</b>
+            <span className="text-up font-semibold ml-2">🟢 노출 {batchSummary.exposed}</span>
+            <span className="text-down font-semibold ml-2">🔴 미노출 {batchSummary.missing}</span>
+            {batchSummary.other > 0 && (
+              <span className="text-dim ml-2">그 외 {batchSummary.other}(재검사·확인 중·분석 불가)</span>
+            )}
+          </span>
+          <button onClick={() => setBatchSummary(null)}
+            className="text-dim hover:text-text transition cursor-pointer shrink-0" aria-label="요약 닫기">&times;</button>
+        </div>
+      )}
 
       {/* 1. 미노출 정의 안내 */}
       <GlassCard padding="sm" className="text-xs text-dim leading-relaxed">
