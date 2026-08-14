@@ -44,12 +44,12 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
     return (
       <div className="flex items-center gap-1.5 pl-[10px] pr-3 pt-2 pb-0.5 first:pt-0.5">
         <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />
-        <span className="text-[12px] font-normal text-[#333333] tracking-wide truncate">{label}</span>
+        <span className="text-[13px] font-normal text-[#333333] tracking-wide truncate">{label}</span>
       </div>
     );
   }
   return (
-    <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[11px] font-normal text-dim tracking-wide truncate`}>
+    <div className={`${itemPadding(false)} pr-3 pt-1.5 pb-0.5 text-[12px] font-normal text-dim tracking-wide truncate`}>
       {label}
     </div>
   );
@@ -72,7 +72,7 @@ function NavLink({
   const { openGate } = useMemberOnlyGate();
   const padding = itemPadding(item.indent);
   // 하위 메뉴(indent)는 11px·조금 연한 색, 주요 메뉴는 12px·진한 색 — 크기보다 색/들여쓰기로 계층을 표현한다.
-  const sizeClass = item.indent ? 'text-[11px]' : 'text-[12px]';
+  const sizeClass = item.indent ? 'text-[12px]' : 'text-[13px]';
   const padY = item.indent ? 'py-1' : 'py-1.5';
   const inactiveColor = item.indent ? 'text-[#666666]' : 'text-[#333333]';
 
@@ -212,7 +212,7 @@ function SidebarContent({
   return (
     <>
       {/* "AI 서비스"가 아니라 데이터 분석 툴이라는 정체성을 사이드바 상단에서도 짧게 각인 (2026-08-09) */}
-      <p className="px-[10px] pt-2 pb-0.5 text-[10px] font-medium text-dim/70 tracking-wide">
+      <p className="px-[10px] pt-2 pb-0.5 text-[11px] font-medium text-dim/70 tracking-wide">
         네이버 검색 데이터 분석
       </p>
       <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1">
@@ -232,7 +232,7 @@ function SidebarContent({
                 type="button"
                 onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
-                className="w-full flex items-center gap-1 px-3 py-1 rounded-lg text-[12px] font-medium tracking-wide hover:bg-bg transition-colors cursor-pointer"
+                className="w-full flex items-center gap-1 px-3 py-1 rounded-lg text-[13px] font-medium tracking-wide hover:bg-bg transition-colors cursor-pointer"
                 style={{ color: '#555555' }}
               >
                 <span className="truncate">{group.label}</span>
@@ -265,7 +265,7 @@ function SidebarContent({
               key={link.href}
               href={link.href}
               onClick={onNavigate}
-              className={`block px-3 py-1 rounded-lg text-[12px] font-normal transition-colors ${
+              className={`block px-3 py-1 rounded-lg text-[13px] font-normal transition-colors ${
                 pathname.startsWith(link.href) ? 'text-accent' : 'text-dim hover:text-text'
               }`}
             >

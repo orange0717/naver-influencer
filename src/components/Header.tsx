@@ -97,7 +97,7 @@ export default function Header({ serverUser }: HeaderProps) {
 
           {/* ── 서비스 정체성 태그라인 — "AI 서비스"가 아니라 데이터 분석 툴임을 헤더에서부터 각인 (2026-08-09) ── */}
           <span className="hidden lg:block w-px h-3.5 bg-[#E5E5E5] shrink-0" aria-hidden="true" />
-          <span className="hidden lg:inline text-[13px] font-normal text-[#777777] tracking-tight whitespace-nowrap shrink-0">
+          <span className="font-title hidden lg:inline text-[13px] font-normal text-[#777777] tracking-tight whitespace-nowrap shrink-0">
             네이버 검색 데이터 분석
           </span>
 
@@ -108,7 +108,7 @@ export default function Header({ serverUser }: HeaderProps) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="px-3 py-2 rounded-lg text-[15px] font-normal text-[#222222] hover:bg-black/[0.04] transition-colors"
+                  className="font-title px-3 py-2 rounded-lg text-[15px] font-normal text-[#222222] hover:bg-black/[0.04] transition-colors"
                 >
                   {link.label}
                 </Link>
