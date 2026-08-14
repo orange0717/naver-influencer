@@ -29,6 +29,7 @@ import {
   AiTabBadge,
   ResultStatCard,
   CitationStatusBadge,
+  CitationDetailPanel,
 } from './AiBriefingSection.helpers';
 import {
   rollupPostCitationStatus,
@@ -92,6 +93,8 @@ export default function AiBriefingSection() {
   // 대표키워드 인라인 수동 편집(스펙 #3)
   const [editingRepPost, setEditingRepPost] = useState('');
   const [repDraft, setRepDraft] = useState('');
+  // 개별 상세 패널(스펙 #16) — 인용 근거 URL·출처순번·확인시각 표시
+  const [detailPostId, setDetailPostId] = useState('');
 
   // 안전 배치 큐(스펙 #9~#15)
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
@@ -1362,6 +1365,10 @@ export default function AiBriefingSection() {
                                       초기화
                                     </button>
                                   )}
+                                  <button onClick={() => setDetailPostId(prev => prev === post.id ? '' : post.id)}
+                                    className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">
+                                    {detailPostId === post.id ? '상세 닫기' : '상세'}
+                                  </button>
                                 </div>
                               </td>
                               <td className="px-3 py-3 align-top" rowSpan={rowCount}>
@@ -1504,6 +1511,18 @@ export default function AiBriefingSection() {
                                   </span>
                                 ))}
                               </div>
+                            </td>
+                          </tr>
+                        )}
+                        {isFirst && detailPostId === post.id && (
+                          <tr key={`${post.id}-detail`} className={!isLast ? '!border-b-0' : ''}>
+                            <td colSpan={15} className="px-4 pb-4 pt-1 bg-bg/30">
+                              <CitationDetailPanel
+                                post={post}
+                                keywords={(postKeywords[post.id] || [])}
+                                results={briefingResults}
+                                repKeyword={getPrimaryKeyword(post)}
+                              />
                             </td>
                           </tr>
                         )}
@@ -1662,6 +1681,12 @@ export default function AiBriefingSection() {
                     </div>
 
                     <div className="pl-7 pt-0.5 flex items-center gap-3 flex-wrap">
+                      <button
+                        onClick={() => setDetailPostId(prev => prev === post.id ? '' : post.id)}
+                        className="text-[11px] text-dim hover:text-accent hover:underline cursor-pointer"
+                      >
+                        {detailPostId === post.id ? '상세 닫기' : '상세'}
+                      </button>
                       {!score ? (
                         <button
                           onClick={() => handleAnalyzeScore(post)}
@@ -1679,6 +1704,16 @@ export default function AiBriefingSection() {
                         </button>
                       )}
                     </div>
+                    {detailPostId === post.id && (
+                      <div className="mt-2 pl-7">
+                        <CitationDetailPanel
+                          post={post}
+                          keywords={(postKeywords[post.id] || [])}
+                          results={briefingResults}
+                          repKeyword={repKw}
+                        />
+                      </div>
+                    )}
                     {improvePanelPostId === post.id && score && (
                       <div className="mt-2">
                         <ImprovePanel score={score} />

@@ -312,6 +312,68 @@ export function CitationStatusBadge({ state }: { state: CitationState }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full ${cls[color]}`}>{label}</span>;
 }
 
+/**
+ * 개별 상세 패널(스펙 #16) — 한 포스트의 타겟 키워드별 AI 브리핑/AI 탭 상태 + 인용 근거 URL(스펙 #8/#19) +
+ * 출처순번 + 최근 확인시각을 보여준다. briefingResults는 이미 로드된 값만 쓰므로 추가 API 호출 없음.
+ */
+export function CitationDetailPanel({
+  post, keywords, results, repKeyword,
+}: {
+  post: BlogPost;
+  keywords: string[];
+  results: Record<string, BriefingResult>;
+  repKeyword: string | null;
+}) {
+  const rows = keywords.map(k => k.trim()).filter(Boolean);
+  return (
+    <div className="rounded-xl border border-border bg-surface p-3.5 space-y-3 text-xs">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-dim">대표키워드</span>
+        <span className="font-semibold">{repKeyword || '—'}</span>
+        <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline ml-auto">포스팅 열기 ↗</a>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-dim">확인된 타겟 키워드가 없습니다. 대표키워드를 지정하고 &lsquo;인용 확인&rsquo;을 눌러주세요.</p>
+      ) : (
+        <ul className="space-y-2.5">
+          {rows.map(kw => {
+            const r = results[rankKey(post.id, kw)];
+            return (
+              <li key={kw} className="rounded-lg bg-bg/60 border border-border/60 p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{kw}</span>
+                  {r?.checkedAt && <span className="text-[10px] text-dim">최근 확인 {timeAgo(r.checkedAt)}</span>}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-dim w-16 shrink-0">AI 브리핑</span>
+                  <BriefingLabelBadge result={r} />
+                  {r?.matchedUrl && (
+                    <a href={r.matchedUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:underline truncate max-w-[220px]">
+                      근거 {r.sourceIndex ? `#${r.sourceIndex}` : ''} ↗
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-dim w-16 shrink-0">AI 탭</span>
+                  <AiTabBadge result={r} />
+                  {r?.tabMatchedUrl && (
+                    <a href={r.tabMatchedUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:underline truncate max-w-[220px]">
+                      근거 {r.tabSourceIndex ? `#${r.tabSourceIndex}` : ''} ↗
+                    </a>
+                  )}
+                </div>
+                {(r?.checkStatus === 'transient_error' || r?.checkStatus === 'unanalyzable') && r?.lastError && (
+                  <p className="text-[10px] text-gold">사유: {r.lastError}</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** 키워드 검색 결과 카드 — AnimatedStatCard와 동일한 톤이지만 ○/X·텍스트 값(경쟁도 등)도 표시 가능 */
 export function ResultStatCard({
   label, value, color = 'accent', spinning,

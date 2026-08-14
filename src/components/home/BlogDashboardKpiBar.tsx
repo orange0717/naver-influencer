@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import GlassCard from '@/components/dashboard/GlassCard';
 import KpiGrid from '@/components/dashboard/KpiGrid';
@@ -94,27 +95,92 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
     .filter((c): c is { key: string; meta: (typeof CARD_META)[string]; metric: BlogMetric } => !!c.meta && !!c.metric);
 
   return (
-    <KpiGrid>
-      {cards.map(({ key, meta, metric }, i) => {
-        const isFresh = metric.status === 'FRESH' && metric.value !== null;
-        const statusText = isFresh ? undefined : STATUS_LABEL[metric.status as Exclude<BlogMetricStatus, 'FRESH'>];
-        // 실제 값이 0이면 정상 dim 처리, 양수면 지정 색상. 상태문구일 땐 카드가 알아서 dim 처리.
-        const color = isFresh && (metric.value ?? 0) > 0 ? meta.color : 'dim';
-        return (
-          <AnimatedStatCard
-            key={key}
-            label={meta.label}
-            value={isFresh ? (metric.value as number) : 0}
-            statusText={statusText}
-            suffix={meta.suffix}
-            icon={meta.icon}
-            color={color}
-            href={metric.href}
-            delay={i * 40}
-            size="kpi"
-          />
-        );
-      })}
-    </KpiGrid>
+    <div className="space-y-4">
+      <KpiGrid>
+        {cards.map(({ key, meta, metric }, i) => {
+          const isFresh = metric.status === 'FRESH' && metric.value !== null;
+          const statusText = isFresh ? undefined : STATUS_LABEL[metric.status as Exclude<BlogMetricStatus, 'FRESH'>];
+          // 실제 값이 0이면 정상 dim 처리, 양수면 지정 색상. 상태문구일 땐 카드가 알아서 dim 처리.
+          const color = isFresh && (metric.value ?? 0) > 0 ? meta.color : 'dim';
+          return (
+            <AnimatedStatCard
+              key={key}
+              label={meta.label}
+              value={isFresh ? (metric.value as number) : 0}
+              statusText={statusText}
+              suffix={meta.suffix}
+              icon={meta.icon}
+              color={color}
+              href={metric.href}
+              delay={i * 40}
+              size="kpi"
+            />
+          );
+        })}
+      </KpiGrid>
+
+      <AiCitationSummary aiExposure={data.aiExposure} />
+    </div>
+  );
+}
+
+/** 대시보드 AI 인용 현황(스펙 #21/#22/#23/#25) — blog-dashboard-summary의 aiExposure만 읽어 렌더(API 재호출 없음). */
+function AiCitationSummary({ aiExposure }: { aiExposure: BlogDashboardSummary['aiExposure'] }) {
+  // 실제 확인 완료 데이터가 있을 때만 노출(숫자를 지어내지 않음, 스펙 #21).
+  if (!aiExposure.ok || aiExposure.analyzedPostCount === 0) return null;
+
+  const fmt = (iso: string | null) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+
+  return (
+    <GlassCard padding="md" className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <h3 className="font-bold text-[15px]">AI 인용 현황</h3>
+          <Link href="/my/naver-mate" className="text-[11px] text-accent hover:underline">자세히 →</Link>
+        </div>
+        <span className="text-[11px] text-dim">
+          AI 인용 데이터 최근 확인 {fmt(aiExposure.lastCheckedAt)}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-5 flex-wrap">
+        {/* 인용률 (스펙 #23) — 분모는 확인 완료 포스팅만 */}
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-3xl font-extrabold font-rank text-up">{aiExposure.overallRate}</span>
+          <span className="text-sm text-dim">% 인용률</span>
+        </div>
+        <div className="text-[11px] text-dim leading-relaxed">
+          확인 완료 <b className="text-text">{aiExposure.analyzedPostCount.toLocaleString()}</b>개 중{' '}
+          <b className="text-up">{aiExposure.overallCitedCount.toLocaleString()}</b>개 인용 ·{' '}
+          일부 {aiExposure.partialCitedCount.toLocaleString()} · 미인용 {aiExposure.notCitedCount.toLocaleString()} · 미확인 {aiExposure.uncheckedCount.toLocaleString()}
+        </div>
+      </div>
+
+      {/* 최근 AI 인용 포스팅 (스펙 #22) */}
+      {aiExposure.recentCited.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold text-dim">최근 AI 인용 포스팅</p>
+          <ul className="divide-y divide-border/30">
+            {aiExposure.recentCited.map(r => (
+              <li key={`${r.postId}-${r.keyword}`} className="py-1.5 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{r.title || r.keyword}</p>
+                  <p className="text-[11px] text-dim">대표키워드: {r.keyword}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {r.briefingCited && <span className="text-[10px] font-bold text-up bg-up/10 px-1.5 py-0.5 rounded-full">브리핑</span>}
+                  {r.tabCited && <span className="text-[10px] font-bold text-up bg-up/10 px-1.5 py-0.5 rounded-full">AI탭</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </GlassCard>
   );
 }
