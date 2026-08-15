@@ -963,7 +963,7 @@ export default function AiBriefingSection() {
                     onClick={() => { openAuditModal(); setMoreMenuOpen(false); }}
                     disabled={blogPosts.length === 0 || auditLoading}
                     className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer disabled:opacity-50"
-                    title="저장된 대표키워드를 점검해 잘못 추출된 것만 다시 추출합니다(무료·네이버 무호출)."
+                    title="저장된 대표키워드를 점검해 잘못 추출된 것만 다시 추출합니다(네이버 무호출, 애매한 건만 AI 보정)."
                   >
                     {auditLoading ? '점검 중...' : '대표키워드 점검'}
                   </button>
