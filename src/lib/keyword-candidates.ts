@@ -44,6 +44,14 @@ const TRAILING_DECORATORS = new Set([
 // 이런 토큰은 "매끄럽지 않은 자동결합"이라 대표 후보로는 낮춘다.
 const SMUSH_TAILS = ['추천', '후기', '리뷰', '정리', '정보', '모음', '총정리', '추천도서', '추천글', '도서추천', '책추천'];
 
+// 붙여 쓴 결합어에서 잘라낼 꼬리(스펙 #8) — 어떤 개체의 이름 일부도 될 수 없는 의도/순위어만 넣는다.
+// 감점(P_SMUSH)만으로는 "한국소설베스트셀러순위"가 그대로 대표가 됐다(단일 토큰이라 최대명사구 + 앞자리 가산).
+// '정보'·'정리'는 생활정보처럼 개체 이름의 일부일 수 있어 일부러 뺐다 — 감점 대상으로만 남긴다.
+const GLUED_TAILS = [
+  '베스트셀러', '도서추천', '책추천', '추천도서', '추천글', '총정리',
+  '순위', '랭킹', '추천', '후기', '리뷰', '모음',
+];
+
 // 회차/편수/권/화 등(스펙 #4) — 대표에서 제외(경계). 예: 1편·2부·3권·10화·시즌2·top6.
 const EPISODE_RE = /^(\d+\s*(편|부|권|화|회|탄|기|장|주차|일차|부작|시즌)|시즌\s*\d+|top\s*\d+)$/i;
 // 판형/회차 성격의 짧은 "…편"(기초편·특별편·번외편·단편)도 경계로 본다(숫자 없는 회차, 스펙 #4).
@@ -143,6 +151,10 @@ const P_SMUSH = 2;            // 매끄럽지 않은 자동결합 복합어(판�
 // 조사 제거로 생긴 파생 단독 토큰(예: 솔로몬의→솔로몬) 감점: 원 제목의 온전한 어절이 아니라
 // 더 긴 명사구의 머리(fragment)이므로, 단독보다 그 구(句) 형태가 대표가 되도록 낮춘다.
 const P_DERIVED_SINGLE = 2;
+// 붙여쓴 결합어에서 잘라낸 어간(부동산책추천→부동산) 감점: 원 제목의 온전한 어절이 아니므로
+// 제목에 따로 존재하는 진짜 명사구(부동산 투자 사업)를 이기면 안 된다.
+// 단, 결합어가 제목의 전부일 때는(한국소설베스트셀러순위) 여전히 확신할 만큼만 깎는다.
+const P_GLUED_STEM = 3;
 
 // 최대 점수 근사치(신뢰도 정규화용). 최대명사구+앞부분+명사구/고유명사 정도.
 const SCORE_FOR_FULL_CONFIDENCE = 12;
@@ -223,6 +235,27 @@ function classifyToken(token: string): TokenKind {
   return 'content';
 }
 
+/**
+ * 붙여 쓴 결합어를 어간과 꼬리로 분리한다("한국소설베스트셀러순위" → ["한국소설", "베스트셀러", "순위"]).
+ * 꼬리는 GENERIC_WORDS라 skip으로 분류되어 구 경계가 되므로, 대표는 어간만 남는다.
+ * 어간이 2자 미만이거나 그 자체가 일반어면 자르지 않는다 — 결합어 통째가 검색어인 경우("책추천")를 지키기 위함.
+ */
+function splitGluedTail(token: string): string[] {
+  let stem = token;
+  const tails: string[] = [];
+  for (let guard = 0; guard < 3; guard++) {
+    const hit = GLUED_TAILS.find(tail => {
+      if (stem.length <= tail.length || !lower(stem).endsWith(tail)) return false;
+      const rest = stem.slice(0, stem.length - tail.length);
+      return rest.length >= 2 && !isStopOrGeneric(rest);
+    });
+    if (!hit) break;
+    stem = stem.slice(0, stem.length - hit.length);
+    tails.unshift(hit);
+  }
+  return tails.length === 0 ? [token] : [stem, ...tails];
+}
+
 /** 제목에서 이모지·기호를 공백으로 치환하고 어절 배열로 분리(원형 유지 — 조사 미제거). */
 function tokenizeTitle(title: string): string[] {
   const cleaned = title
@@ -232,7 +265,17 @@ function tokenizeTitle(title: string): string[] {
     .replace(/[^\p{L}\p{N}\s§]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return cleaned ? cleaned.split(' ').filter(Boolean) : [];
+  if (!cleaned) return [];
+  // 결합어는 앞 어절이 내용어가 아닐 때만 자른다. 구 한가운데서 자르면 잘라낸 어간이 앞 구에 흡수돼
+  // "다정한 것이 살아남는다 과학도서추천" → "다정한 것이 살아남는다 과학"이 되고,
+  // 5어절 run이 4어절로 줄어 저자명 흡수를 막던 cappedRun 판정("지구 끝의 온실 김초엽 SF소설추천")도 풀린다.
+  const out: string[] = [];
+  for (const token of cleaned.split(' ').filter(Boolean)) {
+    const prev = out[out.length - 1];
+    const continuesPhrase = prev !== undefined && classifyToken(prev) === 'content';
+    out.push(...(continuesPhrase ? [token] : splitGluedTail(token)));
+  }
+  return out;
 }
 
 interface Token { surface: string; idx: number }
@@ -438,6 +481,8 @@ function scoreCandidate(
   }
   // 매끄럽지 않은 자동결합 복합어(판타지소설추천) 감점(스펙 #8) — 브랜드 힌트 일치 시 예외
   if (isSmushedCompound(surface) && !isBrandHit(surface, ctx.brandHints)) s -= P_SMUSH;
+  // 결합어에서 잘라낸 어간 — 제목에 "어간+꼬리"가 붙어 있으면 그 어간은 온전한 어절이 아니다.
+  if (tokenCount === 1 && GLUED_TAILS.some(t => ctx.normTitle.includes(norm + t))) s -= P_GLUED_STEM;
   // 조사 제거로 생긴 파생 단독 토큰(솔로몬의→솔로몬)은 단독 대표로 부적합 → 감점(브랜드 힌트 예외)
   if (tokenCount === 1 && cand.derived && !isBrandHit(surface, ctx.brandHints)) s -= P_DERIVED_SINGLE;
 

@@ -117,11 +117,25 @@ function stripObjectJosa(keyword: string): string {
 }
 
 /**
+ * 괄호 안 부가설명을 지운 제목(SYSTEM_PROMPT 규칙 6의 코드판).
+ * "신간도서 TOP3(매월 넷째 주 교보문고 MD 선택)"에서 primary는 괄호 밖에서만 나와야 한다.
+ * 제목이 통째로 괄호인 경우엔 검사할 표면이 사라지므로 원 제목으로 되돌린다.
+ */
+function titleOutsideBrackets(title: string): string {
+  const stripped = title
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/【[^】]*】/g, ' ')
+    .trim();
+  return compactForMatch(stripped).length >= 2 ? stripped : title;
+}
+
+/**
  * AI가 돌려준 키워드가 계약(SYSTEM_PROMPT 규칙 7)을 지켰는지 코드로 강제한다.
  * 프롬프트에만 적어두면 지켜지지 않는다 — 본문을 함께 넘기므로 제목에 없는 조각을
  * primary로 뽑는 일이 실제로 발생했다("솔로몬의 지혜 오렌지도서관 단상" → "아이를").
  *
- * primary는 제목에 실제로 등장해야 하고, secondaries는 제목 또는 태그 범위로 제한한다.
+ * primary는 제목의 괄호 밖에 실제로 등장해야 하고, secondaries는 제목 또는 태그 범위로 제한한다.
  * 유효한 primary가 없으면 null — 호출부는 규칙 결과로 폴백하고, 그것도 없으면 '미확인'이 된다
  * (오렌지 확정: 억지 추출보다 미확인이 낫다).
  */
@@ -135,8 +149,11 @@ export function validateAiKeywords(
     return c.length >= 2 && titleCompact.includes(c);
   };
 
+  const outsideCompact = compactForMatch(titleOutsideBrackets(input.title));
   const primary = stripObjectJosa(result.primary).trim();
-  if (!primary || !appearsInTitle(primary)) return null;
+  if (!primary) return null;
+  const primaryMatch = compactForMatch(primary);
+  if (primaryMatch.length < 2 || !outsideCompact.includes(primaryMatch)) return null;
 
   const primaryCompact = compactForMatch(primary);
   const tagCompacts = new Set((input.tags || []).map(t => compactForMatch(t.replace(/^#/, ''))).filter(Boolean));

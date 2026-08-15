@@ -58,4 +58,29 @@ describe('validateAiKeywords', () => {
       { primary: '바다를', secondaries: [] },
     )).toBeNull();
   });
+
+  it('괄호 안 부가설명은 primary가 될 수 없다(제목에 등장하더라도)', () => {
+    expect(validateAiKeywords(
+      { title: '신간도서 TOP3(매월 넷째 주 교보문고 MD 선택)' },
+      { primary: '교보문고', secondaries: [] },
+    )).toBeNull();
+    expect(validateAiKeywords(
+      { title: '인생명언 [변호사임용시험 편]' },
+      { primary: '변호사임용시험', secondaries: [] },
+    )).toBeNull();
+  });
+
+  it('괄호 밖 본류에서 뽑은 primary는 통과시킨다', () => {
+    expect(validateAiKeywords(
+      { title: '신간도서 TOP3(매월 넷째 주 교보문고 MD 선택)' },
+      { primary: '신간도서', secondaries: [] },
+    )).toEqual({ primary: '신간도서', secondaries: [] });
+  });
+
+  it('제목 전체가 괄호면 검사 표면이 없으므로 원 제목으로 판정한다', () => {
+    expect(validateAiKeywords(
+      { title: '(달러구트 꿈 백화점)' },
+      { primary: '달러구트 꿈 백화점', secondaries: [] },
+    )).toEqual({ primary: '달러구트 꿈 백화점', secondaries: [] });
+  });
 });

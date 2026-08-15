@@ -246,3 +246,31 @@ describe('규칙이 확정하면 안 되는 경계(AI 보정으로 넘김)', () 
     expect(extractKeywordCandidates({ title: '추천 도서 방구석미술관' }).primary).toBe('방구석미술관');
   });
 });
+
+describe('붙여 쓴 결합어 분리(스펙 #8)', () => {
+  it('순위/랭킹 꼬리가 붙은 결합어는 어간만 대표로 남긴다', () => {
+    const r = extractKeywordCandidates({ title: '한국소설베스트셀러순위' });
+    expect(r.primary).toBe('한국소설');
+    expect(r.ambiguous).toBe(false);
+  });
+
+  it('어간이 한 글자로 남으면 자르지 않는다 — 결합어 자체가 검색어인 경우', () => {
+    expect(extractKeywordCandidates({ title: '책후기' }).primary).toBe('책후기');
+  });
+
+  it("'정보'처럼 개체 이름의 일부가 될 수 있는 꼬리는 자르지 않는다", () => {
+    expect(extractKeywordCandidates({ title: '생활정보' }).primary).toBe('생활정보');
+  });
+
+  it('잘라낸 어간이 제목의 진짜 명사구를 이기지 않는다', () => {
+    expect(
+      extractKeywordCandidates({ title: '운명을 바꾸는 부동산 투자 사업(기초편) 부동산책추천' }).primary,
+    ).toBe('부동산 투자 사업');
+  });
+
+  it('구 한가운데의 결합어는 자르지 않는다 — 어간이 앞 구에 흡수되기 때문', () => {
+    expect(
+      extractKeywordCandidates({ title: '다정한 것이 살아남는다 과학도서추천' }).primary,
+    ).toBe('다정한 것이 살아남는다');
+  });
+});
