@@ -133,7 +133,17 @@ const PAID_PLAN_GATE_PREFIXES = [
 const PAID_PLAN_GATE_EXEMPT = ['/my/link', '/my/link-blog', '/my/post-analysis', '/my/missing-posts', '/my/keyword-ranking'];
 
 const PAID_PLAN_GATE_API_PREFIXES = ['/api/my'];
-const PAID_PLAN_GATE_API_EXEMPT = ['/api/my/link', '/api/my/link-blog'];
+// /api/my 하위이지만 유료 게이트에서 예외인 경로:
+//  - 계정 연결(link)은 결제 무관하게 열어둠
+//  - 대표키워드 일괄 추출은 무료 화면(/my/keyword-ranking, PAID_PLAN_GATE_EXEMPT)의 주 버튼이다.
+//    포스팅당 1회씩 부르던 무료 경로(/api/blog/representative-keywords)를 묶기만 한 것이라
+//    (제목 규칙 전용·네이버/AI 무호출) 유료 게이트를 걸면 무료 회원의 기존 동작이 402로 깨진다.
+//    본인 블로그 여부는 라우트의 assertBlogResourceAccess 가 그대로 강제한다.
+const PAID_PLAN_GATE_API_EXEMPT = [
+  '/api/my/link',
+  '/api/my/link-blog',
+  '/api/my/representative-keywords/extract',
+];
 
 // 2026-08-13 무료 하루 3회 정책: 전용 분석 화면(/my/missing-posts, /my/keyword-ranking)이
 // 마운트 시 조회하는 /api/my 데이터. GET + X-View-Token 헤더가 있으면 유료 하드 게이트를 건너뛰고,

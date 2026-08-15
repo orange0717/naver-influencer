@@ -14,11 +14,10 @@
 ## 배포
 ```bash
 # Vercel CLI 직접 배포 (Vercel↔GitHub 자동배포 미연결 → CLI 수동 배포)
-# 배포 디렉토리 = 이 저장소 루트 /Users/orange/개발/ninfle (.git·.vercel/project.json 이 여기 있음)
+# 배포 디렉토리 = 이 저장소 루트 /Users/orange/개발/naver-influencer (.git·.vercel/project.json 이 여기 있음)
 #   projectName: naver-influencer · org: orangelibrary · 도메인: ninfle.kr · GitHub: orange0717/naver-influencer
-#   ⚠️ "naver-influencer" 는 Vercel 프로젝트명/원격 저장소명일 뿐 로컬 디렉토리명이 아니다.
-#      /Users/orange/개발/naver-influencer 는 scripts 하나만 든 껍데기 폴더(.git·.vercel 없음)라 거기선 배포 불가.
-#      (2026-08-15 확인 — 과거 이 문단이 정반대로 적혀 있었음)
+#   ⚠️ /Users/orange/개발/ninfle 은 존재하지 않는다. 과거 이 문단이 ninfle 을 배포 루트로 적어둔 적이 있으나
+#      (2026-08-16 재확인) 실제로 .git 과 .vercel/project.json 을 가진 건 naver-influencer 뿐이다.
 #   ⚠️ --prebuilt 배포는 "Deploying outputs"에서 실패한 이력 → 풀 배포(vercel deploy --prod)를 쓸 것.
 #   ⚠️ --prebuilt 를 안 붙여도 .vercel/output 폴더가 남아 있으면 CLI가 그걸 프리빌드 산출물로 보고
 #      "Using prebuilt build artifacts" 로 올리다 Error 가 난다(2026-08-15 재발 — 7/22자 산출물이 남아 있었음).

@@ -129,6 +129,8 @@ export interface DataTableProps<T> {
   maxHeight?: string;
   /** 표 최소 폭(가로 스크롤 기준). 예: '1200px' */
   minWidth?: string;
+  /** table 엘리먼트에 덧붙일 클래스. 예: 'table-fixed'(열 폭을 % 로 배분할 때) */
+  tableClassName?: string;
   rowClassName?: (row: T, index: number) => string;
   onRowClick?: (row: T, index: number) => void;
   /**

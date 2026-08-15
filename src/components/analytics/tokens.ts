@@ -58,3 +58,11 @@ export const TONE_STAT_COLOR: Record<StatusTone, 'accent' | 'up' | 'down' | 'gol
 /** 공용 컨트롤 문구 — 두 화면이 같은 라벨을 쓰도록 상수로 묶는다. */
 export const DEFAULT_SORT_LABEL = '정렬 기준';
 export const DEFAULT_SEARCH_PLACEHOLDER = '게시글 제목·대표키워드 검색';
+
+/** 포스팅 목록 정렬 — 키워드 순위·AI 브리핑이 같은 선택지를 쓴다. */
+export type PostSortKey = 'latest' | 'oldest' | 'title';
+export const POST_SORT_OPTIONS: { value: PostSortKey; label: string }[] = [
+  { value: 'latest', label: '최신순' },
+  { value: 'oldest', label: '오래된순' },
+  { value: 'title', label: '제목순' },
+];

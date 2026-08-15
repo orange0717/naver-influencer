@@ -60,3 +60,56 @@ export async function extractRepresentativeKeyword(
     return null;
   }
 }
+
+/** 일괄 추출 1회 호출당 포스팅 수 — 서버 라우트의 MAX_POSTS_PER_CALL(50) 이내로 맞춘다. */
+export const BULK_EXTRACT_CHUNK = 25;
+
+export interface BulkExtractResult {
+  results: Record<string, RepKeywordExtraction>;
+  /** 서버 시간예산 초과로 처리하지 못한 개수(클라이언트가 다음 호출로 이어서 보낸다) */
+  skipped: number;
+}
+
+/**
+ * 대표 키워드가 없는 포스팅을 한 번의 요청으로 묶어 추출한다(키워드 순위 화면의 '대표키워드 추출' 버튼).
+ * 개별 추출과 같은 규칙·같은 저장 경로를 쓰되, 대량 실행이라 본문/AI 보정 없이 제목 규칙만 사용한다.
+ */
+export async function extractRepresentativeKeywordsBulk(
+  blogId: string,
+  posts: { id: string; title: string }[],
+): Promise<BulkExtractResult | null> {
+  if (posts.length === 0) return { results: {}, skipped: 0 };
+  try {
+    const res = await fetch('/api/my/representative-keywords/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blogId, posts: posts.map(p => ({ postId: p.id, title: p.title })) }),
+    });
+    if (!res.ok) return null;
+    const data: {
+      results?: Record<string, {
+        keyword?: string | null;
+        source?: string | null;
+        confidence?: number | null;
+        candidates?: string[];
+        autoKeywords?: AutoKeyword[];
+      }>;
+      skipped?: number;
+    } = await res.json();
+
+    const results: Record<string, RepKeywordExtraction> = {};
+    for (const [postId, r] of Object.entries(data.results || {})) {
+      results[postId] = {
+        keyword: r.keyword || null,
+        source: r.source ?? null,
+        confidence: typeof r.confidence === 'number' ? r.confidence : null,
+        candidates: r.candidates || [],
+        candidateScreen: [],
+        autoKeywords: r.autoKeywords || [],
+      };
+    }
+    return { results, skipped: data.skipped || 0 };
+  } catch {
+    return null;
+  }
+}
