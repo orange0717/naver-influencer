@@ -70,9 +70,28 @@ const MODIFIER_STEMS = [
 ];
 const MODIFIER_RE = new RegExp(`^(?:${MODIFIER_STEMS.join('|')})(?:고|게)$`);
 
-/** 수식 어절(연결형 '-고' / 부사형 '-게')인지 — 구 경계로 처리해 대표 후보에서 뺀다. */
+// 정도부사 — 그 자체로는 검색어가 아니지만 뒤 말과 묶여 제목을 이루기도 한다("더 빠르게 실패하기").
+const DEGREE_ADVERBS = new Set([
+  '더', '가장', '제일', '너무', '아주', '매우', '훨씬', '좀', '조금', '덜', '완전', '진짜', '정말', '꽤', '엄청',
+]);
+
+/** 수식 어절(연결형 '-고' / 부사형 '-게' / 정도부사)인지 — 단독으로는 대표가 될 수 없다. */
 function isModifierWord(token: string): boolean {
-  return MODIFIER_RE.test(token);
+  return MODIFIER_RE.test(token) || DEGREE_ADVERBS.has(lower(token));
+}
+
+// 용언 명사형(실패하기·만들기) — 단독으로는 아무도 검색하지 않는 조각이라,
+// 앞 수식어를 도로 붙여 구(句)로 만들거나(더 빠르게 실패하기) AI 보정으로 넘긴다.
+const VERBAL_NOUN_RE = /(하기|되기|쓰기|읽기|듣기|먹기|살기|짓기|찾기|만들기|버리기|배우기|기르기|키우기)$/;
+
+function isVerbalNoun(token: string): boolean {
+  return token.length >= 3 && VERBAL_NOUN_RE.test(token);
+}
+
+/** 구의 끝이 용언 명사형이면 검색어로 부적합(스펙 #13) — 신뢰도를 낮춰 AI 보정 대상으로 만든다. */
+function endsWithVerbalNoun(phrase: string): boolean {
+  const parts = phrase.trim().split(/\s+/);
+  return parts.length > 0 && isVerbalNoun(parts[parts.length - 1]);
 }
 
 // 목적격 조사(을/를)로 끝나면 뒤에 용언이 오는 절(운명을 바꾸다) — 명사 키워드가 아니므로 경계.
@@ -153,7 +172,7 @@ function isStrongKoreanProper(token: string): boolean {
   return /^[가-힣]{4,}$/.test(token) && !isStopOrGeneric(token);
 }
 
-type TokenKind = 'content' | 'number' | 'skip';
+type TokenKind = 'content' | 'number' | 'skip' | 'modifier';
 
 function classifyToken(token: string): TokenKind {
   const t = token.trim();
@@ -161,11 +180,11 @@ function classifyToken(token: string): TokenKind {
   if (t === RUN_BREAK) return 'skip'; // 괄호류 경계 — 부가설명을 제목 본류와 분리(스펙 #1)
   if (BARE_NUMBER_RE.test(t)) return 'number';
   if (isEpisodeOrDate(t)) return 'skip';
+  if (isModifierWord(t)) return 'modifier';
   if (isStopOrGeneric(t)) return 'skip';
   if (isDecorator(t)) return 'skip';
   if (isObjectClause(t)) return 'skip';
   if (isAdnominalVerb(t)) return 'skip';
-  if (isModifierWord(t)) return 'skip';
   return 'content';
 }
 
@@ -190,18 +209,26 @@ interface Token { surface: string; idx: number }
 function buildContentRuns(tokens: string[]): Token[][] {
   const runs: Token[][] = [];
   let cur: Token[] = [];
+  // 직전 수식 어절 버퍼 — 뒤따르는 말이 단독으로 검색어가 못 되는 용언 명사형일 때만 되살린다.
+  let pendingModifiers: Token[] = [];
   const flush = () => { if (cur.length) runs.push(cur); cur = []; };
 
   for (let i = 0; i < tokens.length; i++) {
     const surface = tokens[i];
     const kind = classifyToken(surface);
-    if (kind === 'skip') { flush(); continue; }
+    if (kind === 'modifier') { flush(); pendingModifiers.push({ surface, idx: i }); continue; }
+    if (kind === 'skip') { flush(); pendingModifiers = []; continue; }
     if (kind === 'number') {
       if (cur.length) cur.push({ surface, idx: i }); // 아이폰 17 — 앞 명사에 흡수
       continue;                                      // 맨 앞 숫자는 버림
     }
     // content: 구간 중간의 강한 고유명사는 새 개체 시작(오렌지도서관)
     if (cur.length && isStrongKoreanProper(surface)) { flush(); }
+    // "더 빠르게 실패하기"처럼 head가 용언 명사형이면 앞 수식어와 한 덩어리로 묶는다.
+    if (cur.length === 0 && pendingModifiers.length > 0 && isVerbalNoun(surface)) {
+      cur.push(...pendingModifiers);
+    }
+    pendingModifiers = [];
     cur.push({ surface, idx: i });
   }
   flush();
@@ -481,11 +508,17 @@ export function extractKeywordCandidates(input: ExtractInput, maxSecondaries = 3
     strongRegions.push(n);
   }
 
+  // 수식어 재결합으로도 용언 명사형이 대표로 남으면(만들기·실패하기) 그대로는 아무도 검색하지 않는다.
+  // 규칙으로는 여기까지가 한계라 저신뢰로 내려 AI 보정(Haiku)이 판단하게 한다.
+  const verbalPrimary = !userKeyword && !!primary && endsWithVerbalNoun(primary);
+
   const confidence = userKeyword
     ? 0.99
-    : Math.max(0, Math.min(0.99, topScore / SCORE_FOR_FULL_CONFIDENCE)) * (strongRegions.length >= 2 ? 0.7 : 1);
+    : Math.max(0, Math.min(0.99, topScore / SCORE_FOR_FULL_CONFIDENCE))
+      * (strongRegions.length >= 2 ? 0.7 : 1)
+      * (verbalPrimary ? 0.6 : 1);
 
-  const ambiguous = !userKeyword && (primary === null || topScore < CONFIDENT_SCORE || strongRegions.length >= 2);
+  const ambiguous = !userKeyword && (primary === null || topScore < CONFIDENT_SCORE || strongRegions.length >= 2 || verbalPrimary);
 
   return { primary, secondaries, candidates: scored, ambiguous, confidence: Number(confidence.toFixed(2)) };
 }

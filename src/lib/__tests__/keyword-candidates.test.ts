@@ -171,3 +171,29 @@ describe('auditStoredKeyword — 기존 데이터 점검(스펙 #18~20)', () => 
     expect(a.verdict).toBe('normal');
   });
 });
+
+describe('수식어·의도어 제거와 재결합(실제 검색어 기준)', () => {
+  it('연결형/부사형 수식어는 대표가 되지 않는다', () => {
+    expect(extractKeywordCandidates({ title: '쉽고 떫고 좋은 규리' }).primary).toBe('규리');
+    expect(extractKeywordCandidates({ title: '가장 완벽한 여행 코스' }).primary).toBe('완벽한 여행 코스');
+  });
+
+  it('같은 글자로 끝나는 명사(냉장고·경기고·광고·가게)는 수식어로 오탐하지 않는다', () => {
+    expect(extractKeywordCandidates({ title: 'LG 냉장고 추천' }).primary).toBe('LG 냉장고');
+    expect(extractKeywordCandidates({ title: '경기고 야구부 후기' }).primary).toBe('경기고 야구부');
+    expect(extractKeywordCandidates({ title: '광고 대행사 비교' }).primary).toBe('광고 대행사 비교');
+    expect(extractKeywordCandidates({ title: '동네 가게 소개' }).primary).toBe('동네 가게');
+  });
+
+  it('head가 용언 명사형이면 수식어를 도로 붙여 한 덩어리로 만든다', () => {
+    const r = extractKeywordCandidates({ title: '더 빠르게 실패하기 자기계발도서추천' });
+    expect(r.primary).toBe('더 빠르게 실패하기');
+    // 규칙만으로는 책 제목인지 확신할 수 없어 AI 보정 대상으로 남긴다
+    expect(r.ambiguous).toBe(true);
+  });
+
+  it('의도어(뜻·순위)는 대표에서 떼어낸다', () => {
+    expect(extractKeywordCandidates({ title: '코스피 뜻 정리' }).primary).toBe('코스피');
+    expect(extractKeywordCandidates({ title: '강남 맛집 순위 모음' }).primary).toBe('강남 맛집');
+  });
+});
