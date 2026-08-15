@@ -108,7 +108,7 @@ export default function NaverTopicDetailPage() {
                 </div>
               )}
               <div className="min-w-0">
-                <h1 className="type-page-title text-text">{topic.title || '(제목 없음)'}</h1>
+                <h1 className="text-xl font-bold text-text">{topic.title || '(제목 없음)'}</h1>
                 {topic.topic_subject_category && (
                   <p className="text-xs text-dim mt-1">
                     {topic.topic_subject_category}

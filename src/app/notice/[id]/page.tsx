@@ -15,8 +15,8 @@ const TAG_LABEL: Record<string, string> = {
 
 const TAG_COLOR: Record<string, string> = {
   notice: 'bg-accent/15 text-accent',
-  update: 'bg-accent2/25 text-text-2',
-  event: 'bg-gold/15 text-gold',
+  update: 'bg-[#c8816b]/15 text-[#c8816b]',
+  event: 'bg-[#F29C68]/15 text-[#F29C68]',
 };
 
 interface Notice {
@@ -324,7 +324,7 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
           <span className="text-xs text-dim">{formatFullDate(notice.created_at)}</span>
         </div>
 
-        <h1 className="type-page-title mb-4">{notice.title}</h1>
+        <h1 className="text-xl font-bold mb-4">{notice.title}</h1>
 
         <div className="text-sm text-text leading-relaxed whitespace-pre-wrap mb-4">
           {notice.content}

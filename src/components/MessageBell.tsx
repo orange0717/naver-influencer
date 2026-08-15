@@ -71,11 +71,11 @@ export default function MessageBell() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer"
+        className="relative p-2 rounded-lg hover:bg-black/[0.04] transition-colors cursor-pointer"
         aria-label="쪽지함"
       >
         {/* 편지 아이콘 */}
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-text-2">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#333333]">
           <rect x="2" y="4" width="20" height="16" rx="2" />
           <path d="M22 7l-10 7L2 7" />
         </svg>
@@ -87,7 +87,7 @@ export default function MessageBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-surface rounded-xl border border-border shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-surface rounded-xl border border-border shadow-xl z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="text-sm font-bold">쪽지함</span>
             <Link href="/messages" className="text-[11px] text-accent font-semibold hover:underline" onClick={() => setOpen(false)}>

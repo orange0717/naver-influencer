@@ -91,7 +91,7 @@ const OS_COLORS: Record<string, string> = {
   'Android': 'bg-[#3DDC84]',
   'Linux': 'bg-[#FCC624]',
   'ChromeOS': 'bg-[#4285F4]',
-  '기타': 'bg-dim',
+  '기타': 'bg-[#C4B8B3]',
 };
 
 const BROWSER_COLORS: Record<string, string> = {
@@ -102,7 +102,7 @@ const BROWSER_COLORS: Record<string, string> = {
   'Opera': 'bg-[#FF1B2D]',
   'Whale': 'bg-[#03C75A]',
   'Samsung Internet': 'bg-[#1428A0]',
-  '기타': 'bg-dim',
+  '기타': 'bg-[#C4B8B3]',
 };
 
 function CrossTabList({ groups, colorMap }: { groups?: { device: string; total: number; items: { name: string; count: number }[] }[]; colorMap: Record<string, string> }) {
@@ -228,7 +228,7 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="type-page-title">유입 분석</h1>
+        <h1 className="text-xl font-extrabold">유입 분석</h1>
       </div>
 
       {/* 요약 카드: UV(순방문자), PV(페이지뷰), 가입 */}
@@ -347,7 +347,7 @@ export default function AdminAnalyticsPage() {
                       >
                         {log.referrer_domain}
                         {log.utm_source && (
-                          <span className="ml-1 text-[9px] font-medium text-blue bg-blue/10 px-1.5 py-0.5 rounded-sm leading-none">UTM</span>
+                          <span className="ml-1 text-[9px] font-bold text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded-full leading-none">UTM</span>
                         )}
                       </td>
                       <td className="py-2 px-2 text-dim">{(log.device_type && TODAY_LOG_DEVICE_LABEL[log.device_type]) || log.device_type || '-'}</td>
@@ -477,8 +477,8 @@ export default function AdminAnalyticsPage() {
             <div className="space-y-3">
               {[
                 { label: '데스크톱', value: devicesUV.desktop || 0, color: 'bg-accent' },
-                { label: '모바일', value: devicesUV.mobile || 0, color: 'bg-up' },
-                { label: '태블릿', value: devicesUV.tablet || 0, color: 'bg-gold' },
+                { label: '모바일', value: devicesUV.mobile || 0, color: 'bg-[#2DB400]' },
+                { label: '태블릿', value: devicesUV.tablet || 0, color: 'bg-[#F29C68]' },
               ].map(d => (
                 <div key={d.label}>
                   <div className="flex items-center justify-between text-xs mb-1">

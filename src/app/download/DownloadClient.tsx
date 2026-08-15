@@ -257,7 +257,7 @@ export default function DownloadClient() {
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 text-accent text-xs font-bold rounded-full mb-6">
           데스크탑 앱 사용 중
         </div>
-        <h1 className="type-page-title text-text mb-3">
+        <h1 className="text-2xl font-bold text-text mb-3">
           이미 N인플 데스크탑 앱으로 접속 중입니다
         </h1>
         <p className="text-sm text-dim leading-relaxed mb-8">
@@ -280,7 +280,7 @@ export default function DownloadClient() {
       {/* 헤더 */}
       <div className="text-center mb-12">
         <p className="text-xs text-accent font-bold tracking-widest mb-3">DESKTOP APP</p>
-        <h1 className="type-page-title text-text mb-4">
+        <h1 className="font-title text-3xl md:text-4xl font-extrabold text-text mb-4">
           N인플을 데스크탑 앱으로
         </h1>
         <p className="text-sm md:text-base text-dim leading-relaxed">

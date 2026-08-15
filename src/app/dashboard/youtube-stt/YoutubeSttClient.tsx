@@ -155,7 +155,7 @@ export default function YoutubeSttClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <header className="mb-6">
-        <h1 className="type-page-title text-text">유튜브 음원 텍스트 추출</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-text">유튜브 음원 텍스트 추출</h1>
         <p className="text-sm text-dim mt-1">
           자막이 있으면 자막을, 없으면 음원을 STT(Speech-to-Text)로 변환해 텍스트로 받아봅니다.
           블로거+·인플루언서 플랜 전용.
@@ -205,7 +205,7 @@ export default function YoutubeSttClient() {
             <button
               onClick={resetAll}
               disabled={loading}
-              className="px-4 py-2 rounded-lg border border-border bg-surface hover:bg-surface-hover text-sm text-text disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-lg border border-border bg-white hover:bg-bg text-sm text-text disabled:opacity-50 transition-colors"
             >
               초기화
             </button>
@@ -237,7 +237,7 @@ export default function YoutubeSttClient() {
                 </button>
                 <button
                   onClick={downloadResult}
-                  className="px-3 py-1 rounded-md border border-border bg-surface hover:bg-surface-hover text-xs text-text font-medium transition-colors"
+                  className="px-3 py-1 rounded-md border border-border bg-white hover:bg-bg text-xs text-text font-semibold transition-colors"
                 >
                   .txt 다운로드
                 </button>
@@ -302,8 +302,8 @@ export default function YoutubeSttClient() {
                         <span
                           className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-2 ${
                             source.source === 'caption'
-                              ? 'bg-up/10 text-up'
-                              : 'bg-blue/10 text-blue'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-violet-100 text-violet-700'
                           }`}
                         >
                           {source.source === 'caption' ? '자막' : 'STT'}

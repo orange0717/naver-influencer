@@ -95,7 +95,7 @@ function useFeaturedStories() {
 function SectionDivider() {
   return (
     <div className="flex justify-center py-0">
-      <div className="w-16 h-px bg-border-strong" />
+      <div className="w-16 h-[2px] bg-accent/25 rounded-full" />
     </div>
   );
 }
@@ -112,18 +112,18 @@ export default function IntroClient() {
     <div className="-mt-6 -mb-10 w-screen relative left-1/2 -ml-[50vw]">
 
       {/* ═══════════ HERO (bg) ═══════════ */}
-      <section className="bg-bg px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
+      <section className="bg-white px-4 pt-20 pb-24 md:pt-28 md:pb-32 text-center">
         <div className="mb-5 flex justify-center">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/15 text-accent text-[11px] font-bold tracking-wide">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             현재 베타버전 프로그램입니다
           </span>
         </div>
-        <p className="text-sm text-desc tracking-wide mb-8">
+        <p className="text-sm text-accent font-semibold tracking-wide mb-8">
           네이버 검색 데이터 분석 플랫폼
         </p>
 
-        <h1 className="font-editorial text-3xl md:text-5xl text-text leading-tight mb-6">
+        <h1 className="font-title text-3xl md:text-5xl font-extrabold text-text leading-tight mb-6">
           당신의 인플순위,<br />스마트하게 관리하세요.
         </h1>
 
@@ -132,13 +132,13 @@ export default function IntroClient() {
         </p>
 
         <div className="flex flex-wrap gap-3 justify-center mb-10">
-          <Link href="/keywords" className="px-4 py-2 rounded-full border border-border text-text-2 text-sm hover:bg-surface-hover hover:text-text transition-colors">
+          <Link href="/keywords" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
             키워드 분석
           </Link>
-          <Link href="/influencers" className="px-4 py-2 rounded-full border border-border text-text-2 text-sm hover:bg-surface-hover hover:text-text transition-colors">
+          <Link href="/influencers" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
             인플루언서 검색
           </Link>
-          <Link href="/" className="px-4 py-2 rounded-full border border-border text-text-2 text-sm hover:bg-surface-hover hover:text-text transition-colors">
+          <Link href="/" className="px-5 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors">
             대시보드
           </Link>
         </div>
@@ -165,11 +165,11 @@ export default function IntroClient() {
       <SectionDivider />
 
       {/* ═══════════ 신규 인플루언서 (surface) ═══════════ */}
-      <section className="bg-bg px-4 py-16 md:py-20">
+      <section className="bg-accent/[0.06] px-4 py-16 md:py-20">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
-              <p className="text-xs text-desc font-semibold tracking-[0.16em] mb-3">NEW INFLUENCERS</p>
-              <h2 className="font-title text-2xl md:text-3xl text-text mb-2">신규 인플루언서</h2>
+              <p className="text-xs text-accent font-semibold tracking-widest mb-3">NEW INFLUENCERS</p>
+              <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">신규 인플루언서</h2>
               <p className="text-sm text-dim">
                 이번 주{weekLabel && <span className="text-accent font-semibold"> ({weekLabel})</span>} 선정된 인플루언서들입니다
               </p>
@@ -183,7 +183,7 @@ export default function IntroClient() {
                     href={`https://in.naver.com/${inf.naver_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between px-5 py-4 rounded-xl border border-border bg-surface hover:border-accent/40 transition"
+                    className="flex items-center justify-between px-5 py-4 rounded-xl border border-border bg-bg hover:border-accent/40 transition"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {inf.image_url ? (
@@ -210,7 +210,7 @@ export default function IntroClient() {
                 ))}
               </div>
             ) : newInfluencersLoaded ? (
-              <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-surface">
+              <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-bg/60">
                 <p className="text-sm text-text font-semibold mb-1">
                   이번 주{weekLabel && <span className="text-accent"> ({weekLabel})</span>} 새로 선정된 인플루언서가 없습니다
                 </p>
@@ -234,22 +234,22 @@ export default function IntroClient() {
 
       {/* ═══════════ 데이터 현황 (bg) ═══════════ */}
       <section className="bg-bg px-4 py-20 md:py-24 text-center">
-        <p className="text-xs text-desc font-semibold tracking-[0.16em] mb-3">DATA</p>
-        <h2 className="font-title text-2xl md:text-3xl text-text mb-4">실시간 데이터 현황</h2>
+        <p className="text-xs text-accent font-semibold tracking-widest mb-3">DATA</p>
+        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">실시간 데이터 현황</h2>
         <p className="text-sm text-dim mb-12">매일 자동으로 수집·분석되며, 신규 인플루언서 수는 매주 월요일 0시(KST) 기준 주간으로 갱신됩니다.</p>
 
         <div className="flex justify-center gap-12 md:gap-20">
           <div>
-            <p className="text-3xl md:text-4xl font-semibold text-accent">{stats.new_count.toLocaleString()}</p>
+            <p className="text-3xl md:text-4xl font-extrabold text-accent">{stats.new_count.toLocaleString()}</p>
             <p className="text-xs text-dim mt-2">신규 인플루언서</p>
             <p className="text-[10px] text-dim/60">이번 주{weekLabel && ` (${weekLabel})`}</p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-semibold text-text">{stats.active_count.toLocaleString()}</p>
+            <p className="text-3xl md:text-4xl font-extrabold text-text">{stats.active_count.toLocaleString()}</p>
             <p className="text-xs text-dim mt-2">활동 인플루언서</p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-semibold text-dim/60">{stats.inactive_count.toLocaleString()}</p>
+            <p className="text-3xl md:text-4xl font-extrabold text-dim/60">{stats.inactive_count.toLocaleString()}</p>
             <p className="text-xs text-dim mt-2">미활동 인플루언서</p>
           </div>
         </div>
@@ -260,11 +260,11 @@ export default function IntroClient() {
           <SectionDivider />
 
           {/* ═══════════ 성장 후기 (surface) ═══════════ */}
-          <section className="bg-bg px-4 py-16 md:py-20">
+          <section className="bg-accent/[0.06] px-4 py-16 md:py-20">
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-10">
-                <p className="text-xs text-desc font-semibold tracking-[0.16em] mb-3">GROWTH STORIES</p>
-                <h2 className="font-title text-2xl md:text-3xl text-text mb-2">실사용자 성장 후기</h2>
+                <p className="text-xs text-accent font-semibold tracking-widest mb-3">GROWTH STORIES</p>
+                <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-2">실사용자 성장 후기</h2>
                 <p className="text-sm text-dim">N인플을 통해 성장한 인플루언서들의 이야기</p>
               </div>
 
@@ -273,7 +273,7 @@ export default function IntroClient() {
                   <Link
                     key={s.id}
                     href={`/stories/${s.id}`}
-                    className="block p-5 rounded-xl bg-surface border border-border hover:border-accent/40 transition"
+                    className="block p-5 rounded-xl bg-bg border border-border hover:border-accent/40 transition"
                   >
                     {(s.metric_before || s.metric_after) && (
                       <div className="flex items-center gap-2 text-xs mb-3">
@@ -299,7 +299,7 @@ export default function IntroClient() {
               <div className="text-center mt-8">
                 <Link
                   href="/stories"
-                  className="inline-block px-5 py-2 rounded-full border border-border text-text-2 text-sm hover:bg-surface-hover hover:text-text transition"
+                  className="inline-block px-6 py-2.5 rounded-full bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition"
                 >
                   후기 전체 보기 →
                 </Link>
@@ -312,11 +312,11 @@ export default function IntroClient() {
       <SectionDivider />
 
       {/* ═══════════ 핵심 기능 (white) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24">
+      <section className="bg-white px-4 py-20 md:py-24">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs text-desc font-semibold tracking-[0.16em] mb-3">FEATURES</p>
-            <h2 className="font-title text-2xl md:text-3xl text-text mb-4">키워드챌린지 전략의 모든 것</h2>
+            <p className="text-xs text-accent font-semibold tracking-widest mb-3">FEATURES</p>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">키워드챌린지 전략의 모든 것</h2>
             <p className="text-sm text-dim">데이터 기반의 키워드 분석으로 경쟁 우위를 확보하세요.</p>
           </div>
 
@@ -367,12 +367,12 @@ export default function IntroClient() {
       <SectionDivider />
 
       {/* ═══════════ 추천 대상 (accent) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24 text-center">
-        <p className="text-xs text-desc font-semibold tracking-[0.16em] mb-3">FOR YOU</p>
-        <h2 className="font-title text-2xl md:text-3xl text-text mb-16">이런 분들에게 추천합니다</h2>
+      <section className="bg-accent/[0.06] px-4 py-20 md:py-24 text-center">
+        <p className="text-xs text-accent font-semibold tracking-widest mb-3">FOR YOU</p>
+        <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-16">이런 분들에게 추천합니다</h2>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto text-left">
-          <div className="bg-surface rounded-lg border border-border p-7">
+          <div className="bg-bg rounded-lg border border-border p-7">
             <p className="text-xs font-bold text-accent tracking-wide mb-3">블로거</p>
             <h3 className="font-bold text-text mb-3 text-lg">네이버 블로그를 운영하는 분</h3>
             <p className="text-sm text-dim leading-relaxed mb-4">블로그 품질지수와 키워드별 블로그 순위를 추적해 상위노출 전략을 세우세요. 인플루언서 선정을 준비하는 분에게도 좋습니다.</p>
@@ -383,7 +383,7 @@ export default function IntroClient() {
               <li className="text-accent font-semibold pt-1">월 5,500원</li>
             </ul>
           </div>
-          <div className="bg-surface rounded-lg border border-border p-7">
+          <div className="bg-bg rounded-lg border border-border p-7">
             <p className="text-xs font-bold text-accent tracking-wide mb-3">인플루언서</p>
             <h3 className="font-bold text-text mb-3 text-lg">네이버 인플루언서로 활동 중인 분</h3>
             <p className="text-sm text-dim leading-relaxed mb-4">키워드챌린지 TOP3 진입과 팬 확대를 위한 데이터를 제공합니다. 경쟁자 분석과 알림으로 순위를 지키세요.</p>
@@ -403,8 +403,8 @@ export default function IntroClient() {
       <section className="bg-bg px-4 py-20 md:py-24">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-xs text-desc font-semibold tracking-[0.16em] mb-3">HOW IT WORKS</p>
-            <h2 className="font-title text-2xl md:text-3xl text-text mb-4">서비스 흐름</h2>
+            <p className="text-xs text-accent font-semibold tracking-widest mb-3">HOW IT WORKS</p>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">서비스 흐름</h2>
             <p className="text-sm text-dim">가입부터 전략 실행까지 단 4단계</p>
           </div>
 
@@ -448,11 +448,11 @@ export default function IntroClient() {
       <SectionDivider />
 
       {/* ═══════════ 서비스 미리보기 (white) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-24">
+      <section className="bg-white px-4 py-20 md:py-24">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs text-desc font-semibold tracking-[0.16em] mb-3">PREVIEW</p>
-            <h2 className="font-title text-2xl md:text-3xl text-text mb-4">서비스 미리보기</h2>
+            <p className="text-xs text-accent font-semibold tracking-widest mb-3">PREVIEW</p>
+            <h2 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-4">서비스 미리보기</h2>
             <p className="text-sm text-dim">N인플의 핵심 기능을 카테고리별로 확인하세요</p>
           </div>
 
@@ -508,7 +508,7 @@ export default function IntroClient() {
                 link: '/influencers',
                 mockup: (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 bg-surface">
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 bg-bg">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-dim flex-shrink-0"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                       <span className="text-[10px] text-dim">인플루언서 검색</span>
                     </div>
@@ -558,13 +558,13 @@ export default function IntroClient() {
                 ),
               },
             ].map(card => (
-              <Link key={card.title} href={card.link} className="bg-surface rounded-lg border border-border overflow-hidden flex flex-col hover:border-accent/40 transition group">
+              <Link key={card.title} href={card.link} className="bg-bg rounded-lg border border-border overflow-hidden flex flex-col hover:border-accent/40 transition group">
                 {/* 브라우저 목업 */}
-                <div className="bg-sunken border-b border-border">
+                <div className="bg-surface border-b border-border">
                   <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/60">
-                    <div className="w-2 h-2 rounded-full bg-border-strong" />
-                    <div className="w-2 h-2 rounded-full bg-border-strong" />
-                    <div className="w-2 h-2 rounded-full bg-border-strong" />
+                    <div className="w-2 h-2 rounded-full bg-[#FF6058]" />
+                    <div className="w-2 h-2 rounded-full bg-[#FFBD2E]" />
+                    <div className="w-2 h-2 rounded-full bg-[#27CA40]" />
                     <span className="ml-2 text-[10px] text-dim truncate">{card.url}</span>
                   </div>
                   <div className="px-5 py-5 min-h-[150px] [&_.text-\[10px\]]:text-xs [&_.text-\[9px\]]:text-[11px] [&_.text-\[8px\]]:text-[10px]">
@@ -586,15 +586,15 @@ export default function IntroClient() {
       <SectionDivider />
 
       {/* ═══════════ 자주 묻는 질문 ═══════════ */}
-      <section className="bg-bg py-20 md:py-24">
+      <section className="bg-white py-20 md:py-24">
         <LandingFaq />
       </section>
 
       <SectionDivider />
 
       {/* ═══════════ 하단 CTA (accent) ═══════════ */}
-      <section className="bg-bg px-4 py-20 md:py-28 text-center">
-        <h2 className="font-title text-2xl md:text-3xl text-text mb-4">지금 바로 시작하세요</h2>
+      <section className="bg-accent/[0.06] px-4 py-20 md:py-28 text-center">
+        <h2 className="font-title text-2xl md:text-4xl font-extrabold text-text mb-4">지금 바로 시작하세요</h2>
         <p className="text-sm text-dim mb-10">
           키워드챌린지는 시작일 뿐, 인플루언서 성장을 돕는 곳 N인플.
         </p>

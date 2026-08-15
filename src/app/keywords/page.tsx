@@ -421,9 +421,9 @@ export default function KeywordsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="type-page-title">키워드 전체 목록</h1>
+          <h1 className="text-xl font-extrabold">키워드 전체 목록</h1>
           <p className="text-sm text-dim mt-1">
-            키워드를 누르면 검색어 트렌드와 전체 <span className="font-semibold text-accent">인플루언서 순위</span>를 볼 수 있어요.
+            키워드를 누르면 검색어 트렌드와 전체 <span className="font-semibold text-[#BF877A]">인플루언서 순위</span>를 볼 수 있어요.
           </p>
         </div>
         <div className="flex items-center gap-3">

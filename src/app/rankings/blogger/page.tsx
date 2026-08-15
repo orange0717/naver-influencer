@@ -12,7 +12,7 @@ export default function BloggerRankingPage() {
         <nav className="text-[11px] text-dim mb-2">
           <a href="/rankings" className="underline">랭킹</a> · 블로그 순위
         </nav>
-        <h1 className="type-page-title">블로그 순위</h1>
+        <h1 className="text-2xl font-extrabold">블로그 순위</h1>
         <p className="text-sm text-dim mt-1">
           네이버 블로그 활동 점수 기반 종합 순위. 내 블로그 순위도 입력해서 확인할 수 있습니다.
         </p>

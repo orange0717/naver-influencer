@@ -85,7 +85,7 @@ export default function DashboardHubCards({ challenge, topic, canSync }: Props) 
       {/* ── 키워드 챌린지 ── */}
       <CardShell>
         <div className="flex items-center gap-2 mb-3">
-          <span className="w-8 h-8 rounded-full bg-sunken text-accent flex items-center justify-center shrink-0">
+          <span className="w-8 h-8 rounded-full bg-[#FAF4F2] text-accent flex items-center justify-center shrink-0">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
           </span>
           <h3 className="text-sm font-bold text-text">키워드 챌린지</h3>
@@ -107,7 +107,7 @@ export default function DashboardHubCards({ challenge, topic, canSync }: Props) 
       <CardShell>
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-8 h-8 rounded-full bg-sunken text-accent flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-full bg-[#FAF4F2] text-accent flex items-center justify-center shrink-0">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z" /><circle cx="7.5" cy="7.5" r="1.5" /></svg>
             </span>
             <h3 className="text-sm font-bold text-text truncate">토픽</h3>
@@ -141,7 +141,7 @@ export default function DashboardHubCards({ challenge, topic, canSync }: Props) 
           {state.count > 0 && state.topTitles.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 mt-1">
               {state.topTitles.map((t, i) => (
-                <span key={i} className="max-w-full truncate px-2 py-0.5 rounded-full bg-sunken text-[11px] text-text border border-border">
+                <span key={i} className="max-w-full truncate px-2 py-0.5 rounded-full bg-[#FAF4F2] text-[11px] text-text border border-border">
                   {t}
                 </span>
               ))}

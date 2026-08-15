@@ -78,7 +78,7 @@ export default function RewriteClient() {
     <div className="space-y-5">
       {/* 헤더 */}
       <div>
-        <h1 className="type-page-title">리라이팅</h1>
+        <h1 className="text-xl font-extrabold">리라이팅</h1>
         <p className="text-xs text-dim mt-0.5">교정 · 교열 · 윤문 후 다른 표현으로 새롭게 재작성합니다</p>
       </div>
 

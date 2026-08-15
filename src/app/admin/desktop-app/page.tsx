@@ -65,7 +65,7 @@ export default function AdminDesktopAppPage() {
   if (!data || !data.ok) {
     return (
       <div className="space-y-2">
-        <h1 className="type-page-title">데스크탑 앱</h1>
+        <h1 className="text-xl font-extrabold">데스크탑 앱</h1>
         <p className="text-sm text-dim">{data?.error || '데이터를 불러올 수 없습니다.'}</p>
       </div>
     );
@@ -75,7 +75,7 @@ export default function AdminDesktopAppPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="type-page-title">데스크탑 앱</h1>
+          <h1 className="text-xl font-extrabold">데스크탑 앱</h1>
           <p className="text-sm text-dim mt-1">
             다운로드 페이지 방문, 설치 파일 링크 클릭, 데스크탑 앱 실행(비식별) 집계입니다.
           </p>

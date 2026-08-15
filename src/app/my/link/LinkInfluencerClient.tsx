@@ -166,7 +166,7 @@ export default function LinkInfluencerClient() {
     return (
       <div className="max-w-lg mx-auto mt-8 space-y-6">
         <div>
-          <h1 className="type-page-title">본인 인증</h1>
+          <h1 className="text-xl font-bold">본인 인증</h1>
           <p className="text-sm text-dim mt-1">
             in.naver.com/{selected.naverId} 의 소개글에 아래 코드를 붙여 넣어 본인 계정임을 인증해주세요.
           </p>
@@ -209,7 +209,7 @@ export default function LinkInfluencerClient() {
 
   return (
     <div className="max-w-lg mx-auto mt-8 space-y-6">
-      <h1 className="type-page-title">내 인플루언서 계정 연결</h1>
+      <h1 className="text-xl font-bold">내 인플루언서 계정 연결</h1>
       <p className="text-sm text-dim">
         네이버 인플루언서 ID를 입력하면 내 키워드 순위를 실시간으로 확인할 수 있습니다.
       </p>

@@ -229,10 +229,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
-        {/* 세리프 = 콘텐츠와 사고 (페이지 제목·인사말·브랜드 문장)
-            영문 EB Garamond + 한글 Noto Serif KR 을 한 스택으로 묶어 쓴다. */}
+        {/* 세리프 헤드라인(영문): EB Garamond — 우아한 에디토리얼 인상 */}
         <link
-          href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Serif+KR:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap"
           rel="stylesheet"
         />
         {/* 본문·UI(한글/영문): Pretendard Variable — 100~900 단일 요청, dynamic subset */}

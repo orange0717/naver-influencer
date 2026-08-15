@@ -11,14 +11,15 @@ export default function ChatBot() {
       rel="noopener noreferrer"
       aria-label="네이버 톡톡으로 고객센터 문의"
       title="네이버 톡톡으로 고객센터 문의"
-      className="fixed bottom-6 right-6 z-50 flex cursor-pointer items-center justify-center border border-border bg-surface text-text-2 transition-colors hover:text-text hover:bg-surface-hover"
+      className="fixed bottom-6 right-6 text-white shadow-lg hover:scale-105 transition-all z-50 flex items-center justify-center font-bold cursor-pointer"
       style={{
-        height: '38px',
-        padding: '0 16px',
-        fontSize: '13px',
-        letterSpacing: '-0.2px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(36,35,31,0.08)',
+        backgroundColor: '#BF8984',
+        height: '48px',
+        padding: '0 22px',
+        fontSize: '14px',
+        letterSpacing: '-0.3px',
+        borderRadius: '999px',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
       }}
     >
       <span style={{ lineHeight: 1 }}>고객센터</span>

@@ -25,9 +25,9 @@ function BrowserFrame({ url, children }: { url: string; children: React.ReactNod
   return (
     <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm">
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50 bg-border/20">
-        <span className="w-2.5 h-2.5 rounded-full bg-border-strong" />
-        <span className="w-2.5 h-2.5 rounded-full bg-border-strong" />
-        <span className="w-2.5 h-2.5 rounded-full bg-border-strong" />
+        <span className="w-2.5 h-2.5 rounded-full bg-down/40" />
+        <span className="w-2.5 h-2.5 rounded-full bg-gold/40" />
+        <span className="w-2.5 h-2.5 rounded-full bg-up/40" />
         <span className="ml-2 text-[10px] text-dim/60 truncate">{url}</span>
       </div>
       <div className="p-4">{children}</div>
@@ -135,17 +135,17 @@ function GrowthMockup() {
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-bg rounded-lg p-2 text-center border border-border/50">
           <p className="text-[10px] text-dim">평균 순위</p>
-          <p className="text-sm font-semibold text-up">3.2위</p>
+          <p className="text-sm font-extrabold text-up">3.2위</p>
           <p className="text-[9px] text-up">+1.5</p>
         </div>
         <div className="bg-bg rounded-lg p-2 text-center border border-border/50">
           <p className="text-[10px] text-dim">TOP 3</p>
-          <p className="text-sm font-semibold text-accent">5개</p>
+          <p className="text-sm font-extrabold text-accent">5개</p>
           <p className="text-[9px] text-up">+2</p>
         </div>
         <div className="bg-bg rounded-lg p-2 text-center border border-border/50">
           <p className="text-[10px] text-dim">키워드</p>
-          <p className="text-sm font-semibold text-text">12개</p>
+          <p className="text-sm font-extrabold text-text">12개</p>
           <p className="text-[9px] text-dim">-</p>
         </div>
       </div>
@@ -220,7 +220,7 @@ function ScoreMockup() {
   return (
     <div className="space-y-2">
       <div className="text-center mb-2">
-        <span className="font-rank text-2xl font-semibold text-accent">78</span>
+        <span className="text-2xl font-black text-accent">78</span>
         <span className="text-xs text-dim ml-1">/ 100</span>
       </div>
       <div className="space-y-1.5">
@@ -269,8 +269,8 @@ export default function GuidePage() {
 
       {/* ─── 히어로 ─── */}
       <div className="text-center space-y-4">
-        <p className="text-xs text-desc font-semibold tracking-[0.16em]">SERVICE GUIDE</p>
-        <h1 className="type-page-title">서비스 미리보기</h1>
+        <p className="text-xs text-accent font-semibold tracking-widest">SERVICE GUIDE</p>
+        <h1 className="text-3xl md:text-4xl font-extrabold">서비스 미리보기</h1>
         <p className="text-dim text-sm md:text-base max-w-lg mx-auto leading-relaxed">
           N인플의 핵심 기능을 확인하세요.
         </p>
@@ -299,7 +299,7 @@ export default function GuidePage() {
 
       {/* ─── FAQ ─── */}
       <div className="space-y-4">
-        <h2 className="font-title text-xl text-center">자주 묻는 질문</h2>
+        <h2 className="text-xl font-extrabold text-center">자주 묻는 질문</h2>
         <div className="space-y-3">
           {FAQS.map(faq => (
             <details key={faq.q} className="bg-surface rounded-xl border border-border overflow-hidden group">
@@ -320,7 +320,7 @@ export default function GuidePage() {
 
       {/* ─── 하단 CTA ─── */}
       <div className="text-center space-y-4">
-        <h2 className="font-title text-xl">지금 시작하세요</h2>
+        <h2 className="text-xl font-extrabold">지금 시작하세요</h2>
         <p className="text-sm text-dim">무료 도구는 가입 후 자유롭게, 심층 기능은 블로거 5,500원·인플루언서 9,900원 플랜에서 이용 가능합니다.</p>
         <Link href="/auth/signup" className="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
           무료 회원가입

@@ -16,12 +16,12 @@ export default function Footer() {
         {/* 브랜드 + 링크 */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-footer-text/10 flex items-center justify-center text-footer-heading text-xs">N</div>
-            <span className="font-title text-footer-text text-sm">N인플</span>
+            <div className="w-7 h-7 rounded-md bg-white/20 flex items-center justify-center text-white font-bold text-xs">N</div>
+            <span className="font-title font-extrabold text-white text-sm">N인플</span>
           </div>
           <nav className="flex flex-wrap items-center justify-end gap-4">
             {FOOTER_LINKS.map(link => (
-              <Link key={link.href} href={link.href} className="text-xs text-footer-dim hover:text-footer-text transition-colors">
+              <Link key={link.href} href={link.href} className="text-xs text-footer-dim hover:text-white transition-colors">
                 {link.label}
               </Link>
             ))}
@@ -29,10 +29,10 @@ export default function Footer() {
         </div>
 
         {/* 사업자정보 + 저작권 */}
-        <div className="border-t border-footer-dim/20 pt-4 text-[11px] text-footer-dim/70 leading-relaxed">
+        <div className="border-t border-white/10 pt-4 text-[11px] text-footer-dim/70 leading-relaxed">
           <p>
             오렌지도서관 · 대표 한미선 · 사업자등록번호 702-62-00986 · 통신판매 2026-충남아산-0325 · 전화 0507-1394-5091 · 이메일{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:text-footer-text transition-colors">
+            <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:text-white transition-colors">
               {CONTACT_EMAIL}
             </a>
             {' · '}
@@ -41,7 +41,7 @@ export default function Footer() {
               href={CONTACT_BLOG_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-footer-text transition-colors"
+              className="underline hover:text-white transition-colors"
             >
               {contactBlogLabel()}
             </a>

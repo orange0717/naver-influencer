@@ -246,7 +246,7 @@ export default function GoogleIndexingSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="type-page-title text-text">Google Indexing</h1>
+        <h1 className="text-xl font-bold text-text">Google Indexing</h1>
         <p className="text-sm text-dim mt-1">
           네이버 블로그를 Google 검색에 등록 요청하고 색인 상태를 자동으로 추적해요. (Google Search Console
           API 기반)

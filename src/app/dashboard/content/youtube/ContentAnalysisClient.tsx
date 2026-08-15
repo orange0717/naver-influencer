@@ -95,7 +95,7 @@ export default function ContentAnalysisClient() {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <h1 className="type-page-title text-text">유튜브 콘텐츠 분석</h1>
+        <h1 className="font-title text-xl font-bold text-text">유튜브 콘텐츠 분석</h1>
         <p className="text-sm text-dim">
           영상 URL 하나로 조회수·구조·톤·컬러 팔레트를 AI가 분석합니다
         </p>
@@ -173,7 +173,7 @@ export default function ContentAnalysisClient() {
 
           {/* 콘텐츠 DNA */}
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
-            <h2 className="text-sm font-bold text-text">콘텐츠 DNA</h2>
+            <h2 className="text-sm font-bold text-text">🔍 콘텐츠 DNA</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
               <div>
                 <p className="text-dim">주제</p>
@@ -208,7 +208,7 @@ export default function ContentAnalysisClient() {
           {/* 컬러 팔레트 */}
           {result.colorPalette && result.colorPalette.length > 0 && (
             <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
-              <h2 className="text-sm font-bold text-text">추천 컬러 팔레트</h2>
+              <h2 className="text-sm font-bold text-text">🎨 추천 컬러 팔레트</h2>
               <div className="flex gap-2">
                 {result.colorPalette.map((hex, i) => (
                   <div key={i} className="flex-1 space-y-1 text-center">

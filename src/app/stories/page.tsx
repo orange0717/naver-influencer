@@ -49,7 +49,7 @@ export default function StoriesPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="type-page-title">성장 후기 게시판</h1>
+          <h1 className="text-xl font-bold">성장 후기 게시판</h1>
           <p className="text-sm text-dim mt-1">N인플을 사용하며 성장한 실사용자들의 이야기</p>
         </div>
         <div className="flex items-center gap-3">

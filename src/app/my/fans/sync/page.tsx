@@ -94,7 +94,7 @@ export default function FansSyncPage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="mb-5">
           <Link href="/my/fans" className="text-xs text-dim hover:text-accent transition">← 맞팬 관리로 돌아가기</Link>
-          <h1 className="type-page-title text-text mt-2">팬 데이터 동기화</h1>
+          <h1 className="text-2xl font-bold text-text mt-2">팬 데이터 동기화</h1>
           <p className="text-sm text-dim mt-1">
             <b className="text-text">크롬 확장 설치 없이</b>, PC에서 3단계면 끝나요. 아래 순서대로만 따라 하세요.
           </p>
@@ -102,7 +102,7 @@ export default function FansSyncPage() {
 
         {/* 북마클릿이 뭔지 모르는 사용자용 설명 */}
         <div className="mb-5 p-4 bg-accent/5 rounded-xl border border-accent/30">
-          <p className="text-sm font-bold text-text">&lsquo;북마클릿&rsquo;이 뭔가요?</p>
+          <p className="text-sm font-bold text-text">💡 &lsquo;북마클릿&rsquo;이 뭔가요?</p>
           <p className="text-xs text-dim mt-1.5 leading-relaxed">
             즐겨찾기(북마크)처럼 브라우저에 <b className="text-text">한 번 저장해두는 작은 버튼</b>이에요.
             프로그램이 아니라 즐겨찾기라서 <b className="text-text">설치가 필요 없고</b>, 저장해두면 네이버 내 홈에서 한 번 클릭할 때마다
@@ -217,7 +217,7 @@ export default function FansSyncPage() {
 
         {/* 안전 안내 */}
         <div className="text-[11px] text-dim leading-relaxed mb-5">
-          <p className="font-semibold text-text mb-1">안전한가요?</p>
+          <p className="font-semibold text-text mb-1">🔒 안전한가요?</p>
           <p>
             북마클릿은 <b className="text-text">내가 내 네이버 홈에서 내 팬 목록을 읽어오는</b> 방식입니다.
             내 네이버 비밀번호·쿠키는 외부로 전송되지 않고, 추출된 데이터(JSON)는 내가 직접 붙여넣어 업로드할 때만 N인플 서버로 전달됩니다.

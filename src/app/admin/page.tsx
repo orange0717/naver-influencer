@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="type-page-title">대시보드</h1>
+      <h1 className="text-xl font-extrabold">대시보드</h1>
 
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

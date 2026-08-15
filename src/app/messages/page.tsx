@@ -76,7 +76,7 @@ export default function MessagesPage() {
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
       <div>
-        <h1 className="type-page-title">쪽지함</h1>
+        <h1 className="text-xl font-extrabold">쪽지함</h1>
         {box === 'inbox' && unreadCount > 0 && (
           <p className="text-xs text-accent font-semibold mt-0.5">안읽은 쪽지 {unreadCount}개</p>
         )}

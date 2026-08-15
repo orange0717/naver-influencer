@@ -54,7 +54,7 @@ export default function AdminPaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="type-page-title">결제 관리</h1>
+      <h1 className="text-xl font-extrabold">결제 관리</h1>
 
       {/* 구독 현황 요약 */}
       {summary && (

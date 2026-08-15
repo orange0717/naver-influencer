@@ -172,7 +172,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           )}
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="type-page-title">{influencer.display_name}</h1>
+              <h1 className="text-xl font-bold">{influencer.display_name}</h1>
               {influencer.is_member && (
                 <span className="text-[10px] font-bold text-accent bg-accent/12 px-2 py-0.5 rounded" title="N인플 인증 회원">N인플 회원</span>
               )}
@@ -275,7 +275,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(influencer.ad_fee_amount || influencer.ad_fee_text) && (
-              <div className="space-y-1">
+              <div className="bg-bg rounded-xl p-3 space-y-1">
                 <p className="text-xs text-dim font-semibold">원고료</p>
                 {influencer.ad_fee_amount ? (
                   <p className="text-lg font-bold text-accent font-rank">
@@ -288,7 +288,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
               </div>
             )}
             {influencer.ad_process && (
-              <div className="space-y-1">
+              <div className="bg-bg rounded-xl p-3 space-y-1">
                 <p className="text-xs text-dim font-semibold">진행방법</p>
                 <p className="text-sm text-text whitespace-pre-line">{influencer.ad_process}</p>
               </div>
@@ -317,7 +317,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
 
           {influencer.topic_profile.representativeTopic && (
-            <div className="flex items-center gap-2 py-1">
+            <div className="bg-bg rounded-xl p-3 flex items-center gap-2">
               <span className="text-gold text-lg">★</span>
               <div>
                 <p className="text-[11px] text-dim">대표 토픽</p>
@@ -326,20 +326,20 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-3 border-y border-border py-3">
-            <div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-bg rounded-xl p-3">
               <p className="text-[11px] text-dim font-medium mb-1">활동 토픽</p>
               <p className="text-base font-bold font-rank">{influencer.topic_profile.activeTopics.length}개</p>
             </div>
-            <div>
+            <div className="bg-bg rounded-xl p-3">
               <p className="text-[11px] text-dim font-medium mb-1">챌린지 TOP3</p>
               <p className="text-base font-bold font-rank">{influencer.topic_profile.challengeTop3Count}개</p>
             </div>
-            <div>
+            <div className="bg-bg rounded-xl p-3">
               <p className="text-[11px] text-dim font-medium mb-1">통합검색 평균</p>
               <p className="text-base font-bold font-rank">{formatRank(influencer.topic_profile.avgIntegratedRank)}</p>
             </div>
-            <div>
+            <div className="bg-bg rounded-xl p-3">
               <p className="text-[11px] text-dim font-medium mb-1">블로그탭 평균</p>
               <p className="text-base font-bold font-rank">{formatRank(influencer.topic_profile.avgBlogRank)}</p>
             </div>

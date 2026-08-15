@@ -55,7 +55,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
       {/* 헤더 */}
       <div className="text-center pt-4">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">URL DECODER</p>
-        <h1 className="type-page-title text-text mb-3">
+        <h1 className="font-title text-2xl md:text-3xl font-extrabold text-text mb-3">
           네이버 URL 디코더
         </h1>
         <p className="text-sm text-dim leading-relaxed">
@@ -130,7 +130,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
                   <button
                     type="button"
                     onClick={() => setInput('')}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-bg border border-border text-dim hover:text-down transition"
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-bg border border-border text-dim hover:text-rose-600 transition"
                   >
                     지우기
                   </button>
@@ -159,7 +159,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
                     {intent.sentence}
                   </p>
                   {!decoded.valid && decoded.error && (
-                    <p className="text-xs text-down">{decoded.error}</p>
+                    <p className="text-xs text-rose-600">⚠️ {decoded.error}</p>
                   )}
                 </div>
               )}
@@ -303,7 +303,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
                 <button
                   type="button"
                   onClick={() => setBatchInput('')}
-                  className="text-[11px] px-2.5 py-1 rounded-full bg-bg border border-border text-dim hover:text-down transition"
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-bg border border-border text-dim hover:text-rose-600 transition"
                 >
                   지우기
                 </button>
@@ -333,7 +333,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
 
               {/* 의도별 분포 */}
               <DistroCard
-                title="의도별 분포"
+                title="📊 의도별 분포"
                 items={batch.intents.map((i) => ({
                   key: i.label,
                   left: (
@@ -425,8 +425,8 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
 
       {/* 도움말 */}
       <div className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="text-sm font-bold text-text">
-          sm 코드로 보는 브랜드 강도
+        <h2 className="text-sm font-bold text-text flex items-center gap-2">
+          <span>💡</span> sm 코드로 보는 브랜드 강도
         </h2>
         <p className="text-xs text-dim leading-relaxed">
           네이버 검색창에 들어온 방식(<code className="text-accent">sm</code> 파라미터)은 사용자의 인지 강도를 보여주는 중요한 신호입니다.

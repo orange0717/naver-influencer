@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 export default function BotInfoPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-12 space-y-6">
-      <h1 className="type-page-title">NinflBot 안내</h1>
+      <h1 className="text-2xl font-extrabold">NinflBot 안내</h1>
       <p className="text-sm text-dim">
         N인플은 블로거 순위 서비스를 운영하기 위해 네이버 공식 Open API 를 이용해 공개된 블로그 정보를 수집합니다.
         본 페이지는 크롤러 동작 방식과 차단 방법을 투명하게 안내합니다.

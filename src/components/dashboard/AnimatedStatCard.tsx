@@ -148,7 +148,7 @@ export default function AnimatedStatCard({
       {isKpi ? (
         <>
           <div className="flex items-start justify-between mb-2 shrink-0">
-            <div className={`w-7 h-7 rounded-full bg-sunken ${c.text} flex items-center justify-center shrink-0`}>
+            <div className={`w-7 h-7 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
               {icon}
             </div>
             {sparklineData && sparklineData.length > 1 && (
@@ -162,7 +162,7 @@ export default function AnimatedStatCard({
         // 정사각형(aspect-square) 카드 — 상단 아이콘 / 중앙 제목·설명 / 하단 숫자로 균등 분배.
         // justify-between이 콘텐츠 양과 무관하게 아이콘·숫자를 항상 같은 기준선에 고정시킨다.
         <div className="flex-1 flex flex-col items-center justify-between text-center min-h-0">
-          <div className={`w-8 h-8 rounded-full bg-sunken ${c.text} flex items-center justify-center shrink-0`}>
+          <div className={`w-8 h-8 rounded-full bg-[#FAF4F2] ${c.text} flex items-center justify-center shrink-0`}>
             {icon}
           </div>
           <div className="flex flex-col items-center gap-1 px-1 min-w-0 w-full">

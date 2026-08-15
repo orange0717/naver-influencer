@@ -11,7 +11,7 @@ export default function SettlementsPage() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="type-page-title">원고료 정산내역</h1>
+          <h1 className="font-title text-2xl font-extrabold">원고료 정산내역</h1>
           <p className="text-sm text-dim mt-1">광고주 캠페인 집행에 따른 원고료 정산내역</p>
         </div>
       </div>

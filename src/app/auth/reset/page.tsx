@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
             <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3">
               N
             </div>
-            <h1 className="type-page-title">새 비밀번호 설정</h1>
+            <h1 className="text-2xl font-extrabold">새 비밀번호 설정</h1>
             <p className="text-sm text-dim mt-1">사용할 새 비밀번호를 입력해주세요</p>
           </div>
 

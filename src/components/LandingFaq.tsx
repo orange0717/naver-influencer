@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { FAQ_DATA, FAQ_CATEGORIES } from '@/data/faq-data';
 
+const PINK = '#BF8C80';
+
 export default function LandingFaq() {
   const categories = FAQ_CATEGORIES.filter(c => c !== '전체');
   const [activeTab, setActiveTab] = useState<string>(categories[0] ?? '');
@@ -14,10 +16,13 @@ export default function LandingFaq() {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-10 lg:gap-16 items-start">
         {/* 좌측 헤더 */}
         <div className="lg:sticky lg:top-24">
-          <span className="inline-block text-[11px] font-semibold tracking-[0.2em] px-3 py-1.5 rounded-full mb-5 bg-sunken text-desc">
+          <span
+            className="inline-block text-[11px] font-bold tracking-[0.2em] px-3 py-1.5 rounded-full mb-5"
+            style={{ background: '#F8ECE6', color: PINK }}
+          >
             FAQ
           </span>
-          <h2 className="font-title text-2xl md:text-3xl text-text leading-[1.2] mb-4">
+          <h2 className="font-title text-3xl md:text-4xl font-extrabold text-text leading-[1.2] mb-4">
             자주 묻는
             <br />
             질문
@@ -54,11 +59,11 @@ export default function LandingFaq() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setActiveTab(cat)}
-                  className={`shrink-0 py-3.5 -mb-px text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
-                    active
-                      ? 'text-text border-accent'
-                      : 'text-desc border-transparent hover:text-text-2'
-                  }`}
+                  className="shrink-0 py-3.5 -mb-px text-sm font-semibold whitespace-nowrap border-b-2 transition-colors"
+                  style={{
+                    color: active ? PINK : '#B0A099',
+                    borderBottomColor: active ? PINK : 'transparent',
+                  }}
                 >
                   {cat}
                 </button>
@@ -77,7 +82,11 @@ export default function LandingFaq() {
                     {item.question}
                   </span>
                   <span
-                    className="shrink-0 inline-block w-2.5 h-2.5 rotate-45 group-open:rotate-[225deg] transition-transform duration-200 border-r-2 border-b-2 border-dim"
+                    className="shrink-0 inline-block w-2.5 h-2.5 rotate-45 group-open:rotate-[225deg] transition-transform duration-200"
+                    style={{
+                      borderRight: `2px solid ${PINK}`,
+                      borderBottom: `2px solid ${PINK}`,
+                    }}
                     aria-hidden
                   />
                 </summary>

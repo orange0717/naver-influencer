@@ -192,7 +192,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               {campaign.category && <span className="text-[10px] text-dim">{campaign.category}</span>}
               {campaign.region && <span className="text-[10px] text-dim">{campaign.region}</span>}
             </div>
-            <h1 className="type-page-title">{campaign.title}</h1>
+            <h1 className="text-xl font-extrabold">{campaign.title}</h1>
           </div>
           {campaign.fee_per_post > 0 && (
             <p className="text-lg font-bold text-accent shrink-0">{campaign.fee_per_post.toLocaleString()}원</p>

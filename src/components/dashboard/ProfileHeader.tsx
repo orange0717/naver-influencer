@@ -109,11 +109,11 @@ export default function ProfileHeader({
         {/* 프로필 이미지 */}
         <div className="relative group">
           {imageUrl ? (
-            <div className={`relative w-11 h-11 rounded-full ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'ring-accent/30' : 'ring-up/30'}`}>
+            <div className={`relative w-11 h-11 rounded-full ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'ring-accent/30' : 'ring-[#2DB400]/30'}`}>
               <img src={imageUrl} alt={displayName} className="w-11 h-11 rounded-full object-cover" />
             </div>
           ) : (
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'bg-accent/15 text-accent ring-accent/20' : 'bg-up/12 text-up ring-up/20'}`}>
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold ring-2 ring-offset-2 ring-offset-surface ${isInfluencer ? 'bg-accent/15 text-accent ring-accent/20' : 'bg-[#2DB400]/15 text-[#2DB400] ring-[#2DB400]/20'}`}>
               {displayName[0]}
             </div>
           )}
@@ -160,7 +160,7 @@ export default function ProfileHeader({
               </div>
             ) : (
               <>
-                <h1 className="font-editorial text-[20px] truncate">{displayName}</h1>
+                <h1 className="text-base font-extrabold truncate">{displayName}</h1>
                 {editable && (
                   <button
                     onClick={() => { setTempName(displayName); setEditingName(true); }}
@@ -178,7 +178,7 @@ export default function ProfileHeader({
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
               isInfluencer
                 ? 'text-accent bg-accent/10'
-                : 'text-up bg-up/10'
+                : 'text-[#2DB400] bg-[#2DB400]/10'
             }`}>
               {isInfluencer ? '인플루언서' : '블로거'}
             </span>

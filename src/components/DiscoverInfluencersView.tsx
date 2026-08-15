@@ -149,7 +149,7 @@ export default function DiscoverInfluencersView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="type-page-title">토픽</h1>
+          <h1 className="text-xl font-extrabold">토픽</h1>
           <p className="text-xs text-dim mt-1">
             네이버 인플루언서 Discover 페이지 기준 인플루언서별 토픽 발행량 순위
             {updatedAt && <span> · 최근 수집 {formatDate(updatedAt.slice(0, 10))}</span>}

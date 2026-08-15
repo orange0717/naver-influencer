@@ -89,7 +89,7 @@ export default function FeedbackButton() {
           aria-labelledby="feedback-title"
         >
           <div
-            className="bg-surface rounded-t-2xl sm:rounded-lg border border-border w-full sm:max-w-md mx-0 sm:mx-4 p-6 shadow-lg animate-fade-in-up"
+            className="bg-surface rounded-t-2xl sm:rounded-lg border border-border w-full sm:max-w-md mx-0 sm:mx-4 p-6 shadow-2xl animate-fade-in-up"
             onClick={e => e.stopPropagation()}
           >
             {done ? (

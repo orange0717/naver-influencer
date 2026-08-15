@@ -24,7 +24,7 @@ export const STRENGTH_META: Record<Strength, { label: string; short: string; cls
   'strong': { label: '강 · 명확한 브랜드 인지', short: '강', cls: 'text-blue-700 bg-blue-100 border border-blue-200' },
   'medium': { label: '중 · 인지는 있음', short: '중', cls: 'text-amber-700 bg-amber-100 border border-amber-200' },
   'weak': { label: '약 · 수동적 발견', short: '약', cls: 'text-rose-700 bg-rose-100 border border-rose-200' },
-  'unknown': { label: '분류 외', short: '?', cls: 'text-text-2 bg-sunken border border-border' },
+  'unknown': { label: '분류 외', short: '?', cls: 'text-gray-700 bg-gray-100 border border-gray-200' },
 };
 
 export const TRACKING_TABLE: Record<string, string> = {
@@ -209,7 +209,7 @@ export interface Intent {
 
 export function summarize(d: DecodedNaverUrl): Intent {
   if (!d.valid) {
-    return { label: '분석 불가', icon: '⚠️', sentence: 'URL 형식이 올바르지 않습니다.', cls: 'bg-sunken text-text-2 border-border' };
+    return { label: '분석 불가', icon: '⚠️', sentence: 'URL 형식이 올바르지 않습니다.', cls: 'bg-gray-100 text-gray-700 border-gray-200' };
   }
 
   const ref = d.topRefererDecoded;
@@ -230,7 +230,7 @@ export function summarize(d: DecodedNaverUrl): Intent {
       label: isInfluencerTeam ? '인플루언서팀 유입' : '사내 어드민 유입',
       icon: '🏢',
       sentence: `${refSurface}(${refHost})에서 ${target} 로 진입 — ${teamNote}`,
-      cls: 'bg-sunken text-text-2 border-border',
+      cls: 'bg-slate-100 text-slate-700 border-slate-200',
     };
   }
 
@@ -239,7 +239,7 @@ export function summarize(d: DecodedNaverUrl): Intent {
       label: '외부 유입',
       icon: '🌐',
       sentence: `${refHost} 에서 ${target} 로 진입`,
-      cls: 'bg-sunken text-blue border-border',
+      cls: 'bg-violet-100 text-violet-700 border-violet-200',
     };
   }
 
@@ -289,7 +289,7 @@ export function summarize(d: DecodedNaverUrl): Intent {
     label: '일반 접속',
     icon: '📄',
     sentence: target,
-    cls: 'bg-sunken text-text-2 border-border',
+    cls: 'bg-gray-100 text-gray-700 border-gray-200',
   };
 }
 

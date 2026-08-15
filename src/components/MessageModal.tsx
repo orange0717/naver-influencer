@@ -55,7 +55,7 @@ export default function MessageModal({ receiverNaverId, receiverName, isOpen, on
 
   return (
     <Modal open={isOpen} onClose={handleClose} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
-      <div className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-md mx-4 p-6">
+      <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md mx-4 p-6">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-base">쪽지 보내기</h3>

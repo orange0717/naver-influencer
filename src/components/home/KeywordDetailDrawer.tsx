@@ -59,7 +59,7 @@ export default function KeywordDetailDrawer({ blogId, post, keyword, result, del
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-md h-full bg-surface shadow-lg overflow-y-auto p-5 space-y-4">
+      <div className="relative w-full max-w-md h-full bg-surface shadow-xl overflow-y-auto p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">

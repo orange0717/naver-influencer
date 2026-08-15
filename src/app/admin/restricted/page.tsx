@@ -72,7 +72,7 @@ export default function AdminRestrictedPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="type-page-title">접근 제한 관리</h1>
+      <h1 className="text-xl font-extrabold">접근 제한 관리</h1>
 
       {/* 추가 폼 */}
       <form onSubmit={handleAdd} className="bg-surface rounded-xl border border-border p-5 space-y-3">

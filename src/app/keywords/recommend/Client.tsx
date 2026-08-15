@@ -65,7 +65,7 @@ export default function KeywordRecommendPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="type-page-title">키워드 추천</h1>
+        <h1 className="text-xl font-extrabold">키워드 추천</h1>
         <p className="text-xs text-dim">지금 써야 하는 키워드를 AI가 점수와 이유로 설명합니다</p>
       </div>
 

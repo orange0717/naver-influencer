@@ -18,7 +18,7 @@ export default async function SpellcheckPage() {
   if (!authUser) {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
-        <h1 className="type-page-title text-text">맞춤법 검사</h1>
+        <h1 className="font-title text-xl font-bold text-text">맞춤법 검사</h1>
         <p className="text-sm text-dim leading-relaxed">
           이 기능은 가입 회원 전용입니다. 로그인하면 이 페이지에서 바로 이용할 수 있습니다.
         </p>

@@ -160,7 +160,7 @@ export default function ImageConverterPage() {
       {/* 헤더 */}
       <div className="text-center pt-4">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">IMAGE TOOLS</p>
-        <h1 className="type-page-title text-text mb-3">
+        <h1 className="font-title text-3xl md:text-4xl font-extrabold text-text mb-3">
           JPG ↔ PNG 변환기
         </h1>
         <p className="text-sm text-dim leading-relaxed">
@@ -180,7 +180,8 @@ export default function ImageConverterPage() {
           disabled={isConverting}
         />
 
-        
+        <div className="text-5xl mb-4">🖼️</div>
+
         {selectedFiles.length === 0 ? (
           <>
             <p className="text-base font-semibold text-text mb-2">이미지 파일을 선택하세요</p>
@@ -238,7 +239,7 @@ export default function ImageConverterPage() {
       {/* 에러 메시지 */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-down font-semibold">{error}</p>
+          <p className="text-sm text-red-700 font-semibold">❌ {error}</p>
         </div>
       )}
 
@@ -319,7 +320,7 @@ export default function ImageConverterPage() {
 
       {/* 안내 */}
       <div className="bg-bg rounded-xl p-5 space-y-3">
-        <h3 className="font-bold text-text text-sm">사용 팁</h3>
+        <h3 className="font-bold text-text text-sm">💡 사용 팁</h3>
         <ul className="text-xs text-dim space-y-2">
           <li>• 최대 20개 파일을 동시에 변환할 수 있습니다.</li>
           <li>• JPG는 PNG로, PNG는 JPG로 자동 변환됩니다.</li>

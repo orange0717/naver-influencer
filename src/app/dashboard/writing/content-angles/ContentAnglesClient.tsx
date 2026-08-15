@@ -42,7 +42,7 @@ export default function ContentAnglesClient() {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <h1 className="type-page-title text-text">글감찾기</h1>
+        <h1 className="font-title text-xl font-bold text-text">글감찾기</h1>
         <p className="text-sm text-dim">키워드 하나로 사람들이 궁금해하는 질문과 추천 글감을 AI가 찾아드립니다</p>
       </div>
 

@@ -167,7 +167,7 @@ export default function InfluencersListClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="type-page-title">
+          <h1 className="text-xl font-extrabold">
             <button
               type="button"
               onClick={() => {
@@ -291,7 +291,7 @@ export default function InfluencersListClient() {
               </thead>
               <tbody>
                 {influencers.map((inf, i) => (
-                  <tr key={inf.naverId || inf.name + i} className={`border-b border-border/50 hover:bg-surface-hover transition-colors ${inf.isStopped || inf.isInactive ? 'opacity-50 bg-sunken' : ''}`}>
+                  <tr key={inf.naverId || inf.name + i} className={`border-b border-border/50 hover:bg-surface-hover transition-colors ${inf.isStopped || inf.isInactive ? 'opacity-50 bg-gray-50' : ''}`}>
                     <td className="py-3 px-4 font-bold font-rank text-xs">
                       <span className="text-dim">{(page - 1) * 50 + i + 1}</span>
                     </td>
@@ -314,7 +314,7 @@ export default function InfluencersListClient() {
                               <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                             )}
                             {inf.isInactive && (
-                              <span className="text-[9px] font-medium text-desc bg-sunken border border-border px-1.5 py-0.5 rounded-sm shrink-0">1년이상 활동이력 없음</span>
+                              <span className="text-[9px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">1년이상 활동이력 없음</span>
                             )}
                             {inf.isStopped && !inf.isInactive && (
                               <span className="text-[9px] font-medium text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded shrink-0">활동 중단</span>
@@ -406,7 +406,7 @@ export default function InfluencersListClient() {
                         <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
                       )}
                       {inf.isInactive && (
-                        <span className="text-[9px] font-medium text-desc bg-sunken border border-border px-1.5 py-0.5 rounded-sm shrink-0">1년이상 활동이력 없음</span>
+                        <span className="text-[9px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">1년이상 활동이력 없음</span>
                       )}
                       {inf.isStopped && !inf.isInactive && (
                         <span className="text-[9px] font-medium text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded shrink-0">활동 중단</span>

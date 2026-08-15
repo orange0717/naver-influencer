@@ -103,7 +103,7 @@ export default function CommunityWritePage() {
       <div className="flex items-center justify-between pt-4">
         <div>
           <p className="text-xs text-accent font-semibold tracking-widest mb-2">WRITE</p>
-          <h1 className="type-page-title text-text">글쓰기</h1>
+          <h1 className="font-title text-xl font-extrabold text-text">글쓰기</h1>
         </div>
         <Link href="/community" className="text-sm text-dim hover:text-text transition">
           ← 목록으로
@@ -233,7 +233,7 @@ export default function CommunityWritePage() {
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <div className="text-xs text-dim">
             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mr-1.5 ${
-              user.type === 'blogger' ? 'bg-up/12 text-up' : 'bg-accent/10 text-accent'
+              user.type === 'blogger' ? 'bg-[#2DB400]/15 text-[#2DB400]' : 'bg-accent/10 text-accent'
             }`}>
               {user.type === 'blogger' ? '블로거' : '인플루언서'}
             </span>

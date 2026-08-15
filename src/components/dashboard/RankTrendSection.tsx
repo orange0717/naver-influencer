@@ -183,7 +183,7 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
                   : 'border-border bg-bg/50 text-dim opacity-60 hover:opacity-100'
               }`}
             >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: showAvg ? '#FCFCFB' : '#D6D4CF' }} />
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: showAvg ? '#fff' : '#ccc' }} />
               전체 평균
             </button>
           )}
@@ -196,12 +196,12 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
                 onClick={() => toggleKeyword(kw.keyword)}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer border ${
                   isActive
-                    ? 'border-current bg-surface'
+                    ? 'border-current bg-white shadow-sm'
                     : 'border-border bg-bg/50 text-dim opacity-60 hover:opacity-100'
                 }`}
                 style={isActive ? { color } : {}}
               >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isActive ? color : '#D6D4CF' }} />
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isActive ? color : '#ccc' }} />
                 {kw.keyword}
               </button>
             );
@@ -242,7 +242,7 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
               stroke="#D4A017"
               strokeDasharray="4 4"
               strokeWidth={1}
-              label={{ value: 'TOP 3', position: 'right', fontSize: 10, fill: '#B08A3E' }}
+              label={{ value: 'TOP 3', position: 'right', fontSize: 10, fill: '#D4A017' }}
             />
             {showAvg && avgHistory.length > 0 && (
               <Line
@@ -252,8 +252,8 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
                 stroke="#2D2D2D"
                 strokeWidth={2.5}
                 strokeDasharray="6 3"
-                dot={{ r: 2, strokeWidth: 0, fill: '#24231F' }}
-                activeDot={{ r: 5, strokeWidth: 2, stroke: '#FCFCFB' }}
+                dot={{ r: 2, strokeWidth: 0, fill: '#2D2D2D' }}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }}
                 connectNulls={false}
               />
             )}
@@ -265,7 +265,7 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
                 stroke={SERIES_COLORS[keywords.indexOf(kw) % SERIES_COLORS.length]}
                 strokeWidth={2}
                 dot={{ r: 1.8, strokeWidth: 0, fill: SERIES_COLORS[keywords.indexOf(kw) % SERIES_COLORS.length] }}
-                activeDot={{ r: 4, strokeWidth: 2, stroke: '#FCFCFB' }}
+                activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }}
                 connectNulls={false}
               />
             ))}

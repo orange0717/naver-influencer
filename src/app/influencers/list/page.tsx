@@ -132,7 +132,7 @@ export default function InfluencersListPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="type-page-title">
+          <h1 className="text-xl font-extrabold">
             <button
               type="button"
               onClick={() => {

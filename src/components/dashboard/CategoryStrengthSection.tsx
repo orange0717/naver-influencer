@@ -49,7 +49,7 @@ export default function CategoryStrengthSection({ categoryStats }: Props) {
                   <span className="text-[11px] text-dim">TOP 10 비율</span>
                   <span className="text-[11px] font-bold text-text">{cat.top10Rate}%</span>
                 </div>
-                <div className="h-2 bg-sunken rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{

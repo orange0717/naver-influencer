@@ -1,97 +1,64 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* ── 배경: 순백이 아닌 미세한 뉴트럴 오프화이트 ──
-     캔버스 → 서피스 → 순백 순으로 명도가 아주 조금씩 올라간다.
-     영역을 색으로 나누지 않는다. 구조는 여백과 타이포가 만든다. */
-  --color-bg: #F7F7F5;          /* 페이지 캔버스 */
-  --color-surface: #FCFCFB;     /* 카드·패널 — 캔버스와 명도차 거의 없음 */
-  --color-surface-hover: #F2F2EF;
-  --color-raise: #FFFFFF;       /* 순백 — 강조가 필요한 영역에만 제한적으로 */
-  --color-sunken: #F2F2EF;      /* 입력창 등 살짝 눌린 면 */
-  --color-border: #E7E6E2;      /* 헤어라인 */
-  --color-border-strong: #D6D4CF;
-  /* 텍스트 위계 — 순검정 대신 딥그레이. 굵기가 아니라 색/크기/여백으로 계층을 만든다. */
-  --color-text: #24231F;        /* 기본 텍스트 */
-  --color-text-2: #5A5852;      /* 보조 텍스트 */
-  --color-desc: #83817A;        /* 설명 */
-  --color-dim: #A9A7A0;         /* 비활성 */
+  /* 배경 */
+  --color-bg: #FAF5F3;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #FDF8F6;
+  --color-border: #F0DED8;
+  /* 텍스트 위계 — "가볍지만 또렷하게". 굵기가 아니라 색/크기/여백으로 계층을 만든다. */
+  --color-text: #222222;        /* 기본 텍스트 */
+  --color-text-2: #555555;      /* 보조 텍스트 */
+  --color-desc: #777777;        /* 설명 */
+  --color-dim: #999999;         /* 비활성 */
 
-  /* 브랜드 컬러 — 절제된 포인트. 화면 전체에 반복하지 않는다. */
-  --color-accent: #B0796B;
-  --color-accent-hover: #99655A;
-  --color-accent2: #D9BCB3;
-  --color-accent2-hover: #C9A79D;
+  /* 브랜드 컬러 — 하이라이트 */
+  --color-accent: #CC9486;
+  --color-accent-hover: #BF877A;
+  --color-accent2: #E4C1B8;
+  --color-accent2-hover: #D9ABA0;
 
-  /* 헤더/네비 — 강한 배경색 없이 캔버스와 같은 톤 */
-  --color-header: #FCFCFB;
-  --color-nav: #FCFCFB;
+  /* 헤더/네비 */
+  --color-header: #E4C1B8;
+  --color-nav: #E4C1B8;
 
-  /* 기능 컬러 — 저채도 */
-  --color-up: #3A7D5F;
-  --color-down: #BF5449;
-  --color-stable: #A9A7A0;
-  --color-blue: #4A7BA7;
+  /* 기능 컬러 */
+  --color-up: #2E8B57;
+  --color-down: #D94848;
+  --color-stable: #999;
+  --color-blue: #4D8FCC;
 
-  /* 순위 뱃지 — 금속색도 채도를 낮춰 데이터에 묻히도록 */
-  --color-gold: #B08A3E;
-  --color-silver: #96948E;
-  --color-bronze: #A87A50;
+  /* 순위 뱃지 */
+  --color-gold: #D4A017;
+  --color-silver: #A0A0A0;
+  --color-bronze: #CD7F32;
 
   /* 푸터 다크 */
-  --color-footer-bg: #26251F;
-  --color-footer-text: #D9D7D1;
-  --color-footer-dim: #8F8D86;
-  --color-footer-heading: #D9BCB3;
+  --color-footer-bg: #2D2D2D;
+  --color-footer-text: #E0E0E0;
+  --color-footer-dim: #999;
+  --color-footer-heading: #E4C1B8;
 
   /* 포인트 관련 */
-  --color-point: #B0796B;
-  --color-point-bg: rgba(176, 121, 107, 0.09);
+  --color-point: #CC9486;
+  --color-point-bg: rgba(204, 148, 134, 0.10);
 
-  /* 폰트 — Serif = 콘텐츠와 사고 / Sans = 기능과 데이터
-     페이지 대제목·인사말·브랜드 문장은 세리프(EB Garamond + Noto Serif KR),
-     사이드바·메뉴·버튼·검색·필터·표·숫자·상태값은 전부 Pretendard.
-     이 규칙은 오렌지도서관과 동일하게 적용해 두 서비스를 한 제품군으로 묶는다.
-     · mono = 순위/통계 숫자 전용 (.font-rank, .stat-value) — 자릿수 정렬 유지 */
-  --font-sans: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
-  --font-serif: 'EB Garamond', 'Noto Serif KR', Georgia, serif;
+  /* 폰트 — 앱 전체 메인 글자체 (2026-08-15 개편, 08-16 전역 확대)
+     · sans/serif 공통 = EB Garamond(영문) → Pretendard(한글) 글리프 폴백.
+       영문 글리프는 EB Garamond의 에디토리얼 세리프, 한글은 세리프 글리프를
+       무리하게 쓰지 않고 Pretendard로 자연스럽게 연결된다(글리프 단위 폴백).
+       예: "N인플 AI"의 N·AI=EB Garamond, 인플=Pretendard. → 전 화면 본문·UI·제목이
+       하나의 글자체 정체성을 공유한다. (제목은 .font-title이 굵기·자간으로만 구분)
+     · mono  = 순위/통계 숫자 전용 (.font-rank, .stat-value) — 데이터 가독성 위해 정렬 숫자 유지 */
+  --font-sans: 'EB Garamond', 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+  --font-serif: 'EB Garamond', 'Pretendard Variable', 'Pretendard', Georgia, serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
 
-  /* 그림자 — 거의 보이지 않을 정도로. 카드는 그림자가 아니라 헤어라인으로 구분한다. */
-  --shadow-xs: 0 1px 2px rgba(36, 35, 31, 0.03);
-  --shadow-sm: 0 1px 3px rgba(36, 35, 31, 0.04);
-  --shadow-md: 0 2px 6px rgba(36, 35, 31, 0.05);
-  --shadow-lg: 0 4px 14px rgba(36, 35, 31, 0.07);
-  --shadow-xl: 0 6px 20px rgba(36, 35, 31, 0.08);
-  --shadow-2xl: 0 10px 28px rgba(36, 35, 31, 0.10);
-
-  /* 굵기 — Tailwind 굵기 스케일의 상단을 눌러 "거대한 Bold 헤드라인"을 전역에서 없앤다.
-     컴포넌트에 흩어진 font-bold/extrabold/black 167곳을 손대지 않고 한 번에 정돈된다. */
-  --font-weight-semibold: 600;
-  --font-weight-bold: 600;
-  --font-weight-extrabold: 700;
-  --font-weight-black: 700;
-
-  /* 크기 — 상단 스케일을 좁힌다. 존재감은 크기가 아니라 여백과 위계로 만든다. */
-  --text-3xl: 1.625rem;
-  --text-3xl--line-height: 1.3;
-  --text-4xl: 1.875rem;
-  --text-4xl--line-height: 1.25;
-  --text-5xl: 2.25rem;
-  --text-5xl--line-height: 1.2;
-  --text-6xl: 2.5rem; /* 40px — 페이지 제목 상한 */
-  --text-6xl--line-height: 1.2;
-
-  /* 모서리 — Tailwind radius 스케일 자체를 좁힌다.
-     컴포넌트의 rounded-2xl/3xl 을 일일이 고치지 않아도 전역에서 과한 곡률이 사라진다. */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;   /* 버튼·입력창 */
-  --radius-xl: 10px;  /* 버튼·입력창 상한 */
-  --radius-2xl: 12px; /* 카드 */
-  --radius-3xl: 14px; /* 카드 상한 */
-  --radius-4xl: 14px;
+  /* 그림자 */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(180, 140, 120, 0.08);
+  --shadow-md: 0 4px 16px rgba(180, 140, 120, 0.12);
+  --shadow-lg: 0 8px 32px rgba(180, 140, 120, 0.16);
 
   /* 애니메이션 타이밍 */
   --duration-fast: 150ms;
@@ -117,8 +84,12 @@ body {
   font-weight: 400;
   /* 한글 Pretendard 본문: 살짝 좁힌 자간 + 넉넉한 행간으로 뭉침 방지 */
   letter-spacing: -0.01em;
-  line-height: 1.75;
-  font-variant-numeric: lining-nums;
+  line-height: 1.6;
+  /* EB Garamond 기본 숫자는 올드스타일(들쭉날쭉)이라 데이터 UI에 부적합 →
+     전역에서 정렬(lining) + 등폭(tabular) 숫자로 강제해 가독성 확보.
+     한글/큰 데이터 숫자(.stat-value·.font-rank)는 mono라 영향 없음. */
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
   word-break: keep-all;
   overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
@@ -126,113 +97,17 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   타이포그래피 계층 — 크기 하나로 위계를 만들지 않는다.
-   크기 + 굵기 + 여백 + Serif/Sans 대비를 함께 쓴다.
-
-   .type-page-title    페이지 대제목·인사말. 세리프 400. 크되 화면을 압도하지 않는다.
-   .type-page-desc     대제목 아래 한 줄 설명. 산세리프. Serif→Sans 대비를 만든다.
-   .type-section-title 섹션 제목. 산세리프 600.
-   .type-section-serif 사유를 유도하는 섹션 제목에만 쓰는 세리프 변형.
-   .type-card-title    카드 제목. 산세리프 500.
-   .type-body          본문. 15~16px / 1.75.
-   .type-label         라벨·필터·상태값. 13px 500.
-
-   .font-title      인터페이스 제목(산세리프 600). 개별 컴포넌트의
-                    font-bold/extrabold 유틸리티를 여기서 흡수해 거대한 Bold 헤드라인을 막는다.
-   .font-editorial  브랜드 메시지·긴 글 제목의 세리프. (기존 사용처 호환)
-   ═══════════════════════════════════════════════════════════════ */
-.type-page-title {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: clamp(1.625rem, 1.15rem + 1.9vw, 2.125rem); /* 26px → 34px */
-  line-height: 1.3;
-  letter-spacing: -0.005em;
-  color: var(--color-text);
-}
-.type-page-desc {
-  font-family: var(--font-sans);
-  font-weight: 400;
-  font-size: 0.9375rem; /* 15px */
-  line-height: 1.7;
-  color: var(--color-text-2);
-}
-.type-section-title {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 1.25rem; /* 20px */
-  line-height: 1.4;
-  letter-spacing: -0.015em;
-}
-.type-section-serif {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: 1.375rem; /* 22px */
-  line-height: 1.4;
-}
-.type-card-title {
-  font-family: var(--font-sans);
-  font-weight: 500;
-  font-size: 1rem; /* 16px */
-  line-height: 1.5;
-  letter-spacing: -0.01em;
-}
-.type-body {
-  font-family: var(--font-sans);
-  font-weight: 400;
-  font-size: 0.9375rem;
-  line-height: 1.75;
-}
-.type-label {
-  font-family: var(--font-sans);
-  font-weight: 500;
-  font-size: 0.8125rem; /* 13px */
-  line-height: 1.45;
-  color: var(--color-text-2);
-}
-
+/* ───────────────────────────────────────────────
+   제목 서체 (.font-title) — Page/Section Title·AI 인사말 공통.
+   에디토리얼 세리프: 영문=EB Garamond, 한글=Pretendard(글리프 폴백).
+   굵기로 계층을 만들지 않는다: 500(Medium)로 통일하고
+   개별 컴포넌트의 font-bold/extrabold 유틸리티는 여기서 흡수한다.
+   (unlayered 규칙이라 @layer utilities 보다 우선 → 거대한 Bold 헤드라인 방지)
+   ─────────────────────────────────────────────── */
 .font-title {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.35;
-}
-.font-editorial {
   font-family: var(--font-serif);
-  font-weight: 400;
-  letter-spacing: -0.005em;
-  line-height: 1.4;
-}
-
-/* 기본 요소 — h1 은 페이지 대제목이므로 세리프가 기본값이다.
-   섹션/카드 제목(h2~h4)은 기능 영역이므로 산세리프를 유지한다.
-   @layer base 에 두어 개별 컴포넌트가 유틸리티로 덮어쓸 수 있게 한다. */
-@layer base {
-  h1 {
-    font-family: var(--font-serif);
-    font-weight: 400;
-    line-height: 1.3;
-    letter-spacing: -0.005em;
-  }
-  h2, h3, h4, h5, h6 {
-    font-family: var(--font-sans);
-    font-weight: 600;
-    line-height: 1.4;
-    letter-spacing: -0.015em;
-  }
-  /* 컨트롤류는 예외 없이 산세리프 — 세리프가 UI로 새어나가지 않게 막는다 */
-  button, input, select, textarea, label,
-  th, td, nav, [role="tablist"] {
-    font-family: var(--font-sans);
-  }
-  button {
-    font-size: 0.875rem; /* 14px */
-    font-weight: 500;
-    letter-spacing: -0.005em;
-  }
-  input, select, textarea {
-    font-size: 0.9375rem; /* 15px */
-  }
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 /* 스크롤바 */
@@ -265,7 +140,7 @@ button:not(:disabled):active {
 
 /* 입력 필드 포커스 */
 input:focus, textarea:focus, select:focus {
-  box-shadow: 0 0 0 3px rgba(176, 121, 107, 0.12);
+  box-shadow: 0 0 0 3px rgba(204, 148, 134, 0.1);
 }
 
 /* 링크/탭 호버 */
@@ -283,7 +158,7 @@ a:hover:not(.btn) {
 }
 
 [class*="badge"]:hover, .tag:hover {
-  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 /* 순위 숫자 모노스페이스 */
@@ -324,7 +199,7 @@ a:hover:not(.btn) {
    모든 통계/KPI 카드가 이 3단계 위계(제목/값/설명)를 공유한다.
    ═══════════════════════════════════════════════════════════════ */
 .stat-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text-2);
   line-height: 1.3;
@@ -338,14 +213,14 @@ a:hover:not(.btn) {
 }
 /* KPI 카드(대시보드 상단 요약)와 Statistics 카드(발행/순위/누락율 등) 숫자 — 동일 위계로 통일 */
 .stat-value-kpi {
-  font-size: 27px;
+  font-size: 30px;
 }
 .stat-value-stat {
-  font-size: 24px;
+  font-size: 26px;
 }
 .stat-desc {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
   color: var(--color-desc);
-  line-height: 1.45;
+  line-height: 1.4;
 }

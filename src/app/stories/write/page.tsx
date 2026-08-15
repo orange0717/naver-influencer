@@ -109,7 +109,7 @@ export default function StoryWritePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="type-page-title">성장 후기 작성</h1>
+      <h1 className="text-xl font-bold">성장 후기 작성</h1>
       <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 text-sm text-dim">
         작성하신 후기는 관리자 검토 후 게시됩니다. 진솔한 이야기를 공유해주세요.
       </div>
@@ -259,7 +259,7 @@ export default function StoryWritePage() {
 
       {toast && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-surface border border-border rounded-xl shadow-lg p-6 w-full max-w-sm space-y-4 text-center">
+          <div className="bg-surface border border-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4 text-center">
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{toast.message}</p>
             <button
               type="button"

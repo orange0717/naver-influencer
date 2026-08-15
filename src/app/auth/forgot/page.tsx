@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
             <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3">
               N
             </div>
-            <h1 className="type-page-title">비밀번호 찾기</h1>
+            <h1 className="text-2xl font-extrabold">비밀번호 찾기</h1>
             <p className="text-sm text-dim mt-1">가입하신 이메일로 재설정 링크를 보내드립니다</p>
           </div>
 

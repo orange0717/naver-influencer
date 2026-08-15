@@ -9,7 +9,7 @@ export default function BlogQualityPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div>
-        <h1 className="type-page-title">블로그 품질지수</h1>
+        <h1 className="text-2xl font-extrabold">블로그 품질지수</h1>
         <p className="text-sm text-dim mt-1">
           블로그 품질지수를 확인하세요. 최근 포스트의 검색 노출을 측정해 C-rank · D.I.A. · D.I.A.+ 종합 결과를 근사합니다.
         </p>

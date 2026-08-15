@@ -6,4 +6,4 @@
  *    서로 달라 "하나의 컴포넌트로 병합"하면 24개 사용처에 시각 회귀가 난다. 그래서 병합하지 않고
  *    베이스 클래스만 공유한다(렌더 출력 불변).
  */
-export const CARD_BASE_CLASS = 'bg-surface rounded-lg border border-border';
+export const CARD_BASE_CLASS = 'bg-surface rounded-lg border border-border shadow-xs';
