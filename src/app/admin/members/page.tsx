@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
 
 interface Member {
   id: string;
@@ -250,9 +251,9 @@ export default function AdminMembersPage() {
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           placeholder="닉네임, 이메일, 블로그ID 검색"
-          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm"
+          className={`${controlBoxClass} flex-1`}
         />
-        <button type="submit" className="px-5 py-2.5 bg-accent text-white font-bold rounded-xl text-sm cursor-pointer">
+        <button type="submit" className={filterButtonClass}>
           검색
         </button>
       </form>

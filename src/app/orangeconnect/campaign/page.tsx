@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAdAuth } from '@/hooks/useAdAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 interface Campaign {
   id: string;
@@ -121,22 +122,17 @@ export default function CampaignListPage() {
       </div>
 
       {/* 필터 탭 */}
-      <div className="flex gap-2 flex-wrap">
-        {[
+      <SegmentedFilter
+        options={[
           { value: '', label: '전체' },
           { value: 'active', label: '모집중' },
           { value: 'draft', label: '임시저장' },
           { value: 'closed', label: '마감' },
           { value: 'completed', label: '완료' },
-        ].map(tab => (
-          <button key={tab.value} onClick={() => { setFilter(tab.value); setLoading(true); }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-              filter === tab.value ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:border-accent/40'
-            }`}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+        ]}
+        value={filter}
+        onChange={v => { setFilter(v); setLoading(true); }}
+      />
 
       {/* 캠페인 목록 */}
       {loading ? (

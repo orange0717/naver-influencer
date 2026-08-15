@@ -3,6 +3,8 @@
 // 기간 필터(7/15/30/90/120/전체) + 시작~종료 날짜 직접 선택 — 노출 현황과 동일 UX.
 // 확장 기간(>30일 또는 전체)은 lockExtended 시 🔒. 커스텀 날짜를 쓰면 기간 버튼은 비활성 표시.
 
+import { segmentGroupClass, segmentButtonClass, controlBoxClass } from './controls';
+
 export const PERIOD_OPTIONS = [7, 15, 30, 90, 120, 0] as const; // 0 = 전체
 export const FREE_DAYS = 30; // 최근 30일 기본(무료), 초과 = 30일 이전(회원 전용 대상)
 
@@ -24,6 +26,7 @@ export default function PeriodFilter({
   onResetCustom,
   lockExtended,
   busy,
+  disabled,
 }: {
   period: number;
   onPeriod: (n: number) => void;
@@ -35,10 +38,11 @@ export default function PeriodFilter({
   onResetCustom: () => void;
   lockExtended?: boolean;
   busy?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
+      <div className={segmentGroupClass}>
         {PERIOD_OPTIONS.map(n => {
           const active = !usingCustomRange && period === n;
           const locked = Boolean(lockExtended && isExtendedPeriod(n));
@@ -46,7 +50,8 @@ export default function PeriodFilter({
             <button
               key={n}
               onClick={() => onPeriod(n)}
-              className={`px-3 py-1.5 font-semibold transition cursor-pointer ${
+              disabled={disabled}
+              className={`${segmentButtonClass} disabled:opacity-50 disabled:cursor-not-allowed ${
                 active ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'
               }`}
             >
@@ -61,14 +66,14 @@ export default function PeriodFilter({
           type="date"
           value={customFrom}
           onChange={e => onCustomFrom(e.target.value)}
-          className="px-2 py-1.5 rounded-lg border border-border bg-surface text-dim"
+          className={`${controlBoxClass} text-dim`}
         />
         <span className="text-dim">~</span>
         <input
           type="date"
           value={customTo}
           onChange={e => onCustomTo(e.target.value)}
-          className="px-2 py-1.5 rounded-lg border border-border bg-surface text-dim"
+          className={`${controlBoxClass} text-dim`}
         />
         {usingCustomRange && (
           <button onClick={onResetCustom} className="px-2 py-1 text-dim hover:text-accent cursor-pointer">

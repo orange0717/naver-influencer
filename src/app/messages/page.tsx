@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 interface Message {
   id: string;
@@ -83,19 +84,16 @@ export default function MessagesPage() {
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-2">
-        {(['inbox', 'sent'] as const).map(b => (
-          <button
-            key={b}
-            onClick={() => { setBox(b); setPage(1); setExpandedId(null); }}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              box === b ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:border-accent/40'
-            }`}
-          >
-            {b === 'inbox' ? '받은 쪽지' : '보낸 쪽지'}
-          </button>
-        ))}
-        <span className="flex items-center text-xs text-dim ml-auto">
+      <div className="flex items-center gap-2">
+        <SegmentedFilter
+          options={[
+            { value: 'inbox' as Box, label: '받은 쪽지' },
+            { value: 'sent' as Box, label: '보낸 쪽지' },
+          ]}
+          value={box}
+          onChange={b => { setBox(b); setPage(1); setExpandedId(null); }}
+        />
+        <span className="text-xs text-dim ml-auto">
           {loading ? '로딩...' : `총 ${total}개`}
         </span>
       </div>

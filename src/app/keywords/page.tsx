@@ -10,6 +10,7 @@ import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { useAuth } from '@/hooks/useAuth';
 import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
+import { controlBoxClass } from '@/components/analytics/controls';
 
 const compTextMap: Record<string, string> = { low: '낮음', medium: '보통', high: '높음' };
 
@@ -445,11 +446,11 @@ export default function KeywordsPage() {
 
       <div className="flex items-center gap-2">
         <input type="text" placeholder="키워드 검색..." value={search} onChange={e => handleSearchChange(e.target.value)}
-          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors" />
+          className={`${controlBoxClass} flex-1 text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors`} />
         {(search || category !== '전체' || subFilter !== '전체' || sortKey) && (
           <button
             onClick={() => { setSearch(''); setCategory('전체'); setSubFilter('전체'); setSortKey(null); setSortOrder('desc'); setCursorHistory([null]); setCurrentPageIndex(0); setNextCursor(null); loadedCountRef.current = 0; }}
-            className="shrink-0 px-3 py-2.5 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
+            className="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
           >
             초기화
           </button>
@@ -467,7 +468,7 @@ export default function KeywordsPage() {
             <select
               value={subFilter}
               onChange={e => setSubFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-surface border border-border text-text focus:outline-none focus:border-accent transition-colors cursor-pointer appearance-none pr-8"
+              className={`${controlBoxClass} text-text focus:outline-none focus:border-accent transition-colors cursor-pointer appearance-none pr-8`}
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
             >
               {subCategories.map(sub => (

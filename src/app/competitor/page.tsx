@@ -4,6 +4,7 @@ import { Fragment, useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import CompetitorDashboard from '@/components/dashboard/CompetitorDashboard';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 import { extractBlogId, isValidBlogId } from '@/lib/blog-utils';
 import type { AnalysisTab, AuthInfo, BlogCompareData, CompetitorPost, QuotaInfo } from './page.helpers';
 import { AI_THRESHOLD, getAiBadgeStyle, sentenceTypeLabel, extractPostInfo, StatRow } from './page.helpers';
@@ -335,25 +336,17 @@ export default function CompetitorPage() {
       )}
 
       {/* ─── 탭 선택 ─── */}
-      <div className="flex rounded-xl border border-border overflow-hidden">
-        {([
-          { key: 'challenge' as const, label: '키워드챌린지' },
-          { key: 'blog' as const, label: '블로그' },
-          { key: 'posting' as const, label: '포스팅' },
-        ]).map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex-1 py-3 text-sm font-bold transition cursor-pointer ${
-              tab === t.key
-                ? 'bg-accent text-white'
-                : 'bg-surface text-dim hover:bg-surface-hover'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedFilter
+        size="lg"
+        fullWidth
+        options={[
+          { value: 'challenge', label: '키워드챌린지' },
+          { value: 'blog', label: '블로그' },
+          { value: 'posting', label: '포스팅' },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
 
       {/* ─── 키워드챌린지 탭 ─── */}
       {tab === 'challenge' && (

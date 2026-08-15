@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAdAuth } from '@/hooks/useAdAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { CARD_BASE_CLASS } from '@/components/dashboard/card-base';
 
 interface DashboardData {
   stats: {
@@ -107,9 +108,9 @@ export default function AdDashboardPage() {
           { label: '수락 인원', value: stats.acceptedApplications, suffix: '명' },
           { label: '총 집행금액', value: stats.totalSpend.toLocaleString(), suffix: '원' },
         ].map(card => (
-          <div key={card.label} className="bg-surface border border-border rounded-lg p-5">
-            <p className="text-[10px] text-dim font-semibold mb-1">{card.label}</p>
-            <p className="text-2xl font-extrabold font-rank">
+          <div key={card.label} className={`${CARD_BASE_CLASS} p-4`}>
+            <p className="stat-title mb-2">{card.label}</p>
+            <p className="stat-value stat-value-kpi text-accent">
               {card.value}<span className="text-sm text-dim font-normal ml-1">{card.suffix}</span>
             </p>
           </div>

@@ -10,6 +10,8 @@ import PeriodFilter from '@/components/analytics/PeriodFilter';
 import SegmentedFilter, { type SegmentOption } from '@/components/analytics/SegmentedFilter';
 import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar';
 import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
+import PageHeader from '@/components/analytics/PageHeader';
+import MoreMenu, { menuItemClass, menuItemDangerClass } from '@/components/analytics/MoreMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import type { BloggerProfile, BlogPost, BriefingResult, AnalysisEntry, KeywordMeta, RepKeywordEntry } from './AiBriefingSection.helpers';
@@ -101,7 +103,6 @@ export default function AiBriefingSection() {
   const [checkingStage, setCheckingStage] = useState('');
   const [extractingPostId, setExtractingPostId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 상태 필터: 전체/인용/일부 인용/미인용/미확인/확인실패
@@ -992,14 +993,15 @@ export default function AiBriefingSection() {
         </div>
       )}
       {/* 헤더 + 주요 실행 버튼 — 키워드순위 화면과 동일 구성 */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-bold">AI 브리핑 · AI 탭</h2>
-          <p className="text-xs text-dim mt-1">
-            내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 {blogPostsTotal.toLocaleString()}개
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      <PageHeader
+        title="AI 브리핑 · AI 탭"
+        description={`내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 ${blogPostsTotal.toLocaleString()}개`}
+        note={<>
+          AI 브리핑·AI 탭 인용 여부는 공식 API가 없어 실제 브라우저로 두 화면을 순차 방문해 확인하므로 건당 30~50초가 걸립니다.
+          네이버가 짧은 시간의 반복 자동화를 제한하기 때문에, &ldquo;전체 업데이트&rdquo;는 1회에 소수만 안전하게 확인하고 나머지는 미확인으로 두었다가
+          다시 눌러 이어서 채웁니다(재개형). 확인 불가·오류는 절대 &lsquo;미인용&rsquo;으로 처리하지 않습니다.
+        </>}
+        actions={<>
           {extractingAll ? (
             <CheckProgress current={extractProgress.current} total={extractProgress.total} label="키워드 추출 중" onStop={stopExtractingAll} />
           ) : missingKeywordCount > 0 && (
@@ -1030,55 +1032,39 @@ export default function AiBriefingSection() {
               중단
             </button>
           )}
-          <div className="relative">
-            <button
-              onClick={() => setMoreMenuOpen(v => !v)}
-              className="px-2.5 py-2 rounded-xl border border-border text-dim hover:text-accent hover:border-accent/40 transition cursor-pointer text-sm"
-              title="더보기"
-            >
-              ⋯
-            </button>
-            {moreMenuOpen && (
+          <MoreMenu menuWidth="w-44">
+            {close => (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
-                <div className="absolute right-0 mt-1 z-50 w-44 bg-surface border border-border rounded-xl shadow-lg py-1 text-sm">
+                <button
+                  onClick={() => { openAuditModal(); close(); }}
+                  disabled={blogPosts.length === 0 || auditLoading}
+                  className={menuItemClass}
+                  title="저장된 대표키워드를 점검해 잘못 추출된 것만 다시 추출합니다(네이버 무호출, 애매한 건만 AI 보정)."
+                >
+                  {auditLoading ? '점검 중...' : '대표키워드 점검'}
+                </button>
+                {canDownload && (
                   <button
-                    onClick={() => { openAuditModal(); setMoreMenuOpen(false); }}
-                    disabled={blogPosts.length === 0 || auditLoading}
-                    className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer disabled:opacity-50"
-                    title="저장된 대표키워드를 점검해 잘못 추출된 것만 다시 추출합니다(네이버 무호출, 애매한 건만 AI 보정)."
+                    onClick={() => { handleDownload(); close(); }}
+                    disabled={blogPosts.length === 0}
+                    className={menuItemClass}
+                    title="포스팅의 AI 브리핑·AI 탭 확인 결과를 CSV 다운로드 (최대 500건)"
                   >
-                    {auditLoading ? '점검 중...' : '대표키워드 점검'}
+                    CSV 다운로드
                   </button>
-                  {canDownload && (
-                    <button
-                      onClick={() => { handleDownload(); setMoreMenuOpen(false); }}
-                      disabled={blogPosts.length === 0}
-                      className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer disabled:opacity-50"
-                      title="포스팅의 AI 브리핑·AI 탭 확인 결과를 CSV 다운로드 (최대 500건)"
-                    >
-                      CSV 다운로드
-                    </button>
-                  )}
-                  <button
-                    onClick={() => { handleResetResults(); setMoreMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-bg text-down/70 cursor-pointer"
-                    title="모든 타겟 키워드와 AI 브리핑 데이터 초기화"
-                  >
-                    초기화
-                  </button>
-                </div>
+                )}
+                <button
+                  onClick={() => { handleResetResults(); close(); }}
+                  className={menuItemDangerClass}
+                  title="모든 타겟 키워드와 AI 브리핑 데이터 초기화"
+                >
+                  초기화
+                </button>
               </>
             )}
-          </div>
-        </div>
-      </div>
-
-      <p className="text-xs text-dim/80 -mt-3">
-        AI 브리핑·AI 탭 인용 여부는 공식 API가 없어 실제 브라우저로 두 화면을 순차 방문해 확인하므로 건당 30~50초가 걸립니다.
-        네이버가 짧은 시간의 반복 자동화를 제한하기 때문에, &ldquo;전체 업데이트&rdquo;는 1회에 소수만 안전하게 확인하고 나머지는 미확인으로 두었다가
-        다시 눌러 이어서 채웁니다(재개형). 확인 불가·오류는 절대 &lsquo;미인용&rsquo;으로 처리하지 않습니다.
-      </p>
+          </MoreMenu>
+        </>}
+      />
 
       {/* 배치 진행률(스펙 #15) */}
       {bulkRunning && (

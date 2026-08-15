@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 const TAGS = [
   { value: 'notice', label: '공지' },
@@ -122,18 +123,7 @@ export default function NoticeWritePage() {
         {/* 태그 선택 */}
         <div>
           <label className="text-xs font-semibold text-dim block mb-2">태그</label>
-          <div className="flex gap-2">
-            {TAGS.map(t => (
-              <button key={t.value} onClick={() => setTag(t.value)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
-                  tag === t.value
-                    ? 'bg-accent text-white'
-                    : 'bg-bg border border-border text-dim hover:text-text hover:border-accent/30'
-                }`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedFilter options={TAGS.map(t => ({ value: t.value, label: t.label }))} value={tag} onChange={setTag} />
         </div>
 
         {/* 제목 */}

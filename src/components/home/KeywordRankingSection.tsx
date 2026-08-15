@@ -41,6 +41,8 @@ import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar
 import StatusBadge from '@/components/analytics/StatusBadge';
 import CheckProgress from '@/components/analytics/CheckProgress';
 import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
+import PageHeader from '@/components/analytics/PageHeader';
+import MoreMenu, { menuItemClass, menuLinkClass, menuItemDangerClass } from '@/components/analytics/MoreMenu';
 
 export default function KeywordRankingSection() {
   const queryClient = useQueryClient();
@@ -103,7 +105,6 @@ export default function KeywordRankingSection() {
   const [rankBasis, setRankBasis] = useState<Basis>('integrated'); // 순위 기준(기본 통합검색, 스펙 #5)
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'title'>('latest');
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false); // 상단 보조버튼 더보기(⋯) (스펙 #22)
   const [reextracting, setReextracting] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState('');
   const [expandedSecondary, setExpandedSecondary] = useState<Set<string>>(new Set()); // 보조키워드 펼침 (스펙 #13)
@@ -1092,14 +1093,10 @@ export default function KeywordRankingSection() {
       )}
 
       {/* 헤더 + 주요 실행 버튼 (스펙 #2/#22/#23) */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-bold">키워드 순위</h2>
-          <p className="text-xs text-dim mt-1">
-            내 블로그 전체 포스팅의 대표키워드와 네이버 검색 순위를 확인합니다. · 전체 {blogPostsTotal.toLocaleString()}개
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      <PageHeader
+        title="키워드 순위"
+        description={`내 블로그 전체 포스팅의 대표키워드와 네이버 검색 순위를 확인합니다. · 전체 ${blogPostsTotal.toLocaleString()}개`}
+        actions={<>
           {extractingAll ? (
             <CheckProgress current={extractProgress.current} total={extractProgress.total} label="대표키워드 추출 중" onStop={stopExtractingAll} />
           ) : checkingAll ? (
@@ -1132,31 +1129,21 @@ export default function KeywordRankingSection() {
           >
             {reextracting ? '재추출 중…' : '대표키워드 다시 추출'}
           </button>
-          <div className="relative">
-            <button
-              onClick={() => setMoreMenuOpen(v => !v)}
-              className="px-2.5 py-2 rounded-xl border border-border text-dim hover:text-accent hover:border-accent/40 transition cursor-pointer text-sm"
-              title="더보기"
-            >
-              ⋯
-            </button>
-            {moreMenuOpen && (
+          <MoreMenu>
+            {close => (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
-                <div className="absolute right-0 mt-1 z-50 w-40 bg-surface border border-border rounded-xl shadow-lg py-1 text-sm">
-                  {canDownload && (
-                    <button onClick={() => { handleDownload(); setMoreMenuOpen(false); }} className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer">CSV 다운로드</button>
-                  )}
-                  {canDownload && profile && (
-                    <a href={`/api/downloads/my-keyword-ranking?blogId=${encodeURIComponent(profile.blogId)}`} onClick={() => setMoreMenuOpen(false)} className="block px-3 py-2 hover:bg-bg text-dim">전체 리포트</a>
-                  )}
-                  <button onClick={() => { handleResetResults(); setMoreMenuOpen(false); }} className="w-full text-left px-3 py-2 hover:bg-bg text-down/70 cursor-pointer">초기화</button>
-                </div>
+                {canDownload && (
+                  <button onClick={() => { handleDownload(); close(); }} className={menuItemClass}>CSV 다운로드</button>
+                )}
+                {canDownload && profile && (
+                  <a href={`/api/downloads/my-keyword-ranking?blogId=${encodeURIComponent(profile.blogId)}`} onClick={close} className={menuLinkClass}>전체 리포트</a>
+                )}
+                <button onClick={() => { handleResetResults(); close(); }} className={menuItemDangerClass}>초기화</button>
               </>
             )}
-          </div>
-        </div>
-      </div>
+          </MoreMenu>
+        </>}
+      />
 
       {/* 요약 카드 (스펙 #3/#4) */}
       <SummaryCards

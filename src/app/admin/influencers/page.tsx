@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
 import { formatCountK as formatCount } from '@/lib/format';
+import { controlBoxClass } from '@/components/analytics/controls';
 
 interface InfluencerRow {
   id: string;
@@ -112,7 +113,7 @@ export default function AdminInfluencersPage() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="네이버 ID 또는 이름으로 검색..."
-          className="w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm"
+          className={`${controlBoxClass} w-full`}
         />
 
         {loadingSearch && (

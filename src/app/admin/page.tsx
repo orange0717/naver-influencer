@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { CARD_BASE_CLASS } from '@/components/dashboard/card-base';
 
 interface DashboardData {
   totalUsers: number;
@@ -58,10 +59,10 @@ export default function AdminDashboardPage() {
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map(card => (
-          <div key={card.label} className="bg-surface rounded-xl border border-border p-5">
-            <p className="text-xs text-dim mb-2">{card.label}</p>
-            <p className="text-3xl font-extrabold text-text">{card.value}</p>
-            <p className="text-xs text-dim mt-1">{card.sub}</p>
+          <div key={card.label} className={`${CARD_BASE_CLASS} p-4`}>
+            <p className="stat-title mb-2">{card.label}</p>
+            <p className="stat-value stat-value-kpi text-accent">{card.value}</p>
+            <p className="stat-desc mt-1">{card.sub}</p>
           </div>
         ))}
       </div>

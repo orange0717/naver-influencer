@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 type Plan = 'INFLUENCER' | 'BLOGGER';
 type Scope = 'all' | 'inactive';
@@ -71,19 +72,14 @@ export default function AdminBulkGrantPage() {
         {/* 플랜 */}
         <div>
           <p className="text-xs font-bold text-dim mb-2">플랜</p>
-          <div className="flex gap-2">
-            {(['INFLUENCER', 'BLOGGER'] as Plan[]).map(p => (
-              <button
-                key={p}
-                onClick={() => setPlan(p)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
-                  plan === p ? 'bg-accent text-white' : 'bg-bg text-dim border border-border hover:text-text'
-                }`}
-              >
-                {p === 'INFLUENCER' ? '인플루언서' : '블로거'}
-              </button>
-            ))}
-          </div>
+          <SegmentedFilter
+            options={[
+              { value: 'INFLUENCER' as Plan, label: '인플루언서' },
+              { value: 'BLOGGER' as Plan, label: '블로거' },
+            ]}
+            value={plan}
+            onChange={setPlan}
+          />
         </div>
 
         {/* 기간 */}

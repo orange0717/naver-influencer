@@ -2,6 +2,8 @@
 
 // 세그먼트 pill 필터 그룹 — 노출 현황의 기간/상태 필터와 동일한 스타일.
 // (active = bg-accent text-white / inactive = text-dim hover:bg-surface-hover)
+import { segmentGroupClass, segmentButtonClass, segmentGroupLgClass, segmentButtonLgClass } from './controls';
+
 export interface SegmentOption<T extends string | number> {
   value: T;
   label: string;
@@ -13,22 +15,29 @@ export default function SegmentedFilter<T extends string | number>({
   value,
   onChange,
   disabled,
+  size = 'sm',
+  fullWidth,
   className = '',
 }: {
   options: SegmentOption<T>[];
   value: T;
   onChange: (v: T) => void;
   disabled?: boolean;
+  /** 'sm' = 필터 줄(32px) · 'lg' = 페이지 주 내비게이션 탭(48px) */
+  size?: 'sm' | 'lg';
+  fullWidth?: boolean;
   className?: string;
 }) {
+  const group = size === 'lg' ? segmentGroupLgClass : segmentGroupClass;
+  const button = size === 'lg' ? segmentButtonLgClass : segmentButtonClass;
   return (
-    <div className={`flex rounded-lg border border-border overflow-hidden text-[11px] w-fit ${className}`}>
+    <div className={`${group} ${fullWidth ? 'w-full' : 'w-fit'} ${className}`}>
       {options.map(o => (
         <button
           key={String(o.value)}
           onClick={() => onChange(o.value)}
           disabled={disabled}
-          className={`px-3 py-1.5 font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`${button} ${fullWidth ? 'flex-1' : ''} disabled:opacity-50 disabled:cursor-not-allowed ${
             value === o.value ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'
           }`}
         >

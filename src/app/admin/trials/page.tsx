@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { formatDateTimeShort as formatDate } from '@/lib/format';
+import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
 
 interface TrialUser {
   id: number;
@@ -82,11 +83,11 @@ export default function AdminTrialsPage() {
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           placeholder="naver_id, blog_id, 이름으로 검색"
-          className="flex-1 px-3 py-2 text-sm bg-bg border border-border rounded-lg outline-none focus:border-accent/40 transition-colors"
+          className={`${controlBoxClass} flex-1 outline-none focus:border-accent/40`}
         />
         <button
           type="submit"
-          className="px-4 py-2 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition cursor-pointer"
+          className={filterButtonClass}
         >
           검색
         </button>

@@ -2,8 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
-import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import Modal from '@/components/ui/Modal';
+import PageHeader from '@/components/analytics/PageHeader';
+import SummaryCards from '@/components/analytics/SummaryCards';
+import PeriodFilter, { PERIOD_OPTIONS } from '@/components/analytics/PeriodFilter';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar';
+import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
 import { countIndexingWait, displayVerdict, classifyExposure, countByExposureClass, INDEXING_GRACE_HOURS, type MissingResultsMap, type MissingState, type MissingArea, type ExposureClass, type PostLike } from '@/lib/missing-rate';
 import { verdictLabel, confidenceLabel, type ExposureVerdict } from '@/lib/exposure-verdict';
 import { parseNaverPostDate } from '@/lib/naver-date';
@@ -21,8 +26,7 @@ const FREE_DAYS = 30;
 // 확장(회원 전용): 기간이 '전체(0)'이거나 FREE_DAYS 초과면 30일 이전 조회 → 회원 전용 + 크레딧 정책 대상.
 function isExtendedPeriod(n: Period): boolean { return n === 0 || n > FREE_DAYS; }
 
-const PERIOD_OPTIONS = [7, 15, 30, 90, 120, 0] as const; // 0 = 전체(일수 기준 아님)
-type Period = typeof PERIOD_OPTIONS[number];
+type Period = typeof PERIOD_OPTIONS[number]; // 0 = 전체(일수 기준 아님)
 const DAY_MS = 24 * 60 * 60 * 1000;
 // 페이지 진입 시 최근 발행글을 자동 검사하는 개수 — 최신 상태를 자동 갱신하되 대량 호출은 피한다.
 // 이미 최근(CHECK_FRESH_MS 내) 검사된 글은 runBatch가 건너뛰므로 실제 호출은 이보다 적다.
@@ -640,12 +644,10 @@ export default function MissingPostsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-bold">노출 현황</h2>
-          <p className="text-xs text-dim mt-1">내 블로그 전체 포스팅의 네이버 검색(통합검색·블로그·인플루언서) 노출 상태를 확인합니다.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      <PageHeader
+        title="노출 현황"
+        description="내 블로그 전체 포스팅의 네이버 검색(통합검색·블로그·인플루언서) 노출 상태를 확인합니다."
+        actions={<>
           {checkingAll ? (
             <>
               <span className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white font-bold rounded-xl text-xs">
@@ -673,8 +675,8 @@ export default function MissingPostsSection() {
               </button>
             </>
           )}
-        </div>
-      </div>
+        </>}
+      />
 
       {/* §12 배치 검사 완료 요약 — "N개 확인 완료 · 노출 X · 미노출 Y" */}
       {!checkingAll && batchSummary && (
@@ -705,100 +707,68 @@ export default function MissingPostsSection() {
 
       {/* 2. 전체 현황 카드 — 전체 포스팅 / 노출(정상) / 미노출 / 일부 노출 / 미확인.
           네 상태 카드(노출·미노출·일부노출·미확인) 합 = 전체 포스팅. 로딩 전엔 0을 지어내지 않고 '—' 표시(§13). */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <AnimatedStatCard label="전체 포스팅" value={periodPosts.length} color="accent" size="kpi" placeholder="0"
-          statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : '선택 기간 발행 글'} />
-        <AnimatedStatCard label="노출" value={normalCount} color="up" size="kpi" placeholder="0"
-          statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출`} />
-        <AnimatedStatCard label="미노출" value={missingCount} color="down" size="kpi" placeholder="0"
-          statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `${pct(missingCount)}% · 전 영역 미노출`} />
-        <AnimatedStatCard label="일부 노출" value={partialCount} color="accent" size="kpi" placeholder="0"
-          statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : `${pct(partialCount)}% · 일부 영역만`} />
-        <AnimatedStatCard label="미확인" value={unknownCount} color="dim" size="kpi" placeholder="0"
-          statusText={postsLoading ? '—' : undefined}
-          description={postsLoading ? '불러오는 중...' : '미검사·확인 중·확인 실패'} />
-      </div>
+      <SummaryCards
+        loading={postsLoading}
+        cards={[
+          { key: 'total', label: '전체 포스팅', value: periodPosts.length, color: 'accent', description: postsLoading ? '불러오는 중...' : '선택 기간 발행 글' },
+          { key: 'normal', label: '노출', value: normalCount, color: 'up', description: postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출` },
+          { key: 'missing', label: '미노출', value: missingCount, color: 'down', description: postsLoading ? '불러오는 중...' : `${pct(missingCount)}% · 전 영역 미노출` },
+          { key: 'partial', label: '일부 노출', value: partialCount, color: 'accent', description: postsLoading ? '불러오는 중...' : `${pct(partialCount)}% · 일부 영역만` },
+          { key: 'unknown', label: '미확인', value: unknownCount, color: 'dim', description: postsLoading ? '불러오는 중...' : '미검사·확인 중·확인 실패' },
+        ]}
+      />
 
       {/* 3. 필터 · 검색 */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
-            {/* §12·§13 기간 필터 — 30일 이하는 누구나, 90/120/전체는 회원 전용(🔒). 회원이 선택하면 확장 조회 흐름 시작. */}
-            {PERIOD_OPTIONS.map(n => {
-              const extended = isExtendedPeriod(n);
-              const locked = extended && !isMember;
-              return (
-                <button key={n} disabled={extendBusy}
-                  title={locked ? '30일 이전 조회는 회원 전용입니다' : undefined}
-                  onClick={() => {
-                    if (extended) {
-                      if (!isMember) { openGate('/my/missing-posts'); return; } // §3·§13 비회원 → 로그인/회원가입
-                      beginExtended(n);
-                    } else { setPeriod(n); setCustomFrom(''); setCustomTo(''); }
-                  }}
-                  className={`px-3 py-1.5 font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${!usingCustomRange && period === n ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'}`}>
-                  {n === 0 ? '전체' : `${n}일`}{locked && ' 🔒'}
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-              className="px-2 py-1.5 rounded-lg border border-border bg-surface text-dim" />
-            <span className="text-dim">~</span>
-            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-              className="px-2 py-1.5 rounded-lg border border-border bg-surface text-dim" />
-            {usingCustomRange && (
-              <button onClick={() => { setCustomFrom(''); setCustomTo(''); }} className="text-accent hover:underline font-semibold cursor-pointer">초기화</button>
-            )}
-          </div>
-          {extendBusy && <span className="text-[11px] text-accent font-semibold flex items-center gap-1"><span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />조회 대상 계산 중...</span>}
-        </div>
+        {/* §12·§13 기간 필터 — 30일 이하는 누구나, 90/120/전체는 회원 전용(🔒). 회원이 선택하면 확장 조회 흐름 시작. */}
+        <PeriodFilter
+          period={period}
+          onPeriod={value => {
+            const n = value as Period;
+            if (isExtendedPeriod(n)) {
+              if (!isMember) { openGate('/my/missing-posts'); return; } // §3·§13 비회원 → 로그인/회원가입
+              beginExtended(n);
+            } else { setPeriod(n); setCustomFrom(''); setCustomTo(''); }
+          }}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomFrom={setCustomFrom}
+          onCustomTo={setCustomTo}
+          usingCustomRange={usingCustomRange}
+          onResetCustom={() => { setCustomFrom(''); setCustomTo(''); }}
+          lockExtended={!isMember}
+          disabled={extendBusy}
+          busy={extendBusy}
+        />
         {/* §16 이용 기준 안내(작게) */}
         <p className="text-[11px] text-dim">
           최근 {FREE_DAYS}일 기본 조회 · 30일 이전은 <b className="text-text">회원 전용</b> · 대량 조회 시 크레딧이 사용될 수 있습니다.
         </p>
         {/* §3 빠른 상태 필터 — 전체/노출/미노출/일부 노출/미확인 (기본값 전체) */}
-        <div className="flex rounded-lg border border-border overflow-hidden text-[11px] w-fit">
-          {STATUS_FILTERS.map(f => (
-            <button key={f.key} onClick={() => setStatusFilter(f.key)}
-              className={`px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === f.key ? 'bg-accent text-white' : 'text-dim hover:bg-surface-hover'}`}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            placeholder="게시글 제목 검색"
-            className="px-3 py-1.5 rounded-lg border border-border bg-surface text-xs w-56" />
-          <select value={areaFilter} onChange={e => setAreaFilter(e.target.value as AreaFilter)}
-            className="px-3 py-1.5 rounded-lg border border-border bg-surface text-xs text-dim cursor-pointer">
+        <SegmentedFilter
+          options={STATUS_FILTERS.map(f => ({ value: f.key, label: f.label }))}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <PostSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="게시글 제목 검색">
+          <select value={areaFilter} onChange={e => setAreaFilter(e.target.value as AreaFilter)} className={selectClass}>
             <option value="all">노출 영역: 전체</option>
             <option value="view">통합검색 미노출만</option>
             <option value="blog">블로그 미노출만</option>
             <option value="influencer">인플루언서 미노출만</option>
           </select>
-          <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)}
-            className="px-3 py-1.5 rounded-lg border border-border bg-surface text-xs text-dim cursor-pointer">
+          <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)} className={selectClass}>
             <option value="latest">최신순</option>
             <option value="oldest">오래된순</option>
             <option value="title">제목순</option>
             <option value="missingRate">미노출률순</option>
           </select>
-        </div>
+        </PostSearchBar>
       </div>
 
       {errorMessage && <p className="text-xs text-down">{errorMessage}</p>}
 
-      <GlassCard padding="none">
-        <div className="px-5 py-4 border-b border-border bg-bg/30 flex items-center justify-between">
-          <h3 className="font-bold text-[15px]">포스팅 목록</h3>
-          <span className="text-xs text-dim">{postsLoading ? '불러오는 중...' : `${displayList.length}개`}</span>
-        </div>
+      <AnalyticsTableShell title="포스팅 목록" loading={postsLoading} count={`${displayList.length}개`}>
 
         {postsLoading ? (
           <div className="flex items-center justify-center py-10 text-dim text-sm">
@@ -961,7 +931,7 @@ export default function MissingPostsSection() {
             </div>
           </>
         )}
-      </GlassCard>
+      </AnalyticsTableShell>
 
       {/* 4. 상세뷰(원인분석) 패널 */}
       <Modal open={!!detailPost} onClose={closeDetail} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">

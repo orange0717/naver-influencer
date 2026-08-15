@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { controlBoxClass } from '@/components/analytics/controls';
 
 interface RestrictedUser {
   id: string;
@@ -84,21 +85,21 @@ export default function AdminRestrictedPage() {
             onChange={e => setEmail(e.target.value)}
             placeholder="이메일 (필수)"
             required
-            className="px-4 py-2.5 bg-bg border border-border rounded-xl text-sm"
+            className={controlBoxClass}
           />
           <input
             type="text"
             value={nickname}
             onChange={e => setNickname(e.target.value)}
             placeholder="닉네임 (선택)"
-            className="px-4 py-2.5 bg-bg border border-border rounded-xl text-sm"
+            className={controlBoxClass}
           />
           <input
             type="text"
             value={reason}
             onChange={e => setReason(e.target.value)}
             placeholder="사유 (선택)"
-            className="px-4 py-2.5 bg-bg border border-border rounded-xl text-sm"
+            className={controlBoxClass}
           />
         </div>
         <div className="flex items-center gap-3">

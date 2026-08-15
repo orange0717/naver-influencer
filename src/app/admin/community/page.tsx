@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
 
 interface Post {
   id: string;
@@ -117,19 +119,15 @@ function ChatReportsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        {(['pending', 'reviewed', 'dismissed'] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setStatus(s)}
-            className={`px-3 py-1.5 rounded text-xs font-semibold transition ${
-              status === s ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:text-text'
-            }`}
-          >
-            {s === 'pending' ? '대기' : s === 'reviewed' ? '처리완료' : '기각'}
-          </button>
-        ))}
-      </div>
+      <SegmentedFilter
+        options={[
+          { value: 'pending', label: '대기' },
+          { value: 'reviewed', label: '처리완료' },
+          { value: 'dismissed', label: '기각' },
+        ]}
+        value={status}
+        onChange={setStatus}
+      />
 
       {loading ? (
         <p className="text-dim text-sm">불러오는 중...</p>
@@ -237,9 +235,9 @@ function PostsTab() {
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           placeholder="제목, 작성자 검색"
-          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm"
+          className={`${controlBoxClass} flex-1`}
         />
-        <button type="submit" className="px-5 py-2.5 bg-accent text-white font-bold rounded-xl text-sm cursor-pointer">
+        <button type="submit" className={filterButtonClass}>
           검색
         </button>
       </form>
