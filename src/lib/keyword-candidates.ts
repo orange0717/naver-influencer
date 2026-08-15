@@ -25,6 +25,10 @@ const GENERIC_WORDS = new Set([
   '단상', '꿀팁', '모음', '총정리', '기록', '일기', '근황', '리스트', '사용법', '사용후기', '내돈내산',
   '베스트', '인기', '화제', '트렌드', '공유', '최고', '최신', '가지', '것', '점', '더', '완전', '진짜',
   '뜻', '순위', '도서추천', '책추천',
+  // 후기·감상 유형어 — 검색 의도이지 대상이 아니다(개봉기·감상평·완독…).
+  '베스트셀러', '개봉기', '감상평', '감상', '사용기', '체험기', '방문기', '완독', '결말', '해석', '신청방법', '선택',
+  // 판매처/플랫폼 — 대상이 아니라 유통 경로다.
+  '예스24', 'yes24', '교보문고', '알라딘', '밀리의서재', '리디북스',
   'best', 'top', 'review', 'tip', 'tips',
 ]);
 
@@ -32,6 +36,7 @@ const GENERIC_WORDS = new Set([
 const TRAILING_DECORATORS = new Set([
   '추천', '후기', '리뷰', '정리', '정보', '이야기', '단상', '일상', '꿀팁', '방법', '소개',
   '모음', '총정리', '기록', '근황', '얘기', '리스트', '뜻', '순위',
+  '베스트셀러', '개봉기', '감상평', '감상', '사용기', '체험기', '방문기', '완독', '결말', '해석', '신청방법', '선택',
   'best', 'top',
 ]);
 
@@ -86,6 +91,16 @@ const VERBAL_NOUN_RE = /(하기|되기|쓰기|읽기|듣기|먹기|살기|짓기
 
 function isVerbalNoun(token: string): boolean {
   return token.length >= 3 && VERBAL_NOUN_RE.test(token);
+}
+
+/**
+ * 맨 숫자가 구 "중간"에 흡수된 경우 — 그 숫자가 개체의 끝인지(달리구도 못해낸 300 | 원화집)
+ * 아니면 개체 내부인지(아이폰 17 프로) 규칙만으로는 못 가른다. 신뢰도를 낮춰 AI 보정에 넘긴다.
+ * 끝자리 숫자(트렌드 코리아 2026)는 경계가 분명하므로 해당 없음.
+ */
+function hasMidPhraseNumber(phrase: string): boolean {
+  const parts = phrase.trim().split(/\s+/);
+  return parts.slice(0, -1).some(p => BARE_NUMBER_RE.test(p));
 }
 
 /** 구의 끝이 용언 명사형이면 검색어로 부적합(스펙 #13) — 신뢰도를 낮춰 AI 보정 대상으로 만든다. */
@@ -531,12 +546,19 @@ export function extractKeywordCandidates(input: ExtractInput, maxSecondaries = 3
 
   // 수식어 재결합으로도 용언 명사형이 대표로 남으면(만들기·실패하기) 그대로는 아무도 검색하지 않는다.
   // 규칙으로는 여기까지가 한계라 저신뢰로 내려 AI 보정(Haiku)이 판단하게 한다.
-  const verbalPrimary = !userKeyword && !!primary && (endsWithVerbalNoun(primary) || endsIncomplete(primary));
+  const verbalPrimary = !userKeyword && !!primary
+    && (endsWithVerbalNoun(primary) || endsIncomplete(primary) || hasMidPhraseNumber(primary));
 
   // 대표 바로 앞 어절을 수식어로 보고 떼어낸 경우("쉽게 쓰여진 시"→"쓰여진 시") — 진짜 수식어일 수도 있고
   // 작품 제목의 일부일 수도 있어 규칙으로는 못 가른다. 잘린 조각을 확정하지 않도록 AI 보정에 넘긴다.
-  const truncatedPrimary = !userKeyword && !!top && top.startIndex >= 1 && top.startIndex < 90
-    && classifyToken(tokens[top.startIndex - 1] || '') === 'modifier';
+  // 바로 앞 어절이 목적격 조사절/관형형 용언이면("미움받을 용기", "운명을 바꾸는 부동산 투자")
+  // 그 말이 진짜 절인지 작품 제목의 일부인지 규칙으로는 못 가른다 — 잘린 조각을 확정하지 않는다.
+  const prevToken = top && top.startIndex >= 1 && top.startIndex < 90 ? (tokens[top.startIndex - 1] || '') : '';
+  // 장식어가 아닌 일반어("트렌드 코리아 2026"의 트렌드)도 경계로 쓰면 브랜드 첫 단어를 잘라낸다.
+  // 장식어(추천·후기)는 진짜 경계이므로 제외한다.
+  const prevIsBareGeneric = !!prevToken && isStopOrGeneric(prevToken) && !isDecorator(prevToken);
+  const truncatedPrimary = !userKeyword && !!prevToken
+    && (classifyToken(prevToken) === 'modifier' || isObjectClause(prevToken) || isAdnominalVerb(prevToken) || prevIsBareGeneric);
 
   const softened = verbalPrimary || truncatedPrimary;
 

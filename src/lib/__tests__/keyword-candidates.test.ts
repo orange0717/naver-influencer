@@ -206,4 +206,35 @@ describe('수식어·의도어 제거와 재결합(실제 검색어 기준)', ()
     expect(extractKeywordCandidates({ title: '코스피 뜻 정리' }).primary).toBe('코스피');
     expect(extractKeywordCandidates({ title: '강남 맛집 순위 모음' }).primary).toBe('강남 맛집');
   });
+
+  it('후기 유형어 꼬리(개봉기·완독·감상평·결말·신청방법)도 떼어낸다', () => {
+    expect(extractKeywordCandidates({ title: '갤럭시 S26 울트라 개봉기' }).primary).toBe('갤럭시 S26 울트라');
+    expect(extractKeywordCandidates({ title: '세이노의 가르침 완독 후기' }).primary).toBe('세이노의 가르침');
+    expect(extractKeywordCandidates({ title: '불편한 편의점 2권 감상평' }).primary).toBe('불편한 편의점');
+    expect(extractKeywordCandidates({ title: '넷플릭스 오징어게임3 결말 해석' }).primary).toBe('넷플릭스 오징어게임3');
+    // 유형어가 대표로 뽑히던 최악 케이스 — 실제 검색어는 상품명이다
+    expect(extractKeywordCandidates({ title: '2026년 청년도약계좌 신청방법' }).primary).toBe('청년도약계좌');
+  });
+});
+
+describe('규칙이 확정하면 안 되는 경계(AI 보정으로 넘김)', () => {
+  it('숫자가 구 중간에 있으면 개체 끝인지 내부인지 못 가른다', () => {
+    // "달리구도 못해낸 300"(작품명) + "원화집"(유형어)인지 규칙으로는 확정 불가
+    expect(extractKeywordCandidates({ title: '달리구도 못해낸 300 원화집 추천' }).ambiguous).toBe(true);
+    expect(extractKeywordCandidates({ title: '아이폰 17 프로 리뷰' }).ambiguous).toBe(true);
+    // 끝자리 숫자는 경계가 분명하므로 해당 없음
+    expect(extractKeywordCandidates({ title: '달러구트 꿈 백화점 1편' }).ambiguous).toBe(false);
+  });
+
+  it('관형형 "-을/ㄹ"을 목적격 조사로 오인해 잘린 경우', () => {
+    // '미움받을'은 목적격 조사절이 아니라 작품 제목의 일부
+    expect(extractKeywordCandidates({ title: '미움받을 용기 아들러 심리학' }).ambiguous).toBe(true);
+  });
+
+  it('장식어가 아닌 일반어가 앞에 오면 브랜드 첫 단어일 수 있다', () => {
+    // '트렌드 코리아 2026'이 통째로 브랜드명 — '코리아 2026'으로 잘라 확정하면 안 된다
+    expect(extractKeywordCandidates({ title: '트렌드 코리아 2026 후기' }).ambiguous).toBe(true);
+    // 반면 장식어(추천·후기)는 진짜 경계이므로 확정을 막지 않는다
+    expect(extractKeywordCandidates({ title: '추천 도서 방구석미술관' }).primary).toBe('방구석미술관');
+  });
 });
