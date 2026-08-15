@@ -82,7 +82,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-      <nav className="pt-4">
+      {/* 화면의 첫 문장은 세리프 — 데이터를 읽기 전에 사람을 먼저 부른다 */}
+      <header className="pt-8 pb-1">
+        <h1 className="type-page-title">
+          {profileResult?.nickname
+            ? `${profileResult.nickname}님, 오늘의 블로그 성장을 확인해보세요.`
+            : '오늘의 블로그 성장을 확인해보세요.'}
+        </h1>
+        <p className="type-page-desc mt-2.5">방문자·발행수·누락률과 포스팅별 키워드 순위를 한 화면에서 봅니다.</p>
+      </header>
+
+      <nav>
         <div className="flex items-center gap-1.5 overflow-x-auto">
           {[
             { href: '#blog-info', label: '블로그 정보' },
@@ -93,7 +103,7 @@ export default async function DashboardPage() {
             <a
               key={t.href}
               href={t.href}
-              className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface border border-border text-dim hover:text-accent hover:border-accent transition"
+              className="shrink-0 px-3 py-1.5 rounded-md text-[13px] font-normal bg-surface border border-border text-text-2 hover:text-accent hover:border-accent transition"
             >
               {t.label}
             </a>
@@ -108,12 +118,12 @@ export default async function DashboardPage() {
       </section>
 
       <section id="dashboard-summary" className="scroll-mt-24 space-y-3">
-        <h2 className="text-sm font-bold text-text px-1">KPI 요약</h2>
+        <h2 className="type-section-title text-text px-1">KPI 요약</h2>
         <BlogDashboardKpiBar blogId={effectiveBlogId} />
       </section>
       {/* 포스팅별 대표 키워드 순위(스펙 #20) — 키워드순위 화면과 동일한 keyword_rank_lookups 소스 재집계 */}
       <section id="keyword-ranks" className="scroll-mt-24 space-y-3">
-        <h2 className="text-sm font-bold text-text px-1">포스팅별 대표 키워드 순위</h2>
+        <h2 className="type-section-title text-text px-1">포스팅별 대표 키워드 순위</h2>
         <BlogKeywordRankTable blogId={effectiveBlogId} />
       </section>
       {/* 'AI 브리핑·AI 탭 현황' 상세 요약 패널은 대시보드에서 제거됨(스펙 6·9항: 중복 노출 방지).
