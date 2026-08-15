@@ -40,6 +40,26 @@ import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
 // 포스팅당 직접 추가할 수 있는 수동 키워드 개수 — 서버(keyword-ranking-state PUT)는 20개까지 받는다.
 const MAX_MANUAL_KEYWORDS = 10;
 
+// 보조·직접추가 키워드 칩 — 대표키워드와 동일하게 각각의 순위를 보여주고 개별 조회(⟳)를 건다.
+function KeywordChip({ label, rankText, tone, checking, disabled, onOpen, onCheck }: {
+  label: string;
+  rankText: string;
+  tone: 'secondary' | 'manual';
+  checking: boolean;
+  disabled: boolean;
+  onOpen: () => void;
+  onCheck: () => void;
+}) {
+  const toneCls = tone === 'manual' ? 'bg-accent/5 border-accent/20' : 'bg-bg border-border/60';
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] pl-1.5 pr-1 py-0.5 rounded-full border ${toneCls}`}>
+      <button onClick={onOpen} className="text-dim hover:text-accent truncate max-w-[110px] cursor-pointer" title={`${label} — 상세 보기`}>{label}</button>
+      <span className="text-dim/70 font-rank shrink-0">{rankText}</span>
+      <button onClick={onCheck} disabled={disabled} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 shrink-0" title={`${label} 순위 조회`}>{checking ? '…' : '⟳'}</button>
+    </span>
+  );
+}
+
 export default function KeywordRankingSection() {
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
@@ -1367,16 +1387,42 @@ export default function KeywordRankingSection() {
                               </div>
                               {expanded && secondaries.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
-                                  {secondaries.map(ak => (
-                                    <button key={ak.keyword} onClick={() => setDetail({ post, keyword: ak.keyword })} className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg text-dim hover:text-accent truncate max-w-[120px]" title={`${ak.keyword} — 상세 보기`}>{ak.keyword}</button>
-                                  ))}
+                                  {secondaries.map(ak => {
+                                    const kres = rankingResults[rankKey(post.id, ak.keyword)];
+                                    const kchecking = checkingKey === rankKey(post.id, ak.keyword);
+                                    return (
+                                      <KeywordChip
+                                        key={ak.keyword}
+                                        label={ak.keyword}
+                                        rankText={rankCellText(kres, kres?.viewTab)}
+                                        tone="secondary"
+                                        checking={kchecking}
+                                        disabled={checkingAll || kchecking}
+                                        onOpen={() => setDetail({ post, keyword: ak.keyword })}
+                                        onCheck={() => checkSingleKeyword(post, ak.keyword, true, { keywordType: ak.keywordType, isPrimary: ak.isPrimary, baseKeyword: ak.baseKeyword, postUrl: post.url })}
+                                      />
+                                    );
+                                  })}
                                 </div>
                               )}
                               {manualKeywords.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
-                                  {manualKeywords.map(kw => (
-                                    <button key={kw} onClick={() => setDetail({ post, keyword: kw })} className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/5 border border-accent/20 text-dim hover:text-accent truncate max-w-[120px]" title={`${kw} — 직접 추가한 키워드, 상세 보기`}>{kw}</button>
-                                  ))}
+                                  {manualKeywords.map(kw => {
+                                    const kres = rankingResults[rankKey(post.id, kw)];
+                                    const kchecking = checkingKey === rankKey(post.id, kw);
+                                    return (
+                                      <KeywordChip
+                                        key={kw}
+                                        label={kw}
+                                        rankText={rankCellText(kres, kres?.viewTab)}
+                                        tone="manual"
+                                        checking={kchecking}
+                                        disabled={checkingAll || kchecking}
+                                        onOpen={() => setDetail({ post, keyword: kw })}
+                                        onCheck={() => checkSingleKeyword(post, kw, true)}
+                                      />
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -1427,6 +1473,7 @@ export default function KeywordRankingSection() {
                 const isExtracting = extractingRepId === post.id;
                 const isEditing = editOpen.has(post.id);
                 const manualKeywords = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
+                const mSecondaries = (repKeywords[post.id]?.autoKeywords || []).filter(a => !a.isPrimary);
                 const mPrev = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
                 const mWeek = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                 return (
@@ -1468,11 +1515,40 @@ export default function KeywordRankingSection() {
                         <span title={mWeek.tooltip}>7일대비 <b className={mWeek.colorClass}>{mWeek.label}</b></span>
                       </div>
                     )}
-                    {manualKeywords.length > 0 && (
+                    {(mSecondaries.length > 0 || manualKeywords.length > 0) && (
                       <div className="flex flex-wrap gap-1">
-                        {manualKeywords.map(kw => (
-                          <button key={kw} onClick={() => setDetail({ post, keyword: kw })} className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/5 border border-accent/20 text-dim hover:text-accent truncate max-w-[120px]" title={`${kw} — 직접 추가한 키워드, 상세 보기`}>{kw}</button>
-                        ))}
+                        {mSecondaries.map(ak => {
+                          const kres = rankingResults[rankKey(post.id, ak.keyword)];
+                          const kchecking = checkingKey === rankKey(post.id, ak.keyword);
+                          return (
+                            <KeywordChip
+                              key={ak.keyword}
+                              label={ak.keyword}
+                              rankText={rankCellText(kres, kres?.viewTab)}
+                              tone="secondary"
+                              checking={kchecking}
+                              disabled={checkingAll || kchecking}
+                              onOpen={() => setDetail({ post, keyword: ak.keyword })}
+                              onCheck={() => checkSingleKeyword(post, ak.keyword, true, { keywordType: ak.keywordType, isPrimary: ak.isPrimary, baseKeyword: ak.baseKeyword, postUrl: post.url })}
+                            />
+                          );
+                        })}
+                        {manualKeywords.map(kw => {
+                          const kres = rankingResults[rankKey(post.id, kw)];
+                          const kchecking = checkingKey === rankKey(post.id, kw);
+                          return (
+                            <KeywordChip
+                              key={kw}
+                              label={kw}
+                              rankText={rankCellText(kres, kres?.viewTab)}
+                              tone="manual"
+                              checking={kchecking}
+                              disabled={checkingAll || kchecking}
+                              onOpen={() => setDetail({ post, keyword: kw })}
+                              onCheck={() => checkSingleKeyword(post, kw, true)}
+                            />
+                          );
+                        })}
                       </div>
                     )}
                     <div className="flex items-center gap-3 text-xs">
