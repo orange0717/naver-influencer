@@ -65,6 +65,92 @@ export interface AutoKeyword {
   baseKeyword: string;
 }
 
+// ── 키워드 행 모델 ─────────────────────────────────────────────────────────
+// 화면은 (포스팅 1개 → 키워드 N개)를 계층 없이 평면 행으로 그린다. 포스팅 제목과 키워드는
+// 서로 독립된 컬럼이고, 각 키워드 행이 자기 순위 데이터를 독립적으로 들고 있다.
+
+// 대표(자동추출 primary) / 보조(secondary·variant) / 추가(사용자 직접 입력 manual)
+export type KeywordKind = 'primary' | 'secondary' | 'manual';
+
+export const KIND_META: Record<KeywordKind, { label: string; cls: string }> = {
+  primary: { label: '대표', cls: 'text-accent bg-accent/10' },
+  secondary: { label: '보조', cls: 'text-dim bg-border/30' },
+  manual: { label: '추가', cls: 'text-blue bg-blue/10' },
+};
+
+// 서버(keyword-ranking-state PUT)는 포스팅당 20개까지만 저장하고 초과분은 잘라낸 뒤
+// "목록에 없는 키워드"로 간주해 삭제한다 → 클라이언트에서 미리 막아 자동추출분 유실을 방지한다.
+export const MAX_KEYWORDS_PER_POST = 20;
+
+// 중복 등록 방지용 정규화 — 서버는 문자열 완전일치로만 중복을 막으므로
+// 화면에서 공백·대소문자만 다른 사실상 같은 키워드까지 미리 걸러낸다.
+export function normalizeForCompare(keyword: string): string {
+  return keyword.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// 한 포스팅의 키워드 행 1개 (포스팅 제목과 독립된 데이터 단위)
+export type KeywordRow = { keyword: string; kind: KeywordKind; meta: KeywordMeta };
+
+/**
+ * 한 포스팅의 키워드 행 목록을 만든다. 대표 → 추가 → 보조 순으로 정렬한다.
+ *
+ * 종류 판정 우선순위: 추출 결과(autoKeywords/rep) > DB에 기록된 keyword_type > 수동 입력.
+ * savedKeywords(keyword_rank_lookups 사본)에는 대표·보조·추가가 모두 섞여 있으므로
+ * 저장 여부만으로 "사용자가 직접 추가한 키워드"라고 판단하면 안 된다.
+ */
+export function buildKeywordRows(params: {
+  postId: string;
+  postUrl?: string | null;
+  rep: string | null;
+  autoKeywords: AutoKeyword[];
+  savedKeywords: string[];
+  keywordMeta: Record<string, KeywordMeta>;
+}): KeywordRow[] {
+  const { postId, postUrl = null, rep, autoKeywords, savedKeywords, keywordMeta } = params;
+  const autoByKeyword = new Map(autoKeywords.map(a => [a.keyword, a]));
+
+  const kindOf = (keyword: string): KeywordKind => {
+    if (rep && keyword === rep) return 'primary';
+    const auto = autoByKeyword.get(keyword);
+    if (auto) return auto.isPrimary ? 'primary' : 'secondary';
+    const kt = keywordMeta[rankKey(postId, keyword)]?.keywordType;
+    if (kt === 'primary') return 'primary';
+    if (kt === 'secondary' || kt === 'variant') return 'secondary';
+    return 'manual';
+  };
+
+  const metaOf = (keyword: string, kind: KeywordKind): KeywordMeta => {
+    const auto = autoByKeyword.get(keyword);
+    if (auto) return { keywordType: auto.keywordType, isPrimary: auto.isPrimary, baseKeyword: auto.baseKeyword, postUrl };
+    const known = keywordMeta[rankKey(postId, keyword)];
+    return { ...known, keywordType: known?.keywordType || (kind === 'manual' ? 'manual' : undefined), postUrl };
+  };
+
+  const rows: KeywordRow[] = [];
+  const seen = new Set<string>();
+  const push = (keyword: string, kind: KeywordKind) => {
+    const norm = normalizeForCompare(keyword);
+    if (!norm || seen.has(norm)) return;
+    seen.add(norm);
+    rows.push({ keyword, kind, meta: metaOf(keyword, kind) });
+  };
+
+  // 1) 대표키워드 — 아직 순위조회 전이라 savedKeywords 에 없어도 행으로 노출한다.
+  if (rep) push(rep, 'primary');
+  // 2) 저장된 키워드 (대표·보조·추가 혼재)
+  for (const raw of savedKeywords) {
+    const kw = raw.trim();
+    if (kw) push(kw, kindOf(kw));
+  }
+  // 3) 아직 저장 전인 보조 키워드
+  for (const a of autoKeywords) {
+    if (!a.isPrimary) push(a.keyword, 'secondary');
+  }
+
+  const order: Record<KeywordKind, number> = { primary: 0, manual: 1, secondary: 2 };
+  return rows.sort((a, b) => order[a.kind] - order[b.kind]);
+}
+
 export const STATE_API = '/api/my/keyword-ranking-state';
 export const REP_STATE_API = '/api/my/representative-keywords-state';
 // 네이버 요청 최소화: 최근 10분 이내 갱신된 순위는 재조회하지 않고 그대로 표시

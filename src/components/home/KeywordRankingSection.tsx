@@ -10,7 +10,7 @@ import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from 
 import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow, RepKeywordEntry, AutoKeyword, KeywordMeta } from './KeywordRankingSection.helpers';
+import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow, RepKeywordEntry, AutoKeyword, KeywordMeta, KeywordRow } from './KeywordRankingSection.helpers';
 import { newViewToken, viewHeaders, type QuotaInfo } from '@/lib/analysis-view';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 import {
@@ -28,6 +28,10 @@ import {
   renderRankPill,
   rankCellText,
   getProfileFromApi,
+  buildKeywordRows,
+  normalizeForCompare,
+  KIND_META,
+  MAX_KEYWORDS_PER_POST,
 } from './KeywordRankingSection.helpers';
 import SummaryCards from '@/components/analytics/SummaryCards';
 import PeriodFilter, { isExtendedPeriod, periodLabel } from '@/components/analytics/PeriodFilter';
@@ -36,29 +40,6 @@ import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar
 import StatusBadge from '@/components/analytics/StatusBadge';
 import CheckProgress from '@/components/analytics/CheckProgress';
 import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
-
-// 포스팅당 직접 추가할 수 있는 수동 키워드 개수 — 서버(keyword-ranking-state PUT)는 20개까지 받는다.
-const MAX_MANUAL_KEYWORDS = 10;
-
-// 보조·직접추가 키워드 칩 — 대표키워드와 동일하게 각각의 순위를 보여주고 개별 조회(⟳)를 건다.
-function KeywordChip({ label, rankText, tone, checking, disabled, onOpen, onCheck }: {
-  label: string;
-  rankText: string;
-  tone: 'secondary' | 'manual';
-  checking: boolean;
-  disabled: boolean;
-  onOpen: () => void;
-  onCheck: () => void;
-}) {
-  const toneCls = tone === 'manual' ? 'bg-accent/5 border-accent/20' : 'bg-bg border-border/60';
-  return (
-    <span className={`inline-flex items-center gap-1 text-[10px] pl-1.5 pr-1 py-0.5 rounded-full border ${toneCls}`}>
-      <button onClick={onOpen} className="text-dim hover:text-accent truncate max-w-[110px] cursor-pointer" title={`${label} — 상세 보기`}>{label}</button>
-      <span className="text-dim/70 font-rank shrink-0">{rankText}</span>
-      <button onClick={onCheck} disabled={disabled} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 shrink-0" title={`${label} 순위 조회`}>{checking ? '…' : '⟳'}</button>
-    </span>
-  );
-}
 
 export default function KeywordRankingSection() {
   const queryClient = useQueryClient();
@@ -71,10 +52,13 @@ export default function KeywordRankingSection() {
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
 
-  // postId → 키워드 배열
+  // postId → 이 포스팅에 등록된 전체 키워드 배열 (대표·보조·추가 모두 — keyword_rank_lookups 의 사본)
+  // ⚠️ 저장(PUT)은 "이 목록에 없는 키워드는 삭제"이므로, 부분 목록을 저장하면 자동추출분이 지워진다.
   const [postKeywords, setPostKeywords] = useState<Record<string, string[]>>({});
-  // postId → 키워드 배열 (편집 중)
-  const [editingKeywords, setEditingKeywords] = useState<Record<string, string[]>>({});
+  // 키워드 컬럼에서 직접 추가 중인 포스팅 (postId) + 입력값
+  const [addingFor, setAddingFor] = useState('');
+  const [addValue, setAddValue] = useState('');
+  const [addSaving, setAddSaving] = useState(false);
   // "postId::keyword" → RankingResult
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
   // "postId::keyword" → RankDelta (전일대비/7일대비 계산 근거, get_keyword_rank_deltas RPC)
@@ -102,8 +86,6 @@ export default function KeywordRankingSection() {
   const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState('');
   const [showKeywordSearch, setShowKeywordSearch] = useState(false);
-  // 포스팅별 "직접 키워드 편집" 열림 상태 (스펙 #26: 수동 입력란은 기본 숨김, 편집 토글로만 노출)
-  const [editOpen, setEditOpen] = useState<Set<string>>(new Set());
   // 키워드 상세 드로어 대상 (스펙 #27)
   const [detail, setDetail] = useState<{ post: BlogPost; keyword: string } | null>(null);
 
@@ -133,21 +115,18 @@ export default function KeywordRankingSection() {
   const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const rankingResultsRef = useRef<Record<string, RankingResult>>({});
   const postKeywordsRef = useRef<Record<string, string[]>>({});
-  const editingKeywordsRef = useRef<Record<string, string[]>>({});
   const repKeywordsRef = useRef<Record<string, RepKeywordEntry>>({});
   // 페이지 진입 시 자동 추출(스펙 #8) 제어용 — 중복 실행 방지 + 세션 내 재시도 방지 + 언마운트/페이지전환 중단
   const autoExtractRunningRef = useRef(false);
   const autoExtractAbortRef = useRef(false);
   const autoExtractDoneRef = useRef<Set<string>>(new Set());
-  // postId → 디바운스 자동저장 타이머 (블러/엔터를 기다리지 않고도 입력 후 일정 시간 뒤 자동 저장)
-  const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  // handleKeywordSave의 최신 버전을 항상 가리키는 ref (디바운스 타이머가 오래된 클로저를 호출하지 않도록)
-  const handleKeywordSaveRef = useRef<(postId: string) => void>(() => {});
+
+  const keywordMetaRef = useRef<Record<string, KeywordMeta>>({});
 
   useEffect(() => { rankingResultsRef.current = rankingResults; }, [rankingResults]);
   useEffect(() => { postKeywordsRef.current = postKeywords; }, [postKeywords]);
-  useEffect(() => { editingKeywordsRef.current = editingKeywords; }, [editingKeywords]);
   useEffect(() => { repKeywordsRef.current = repKeywords; }, [repKeywords]);
+  useEffect(() => { keywordMetaRef.current = keywordMeta; }, [keywordMeta]);
 
   const showError = useCallback((msg: string, ms = 5000) => {
     setErrorMessage(msg);
@@ -158,7 +137,6 @@ export default function KeywordRankingSection() {
   useEffect(() => () => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     Object.values(flashTimersRef.current).forEach(clearTimeout);
-    Object.values(saveTimersRef.current).forEach(clearTimeout);
     abortRef.current = true;
   }, []);
 
@@ -183,30 +161,30 @@ export default function KeywordRankingSection() {
   const isLoggedIn = !!(user.id || user.authId);
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
 
+  // CSV도 화면과 동일하게 (포스팅 제목, 키워드)를 각각 독립 컬럼으로 내보낸다.
   const handleDownload = () => {
     if (!canDownload) return;
-    const headers = ['제목', '검색 키워드', '통합검색', '블로그', '인플루언서', '전일대비', '7일대비', '검색량', '업데이트'];
+    const headers = ['포스팅 제목', '키워드', '키워드 종류', '작성일', '통합검색', '블로그탭', '인플탭', '검색량', '전일대비', '7일대비', '마지막 확인'];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
-      const repKw = repKeywords[post.id]?.keyword;
-      const kws = repKw ? [repKw, ...(postKeywords[post.id] || [])] : (postKeywords[post.id] || []);
-      if (kws.length === 0) continue;
-      for (const kw of kws) {
+      for (const row of keywordRowsFor(post)) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
-        const key = rankKey(post.id, kw);
+        const key = rankKey(post.id, row.keyword);
         const result = rankingResults[key];
         const delta = rankDeltas[key];
         const prevDelta = computeDeltaDisplay(result?.viewTab.exposed ?? false, result?.viewTab.rank ?? null, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null);
         const weekDelta = computeDeltaDisplay(result?.viewTab.exposed ?? false, result?.viewTab.rank ?? null, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null);
         rows.push([
           post.title,
-          kw === repKw ? `${kw} (대표)` : kw,
+          row.keyword,
+          KIND_META[row.kind].label,
+          post.date ?? '',
           rankCellText(result, result?.viewTab),
           rankCellText(result, result?.blogTab),
           rankCellText(result, result?.influencerTab),
+          result?.searchVolume ?? '',
           result ? prevDelta.label : '-',
           result ? weekDelta.label : '-',
-          result?.searchVolume ?? '',
           result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : '',
         ]);
       }
@@ -225,19 +203,7 @@ export default function KeywordRankingSection() {
     if (!confirm('모든 포스팅의 키워드와 순위 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
 
     try {
-      // 1. 프론트엔드 상태 초기화
-      // 모든 로드된 포스팅에 대해 빈 키워드 상태 설정
-      setEditingKeywords(prev => {
-        const updated = { ...prev };
-        if (blogPosts && blogPosts.length > 0) {
-          blogPosts.forEach(post => {
-            updated[post.id] = [''];
-          });
-        }
-        return updated;
-      });
-
-      // 저장된 키워드 전부 삭제 (로컬 상태)
+      // 1. 프론트엔드 상태 초기화 — 저장된 키워드 전부 삭제 (로컬 상태)
       setPostKeywords({});
       // 2. 모든 순위 결과 초기화 (로컬 상태)
       setRankingResults({});
@@ -258,49 +224,7 @@ export default function KeywordRankingSection() {
       showError('초기화 중 오류가 발생했습니다.', 3000);
       console.error('Reset error:', err);
     }
-  }, [profile, blogPosts, showError, queryClient]);
-
-  const handleClearPostKeywords = async (postId: string) => {
-    if (!profile) return;
-    if (!confirm('이 포스팅의 모든 키워드를 삭제하시겠습니까?')) return;
-
-    // DB 삭제가 확인된 뒤에만 화면 상태를 반영한다 (DB 반영 실패 시 화면만 비어보이는 것을 방지)
-    const ok = await saveKeywordsToDb(profile.blogId, postId, []);
-    if (!ok) {
-      showError('삭제에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.', 4000);
-      return;
-    }
-
-    setEditingKeywords(prev => ({ ...prev, [postId]: [''] }));
-    const updated = { ...postKeywords };
-    delete updated[postId];
-    setPostKeywords(updated);
-
-    // 해당 포스팅의 순위 결과도 로컬에서 제거
-    const newResults = { ...rankingResults };
-    for (const key of Object.keys(newResults)) {
-      if (key.startsWith(`${postId}::`)) {
-        delete newResults[key];
-      }
-    }
-    setRankingResults(newResults);
-
-    queryClient.setQueryData(
-      ['keyword-ranking-state', profile.blogId],
-      (old: SyncedState | undefined) => {
-        if (!old) return old;
-        const nextResults = { ...old.rankingResults };
-        for (const key of Object.keys(nextResults)) {
-          if (key.startsWith(`${postId}::`)) delete nextResults[key];
-        }
-        const nextKeywords = { ...old.postKeywords };
-        delete nextKeywords[postId];
-        return { postKeywords: nextKeywords, rankingResults: nextResults };
-      },
-    );
-
-    showError('포스팅의 키워드가 초기화되었습니다.', 3000);
-  };
+  }, [profile, showError, queryClient]);
 
   // 노출 현황과 동일하게 전체 포스팅을 한 번에 로드하고 클라이언트에서 기간/상태/검색으로 필터한다(스펙 #2/#24).
   const fetchBlogPosts = useCallback(async (blogId: string) => {
@@ -363,50 +287,8 @@ export default function KeywordRankingSection() {
       setRankDeltas(syncedState.rankDeltas || {});
       setKeywordMeta(syncedState.keywordMeta || {});
       setStateReady(true);
-      // 서버 상태가 도착한 시점에만 편집 중 입력을 서버 값으로 맞춘다.
-      // (postKeywords를 의존성으로 두면 다른 포스트 저장 시마다 전체가 재초기화되어
-      //  사용자가 다른 필드에 입력 중인 값을 덮어써버리는 문제가 있었음)
-      setEditingKeywords(prev => {
-        const next = { ...prev };
-        for (const [postId, kws] of Object.entries(syncedState.postKeywords)) {
-          next[postId] = kws.length > 0 ? [...kws] : [''];
-        }
-        return next;
-      });
     }
   }, [syncedState]);
-
-  // 새 포스트(페이지 전환 등)가 나타났을 때만 초기값을 채운다. 이미 존재하는 편집 상태는 건드리지 않음
-  // (postKeywords 변경(다른 포스트 저장 등)에 반응하지 않도록 ref로 읽어 재실행 트리거에서 제외)
-  useEffect(() => {
-    if (!profile || blogPosts.length === 0) return;
-    setEditingKeywords(prev => {
-      let changed = false;
-      const next = { ...prev };
-      for (const post of blogPosts) {
-        if (next[post.id] === undefined) {
-          const saved = postKeywordsRef.current[post.id];
-          next[post.id] = saved && saved.length > 0 ? [...saved] : [''];
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [profile, blogPosts]);
-
-  const handleKeywordChange = (postId: string, kwIndex: number, value: string) => {
-    setEditingKeywords(prev => {
-      const kws = [...(prev[postId] || [])];
-      kws[kwIndex] = value;
-      return { ...prev, [postId]: kws };
-    });
-    // 블러/엔터 없이도 입력이 멈추면 잠시 후 자동 저장 (탭 전환·닫기로 블러가 안 걸리는 경우 대비)
-    if (saveTimersRef.current[postId]) clearTimeout(saveTimersRef.current[postId]);
-    saveTimersRef.current[postId] = setTimeout(() => {
-      delete saveTimersRef.current[postId];
-      handleKeywordSaveRef.current(postId);
-    }, 800);
-  };
 
   const checkSingleKeyword = useCallback(async (
     post: BlogPost,
@@ -667,105 +549,150 @@ export default function KeywordRankingSection() {
     refreshingRef.current = false;
   }, [checkSingleKeyword, showError]);
 
-  const handleKeywordSave = useCallback((postId: string) => {
-    if (!profile) return;
-    if (saveTimersRef.current[postId]) {
-      clearTimeout(saveTimersRef.current[postId]);
-      delete saveTimersRef.current[postId];
-    }
-    // ref를 사용해 최신 편집 상태를 읽는다 (디바운스 타이머가 오래된 렌더의 값을 저장하는 것을 방지)
-    const kws = (editingKeywordsRef.current[postId] || []).map(k => k.trim()).filter(Boolean);
-    // 실제로 저장된 값과 다를 때만 저장을 호출한다 (빈 입력창을 그냥 blur만 해도 매번 PUT이 나가는 것 방지).
-    // 단, kws.length === 0(입력창을 지워 전부 빈 값이 된 경우)은 이전에 저장된 키워드가 있었다면
-    // 반드시 DB에도 반영해야 한다 — 과거엔 이 경우 저장 호출 자체를 건너뛰어, 사용자가 키워드를 지워도
-    // DB엔 예전 값이 남아있다가 새로고침하면 지운 키워드가 다시 나타나는 것처럼 보이는 버그가 있었음.
+  // 포스팅의 "전체" 키워드 목록을 DB에 저장한다.
+  // ⚠️ 서버 PUT은 "이 목록에 없는 키워드는 삭제" 시맨틱이므로, 반드시 대표·보조·추가를 모두 포함한
+  //    전체 목록을 넘겨야 한다. 추가분만 넘기면 자동추출된 대표·보조 키워드의 순위 기록이 통째로 지워진다.
+  const persistPostKeywords = useCallback(async (postId: string, keywords: string[]): Promise<boolean> => {
+    if (!profile) return false;
     const prevSaved = postKeywordsRef.current[postId] || [];
-    const unchanged = prevSaved.length === kws.length && prevSaved.every((k, i) => k === kws[i]);
-    if (unchanged) return;
-    setPostKeywords(prev => {
-      if (kws.length === 0) {
+    const applyLocal = (list: string[]) => setPostKeywords(prev => {
+      if (list.length === 0) {
         const next = { ...prev };
         delete next[postId];
         return next;
       }
-      return { ...prev, [postId]: kws };
+      return { ...prev, [postId]: list };
     });
-    saveKeywordsToDb(profile.blogId, postId, kws).then(ok => {
-      if (ok) {
-        // 저장 성공분을 쿼리 캐시에도 즉시 반영 (백그라운드 refetch로 되돌아가는 경합 방지)
-        queryClient.setQueryData(
-          ['keyword-ranking-state', profile.blogId],
-          (old: SyncedState | undefined) => {
-            if (!old) return old;
-            const nextKeywords = { ...old.postKeywords };
-            if (kws.length === 0) delete nextKeywords[postId];
-            else nextKeywords[postId] = kws;
-            return { ...old, postKeywords: nextKeywords };
-          },
-        );
-      } else {
-        showError('키워드 저장에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.');
-        // 화면과 DB가 어긋났을 수 있으므로 다음 조회 시점에 DB 실제 값으로 재동기화
-        queryClient.invalidateQueries({ queryKey: ['keyword-ranking-state', profile.blogId] });
-      }
-    });
-    // 신규/변경된 키워드는 최근 확인 기록이 없거나 10분 이상 지났을 때만 즉시 백그라운드로 확인
-    if (kws.length > 0) {
-      const post = blogPosts.find(p => p.id === postId);
-      if (post) {
-        const pairs = kws
-          .filter(kw => isStale(rankingResultsRef.current[rankKey(postId, kw)]))
-          .map(kw => ({ post, keyword: kw }));
-        if (pairs.length > 0) runBatch(pairs);
-      }
+
+    // 낙관적 반영 — 페이지 새로고침 없이 즉시 키워드 컬럼에 표시
+    applyLocal(keywords);
+
+    const ok = await saveKeywordsToDb(profile.blogId, postId, keywords);
+    if (ok) {
+      // 저장 성공분을 쿼리 캐시에도 즉시 반영 (백그라운드 refetch로 되돌아가는 경합 방지)
+      queryClient.setQueryData(
+        ['keyword-ranking-state', profile.blogId],
+        (old: SyncedState | undefined) => {
+          if (!old) return old;
+          const nextKeywords = { ...old.postKeywords };
+          if (keywords.length === 0) delete nextKeywords[postId];
+          else nextKeywords[postId] = keywords;
+          return { ...old, postKeywords: nextKeywords };
+        },
+      );
+    } else {
+      // 실패 시 화면을 되돌린다 (DB엔 없는데 화면에만 남는 유령 키워드 방지)
+      applyLocal(prevSaved);
+      showError('키워드 저장에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.');
+      queryClient.invalidateQueries({ queryKey: ['keyword-ranking-state', profile.blogId] });
     }
-  }, [profile, blogPosts, runBatch, queryClient, showError]);
+    return ok;
+  }, [profile, queryClient, showError]);
 
-  useEffect(() => { handleKeywordSaveRef.current = handleKeywordSave; }, [handleKeywordSave]);
+  // 키워드 컬럼의 '＋ 키워드 추가' 등록 처리.
+  // 포스팅 제목은 절대 수정하지 않는다 — (포스팅 1개 → 키워드 N개) 관계로 키워드 행만 추가한다.
+  const submitAddKeyword = useCallback(async (post: BlogPost) => {
+    const kw = addValue.trim();
+    if (!kw || addSaving) return;
 
-  const addKeyword = (postId: string) => {
-    setEditingKeywords(prev => {
-      const kws = [...(prev[postId] || []), ''];
-      return { ...prev, [postId]: kws };
-    });
-  };
+    const existing = postKeywordsRef.current[post.id] || [];
+    // 대표·보조는 아직 순위조회 전이면 existing 에 없을 수 있으므로 추출 결과까지 합쳐 중복 검사한다.
+    const known = new Set(
+      [...existing, ...autoPairsFor(post).map(p => p.keyword)].map(normalizeForCompare),
+    );
+    if (known.has(normalizeForCompare(kw))) {
+      showError(`'${kw}'는 이미 이 포스팅에 등록된 키워드입니다.`, 4000);
+      return;
+    }
+    if (existing.length >= MAX_KEYWORDS_PER_POST) {
+      showError(`포스팅당 키워드는 최대 ${MAX_KEYWORDS_PER_POST}개까지 등록할 수 있습니다.`, 4000);
+      return;
+    }
 
-  const removeKeyword = (postId: string, kwIndex: number) => {
+    setAddSaving(true);
+    const ok = await persistPostKeywords(post.id, [...existing, kw]);
+    setAddSaving(false);
+    if (!ok) return;
+
+    setAddValue(''); // 입력창은 열어둔 채 비워서 연속 등록 가능
+    // 등록 즉시 기존 순위 조회 로직 연결. 다른 배치가 실행 중이면 runBatch 가 건너뛰지만,
+    // scanAndRefresh 가 60초 주기로 미확인 키워드를 다시 집어가므로 누락되지 않는다.
+    runBatch([{ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }]);
+  }, [addValue, addSaving, autoPairsFor, persistPostKeywords, runBatch, showError]);
+
+  // 직접 추가한 키워드 삭제 — 해당 키워드의 순위 기록도 함께 정리한다.
+  const removeManualKeyword = useCallback(async (post: BlogPost, keyword: string) => {
     if (!profile) return;
-    setEditingKeywords(prev => {
-      const kws = [...(prev[postId] || [])];
-      kws.splice(kwIndex, 1);
-      if (kws.length === 0) return prev;
-      return { ...prev, [postId]: kws };
+    if (!confirm(`'${keyword}' 키워드를 삭제하시겠습니까?\n이 키워드의 순위 기록도 함께 삭제됩니다.`)) return;
+
+    const existing = postKeywordsRef.current[post.id] || [];
+    const ok = await persistPostKeywords(post.id, existing.filter(k => k !== keyword));
+    if (!ok) return;
+
+    const key = rankKey(post.id, keyword);
+    setRankingResults(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
     });
-    // 저장도 즉시
-    setTimeout(() => handleKeywordSave(postId), 0);
+    queryClient.setQueryData(
+      ['keyword-ranking-state', profile.blogId],
+      (old: SyncedState | undefined) => {
+        if (!old) return old;
+        const nextResults = { ...old.rankingResults };
+        delete nextResults[key];
+        return { ...old, rankingResults: nextResults };
+      },
+    );
+  }, [profile, persistPostKeywords, queryClient]);
+
+  // 키워드 추가 입력창 열기/닫기 (한 번에 한 포스팅만 열린다)
+  const openAddKeyword = (postId: string) => {
+    setAddingFor(postId);
+    setAddValue('');
+  };
+  const closeAddKeyword = () => {
+    setAddingFor('');
+    setAddValue('');
   };
 
   const stopChecking = () => {
     abortRef.current = true;
   };
 
+  // 저장된 키워드(postKeywords)는 대표·보조·추가가 섞여 있으므로, 자동추출 메타를 먼저 확정한 뒤
+  // 거기에 없는 것만 채운다. 순서를 뒤집으면 대표·보조 키워드에 keywordType='manual' 이 덮여
+  // (PATCH가 메타를 갱신하므로) 자동추출분이 '추가'로 변질된다.
+  const pairsForPost = useCallback((post: BlogPost): { post: BlogPost; keyword: string; meta?: KeywordMeta }[] => {
+    const out: { post: BlogPost; keyword: string; meta?: KeywordMeta }[] = [];
+    const seen = new Set<string>();
+    for (const p of autoPairsFor(post)) {
+      if (seen.has(p.keyword)) continue;
+      seen.add(p.keyword);
+      out.push(p);
+    }
+    for (const raw of postKeywordsRef.current[post.id] || []) {
+      const kw = raw.trim();
+      if (!kw || seen.has(kw)) continue;
+      seen.add(kw);
+      // DB에 이미 종류가 기록돼 있으면 그대로 유지하고, 없을 때만 수동으로 간주한다.
+      const known = keywordMetaRef.current[rankKey(post.id, kw)];
+      out.push({ post, keyword: kw, meta: { ...known, keywordType: known?.keywordType || 'manual', postUrl: post.url } });
+    }
+    return out;
+  }, [autoPairsFor]);
+
   // 화면을 막지 않는 자동 새로고침: 저장된 키워드 중 10분 이상 지났거나 아직 확인 안 된 것만 백그라운드로 조회
   const scanAndRefresh = useCallback(() => {
     if (refreshingRef.current) return;
     const pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[] = [];
-    const seen = new Set<string>();
     for (const post of blogPosts) {
-      // 사용자 수동 키워드
-      const kws = (postKeywordsRef.current[post.id] || []).map(k => k.trim()).filter(Boolean);
-      for (const kw of kws) {
-        const key = rankKey(post.id, kw);
-        if (isStale(rankingResultsRef.current[key]) && !seen.has(key)) { seen.add(key); pairs.push({ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }); }
-      }
-      // 자동 추출(대표+보조+변형)
-      for (const p of autoPairsFor(post)) {
-        const key = rankKey(post.id, p.keyword);
-        if (isStale(rankingResultsRef.current[key]) && !seen.has(key)) { seen.add(key); pairs.push(p); }
+      for (const p of pairsForPost(post)) {
+        if (isStale(rankingResultsRef.current[rankKey(post.id, p.keyword)])) pairs.push(p);
       }
     }
     if (pairs.length > 0) runBatch(pairs);
-  }, [blogPosts, runBatch, autoPairsFor]);
+  }, [blogPosts, runBatch, pairsForPost]);
 
   useEffect(() => {
     if (!profile || !stateReady || blogPosts.length === 0) return;
@@ -819,20 +746,9 @@ export default function KeywordRankingSection() {
   // 현재 페이지 전체 조회 대상(대표+보조+변형 + 수동 키워드) 페어를 중복 없이 구성한다.
   const buildRefreshPairs = useCallback((): { post: BlogPost; keyword: string; meta?: KeywordMeta }[] => {
     const pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[] = [];
-    const seen = new Set<string>();
-    for (const post of blogPosts) {
-      const kws = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
-      for (const kw of kws) {
-        const key = rankKey(post.id, kw);
-        if (!seen.has(key)) { seen.add(key); pairs.push({ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }); }
-      }
-      for (const p of autoPairsFor(post)) {
-        const key = rankKey(post.id, p.keyword);
-        if (!seen.has(key)) { seen.add(key); pairs.push(p); }
-      }
-    }
+    for (const post of blogPosts) pairs.push(...pairsForPost(post));
     return pairs;
-  }, [blogPosts, postKeywords, autoPairsFor]);
+  }, [blogPosts, pairsForPost]);
 
   // '지금 업데이트' 1단계: 무조건 조회하지 않고, 조회 대상·예상 호출·캐시 제외 수를 먼저 계산해 확인 패널을 띄운다(스펙 #11/#14).
   const openRefreshEstimate = () => {
@@ -897,52 +813,15 @@ export default function KeywordRankingSection() {
     [blogPosts, repKeywords],
   );
 
-  const toggleEdit = (postId: string) => setEditOpen(prev => {
-    const next = new Set(prev);
-    if (next.has(postId)) next.delete(postId); else next.add(postId);
-    return next;
-  });
-
-  // 포스팅별 수동 키워드 편집기 — 데스크톱 테이블 행과 모바일 카드가 같은 UI를 쓴다.
-  const renderManualKeywordEditor = (post: BlogPost) => {
-    const keywords = editingKeywords[post.id] || [];
-    return (
-      <>
-        <div className="text-[11px] text-dim mb-1.5">키워드 추가 — 이 포스팅에서 추가로 추적할 키워드를 입력하세요(대표키워드와 별개, 최대 {MAX_MANUAL_KEYWORDS}개). 입력하면 자동 저장되고 순위 조회가 시작됩니다.</div>
-        <div className="flex flex-wrap items-center gap-2">
-          {keywords.map((kw, kwIdx) => {
-            const kres = rankingResults[rankKey(post.id, kw.trim())];
-            return (
-              <div key={kwIdx} className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={kw}
-                  onChange={e => handleKeywordChange(post.id, kwIdx, e.target.value)}
-                  onBlur={() => handleKeywordSave(post.id)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleKeywordSave(post.id); } }}
-                  className="px-2 py-1 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none w-32"
-                  placeholder="키워드"
-                />
-                {kw.trim() && (
-                  <button onClick={() => checkSingleKeyword(post, kw, true)} disabled={checkingAll} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs" title="이 키워드 순위 조회">⟳</button>
-                )}
-                {kres && <span className="text-[10px] text-dim">{rankCellText(kres, kres.viewTab)}</span>}
-                {keywords.length > 1 && (
-                  <button onClick={() => removeKeyword(post.id, kwIdx)} className="text-dim hover:text-down text-xs cursor-pointer">x</button>
-                )}
-              </div>
-            );
-          })}
-          {keywords.length < MAX_MANUAL_KEYWORDS && (
-            <button onClick={() => addKeyword(post.id)} className="text-xs text-accent cursor-pointer hover:underline">+ 추가</button>
-          )}
-          {keywords.some(k => k.trim()) && (
-            <button onClick={() => handleClearPostKeywords(post.id)} className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">초기화</button>
-          )}
-        </div>
-      </>
-    );
-  };
+  // 포스팅 1개 → 키워드 N개. 각 키워드는 서로 독립된 행/데이터 단위로 취급한다(로직은 helpers 에서 테스트).
+  const keywordRowsFor = useCallback((post: BlogPost): KeywordRow[] => buildKeywordRows({
+    postId: post.id,
+    postUrl: post.url,
+    rep: repKeywords[post.id]?.keyword || null,
+    autoKeywords: repKeywords[post.id]?.autoKeywords || [],
+    savedKeywords: postKeywords[post.id] || [],
+    keywordMeta,
+  }), [repKeywords, postKeywords, keywordMeta]);
 
   // ── 노출 현황과 동일한 파생 상태 (기간/상태/검색 필터 + 요약 집계, 스펙 #3~#11·#18) ──
   const usingCustomRange = Boolean(customFrom || customTo);
@@ -1330,156 +1209,197 @@ export default function KeywordRankingSection() {
               <table className="w-full text-sm min-w-[1200px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
-                    <th className="text-left px-5 py-3 font-semibold">제목</th>
-                    <th className="text-left px-3 py-3 font-semibold w-56">대표키워드</th>
-                    <th className="text-right px-3 py-3 font-semibold w-24">발행일</th>
-                    <th className="text-center px-2 py-3 font-semibold w-20">통합검색</th>
-                    <th className="text-center px-2 py-3 font-semibold w-20">블로그</th>
-                    <th className="text-center px-2 py-3 font-semibold w-24">인플루언서</th>
-                    <th className="text-right px-2 py-3 font-semibold w-20">검색량</th>
+                    <th className="text-left px-5 py-3 font-semibold">포스팅 제목</th>
+                    <th className="text-left px-4 py-3 font-semibold w-60 border-l border-border/40">키워드</th>
+                    <th className="text-right px-3 py-3 font-semibold w-24 border-l border-border/40">작성일</th>
+                    <th className="text-center px-2 py-3 font-semibold w-20 border-l border-border/40">통합검색</th>
+                    <th className="text-center px-2 py-3 font-semibold w-20">블로그탭</th>
+                    <th className="text-center px-2 py-3 font-semibold w-24">인플탭</th>
+                    <th className="text-right px-2 py-3 font-semibold w-20 border-l border-border/40">검색량</th>
                     <th className="text-center px-2 py-3 font-semibold w-20">전일대비</th>
                     <th className="text-center px-2 py-3 font-semibold w-20">7일대비</th>
-                    <th className="text-center px-2 py-3 font-semibold w-24">상태</th>
+                    <th className="text-center px-2 py-3 font-semibold w-24 border-l border-border/40">상태</th>
                     <th className="text-right px-3 py-3 font-semibold w-28">마지막 확인</th>
-                    <th className="text-center px-3 py-3 font-semibold w-32">관리</th>
+                    <th className="text-center px-3 py-3 font-semibold w-36 border-l border-border/40">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {displayList.map(post => {
-                    const { rep, key, result, delta } = repResultOf(post);
-                    const tier = postTier(post);
-                    const meta = STATUS_META[tier];
-                    const flashing = key ? flashKeys.has(key) : false;
-                    const isExtracting = extractingRepId === post.id;
-                    const isChecking = checkingKey === key;
-                    const secondaries = (repKeywords[post.id]?.autoKeywords || []).filter(a => !a.isPrimary);
+                    const rows = keywordRowsFor(post);
+                    const secondaryCount = rows.filter(r => r.kind === 'secondary').length;
                     const expanded = expandedSecondary.has(post.id);
-                    const isEditing = editOpen.has(post.id);
-                    const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
-                    const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
-                    const manualKeywords = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
-                    // 보조(펼쳤을 때)·직접추가 키워드는 대표와 같은 컬럼 구성의 하위 행으로 보여준다.
-                    const subRows: { keyword: string; tone: 'secondary' | 'manual'; meta?: KeywordMeta }[] = [
-                      ...(expanded ? secondaries.map(ak => ({ keyword: ak.keyword, tone: 'secondary' as const, meta: { keywordType: ak.keywordType, isPrimary: ak.isPrimary, baseKeyword: ak.baseKeyword, postUrl: post.url } })) : []),
-                      ...manualKeywords.map(kw => ({ keyword: kw, tone: 'manual' as const })),
-                    ];
+                    // 보조 키워드는 기본 접힘 — 펼치면 대표·추가와 완전히 동일한 형태의 행으로 나열된다.
+                    const visibleRows = expanded ? rows : rows.filter(r => r.kind !== 'secondary');
+                    const isExtracting = extractingRepId === post.id;
+                    const isAdding = addingFor === post.id;
+                    const savedCount = (postKeywords[post.id] || []).length;
+                    const atLimit = savedCount >= MAX_KEYWORDS_PER_POST;
+
+                    // 포스팅 제목은 모든 행에 동일하게 렌더한다 — 키워드에 딸린 부모가 아니라 독립 컬럼이다.
+                    const titleCell = (
+                      <td className="px-5 py-3 align-middle">
+                        <a
+                          href={post.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-xs truncate block max-w-[280px] hover:text-accent transition"
+                          title={post.title}
+                        >
+                          {post.title}
+                        </a>
+                      </td>
+                    );
+
                     return (
                       <Fragment key={post.id}>
-                        <tr className="hover:bg-surface-hover transition align-top">
-                          <td className="px-5 py-3.5">
-                            <a href={post.url} target="_blank" rel="noopener noreferrer" className="font-semibold truncate block max-w-[300px] hover:text-accent transition" title={post.title}>
-                              {post.title}
-                            </a>
-                          </td>
-                          <td className={`px-3 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
-                            <div className="space-y-1">
-                              {rep ? (
+                        {visibleRows.map((row, idx) => {
+                          const key = rankKey(post.id, row.keyword);
+                          const res = rankingResults[key];
+                          const d = rankDeltas[key];
+                          const checking = checkingKey === key;
+                          const flashing = flashKeys.has(key);
+                          const st = STATUS_META[resultTier(res)];
+                          const kindMeta = KIND_META[row.kind];
+                          const prev = res ? computeDeltaDisplay(res.viewTab.exposed, res.viewTab.rank, d?.prevRank ?? null, d?.prevCheckedAt ?? null) : null;
+                          const week = res ? computeDeltaDisplay(res.viewTab.exposed, res.viewTab.rank, d?.weekRank ?? null, d?.weekCheckedAt ?? null) : null;
+                          return (
+                            <tr key={key} className={`hover:bg-surface-hover transition ${idx === 0 ? 'border-t border-border/50' : ''}`}>
+                              {titleCell}
+                              <td className={`px-4 py-3 align-middle border-l border-border/40 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0">대표</span>
-                                  <button onClick={() => setDetail({ post, keyword: rep })} className="text-xs font-semibold truncate hover:text-accent hover:underline cursor-pointer text-left max-w-[140px]" title={`${rep} — 상세 보기`}>{rep}</button>
-                                  {repKeywords[post.id]?.source === 'manual' && <span className="text-[9px] text-dim shrink-0" title="직접 지정">수동</span>}
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미확인'}</span>
-                                  {!isExtracting && (
-                                    <>
-                                      <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">추출</button>
-                                      <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer" title="대표키워드를 직접 입력합니다">직접 설정</button>
-                                    </>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${kindMeta.cls}`}>{kindMeta.label}</span>
+                                  <button
+                                    onClick={() => setDetail({ post, keyword: row.keyword })}
+                                    className="text-xs font-semibold truncate hover:text-accent hover:underline cursor-pointer text-left"
+                                    title={`${row.keyword} — 상세 보기`}
+                                  >
+                                    {row.keyword}
+                                  </button>
+                                  {row.kind === 'primary' && repKeywords[post.id]?.source === 'manual' && (
+                                    <span className="text-[9px] text-dim shrink-0" title="직접 지정한 대표키워드">수동</span>
                                   )}
                                 </div>
-                              )}
-                              <div className="flex items-center gap-2 text-[10px] flex-wrap">
-                                {secondaries.length > 0 && (
-                                  <button onClick={() => toggleSecondary(post.id)} className="text-dim hover:text-accent cursor-pointer">보조 {secondaries.length}개 {expanded ? '▲' : '▼'}</button>
-                                )}
-                                {rep && (
-                                  <>
-                                    <button onClick={() => setEditRep({ postId: post.id, value: rep })} className="text-dim hover:text-accent cursor-pointer">수정</button>
-                                    <button onClick={() => handleExtractRepresentative(post)} disabled={isExtracting} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40" title="대표키워드 다시 추출">{isExtracting ? '추출 중…' : '재추출'}</button>
-                                  </>
-                                )}
-                                <button onClick={() => toggleEdit(post.id)} className="font-bold text-accent hover:underline cursor-pointer" title="이 포스팅에서 추가로 추적할 키워드를 등록합니다">
-                                  {isEditing ? '편집 닫기' : `+ 키워드 추가${manualKeywords.length > 0 ? ` (${manualKeywords.length})` : ''}`}
-                                </button>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="text-right px-3 py-3.5 text-xs text-dim whitespace-nowrap">{post.date}</td>
-                          <td className={`text-center px-2 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(result, result?.viewTab)}</td>
-                          <td className={`text-center px-2 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(result, result?.blogTab)}</td>
-                          <td className={`text-center px-2 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(result, result?.influencerTab)}</td>
-                          <td className="text-right px-2 py-3.5 text-xs text-dim">{result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}</td>
-                          <td className="text-center px-2 py-3.5">
-                            {prevDelta ? <span className={`text-xs font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>{prevDelta.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
-                          </td>
-                          <td className="text-center px-2 py-3.5">
-                            {weekDelta ? <span className={`text-xs font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>{weekDelta.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
-                          </td>
-                          <td className="text-center px-2 py-3.5">
-                            {isChecking ? <StatusBadge label="분석중" cls="text-blue bg-blue/10" /> : <StatusBadge label={meta.label} cls={meta.cls} />}
-                          </td>
-                          <td className="text-right px-3 py-3.5">
-                            <span className="text-[10px] text-dim" title={result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : ''}>{result?.checkedAt ? timeAgo(result.checkedAt) : '--'}</span>
-                          </td>
-                          <td className="px-3 py-3.5">
-                            <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => rep && setDetail({ post, keyword: rep })} disabled={!rep} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40">상세</button>
-                              <button onClick={() => rep && checkSingleKeyword(post, rep, true)} disabled={!rep || checkingAll || isChecking} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40">{isChecking ? '검사 중' : '다시 검사'}</button>
-                              <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs font-semibold">보기</a>
-                            </div>
-                          </td>
-                        </tr>
-                        {subRows.map(sr => {
-                          const sKey = rankKey(post.id, sr.keyword);
-                          const sRes = rankingResults[sKey];
-                          const sDelta = rankDeltas[sKey];
-                          const sChecking = checkingKey === sKey;
-                          const sMeta = STATUS_META[resultTier(sRes)];
-                          const sPrev = sRes ? computeDeltaDisplay(sRes.viewTab.exposed, sRes.viewTab.rank, sDelta?.prevRank ?? null, sDelta?.prevCheckedAt ?? null) : null;
-                          const sWeek = sRes ? computeDeltaDisplay(sRes.viewTab.exposed, sRes.viewTab.rank, sDelta?.weekRank ?? null, sDelta?.weekCheckedAt ?? null) : null;
-                          return (
-                            <tr key={sKey} className="bg-bg/30 hover:bg-surface-hover transition">
-                              <td className="px-5 py-2" />
-                              <td className="px-3 py-2">
-                                <div className="flex items-center gap-1.5 pl-2">
-                                  <span className="text-dim/50 text-[10px] shrink-0">↳</span>
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${sr.tone === 'manual' ? 'text-accent bg-accent/10' : 'text-dim bg-border/30'}`}>{sr.tone === 'manual' ? '추가' : '보조'}</span>
-                                  <button onClick={() => setDetail({ post, keyword: sr.keyword })} className="text-xs truncate hover:text-accent hover:underline cursor-pointer text-left max-w-[130px]" title={`${sr.keyword} — 상세 보기`}>{sr.keyword}</button>
-                                </div>
                               </td>
-                              <td className="px-3 py-2" />
-                              <td className="text-center px-2 py-2">{renderRankTab(sRes, sRes?.viewTab)}</td>
-                              <td className="text-center px-2 py-2">{renderRankTab(sRes, sRes?.blogTab)}</td>
-                              <td className="text-center px-2 py-2">{renderRankTab(sRes, sRes?.influencerTab)}</td>
-                              <td className="text-right px-2 py-2 text-xs text-dim">{sRes?.searchVolume ? sRes.searchVolume.toLocaleString() : '--'}</td>
-                              <td className="text-center px-2 py-2">
-                                {sPrev ? <span className={`text-xs font-bold ${sPrev.colorClass}`} title={sPrev.tooltip}>{sPrev.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
+                              <td className="text-right px-3 py-3 text-xs text-dim whitespace-nowrap border-l border-border/40">{post.date}</td>
+                              <td className={`text-center px-2 py-3 border-l border-border/40 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(res, res?.viewTab)}</td>
+                              <td className={`text-center px-2 py-3 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(res, res?.blogTab)}</td>
+                              <td className={`text-center px-2 py-3 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(res, res?.influencerTab)}</td>
+                              <td className="text-right px-2 py-3 text-xs text-dim border-l border-border/40">{res?.searchVolume ? res.searchVolume.toLocaleString() : '--'}</td>
+                              <td className="text-center px-2 py-3">
+                                {prev ? <span className={`text-xs font-bold ${prev.colorClass}`} title={prev.tooltip}>{prev.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
                               </td>
-                              <td className="text-center px-2 py-2">
-                                {sWeek ? <span className={`text-xs font-bold ${sWeek.colorClass}`} title={sWeek.tooltip}>{sWeek.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
+                              <td className="text-center px-2 py-3">
+                                {week ? <span className={`text-xs font-bold ${week.colorClass}`} title={week.tooltip}>{week.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
                               </td>
-                              <td className="text-center px-2 py-2">
-                                {sChecking ? <StatusBadge label="분석중" cls="text-blue bg-blue/10" /> : <StatusBadge label={sMeta.label} cls={sMeta.cls} />}
+                              <td className="text-center px-2 py-3 border-l border-border/40">
+                                {checking ? <StatusBadge label="분석중" cls="text-blue bg-blue/10" /> : <StatusBadge label={st.label} cls={st.cls} />}
                               </td>
-                              <td className="text-right px-3 py-2">
-                                <span className="text-[10px] text-dim" title={sRes?.checkedAt ? new Date(sRes.checkedAt).toLocaleString('ko-KR') : ''}>{sRes?.checkedAt ? timeAgo(sRes.checkedAt) : '--'}</span>
+                              <td className="text-right px-3 py-3">
+                                <span className="text-[10px] text-dim" title={res?.checkedAt ? new Date(res.checkedAt).toLocaleString('ko-KR') : ''}>{res?.checkedAt ? timeAgo(res.checkedAt) : '--'}</span>
                               </td>
-                              <td className="px-3 py-2">
+                              <td className="px-3 py-3 border-l border-border/40">
                                 <div className="flex items-center justify-center gap-2">
-                                  <button onClick={() => setDetail({ post, keyword: sr.keyword })} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer">상세</button>
-                                  <button onClick={() => checkSingleKeyword(post, sr.keyword, true, sr.meta)} disabled={checkingAll || sChecking} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40">{sChecking ? '검사 중' : '다시 검사'}</button>
+                                  <button onClick={() => setDetail({ post, keyword: row.keyword })} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer">보기</button>
+                                  <button
+                                    onClick={() => checkSingleKeyword(post, row.keyword, true, row.meta)}
+                                    disabled={checkingAll || checking}
+                                    className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40"
+                                  >
+                                    {checking ? '검사 중' : '재검사'}
+                                  </button>
+                                  {row.kind === 'primary' ? (
+                                    <button onClick={() => setEditRep({ postId: post.id, value: row.keyword })} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer">수정</button>
+                                  ) : (
+                                    <button onClick={() => removeManualKeyword(post, row.keyword)} className="text-dim/70 hover:text-down hover:underline text-xs font-semibold cursor-pointer">삭제</button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
                           );
                         })}
-                        {isEditing && (
-                          <tr key={`${post.id}-edit`} className="bg-bg/40">
-                            <td colSpan={12} className="px-5 py-3">{renderManualKeywordEditor(post)}</td>
+
+                        {/* 키워드가 하나도 없는 포스팅 (보조만 있어 접혀 있는 경우는 제외) */}
+                        {rows.length === 0 && (
+                          <tr className="border-t border-border/50 hover:bg-surface-hover transition">
+                            {titleCell}
+                            <td className="px-4 py-3 border-l border-border/40">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '키워드 없음'}</span>
+                                {!isExtracting && (
+                                  <>
+                                    <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">자동 추출</button>
+                                    <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer" title="대표키워드를 직접 입력합니다">직접 설정</button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-right px-3 py-3 text-xs text-dim whitespace-nowrap border-l border-border/40">{post.date}</td>
+                            <td colSpan={9} className="px-3 py-3 text-center text-[11px] text-dim/60 border-l border-border/40">키워드를 등록하면 순위가 표시됩니다</td>
                           </tr>
                         )}
+
+                        {/* 키워드 추가 — 포스팅 제목이 아니라 키워드 컬럼에서 직접 등록한다 */}
+                        <tr className="hover:bg-surface-hover transition">
+                          {titleCell}
+                          <td className="px-4 py-2.5 align-top border-l border-border/40">
+                            {isAdding ? (
+                              <div className="space-y-1.5">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={addValue}
+                                  onChange={e => setAddValue(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); submitAddKeyword(post); }
+                                    if (e.key === 'Escape') closeAddKeyword();
+                                  }}
+                                  maxLength={40}
+                                  placeholder="예: 짧고 좋은 글귀"
+                                  className="w-full px-2 py-1 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none"
+                                />
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => submitAddKeyword(post)}
+                                    disabled={addSaving || !addValue.trim()}
+                                    className="px-2.5 py-1 rounded-lg bg-accent text-white text-[11px] font-bold hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+                                  >
+                                    {addSaving ? '등록 중…' : '등록'}
+                                  </button>
+                                  <button onClick={closeAddKeyword} disabled={addSaving} className="px-2.5 py-1 rounded-lg border border-border text-dim text-[11px] font-bold hover:bg-bg transition cursor-pointer disabled:opacity-50">닫기</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <button
+                                  onClick={() => openAddKeyword(post.id)}
+                                  disabled={atLimit}
+                                  className="text-xs font-bold text-accent hover:underline cursor-pointer disabled:opacity-40 disabled:no-underline"
+                                  title={atLimit ? `포스팅당 최대 ${MAX_KEYWORDS_PER_POST}개까지 등록할 수 있습니다` : '이 포스팅에서 추적할 키워드를 등록합니다'}
+                                >
+                                  ＋ 키워드 추가
+                                </button>
+                                {secondaryCount > 0 && (
+                                  <button onClick={() => toggleSecondary(post.id)} className="text-[10px] text-dim hover:text-accent cursor-pointer">
+                                    보조 {secondaryCount}개 {expanded ? '숨기기' : '보기'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td colSpan={9} className="border-l border-border/40" />
+                          <td className="px-3 py-2.5 border-l border-border/40">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() => handleExtractRepresentative(post)}
+                                disabled={isExtracting}
+                                className="text-[11px] text-dim/70 hover:text-accent hover:underline cursor-pointer disabled:opacity-40"
+                                title="대표키워드를 다시 추출합니다"
+                              >
+                                {isExtracting ? '추출 중…' : '대표 재추출'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       </Fragment>
                     );
                   })}
@@ -1490,99 +1410,112 @@ export default function KeywordRankingSection() {
             {/* 모바일 카드 (스펙 #29) */}
             <div className="md:hidden divide-y divide-border/20">
               {displayList.map(post => {
-                const { rep, result, delta } = repResultOf(post);
-                const tier = postTier(post);
-                const meta = STATUS_META[tier];
+                const rows = keywordRowsFor(post);
+                const secondaryCount = rows.filter(r => r.kind === 'secondary').length;
+                const expanded = expandedSecondary.has(post.id);
+                const visibleRows = expanded ? rows : rows.filter(r => r.kind !== 'secondary');
                 const isExtracting = extractingRepId === post.id;
-                const isEditing = editOpen.has(post.id);
-                const manualKeywords = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
-                const mSecondaries = (repKeywords[post.id]?.autoKeywords || []).filter(a => !a.isPrimary);
-                const mPrev = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
-                const mWeek = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
+                const isAdding = addingFor === post.id;
+                const atLimit = (postKeywords[post.id] || []).length >= MAX_KEYWORDS_PER_POST;
                 return (
-                  <div key={post.id} className="px-4 py-3.5 space-y-2">
+                  <div key={post.id} className="px-4 py-3.5 space-y-2.5">
+                    {/* 포스팅 (제목 + 작성일) — 키워드와 분리된 별도 영역 */}
                     <div className="flex items-start justify-between gap-2">
                       <a href={post.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-sm hover:text-accent transition line-clamp-2 flex-1">{post.title}</a>
-                      <StatusBadge label={meta.label} cls={meta.cls} />
+                      <span className="text-[10px] text-dim shrink-0 pt-0.5">{post.date}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      {rep ? (
-                        <>
-                          <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0">대표</span>
-                          <button onClick={() => setDetail({ post, keyword: rep })} className="text-xs font-semibold truncate hover:text-accent hover:underline cursor-pointer text-left">{rep}</button>
-                          <button onClick={() => setEditRep({ postId: post.id, value: rep })} className="text-[10px] text-dim hover:text-accent cursor-pointer ml-auto shrink-0">수정</button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미확인'}</span>
-                          {!isExtracting && (
-                            <div className="flex items-center gap-1.5 ml-auto">
-                              <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">추출</button>
-                              <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer">직접 설정</button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    {result && (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {renderRankPill('통합', result, result.viewTab)}
-                        {renderRankPill('블로그', result, result.blogTab)}
-                        {renderRankPill('인플루언서', result, result.influencerTab)}
-                        <span className="text-[10px] text-dim ml-auto" title={result.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : ''}>{result.checkedAt ? timeAgo(result.checkedAt) : ''}</span>
+
+                    {rows.length === 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '키워드 없음'}</span>
+                        {!isExtracting && (
+                          <>
+                            <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">자동 추출</button>
+                            <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer">직접 설정</button>
+                          </>
+                        )}
                       </div>
                     )}
-                    {mPrev && mWeek && (
-                      <div className="flex items-center gap-3 text-[10px] text-dim">
-                        <span title={mPrev.tooltip}>전일대비 <b className={mPrev.colorClass}>{mPrev.label}</b></span>
-                        <span title={mWeek.tooltip}>7일대비 <b className={mWeek.colorClass}>{mWeek.label}</b></span>
+
+                    {/* 키워드 — 각각 독립된 카드로, 자기 순위 데이터만 표시한다 */}
+                    {visibleRows.map(row => {
+                      const key = rankKey(post.id, row.keyword);
+                      const res = rankingResults[key];
+                      const d = rankDeltas[key];
+                      const checking = checkingKey === key;
+                      const st = STATUS_META[resultTier(res)];
+                      const kindMeta = KIND_META[row.kind];
+                      const prev = res ? computeDeltaDisplay(res.viewTab.exposed, res.viewTab.rank, d?.prevRank ?? null, d?.prevCheckedAt ?? null) : null;
+                      const week = res ? computeDeltaDisplay(res.viewTab.exposed, res.viewTab.rank, d?.weekRank ?? null, d?.weekCheckedAt ?? null) : null;
+                      return (
+                        <div key={key} className={`rounded-xl border border-border/60 p-2.5 space-y-1.5 ${flashKeys.has(key) ? 'bg-accent/10' : 'bg-bg/30'}`}>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${kindMeta.cls}`}>{kindMeta.label}</span>
+                            <button onClick={() => setDetail({ post, keyword: row.keyword })} className="text-xs font-semibold truncate hover:text-accent hover:underline cursor-pointer text-left">{row.keyword}</button>
+                            <span className="ml-auto shrink-0">
+                              {checking ? <StatusBadge label="분석중" cls="text-blue bg-blue/10" /> : <StatusBadge label={st.label} cls={st.cls} />}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {renderRankPill('통합', res, res?.viewTab)}
+                            {renderRankPill('블로그', res, res?.blogTab)}
+                            {renderRankPill('인플', res, res?.influencerTab)}
+                            <span className="text-[10px] text-dim">검색량 {res?.searchVolume ? res.searchVolume.toLocaleString() : '--'}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] text-dim flex-wrap">
+                            <span title={prev?.tooltip}>전일 <b className={prev?.colorClass}>{prev ? prev.label : '--'}</b></span>
+                            <span title={week?.tooltip}>7일 <b className={week?.colorClass}>{week ? week.label : '--'}</b></span>
+                            <span className="ml-auto" title={res?.checkedAt ? new Date(res.checkedAt).toLocaleString('ko-KR') : ''}>{res?.checkedAt ? timeAgo(res.checkedAt) : '미확인'}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] pt-0.5">
+                            <button onClick={() => setDetail({ post, keyword: row.keyword })} className="text-dim hover:text-accent font-semibold cursor-pointer">보기</button>
+                            <button onClick={() => checkSingleKeyword(post, row.keyword, true, row.meta)} disabled={checkingAll || checking} className="text-dim hover:text-accent font-semibold cursor-pointer disabled:opacity-40">{checking ? '검사 중' : '재검사'}</button>
+                            {row.kind === 'primary' ? (
+                              <button onClick={() => setEditRep({ postId: post.id, value: row.keyword })} className="text-dim hover:text-accent font-semibold cursor-pointer ml-auto">수정</button>
+                            ) : (
+                              <button onClick={() => removeManualKeyword(post, row.keyword)} className="text-dim/70 hover:text-down font-semibold cursor-pointer ml-auto">삭제</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* 키워드 추가 — 키워드 영역에서 직접 등록 */}
+                    {isAdding ? (
+                      <div className="rounded-xl border border-accent/40 bg-accent/5 p-2.5 space-y-2">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={addValue}
+                          onChange={e => setAddValue(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); submitAddKeyword(post); }
+                            if (e.key === 'Escape') closeAddKeyword();
+                          }}
+                          maxLength={40}
+                          placeholder="예: 짧고 좋은 글귀"
+                          className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none"
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => submitAddKeyword(post)} disabled={addSaving || !addValue.trim()} className="px-3 py-1.5 rounded-lg bg-accent text-white text-[11px] font-bold cursor-pointer disabled:opacity-50">{addSaving ? '등록 중…' : '등록'}</button>
+                          <button onClick={closeAddKeyword} disabled={addSaving} className="px-3 py-1.5 rounded-lg border border-border text-dim text-[11px] font-bold cursor-pointer disabled:opacity-50">닫기</button>
+                        </div>
                       </div>
-                    )}
-                    {(mSecondaries.length > 0 || manualKeywords.length > 0) && (
-                      <div className="flex flex-wrap gap-1">
-                        {mSecondaries.map(ak => {
-                          const kres = rankingResults[rankKey(post.id, ak.keyword)];
-                          const kchecking = checkingKey === rankKey(post.id, ak.keyword);
-                          return (
-                            <KeywordChip
-                              key={ak.keyword}
-                              label={ak.keyword}
-                              rankText={rankCellText(kres, kres?.viewTab)}
-                              tone="secondary"
-                              checking={kchecking}
-                              disabled={checkingAll || kchecking}
-                              onOpen={() => setDetail({ post, keyword: ak.keyword })}
-                              onCheck={() => checkSingleKeyword(post, ak.keyword, true, { keywordType: ak.keywordType, isPrimary: ak.isPrimary, baseKeyword: ak.baseKeyword, postUrl: post.url })}
-                            />
-                          );
-                        })}
-                        {manualKeywords.map(kw => {
-                          const kres = rankingResults[rankKey(post.id, kw)];
-                          const kchecking = checkingKey === rankKey(post.id, kw);
-                          return (
-                            <KeywordChip
-                              key={kw}
-                              label={kw}
-                              rankText={rankCellText(kres, kres?.viewTab)}
-                              tone="manual"
-                              checking={kchecking}
-                              disabled={checkingAll || kchecking}
-                              onOpen={() => setDetail({ post, keyword: kw })}
-                              onCheck={() => checkSingleKeyword(post, kw, true)}
-                            />
-                          );
-                        })}
+                    ) : (
+                      <div className="flex items-center gap-3 text-[11px]">
+                        <button
+                          onClick={() => openAddKeyword(post.id)}
+                          disabled={atLimit}
+                          className="text-accent font-bold cursor-pointer disabled:opacity-40"
+                          title={atLimit ? `포스팅당 최대 ${MAX_KEYWORDS_PER_POST}개까지 등록할 수 있습니다` : undefined}
+                        >
+                          ＋ 키워드 추가
+                        </button>
+                        {secondaryCount > 0 && (
+                          <button onClick={() => toggleSecondary(post.id)} className="text-dim hover:text-accent cursor-pointer">보조 {secondaryCount}개 {expanded ? '숨기기' : '보기'}</button>
+                        )}
+                        <button onClick={() => handleExtractRepresentative(post)} disabled={isExtracting} className="text-dim/70 hover:text-accent cursor-pointer ml-auto disabled:opacity-40">{isExtracting ? '추출 중…' : '대표 재추출'}</button>
                       </div>
-                    )}
-                    <div className="flex items-center gap-3 text-xs">
-                      <button onClick={() => rep && setDetail({ post, keyword: rep })} disabled={!rep} className="text-dim hover:text-accent font-semibold cursor-pointer disabled:opacity-40">상세</button>
-                      <button onClick={() => rep && checkSingleKeyword(post, rep, true)} disabled={!rep || checkingAll} className="text-dim hover:text-accent font-semibold cursor-pointer disabled:opacity-40">다시 검사</button>
-                      <button onClick={() => toggleEdit(post.id)} className="text-accent font-semibold cursor-pointer ml-auto">
-                        {isEditing ? '편집 닫기' : `+ 키워드 추가${manualKeywords.length > 0 ? ` (${manualKeywords.length})` : ''}`}
-                      </button>
-                    </div>
-                    {isEditing && (
-                      <div className="rounded-xl bg-bg/40 p-3">{renderManualKeywordEditor(post)}</div>
                     )}
                   </div>
                 );
