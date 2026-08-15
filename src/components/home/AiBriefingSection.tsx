@@ -4,9 +4,11 @@ import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'rea
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
+import Modal from '@/components/ui/Modal';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 // 분석 화면 공용 디자인 시스템 — 키워드순위 화면과 같은 골격·필터 바·표·지표 카드를 쓴다.
 import {
+  AddKeywordControl,
   DashboardLayout,
   DataTable,
   FilterControlBar,
@@ -43,7 +45,6 @@ import {
   CitationStatusBadge,
   CitationDetailPanel,
   ExtractedKeywordsCell,
-  AddKeywordControl,
 } from './AiBriefingSection.helpers';
 import CheckProgress from '@/components/analytics/CheckProgress';
 import { extractRepresentativeKeyword } from '@/lib/representative-keyword-client';
@@ -1195,113 +1196,125 @@ export default function AiBriefingSection() {
   const footer = (
     <>
       {/* 대표키워드 점검·재추출 확인 모달(스펙 #18~21) */}
-      {auditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAuditOpen(false)}>
-          <div className="bg-surface rounded-2xl border border-border shadow-lg max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-title text-lg font-extrabold">대표키워드 점검 결과</h3>
-            {auditLoading || !auditData ? (
-              <div className="py-8 text-center text-dim text-sm">저장된 대표키워드를 점검 중...</div>
-            ) : (
-              <>
-                <div className="space-y-1.5 text-sm">
-                  {[
-                    ['전체 포스팅', auditData.total],
-                    ['정상', auditData.counts.normal],
-                    ['재추출 권장', auditData.counts.suspicious],
-                    ['미추출', auditData.counts.missing],
-                    ['직접 지정(보호)', auditData.counts.manual],
-                  ].map(([label, v]) => (
-                    <div key={label} className="flex items-center justify-between">
-                      <span className="text-dim">{label}</span>
-                      <span className="font-rank font-bold">{v}</span>
+      <Modal
+        open={auditOpen}
+        onClose={() => setAuditOpen(false)}
+        closeOnEscape
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabel="대표키워드 점검 결과"
+      >
+        <div className="bg-surface rounded-2xl border border-border shadow-lg max-w-md w-full p-6 space-y-4">
+          <h3 className="font-title text-lg font-extrabold">대표키워드 점검 결과</h3>
+          {auditLoading || !auditData ? (
+            <div className="py-8 text-center text-dim text-sm">저장된 대표키워드를 점검 중...</div>
+          ) : (
+            <>
+              <div className="space-y-1.5 text-sm">
+                {[
+                  ['전체 포스팅', auditData.total],
+                  ['정상', auditData.counts.normal],
+                  ['재추출 권장', auditData.counts.suspicious],
+                  ['미추출', auditData.counts.missing],
+                  ['직접 지정(보호)', auditData.counts.manual],
+                ].map(([label, v]) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-dim">{label}</span>
+                    <span className="font-rank font-bold">{v}</span>
+                  </div>
+                ))}
+              </div>
+              {auditData.samples.length > 0 && (
+                <div className="max-h-40 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/40">
+                  {auditData.samples.slice(0, 12).map(s => (
+                    <div key={s.postId} className="px-2.5 py-1.5 text-[11px]">
+                      <div className="truncate text-dim" title={s.title || ''}>{s.title || '(제목 없음)'}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-down line-through">{s.stored || '없음'}</span>
+                        <span className="text-dim">→</span>
+                        <span className="text-up font-medium">{s.suggested || '미확인'}</span>
+                        {s.reason && <span className="text-[9px] text-dim">({s.reason})</span>}
+                      </div>
                     </div>
                   ))}
                 </div>
-                {auditData.samples.length > 0 && (
-                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/40">
-                    {auditData.samples.slice(0, 12).map(s => (
-                      <div key={s.postId} className="px-2.5 py-1.5 text-[11px]">
-                        <div className="truncate text-dim" title={s.title || ''}>{s.title || '(제목 없음)'}</div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-down line-through">{s.stored || '없음'}</span>
-                          <span className="text-dim">→</span>
-                          <span className="text-up font-medium">{s.suggested || '미확인'}</span>
-                          {s.reason && <span className="text-[9px] text-dim">({s.reason})</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-dim leading-relaxed">
-                  총 <b className="text-text">{auditData.reextractTarget}</b>개의 대표키워드를 제목 기준으로 다시 추출합니다.
-                  직접 지정한 키워드는 건드리지 않습니다. 네이버 호출이 없어 <b className="text-text">비용이 발생하지 않습니다</b>.
-                </p>
-                <div className="flex items-center gap-2 pt-1">
-                  <button onClick={() => setAuditOpen(false)}
-                    className="flex-1 px-3 py-2 rounded-xl text-xs font-bold border border-border hover:bg-surface-hover transition cursor-pointer">
-                    취소
-                  </button>
-                  <button onClick={runReextract}
-                    disabled={reextracting || auditData.reextractTarget === 0}
-                    className="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
-                    {reextracting ? '재추출 중...' : '대표키워드 다시 추출'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+              )}
+              <p className="text-xs text-dim leading-relaxed">
+                총 <b className="text-text">{auditData.reextractTarget}</b>개의 대표키워드를 제목 기준으로 다시 추출합니다.
+                직접 지정한 키워드는 건드리지 않습니다. 네이버 호출이 없어 <b className="text-text">비용이 발생하지 않습니다</b>.
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <button onClick={() => setAuditOpen(false)}
+                  className="flex-1 px-3 py-2 rounded-xl text-xs font-bold border border-border hover:bg-surface-hover transition cursor-pointer">
+                  취소
+                </button>
+                <button onClick={runReextract}
+                  disabled={reextracting || auditData.reextractTarget === 0}
+                  className="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
+                  {reextracting ? '재추출 중...' : '대표키워드 다시 추출'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </Modal>
 
       {/* 예상 작업량 확인 모달(스펙 #9~#12) */}
-      {bulkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setBulkModalOpen(false)}>
-          <div className="bg-surface rounded-2xl border border-border shadow-lg max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-title text-lg font-extrabold">전체 업데이트 — 예상 작업량</h3>
-            {bulkLoadingEstimate || !bulkEstimate ? (
-              <div className="py-8 text-center text-dim text-sm">예상 작업량을 계산 중...</div>
-            ) : (
-              <>
-                <div className="space-y-1.5 text-sm">
-                  {[
-                    ['전체 포스팅', bulkEstimate.totalPosts],
-                    ['대표키워드 미추출', bulkEstimate.repMissing],
-                    ['인용 미확인', bulkEstimate.unchecked],
-                    ['최근 조회 캐시 제외', bulkEstimate.cacheSkipped],
-                  ].map(([label, v]) => (
-                    <div key={label} className="flex items-center justify-between">
-                      <span className="text-dim">{label}</span>
-                      <span className="font-rank font-semibold">{Number(v).toLocaleString()}개</span>
-                    </div>
-                  ))}
-                  <div className="h-px bg-border my-1" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-dim">예상 대표키워드 추출</span>
-                    <span className="font-rank font-semibold">{bulkEstimate.estRepExtractions.toLocaleString()}건</span>
+      <Modal
+        open={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        closeOnEscape
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabel="전체 업데이트 예상 작업량"
+      >
+        <div className="bg-surface rounded-2xl border border-border shadow-lg max-w-md w-full p-6 space-y-4">
+          <h3 className="font-title text-lg font-extrabold">전체 업데이트 — 예상 작업량</h3>
+          {bulkLoadingEstimate || !bulkEstimate ? (
+            <div className="py-8 text-center text-dim text-sm">예상 작업량을 계산 중...</div>
+          ) : (
+            <>
+              <div className="space-y-1.5 text-sm">
+                {[
+                  ['전체 포스팅', bulkEstimate.totalPosts],
+                  ['대표키워드 미추출', bulkEstimate.repMissing],
+                  ['인용 미확인', bulkEstimate.unchecked],
+                  ['최근 조회 캐시 제외', bulkEstimate.cacheSkipped],
+                ].map(([label, v]) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-dim">{label}</span>
+                    <span className="font-rank font-semibold">{Number(v).toLocaleString()}개</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-dim">예상 확인 호출</span>
-                    <span className="font-rank font-semibold">약 {bulkEstimate.estApiCalls.toLocaleString()}회</span>
-                  </div>
-                  <div className="flex items-center justify-between text-accent font-bold">
-                    <span>실제 신규 조회</span>
-                    <span className="font-rank">{bulkEstimate.newChecks.toLocaleString()}개</span>
-                  </div>
+                ))}
+                <div className="h-px bg-border my-1" />
+                <div className="flex items-center justify-between">
+                  <span className="text-dim">예상 대표키워드 추출</span>
+                  <span className="font-rank font-semibold">{bulkEstimate.estRepExtractions.toLocaleString()}건</span>
                 </div>
-                <div className="rounded-xl bg-bg border border-border p-3 text-[11px] text-dim leading-relaxed space-y-1">
-                  <p>· 이번 실행은 최신 발행순 <b className="text-text">최대 {bulkEstimate.perRunCap}개</b>만 확인합니다(안전 캡). 전체를 채우려면 약 <b className="text-text">{bulkEstimate.runsNeeded}회</b> 나눠 실행하세요.</p>
-                  <p>· AI 인용 확인은 공식 API가 없어 헤드리스 브라우저로 실측합니다 — 공식 쿼터는 없고, 네이버 차단을 피하려 {Math.round(bulkEstimate.betweenMs / 1000)}초 간격·{bulkEstimate.quota.aiCitation.limiterLimit}회/{Math.round(bulkEstimate.quota.aiCitation.limiterWindowSec / 60)}분으로 제한합니다.</p>
-                  <p>· 대표키워드 추출·검색량 보조에 쓰는 네이버 검색 OpenAPI 일일 무료 쿼터는 {bulkEstimate.quota.naverSearchOpenApi.dailyQuota.toLocaleString()}회입니다.</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-dim">예상 확인 호출</span>
+                  <span className="font-rank font-semibold">약 {bulkEstimate.estApiCalls.toLocaleString()}회</span>
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button onClick={() => setBulkModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-bg cursor-pointer">취소</button>
-                  <button onClick={runBulk} disabled={bulkEstimate.newChecks === 0} className="px-4 py-2 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover cursor-pointer disabled:opacity-50">조회 시작</button>
+                <div className="flex items-center justify-between text-accent font-bold">
+                  <span>실제 신규 조회</span>
+                  <span className="font-rank">{bulkEstimate.newChecks.toLocaleString()}개</span>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+              <div className="rounded-xl bg-bg border border-border p-3 text-[11px] text-dim leading-relaxed space-y-1">
+                <p>· 이번 실행은 최신 발행순 <b className="text-text">최대 {bulkEstimate.perRunCap}개</b>만 확인합니다(안전 캡). 전체를 채우려면 약 <b className="text-text">{bulkEstimate.runsNeeded}회</b> 나눠 실행하세요.</p>
+                <p>· AI 인용 확인은 공식 API가 없어 헤드리스 브라우저로 실측합니다 — 공식 쿼터는 없고, 네이버 차단을 피하려 {Math.round(bulkEstimate.betweenMs / 1000)}초 간격·{bulkEstimate.quota.aiCitation.limiterLimit}회/{Math.round(bulkEstimate.quota.aiCitation.limiterWindowSec / 60)}분으로 제한합니다.</p>
+                <p>· 대표키워드 추출·검색량 보조에 쓰는 네이버 검색 OpenAPI 일일 무료 쿼터는 {bulkEstimate.quota.naverSearchOpenApi.dailyQuota.toLocaleString()}회입니다.</p>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button onClick={() => setBulkModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-bg cursor-pointer">취소</button>
+                <button onClick={runBulk} disabled={bulkEstimate.newChecks === 0} className="px-4 py-2 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover cursor-pointer disabled:opacity-50">조회 시작</button>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </Modal>
 
       {/* 단건 즉시 확인(보조 도구) — 전체 목록 아래에 둔다. 특정 키워드 하나를 바로 분석할 때 사용. */}
       <GlassCard padding="none">
@@ -1824,14 +1837,14 @@ export default function AiBriefingSection() {
 
   // 표 컬럼 — 본문은 renderPostRows 가 그리므로 여기서는 헤더와 열 폭만 정의한다.
   const columns: DataTableColumn<BlogPost>[] = [
-    { key: 'title', header: '포스팅 제목', width: 'w-[23%]', cell: () => null },
-    { key: 'extracted', header: '추출 키워드', align: 'center', width: 'w-[19%]', cell: () => null },
-    { key: 'target', header: '타겟 키워드', align: 'center', width: 'w-[17%]', cell: () => null },
-    { key: 'briefing', header: 'AI 브리핑', align: 'center', width: 'w-[9%]', cell: () => null },
-    { key: 'aitab', header: 'AI 탭', align: 'center', width: 'w-[9%]', cell: () => null },
-    { key: 'checked', header: '마지막 확인', align: 'center', width: 'w-[8%]', cell: () => null },
-    { key: 'status', header: '상태', align: 'center', width: 'w-[7%]', cell: () => null },
-    { key: 'manage', header: '관리', align: 'center', width: 'w-[8%]', cell: () => null },
+    { key: 'title', header: '포스팅 제목', width: 'w-[23%]' },
+    { key: 'extracted', header: '추출 키워드', align: 'center', width: 'w-[19%]' },
+    { key: 'target', header: '타겟 키워드', align: 'center', width: 'w-[17%]' },
+    { key: 'briefing', header: 'AI 브리핑', align: 'center', width: 'w-[9%]' },
+    { key: 'aitab', header: 'AI 탭', align: 'center', width: 'w-[9%]' },
+    { key: 'checked', header: '마지막 확인', align: 'center', width: 'w-[8%]' },
+    { key: 'status', header: '상태', align: 'center', width: 'w-[7%]' },
+    { key: 'manage', header: '관리', align: 'center', width: 'w-[8%]' },
   ];
 
   // 필터 영역 — 키워드순위 화면과 같은 FilterControlBar(기간 / 상태·검색·정렬) (스펙 #1/#17)

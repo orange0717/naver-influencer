@@ -92,7 +92,11 @@ export type ColumnAlign = 'left' | 'center' | 'right';
 export interface DataTableColumn<T> {
   key: string;
   header: ReactNode;
-  cell: (row: T, index: number) => ReactNode;
+  /**
+   * 셀 렌더러. renderRows 로 본문을 직접 그리는 화면에서는 컬럼이 헤더 정의(이름·폭·구분선)
+   * 로만 쓰이므로 생략한다 — 호출되지 않을 함수를 컬럼마다 적지 않게 optional.
+   */
+  cell?: (row: T, index: number) => ReactNode;
   align?: ColumnAlign;
   /** 폭 유틸리티 클래스(예: 'w-24'). 지정하지 않으면 내용에 맞춘다. */
   width?: string;

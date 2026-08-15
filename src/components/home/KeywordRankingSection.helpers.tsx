@@ -78,9 +78,9 @@ export const KIND_META: Record<KeywordKind, { label: string; cls: string }> = {
   manual: { label: '추가', cls: 'text-blue bg-blue/10' },
 };
 
-// 서버(keyword-ranking-state PUT)는 포스팅당 20개까지만 저장하고 초과분은 잘라낸 뒤
-// "목록에 없는 키워드"로 간주해 삭제한다 → 클라이언트에서 미리 막아 자동추출분 유실을 방지한다.
-export const MAX_KEYWORDS_PER_POST = 20;
+// 실제 정의는 analytics/constants.ts — 공용 AddKeywordControl 이 화면 helpers 를 거꾸로
+// import 하지 않게 옮겼다. 기존 호출부가 그대로 동작하도록 여기서 다시 내보낸다.
+export { MAX_KEYWORDS_PER_POST } from '@/components/analytics/constants';
 
 // 중복 등록 방지용 정규화 — 서버는 문자열 완전일치로만 중복을 막으므로
 // 화면에서 공백·대소문자만 다른 사실상 같은 키워드까지 미리 걸러낸다.

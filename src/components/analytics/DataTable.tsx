@@ -142,7 +142,7 @@ export default function DataTable<T>({
                             .filter(Boolean)
                             .join(' ')}
                         >
-                          {col.cell(row, i)}
+                          {col.cell?.(row, i)}
                         </td>
                       ))}
                     </tr>
@@ -175,7 +175,7 @@ export default function DataTable<T>({
                     .map(col => (
                       <div key={col.key} className="flex items-start justify-between gap-3 text-xs">
                         <span className="text-dim shrink-0">{col.header}</span>
-                        <span className="text-right min-w-0">{col.cell(row, i)}</span>
+                        <span className="text-right min-w-0">{col.cell?.(row, i)}</span>
                       </div>
                     ))}
                 </div>
