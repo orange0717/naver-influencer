@@ -1136,6 +1136,14 @@ export default function KeywordRankingSection() {
               순위 업데이트
             </button>
           )}
+          <button
+            onClick={runReextractAll}
+            disabled={reextracting || !profile || extractingAll || checkingAll}
+            className="px-3 py-2 rounded-xl border border-border text-dim hover:text-accent hover:border-accent/40 transition cursor-pointer disabled:opacity-50 text-sm whitespace-nowrap"
+            title="저장된 대표키워드를 현행 추출 규칙으로 다시 뽑습니다(직접 지정한 키워드는 유지)"
+          >
+            {reextracting ? '재추출 중…' : '대표키워드 다시 추출'}
+          </button>
           <div className="relative">
             <button
               onClick={() => setMoreMenuOpen(v => !v)}
@@ -1154,13 +1162,6 @@ export default function KeywordRankingSection() {
                   {canDownload && profile && (
                     <a href={`/api/downloads/my-keyword-ranking?blogId=${encodeURIComponent(profile.blogId)}`} onClick={() => setMoreMenuOpen(false)} className="block px-3 py-2 hover:bg-bg text-dim">전체 리포트</a>
                   )}
-                  <button
-                    onClick={() => { runReextractAll(); setMoreMenuOpen(false); }}
-                    disabled={reextracting || !profile}
-                    className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer disabled:opacity-50"
-                  >
-                    {reextracting ? '재추출 중...' : '대표키워드 다시 추출'}
-                  </button>
                   <button onClick={() => { handleResetResults(); setMoreMenuOpen(false); }} className="w-full text-left px-3 py-2 hover:bg-bg text-down/70 cursor-pointer">초기화</button>
                 </div>
               </>
