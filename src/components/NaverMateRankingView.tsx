@@ -25,6 +25,7 @@ interface ApiResponse {
   year: number | null;
   month: number | null;
   categories: string[];
+  platformCounts: Partial<Record<Item['platform'], number>>;
   items: Item[];
 }
 
@@ -45,6 +46,7 @@ const PLATFORM_LABEL: Record<Item['platform'], string> = {
 export default function NaverMateRankingView() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [category, setCategory] = useState<string>('');
+  const [platform, setPlatform] = useState<'' | Item['platform']>('');
   // 이 화면 mount 당 조회 토큰 1개 — 카테고리 전환 재요청은 같은 조회로 dedup
   const [viewToken] = useState(() => newViewToken());
 
@@ -54,6 +56,7 @@ export default function NaverMateRankingView() {
       try {
         const params = new URLSearchParams();
         if (category) params.set('category', category);
+        if (platform) params.set('platform', platform);
         params.set('limit', '200');
         const res = await fetch(`/api/rankings/naver-mate?${params.toString()}`, {
           headers: viewHeaders(viewToken),
@@ -84,7 +87,7 @@ export default function NaverMateRankingView() {
     return () => {
       cancelled = true;
     };
-  }, [category, viewToken]);
+  }, [category, platform, viewToken]);
 
   if (state.kind === 'quota') {
     return <AnalysisQuotaNotice quota={state.quota} />;
@@ -110,7 +113,7 @@ export default function NaverMateRankingView() {
     );
   }
 
-  const { year, month, categories, items } = state.data;
+  const { year, month, categories, platformCounts, items } = state.data;
 
   return (
     <div className="space-y-5">
@@ -125,8 +128,35 @@ export default function NaverMateRankingView() {
             아래 번호는 누적 인용수로 우리가 매긴 것이라 메이트 홈과 노출 순서가 다르다. */}
         <p className="text-[11px] text-dim leading-relaxed">
           네이버 메이트 공식 홈은 선정자 중 일부를 무작위로 보여줍니다. 이 표는 선정자 전원을 누적 AI 브리핑 인용수 순으로 정렬한 것이라
-          공식 홈과 노출 순서·인원이 다를 수 있습니다.
+          공식 홈과 노출 순서·인원이 다를 수 있습니다. 인용수 규모는 서비스마다 달라 서비스를 골라 비교하는 편이 정확합니다.
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => setPlatform('')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+            platform === '' ? 'bg-text text-white' : 'bg-surface border border-border text-dim hover:text-text'
+          }`}
+        >
+          전체 서비스
+        </button>
+        {(Object.keys(PLATFORM_LABEL) as Item['platform'][]).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPlatform(p)}
+            disabled={!platformCounts[p]}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              platform === p
+                ? 'bg-text text-white cursor-pointer'
+                : platformCounts[p]
+                  ? 'bg-surface border border-border text-dim hover:text-text cursor-pointer'
+                  : 'bg-surface border border-border text-dim/40 cursor-not-allowed'
+            }`}
+          >
+            {PLATFORM_LABEL[p]} {(platformCounts[p] || 0).toLocaleString()}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -154,7 +184,11 @@ export default function NaverMateRankingView() {
       {items.length === 0 ? (
         <div className="bg-surface rounded-xl border border-border p-8 text-center">
           <p className="text-sm text-dim">
-            {category ? `‘${category}’ 분야는 아직 수집된 데이터가 없습니다.` : '아직 수집된 네이버 메이트 데이터가 없습니다.'}
+            {platform
+              ? `‘${category || '전체'}’ 분야에는 ${PLATFORM_LABEL[platform]} 메이트가 없습니다.`
+              : category
+                ? `‘${category}’ 분야는 아직 수집된 데이터가 없습니다.`
+                : '아직 수집된 네이버 메이트 데이터가 없습니다.'}
           </p>
         </div>
       ) : (
