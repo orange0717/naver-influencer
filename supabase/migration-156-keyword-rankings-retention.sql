@@ -18,7 +18,10 @@
 --   1. STEP 1 배치 삭제를 여러 번 반복 실행 (한 번에 전부 지우지 말 것)
 --   2. STEP 2 REINDEX로 인덱스 bloat 회수
 --   3. STEP 3 누락 인덱스 재생성
--- ⚠️ STEP 2·3의 CONCURRENTLY 문은 반드시 한 문장씩 개별 실행 (트랜잭션 블록 불가)
+-- ⚠️ Supabase SQL Editor는 모든 쿼리를 트랜잭션으로 감싸므로 CONCURRENTLY 를 쓸 수 없다
+--    (25001 ERROR). 크론이 전부 중단된 지금은 이 테이블에 쓰는 프로세스가 없으므로
+--    락을 감수하는 일반 REINDEX/CREATE INDEX 로 진행한다. 크론을 되살린 뒤에 다시 손볼
+--    일이 생기면 그때는 psql 로 접속해 CONCURRENTLY 를 쓸 것.
 -- ⚠️ 실행 시간대: 크론(Vercel 34개 + GitHub Actions 10개)이 모두 중단된 지금이 최적 구간이다.
 --    크론을 되살린 뒤에는 KST 03~07시를 피할 것.
 
@@ -70,25 +73,32 @@ SELECT EXISTS (
 
 
 -- ============================================================
--- STEP 2. 인덱스 bloat 회수 (STEP 1 완료 후, 한 문장씩 개별 실행)
+-- STEP 2. 인덱스 bloat 회수 (STEP 1 이 완전히 끝난 뒤에 실행)
 -- ============================================================
--- 삭제만으로는 인덱스가 줄지 않는다. 아래 한 문장이 이 테이블의 모든 인덱스를
+-- 삭제만으로는 인덱스가 줄지 않는다. 아래 문장이 이 테이블의 모든 인덱스를
 -- 이름과 무관하게 재구축한다(스키마 파일마다 인덱스 이름 표기가 달라 개별 지정은
--- 실패 위험이 있다). CONCURRENTLY라 서비스 중단은 없지만 수십 분 걸릴 수 있다.
+-- 실패 위험이 있다).
+-- ⚠️ 이 문장은 keyword_rankings 에 ACCESS EXCLUSIVE 락을 건다. 실행하는 수십 분 동안
+--    키워드순위 조회가 멈춘다. 크론이 꺼져 있는 지금이라 감수 가능한 것이다.
+-- statement_timeout 을 풀지 않으면 대시보드 기본 타임아웃에 걸려 중단된다.
 
-REINDEX TABLE CONCURRENTLY keyword_rankings;
+SET statement_timeout = '0';
+REINDEX TABLE keyword_rankings;
 
 
 -- ============================================================
--- STEP 3. migration-115에서 누락된 인덱스 재생성 (한 문장씩 개별 실행)
+-- STEP 3. migration-115에서 누락된 인덱스 재생성
 -- ============================================================
 -- migration-115 STEP 4가 중단되어 만들어지지 않은 인덱스 2개.
 -- migration-140에서 깨진 잔재는 제거했으므로 이제 재생성 가능하다.
+-- STEP 0의 인덱스 목록에 이미 있다면 IF NOT EXISTS 로 그냥 넘어간다.
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_keyword_rankings_influencer_snapshot
+SET statement_timeout = '0';
+
+CREATE INDEX IF NOT EXISTS idx_keyword_rankings_influencer_snapshot
   ON keyword_rankings (influencer_id, snapshot_date DESC);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_keyword_rankings_keyword_id
+CREATE INDEX IF NOT EXISTS idx_keyword_rankings_keyword_id
   ON keyword_rankings (keyword_id);
 
 
