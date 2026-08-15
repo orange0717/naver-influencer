@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { extractPalette } from '@/lib/color-extract';
 import {
   assignRoles,
@@ -42,9 +43,19 @@ export default function ColorPaletteClient() {
   const [savedPalettes, setSavedPalettes] = useState<string[][]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 본문은 사이드바 오른쪽 콘텐츠 영역 기준으로 중앙 정렬한다(다른 페이지와 동일).
-  // 과거 뷰포트 정중앙에 맞추려고 사이드바 폭 절반만큼 왼쪽으로 당기는 보정이 있었으나,
-  // 읽는 영역 기준으로는 왼쪽으로 치우쳐 보여 2026-08-15 제거했다.
+  // 사이드바는 lg+ 에서만 레이아웃 폭을 차지(펼침 w-56=224px / 접힘 w-14=56px).
+  // 콘텐츠는 사이드바 오른쪽 영역 기준으로 중앙 정렬되어 화면상 오른쪽으로 치우쳐 보이므로,
+  // 사이드바 폭의 절반만큼 왼쪽으로 당겨 뷰포트 정중앙에 맞춘다.
+  const { collapsed } = useSidebar();
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const viewportShift = isDesktop ? (collapsed ? -28 : -112) : 0;
 
   // 저장 팔레트는 로그인 계정(서버 DB)에 귀속 — 어느 기기/브라우저에서나 동일하게 보인다.
   // 마운트 시 서버에서 불러오고, 서버가 비어있으면 기존 localStorage 데이터를 1회 업로드한다.
@@ -193,7 +204,10 @@ export default function ColorPaletteClient() {
   const roles = palette ? assignRoles(palette) : null;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div
+      className="space-y-6 max-w-3xl mx-auto relative transition-[left] duration-200"
+      style={{ left: viewportShift ? `${viewportShift}px` : undefined }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="type-page-title text-text">컬러 팔레트</h1>
