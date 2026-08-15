@@ -961,6 +961,20 @@ export default function KeywordRankingSection() {
   }, [repKeywords, rankingResults, rankDeltas]);
 
   // 종합 상태(선택 기준 기준, 스펙 #18): TOP10/30/100 / 순위권밖 / 미확인 / 확인실패
+  const resultTier = useCallback((result: RankingResult | undefined): 'top10' | 'top30' | 'top100' | 'out' | 'unknown' | 'error' => {
+    if (!result) return 'unknown';
+    if (result.status === 'error' || result.status === 'unanalyzable') return 'error';
+    const tab = basisTab(result);
+    if (!tab || tab.exposed === null || tab.exposed === undefined) return 'unknown';
+    if (tab.exposed && typeof tab.rank === 'number') {
+      if (tab.rank <= 10) return 'top10';
+      if (tab.rank <= 30) return 'top30';
+      if (tab.rank <= 100) return 'top100';
+      return 'out';
+    }
+    return 'out';
+  }, [basisTab]);
+
   const postTier = useCallback((post: BlogPost): 'top10' | 'top30' | 'top100' | 'out' | 'unknown' | 'error' => {
     const { rep, result } = repResultOf(post);
     if (!rep || !result) return 'unknown';
@@ -1344,6 +1358,11 @@ export default function KeywordRankingSection() {
                     const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
                     const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                     const manualKeywords = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
+                    // 보조(펼쳤을 때)·직접추가 키워드는 대표와 같은 컬럼 구성의 하위 행으로 보여준다.
+                    const subRows: { keyword: string; tone: 'secondary' | 'manual'; meta?: KeywordMeta }[] = [
+                      ...(expanded ? secondaries.map(ak => ({ keyword: ak.keyword, tone: 'secondary' as const, meta: { keywordType: ak.keywordType, isPrimary: ak.isPrimary, baseKeyword: ak.baseKeyword, postUrl: post.url } })) : []),
+                      ...manualKeywords.map(kw => ({ keyword: kw, tone: 'manual' as const })),
+                    ];
                     return (
                       <Fragment key={post.id}>
                         <tr className="hover:bg-surface-hover transition align-top">
@@ -1385,46 +1404,6 @@ export default function KeywordRankingSection() {
                                   {isEditing ? '편집 닫기' : `+ 키워드 추가${manualKeywords.length > 0 ? ` (${manualKeywords.length})` : ''}`}
                                 </button>
                               </div>
-                              {expanded && secondaries.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {secondaries.map(ak => {
-                                    const kres = rankingResults[rankKey(post.id, ak.keyword)];
-                                    const kchecking = checkingKey === rankKey(post.id, ak.keyword);
-                                    return (
-                                      <KeywordChip
-                                        key={ak.keyword}
-                                        label={ak.keyword}
-                                        rankText={rankCellText(kres, kres?.viewTab)}
-                                        tone="secondary"
-                                        checking={kchecking}
-                                        disabled={checkingAll || kchecking}
-                                        onOpen={() => setDetail({ post, keyword: ak.keyword })}
-                                        onCheck={() => checkSingleKeyword(post, ak.keyword, true, { keywordType: ak.keywordType, isPrimary: ak.isPrimary, baseKeyword: ak.baseKeyword, postUrl: post.url })}
-                                      />
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {manualKeywords.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {manualKeywords.map(kw => {
-                                    const kres = rankingResults[rankKey(post.id, kw)];
-                                    const kchecking = checkingKey === rankKey(post.id, kw);
-                                    return (
-                                      <KeywordChip
-                                        key={kw}
-                                        label={kw}
-                                        rankText={rankCellText(kres, kres?.viewTab)}
-                                        tone="manual"
-                                        checking={kchecking}
-                                        disabled={checkingAll || kchecking}
-                                        onOpen={() => setDetail({ post, keyword: kw })}
-                                        onCheck={() => checkSingleKeyword(post, kw, true)}
-                                      />
-                                    );
-                                  })}
-                                </div>
-                              )}
                             </div>
                           </td>
                           <td className="text-right px-3 py-3.5 text-xs text-dim whitespace-nowrap">{post.date}</td>
@@ -1452,6 +1431,50 @@ export default function KeywordRankingSection() {
                             </div>
                           </td>
                         </tr>
+                        {subRows.map(sr => {
+                          const sKey = rankKey(post.id, sr.keyword);
+                          const sRes = rankingResults[sKey];
+                          const sDelta = rankDeltas[sKey];
+                          const sChecking = checkingKey === sKey;
+                          const sMeta = STATUS_META[resultTier(sRes)];
+                          const sPrev = sRes ? computeDeltaDisplay(sRes.viewTab.exposed, sRes.viewTab.rank, sDelta?.prevRank ?? null, sDelta?.prevCheckedAt ?? null) : null;
+                          const sWeek = sRes ? computeDeltaDisplay(sRes.viewTab.exposed, sRes.viewTab.rank, sDelta?.weekRank ?? null, sDelta?.weekCheckedAt ?? null) : null;
+                          return (
+                            <tr key={sKey} className="bg-bg/30 hover:bg-surface-hover transition">
+                              <td className="px-5 py-2" />
+                              <td className="px-3 py-2">
+                                <div className="flex items-center gap-1.5 pl-2">
+                                  <span className="text-dim/50 text-[10px] shrink-0">↳</span>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${sr.tone === 'manual' ? 'text-accent bg-accent/10' : 'text-dim bg-border/30'}`}>{sr.tone === 'manual' ? '추가' : '보조'}</span>
+                                  <button onClick={() => setDetail({ post, keyword: sr.keyword })} className="text-xs truncate hover:text-accent hover:underline cursor-pointer text-left max-w-[130px]" title={`${sr.keyword} — 상세 보기`}>{sr.keyword}</button>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2" />
+                              <td className="text-center px-2 py-2">{renderRankTab(sRes, sRes?.viewTab)}</td>
+                              <td className="text-center px-2 py-2">{renderRankTab(sRes, sRes?.blogTab)}</td>
+                              <td className="text-center px-2 py-2">{renderRankTab(sRes, sRes?.influencerTab)}</td>
+                              <td className="text-right px-2 py-2 text-xs text-dim">{sRes?.searchVolume ? sRes.searchVolume.toLocaleString() : '--'}</td>
+                              <td className="text-center px-2 py-2">
+                                {sPrev ? <span className={`text-xs font-bold ${sPrev.colorClass}`} title={sPrev.tooltip}>{sPrev.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
+                              </td>
+                              <td className="text-center px-2 py-2">
+                                {sWeek ? <span className={`text-xs font-bold ${sWeek.colorClass}`} title={sWeek.tooltip}>{sWeek.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
+                              </td>
+                              <td className="text-center px-2 py-2">
+                                {sChecking ? <StatusBadge label="분석중" cls="text-blue bg-blue/10" /> : <StatusBadge label={sMeta.label} cls={sMeta.cls} />}
+                              </td>
+                              <td className="text-right px-3 py-2">
+                                <span className="text-[10px] text-dim" title={sRes?.checkedAt ? new Date(sRes.checkedAt).toLocaleString('ko-KR') : ''}>{sRes?.checkedAt ? timeAgo(sRes.checkedAt) : '--'}</span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button onClick={() => setDetail({ post, keyword: sr.keyword })} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer">상세</button>
+                                  <button onClick={() => checkSingleKeyword(post, sr.keyword, true, sr.meta)} disabled={checkingAll || sChecking} className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40">{sChecking ? '검사 중' : '다시 검사'}</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                         {isEditing && (
                           <tr key={`${post.id}-edit`} className="bg-bg/40">
                             <td colSpan={12} className="px-5 py-3">{renderManualKeywordEditor(post)}</td>
