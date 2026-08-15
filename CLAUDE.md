@@ -14,9 +14,11 @@
 ## 배포
 ```bash
 # Vercel CLI 직접 배포 (Vercel↔GitHub 자동배포 미연결 → CLI 수동 배포)
-# 배포 디렉토리 = 이 저장소 루트 /Users/orange/개발/naver-influencer (.vercel/project.json 이 여기 있음)
-#   projectName: naver-influencer · org: orangelibrary · 도메인: ninfle.kr
-#   ⚠️ 과거 CLAUDE.md 의 /Users/orange/개발/ninfle 경로는 실제로 존재하지 않음(오기) — 이 저장소에서 직접 배포한다.
+# 배포 디렉토리 = 이 저장소 루트 /Users/orange/개발/ninfle (.git·.vercel/project.json 이 여기 있음)
+#   projectName: naver-influencer · org: orangelibrary · 도메인: ninfle.kr · GitHub: orange0717/naver-influencer
+#   ⚠️ "naver-influencer" 는 Vercel 프로젝트명/원격 저장소명일 뿐 로컬 디렉토리명이 아니다.
+#      /Users/orange/개발/naver-influencer 는 scripts 하나만 든 껍데기 폴더(.git·.vercel 없음)라 거기선 배포 불가.
+#      (2026-08-15 확인 — 과거 이 문단이 정반대로 적혀 있었음)
 #   ⚠️ --prebuilt 배포는 "Deploying outputs"에서 실패한 이력 → 풀 배포(vercel deploy --prod)를 쓸 것.
 vercel deploy --prod
 ```
