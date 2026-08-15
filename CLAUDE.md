@@ -20,6 +20,9 @@
 #      /Users/orange/개발/naver-influencer 는 scripts 하나만 든 껍데기 폴더(.git·.vercel 없음)라 거기선 배포 불가.
 #      (2026-08-15 확인 — 과거 이 문단이 정반대로 적혀 있었음)
 #   ⚠️ --prebuilt 배포는 "Deploying outputs"에서 실패한 이력 → 풀 배포(vercel deploy --prod)를 쓸 것.
+#   ⚠️ --prebuilt 를 안 붙여도 .vercel/output 폴더가 남아 있으면 CLI가 그걸 프리빌드 산출물로 보고
+#      "Using prebuilt build artifacts" 로 올리다 Error 가 난다(2026-08-15 재발 — 7/22자 산출물이 남아 있었음).
+#      배포가 "Deploying outputs"에서 곧장 실패하면 .vercel/output 을 치우고 다시 배포할 것.
 vercel deploy --prod
 ```
 
