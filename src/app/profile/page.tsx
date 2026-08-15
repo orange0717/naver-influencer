@@ -1,4 +1,5 @@
 'use client';
+import Modal from '@/components/ui/Modal';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -847,9 +848,18 @@ export default function ProfilePage() {
       </div>
 
       {/* 탈퇴 확인 모달 */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" onClick={() => { setShowDeleteConfirm(false); setWithdrawalReason(''); }}>
-          <div className="bg-surface rounded-lg border border-border p-6 max-w-sm mx-4 shadow-lg space-y-4" onClick={e => e.stopPropagation()}>
+      <Modal
+        open={showDeleteConfirm}
+        onClose={() => { setShowDeleteConfirm(false); setWithdrawalReason(''); }}
+        closeOnEscape={!deleteLoading}
+        closeOnBackdrop={!deleteLoading}
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabelledBy="delete-modal-title"
+        overlayClassName="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      >
+        <div className="bg-surface rounded-lg border border-border p-6 max-w-sm mx-4 shadow-lg space-y-4">
             <h3 id="delete-modal-title" className="text-lg font-extrabold text-text">회원 탈퇴</h3>
             <div className="space-y-2 text-sm text-dim">
               <p>정말 탈퇴하시겠습니까?</p>
@@ -885,10 +895,9 @@ export default function ProfilePage() {
               >
                 {deleteLoading ? '처리 중...' : '탈퇴하기'}
               </button>
-            </div>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

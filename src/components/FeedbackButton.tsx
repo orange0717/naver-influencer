@@ -1,4 +1,5 @@
 'use client';
+import Modal from '@/components/ui/Modal';
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
@@ -81,18 +82,17 @@ export default function FeedbackButton() {
       {/* 플로팅 버튼은 ChatBot 헤더로 통합됨 — 'open-feedback' 이벤트로 호출 */}
 
       {/* 모달 */}
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
-          onClick={handleClose}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="feedback-title"
-        >
-          <div
-            className="bg-surface rounded-t-2xl sm:rounded-lg border border-border w-full sm:max-w-md mx-0 sm:mx-4 p-6 shadow-lg animate-fade-in-up"
-            onClick={e => e.stopPropagation()}
-          >
+      <Modal
+        open={open}
+        onClose={handleClose}
+        closeOnEscape
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabelledBy="feedback-title"
+        overlayClassName="fixed inset-0 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      >
+        <div className="bg-surface rounded-t-2xl sm:rounded-lg border border-border w-full sm:max-w-md mx-0 sm:mx-4 p-6 shadow-lg animate-fade-in-up">
             {done ? (
               <div className="text-center py-8">
                 <div className="w-12 h-12 mx-auto rounded-full bg-up/15 flex items-center justify-center text-up mb-3">
@@ -147,9 +147,8 @@ export default function FeedbackButton() {
                 </div>
               </>
             )}
-          </div>
         </div>
-      )}
+      </Modal>
     </>
   );
 }

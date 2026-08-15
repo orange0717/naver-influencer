@@ -1,4 +1,5 @@
 'use client';
+import Modal from '@/components/ui/Modal';
 
 import { ReactNode, useRef, useState } from 'react';
 import { formatCount, formatDate } from '@/lib/format';
@@ -258,9 +259,17 @@ export default function ProfileHeader({
       </div>
 
       {/* TOP3 위젯 HTML 코드 모달 */}
-      {showWidgetCode && naverId && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowWidgetCode(false)}>
-          <div className="bg-surface rounded-lg border border-border p-6 max-w-lg w-full space-y-4" onClick={e => e.stopPropagation()}>
+      <Modal
+        open={showWidgetCode && !!naverId}
+        onClose={() => setShowWidgetCode(false)}
+        closeOnEscape
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabel="TOP 3 달성률 위젯"
+        overlayClassName="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+      >
+        <div className="bg-surface rounded-lg border border-border p-6 max-w-lg w-full space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg">TOP 3 달성률 위젯</h3>
               <button onClick={() => setShowWidgetCode(false)} className="text-dim hover:text-text transition cursor-pointer">
@@ -299,9 +308,8 @@ export default function ProfileHeader({
                 </button>
               </div>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
 
       {/* 추가 스탯 또는 자식 요소 */}
       {(extraStats || children) && (

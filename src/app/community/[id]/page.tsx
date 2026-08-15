@@ -1,4 +1,5 @@
 'use client';
+import Modal from '@/components/ui/Modal';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -437,9 +438,17 @@ export default function CommunityPostPage() {
       </div>
 
       {/* 신고 모달 */}
-      {reportOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setReportOpen(false)}>
-          <div className="bg-surface rounded-lg border border-border p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
+      <Modal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        closeOnEscape
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabel="신고"
+        overlayClassName="fixed inset-0 bg-black/40 flex items-center justify-center p-4"
+      >
+        <div className="bg-surface rounded-lg border border-border p-6 max-w-sm w-full space-y-4">
             <h3 className="text-base font-bold text-text">
               {reportTarget.type === 'post' ? '게시글' : '댓글'} 신고
             </h3>
@@ -476,9 +485,8 @@ export default function CommunityPostPage() {
                 {reportSubmitting ? '처리 중...' : '신고하기'}
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

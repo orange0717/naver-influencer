@@ -1,4 +1,5 @@
 'use client';
+import Modal from '@/components/ui/Modal';
 
 import { useState, useEffect, useCallback } from 'react';
 import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
@@ -432,9 +433,19 @@ export default function AdminMembersPage() {
       </div>
 
       {/* 오늘 방문자 모달 */}
-      {todayModalOpen && stats && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setTodayModalOpen(false)}>
-          <div className="bg-surface rounded-lg border border-border w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <Modal
+        open={todayModalOpen && !!stats}
+        onClose={() => setTodayModalOpen(false)}
+        closeOnEscape
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabel="오늘 방문자"
+        overlayClassName="fixed inset-0 bg-black/50 flex items-center justify-center"
+      >
+        <div className="bg-surface rounded-lg border border-border w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+          {/* Modal 은 open=false 여도 children 을 평가하므로 stats 가드는 여기 남긴다 */}
+          {stats && (
             <div className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-extrabold">
@@ -474,14 +485,23 @@ export default function AdminMembersPage() {
                 })}
               </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </Modal>
 
       {/* 상세 모달 */}
-      {(detail || detailLoading) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => !detailLoading && setDetail(null)}>
-          <div className="bg-surface rounded-lg border border-border w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <Modal
+        open={!!detail || detailLoading}
+        onClose={() => setDetail(null)}
+        closeOnEscape={!detailLoading}
+        closeOnBackdrop={!detailLoading}
+        trapFocus
+        role="dialog"
+        ariaModal
+        ariaLabel="회원 상세"
+        overlayClassName="fixed inset-0 bg-black/50 flex items-center justify-center"
+      >
+        <div className="bg-surface rounded-lg border border-border w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
             {detailLoading ? (
               <div className="p-12 text-center">
                 <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
@@ -678,9 +698,8 @@ export default function AdminMembersPage() {
                 </div>
               </div>
             )}
-          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

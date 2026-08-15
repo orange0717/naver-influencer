@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function StoryWritePage() {
@@ -257,24 +258,31 @@ export default function StoryWritePage() {
         </div>
       </form>
 
-      {toast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-surface border border-border rounded-lg shadow-lg p-6 w-full max-w-sm space-y-4 text-center">
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">{toast.message}</p>
-            <button
-              type="button"
-              onClick={() => {
-                const cb = toast.onConfirm;
-                setToast(null);
-                cb?.();
-              }}
-              className="w-full py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent-hover transition"
-            >
-              확인
-            </button>
-          </div>
+      <Modal
+        open={!!toast}
+        onClose={() => setToast(null)}
+        closeOnBackdrop={false}
+        closeOnEscape={false}
+        trapFocus
+        role="alertdialog"
+        ariaModal
+        overlayClassName="fixed inset-0 flex items-center justify-center bg-black/40 px-4"
+      >
+        <div className="bg-surface border border-border rounded-lg shadow-lg p-6 w-full max-w-sm space-y-4 text-center">
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">{toast?.message}</p>
+          <button
+            type="button"
+            onClick={() => {
+              const cb = toast?.onConfirm;
+              setToast(null);
+              cb?.();
+            }}
+            className="w-full py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent-hover transition"
+          >
+            확인
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

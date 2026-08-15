@@ -1,4 +1,5 @@
 'use client';
+import Modal from '@/components/ui/Modal';
 
 import { useEffect, useState } from 'react';
 
@@ -78,11 +79,16 @@ export default function ErrorReportModal({ open, payload, onClose }: Props) {
   if (!open || !payload) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center px-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open
+      onClose={onClose}
+      closeOnEscape
+      trapFocus
+      role="dialog"
+      ariaModal
+      ariaLabel="오류 제보"
+      zIndex={10000}
+      overlayClassName="fixed inset-0 bg-black/40 flex items-center justify-center px-4"
     >
       <div className="bg-surface rounded-lg p-6 sm:p-7 w-full max-w-md border border-border shadow-lg">
         {!success ? (
@@ -148,6 +154,6 @@ export default function ErrorReportModal({ open, payload, onClose }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

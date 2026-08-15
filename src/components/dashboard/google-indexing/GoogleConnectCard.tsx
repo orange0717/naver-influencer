@@ -1,4 +1,5 @@
 'use client';
+import Modal from '@/components/ui/Modal';
 
 import { useState } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
@@ -20,11 +21,18 @@ interface Props {
 
 function GoogleConnectGuideModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-md mx-4 p-6"
-        onClick={e => e.stopPropagation()}
-      >
+    <Modal
+      open
+      onClose={onClose}
+      closeOnEscape
+      trapFocus
+      role="dialog"
+      ariaModal
+      ariaLabel="구글 연결 안내"
+      zIndex={100}
+      overlayClassName="fixed inset-0 flex items-center justify-center bg-black/40"
+    >
+      <div className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-base text-text">Google 계정 연결 전 안내</h3>
           <button onClick={onClose} className="text-dim hover:text-text transition cursor-pointer text-lg">&times;</button>
@@ -50,7 +58,7 @@ function GoogleConnectGuideModal({ onClose }: { onClose: () => void }) {
           </a>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
