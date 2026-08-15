@@ -114,11 +114,19 @@ export default function NaverMateRankingView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-dim">
-        <span>
-          기준: <span className="font-bold text-text">{year}년 {month}월</span>
-        </span>
-        <span>총 {items.length.toLocaleString()}명</span>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-dim">
+          <span>
+            기준: <span className="font-bold text-text">{year}년 {month}월</span>
+          </span>
+          <span>총 {items.length.toLocaleString()}명</span>
+        </div>
+        {/* 네이버 API는 선정자 명단을 매 호출 무작위 순서로 내려준다(순위 미공개).
+            아래 번호는 누적 인용수로 우리가 매긴 것이라 메이트 홈과 노출 순서가 다르다. */}
+        <p className="text-[11px] text-dim leading-relaxed">
+          네이버 메이트 공식 홈은 선정자 중 일부를 무작위로 보여줍니다. 이 표는 선정자 전원을 누적 AI 브리핑 인용수 순으로 정렬한 것이라
+          공식 홈과 노출 순서·인원이 다를 수 있습니다.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
