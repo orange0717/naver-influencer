@@ -231,6 +231,14 @@ describe('규칙이 확정하면 안 되는 경계(AI 보정으로 넘김)', () 
     expect(extractKeywordCandidates({ title: '미움받을 용기 아들러 심리학' }).ambiguous).toBe(true);
   });
 
+  it('5어절 이상이 붙은 구간은 4어절 상한에 잘려 경계를 믿을 수 없다', () => {
+    // 작품명 뒤 저자명이 흡수돼 "지구 끝의 온실 김초엽"으로 확정되던 케이스.
+    // 인명 사전 없이는 규칙으로 못 가르므로 AI가 작품명/저자명을 분리하게 넘긴다.
+    expect(extractKeywordCandidates({ title: '지구 끝의 온실 김초엽 SF소설추천' }).ambiguous).toBe(true);
+    // 4어절 이하는 종전대로 확정한다
+    expect(extractKeywordCandidates({ title: '강남역 파스타 맛집 브런치' }).ambiguous).toBe(false);
+  });
+
   it('장식어가 아닌 일반어가 앞에 오면 브랜드 첫 단어일 수 있다', () => {
     // '트렌드 코리아 2026'이 통째로 브랜드명 — '코리아 2026'으로 잘라 확정하면 안 된다
     expect(extractKeywordCandidates({ title: '트렌드 코리아 2026 후기' }).ambiguous).toBe(true);

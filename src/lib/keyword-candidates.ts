@@ -283,6 +283,8 @@ export interface KeywordCandidate {
   proper: boolean;   // 고유명사/브랜드 판정
   maximal: boolean;  // 최대 명사구(run 전체)인지 — 조각과 구분
   startIndex: number; // 제목 내 시작 어절 인덱스(태그 유래 후보는 99)
+  /** 4어절 상한에 걸려 잘린 구간에서 나온 후보 — 개체 경계가 불확실. */
+  cappedRun: boolean;
 }
 
 export interface ExtractInput {
@@ -313,6 +315,8 @@ interface RawCandidate {
   tokenCount: number;
   derived: boolean;     // 조사 제거로 원 어절과 달라진 단독 토큰(fragment)
   maximal: boolean;     // 최대 명사구(run 전체)인지
+  /** 5어절 이상 run을 4어절로 잘라 만든 후보 — 개체 경계가 불확실하다(작품명+저자명이 붙는 자리). */
+  cappedRun: boolean;
 }
 
 function countOccurrences(haystack: string, needle: string): number {
@@ -348,6 +352,7 @@ function candidatesFromRun(run: Token[]): RawCandidate[] {
         tokenCount: slice.length,
         derived,
         maximal: normalizeKeyword(surface) === fullNorm,
+        cappedRun: run.length > 4,
       });
     }
   }
@@ -412,7 +417,7 @@ function scoreCandidate(
 
   // 한 글자·순수 숫자·단독 불용어 → 의미 없는 토큰(스펙 #11 −5)
   if (spaceless.length < 2 || /^\d+$/.test(spaceless) || (tokenCount === 1 && STOPWORDS.has(norm))) {
-    return { keyword: surface, score: -P_JUNK, tokens: tokenCount, proper: false, maximal, startIndex };
+    return { keyword: surface, score: -P_JUNK, tokens: tokenCount, proper: false, maximal, startIndex, cappedRun: cand.cappedRun };
   }
 
   let s = 0;
@@ -436,7 +441,7 @@ function scoreCandidate(
   // 조사 제거로 생긴 파생 단독 토큰(솔로몬의→솔로몬)은 단독 대표로 부적합 → 감점(브랜드 힌트 예외)
   if (tokenCount === 1 && cand.derived && !isBrandHit(surface, ctx.brandHints)) s -= P_DERIVED_SINGLE;
 
-  return { keyword: surface, score: s, tokens: tokenCount, proper, maximal, startIndex };
+  return { keyword: surface, score: s, tokens: tokenCount, proper, maximal, startIndex, cappedRun: cand.cappedRun };
 }
 
 /** primary와 부분문자열로 겹치지 않는 후보만 골라 보조 목록 구성(중복·포함관계 제거). */
@@ -490,12 +495,12 @@ export function extractKeywordCandidates(input: ExtractInput, maxSecondaries = 3
 
   // 따옴표 작품명 — 최대 명사구로 취급(브랜드 힌트로도 점수 반영)
   for (const inner of workTitles) {
-    raw.push({ surface: inner, startIndex: 0, tokenCount: inner.split(' ').filter(Boolean).length || 1, derived: false, maximal: true });
+    raw.push({ surface: inner, startIndex: 0, tokenCount: inner.split(' ').filter(Boolean).length || 1, derived: false, maximal: true, cappedRun: false });
   }
   // 태그 후보(제목에 없더라도 검색 의도 보조)
   for (const tag of input.tags || []) {
     const t = tag.replace(/^#/, '').trim();
-    if (t.length >= 2) raw.push({ surface: t, startIndex: 99, tokenCount: t.split(' ').filter(Boolean).length || 1, derived: false, maximal: true });
+    if (t.length >= 2) raw.push({ surface: t, startIndex: 99, tokenCount: t.split(' ').filter(Boolean).length || 1, derived: false, maximal: true, cappedRun: false });
   }
 
   // 정규화 기준 중복 제거 — 최대 명사구 표시를 우선 보존하고, 더 앞선 startIndex를 택한다.
@@ -560,7 +565,11 @@ export function extractKeywordCandidates(input: ExtractInput, maxSecondaries = 3
   const truncatedPrimary = !userKeyword && !!prevToken
     && (classifyToken(prevToken) === 'modifier' || isObjectClause(prevToken) || isAdnominalVerb(prevToken) || prevIsBareGeneric);
 
-  const softened = verbalPrimary || truncatedPrimary;
+  // 5어절 이상이 연달아 붙은 구간은 4어절 상한에서 잘려 나온 값이라 개체 경계를 신뢰할 수 없다.
+  // 작품명 뒤에 저자명이 붙는 자리가 대표적이다("지구 끝의 온실 김초엽" → 작품명과 인명은 별개 개체).
+  const cappedPrimary = !userKeyword && !!top && top.cappedRun;
+
+  const softened = verbalPrimary || truncatedPrimary || cappedPrimary;
 
   const confidence = userKeyword
     ? 0.99
