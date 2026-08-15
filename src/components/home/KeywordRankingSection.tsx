@@ -95,6 +95,8 @@ export default function KeywordRankingSection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'title'>('latest');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false); // 상단 보조버튼 더보기(⋯) (스펙 #22)
+  const [reextracting, setReextracting] = useState(false);
+  const [noticeMessage, setNoticeMessage] = useState('');
   const [expandedSecondary, setExpandedSecondary] = useState<Set<string>>(new Set()); // 보조키워드 펼침 (스펙 #13)
   // 30일 이전(확장 기간) 확인 모달 (스펙 #8) — 자동조회 대신 명시적 확인
   const [extendPrompt, setExtendPrompt] = useState<number | null>(null);
@@ -549,6 +551,28 @@ export default function KeywordRankingSection() {
   }, [blogPosts, extractingAll, extractRepresentativeOnly]);
 
   const stopExtractingAll = () => { extractAbortRef.current = true; autoExtractAbortRef.current = true; };
+
+  // 저장된 대표키워드를 현행 규칙(+애매하면 AI)으로 일괄 재추출한다(manual 지정분 제외).
+  // 추출 규칙을 개선해도 이미 저장된 값은 화면에 그대로 남기 때문에 사용자가 직접 갱신할 수단이 필요하다.
+  const runReextractAll = useCallback(async () => {
+    if (!profile || reextracting) return;
+    setReextracting(true);
+    try {
+      const res = await fetch('/api/my/representative-keywords/reextract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId: profile.blogId, confirm: true }),
+      });
+      if (!res.ok) { showError('대표키워드 재추출 중 오류가 발생했습니다.'); return; }
+      const data: { reextracted: number; changed: number; skippedManual: number } = await res.json();
+      queryClient.invalidateQueries({ queryKey: ['rep-keywords-state', profile.blogId] });
+      setNoticeMessage(`대표키워드 ${data.reextracted}건 재추출 완료 (${data.changed}건 변경, 직접 지정 ${data.skippedManual}건 유지). 변경된 포스팅은 순위를 다시 확인해 주세요.`);
+    } catch {
+      showError('대표키워드 재추출 중 오류가 발생했습니다.');
+    } finally {
+      setReextracting(false);
+    }
+  }, [profile, reextracting, showError, queryClient]);
 
   // 페이지 진입 시(포스트+대표상태 로드 후) 대표 키워드가 없는 포스팅을 백그라운드로 자동 추출한다(스펙 #8).
   // 규칙기반(제목 우선)이라 저비용이고, 순위 조회(네이버)는 트리거하지 않는다(스펙 #9) —
@@ -1094,6 +1118,13 @@ export default function KeywordRankingSection() {
         </div>
       )}
 
+      {noticeMessage && (
+        <div className="px-4 py-3 rounded-xl bg-accent/10 border border-accent/30 text-dim text-sm flex items-start gap-2">
+          <span className="flex-1">{noticeMessage}</span>
+          <button onClick={() => setNoticeMessage('')} className="text-dim/70 hover:text-accent cursor-pointer text-xs shrink-0" aria-label="닫기">✕</button>
+        </div>
+      )}
+
       {/* 헤더 + 주요 실행 버튼 (스펙 #2/#22/#23) */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -1145,6 +1176,13 @@ export default function KeywordRankingSection() {
                   {canDownload && profile && (
                     <a href={`/api/downloads/my-keyword-ranking?blogId=${encodeURIComponent(profile.blogId)}`} onClick={() => setMoreMenuOpen(false)} className="block px-3 py-2 hover:bg-bg text-dim">전체 리포트</a>
                   )}
+                  <button
+                    onClick={() => { runReextractAll(); setMoreMenuOpen(false); }}
+                    disabled={reextracting || !profile}
+                    className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer disabled:opacity-50"
+                  >
+                    {reextracting ? '재추출 중...' : '대표키워드 다시 추출'}
+                  </button>
                   <button onClick={() => { handleResetResults(); setMoreMenuOpen(false); }} className="w-full text-left px-3 py-2 hover:bg-bg text-down/70 cursor-pointer">초기화</button>
                 </div>
               </>

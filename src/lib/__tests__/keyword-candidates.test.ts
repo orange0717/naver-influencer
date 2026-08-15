@@ -116,6 +116,16 @@ describe('extractKeywordCandidates — 복합 고유명사를 쪼개지 않는�
     expect(r.primary).not.toContain('전도서');
     expect(r.primary).not.toContain('말씀');
   });
+
+  it('속격 "-의"는 개체 경계가 아니다: "나미야 잡화점의 기적 히가시노 게이고 …" → 작품명 전체', () => {
+    const r = extractKeywordCandidates({ title: '나미야 잡화점의 기적 히가시노 게이고 일본장편소설추천' });
+    expect(r.primary).toBe('나미야 잡화점의 기적');
+  });
+
+  it('문장형 제목의 서술어도 경계가 아니다: "다정한 것이 살아남는다 과학도서추천"', () => {
+    const r = extractKeywordCandidates({ title: '다정한 것이 살아남는다 과학도서추천' });
+    expect(r.primary).toBe('다정한 것이 살아남는다');
+  });
 });
 
 describe('extractKeywordCandidates — 회차/날짜/일반어를 대표로 뽑지 않는다(스펙 #4/#7)', () => {

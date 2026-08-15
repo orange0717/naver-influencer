@@ -94,6 +94,17 @@ function endsWithVerbalNoun(phrase: string): boolean {
   return parts.length > 0 && isVerbalNoun(parts[parts.length - 1]);
 }
 
+/**
+ * 문법적으로 끝나지 않은 구 — 서술어로 끝나거나(…다녀오다) 속격으로 끝난다(…베르네르의).
+ * 문장형 작품 제목("다정한 것이 살아남는다")일 수도 있고 단순 문장일 수도 있어 규칙만으로는 못 가르므로,
+ * 신뢰도를 낮춰 AI 보정이 판단하게 한다.
+ */
+function endsIncomplete(phrase: string): boolean {
+  const parts = phrase.trim().split(/\s+/);
+  const last = parts[parts.length - 1] || '';
+  return (last.length >= 3 && VERB_FINAL_RE.test(last)) || (last.length >= 3 && last.endsWith('의'));
+}
+
 // 목적격 조사(을/를)로 끝나면 뒤에 용언이 오는 절(운명을 바꾸다) — 명사 키워드가 아니므로 경계.
 // 단, '을'로 끝나는 명사(가을·마을·노을…)는 예외로 둔다.
 const NOUN_ENDS_EUL = new Set(['가을', '마을', '노을', '여울', '고을', '서울', '이슬', '구슬']);
@@ -163,13 +174,22 @@ function isAdnominalVerb(token: string): boolean {
   return token.length >= 3 && token.endsWith('는');
 }
 
+// 용언 종결형(살아남는다·하였다) — 작품 제목이 문장형일 때 나타난다("다정한 것이 살아남는다").
+// 새 개체의 시작이 아니라 앞 구를 마무리하는 말이므로 구간을 끊으면 안 된다.
+const VERB_FINAL_RE = /[가-힣]다$/;
+
 /**
  * 구간 중간에서 새 개체(고유명사)의 시작으로 볼 강한 복합명사인지.
  * 한글 4자+ 이고 일반어가 아니면 그 자체로 검색될 만한 고유명사/브랜드(오렌지도서관·방구석미술관)로 본다.
  * (라틴/숫자 혼합 모델명 S26 등은 앞 명사에 흡수돼야 하므로 여기서 제외한다 — 아이폰 17, 갤럭시 S26)
  */
 function isStrongKoreanProper(token: string): boolean {
-  return /^[가-힣]{4,}$/.test(token) && !isStopOrGeneric(token);
+  if (!/^[가-힣]{4,}$/.test(token) || isStopOrGeneric(token)) return false;
+  // 속격 '-의'는 뒤 명사를 수식해 한 구를 이룬다(나미야 잡화점의 기적) — 개체 경계가 아니다.
+  if (token.endsWith('의')) return false;
+  // 문장형 제목의 서술어(살아남는다)도 경계가 아니다.
+  if (VERB_FINAL_RE.test(token)) return false;
+  return true;
 }
 
 type TokenKind = 'content' | 'number' | 'skip' | 'modifier';
@@ -247,6 +267,7 @@ export interface KeywordCandidate {
   tokens: number;    // 어절 수
   proper: boolean;   // 고유명사/브랜드 판정
   maximal: boolean;  // 최대 명사구(run 전체)인지 — 조각과 구분
+  startIndex: number; // 제목 내 시작 어절 인덱스(태그 유래 후보는 99)
 }
 
 export interface ExtractInput {
@@ -376,7 +397,7 @@ function scoreCandidate(
 
   // 한 글자·순수 숫자·단독 불용어 → 의미 없는 토큰(스펙 #11 −5)
   if (spaceless.length < 2 || /^\d+$/.test(spaceless) || (tokenCount === 1 && STOPWORDS.has(norm))) {
-    return { keyword: surface, score: -P_JUNK, tokens: tokenCount, proper: false, maximal };
+    return { keyword: surface, score: -P_JUNK, tokens: tokenCount, proper: false, maximal, startIndex };
   }
 
   let s = 0;
@@ -400,7 +421,7 @@ function scoreCandidate(
   // 조사 제거로 생긴 파생 단독 토큰(솔로몬의→솔로몬)은 단독 대표로 부적합 → 감점(브랜드 힌트 예외)
   if (tokenCount === 1 && cand.derived && !isBrandHit(surface, ctx.brandHints)) s -= P_DERIVED_SINGLE;
 
-  return { keyword: surface, score: s, tokens: tokenCount, proper, maximal };
+  return { keyword: surface, score: s, tokens: tokenCount, proper, maximal, startIndex };
 }
 
 /** primary와 부분문자열로 겹치지 않는 후보만 골라 보조 목록 구성(중복·포함관계 제거). */
@@ -510,15 +531,22 @@ export function extractKeywordCandidates(input: ExtractInput, maxSecondaries = 3
 
   // 수식어 재결합으로도 용언 명사형이 대표로 남으면(만들기·실패하기) 그대로는 아무도 검색하지 않는다.
   // 규칙으로는 여기까지가 한계라 저신뢰로 내려 AI 보정(Haiku)이 판단하게 한다.
-  const verbalPrimary = !userKeyword && !!primary && endsWithVerbalNoun(primary);
+  const verbalPrimary = !userKeyword && !!primary && (endsWithVerbalNoun(primary) || endsIncomplete(primary));
+
+  // 대표 바로 앞 어절을 수식어로 보고 떼어낸 경우("쉽게 쓰여진 시"→"쓰여진 시") — 진짜 수식어일 수도 있고
+  // 작품 제목의 일부일 수도 있어 규칙으로는 못 가른다. 잘린 조각을 확정하지 않도록 AI 보정에 넘긴다.
+  const truncatedPrimary = !userKeyword && !!top && top.startIndex >= 1 && top.startIndex < 90
+    && classifyToken(tokens[top.startIndex - 1] || '') === 'modifier';
+
+  const softened = verbalPrimary || truncatedPrimary;
 
   const confidence = userKeyword
     ? 0.99
     : Math.max(0, Math.min(0.99, topScore / SCORE_FOR_FULL_CONFIDENCE))
       * (strongRegions.length >= 2 ? 0.7 : 1)
-      * (verbalPrimary ? 0.6 : 1);
+      * (softened ? 0.6 : 1);
 
-  const ambiguous = !userKeyword && (primary === null || topScore < CONFIDENT_SCORE || strongRegions.length >= 2 || verbalPrimary);
+  const ambiguous = !userKeyword && (primary === null || topScore < CONFIDENT_SCORE || strongRegions.length >= 2 || softened);
 
   return { primary, secondaries, candidates: scored, ambiguous, confidence: Number(confidence.toFixed(2)) };
 }

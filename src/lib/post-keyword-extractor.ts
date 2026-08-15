@@ -233,6 +233,10 @@ export interface PersistedRepresentativeKeyword {
 // 30일간은 저장된 대표 키워드를 그대로 재사용한다(post_representative_keywords, migration-130).
 const REP_KEYWORD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+// 추출 규칙(keyword-candidates)을 고칠 때마다 이 값을 올린다. 이 시각 이전에 저장된 행은
+// TTL이 남아 있어도 옛 규칙의 결과이므로 재추출한다 — 규칙을 고쳐도 화면이 30일간 그대로인 문제 방지.
+const RULE_ENGINE_EPOCH_MS = Date.parse('2026-08-15T05:00:00Z');
+
 // migration-154(confidence, keyword_changed_at)가 아직 적용되지 않은 환경에서도 안전하게 저장되도록
 // 추가 컬럼이 없으면 그 키만 빼고 재시도한다(무중단 배포 — 마이그레이션은 나중에 활성화만).
 const ADDITIVE_REP_COLUMNS = ['confidence', 'keyword_changed_at'];
@@ -297,7 +301,8 @@ export async function getOrPersistRepresentativeKeyword(
     };
   }
 
-  if (existing?.extracted_at && Date.now() - new Date(existing.extracted_at).getTime() < REP_KEYWORD_TTL_MS) {
+  const extractedAtMs = existing?.extracted_at ? new Date(existing.extracted_at).getTime() : 0;
+  if (existing && extractedAtMs && Date.now() - extractedAtMs < REP_KEYWORD_TTL_MS && extractedAtMs >= RULE_ENGINE_EPOCH_MS) {
     return {
       representativeKeyword: existing.representative_keyword,
       candidates: existing.candidates || [],

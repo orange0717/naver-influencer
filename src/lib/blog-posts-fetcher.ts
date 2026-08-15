@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { sleep } from '@/lib/crawler';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
+import { parseNaverPostDate } from '@/lib/naver-date';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -43,6 +44,26 @@ export interface BlogPostListResult extends BlogPostsPage {
   countPerPage: number;
 }
 
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** epoch ms를 KST 기준 'YYYY. M. D.'(네이버 addDate 표기)로 포맷한다. */
+function formatKstDate(ms: number): string {
+  const d = new Date(ms + KST_OFFSET_MS);
+  return `${d.getUTCFullYear()}. ${d.getUTCMonth() + 1}. ${d.getUTCDate()}.`;
+}
+
+/**
+ * 네이버는 발행 직후 하루쯤 addDate를 '3분 전'·'15시간 전'·'어제' 같은 상대 표기로 준다.
+ * 이 값은 Date로 파싱되지 않아 최신순 정렬에서 가장 오래된 글로 밀리므로, 절대 날짜로 정규화한다.
+ * 이미 절대 날짜이거나 해석할 수 없으면 원본을 그대로 돌려준다(표기 변형 보존).
+ */
+export function normalizePostDate(raw: string): string {
+  const t = (raw || '').trim();
+  if (!t) return '';
+  const ms = parseNaverPostDate(t);
+  return ms === null ? t : formatKstDate(ms);
+}
+
 /**
  * URL 인코딩 문자가 있으면 디코딩, 없으면 원본 반환
  * Worker proxy는 이미 디코딩된 텍스트를 반환할 수 있음
@@ -78,7 +99,7 @@ async function fetchFromPostListApi(blogId: string, page: number, count: number)
     url: `https://blog.naver.com/${blogId}/${post.logNo}`,
     commentCount: parseInt(post.commentCount || '0', 10),
     viewCount: parseInt(post.readCount || '0', 10),
-    date: post.addDate?.trim() || '',
+    date: normalizePostDate(post.addDate || ''),
     isPublic: post.openType === '2',
   }));
 
@@ -139,7 +160,7 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
       url: `https://blog.naver.com/${blogId}/${postId}`,
       commentCount,
       viewCount: 0,
-      date: dateText || '',
+      date: normalizePostDate(dateText),
       isPublic: true,
     });
   });
@@ -156,7 +177,7 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
             url: `https://blog.naver.com/${blogId}/${post.logNo}`,
             commentCount: parseInt(post.commentCount || '0', 10),
             viewCount: parseInt(post.readCount || '0', 10),
-            date: post.addDate?.trim() || '',
+            date: normalizePostDate(post.addDate || ''),
             isPublic: post.openType === '2',
           });
         }
@@ -206,10 +227,9 @@ async function fetchFromRss(blogId: string) {
 
     let dateStr = '';
     if (pubDate) {
-      try {
-        const d = new Date(pubDate);
-        dateStr = `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
-      } catch { dateStr = pubDate; }
+      // 서버 타임존(Vercel=UTC)에 좌우되지 않도록 KST 기준으로 포맷한다.
+      const ms = new Date(pubDate).getTime();
+      dateStr = isNaN(ms) ? pubDate : formatKstDate(ms);
     }
 
     if (title && postId) {
