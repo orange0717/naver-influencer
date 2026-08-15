@@ -1337,18 +1337,18 @@ export default function AiBriefingSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[1040px] text-sm table-fixed">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
-                    <th className="text-left px-4 py-3 font-semibold w-10">#</th>
+                    <th className="text-left px-4 py-3 font-semibold w-12">#</th>
                     <th className="text-left px-3 py-3 font-semibold">포스팅 제목</th>
-                    <th className="text-left px-3 py-3 font-semibold w-44">대표 키워드</th>
-                    <th className="text-center px-3 py-3 font-semibold w-28">AI 브리핑</th>
-                    <th className="text-center px-3 py-3 font-semibold w-24">AI 탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-64">대표 키워드</th>
+                    <th className="text-center px-3 py-3 font-semibold w-32">AI 브리핑</th>
+                    <th className="text-center px-3 py-3 font-semibold w-32">AI 탭</th>
                     <th className="text-center px-3 py-3 font-semibold w-24">마지막 확인</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">상태</th>
                     <th className="text-center px-3 py-3 font-semibold w-20">다시 검사</th>
-                    <th className="text-center px-3 py-3 font-semibold w-14">상세</th>
+                    <th className="text-center px-3 py-3 font-semibold w-16">상세</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -1361,7 +1361,7 @@ export default function AiBriefingSection() {
                     const titleCell = (
                       <td className="px-3 py-3 align-top">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
-                          className="font-semibold hover:text-accent transition truncate block max-w-[300px]" title={post.title}>
+                          className="font-semibold hover:text-accent transition truncate block max-w-full" title={post.title}>
                           {post.title}
                         </a>
                         <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-dim">
@@ -1393,9 +1393,9 @@ export default function AiBriefingSection() {
                         <tr key={post.id} className="hover:bg-surface-hover transition">
                           <td className="px-4 py-3 text-dim text-xs align-top">{no}</td>
                           {titleCell}
-                          <td className="px-3 py-3 align-top">
+                          <td className="px-3 py-3 align-top text-center">
                             {editing ? repEditor : (
-                              <div className="flex items-center gap-2 flex-wrap">
+                              <div className="inline-flex items-center justify-center gap-2 flex-wrap">
                                 <button onClick={() => autoExtractRep(post)}
                                   disabled={extractingPostId === post.id}
                                   className="text-xs text-accent cursor-pointer hover:underline disabled:opacity-50">
@@ -1406,7 +1406,7 @@ export default function AiBriefingSection() {
                               </div>
                             )}
                           </td>
-                          <td colSpan={6} className="px-3 py-3 text-[11px] text-dim">
+                          <td colSpan={6} className="px-3 py-3 text-center text-[11px] text-dim">
                             대표 키워드를 지정하면 AI 브리핑·AI 탭을 확인할 수 있습니다.
                           </td>
                         </tr>
@@ -1427,26 +1427,35 @@ export default function AiBriefingSection() {
                                 {j === 0 ? titleCell : (
                                   <td className="px-3 py-3 align-top text-dim/50 text-xs">↳</td>
                                 )}
-                                <td className="px-3 py-3 align-top">
+                                <td className="px-3 py-3 align-top text-center">
                                   {row.isPrimary && editing ? repEditor : (
-                                    <div className="flex flex-col gap-0.5 items-start">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-medium text-text">{row.keyword}</span>
+                                    // 양옆 슬롯 폭을 같게 두어 키워드 pill 자체가 열 정중앙에 오도록 한다.
+                                    <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center">
+                                      <span aria-hidden />
+                                      <span
+                                        className="justify-self-center max-w-full truncate px-2.5 py-1 rounded-full bg-bg border border-border/60 text-[11px] text-text"
+                                        title={row.keyword}>
+                                        {row.keyword}
+                                      </span>
+                                      <span className="flex items-center justify-end gap-1">
                                         {row.isPrimary ? (
-                                          <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(row.keyword); }}
-                                            className="text-[10px] text-dim hover:text-accent cursor-pointer hover:underline shrink-0"
-                                            title="대표 키워드 직접 수정 — 키워드순위와 같은 값이 바뀝니다">수정</button>
+                                          <>
+                                            {repKeywords[post.id]?.source === 'manual' ? (
+                                              <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" title="직접 지정한 대표 키워드" />
+                                            ) : needsReview ? (
+                                              <span className="w-1.5 h-1.5 rounded-full bg-down shrink-0" title="대표 키워드 확인 필요" />
+                                            ) : null}
+                                            <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(row.keyword); }}
+                                              className="text-[10px] text-dim hover:text-accent cursor-pointer hover:underline shrink-0"
+                                              title="대표 키워드 직접 수정 — 키워드순위와 같은 값이 바뀝니다">수정</button>
+                                          </>
                                         ) : (
-                                          <span className="text-[9px] text-dim/70 bg-bg px-1.5 py-0.5 rounded-full">
+                                          <span className="text-[9px] text-dim/70 bg-bg px-1.5 py-0.5 rounded-full shrink-0"
+                                            title={kwType === 'variant' ? '변형 키워드' : kwType === 'secondary' ? '보조 키워드' : '추가 키워드'}>
                                             {kwType === 'variant' ? '변형' : kwType === 'secondary' ? '보조' : '추가'}
                                           </span>
                                         )}
-                                      </div>
-                                      {row.isPrimary && (repKeywords[post.id]?.source === 'manual' ? (
-                                        <span className="text-[9px] text-accent">직접 지정</span>
-                                      ) : needsReview ? (
-                                        <span className="text-[9px] text-down">확인 필요</span>
-                                      ) : null)}
+                                      </span>
                                     </div>
                                   )}
                                 </td>
