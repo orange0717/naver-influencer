@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { extractPalette } from '@/lib/color-extract';
 import {
   assignRoles,
@@ -42,8 +43,19 @@ export default function ColorPaletteClient() {
   const [savedPalettes, setSavedPalettes] = useState<string[][]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 본문은 사이드바 오른쪽 콘텐츠 영역 기준 중앙 정렬(다른 페이지와 동일).
-  // 뷰포트 정중앙으로 당기는 보정을 두 번 시도했다가 모두 되돌렸으니 다시 넣지 말 것.
+  // 본문은 브라우저 화면 정중앙(가로·세로 모두)에 놓는다.
+  // 가로: 사이드바가 lg+에서 레이아웃 폭을 차지(펼침 224px / 접힘 56px)하므로 그 절반만큼 왼쪽으로 당긴다.
+  // 세로: 콘텐츠가 짧을 때만 가운데로 모이고, 팔레트가 펼쳐져 길어지면 위에서부터 자연스럽게 흐른다.
+  const { collapsed } = useSidebar();
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const viewportShift = isDesktop ? (collapsed ? -28 : -112) : 0;
 
   // 저장 팔레트는 로그인 계정(서버 DB)에 귀속 — 어느 기기/브라우저에서나 동일하게 보인다.
   // 마운트 시 서버에서 불러오고, 서버가 비어있으면 기존 localStorage 데이터를 1회 업로드한다.
@@ -192,7 +204,10 @@ export default function ColorPaletteClient() {
   const roles = palette ? assignRoles(palette) : null;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div
+      className="space-y-6 max-w-3xl mx-auto relative flex flex-col justify-center min-h-[calc(100vh-10rem)] transition-[left] duration-200"
+      style={{ left: viewportShift ? `${viewportShift}px` : undefined }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="type-page-title text-text">컬러 팔레트</h1>
