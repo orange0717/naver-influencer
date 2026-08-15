@@ -40,7 +40,7 @@ export default function AdminCommunityPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-extrabold">커뮤니티 관리</h1>
+      <h1 className="type-page-title">커뮤니티 관리</h1>
 
       {/* 탭 */}
       <div className="flex gap-2 flex-wrap">

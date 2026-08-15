@@ -641,7 +641,7 @@ export default function ImageEditorPage() {
     { key: 'crop', label: '자르기·회전', icon: '✂️' },
     { key: 'tone', label: '톤 조정', icon: '🎨' },
     { key: 'text', label: '텍스트·스티커', icon: '🔤' },
-    { key: 'bg', label: '배경 제거', icon: '🪄' },
+    { key: 'bg', label: '배경 제거', icon: '🖼️' },
   ];
 
   // ─────────────────────────────────────────────
@@ -652,7 +652,7 @@ export default function ImageEditorPage() {
       {/* 헤더 */}
       <div className="text-center pt-4">
         <p className="text-xs text-accent font-semibold tracking-widest mb-3">IMAGE TOOLS</p>
-        <h1 className="font-title text-3xl md:text-4xl font-extrabold text-text mb-3">이미지 편집기</h1>
+        <h1 className="type-page-title text-text mb-3">이미지 편집기</h1>
         <p className="text-sm text-dim leading-relaxed">
           가지고 있는 이미지를 자르고, 톤을 조정하고, 텍스트·스티커를 넣고, 배경까지 제거하세요.
           <br className="hidden md:block" />
@@ -662,7 +662,7 @@ export default function ImageEditorPage() {
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-700 font-semibold">❌ {error}</p>
+          <p className="text-sm text-down font-semibold">{error}</p>
         </div>
       )}
 
@@ -691,8 +691,7 @@ export default function ImageEditorPage() {
             onChange={onFileInput}
             className="hidden"
           />
-          <div className="text-6xl mb-4">🖼️</div>
-          <p className="text-base font-semibold text-text mb-2">편집할 이미지를 선택하세요</p>
+                    <p className="text-base font-semibold text-text mb-2">편집할 이미지를 선택하세요</p>
           <p className="text-xs text-dim mb-5">여기로 파일을 끌어다 놓거나 버튼을 눌러 선택하세요 (JPG, PNG, WebP 등)</p>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -982,7 +981,7 @@ export default function ImageEditorPage() {
                       {bgProgress || '처리 중…'}
                     </>
                   ) : (
-                    '🪄 배경 제거하기'
+                    '배경 제거하기'
                   )}
                 </button>
                 <p className="text-[11px] text-dim">투명 배경을 유지하려면 PNG로 저장하세요.</p>
@@ -1003,7 +1002,7 @@ export default function ImageEditorPage() {
 
       {/* 안내 */}
       <div className="bg-bg rounded-xl p-5 space-y-3">
-        <h3 className="font-bold text-text text-sm">💡 사용 팁</h3>
+        <h3 className="font-bold text-text text-sm">사용 팁</h3>
         <ul className="text-xs text-dim space-y-2">
           <li>• 모든 편집은 브라우저에서 처리되며 이미지가 서버로 전송되지 않습니다.</li>
           <li>• 자르기·회전·크기 조정은 되돌리기(↩)로 취소할 수 있습니다.</li>

@@ -199,7 +199,7 @@ export default function MyFansPage() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* 헤더 */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-text">맞팬 관리</h1>
+          <h1 className="type-page-title text-text">맞팬 관리</h1>
           <p className="text-sm text-dim mt-1">
             네이버 인플루언서의 팬 관계를 분석합니다. 맞팬·일방팬을 한눈에 파악하세요.
           </p>
@@ -358,7 +358,7 @@ export default function MyFansPage() {
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSelected(null)} />
-          <div className="relative w-full max-w-md h-full bg-bg border-l border-border overflow-y-auto shadow-xl">
+          <div className="relative w-full max-w-md h-full bg-bg border-l border-border overflow-y-auto shadow-lg">
             <div className="sticky top-0 bg-bg/95 backdrop-blur border-b border-border px-5 py-3 flex items-center justify-between">
               <p className="text-sm font-bold text-text">팬 관계 상세</p>
               <button onClick={() => setSelected(null)} className="text-dim hover:text-text text-xl leading-none">×</button>

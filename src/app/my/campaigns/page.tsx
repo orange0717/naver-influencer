@@ -82,7 +82,7 @@ export default function MyCampaignsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-extrabold">캠페인 현황</h1>
+        <h1 className="type-page-title">캠페인 현황</h1>
         <p className="text-sm text-dim mt-1">신청한 캠페인의 진행 상황을 확인하세요</p>
       </div>
 

@@ -697,7 +697,7 @@ export default function BlogAnalysisSection() {
               AnimatedStatCard의 size="stat" 레이아웃(aspect-square + 상단 아이콘/중앙 텍스트/하단 숫자)을 그대로 미러링. */}
           <div className="aspect-square flex flex-col bg-surface rounded-lg border border-border p-3 sm:p-4 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
             <div className="flex-1 flex flex-col items-center justify-between text-center min-h-0">
-              <div className="w-8 h-8 rounded-full bg-[#FAF4F2] text-down flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-full bg-sunken text-down flex items-center justify-center shrink-0">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               </div>
               <div className="flex flex-col items-center gap-1 px-1 min-w-0 w-full">
@@ -716,7 +716,7 @@ export default function BlogAnalysisSection() {
           {/* 누락율 — 슬라이스 탭 (AnimatedStatCard 공용 컴포넌트를 쓰지 않는 커스텀 카드라 사이즈·톤을 수동으로 맞춤, 정사각형 비율은 stat 카드와 동일하게 유지) */}
           <div className="aspect-square flex flex-col bg-surface rounded-lg border border-border p-3 sm:p-4 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
             <div className="flex-1 flex flex-col items-center justify-between text-center min-h-0">
-              <div className="w-8 h-8 rounded-full bg-[#FAF4F2] text-down flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-full bg-sunken text-down flex items-center justify-center shrink-0">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               </div>
               <div className="flex flex-col items-center gap-1.5 px-1 min-w-0 w-full">

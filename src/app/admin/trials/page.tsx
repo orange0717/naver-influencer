@@ -52,7 +52,7 @@ export default function AdminTrialsPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold mb-1">데모 체험</h1>
+          <h1 className="type-page-title mb-1">데모 체험</h1>
           <p className="text-xs text-dim">
             회원가입 없이 인플루언서 ID로 7일 무료 체험을 시작한 사용자 목록입니다.
           </p>

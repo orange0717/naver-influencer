@@ -615,7 +615,7 @@ export default function AiBriefingSection() {
   if (!isLoggedIn) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
-        <h1 className="font-title text-2xl font-extrabold">AI 브리핑 · AI 탭</h1>
+        <h1 className="type-page-title">AI 브리핑 · AI 탭</h1>
         <p className="text-sm text-dim leading-relaxed">
           로그인하시면 본인의 작업 데이터를 저장하고 다른 기기에서도 이어서 작업할 수 있습니다.
         </p>
@@ -640,7 +640,7 @@ export default function AiBriefingSection() {
   if (!profile || !profile.blogId) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
-        <h1 className="text-xl font-bold">AI 브리핑 · AI 탭</h1>
+        <h1 className="type-page-title">AI 브리핑 · AI 탭</h1>
         <p className="text-sm text-dim">블로그 주소가 필요합니다.</p>
         <Link href="/profile" className="inline-block px-6 py-3 bg-accent text-white font-bold rounded-xl">
           마이페이지에서 블로그 연결
@@ -1025,7 +1025,7 @@ export default function AiBriefingSection() {
       {/* 대표키워드 점검·재추출 확인 모달(스펙 #18~21) */}
       {auditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAuditOpen(false)}>
-          <div className="bg-surface rounded-2xl border border-border shadow-xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl border border-border shadow-lg max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-title text-lg font-extrabold">대표키워드 점검 결과</h3>
             {auditLoading || !auditData ? (
               <div className="py-8 text-center text-dim text-sm">저장된 대표키워드를 점검 중...</div>
@@ -1084,7 +1084,7 @@ export default function AiBriefingSection() {
       {/* 예상 작업량 확인 모달(스펙 #9~#12) */}
       {bulkModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setBulkModalOpen(false)}>
-          <div className="bg-surface rounded-2xl border border-border shadow-xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl border border-border shadow-lg max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-title text-lg font-extrabold">전체 업데이트 — 예상 작업량</h3>
             {bulkLoadingEstimate || !bulkEstimate ? (
               <div className="py-8 text-center text-dim text-sm">예상 작업량을 계산 중...</div>

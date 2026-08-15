@@ -135,7 +135,7 @@ export default function AdminGoogleIndexingPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">구글 색인등록 현황</h1>
+        <h1 className="type-page-title">구글 색인등록 현황</h1>
         <button
           onClick={load}
           disabled={loading}

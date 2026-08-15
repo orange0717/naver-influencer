@@ -77,7 +77,7 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
         <Link href="/my" className="text-xs text-dim hover:text-text">← 대시보드로</Link>
         <div className="flex items-center gap-2 mt-2">
           {topic.isRepresentative && <span className="text-gold text-lg" title="대표 토픽">★</span>}
-          <h1 className="font-title text-xl font-bold">{topic.name}</h1>
+          <h1 className="type-page-title">{topic.name}</h1>
         </div>
         {topic.representativeKeywords.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">

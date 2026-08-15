@@ -189,7 +189,7 @@ export default function StoryDetailPage() {
       )}
 
       <div className="bg-surface rounded-xl border border-border p-6 space-y-4">
-        <h1 className="text-2xl font-bold">{story.title}</h1>
+        <h1 className="type-page-title">{story.title}</h1>
         <div className="flex items-center gap-3 text-sm text-dim">
           <span>{story.author_name}</span>
           <span>·</span>

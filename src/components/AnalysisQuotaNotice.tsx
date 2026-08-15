@@ -10,8 +10,7 @@ export default function AnalysisQuotaNotice({ quota }: { quota: QuotaInfo }) {
   const limit = quota.limit || 3;
   return (
     <div className="max-w-md mx-auto my-10 rounded-2xl border border-border bg-surface px-7 py-9 text-center shadow-sm">
-      <div className="text-4xl mb-4" aria-hidden>🔒</div>
-      <h2 className="text-lg font-extrabold text-text mb-2">
+            <h2 className="text-lg font-extrabold text-text mb-2">
         오늘 무료 조회 {limit}회를 모두 사용했습니다
       </h2>
       <p className="text-sm text-dim leading-relaxed">

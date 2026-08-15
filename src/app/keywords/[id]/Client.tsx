@@ -219,7 +219,7 @@ export default function KeywordDetailPage() {
       <div className="bg-surface rounded-xl border border-border p-6">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold mb-1">{keyword.keyword}</h1>
+            <h1 className="type-page-title mb-1">{keyword.keyword}</h1>
             <div className="flex items-center gap-3 text-sm text-dim">
               <span>{keyword.category}</span>
               <span>참여자 {keyword.participant_count}명</span>
@@ -390,7 +390,7 @@ export default function KeywordDetailPage() {
             {top3Rankings.map(r => {
               const medalColors = [
                 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30',
-                'text-gray-400 bg-gray-400/10 border-gray-400/30',
+                'text-dim bg-dim/10 border-dim/30',
                 'text-amber-700 bg-amber-700/10 border-amber-700/30',
               ];
               const medalLabels = ['1st', '2nd', '3rd'];

@@ -328,7 +328,7 @@ export default function PostAnalysisPage() {
       {/* 헤더 */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-title font-bold">포스팅 분석</h1>
+          <h1 className="type-page-title">포스팅 분석</h1>
           <p className="text-sm text-dim mt-1">AI 작성 여부 판별, 표절검사, 형태소, 핵심 문장 분석</p>
         </div>
         {canDownload && (
@@ -487,7 +487,7 @@ export default function PostAnalysisPage() {
                               {analysis?.textPreview && (
                                 <div>
                                   <h4 className="text-xs font-bold text-dim mb-1">본문 미리보기</h4>
-                                  <p className="text-xs text-dim leading-relaxed bg-bg rounded-xl p-3 line-clamp-3">
+                                  <p className="text-xs text-dim leading-relaxed bg-sunken rounded-lg p-3 line-clamp-3">
                                     {analysis.textPreview}
                                   </p>
                                 </div>
@@ -535,7 +535,7 @@ export default function PostAnalysisPage() {
                                   </div>
 
                                   {/* 판단 근거 */}
-                                  <div className="bg-bg rounded-xl p-3">
+                                  <div className="bg-sunken rounded-lg p-3">
                                     <p className="text-xs text-dim font-semibold mb-1">판단 근거</p>
                                     <p className="text-sm leading-relaxed">{aiResult.aiReasoning}</p>
                                   </div>
@@ -710,24 +710,24 @@ export default function PostAnalysisPage() {
                                   <h4 className="text-xs font-bold text-down">형태소/문장 분석 결과</h4>
 
                                   {/* 문자 구성 */}
-                                  <div className="grid grid-cols-5 gap-2">
-                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                  <div className="grid grid-cols-5 divide-x divide-border border-y border-border">
+                                    <div className="px-1 py-2 text-center">
                                       <p className="text-[10px] text-dim">전체</p>
                                       <p className="text-sm font-bold">{textResult.characters.total.toLocaleString()}</p>
                                     </div>
-                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                    <div className="px-1 py-2 text-center">
                                       <p className="text-[10px] text-dim">한글</p>
                                       <p className="text-sm font-bold">{textResult.characters.korean.percent}%</p>
                                     </div>
-                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                    <div className="px-1 py-2 text-center">
                                       <p className="text-[10px] text-dim">영어</p>
                                       <p className="text-sm font-bold">{textResult.characters.english.percent}%</p>
                                     </div>
-                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                    <div className="px-1 py-2 text-center">
                                       <p className="text-[10px] text-dim">숫자</p>
                                       <p className="text-sm font-bold">{textResult.characters.number.percent}%</p>
                                     </div>
-                                    <div className="bg-bg rounded-lg p-2 text-center">
+                                    <div className="px-1 py-2 text-center">
                                       <p className="text-[10px] text-dim">읽기 시간</p>
                                       <p className="text-sm font-bold">{textResult.characters.readingTimeMin}분</p>
                                     </div>
@@ -936,7 +936,7 @@ export default function PostAnalysisPage() {
                                 {aiResult.aiProbability}%
                               </span>
                             </div>
-                            <p className="text-xs leading-relaxed bg-bg rounded-xl p-2.5">{aiResult.aiReasoning}</p>
+                            <p className="text-xs leading-relaxed bg-sunken rounded-lg p-2.5">{aiResult.aiReasoning}</p>
                             {aiResult.keywords.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {aiResult.keywords.map((kw, i) => (
@@ -1029,16 +1029,16 @@ export default function PostAnalysisPage() {
                         {textResult && (
                           <div className="space-y-3 pt-2 border-t border-border/30">
                             <h4 className="text-xs font-bold text-down">형태소/문장 분석</h4>
-                            <div className="grid grid-cols-3 gap-1.5 text-center">
-                              <div className="bg-bg rounded-lg p-1.5">
+                            <div className="grid grid-cols-3 text-center divide-x divide-border border-y border-border">
+                              <div className="p-1.5">
                                 <p className="text-[9px] text-dim">문장수</p>
                                 <p className="text-xs font-bold">{textResult.sentences.count}</p>
                               </div>
-                              <div className="bg-bg rounded-lg p-1.5">
+                              <div className="p-1.5">
                                 <p className="text-[9px] text-dim">평균길이</p>
                                 <p className="text-xs font-bold">{textResult.sentences.avgLength}자</p>
                               </div>
-                              <div className="bg-bg rounded-lg p-1.5">
+                              <div className="p-1.5">
                                 <p className="text-[9px] text-dim">가독성</p>
                                 <p className={`text-xs font-bold ${textResult.sentences.readabilityScore >= 70 ? 'text-text' : textResult.sentences.readabilityScore >= 40 ? 'text-accent' : 'text-down'}`}>{textResult.sentences.readabilityScore}점</p>
                               </div>

@@ -89,7 +89,7 @@ export default function CampaignListPage() {
               <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
           </div>
-          <h1 className="text-2xl font-black mb-3">캠페인 관리</h1>
+          <h1 className="type-page-title mb-3">캠페인 관리</h1>
           <p className="text-dim leading-relaxed mb-6">
             체험단/리뷰 캠페인을 등록하고<br />
             인플루언서/블로거에게 자동으로 노출하세요.
@@ -111,7 +111,7 @@ export default function CampaignListPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold">캠페인 관리</h1>
+          <h1 className="type-page-title">캠페인 관리</h1>
           <p className="text-sm text-dim mt-1">캠페인을 등록하고 신청을 관리하세요</p>
         </div>
         <Link href="/orangeconnect/campaign/new"

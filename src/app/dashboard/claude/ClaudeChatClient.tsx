@@ -446,7 +446,7 @@ export default function ClaudeChatClient() {
             ☰
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-sm font-extrabold truncate">
+            <h1 className="type-page-title truncate">
               {activeId
                 ? conversations.find((c) => c.id === activeId)?.title || '대화'
                 : '블로그 글 피드백(클로드 AI)'}

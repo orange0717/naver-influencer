@@ -127,7 +127,7 @@ export default function AdLoginPage() {
             <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-white font-bold text-lg mx-auto mb-3">
               AD
             </div>
-            <h1 className="text-2xl font-extrabold">광고주 로그인</h1>
+            <h1 className="type-page-title">광고주 로그인</h1>
             <p className="text-sm text-dim mt-1">인플루언서 마케팅 플랫폼</p>
           </div>
 

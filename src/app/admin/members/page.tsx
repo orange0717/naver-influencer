@@ -206,7 +206,7 @@ export default function AdminMembersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold">회원 관리</h1>
+        <h1 className="type-page-title">회원 관리</h1>
         <span className="text-sm text-dim">총 {total.toLocaleString()}명</span>
       </div>
 

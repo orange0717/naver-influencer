@@ -59,7 +59,7 @@ export default function UsagePeriodCard({
   }
 
   const toneClass = (t: 'accent' | 'gold' | 'gray') =>
-    t === 'accent' ? 'text-accent' : t === 'gold' ? 'text-[#D4A04E]' : 'text-text';
+    t === 'accent' ? 'text-accent' : t === 'gold' ? 'text-gold' : 'text-text';
 
   const gridClass =
     cards.length === 1 ? 'grid grid-cols-1 gap-3' :

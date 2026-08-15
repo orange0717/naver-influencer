@@ -130,7 +130,7 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
           <span className="text-xs text-dim">/</span>
           <span className="text-xs text-accent font-semibold">수정</span>
         </div>
-        <h1 className="text-xl font-extrabold">캠페인 수정</h1>
+        <h1 className="type-page-title">캠페인 수정</h1>
       </div>
 
       <div className="bg-surface border border-border rounded-lg p-6 space-y-5">

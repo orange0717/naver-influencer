@@ -79,7 +79,7 @@ export default function CampaignBrowsePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-extrabold">캠페인 모집</h1>
+        <h1 className="type-page-title">캠페인 모집</h1>
         <p className="text-sm text-dim mt-1">광고주가 등록한 체험단/리뷰/협찬 캠페인에 참여하세요</p>
       </div>
 

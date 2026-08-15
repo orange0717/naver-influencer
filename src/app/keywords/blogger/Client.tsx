@@ -182,7 +182,7 @@ export default function BloggerKeywordsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-xl font-extrabold">키워드 검색</h1>
+          <h1 className="type-page-title">키워드 검색</h1>
           <p className="text-xs text-dim">네이버 검색 키워드의 검색량을 분석합니다</p>
         </div>
         <Link

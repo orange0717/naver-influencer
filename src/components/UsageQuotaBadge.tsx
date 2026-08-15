@@ -48,7 +48,7 @@ export default function UsageQuotaBadge() {
     <span
       title={exhausted ? '오늘 무료 이용을 모두 사용했습니다' : `오늘 무료 이용 ${remaining}회 남음`}
       className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-normal leading-none shrink-0 ${
-        exhausted ? 'bg-down/10 text-down' : 'bg-black/[0.04] text-[#555555]'
+        exhausted ? 'bg-down/10 text-down' : 'bg-sunken text-text-2'
       }`}
     >
       오늘 무료 {usage.used}/{usage.limit}회

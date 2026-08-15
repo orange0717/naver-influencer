@@ -12,10 +12,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  free: 'bg-blue-100 text-blue-700',
-  tip: 'bg-green-100 text-green-700',
-  review: 'bg-purple-100 text-purple-700',
-  qna: 'bg-amber-100 text-amber-700',
+  free: 'bg-blue/10 text-blue',
+  tip: 'bg-up/10 text-up',
+  review: 'bg-accent/10 text-accent',
+  qna: 'bg-gold/12 text-gold',
 };
 
 interface PostDetail {
@@ -267,19 +267,19 @@ export default function CommunityPostPage() {
         <div className="px-6 py-5 border-b border-border/50">
           <div className="flex items-center gap-2 mb-3">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-              CATEGORY_COLORS[post.category] || 'bg-gray-100 text-gray-600'
+              CATEGORY_COLORS[post.category] || 'bg-sunken text-text-2'
             }`}>
               {CATEGORY_LABELS[post.category] || post.category}
             </span>
           </div>
-          <h1 className="text-lg md:text-xl font-extrabold text-text mb-3">{post.title}</h1>
+          <h1 className="type-page-title text-text mb-3">{post.title}</h1>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 text-xs text-dim">
               <span className="flex items-center gap-1">
                 <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-                  post.author_type === 'blogger' ? 'bg-[#2DB400]/15 text-[#2DB400]'
+                  post.author_type === 'blogger' ? 'bg-up/12 text-up'
                     : post.author_type === 'admin' ? 'bg-accent/10 text-accent'
-                    : 'bg-purple-100 text-purple-600'
+                    : 'bg-blue/10 text-blue'
                 }`}>
                   {post.author_type === 'blogger' ? '블로거' : post.author_type === 'admin' ? '관리자' : '인플루언서'}
                 </span>
@@ -383,9 +383,9 @@ export default function CommunityPostPage() {
               <div key={comment.id} className="px-6 py-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                    comment.author_type === 'blogger' ? 'bg-[#2DB400]/15 text-[#2DB400]'
+                    comment.author_type === 'blogger' ? 'bg-up/12 text-up'
                       : comment.author_type === 'admin' ? 'bg-accent/10 text-accent'
-                      : 'bg-purple-100 text-purple-600'
+                      : 'bg-blue/10 text-blue'
                   }`}>
                     {comment.author_type === 'blogger' ? '블로거' : comment.author_type === 'admin' ? '관리자' : '인플루언서'}
                   </span>

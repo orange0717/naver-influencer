@@ -966,7 +966,7 @@ export default function MissingPostsSection() {
       {/* 4. 상세뷰(원인분석) 패널 */}
       <Modal open={!!detailPost} onClose={closeDetail} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
         {detailPost && (
-          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto">
+          <div className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto">
             {/* 헤더 */}
             <div className="flex items-start justify-between mb-4 gap-3">
               <div>
@@ -1107,7 +1107,7 @@ export default function MissingPostsSection() {
       {/* 5. 대량 분석 비용 안내 확인 (§9~13) */}
       <Modal open={!!confirmBatch} onClose={() => setConfirmBatch(null)} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
         {confirmBatch && (
-          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-md mx-4 p-6">
             <h3 className="font-bold text-base mb-3">미노출 대량 분석 안내</h3>
             <div className="text-xs text-dim leading-relaxed space-y-2">
               <p>
@@ -1138,7 +1138,7 @@ export default function MissingPostsSection() {
 
       {/* §2 "이전 포스팅도 확인하시겠습니까?" 진입 프롬프트 — 최근 30일 완료 + 30일 이전 글 존재 시 */}
       <Modal open={showMorePrompt} onClose={() => { morePromptDismissedRef.current = true; setShowMorePrompt(false); }} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-        <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md mx-4 p-6">
+        <div className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-md mx-4 p-6">
           <h3 className="font-bold text-base mb-3">이전 포스팅도 확인하시겠습니까?</h3>
           <div className="text-xs text-dim leading-relaxed space-y-2">
             <p>최근 {FREE_DAYS}일 포스팅의 노출 상태 확인이 완료되었습니다.</p>
@@ -1165,7 +1165,7 @@ export default function MissingPostsSection() {
       {/* §6 크레딧 안내 / §2 무료 대량 확인 / §8 크레딧 부족 — 확장 조회 게이트 */}
       <Modal open={!!extendModal} onClose={() => setExtendModal(null)} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
         {extendModal && (extendModal.phase === 'credit' || extendModal.phase === 'confirm') && (
-          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-md mx-4 p-6">
             <h3 className="font-bold text-base mb-3">
               {extendModal.phase === 'credit' ? '추가 조회에 크레딧이 필요합니다' : '이전 포스팅을 확인합니다'}
             </h3>
@@ -1197,7 +1197,7 @@ export default function MissingPostsSection() {
           </div>
         )}
         {extendModal && extendModal.phase === 'insufficient' && (
-          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-sm mx-4 p-6">
+          <div className="bg-surface rounded-lg border border-border shadow-lg w-full max-w-sm mx-4 p-6">
             <h3 className="font-bold text-base mb-3">크레딧이 부족합니다</h3>
             <div className="text-xs text-dim leading-relaxed space-y-1">
               <div className="flex justify-between"><span>필요 크레딧</span><b className="text-text">{extendModal.required}</b></div>

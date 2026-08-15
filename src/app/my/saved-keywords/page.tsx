@@ -8,7 +8,7 @@ export default function SavedKeywordsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
+          <h1 className="type-page-title flex items-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-accent">
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
             </svg>

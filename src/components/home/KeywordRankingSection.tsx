@@ -1049,7 +1049,7 @@ export default function KeywordRankingSection() {
   if (!isLoggedIn) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
-        <h1 className="font-title text-2xl font-extrabold">키워드순위</h1>
+        <h1 className="type-page-title">키워드순위</h1>
         <p className="text-sm text-dim leading-relaxed">
           로그인하시면 본인의 작업 데이터를 저장하고 다른 기기에서도 이어서 작업할 수 있습니다.
         </p>
@@ -1075,7 +1075,7 @@ export default function KeywordRankingSection() {
   if (!profile || !profile.blogId) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
-        <h1 className="text-xl font-bold">키워드순위</h1>
+        <h1 className="type-page-title">키워드순위</h1>
         <p className="text-sm text-dim">블로그 주소가 필요합니다.</p>
         <Link href="/profile" className="inline-block px-6 py-3 bg-accent text-white font-bold rounded-xl">
           마이페이지에서 블로그 연결
@@ -1423,7 +1423,7 @@ export default function KeywordRankingSection() {
       {/* '지금 업데이트' 예상치 확인 모달 (스펙 #11/#14) */}
       {refreshEstimate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => { if (!refreshStarting) setRefreshEstimate(null); }}>
-          <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl border border-border shadow-lg w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-1">순위 업데이트 확인</h3>
             <p className="text-xs text-dim mb-4">무조건 전체를 조회하지 않고, 아래 대상만 네이버 검색으로 순위를 확인합니다.</p>
             <div className="space-y-2 text-sm">
@@ -1451,7 +1451,7 @@ export default function KeywordRankingSection() {
       {/* 30일 이전(확장 기간) 확인 모달 (스펙 #8) */}
       {extendPrompt !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setExtendPrompt(null)}>
-          <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl border border-border shadow-lg w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-1">이전 포스팅도 확인하시겠습니까?</h3>
             <p className="text-xs text-dim mb-4">최근 30일 이후({periodLabel(extendPrompt)}) 포스팅까지 함께 표시합니다. 순위 조회는 &lsquo;순위 업데이트&rsquo;에서 별도로 실행됩니다.</p>
             <div className="flex gap-2">
@@ -1465,7 +1465,7 @@ export default function KeywordRankingSection() {
       {/* 대표키워드 직접 수정 모달 (스펙 #15) */}
       {editRep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => { if (!savingRep) setEditRep(null); }}>
-          <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl border border-border shadow-lg w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-1">대표 키워드 직접 수정</h3>
             <p className="text-xs text-dim mb-3">직접 입력한 대표키워드는 자동 추출로 덮어쓰지 않습니다.</p>
             <input

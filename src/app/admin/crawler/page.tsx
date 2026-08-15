@@ -113,7 +113,7 @@ export default function AdminCrawlerPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">크롤러 상태</h1>
+        <h1 className="type-page-title">크롤러 상태</h1>
         <button
           onClick={load}
           disabled={loading}

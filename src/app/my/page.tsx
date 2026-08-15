@@ -131,7 +131,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     }
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <h1 className="font-title text-xl font-bold text-text mb-3">내 대시보드</h1>
+        <h1 className="type-page-title text-text mb-3">내 대시보드</h1>
         <p className="text-sm text-dim mb-6 leading-relaxed">
           연결된 인플루언서 정보를 찾을 수 없습니다. 로그인 후 프로필에서 블로그를 연결해 보세요.
         </p>

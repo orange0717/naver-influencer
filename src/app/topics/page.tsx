@@ -339,7 +339,7 @@ export default function TopicsPage() {
     <div className="min-h-screen bg-bg">
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-text">토픽</h1>
+          <h1 className="type-page-title text-text">토픽</h1>
           <p className="text-sm text-dim mt-1">
             내 포스팅에서 토픽으로 묶기 좋은 글을 AI가 찾아드립니다. 매일 자동으로 수집·분석해 반영합니다.
           </p>

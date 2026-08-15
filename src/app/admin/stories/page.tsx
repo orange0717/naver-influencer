@@ -116,7 +116,7 @@ export default function AdminStoriesPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">성장 후기 관리</h1>
+        <h1 className="type-page-title">성장 후기 관리</h1>
         <Link href="/stories" className="text-sm text-accent hover:underline">
           공개 페이지 →
         </Link>
