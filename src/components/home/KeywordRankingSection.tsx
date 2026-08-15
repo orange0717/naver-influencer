@@ -59,6 +59,9 @@ export default function KeywordRankingSection() {
   const [addingFor, setAddingFor] = useState('');
   const [addValue, setAddValue] = useState('');
   const [addSaving, setAddSaving] = useState(false);
+  // 등록 실패 사유는 입력창 바로 아래에 띄운다.
+  // 상단 배너로만 알리면 표 중간에서 등록한 사용자에겐 화면 밖이라 "버튼이 안 눌린다"로 보인다.
+  const [addError, setAddError] = useState('');
   // "postId::keyword" → RankingResult
   const [rankingResults, setRankingResults] = useState<Record<string, RankingResult>>({});
   // "postId::keyword" → RankDelta (전일대비/7일대비 계산 근거, get_keyword_rank_deltas RPC)
@@ -594,31 +597,46 @@ export default function KeywordRankingSection() {
   const submitAddKeyword = useCallback(async (post: BlogPost) => {
     const kw = addValue.trim();
     if (!kw || addSaving) return;
+    setAddError('');
 
+    const norm = normalizeForCompare(kw);
     const existing = postKeywordsRef.current[post.id] || [];
     // 대표·보조는 아직 순위조회 전이면 existing 에 없을 수 있으므로 추출 결과까지 합쳐 중복 검사한다.
     const known = new Set(
       [...existing, ...autoPairsFor(post).map(p => p.keyword)].map(normalizeForCompare),
     );
-    if (known.has(normalizeForCompare(kw))) {
-      showError(`'${kw}'는 이미 이 포스팅에 등록된 키워드입니다.`, 4000);
+    if (known.has(norm)) {
+      // 어떤 종류로 이미 있는지까지 알려준다. 특히 보조는 기본 접힘이라
+      // "등록도 안 되고 목록에도 없는" 상태로 보여서 가장 헷갈린다 → 펼쳐서 실제 위치를 보여준다.
+      const rep = repKeywordsRef.current[post.id];
+      const auto = (rep?.autoKeywords || []).find(a => normalizeForCompare(a.keyword) === norm);
+      const isPrimary = normalizeForCompare(rep?.keyword || '') === norm || !!auto?.isPrimary;
+      if (auto && !auto.isPrimary) setExpandedSecondary(prev => new Set(prev).add(post.id));
+      setAddError(
+        isPrimary ? `'${kw}'는 이미 대표 키워드로 등록되어 있습니다.`
+        : auto ? `'${kw}'는 이미 보조 키워드로 등록되어 있습니다. 아래 목록에서 확인하세요.`
+        : `'${kw}'는 이미 이 포스팅에 등록된 키워드입니다.`,
+      );
       return;
     }
     if (existing.length >= MAX_KEYWORDS_PER_POST) {
-      showError(`포스팅당 키워드는 최대 ${MAX_KEYWORDS_PER_POST}개까지 등록할 수 있습니다.`, 4000);
+      setAddError(`이 포스팅은 키워드 ${MAX_KEYWORDS_PER_POST}개를 모두 사용했습니다. 기존 키워드를 삭제한 뒤 추가해주세요.`);
       return;
     }
 
     setAddSaving(true);
     const ok = await persistPostKeywords(post.id, [...existing, kw]);
     setAddSaving(false);
-    if (!ok) return;
+    if (!ok) {
+      setAddError('저장에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.');
+      return;
+    }
 
     setAddValue(''); // 입력창은 열어둔 채 비워서 연속 등록 가능
     // 등록 즉시 기존 순위 조회 로직 연결. 다른 배치가 실행 중이면 runBatch 가 건너뛰지만,
     // scanAndRefresh 가 60초 주기로 미확인 키워드를 다시 집어가므로 누락되지 않는다.
     runBatch([{ post, keyword: kw, meta: { keywordType: 'manual', postUrl: post.url } }]);
-  }, [addValue, addSaving, autoPairsFor, persistPostKeywords, runBatch, showError]);
+  }, [addValue, addSaving, autoPairsFor, persistPostKeywords, runBatch]);
 
   // 직접 추가한 키워드 삭제 — 해당 키워드의 순위 기록도 함께 정리한다.
   const removeManualKeyword = useCallback(async (post: BlogPost, keyword: string) => {
@@ -650,10 +668,12 @@ export default function KeywordRankingSection() {
   const openAddKeyword = (postId: string) => {
     setAddingFor(postId);
     setAddValue('');
+    setAddError('');
   };
   const closeAddKeyword = () => {
     setAddingFor('');
     setAddValue('');
+    setAddError('');
   };
 
   const stopChecking = () => {
@@ -1068,7 +1088,8 @@ export default function KeywordRankingSection() {
   return (
     <div className="space-y-6">
       {errorMessage && (
-        <div className="px-4 py-3 rounded-xl bg-down/10 border border-down/30 text-down text-sm flex items-start gap-2">
+        // sticky — 표 아래쪽에서 작업하다 에러가 나도 화면 밖으로 밀려나지 않게 한다
+        <div className="sticky top-4 z-30 px-4 py-3 rounded-xl bg-down/10 border border-down/30 text-down text-sm flex items-start gap-2 shadow-sm backdrop-blur-sm">
           <span className="font-bold shrink-0">!</span>
           <span className="flex-1">{errorMessage}</span>
           <button onClick={() => setErrorMessage('')} className="text-down/70 hover:text-down cursor-pointer text-xs shrink-0" aria-label="닫기">✕</button>
@@ -1348,15 +1369,16 @@ export default function KeywordRankingSection() {
                                   type="text"
                                   autoFocus
                                   value={addValue}
-                                  onChange={e => setAddValue(e.target.value)}
+                                  onChange={e => { setAddValue(e.target.value); if (addError) setAddError(''); }}
                                   onKeyDown={e => {
                                     if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); submitAddKeyword(post); }
                                     if (e.key === 'Escape') closeAddKeyword();
                                   }}
                                   maxLength={40}
                                   placeholder="예: 짧고 좋은 글귀"
-                                  className="w-full px-2 py-1 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none"
+                                  className={`w-full px-2 py-1 text-xs bg-surface border rounded-lg outline-none ${addError ? 'border-down' : 'border-border focus:border-accent'}`}
                                 />
+                                {addError && <p className="text-[10px] text-down leading-snug">{addError}</p>}
                                 <div className="flex items-center gap-1.5">
                                   <button
                                     onClick={() => submitAddKeyword(post)}
@@ -1487,15 +1509,16 @@ export default function KeywordRankingSection() {
                           type="text"
                           autoFocus
                           value={addValue}
-                          onChange={e => setAddValue(e.target.value)}
+                          onChange={e => { setAddValue(e.target.value); if (addError) setAddError(''); }}
                           onKeyDown={e => {
                             if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); submitAddKeyword(post); }
                             if (e.key === 'Escape') closeAddKeyword();
                           }}
                           maxLength={40}
                           placeholder="예: 짧고 좋은 글귀"
-                          className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none"
+                          className={`w-full px-2.5 py-1.5 text-xs bg-surface border rounded-lg outline-none ${addError ? 'border-down' : 'border-border focus:border-accent'}`}
                         />
+                        {addError && <p className="text-[10px] text-down leading-snug">{addError}</p>}
                         <div className="flex items-center gap-1.5">
                           <button onClick={() => submitAddKeyword(post)} disabled={addSaving || !addValue.trim()} className="px-3 py-1.5 rounded-lg bg-accent text-white text-[11px] font-bold cursor-pointer disabled:opacity-50">{addSaving ? '등록 중…' : '등록'}</button>
                           <button onClick={closeAddKeyword} disabled={addSaving} className="px-3 py-1.5 rounded-lg border border-border text-dim text-[11px] font-bold cursor-pointer disabled:opacity-50">닫기</button>
