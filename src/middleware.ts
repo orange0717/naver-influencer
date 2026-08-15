@@ -529,11 +529,15 @@ export async function middleware(request: NextRequest) {
     "'self'",
     "'unsafe-inline'",
     "https://fonts.googleapis.com",
+    // Pretendard 웹폰트 CSS (본문·UI 산세리프). EB Garamond는 Google Fonts로 로드.
+    "https://cdn.jsdelivr.net",
   ];
   const fontSrc = [
     "'self'",
     "data:",
     "https://fonts.gstatic.com",
+    // Pretendard woff2 서브셋 파일 (dynamic-subset)
+    "https://cdn.jsdelivr.net",
   ];
   const imgSrc = [
     "'self'",

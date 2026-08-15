@@ -449,7 +449,7 @@ export default function AiConsultantClient() {
             )}
             <div className="text-center space-y-1.5">
               <h1 className="font-title text-[30px] font-normal text-[#222222]">N인플 AI</h1>
-              <p className="text-[15px] font-normal text-[#777777]">무엇을 도와드릴까요?</p>
+              <p className="font-title text-[17px] font-normal text-[#777777]">무엇을 도와드릴까요?</p>
             </div>
             {(result || error) && (
               <button

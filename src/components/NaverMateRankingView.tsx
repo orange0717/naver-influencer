@@ -68,7 +68,9 @@ export default function NaverMateRankingView() {
           return;
         }
         const data: ApiResponse = await res.json();
-        if (!data.year || data.items.length === 0) {
+        // 아직 아무 분야도 수집되지 않은 경우에만 전체 빈 화면. 특정 분야만 비어 있으면
+        // 분야 칩은 유지하고 인라인 안내만 보여준다(전체 25개 분야 노출 목적).
+        if (!data.year) {
           setState({ kind: 'empty' });
           return;
         }
@@ -139,6 +141,13 @@ export default function NaverMateRankingView() {
         ))}
       </div>
 
+      {items.length === 0 ? (
+        <div className="bg-surface rounded-xl border border-border p-8 text-center">
+          <p className="text-sm text-dim">
+            {category ? `‘${category}’ 분야는 아직 수집된 데이터가 없습니다.` : '아직 수집된 네이버 메이트 데이터가 없습니다.'}
+          </p>
+        </div>
+      ) : (
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         <ul className="divide-y divide-border">
           {items.map((it, idx) => (
@@ -182,6 +191,7 @@ export default function NaverMateRankingView() {
           ))}
         </ul>
       </div>
+      )}
     </div>
   );
 }

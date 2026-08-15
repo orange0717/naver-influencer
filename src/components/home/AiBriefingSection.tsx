@@ -4,11 +4,12 @@ import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'rea
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
-import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import SectionHeader from '@/components/dashboard/SectionHeader';
+import SummaryCards from '@/components/analytics/SummaryCards';
 import PeriodFilter from '@/components/analytics/PeriodFilter';
 import SegmentedFilter, { type SegmentOption } from '@/components/analytics/SegmentedFilter';
 import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar';
+import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import type { BloggerProfile, BlogPost, PostScore, SubScores, BriefingResult, AnalysisEntry } from './AiBriefingSection.helpers';
@@ -80,6 +81,7 @@ export default function AiBriefingSection() {
   const [checkingStage, setCheckingStage] = useState('');
   const [extractingPostId, setExtractingPostId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // postId → 점수 결과 (규칙 기반 AI/SEO/GEO/AEO 점수, Phase 1)
@@ -599,7 +601,7 @@ export default function AiBriefingSection() {
 
   if (authLoading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-6">
         <div className="h-8 w-32 bg-border/30 rounded animate-pulse" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -897,7 +899,7 @@ export default function AiBriefingSection() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {errorMessage && (
         <div className="px-4 py-3 rounded-xl bg-down/10 border border-down/30 text-down text-sm flex items-start gap-2">
           <span className="font-bold shrink-0">!</span>
@@ -917,58 +919,75 @@ export default function AiBriefingSection() {
           <span className="flex-1">{STAGE_LABELS[checkingStage] || '확인 중...'}</span>
         </div>
       )}
-      {/* 헤더 */}
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+      {/* 헤더 + 주요 실행 버튼 — 키워드순위 화면과 동일 구성 */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-title text-2xl font-extrabold">AI 브리핑 · AI 탭</h1>
-          <p className="text-sm text-dim mt-1">
-            내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다
+          <h2 className="text-lg font-bold">AI 브리핑 · AI 탭</h2>
+          <p className="text-xs text-dim mt-1">
+            내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 {blogPostsTotal.toLocaleString()}개
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {!bulkRunning ? (
             <button
               onClick={openBulkModal}
               disabled={blogPosts.length === 0 || bulkLoadingEstimate}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-accent text-white hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
               title="전체 포스팅을 안전 배치(1회 소수·순차)로 확인합니다. 예상 작업량을 먼저 보여드립니다."
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>
               {bulkLoadingEstimate ? '계산 중...' : '전체 업데이트'}
             </button>
           ) : (
             <button
               onClick={() => { bulkAbortRef.current = true; }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-down/10 text-down border border-down/30 hover:bg-down/20 transition cursor-pointer"
+              className="px-4 py-2 bg-down/10 text-down border border-down/30 font-bold rounded-xl hover:bg-down/20 transition cursor-pointer text-sm"
               title="진행 중인 배치 확인을 중단합니다(이미 확인된 결과는 저장됩니다)."
             >
               중단
             </button>
           )}
-          <button
-            onClick={openAuditModal}
-            disabled={blogPosts.length === 0 || auditLoading}
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
-            title="저장된 대표키워드를 점검해 잘못 추출된 것만 다시 추출합니다(무료·네이버 무호출)."
-          >
-            {auditLoading ? '점검 중...' : '대표키워드 점검'}
-          </button>
-          {canDownload && (
+          <div className="relative">
             <button
-              onClick={handleDownload}
-              disabled={blogPosts.length === 0}
-              className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
-              title="포스팅의 AI 브리핑·AI 탭 확인 결과를 CSV 다운로드 (최대 500건)"
+              onClick={() => setMoreMenuOpen(v => !v)}
+              className="px-2.5 py-2 rounded-xl border border-border text-dim hover:text-accent hover:border-accent/40 transition cursor-pointer text-sm"
+              title="더보기"
             >
-              CSV 다운로드
+              ⋯
             </button>
-          )}
-          <button
-            onClick={handleResetResults}
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
-            title="모든 타겟 키워드와 AI 브리핑 데이터 초기화"
-          >
-            초기화
-          </button>
+            {moreMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
+                <div className="absolute right-0 mt-1 z-50 w-44 bg-surface border border-border rounded-xl shadow-lg py-1 text-sm">
+                  <button
+                    onClick={() => { openAuditModal(); setMoreMenuOpen(false); }}
+                    disabled={blogPosts.length === 0 || auditLoading}
+                    className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer disabled:opacity-50"
+                    title="저장된 대표키워드를 점검해 잘못 추출된 것만 다시 추출합니다(무료·네이버 무호출)."
+                  >
+                    {auditLoading ? '점검 중...' : '대표키워드 점검'}
+                  </button>
+                  {canDownload && (
+                    <button
+                      onClick={() => { handleDownload(); setMoreMenuOpen(false); }}
+                      disabled={blogPosts.length === 0}
+                      className="w-full text-left px-3 py-2 hover:bg-bg text-dim cursor-pointer disabled:opacity-50"
+                      title="포스팅의 AI 브리핑·AI 탭 확인 결과를 CSV 다운로드 (최대 500건)"
+                    >
+                      CSV 다운로드
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { handleResetResults(); setMoreMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 hover:bg-bg text-down/70 cursor-pointer"
+                    title="모든 타겟 키워드와 AI 브리핑 데이터 초기화"
+                  >
+                    초기화
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1322,33 +1341,18 @@ export default function AiBriefingSection() {
       {/* 전체 포스팅 목록 — 기본(항상 표시) 관리 화면(스펙 #1). order-1로 단건 도구보다 위에 배치. */}
       <div className="order-1 space-y-4">
 
-      {/* KPI 바 — 전체 블로그 기준 종합 인용 상태(스펙 #17/#21) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <AnimatedStatCard label="전체 포스팅" value={blogPostsTotal} color="dim" />
-        <AnimatedStatCard label="AI 인용" value={citedTotal} description="브리핑·탭 중 1곳 이상" color="up" />
-        <AnimatedStatCard label="일부 인용" value={countOf('partial')} color="gold" />
-        <AnimatedStatCard label="미인용" value={countOf('not_cited')} color="down" />
-        <AnimatedStatCard label="미확인" value={countOf('unchecked')} color="dim" />
-        <AnimatedStatCard label="확인실패" value={countOf('failed')} color="gold" />
-      </div>
-
-      {/* 포스팅 수(페이지당) 선택 + 총계 */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1 bg-surface rounded-lg border border-border p-0.5">
-          {[30, 60, 90].map(n => (
-            <button key={n} onClick={() => { setPostsPerPage(n); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                postsPerPage === n ? 'bg-accent text-white' : 'text-dim hover:text-text'
-              }`}
-            >
-              {n}개씩
-            </button>
-          ))}
-        </div>
-        <span className="text-xs text-dim">
-          전체 {blogPostsTotal.toLocaleString()}개 · 필터 {filteredPosts.length.toLocaleString()}개
-        </span>
-      </div>
+      {/* 요약 카드 — 키워드순위 화면과 동일한 SummaryCards(kpi) */}
+      <SummaryCards
+        loading={postsLoading}
+        cards={[
+          { key: 'total', label: '전체 포스팅', value: blogPostsTotal, color: 'accent' },
+          { key: 'cited', label: 'AI 인용', value: citedTotal, color: 'up', description: '브리핑·탭 중 1곳 이상' },
+          { key: 'partial', label: '일부 인용', value: countOf('partial'), color: 'gold' },
+          { key: 'not_cited', label: '미인용', value: countOf('not_cited'), color: 'down' },
+          { key: 'unchecked', label: '미확인', value: countOf('unchecked'), color: 'dim' },
+          { key: 'failed', label: '확인실패', value: countOf('failed'), color: 'gold' },
+        ]}
+      />
 
       {/* 필터 영역 — 키워드순위 화면과 동일 구성(기간·상태·검색·정렬) (스펙 #1/#17) */}
       <div className="flex flex-col gap-3">
@@ -1373,11 +1377,16 @@ export default function AiBriefingSection() {
             <option value="oldest">오래된순</option>
             <option value="title">제목순</option>
           </select>
+          <select value={postsPerPage} onChange={e => { setPostsPerPage(Number(e.target.value)); setCurrentPage(1); }} className={selectClass} title="페이지당 포스팅 수">
+            <option value={30}>30개씩</option>
+            <option value={60}>60개씩</option>
+            <option value={90}>90개씩</option>
+          </select>
         </PostSearchBar>
       </div>
 
-      {/* 테이블 */}
-      <GlassCard padding="none">
+      {/* 테이블 — 키워드순위 화면과 동일한 AnalyticsTableShell(제목·건수 헤더) */}
+      <AnalyticsTableShell title="포스팅 목록" loading={postsLoading} count={`${filteredPosts.length.toLocaleString()}개`}>
         {postsLoading ? (
           <div className="p-12 text-center text-dim text-sm">포스팅을 불러오는 중...</div>
         ) : filteredPosts.length === 0 ? (
@@ -1728,7 +1737,7 @@ export default function AiBriefingSection() {
             )}
           </>
         )}
-      </GlassCard>
+      </AnalyticsTableShell>
 
       </div>
     </div>

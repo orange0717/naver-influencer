@@ -15,8 +15,9 @@ export interface SummaryCard {
 }
 
 export default function SummaryCards({ cards, loading }: { cards: SummaryCard[]; loading?: boolean }) {
-  // 노출 현황과 동일: 2열(모바일) → 5열(md). 카드가 4개면 4열.
-  const mdCols = cards.length <= 4 ? 'md:grid-cols-4' : 'md:grid-cols-5';
+  // 노출 현황과 동일: 2열(모바일) → 5열(md). 카드가 4개면 4열, 6개면 md 3열·lg 6열.
+  const mdCols =
+    cards.length <= 4 ? 'md:grid-cols-4' : cards.length === 5 ? 'md:grid-cols-5' : 'md:grid-cols-3 lg:grid-cols-6';
   return (
     <div className={`grid grid-cols-2 ${mdCols} gap-3`}>
       {cards.map((c, i) => (
