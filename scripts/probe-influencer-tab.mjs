@@ -29,7 +29,7 @@ for (const t of TARGETS) {
     const html = await res.text();
 
     // in.naver.com/{handle}/contents/internal/{id} 등장 순서
-    const inRegex = /in\.naver\.com\/([a-zA-Z0-9_-]+)\/contents\/internal\/(\d+)/g;
+    const inRegex = /in\.naver\.com\/([a-zA-Z0-9_.-]+)\/contents\/internal\/(\d+)/g;
     const seen = new Set();
     let m, idx = 0, targetHit = null;
     const handles = [];

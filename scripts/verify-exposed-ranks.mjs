@@ -16,7 +16,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // in.naver.com/{handle}/contents/internal/{id} 등장순서 매칭
 function matchInfluencerContentByHandle(html, blogIdLower, rankBase) {
-  const inRegex = /in\.naver\.com\/([a-zA-Z0-9_-]+)\/contents\/internal\/(\d+)/g;
+  const inRegex = /in\.naver\.com\/([a-zA-Z0-9_.-]+)\/contents\/internal\/(\d+)/g;
   const seen = new Set();
   let rank = rankBase;
   let m;

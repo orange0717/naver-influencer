@@ -83,14 +83,18 @@ export type RankCheckResult = {
   checkedAt: string;
 };
 
+// 인플루언서 handle에는 점이 들어갈 수 있다(simple.arti). 점을 빼면 그 항목이 통째로 안 잡혀
+// 뒤 순위가 그만큼 당겨진다 — "한국소설" 2위 글이 1위로 표시되던 원인.
+const IN_CONTENT_REGEX_SOURCE = () => /in\.naver\.com\/([a-zA-Z0-9_.-]+)\/contents\/internal\/(\d+)/g;
+
 /**
  * 신형 인플루언서 콘텐츠(in.naver.com/{handle}/contents/internal/{id}) 링크를 등장 순서로 세어
  * handle 이 handles 집합(blog_id·naver_id 등)에 속하는 첫 항목의 순위를 반환한다. 없으면 null.
  * 신형 마크업엔 data-cr-on="r=" 순위 속성이 없어 DOM 등장 순서를 순위로 사용한다.
  * (blog logNo ↔ 인플루언서 contentId는 체계가 달라 글 단위 정밀 매칭은 불가 — handle 기준 근사)
  */
-function matchInfluencerContentByHandle(html: string, handles: Set<string>, rankBase: number): number | null {
-  const inRegex = /in\.naver\.com\/([a-zA-Z0-9_-]+)\/contents\/internal\/(\d+)/g;
+export function matchInfluencerContentByHandle(html: string, handles: Set<string>, rankBase: number): number | null {
+  const inRegex = IN_CONTENT_REGEX_SOURCE();
   const seen = new Set<string>();
   let rank = rankBase;
   let m;
@@ -290,7 +294,7 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
 
 /** 인플루언서탭 결과에서 서로 다른 in.naver.com 콘텐츠 개수 — 조회 범위(스캔 깊이) 산정용 */
 function countInfluencerEntries(html: string): number {
-  const inRegex = /in\.naver\.com\/([a-zA-Z0-9_-]+)\/contents\/internal\/(\d+)/g;
+  const inRegex = IN_CONTENT_REGEX_SOURCE();
   const seen = new Set<string>();
   let m;
   while ((m = inRegex.exec(html)) !== null) seen.add(`${m[1]}/${m[2]}`);
