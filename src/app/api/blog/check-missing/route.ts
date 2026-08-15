@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         let keywordCandidates: string[] | undefined;
         if (!keyword && postId) {
           try {
-            const rep = await getOrPersistRepresentativeKeyword(blogId, String(postId), postTitle || '');
+            const rep = await getOrPersistRepresentativeKeyword(blogId, String(postId), postTitle || '', { allowAI: true });
             keywordCandidates = [rep.representativeKeyword, ...(rep.candidates || [])].filter((k): k is string => Boolean(k));
           } catch (e) {
             console.warn(`[check-missing] 대표 키워드 조회 실패 blogId=${blogId} postId=${postId}:`, e);

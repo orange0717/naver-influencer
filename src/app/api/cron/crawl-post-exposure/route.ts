@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
             // §3·§5 대표/연관 키워드를 검색 후보로 함께 사용(제목만으론 못 잡는 노출 방지, 예: 인플루언서탭 상위)
             let keywordCandidates: string[] | undefined;
             try {
-              const rep = await getOrPersistRepresentativeKeyword(blogId, post.id, post.title);
+              const rep = await getOrPersistRepresentativeKeyword(blogId, post.id, post.title, { allowAI: true });
               keywordCandidates = [rep.representativeKeyword, ...(rep.candidates || [])].filter((k): k is string => Boolean(k));
             } catch (e) {
               console.warn(`[crawl-post-exposure] 대표 키워드 조회 실패 ${blogId}/${post.id}:`, e);

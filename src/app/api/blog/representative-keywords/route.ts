@@ -25,8 +25,9 @@ export async function GET(request: NextRequest) {
   const title = request.nextUrl.searchParams.get('title') || '';
   const doScreen = request.nextUrl.searchParams.get('screen') === '1';
   const allowBody = request.nextUrl.searchParams.get('refine') === '1';
-  // ai=1: 규칙+본문으로도 애매할 때만 Claude Haiku 1회 보정(하이브리드, 스펙 #2). 정밀 재추출 버튼 전용.
-  const allowAI = request.nextUrl.searchParams.get('ai') === '1';
+  // 규칙+본문으로도 애매할 때만 Claude Haiku 1회 보정(하이브리드, 스펙 #2). 결과는 30일 캐시되어 재호출되지 않는다.
+  // ai=0으로 명시할 때만 끈다 — 저신뢰 대표 키워드가 미노출/순위/브리핑에 그대로 쓰이는 것을 막기 위함.
+  const allowAI = request.nextUrl.searchParams.get('ai') !== '0';
 
   if (!blogId || !postId) {
     return NextResponse.json({ error: 'blogId와 postId가 필요합니다.' }, { status: 400 });
