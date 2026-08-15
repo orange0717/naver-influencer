@@ -35,6 +35,7 @@ import {
   CitationStatusBadge,
   CitationDetailPanel,
   ExtractedKeywordsCell,
+  AddKeywordControl,
 } from './AiBriefingSection.helpers';
 import CheckProgress from '@/components/analytics/CheckProgress';
 import { extractRepresentativeKeyword } from '@/lib/representative-keyword-client';
@@ -47,6 +48,7 @@ import {
   type CitationState,
 } from '@/lib/ai-citation-status';
 import { BULK_RUN_CAP, BATCH_DELAY_MS, CITATION_FRESH_TTL_MS } from '@/lib/ai-citation-batch';
+import { MAX_KEYWORDS_PER_POST, normalizeForCompare } from './KeywordRankingSection.helpers';
 
 /** ai-citation-estimate API 응답(스펙 #9~#12) */
 interface BulkEstimate {
@@ -97,6 +99,10 @@ export default function AiBriefingSection() {
   // postId → 키워드 목록. 키워드순위(keyword_rank_lookups)와 "같은" 저장소에서 읽어온다(스펙 #10).
   // 이 화면은 키워드를 새로 만들지 않고, 이 목록의 각 키워드에 대한 브리핑·탭 결과만 덧붙인다.
   const [postKeywords, setPostKeywords] = useState<Record<string, string[]>>({});
+  // 키워드 컬럼에서 직접 추가 중인 포스팅(postId) + 입력값 — 키워드순위와 같은 방식/같은 저장소
+  const [addingFor, setAddingFor] = useState('');
+  const [addValue, setAddValue] = useState('');
+  const [addError, setAddError] = useState('');
   const [keywordMeta, setKeywordMeta] = useState<Record<string, KeywordMeta>>({});
   // "postId::keyword" → BriefingResult
   const [briefingResults, setBriefingResults] = useState<Record<string, BriefingResult>>({});
@@ -953,6 +959,42 @@ export default function AiBriefingSection() {
     checkSingleKeyword(post, keyword);
   };
 
+  const openAddKeyword = (postId: string) => { setAddingFor(postId); setAddValue(''); setAddError(''); };
+  const closeAddKeyword = () => { setAddingFor(''); setAddValue(''); setAddError(''); };
+
+  /**
+   * 키워드 컬럼의 '＋ 키워드 추가' — 키워드순위와 같은 저장소(keyword_rank_lookups)에 넣는다(스펙 #10).
+   * ⚠️ PUT은 "목록에 없는 키워드는 삭제" 시맨틱이라 반드시 기존 전체 목록에 이어붙여 보낸다.
+   * 등록만 하고 자동 확인은 하지 않는다 — 브리핑 확인은 건당 30~50초라 사용자가 '검사'로 직접 시작한다.
+   */
+  const submitAddKeyword = (post: BlogPost) => {
+    const kw = addValue.trim();
+    if (!kw || !profile) return;
+    setAddError('');
+
+    const existing = postKeywords[post.id] || [];
+    const norm = normalizeForCompare(kw);
+    const rep = repKeywords[post.id]?.keyword;
+    const known = new Set([...existing, ...(rep ? [rep] : [])].map(normalizeForCompare));
+    if (known.has(norm)) {
+      setAddError(
+        rep && normalizeForCompare(rep) === norm
+          ? `'${kw}'는 이미 대표 키워드입니다.`
+          : `'${kw}'는 이미 이 포스팅에 등록된 키워드입니다.`,
+      );
+      return;
+    }
+    if (existing.length >= MAX_KEYWORDS_PER_POST) {
+      setAddError(`이 포스팅은 키워드 ${MAX_KEYWORDS_PER_POST}개를 모두 사용했습니다. 기존 키워드를 삭제한 뒤 추가해주세요.`);
+      return;
+    }
+
+    const next = [...existing, kw];
+    setPostKeywords(prev => ({ ...prev, [post.id]: next }));
+    saveSharedKeywords(profile.blogId, post.id, next, post.url);
+    setAddValue(''); // 입력창은 열어둔 채 비워 연속 등록
+  };
+
   // 제목을 다시 분석해 키워드 후보를 채운다(본문 보정 허용 — 개별 버튼이라 1회성, 스펙 #1/#2).
   const autoExtractRep = async (post: BlogPost, opts: { refine?: boolean } = {}) => {
     setExtractingPostId(post.id);
@@ -1519,10 +1561,33 @@ export default function AiBriefingSection() {
                       />
                     );
 
+                    // '＋ 키워드 추가' 행 — 키워드 열에서 직접 등록한다(키워드순위와 동일 패턴).
+                    const addKeywordRow = (
+                      <tr className="hover:bg-surface-hover transition">
+                        <td className="px-4 py-2" />
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2 align-top text-center">
+                          <AddKeywordControl
+                            open={addingFor === post.id}
+                            value={addValue}
+                            error={addError}
+                            atLimit={(postKeywords[post.id] || []).length >= MAX_KEYWORDS_PER_POST}
+                            onOpen={() => openAddKeyword(post.id)}
+                            onClose={closeAddKeyword}
+                            onChange={v => { setAddValue(v); if (addError) setAddError(''); }}
+                            onSubmit={() => submitAddKeyword(post)}
+                          />
+                        </td>
+                        <td colSpan={6} />
+                      </tr>
+                    );
+
                     // 키워드가 없으면 확인할 대상이 없다 — 조회하지 않고 지정 안내만 보여준다(스펙 #9).
                     if (rows.length === 0) {
                       return (
-                        <tr key={post.id} className="hover:bg-surface-hover transition">
+                        <Fragment key={post.id}>
+                        <tr className="hover:bg-surface-hover transition">
                           <td className="px-4 py-3 text-dim text-xs align-top">{no}</td>
                           {titleCell}
                           {extractedCell}
@@ -1536,6 +1601,8 @@ export default function AiBriefingSection() {
                             대표 키워드를 지정하면 AI 브리핑·AI 탭을 확인할 수 있습니다.
                           </td>
                         </tr>
+                        {addKeywordRow}
+                        </Fragment>
                       );
                     }
 
@@ -1624,6 +1691,7 @@ export default function AiBriefingSection() {
                             </Fragment>
                           );
                         })}
+                        {addKeywordRow}
                       </Fragment>
                     );
                   })}
@@ -1742,6 +1810,19 @@ export default function AiBriefingSection() {
                         </div>
                       );
                     })}
+
+                    <div className="pl-7">
+                      <AddKeywordControl
+                        open={addingFor === post.id}
+                        value={addValue}
+                        error={addError}
+                        atLimit={(postKeywords[post.id] || []).length >= MAX_KEYWORDS_PER_POST}
+                        onOpen={() => openAddKeyword(post.id)}
+                        onClose={closeAddKeyword}
+                        onChange={v => { setAddValue(v); if (addError) setAddError(''); }}
+                        onSubmit={() => submitAddKeyword(post)}
+                      />
+                    </div>
                   </div>
                 );
               })}

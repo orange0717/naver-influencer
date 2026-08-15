@@ -157,6 +157,72 @@ export function ExtractedKeywordsCell({
 }
 
 /**
+ * '＋ 키워드 추가' 컨트롤 — 이 포스팅에서 브리핑·탭을 확인할 키워드를 직접 등록한다.
+ * 키워드순위와 같은 저장소에 들어가므로 양쪽 화면에 동시에 나타난다(스펙 #10).
+ */
+export function AddKeywordControl({
+  open, value, error, atLimit, onOpen, onClose, onChange, onSubmit,
+}: {
+  open: boolean;
+  value: string;
+  error: string;
+  atLimit: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={atLimit}
+        className="text-[11px] font-bold text-accent hover:underline cursor-pointer disabled:opacity-40 disabled:no-underline"
+        title={atLimit ? '이 포스팅은 키워드를 모두 사용했습니다' : '이 포스팅에서 확인할 키워드를 직접 등록합니다'}
+      >
+        ＋ 키워드 추가
+      </button>
+    );
+  }
+  return (
+    <div className="space-y-1.5 text-left">
+      <input
+        type="text"
+        autoFocus
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); onSubmit(); }
+          if (e.key === 'Escape') onClose();
+        }}
+        maxLength={40}
+        placeholder="예: 짧고 좋은 글귀"
+        className={`w-full px-2 py-1 text-xs bg-surface border rounded-lg outline-none ${error ? 'border-down' : 'border-border focus:border-accent'}`}
+      />
+      {error && <p className="text-[10px] text-down leading-snug">{error}</p>}
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!value.trim()}
+          className="px-2.5 py-1 rounded-lg bg-accent text-white text-[11px] font-bold hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+        >
+          등록
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-2.5 py-1 rounded-lg border border-border text-dim text-[11px] font-bold hover:bg-bg transition cursor-pointer"
+        >
+          닫기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * 키워드순위가 쓰는 키워드 목록을 그대로 읽어온다(스펙 #1/#10).
  * X-View-Token을 붙이지 않으므로 무료 조회 한도를 소모하지 않는다(analysis-quota requireToken).
  */
