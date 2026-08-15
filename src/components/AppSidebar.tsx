@@ -60,12 +60,15 @@ function NavLink({
   active,
   currentPlan,
   isGuest,
+  authPending,
   onNavigate,
 }: {
   item: SidebarItem;
   active: boolean;
   currentPlan: PlanTier;
   isGuest: boolean;
+  /** 인증 조회가 아직 안 끝났거나 백엔드 장애 — 권한을 모르는 상태 */
+  authPending: boolean;
   onNavigate: () => void;
 }) {
   const router = useRouter();
@@ -90,7 +93,7 @@ function NavLink({
   }
 
   // 비회원(로그인·데모 모두 아님): 회원 전용 메뉴는 라우팅 대신 회원 전용 모달로 유도
-  if (item.authOnly && isGuest) {
+  if (item.authOnly && isGuest && !authPending) {
     return (
       <button
         type="button"
@@ -106,7 +109,8 @@ function NavLink({
     );
   }
 
-  const locked = !canAccess(item.requiredPlan, currentPlan);
+  // 권한을 아직 모르는 동안 잠금으로 그리면 구독자에게 자물쇠가 번쩍인다 → 평범한 링크로 두고 페이지 자체 게이트에 맡긴다
+  const locked = !authPending && !canAccess(item.requiredPlan, currentPlan);
 
   if (locked) {
     return (
@@ -166,6 +170,7 @@ function SidebarContent({
   pathname,
   currentPlan,
   isGuest,
+  authPending,
   isInDesktopApp,
   onNavigate,
   showFooterLinks = true,
@@ -173,6 +178,7 @@ function SidebarContent({
   pathname: string;
   currentPlan: PlanTier;
   isGuest: boolean;
+  authPending: boolean;
   isInDesktopApp: boolean;
   onNavigate: () => void;
   /** 공지사항/커뮤니티/성장후기/이용권/서비스소개 — 데스크탑에서는 헤더 우측 네비로 이동했으므로 숨김 */
@@ -221,6 +227,7 @@ function SidebarContent({
           active={SIDEBAR_HOME.href === activeHref}
           currentPlan={currentPlan}
           isGuest={isGuest}
+          authPending={authPending}
           onNavigate={onNavigate}
         />
         {SIDEBAR_GROUPS.map((group) => {
@@ -248,6 +255,7 @@ function SidebarContent({
                         active={item.href !== '#' && item.href === activeHref}
                         currentPlan={currentPlan}
                         isGuest={isGuest}
+                        authPending={authPending}
                         onNavigate={onNavigate}
                       />
                     ))}
@@ -280,7 +288,7 @@ function SidebarContent({
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isError } = useAuth();
   const { collapsed, toggleCollapsed, mobileOpen, closeMobile } = useSidebar();
   const [isInDesktopApp, setIsInDesktopApp] = useState(false);
 
@@ -296,7 +304,11 @@ export default function AppSidebar() {
 
   const hidden = SIDEBAR_HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-  if (isLoading || hidden) return null;
+  if (hidden) return null;
+
+  // 인증 조회 지연·백엔드 장애 때 사이드바를 통째로 감추면 화면이 무너지고 이동 수단이 사라진다.
+  // 권한을 모르는 동안에는 잠금 표시 없이 메뉴만 그대로 띄운다.
+  const authPending = isLoading || isError;
 
   // 비회원 — 메뉴는 보이되 회원 전용 항목은 클릭 시 모달로 유도
   const isGuest = !user.id;
@@ -344,6 +356,7 @@ export default function AppSidebar() {
             pathname={pathname}
             currentPlan={currentPlan}
             isGuest={isGuest}
+            authPending={authPending}
             isInDesktopApp={isInDesktopApp}
             onNavigate={() => {}}
             showFooterLinks={false}
@@ -374,6 +387,7 @@ export default function AppSidebar() {
             pathname={pathname}
             currentPlan={currentPlan}
             isGuest={isGuest}
+            authPending={authPending}
             isInDesktopApp={isInDesktopApp}
             onNavigate={closeMobile}
           />

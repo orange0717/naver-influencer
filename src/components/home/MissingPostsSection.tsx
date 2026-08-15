@@ -202,7 +202,7 @@ export default function MissingPostsSection() {
   const autoCheckedRef = useRef(false); // 진입 자동검사 1회만 실행
 
   // 회원/권한 (§3·§12·§13) + 크레딧 정책 모달 (§2·§6·§8)
-  const { user } = useAuth();
+  const { user, isError: authError } = useAuth();
   const isMember = !!user.id;
   const { openGate } = useMemberOnlyGate();
   const router = useRouter();
@@ -227,6 +227,9 @@ export default function MissingPostsSection() {
     (async () => {
       const p = await getProfileFromApi();
       setProfile(p);
+      // 프로필을 못 받으면 fetchPosts 가 아예 호출되지 않아 초기값 true 인 postsLoading 이
+      // 영원히 풀리지 않는다 → 스피너 무한 회전. 여기서 로딩을 직접 종료한다.
+      if (!p) setPostsLoading(false);
     })();
   }, []);
 
@@ -801,6 +804,23 @@ export default function MissingPostsSection() {
           <div className="flex items-center justify-center py-10 text-dim text-sm">
             <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
             포스트를 불러오는 중...
+          </div>
+        ) : authError ? (
+          // 백엔드 장애 — "블로그 미연결"이나 "비회원"으로 오인 안내하면 안 된다
+          <div className="text-center py-10 text-dim text-sm">
+            일시적으로 정보를 불러오지 못했습니다.<br />
+            <span className="text-xs">서버 상태를 확인 중입니다. 잠시 후 새로고침해주세요.</span>
+          </div>
+        ) : !isMember ? (
+          <div className="text-center py-10 text-dim text-sm">
+            로그인 후 내 블로그의 노출 현황을 확인할 수 있습니다.
+            <button
+              type="button"
+              onClick={() => openGate('/my/missing-posts')}
+              className="ml-2 text-accent underline cursor-pointer"
+            >
+              로그인
+            </button>
           </div>
         ) : !profile?.blogId ? (
           <div className="text-center py-10 text-dim text-sm">블로그가 연결되지 않았습니다. 프로필에서 블로그를 연결하면 노출 상태 검사가 시작됩니다.</div>

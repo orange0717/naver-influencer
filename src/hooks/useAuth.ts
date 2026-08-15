@@ -59,7 +59,7 @@ async function fetchUser(): Promise<UserInfo> {
 export function useAuth() {
   const queryClient = useQueryClient();
 
-  const { data: user = defaultUser, isLoading } = useQuery({
+  const { data: user = defaultUser, isLoading, isError } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: fetchUser,
     staleTime: 5 * 60 * 1000,
@@ -83,5 +83,6 @@ export function useAuth() {
     window.location.href = '/';
   };
 
-  return { user, isLoading, logout };
+  // isError = 재시도까지 모두 실패(백엔드 장애). "비회원"과 구분해야 UI가 로그인 유도를 잘못 띄우지 않는다.
+  return { user, isLoading, isError, logout };
 }
