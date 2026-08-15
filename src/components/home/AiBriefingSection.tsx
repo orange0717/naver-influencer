@@ -1337,18 +1337,19 @@ export default function AiBriefingSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[1040px] text-sm table-fixed">
+              {/* 열 폭은 비율 배분 — 고정 px면 넓은 모니터에서 제목 열이 남는 폭을 전부 흡수해 키워드가 오른쪽으로 밀린다. */}
+              <table className="w-full min-w-[1200px] text-sm table-fixed">
                 <thead>
-                  <tr className="border-b border-border/50 text-[11px] text-dim uppercase">
-                    <th className="text-left px-4 py-3 font-semibold w-12">#</th>
-                    <th className="text-left px-3 py-3 font-semibold">포스팅 제목</th>
-                    <th className="text-center px-3 py-3 font-semibold w-64">대표 키워드</th>
-                    <th className="text-center px-3 py-3 font-semibold w-32">AI 브리핑</th>
-                    <th className="text-center px-3 py-3 font-semibold w-32">AI 탭</th>
-                    <th className="text-center px-3 py-3 font-semibold w-24">마지막 확인</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">상태</th>
-                    <th className="text-center px-3 py-3 font-semibold w-20">다시 검사</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">상세</th>
+                  <tr className="border-b border-border/50 text-[11px] text-dim uppercase whitespace-nowrap">
+                    <th className="text-left px-4 py-3 font-semibold w-[4%]">#</th>
+                    <th className="text-left px-3 py-3 font-semibold w-[29%]">포스팅 제목</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[23%]">대표 키워드</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[9%]">AI 브리핑</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[9%]">AI 탭</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[8%]">마지막 확인</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[7%]">상태</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[6%]">다시 검사</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[5%]">상세</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -1422,7 +1423,7 @@ export default function AiBriefingSection() {
                           const kwType = keywordMeta[key]?.keywordType;
                           return (
                             <Fragment key={key}>
-                              <tr className="hover:bg-surface-hover transition">
+                              <tr className="group hover:bg-surface-hover transition">
                                 <td className="px-4 py-3 text-dim text-xs align-top">{j === 0 ? no : ''}</td>
                                 {j === 0 ? titleCell : (
                                   <td className="px-3 py-3 align-top text-dim/50 text-xs">↳</td>
@@ -1433,22 +1434,17 @@ export default function AiBriefingSection() {
                                     <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center">
                                       <span aria-hidden />
                                       <span
-                                        className="justify-self-center max-w-full truncate px-2.5 py-1 rounded-full bg-bg border border-border/60 text-[11px] text-text"
-                                        title={row.keyword}>
+                                        className={`justify-self-center max-w-full truncate px-2.5 py-1 rounded-full bg-bg border text-[11px] text-text ${
+                                          row.isPrimary && needsReview ? 'border-down/40' : 'border-border/60'
+                                        }`}
+                                        title={row.isPrimary && needsReview ? `${row.keyword} — 대표 키워드 확인 필요` : row.keyword}>
                                         {row.keyword}
                                       </span>
-                                      <span className="flex items-center justify-end gap-1">
+                                      <span className="flex items-center justify-end">
                                         {row.isPrimary ? (
-                                          <>
-                                            {repKeywords[post.id]?.source === 'manual' ? (
-                                              <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" title="직접 지정한 대표 키워드" />
-                                            ) : needsReview ? (
-                                              <span className="w-1.5 h-1.5 rounded-full bg-down shrink-0" title="대표 키워드 확인 필요" />
-                                            ) : null}
-                                            <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(row.keyword); }}
-                                              className="text-[10px] text-dim hover:text-accent cursor-pointer hover:underline shrink-0"
-                                              title="대표 키워드 직접 수정 — 키워드순위와 같은 값이 바뀝니다">수정</button>
-                                          </>
+                                          <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(row.keyword); }}
+                                            className="text-[10px] text-dim hover:text-accent cursor-pointer hover:underline shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                                            title="대표 키워드 직접 수정 — 키워드순위와 같은 값이 바뀝니다">수정</button>
                                         ) : (
                                           <span className="text-[9px] text-dim/70 bg-bg px-1.5 py-0.5 rounded-full shrink-0"
                                             title={kwType === 'variant' ? '변형 키워드' : kwType === 'secondary' ? '보조 키워드' : '추가 키워드'}>
