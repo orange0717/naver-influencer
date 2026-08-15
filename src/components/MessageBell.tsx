@@ -87,7 +87,7 @@ export default function MessageBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-surface rounded-xl border border-border shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-surface rounded-lg border border-border shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="text-sm font-bold">쪽지함</span>
             <Link href="/messages" className="text-[11px] text-accent font-semibold hover:underline" onClick={() => setOpen(false)}>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
+import FilterPills from '@/components/analytics/FilterPills';
 
 const CATEGORIES = [
   { value: 'bug', label: '버그 신고' },
@@ -113,23 +114,12 @@ export default function FeedbackButton() {
                   </button>
                 </div>
 
-                <div className="flex gap-1.5 mb-3" role="radiogroup" aria-label="피드백 카테고리">
-                  {CATEGORIES.map(c => (
-                    <button
-                      key={c.value}
-                      onClick={() => setCategory(c.value)}
-                      role="radio"
-                      aria-checked={category === c.value}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/40 ${
-                        category === c.value
-                          ? 'bg-accent text-white'
-                          : 'bg-border/30 text-dim hover:bg-border/50'
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
+                <FilterPills
+                  className="mb-3"
+                  options={CATEGORIES.map(c => ({ value: c.value, label: c.label }))}
+                  value={category}
+                  onChange={setCategory}
+                />
 
                 <textarea
                   value={message}
@@ -137,7 +127,7 @@ export default function FeedbackButton() {
                   placeholder="개선 사항이나 버그를 알려주세요..."
                   rows={4}
                   maxLength={1000}
-                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent resize-none"
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent resize-none"
                   autoFocus
                 />
 

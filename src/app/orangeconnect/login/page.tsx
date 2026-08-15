@@ -136,14 +136,14 @@ export default function AdLoginPage() {
               <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={handleKeyDown}
                 placeholder="example@company.com" autoFocus
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKeyDown}
                 placeholder="비밀번호를 입력해주세요"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             {error && (

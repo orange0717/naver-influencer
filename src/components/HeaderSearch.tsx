@@ -86,7 +86,7 @@ export default function HeaderSearch() {
         <SearchIcon />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-border bg-surface shadow-lg overflow-hidden z-[100]">
+        <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-border bg-surface shadow-lg overflow-hidden z-[100]">
           <input
             ref={inputRef}
             value={query}

@@ -403,7 +403,7 @@ export default function ProfilePage() {
       )}
 
       {/* 기본 정보 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
         <div className="flex items-center gap-4">
           <label className="relative w-14 h-14 rounded-full cursor-pointer group shrink-0">
             {avatarUrl ? (
@@ -525,7 +525,7 @@ export default function ProfilePage() {
       />
 
       {/* 구독 등급 */}
-      <div className="bg-surface rounded-xl border border-border p-5">
+      <div className="bg-surface rounded-lg border border-border p-5">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-bold text-sm mb-1">이용권</h3>
@@ -558,7 +558,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 인플루언서 연결 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
         <h3 className="font-bold text-sm">연결된 인플루언서</h3>
         {linkedInfluencer ? (
           <>
@@ -595,9 +595,9 @@ export default function ProfilePage() {
       </div>
 
       {/* 블로그 주소 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h3 className="font-bold text-sm">블로그 주소</h3>
-        <div className="flex items-center bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+        <div className="flex items-center bg-bg border border-border rounded-lg overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
           <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">
             blog.naver.com/
           </span>
@@ -616,7 +616,7 @@ export default function ProfilePage() {
       </div>
 
       {/* SNS 링크 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
         <div>
           <h3 className="font-bold text-sm">SNS 링크</h3>
           <p className="text-xs text-dim mt-1">SNS 계정을 등록하면 프로필에 표시됩니다.</p>
@@ -663,7 +663,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 프로모션 코드 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h3 className="font-bold text-sm">프로모션 코드</h3>
         <p className="text-[11px] text-dim">프로모션 코드를 입력하면 유료 기능을 무료로 이용할 수 있습니다.</p>
         <div className="flex items-center gap-2">
@@ -718,7 +718,7 @@ export default function ProfilePage() {
       )}
 
       {/* 쿠폰 등록 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h3 className="font-bold text-sm">쿠폰 등록</h3>
         <p className="text-[11px] text-dim">발급받은 무료 체험 쿠폰 코드를 입력하세요.</p>
         <div className="flex items-center gap-2">
@@ -752,7 +752,7 @@ export default function ProfilePage() {
       <NotificationSettingsSection />
 
       {/* 크레딧 잔액 (구독과 별개인 사용량) */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between gap-3 p-4">
           <div>
             <p className="text-xs text-dim">보유 크레딧</p>
@@ -771,7 +771,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 크레딧 사용 내역 */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-lg border border-border overflow-hidden">
         <div className="p-4 border-b border-border">
           <h3 className="font-bold text-sm">최근 크레딧 내역</h3>
         </div>

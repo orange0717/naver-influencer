@@ -685,7 +685,7 @@ function PlatformRow({
   const href = asset?.browser_download_url || fallback;
   const isDirect = !!asset;
   const rowClass =
-    'flex items-center justify-between gap-3 px-4 py-3 bg-surface border border-border rounded-xl transition';
+    'flex items-center justify-between gap-3 px-4 py-3 bg-surface border border-border rounded-lg transition';
   if (downloadLocked) {
     return (
       <div className={`${rowClass} cursor-not-allowed opacity-50`} aria-disabled="true">
@@ -729,7 +729,7 @@ function PlatformRow({
 
 function FeatureCard({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
+    <div className="bg-surface border border-border rounded-lg p-5">
       <p className="text-sm font-bold text-text mb-1.5">{title}</p>
       <p className="text-xs text-dim leading-relaxed">{desc}</p>
     </div>

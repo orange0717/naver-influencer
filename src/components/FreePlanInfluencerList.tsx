@@ -83,7 +83,7 @@ export default function FreePlanInfluencerList() {
       </p>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} size="sm" />
+        <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} />
         <span className="text-xs text-dim font-rank shrink-0">
           {loading ? '수집 중...' : `${total.toLocaleString()}명`}
         </span>
@@ -105,7 +105,7 @@ export default function FreePlanInfluencerList() {
         </div>
       ) : (
         <>
-          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+          <div className="bg-surface rounded-lg border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg/50">

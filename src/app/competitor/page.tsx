@@ -364,7 +364,7 @@ export default function CompetitorPage() {
             </div>
           )}
 
-          <div className="bg-surface rounded-xl border border-border p-5">
+          <div className="bg-surface rounded-lg border border-border p-5">
             <h3 className="font-bold text-sm mb-3">경쟁자 블로그 ID 입력</h3>
             <p className="text-[11px] text-dim mb-2">블로그 ID 또는 URL을 입력하세요 (예: orangelibrary 또는 https://blog.naver.com/orangelibrary)</p>
             <div className="flex gap-2">
@@ -374,7 +374,7 @@ export default function CompetitorPage() {
                 onChange={e => setBlogCompetitorId(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && compareBlog()}
                 placeholder="네이버 블로그 ID 또는 URL"
-                className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
+                className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
               />
               <button
                 onClick={compareBlog}
@@ -403,7 +403,7 @@ export default function CompetitorPage() {
               )}
 
               {/* 경쟁자 블로그 기본 통계 */}
-              <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+              <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-bold text-sm">
                     {blogCompareData.competitor.blogName} 블로그 정보
@@ -514,7 +514,7 @@ export default function CompetitorPage() {
       {/* ─── 포스팅 탭 ─── */}
       {tab === 'posting' && (
         <div className="space-y-4">
-          <div className="bg-surface rounded-xl border border-border p-5">
+          <div className="bg-surface rounded-lg border border-border p-5">
             <h3 className="font-bold text-sm mb-3">포스팅 분석</h3>
             <p className="text-[11px] font-semibold text-text mb-1">포스팅 URL 입력</p>
             <p className="text-[11px] text-dim mb-2">
@@ -531,7 +531,7 @@ export default function CompetitorPage() {
                 }}
                 onKeyDown={e => e.key === 'Enter' && loadCompetitorPosts()}
                 placeholder="https://blog.naver.com/orangelibrary/글번호"
-                className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
+                className="flex-1 px-4 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition"
               />
               <button
                 onClick={loadCompetitorPosts}
@@ -547,7 +547,7 @@ export default function CompetitorPage() {
           </div>
 
           {competitorPosts.length > 0 && (
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="bg-surface rounded-lg border border-border overflow-hidden">
               <div className="px-5 py-3 border-b border-border bg-bg/30 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-[11px] text-dim mt-0.5">

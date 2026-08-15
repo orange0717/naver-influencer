@@ -114,7 +114,7 @@ export default function FansSyncPage() {
         </div>
 
         {/* STEP 1 */}
-        <div className="mb-4 p-5 bg-surface rounded-xl border border-border">
+        <div className="mb-4 p-5 bg-surface rounded-lg border border-border">
           <div className="flex items-center gap-2.5">
             <StepBadge n={1} />
             <h2 className="text-base font-bold text-text">버튼을 북마크바로 드래그해 저장</h2>
@@ -152,7 +152,7 @@ export default function FansSyncPage() {
         </div>
 
         {/* STEP 2 */}
-        <div className="mb-4 p-5 bg-surface rounded-xl border border-border">
+        <div className="mb-4 p-5 bg-surface rounded-lg border border-border">
           <div className="flex items-center gap-2.5">
             <StepBadge n={2} />
             <h2 className="text-base font-bold text-text">내 네이버 인플루언서 홈에서 버튼 클릭</h2>
@@ -176,7 +176,7 @@ export default function FansSyncPage() {
         </div>
 
         {/* STEP 3 */}
-        <div className="mb-5 p-5 bg-surface rounded-xl border border-border">
+        <div className="mb-5 p-5 bg-surface rounded-lg border border-border">
           <div className="flex items-center gap-2.5">
             <StepBadge n={3} />
             <h2 className="text-base font-bold text-text">여기 붙여넣고 업로드</h2>
@@ -225,7 +225,7 @@ export default function FansSyncPage() {
         </div>
 
         {/* 선택: 크롬 확장 (자동화가 필요한 사람만) */}
-        <details className="p-4 bg-surface rounded-xl border border-border">
+        <details className="p-4 bg-surface rounded-lg border border-border">
           <summary className="text-sm font-semibold text-text cursor-pointer">
             매번 누르기 번거롭나요? (선택) 크롬 확장으로 자동화
           </summary>

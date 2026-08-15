@@ -211,7 +211,6 @@ export default function InfluencersListClient() {
         categories={categories}
         selected={category}
         onChange={handleCategoryChange}
-        size="sm"
       />
 
       {/* 정렬 옵션 (모바일은 가로 스크롤, 데스크톱은 wrap) */}
@@ -253,7 +252,7 @@ export default function InfluencersListClient() {
       ) : (
         <>
           {/* Desktop table */}
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+          <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
@@ -387,7 +386,7 @@ export default function InfluencersListClient() {
           <div className="md:hidden space-y-3">
             {influencers.map((inf, i) => (
               <div key={inf.naverId || inf.name + i}
-                className={`bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition ${inf.isStopped || inf.isInactive ? 'opacity-50' : ''}`}>
+                className={`bg-surface rounded-lg border border-border p-4 hover:border-accent/40 transition ${inf.isStopped || inf.isInactive ? 'opacity-50' : ''}`}>
                 <div className="flex items-center gap-3 mb-2">
                   {inf.imageUrl ? (
                     <img src={inf.imageUrl} alt={inf.name} className="w-10 h-10 rounded-full object-cover shrink-0" />

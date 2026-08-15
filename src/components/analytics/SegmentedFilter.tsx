@@ -2,11 +2,12 @@
 
 // 세그먼트 pill 필터 그룹 — 노출 현황의 기간/상태 필터와 동일한 스타일.
 // (active = bg-accent text-white / inactive = text-dim hover:bg-surface-hover)
+import { ReactNode } from 'react';
 import { segmentGroupClass, segmentButtonClass, segmentGroupLgClass, segmentButtonLgClass } from './controls';
 
 export interface SegmentOption<T extends string | number> {
   value: T;
-  label: string;
+  label: ReactNode;
   locked?: boolean; // 🔒 표시(회원 전용 등)
 }
 

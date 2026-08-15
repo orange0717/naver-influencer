@@ -108,7 +108,7 @@ export default function AdminPromoPage() {
       <h1 className="type-page-title">프로모션 코드 발송</h1>
 
       {/* 발송 폼 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-semibold text-dim block mb-1">코드</label>
@@ -150,11 +150,11 @@ export default function AdminPromoPage() {
         value={filter}
         onChange={e => setFilter(e.target.value)}
         placeholder="닉네임, 이메일, 블로그ID, 인플루언서명 검색"
-        className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm"
+        className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm"
       />
 
       {/* 회원 목록 */}
-      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+      <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-[11px] text-dim">

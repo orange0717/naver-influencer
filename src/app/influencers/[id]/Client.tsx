@@ -365,7 +365,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
 
       {/* 참여 키워드 */}
       <div className="relative">
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-lg border border-border overflow-hidden">
           {/* 헤더 + 검색 + 카테고리 드롭다운 */}
           <div className="p-4 border-b border-border space-y-3">
             <div className="flex justify-between items-center">

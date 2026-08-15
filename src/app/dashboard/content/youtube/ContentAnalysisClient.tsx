@@ -108,7 +108,7 @@ export default function ContentAnalysisClient() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="예) https://www.youtube.com/watch?v=xxxxxxxxxxx"
-            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
           />
         </div>
         <label className="flex items-center gap-2 text-xs text-dim cursor-pointer">

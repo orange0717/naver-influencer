@@ -197,7 +197,7 @@ export default function AdSearchPage() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={loading}
-            className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-3 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
           />
           <button
             onClick={() => handleSubmit()}
@@ -272,7 +272,7 @@ export default function AdSearchPage() {
                   <div className="ml-9">
                     <div className="grid md:grid-cols-2 gap-3">
                       {msg.influencers.map(inf => (
-                        <div key={inf.naverId} className="bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
+                        <div key={inf.naverId} className="bg-surface rounded-lg border border-border p-4 hover:border-accent/40 transition">
                           <div className="flex items-start gap-3 mb-3">
                             {inf.imageUrl ? (
                               <img src={inf.imageUrl} alt={inf.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />

@@ -62,15 +62,15 @@ export default function AdminTrialsPage() {
 
       {/* 통계 요약 */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-surface border border-border rounded-xl p-4">
+        <div className="bg-surface border border-border rounded-lg p-4">
           <p className="text-[11px] text-dim font-semibold mb-1">전체 체험자</p>
           <p className="text-xl font-black font-rank">{total.toLocaleString()}</p>
         </div>
-        <div className="bg-surface border border-border rounded-xl p-4">
+        <div className="bg-surface border border-border rounded-lg p-4">
           <p className="text-[11px] text-dim font-semibold mb-1">현재 페이지 가입 전환</p>
           <p className="text-xl font-black font-rank text-up">{convertedCount}</p>
         </div>
-        <div className="bg-surface border border-border rounded-xl p-4">
+        <div className="bg-surface border border-border rounded-lg p-4">
           <p className="text-[11px] text-dim font-semibold mb-1">현재 페이지 미전환</p>
           <p className="text-xl font-black font-rank text-down">{trials.length - convertedCount}</p>
         </div>
@@ -94,7 +94,7 @@ export default function AdminTrialsPage() {
       </form>
 
       {/* 목록 테이블 */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-lg overflow-hidden">
         {loading ? (
           <div className="text-center py-10 text-dim text-sm">로딩 중...</div>
         ) : trials.length === 0 ? (

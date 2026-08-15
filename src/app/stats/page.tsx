@@ -57,7 +57,7 @@ export default function StatsPage() {
         <p className="text-sm text-dim">전체 {data.grandTotal.toLocaleString()}명</p>
       </div>
 
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

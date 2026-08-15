@@ -68,7 +68,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 최근 가입 회원 */}
-      <div className="bg-surface rounded-xl border border-border">
+      <div className="bg-surface rounded-lg border border-border">
         <h2 className="text-sm font-bold p-5 pb-3">최근 가입 회원</h2>
         <table className="w-full text-sm">
           <thead>
@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 최근 신고 */}
-      <div className="bg-surface rounded-xl border border-border">
+      <div className="bg-surface rounded-lg border border-border">
         <h2 className="text-sm font-bold p-5 pb-3">최근 신고</h2>
         {data.recentReports.length === 0 ? (
           <div className="text-center py-8 text-dim text-xs border-t border-border">신고가 없습니다.</div>
@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Google 자동매칭 로그 */}
-      <div className="bg-surface rounded-xl border border-border">
+      <div className="bg-surface rounded-lg border border-border">
         <h2 className="text-sm font-bold p-5 pb-3">Google 자동매칭 로그</h2>
         {data.recentMatchLogs.length === 0 ? (
           <div className="text-center py-8 text-dim text-xs border-t border-border">매칭 기록이 없습니다.</div>
@@ -149,7 +149,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 30일 가입 추이 */}
-      <div className="bg-surface rounded-xl border border-border p-5">
+      <div className="bg-surface rounded-lg border border-border p-5">
         <h2 className="text-sm font-bold mb-3">최근 30일 가입 추이</h2>
         <div className="flex items-end gap-[2px] h-32">
           {data.dailySignups.map(d => (

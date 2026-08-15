@@ -569,7 +569,7 @@ export default function AuthModal() {
                   value={keywordCategory}
                   onChange={(e) => setKeywordCategory(e.target.value)}
                   style={!keywordCategory ? { color: 'var(--color-dim)' } : undefined}
-                  className={`w-full cursor-pointer appearance-auto rounded-xl border border-border bg-surface px-4 py-3 text-sm transition focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30 ${
+                  className={`w-full cursor-pointer appearance-auto rounded-lg border border-border bg-surface px-4 py-3 text-sm transition focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30 ${
                     keywordCategory ? 'text-text' : 'text-dim'
                   }`}
                 >

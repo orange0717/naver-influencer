@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="example@email.com"
                   autoFocus
-                  className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
+                  className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
                 />
               </div>
 

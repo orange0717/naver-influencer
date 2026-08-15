@@ -61,7 +61,7 @@ export function GuestDashboard() {
             </Link>
             <Link
               href="/"
-              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-border bg-surface font-semibold text-sm hover:border-accent transition-colors"
+              className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-border bg-surface font-semibold text-sm hover:border-accent transition-colors"
             >
               홈으로
             </Link>

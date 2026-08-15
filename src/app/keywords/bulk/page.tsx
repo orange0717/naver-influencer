@@ -233,7 +233,7 @@ export default function BulkSearchVolumePage() {
                 onChange={e => setInput(e.target.value)}
                 placeholder={"다이어트\n맛집\n여행\n강아지 사료\n..."}
                 rows={12}
-                className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors resize-none font-mono"
+                className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors resize-none font-mono"
               />
               <div className="flex gap-2">
                 <button
@@ -341,7 +341,7 @@ export default function BulkSearchVolumePage() {
               </div>
 
               {/* Desktop 테이블 */}
-              <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+              <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border bg-bg/50">
@@ -404,7 +404,7 @@ export default function BulkSearchVolumePage() {
                 {sorted.map((kw, i) => (
                   <div
                     key={kw.keyword + i}
-                    className={`bg-surface rounded-xl border border-border p-4 ${!kw.found ? 'opacity-50' : ''}`}
+                    className={`bg-surface rounded-lg border border-border p-4 ${!kw.found ? 'opacity-50' : ''}`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -447,7 +447,7 @@ export default function BulkSearchVolumePage() {
                     onChange={e => setRelatedKeyword(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleRelatedSearch(); }}
                     placeholder="예) 천안 맛집"
-                    className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+                    className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
                   />
                   <button
                     onClick={handleRelatedSearch}
@@ -580,7 +580,7 @@ export default function BulkSearchVolumePage() {
               )}
 
               {/* Desktop 테이블 */}
-              <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+              <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border bg-bg/50">
@@ -622,7 +622,7 @@ export default function BulkSearchVolumePage() {
               {/* Mobile 카드 */}
               <div className="md:hidden space-y-2">
                 {relatedSorted.map((kw, i) => (
-                  <div key={kw.keyword + i} className="bg-surface rounded-xl border border-border p-4">
+                  <div key={kw.keyword + i} className="bg-surface rounded-lg border border-border p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className="text-sm font-bold text-dim font-rank shrink-0">#{i + 1}</span>

@@ -168,7 +168,6 @@ export default function InfluencersListPage() {
         categories={categories}
         selected={category}
         onChange={handleCategoryChange}
-        size="sm"
       />
 
       <div className="flex flex-nowrap md:flex-wrap items-center gap-2 overflow-x-auto md:overflow-x-visible pb-1 md:pb-0 -mx-1 px-1">
@@ -210,7 +209,7 @@ export default function InfluencersListPage() {
       ) : (
         <>
           {/* Desktop table */}
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+          <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
@@ -284,7 +283,7 @@ export default function InfluencersListPage() {
           <div className="md:hidden space-y-3">
             {influencers.map((inf, i) => (
               <div key={inf.naverId || inf.name + i}
-                className="bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
+                className="bg-surface rounded-lg border border-border p-4 hover:border-accent/40 transition">
                 <div className="flex items-center gap-3 mb-2">
                   {inf.imageUrl ? (
                     <img src={inf.imageUrl} alt={inf.name} className="w-10 h-10 rounded-full object-cover shrink-0" />

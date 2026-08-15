@@ -183,7 +183,6 @@ export default function DiscoverInfluencersView() {
         categories={['전체', ...DISCOVER_CATEGORIES.map(c => c.name)]}
         selected={category}
         onChange={setCategory}
-        size="sm"
       />
 
       <div className="flex flex-nowrap md:flex-wrap items-center gap-2 overflow-x-auto md:overflow-x-visible pb-1 md:pb-0 -mx-1 px-1">
@@ -220,7 +219,7 @@ export default function DiscoverInfluencersView() {
       ) : (
         <>
           {/* Desktop table */}
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+          <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
@@ -263,7 +262,7 @@ export default function DiscoverInfluencersView() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             {items.map(item => (
-              <div key={item.urlId} className="bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
+              <div key={item.urlId} className="bg-surface rounded-lg border border-border p-4 hover:border-accent/40 transition">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold font-rank text-dim">#{item.rank}</span>

@@ -119,7 +119,7 @@ export default function RewriteClient() {
             onChange={e => setText(e.target.value)}
             placeholder="교정·교열·리라이팅할 글을 붙여넣으세요."
             rows={14}
-            className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors resize-none leading-relaxed"
+            className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors resize-none leading-relaxed"
           />
           <div className="flex gap-2">
             <button

@@ -318,7 +318,7 @@ export default function CommunityPostPage() {
         {/* 투표 */}
         {poll && (
           <div className="px-6 pb-4">
-            <div className="bg-bg rounded-xl border border-border p-4 space-y-3">
+            <div className="bg-bg rounded-lg border border-border p-4 space-y-3">
               <p className="text-sm font-bold text-text">{poll.question}</p>
               <div className="space-y-2">
                 {poll.options.map(opt => {
@@ -417,7 +417,7 @@ export default function CommunityPostPage() {
                 placeholder="댓글을 입력하세요"
                 rows={2}
                 maxLength={1000}
-                className="flex-1 px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition resize-none"
+                className="flex-1 px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition resize-none"
               />
               <button
                 onClick={handleComment}

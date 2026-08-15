@@ -313,7 +313,7 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       </Link>
 
       {/* 공지 본문 */}
-      <div className="bg-surface rounded-xl border border-border p-6">
+      <div className="bg-surface rounded-lg border border-border p-6">
         <div className="flex items-center gap-2 mb-3">
           {notice.is_pinned && (
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent">고정</span>
@@ -482,7 +482,7 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* 댓글 섹션 */}
-      <div className="bg-surface rounded-xl border border-border p-6">
+      <div className="bg-surface rounded-lg border border-border p-6">
         <h3 className="font-bold text-sm mb-4">댓글 {comments.length}개</h3>
 
         {comments.length === 0 ? (

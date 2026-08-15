@@ -52,7 +52,7 @@ export function NotificationSettingsSection() {
   };
 
   return (
-    <div id="notification-settings" className="bg-surface rounded-xl border border-border p-5">
+    <div id="notification-settings" className="bg-surface rounded-lg border border-border p-5">
       <h3 className="font-bold text-sm mb-3">알림 설정</h3>
       <div className="space-y-2">
         <p className="text-xs text-dim mb-2">알림 채널</p>

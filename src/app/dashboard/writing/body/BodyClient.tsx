@@ -76,7 +76,7 @@ export default function BodyClient() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="예) 제주도투어패스 vs 제주프리패스 어떤 게 더 이득일까"
-            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
           />
         </div>
         <div>
@@ -85,7 +85,7 @@ export default function BodyClient() {
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="예) 제주도 여행"
-            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
           />
         </div>
         <div className="border border-border rounded-xl">

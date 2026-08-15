@@ -14,7 +14,7 @@ export default function BotInfoPage() {
         본 페이지는 크롤러 동작 방식과 차단 방법을 투명하게 안내합니다.
       </p>
 
-      <section className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <section className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h2 className="text-lg font-bold">크롤러 식별 정보</h2>
         <div className="text-sm space-y-1">
           <p><span className="text-dim">User-Agent</span>: <code className="font-mono bg-bg px-2 py-0.5 rounded">NinflBot/1.0 (+https://ninfle.kr/bot-info)</code></p>
@@ -24,7 +24,7 @@ export default function BotInfoPage() {
         </div>
       </section>
 
-      <section className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <section className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h2 className="text-lg font-bold">수집하지 않는 것</h2>
         <ul className="text-sm list-disc list-inside space-y-1">
           <li>비공개 포스트의 내용</li>
@@ -34,7 +34,7 @@ export default function BotInfoPage() {
         </ul>
       </section>
 
-      <section className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <section className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h2 className="text-lg font-bold">내 블로그를 제외하고 싶다면</h2>
         <p className="text-sm">
           블로그 소유자는 아래 방법으로 N인플 DB 에서 본인 블로그를 제거할 수 있습니다.
@@ -46,7 +46,7 @@ export default function BotInfoPage() {
         </ol>
       </section>
 
-      <section className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <section className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h2 className="text-lg font-bold">준수 사항</h2>
         <ul className="text-sm list-disc list-inside space-y-1">
           <li>네이버 Open API 일일 할당량의 80% 이내 사용</li>

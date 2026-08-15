@@ -521,7 +521,7 @@ export default function KeywordsPage() {
               {/* 카테고리별 카드 (2열) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {topic.categories.map((group) => (
-                  <div key={group.category} className="bg-surface rounded-xl border border-border overflow-hidden">
+                  <div key={group.category} className="bg-surface rounded-lg border border-border overflow-hidden">
                     {/* 카테고리 헤더 */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg/50">
                       <button
@@ -632,7 +632,7 @@ export default function KeywordsPage() {
               <button onClick={() => setSortKey(null)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border/50 text-dim hover:border-accent/30 transition-colors cursor-pointer">초기화</button>
             )}
           </div>
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+          <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
@@ -760,7 +760,7 @@ export default function KeywordsPage() {
               const sub = getSubcategory(kw.category, kw.keyword);
               return (
               <Link key={kw.id} href={`/keywords/${kw.id}`}
-                className="block bg-surface rounded-xl border border-border p-4 hover:border-accent/40 transition">
+                className="block bg-surface rounded-lg border border-border p-4 hover:border-accent/40 transition">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <span className="text-sm font-bold text-dim font-rank shrink-0">#{startNum + i + 1}</span>

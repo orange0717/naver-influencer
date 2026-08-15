@@ -103,18 +103,18 @@ export default function AdminDesktopAppPage() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <p className="text-xs text-dim mb-2">다운로드 페이지 방문</p>
           <p className="text-3xl font-extrabold text-text">{data.totals.download_page_view.toLocaleString()}</p>
         </div>
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <p className="text-xs text-dim mb-2">설치 파일 클릭</p>
           <p className="text-3xl font-extrabold text-text">{data.totals.asset_download_click.toLocaleString()}</p>
           <p className="text-xs text-dim mt-2">
             대략적 기기 수(클라이언트 ID 기준): {data.uniqueClients.asset_download_click.toLocaleString()}
           </p>
         </div>
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <p className="text-xs text-dim mb-2">앱 실행 ping</p>
           <p className="text-3xl font-extrabold text-text">{data.totals.app_launch.toLocaleString()}</p>
           <p className="text-xs text-dim mt-2">
@@ -126,7 +126,7 @@ export default function AdminDesktopAppPage() {
       {data.byDetail.length > 0 && (
         <div>
           <h2 className="text-sm font-extrabold text-text mb-3">클릭·실행 상세 코드</h2>
-          <div className="bg-surface rounded-xl border border-border divide-y divide-border max-h-72 overflow-y-auto">
+          <div className="bg-surface rounded-lg border border-border divide-y divide-border max-h-72 overflow-y-auto">
             {data.byDetail.map(row => (
               <div key={row.detail} className="flex items-center justify-between px-4 py-2.5 text-sm">
                 <code className="text-xs text-accent font-semibold truncate pr-2">{row.detail}</code>

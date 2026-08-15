@@ -110,7 +110,7 @@ export default function ShortformAnalysisClient() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="예) https://www.instagram.com/reel/xxxx  ·  https://www.youtube.com/shorts/xxxx"
-            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full mt-1.5 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
           />
         </div>
         <button

@@ -35,7 +35,7 @@ export default function MoreMenu({
           <div className="fixed inset-0 z-40" onClick={close} />
           <div
             role="menu"
-            className={`absolute right-0 mt-1 z-50 ${menuWidth} bg-surface border border-border rounded-xl shadow-lg py-1 text-sm`}
+            className={`absolute right-0 mt-1 z-50 ${menuWidth} bg-surface border border-border rounded-lg shadow-lg py-1 text-sm`}
           >
             {children(close)}
           </div>

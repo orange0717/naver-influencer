@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { extractPalette } from '@/lib/color-extract';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 import {
   assignRoles,
   formatHsl,
@@ -270,19 +271,11 @@ export default function ColorPaletteClient() {
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-text">5색 팔레트</h2>
-              <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-0.5">
-                {(['hex', 'rgb', 'hsl'] as ColorFormat[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFormat(f)}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase transition-colors cursor-pointer ${
-                      format === f ? 'bg-accent text-white' : 'text-dim hover:text-text'
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
+              <SegmentedFilter
+                options={(['hex', 'rgb', 'hsl'] as ColorFormat[]).map(f => ({ value: f, label: f.toUpperCase() }))}
+                value={format}
+                onChange={setFormat}
+              />
             </div>
             <div className="grid grid-cols-5 gap-2">
               {palette.map((hex, i) => {
@@ -370,7 +363,7 @@ export default function ColorPaletteClient() {
                 value={thumbTitle}
                 onChange={(e) => setThumbTitle(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors resize-none"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors resize-none"
                 placeholder="썸네일에 넣을 제목"
               />
               <div
@@ -429,7 +422,7 @@ export default function ColorPaletteClient() {
           <p className="text-[11px] text-dim/70">로그인 계정에 저장되어 어느 기기·브라우저에서나 동일하게 보입니다.</p>
           <div className="space-y-1.5">
             {savedPalettes.map((p, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-surface border border-border rounded-xl px-2.5 py-2">
+              <div key={idx} className="flex items-center gap-2 bg-surface border border-border rounded-lg px-2.5 py-2">
                 <button onClick={() => setPalette(p)} className="flex gap-1 cursor-pointer">
                   {p.map((hex, i) => (
                     <span key={i} className="w-6 h-6 rounded-md border border-border" style={{ backgroundColor: hex }} />

@@ -103,7 +103,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
               onChange={(e) => setInput(e.target.value)}
               rows={3}
               placeholder="https://blog.naver.com/... 또는 https://search.naver.com/... 형태의 URL을 붙여넣으세요"
-              className="w-full px-3 py-2.5 text-sm font-mono bg-bg border border-border rounded-xl focus:outline-none focus:border-accent/60 resize-none break-all"
+              className="w-full px-3 py-2.5 text-sm font-mono bg-bg border border-border rounded-lg focus:outline-none focus:border-accent/60 resize-none break-all"
             />
 
             <div className="flex flex-wrap gap-2 pt-1 items-center">
@@ -296,7 +296,7 @@ export default function DecoderClient({ initialUrl = '' }: DecoderClientProps) {
               onChange={(e) => setBatchInput(e.target.value)}
               rows={10}
               placeholder={`네이버 블로그 통계의 referer URL을 한 줄에 하나씩 붙여넣으세요.\n\nhttps://blog.naver.com/...\nhttps://blog.naver.com/...\nhttps://search.naver.com/...`}
-              className="w-full px-3 py-2.5 text-xs font-mono bg-bg border border-border rounded-xl focus:outline-none focus:border-accent/60 resize-y break-all"
+              className="w-full px-3 py-2.5 text-xs font-mono bg-bg border border-border rounded-lg focus:outline-none focus:border-accent/60 resize-y break-all"
             />
             {batchInput && (
               <div className="flex justify-end">

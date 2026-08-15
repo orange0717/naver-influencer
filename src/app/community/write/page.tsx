@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 const CATEGORIES = [
   { value: 'free', label: '자유게시판' },
@@ -115,20 +116,7 @@ export default function CommunityWritePage() {
         {/* 카테고리 선택 */}
         <div>
           <label className="block text-xs font-bold text-dim mb-2">카테고리</label>
-          <div className="flex gap-2 flex-wrap">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.value}
-                onClick={() => setCategory(cat.value)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
-                  category === cat.value
-                    ? 'bg-accent text-white'
-                    : 'bg-bg border border-border text-dim hover:text-text'
-                }`}>
-                {cat.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedFilter options={CATEGORIES.map(c => ({ value: c.value, label: c.label }))} value={category} onChange={setCategory} />
         </div>
 
         {/* 제목 */}
@@ -140,7 +128,7 @@ export default function CommunityWritePage() {
             onChange={e => setTitle(e.target.value)}
             placeholder="제목을 입력하세요"
             maxLength={100}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition"
           />
           <p className="text-xs text-dim mt-1 text-right">{title.length}/100</p>
         </div>
@@ -154,7 +142,7 @@ export default function CommunityWritePage() {
             placeholder="내용을 입력하세요"
             rows={12}
             maxLength={5000}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition resize-none leading-relaxed"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/50 focus:outline-none focus:border-accent transition resize-none leading-relaxed"
           />
           <p className="text-xs text-dim mt-1 text-right">{content.length}/5,000</p>
         </div>
@@ -174,7 +162,7 @@ export default function CommunityWritePage() {
         </div>
 
         {pollEnabled && (
-          <div className="bg-bg rounded-xl border border-border p-4 space-y-3">
+          <div className="bg-bg rounded-lg border border-border p-4 space-y-3">
             <label className="block text-xs font-bold text-dim">투표 질문</label>
             <input
               type="text"

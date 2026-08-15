@@ -68,7 +68,7 @@ export default function BlogQualityChecker() {
   };
 
   return (
-    <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+    <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
       <div>
         <h2 className="text-sm font-bold">블로그 품질지수 검사</h2>
         <p className="text-[11px] text-dim mt-1">

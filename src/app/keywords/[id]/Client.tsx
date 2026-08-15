@@ -216,7 +216,7 @@ export default function KeywordDetailPage() {
       <Link href="/keywords" className="text-xs text-accent font-bold hover:underline">키워드 목록</Link>
 
       {/* 헤더 */}
-      <div className="bg-surface rounded-xl border border-border p-6">
+      <div className="bg-surface rounded-lg border border-border p-6">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <h1 className="type-page-title mb-1">{keyword.keyword}</h1>
@@ -239,13 +239,13 @@ export default function KeywordDetailPage() {
 
       {/* 블루오션 지표 */}
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <div className="text-xs font-semibold text-dim mb-3">참여자 수</div>
           <div className="text-3xl font-extrabold text-accent mb-2 font-rank">{keyword.participant_count}명</div>
           <div className="text-xs text-dim">키워드챌린지에 참여 중인 인플루언서</div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <div className="text-xs font-semibold text-dim mb-3">블루오션 지표</div>
           <div className={`text-3xl font-extrabold mb-2 font-rank ${keyword.participant_count < 30 ? 'text-up' : keyword.participant_count < 100 ? 'text-accent' : 'text-dim'}`}>
             {keyword.participant_count < 30 ? '블루오션' : keyword.participant_count < 100 ? '적정' : '레드오션'}
@@ -262,7 +262,7 @@ export default function KeywordDetailPage() {
 
       {/* 검색량 트렌드 차트 */}
       {trendData.length > 0 && (
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="text-sm font-bold">검색량 트렌드</div>
             {trendSummary && (
@@ -286,7 +286,7 @@ export default function KeywordDetailPage() {
       )}
 
       {/* 월간 검색수 (네이버 광고 키워드 도구) */}
-      <div className="bg-surface rounded-xl border border-border p-5">
+      <div className="bg-surface rounded-lg border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-bold">
             월간 검색수
@@ -333,7 +333,7 @@ export default function KeywordDetailPage() {
       </div>
 
       {/* 네이버 검색어 트렌드 (데이터랩 실시간) */}
-      <div className="bg-surface rounded-xl border border-border p-5">
+      <div className="bg-surface rounded-lg border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-bold">
             검색 트렌드 지수
@@ -378,7 +378,7 @@ export default function KeywordDetailPage() {
 
       {/* TOP 3 인플루언서 카드 */}
       {!rankLoading && top3Rankings.length > 0 && (
-        <div className="bg-surface rounded-xl border border-border">
+        <div className="bg-surface rounded-lg border border-border">
           <div className="flex items-center justify-between p-5 border-b border-border">
             <div className="text-sm font-bold">
               TOP 3 인플루언서
@@ -438,7 +438,7 @@ export default function KeywordDetailPage() {
       )}
 
       {/* 전체 인플루언서 순위 */}
-      <div className="bg-surface rounded-xl border border-border">
+      <div className="bg-surface rounded-lg border border-border">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="text-sm font-bold">
             전체 인플루언서 순위

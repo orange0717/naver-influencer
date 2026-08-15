@@ -35,7 +35,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   if (!active || !payload?.length) return null;
   const rows = payload.filter((entry) => typeof entry.value === 'number');
   return (
-    <div className="bg-surface border border-border rounded-xl shadow-lg p-3 text-xs">
+    <div className="bg-surface border border-border rounded-lg shadow-lg p-3 text-xs">
       <p className="text-dim mb-1.5 font-semibold">{label}</p>
       {rows.length === 0 ? (
         <p className="text-dim/70">데이터 없음</p>

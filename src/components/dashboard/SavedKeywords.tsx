@@ -98,7 +98,7 @@ export default function SavedKeywords() {
   if (loading) return null;
 
   return (
-    <div className="bg-surface rounded-xl border border-border overflow-hidden">
+    <div className="bg-surface rounded-lg border border-border overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" className="text-accent shrink-0">

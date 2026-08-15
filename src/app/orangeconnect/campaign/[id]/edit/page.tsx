@@ -137,7 +137,7 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
         <div>
           <label className="text-xs font-semibold text-dim block mb-1.5">캠페인명 *</label>
           <input type="text" value={title} onChange={e => setTitle(e.target.value)} maxLength={200}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
         </div>
 
         <div>
@@ -157,7 +157,7 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
           <div>
             <label className="text-xs font-semibold text-dim block mb-1.5">카테고리</label>
             <select value={category} onChange={e => setCategory(e.target.value)}
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition">
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition">
               <option value="">선택</option>
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -165,26 +165,26 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
           <div>
             <label className="text-xs font-semibold text-dim block mb-1.5">지역</label>
             <input type="text" value={region} onChange={e => setRegion(e.target.value)}
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
           </div>
         </div>
 
         <div>
           <label className="text-xs font-semibold text-dim block mb-1.5">캠페인 설명</label>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} maxLength={5000}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition resize-none" />
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition resize-none" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-semibold text-dim block mb-1.5">건당 원고료 (원)</label>
             <input type="text" value={feePerPost} onChange={e => handleFeeChange(e.target.value)}
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
           </div>
           <div>
             <label className="text-xs font-semibold text-dim block mb-1.5">모집 인원</label>
             <input type="number" value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} min={1} max={1000}
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
           </div>
         </div>
 
@@ -192,19 +192,19 @@ export default function CampaignEditPage({ params }: { params: Promise<{ id: str
           <div>
             <label className="text-xs font-semibold text-dim block mb-1.5">모집 마감일</label>
             <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)}
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
           </div>
           <div>
             <label className="text-xs font-semibold text-dim block mb-1.5">포스팅 기한</label>
             <input type="date" value={postingDeadline} onChange={e => setPostingDeadline(e.target.value)}
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
           </div>
         </div>
 
         <div>
           <label className="text-xs font-semibold text-dim block mb-1.5">참여 조건</label>
           <textarea value={requirements} onChange={e => setRequirements(e.target.value)} rows={3} maxLength={2000}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition resize-none" />
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition resize-none" />
         </div>
 
         {error && (

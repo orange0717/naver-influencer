@@ -83,7 +83,7 @@ export default function BlogRankingClient() {
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
             placeholder="검색할 키워드를 입력하세요"
-            className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
+            className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
             autoFocus
           />
         </div>
@@ -111,7 +111,7 @@ export default function BlogRankingClient() {
       ) : searched ? (
         <>
           {/* 탭 */}
-          <div className="flex items-center gap-1 bg-surface rounded-xl border border-border p-1">
+          <div className="flex items-center gap-1 bg-surface rounded-lg border border-border p-1">
             {TABS.map(tab => (
               <button
                 key={tab.key}

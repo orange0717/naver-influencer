@@ -183,7 +183,7 @@ export default function IntroClient() {
                     href={`https://in.naver.com/${inf.naver_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between px-5 py-4 rounded-xl border border-border bg-surface hover:border-accent/40 transition"
+                    className="flex items-center justify-between px-5 py-4 rounded-lg border border-border bg-surface hover:border-accent/40 transition"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {inf.image_url ? (

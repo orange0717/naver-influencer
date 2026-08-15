@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 /* ── 브라우저 프레임 ── */
 function BrowserFrame({ url, children }: { url: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm">
+    <div className="bg-surface rounded-lg border border-border overflow-hidden shadow-sm">
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50 bg-border/20">
         <span className="w-2.5 h-2.5 rounded-full bg-border-strong" />
         <span className="w-2.5 h-2.5 rounded-full bg-border-strong" />
@@ -302,7 +302,7 @@ export default function GuidePage() {
         <h2 className="font-title text-xl text-center">자주 묻는 질문</h2>
         <div className="space-y-3">
           {FAQS.map(faq => (
-            <details key={faq.q} className="bg-surface rounded-xl border border-border overflow-hidden group">
+            <details key={faq.q} className="bg-surface rounded-lg border border-border overflow-hidden group">
               <summary className="px-5 py-4 text-sm font-semibold cursor-pointer list-none flex items-center justify-between">
                 {faq.q}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"

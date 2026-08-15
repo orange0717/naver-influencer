@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 const TAGS = [
   { value: 'notice', label: '공지' },
@@ -99,22 +100,11 @@ export default function NoticeEditPage({ params }: { params: Promise<{ id: strin
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="type-page-title">공지사항 수정</h1>
 
-      <div className="bg-surface rounded-xl border border-border p-6 space-y-5">
+      <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
         {/* 태그 선택 */}
         <div>
           <label className="text-xs font-semibold text-dim block mb-2">태그</label>
-          <div className="flex gap-2">
-            {TAGS.map(t => (
-              <button key={t.value} onClick={() => setTag(t.value)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
-                  tag === t.value
-                    ? 'bg-accent text-white'
-                    : 'bg-bg border border-border text-dim hover:text-text hover:border-accent/30'
-                }`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedFilter options={TAGS.map(t => ({ value: t.value, label: t.label }))} value={tag} onChange={setTag} />
         </div>
 
         {/* 제목 */}
@@ -122,7 +112,7 @@ export default function NoticeEditPage({ params }: { params: Promise<{ id: strin
           <label className="text-xs font-semibold text-dim block mb-1.5">제목</label>
           <input type="text" value={title} onChange={e => setTitle(e.target.value)}
             placeholder="제목을 입력하세요" maxLength={100}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
           <p className="text-[11px] text-dim text-right mt-1">{title.length}/100</p>
         </div>
 
@@ -131,7 +121,7 @@ export default function NoticeEditPage({ params }: { params: Promise<{ id: strin
           <label className="text-xs font-semibold text-dim block mb-1.5">내용</label>
           <textarea value={content} onChange={e => setContent(e.target.value)}
             placeholder="내용을 입력하세요" maxLength={5000} rows={12}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 resize-none transition" />
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 resize-none transition" />
           <p className="text-[11px] text-dim text-right mt-1">{content.length}/5000</p>
         </div>
 

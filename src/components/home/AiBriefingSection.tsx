@@ -1214,7 +1214,7 @@ export default function AiBriefingSection() {
             value={analyzeKeyword}
             onChange={e => setAnalyzeKeyword(e.target.value)}
             placeholder="예: 천안맛집"
-            className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition text-sm"
+            className="flex-1 px-4 py-3 bg-surface border border-border rounded-lg focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none transition text-sm"
           />
           <button
             type="submit"

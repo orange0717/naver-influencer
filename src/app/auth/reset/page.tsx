@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder={PASSWORD_PLACEHOLDER}
                   autoFocus
-                  className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
+                  className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
                 />
               </div>
 
@@ -110,7 +110,7 @@ export default function ResetPasswordPage() {
                   value={passwordConfirm}
                   onChange={e => setPasswordConfirm(e.target.value)}
                   placeholder="비밀번호를 다시 입력해주세요"
-                  className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
+                  className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
                 />
               </div>
 

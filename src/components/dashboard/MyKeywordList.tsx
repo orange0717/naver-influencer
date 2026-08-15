@@ -7,6 +7,7 @@ import KeywordSyncButton from './KeywordSyncButton';
 import BookmarkButton from '@/components/keywords/BookmarkButton';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { formatCount } from '@/lib/format';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 interface RankingInfo {
   influencer_name: string;
@@ -376,21 +377,14 @@ export default function MyKeywordList({
 
           {/* --- 경쟁도 + 정렬 --- */}
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex gap-1">
-              {(['all', 'low', 'mid', 'high'] as CompFilter[]).map(f => (
-                <button
-                  key={f}
-                  onClick={() => { setCompFilter(f); setCurrentPage(1); }}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-                    compFilter === f
-                      ? 'bg-accent text-white'
-                      : 'bg-border/30 text-dim hover:bg-border/50'
-                  }`}
-                >
-                  {f === 'all' ? '경쟁도' : compLabels[f].label}
-                </button>
-              ))}
-            </div>
+            <SegmentedFilter
+              options={(['all', 'low', 'mid', 'high'] as CompFilter[]).map(f => ({
+                value: f,
+                label: f === 'all' ? '경쟁도' : compLabels[f].label,
+              }))}
+              value={compFilter}
+              onChange={f => { setCompFilter(f); setCurrentPage(1); }}
+            />
             <div className="flex items-center gap-1">
               <select
                 value={sortKey}

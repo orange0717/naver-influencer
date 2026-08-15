@@ -336,7 +336,7 @@ export function CitationDetailPanel({
   isPrimary: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-3.5 space-y-3 text-xs">
+    <div className="rounded-lg border border-border bg-surface p-3.5 space-y-3 text-xs">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-dim">키워드</span>
         <span className="font-semibold">{keyword}</span>

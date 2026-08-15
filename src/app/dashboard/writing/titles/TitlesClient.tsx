@@ -73,7 +73,7 @@ export default function TitlesClient() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleGenerate(); }}
           placeholder="예) 아이폰17"
-          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
         />
         <button
           onClick={handleGenerate}
@@ -106,7 +106,7 @@ export default function TitlesClient() {
       {titles.length > 0 && (
         <div className="space-y-2">
           {titles.map((t, i) => (
-            <div key={t.title + i} className="bg-surface rounded-xl border border-border p-4">
+            <div key={t.title + i} className="bg-surface rounded-lg border border-border p-4">
               <div className="flex items-start justify-between gap-3 mb-2.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm font-bold text-dim font-rank shrink-0">#{i + 1}</span>

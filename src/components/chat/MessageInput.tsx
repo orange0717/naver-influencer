@@ -138,7 +138,7 @@ export default function MessageInput({ onSend, disabled }: Props) {
           disabled={disabled}
           rows={1}
           maxLength={2000}
-          className="flex-1 resize-none px-3 py-2.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent max-h-32 disabled:opacity-50"
+          className="flex-1 resize-none px-3 py-2.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent max-h-32 disabled:opacity-50"
           style={{ minHeight: '40px' }}
         />
 

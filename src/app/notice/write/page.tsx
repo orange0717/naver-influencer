@@ -119,7 +119,7 @@ export default function NoticeWritePage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="type-page-title">공지사항 작성</h1>
 
-      <div className="bg-surface rounded-xl border border-border p-6 space-y-5">
+      <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
         {/* 태그 선택 */}
         <div>
           <label className="text-xs font-semibold text-dim block mb-2">태그</label>
@@ -131,7 +131,7 @@ export default function NoticeWritePage() {
           <label className="text-xs font-semibold text-dim block mb-1.5">제목</label>
           <input type="text" value={title} onChange={e => setTitle(e.target.value)}
             placeholder="제목을 입력하세요" maxLength={100}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
           <p className="text-[11px] text-dim text-right mt-1">{title.length}/100</p>
         </div>
 
@@ -140,7 +140,7 @@ export default function NoticeWritePage() {
           <label className="text-xs font-semibold text-dim block mb-1.5">내용</label>
           <textarea value={content} onChange={e => setContent(e.target.value)}
             placeholder="내용을 입력하세요" maxLength={5000} rows={12}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 resize-none transition" />
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 resize-none transition" />
           <p className="text-[11px] text-dim text-right mt-1">{content.length}/5000</p>
         </div>
 
@@ -166,7 +166,7 @@ export default function NoticeWritePage() {
           </label>
 
           {pollEnabled && (
-            <div className="bg-bg border border-border rounded-xl p-4 space-y-3">
+            <div className="bg-bg border border-border rounded-lg p-4 space-y-3">
               <div>
                 <label className="text-xs font-semibold text-dim block mb-1.5">투표 질문</label>
                 <input type="text" value={pollQuestion}

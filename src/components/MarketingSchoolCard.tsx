@@ -10,7 +10,7 @@ import { MARKETING_SCHOOL_URL } from '@/lib/external-links';
  */
 export default function MarketingSchoolCard() {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface border border-border rounded-xl p-4">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface border border-border rounded-lg p-4">
       <div className="min-w-0 space-y-1">
         <p className="text-sm font-medium text-text">마케팅 강의가 필요하신가요?</p>
         <p className="text-xs text-dim leading-relaxed">

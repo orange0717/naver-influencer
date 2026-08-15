@@ -285,7 +285,7 @@ export default function ProfileHeader({
                 <textarea
                   readOnly
                   value={`<a href="${widgetDomain}/influencers/${naverId}" target="_blank" rel="noopener"><img src="${widgetDomain}/api/widget/top3/${naverId}" alt="N인플 TOP3 달성률" width="170" /></a>`}
-                  className="w-full h-20 text-xs bg-bg border border-border rounded-xl p-3 font-mono resize-none focus:outline-none"
+                  className="w-full h-20 text-xs bg-bg border border-border rounded-lg p-3 font-mono resize-none focus:outline-none"
                   onClick={e => (e.target as HTMLTextAreaElement).select()}
                 />
                 <button

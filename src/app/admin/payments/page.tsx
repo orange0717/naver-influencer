@@ -60,17 +60,17 @@ export default function AdminPaymentsPage() {
       {/* 구독 현황 요약 */}
       {summary && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-surface rounded-xl border border-border p-4 text-center">
+          <div className="bg-surface rounded-lg border border-border p-4 text-center">
             <p className="text-xs text-dim mb-1">유료 구독자</p>
             <p className="text-2xl font-extrabold font-rank text-accent">{summary.subscribers}명</p>
           </div>
-          <div className="bg-surface rounded-xl border border-border p-4 text-center">
+          <div className="bg-surface rounded-lg border border-border p-4 text-center">
             <p className="text-xs text-dim mb-1">7일 내 만료 예정</p>
             <p className={`text-2xl font-extrabold font-rank ${summary.expiringSoon > 0 ? 'text-down' : 'text-text'}`}>
               {summary.expiringSoon}명
             </p>
           </div>
-          <div className="bg-surface rounded-xl border border-border p-4 text-center">
+          <div className="bg-surface rounded-lg border border-border p-4 text-center">
             <p className="text-xs text-dim mb-1">총 매출</p>
             <p className="text-2xl font-extrabold font-rank">{summary.totalRevenue.toLocaleString()}원</p>
           </div>
@@ -92,7 +92,7 @@ export default function AdminPaymentsPage() {
       </form>
 
       {/* 결제 내역 테이블 */}
-      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+      <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />

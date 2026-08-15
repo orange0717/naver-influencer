@@ -470,7 +470,7 @@ export default function AiConsultantClient() {
                   if (e.key === 'Enter') runConsult(input);
                 }}
                 placeholder="예: 요즘 블로그 방문자가 줄었는데 무엇부터 확인해야 할까요?"
-                className="flex-1 w-full px-4 py-3.5 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+                className="flex-1 w-full px-4 py-3.5 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
               />
               <button
                 onClick={() => runConsult(input)}
@@ -547,7 +547,7 @@ export default function AiConsultantClient() {
                   {result.recommendations.map((rec) => (
                     <div
                       key={rec.featureId}
-                      className="flex items-center justify-between gap-3 bg-surface border border-border rounded-xl p-4"
+                      className="flex items-center justify-between gap-3 bg-surface border border-border rounded-lg p-4"
                     >
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2">

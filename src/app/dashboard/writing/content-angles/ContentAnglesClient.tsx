@@ -52,7 +52,7 @@ export default function ContentAnglesClient() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
           placeholder="예) 다이어트"
-          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
         />
         <button
           onClick={handleSearch}
@@ -117,7 +117,7 @@ export default function ContentAnglesClient() {
           </div>
 
           {(result.relatedKeywords.length > 0 || result.autocomplete.length > 0) && (
-            <div className="md:col-span-2 bg-surface border border-border rounded-xl p-4">
+            <div className="md:col-span-2 bg-surface border border-border rounded-lg p-4">
               <p className="text-[11px] text-dim mb-2">이 글감의 근거가 된 실제 검색 데이터</p>
               <div className="flex flex-wrap gap-1.5">
                 {[...new Set([...result.relatedKeywords, ...result.autocomplete])].slice(0, 20).map((k) => (

@@ -143,7 +143,7 @@ export default function AdminStoriesPage() {
       ) : (
         <div className="space-y-4">
           {stories.map((s) => (
-            <div key={s.id} className="bg-surface rounded-xl border border-border p-5">
+            <div key={s.id} className="bg-surface rounded-lg border border-border p-5">
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1 text-xs text-dim">

@@ -7,6 +7,7 @@ import BillingButton from '@/components/BillingButton';
 import { useAuth } from '@/hooks/useAuth';
 import { CONTACT_EMAIL } from '@/lib/site-contact';
 import { CREDIT_PACKAGES } from '@/lib/credit-config';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 const CHECK = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-up shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
@@ -142,7 +143,7 @@ export default function SubscribeClient() {
 
       {/* 크레딧 (구독과 별개인 사용량) — 명세 9: 구독과 크레딧을 하나의 상품처럼 혼동하지 않는다 */}
       {user?.id && (
-        <div className="bg-surface rounded-xl border border-border p-6 space-y-5">
+        <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-sm font-bold text-text">크레딧</p>
@@ -174,24 +175,23 @@ export default function SubscribeClient() {
 
       {/* 결제 주기 토글 (5개) */}
       <div className="flex justify-center">
-        <div className="inline-flex flex-wrap gap-1 bg-surface border border-border rounded-xl p-1">
-          {PERIOD_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setPeriod(opt.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
-                period === opt.value ? 'bg-accent text-white' : 'text-dim hover:text-text'
-              }`}
-            >
-              {opt.label}
-              {opt.badge && (
-                <span className={`text-[10px] ml-1 ${period === opt.value ? 'text-white/80' : 'text-accent'}`}>
-                  ({opt.badge})
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <SegmentedFilter
+          options={PERIOD_OPTIONS.map(opt => ({
+            value: opt.value,
+            label: (
+              <>
+                {opt.label}
+                {opt.badge && (
+                  <span className={`text-[10px] ml-1 ${period === opt.value ? 'text-white/80' : 'text-accent'}`}>
+                    ({opt.badge})
+                  </span>
+                )}
+              </>
+            ),
+          }))}
+          value={period}
+          onChange={setPeriod}
+        />
       </div>
 
       {/* 플랜 카드 */}

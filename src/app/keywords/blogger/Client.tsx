@@ -211,7 +211,7 @@ export default function BloggerKeywordsPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full pl-11 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full pl-11 pr-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
           />
         </div>
         <button
@@ -251,7 +251,7 @@ export default function BloggerKeywordsPage() {
           </div>
 
           {/* Desktop 테이블 */}
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto hidden md:block">
+          <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
@@ -298,7 +298,7 @@ export default function BloggerKeywordsPage() {
           {/* Mobile 카드 */}
           <div className="md:hidden space-y-3">
             {sorted.map((kw, i) => (
-              <div key={kw.keyword} className="bg-surface rounded-xl border border-border p-4">
+              <div key={kw.keyword} className="bg-surface rounded-lg border border-border p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <span className="text-sm font-bold text-dim font-rank shrink-0">#{i + 1}</span>

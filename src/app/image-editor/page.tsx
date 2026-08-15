@@ -768,7 +768,7 @@ export default function ImageEditorPage() {
 
             {/* 자르기·회전 */}
             {tool === 'crop' && (
-              <div className="space-y-4 bg-surface border border-border rounded-xl p-4">
+              <div className="space-y-4 bg-surface border border-border rounded-lg p-4">
                 <div>
                   <p className="text-sm font-bold text-text mb-2">자르기</p>
                   <p className="text-xs text-dim mb-3">이미지 위에서 드래그해 영역을 지정한 뒤 적용하세요.</p>
@@ -819,7 +819,7 @@ export default function ImageEditorPage() {
 
             {/* 톤 조정 */}
             {tool === 'tone' && (
-              <div className="space-y-4 bg-surface border border-border rounded-xl p-4">
+              <div className="space-y-4 bg-surface border border-border rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5">
                   {FILTER_PRESETS.map(p => (
                     <button
@@ -866,7 +866,7 @@ export default function ImageEditorPage() {
 
             {/* 텍스트·스티커 */}
             {tool === 'text' && (
-              <div className="space-y-4 bg-surface border border-border rounded-xl p-4">
+              <div className="space-y-4 bg-surface border border-border rounded-lg p-4">
                 <div className="flex gap-2">
                   <button onClick={addText} className="flex-1 px-3 py-2 bg-accent text-white text-xs font-bold rounded-lg hover:bg-accent-hover transition">+ 텍스트 추가</button>
                 </div>
@@ -965,7 +965,7 @@ export default function ImageEditorPage() {
 
             {/* 배경 제거 */}
             {tool === 'bg' && (
-              <div className="space-y-3 bg-surface border border-border rounded-xl p-4">
+              <div className="space-y-3 bg-surface border border-border rounded-lg p-4">
                 <p className="text-sm font-bold text-text">AI 배경 제거</p>
                 <p className="text-xs text-dim leading-relaxed">
                   피사체만 남기고 배경을 투명하게 만듭니다. 브라우저에서 직접 처리되며, 처음 실행 시 AI 모델을 한 번 내려받습니다(수십 초 소요될 수 있어요).
@@ -989,7 +989,7 @@ export default function ImageEditorPage() {
             )}
 
             {/* 저장 */}
-            <div className="bg-surface border border-border rounded-xl p-4 space-y-2">
+            <div className="bg-surface border border-border rounded-lg p-4 space-y-2">
               <p className="text-sm font-bold text-text mb-1">저장</p>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => download('png')} className="px-3 py-2.5 bg-accent text-white text-sm font-bold rounded-lg hover:bg-accent-hover transition">PNG 저장</button>

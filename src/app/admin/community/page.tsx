@@ -136,7 +136,7 @@ function ChatReportsTab() {
       ) : (
         <div className="space-y-3">
           {items.map(r => (
-            <div key={r.id} className="bg-surface border border-border rounded-xl p-4 space-y-2">
+            <div key={r.id} className="bg-surface border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between text-xs text-dim">
                 <span>{REASON_LABELS[r.reason] || r.reason} · 신고자 {r.reporter_id}</span>
                 <span>{new Date(r.created_at).toLocaleString('ko-KR')}</span>
@@ -242,7 +242,7 @@ function PostsTab() {
         </button>
       </form>
 
-      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+      <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
@@ -364,7 +364,7 @@ function ReportsTab() {
         ))}
       </div>
 
-      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+      <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />

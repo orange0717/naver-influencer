@@ -79,7 +79,7 @@ export default function RankDistribution({ rankings }: Props) {
       </div>
 
       {selected && selected.keywords.length > 0 && (
-        <div className="mt-3 rounded-xl border border-border bg-surface overflow-hidden">
+        <div className="mt-3 rounded-lg border border-border bg-surface overflow-hidden">
           <div className="px-4 py-2 bg-bg/30 border-b border-border/50 flex items-center justify-between">
             <span className="text-xs font-bold">{selected.label} 키워드 ({selected.keywords.length}개)</span>
             {totalPages > 1 && (

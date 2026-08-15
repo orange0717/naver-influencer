@@ -76,7 +76,7 @@ export default function AdminRestrictedPage() {
       <h1 className="type-page-title">접근 제한 관리</h1>
 
       {/* 추가 폼 */}
-      <form onSubmit={handleAdd} className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <form onSubmit={handleAdd} className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h2 className="text-sm font-bold">제한 사용자 추가</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input
@@ -115,7 +115,7 @@ export default function AdminRestrictedPage() {
       </form>
 
       {/* 목록 */}
-      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+      <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-bold">제한 사용자 목록</h2>
           <span className="text-xs text-dim">{users.length}명</span>

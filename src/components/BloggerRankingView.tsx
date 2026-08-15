@@ -150,7 +150,7 @@ export default function BloggerRankingView() {
         최근 1년 내 활동한 블로거 대상 · 활성 블로거 {totalActive.toLocaleString()}명 집계
       </p>
 
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h2 className="text-sm font-bold">내 블로그 순위 확인</h2>
         <div className="flex gap-2">
           <input
@@ -271,7 +271,7 @@ export default function BloggerRankingView() {
         )}
       </div>
 
-      <div className="bg-surface rounded-xl border border-border p-5 text-sm text-dim leading-relaxed">
+      <div className="bg-surface rounded-lg border border-border p-5 text-sm text-dim leading-relaxed">
         <p className="font-semibold text-text mb-1">Top 50 블로그 순위 — 준비 중</p>
         전체 블로그 순위는 포스팅 수 · 구독자 수 · 카테고리 정보가 충분히 수집된 뒤 공개합니다.
         현재는 위의 <span className="font-semibold">내 블로그 순위 확인</span> 기능만 사용 가능합니다.

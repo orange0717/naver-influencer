@@ -259,7 +259,7 @@ export default function StoryWritePage() {
 
       {toast && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-surface border border-border rounded-xl shadow-lg p-6 w-full max-w-sm space-y-4 text-center">
+          <div className="bg-surface border border-border rounded-lg shadow-lg p-6 w-full max-w-sm space-y-4 text-center">
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{toast.message}</p>
             <button
               type="button"

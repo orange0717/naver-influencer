@@ -68,7 +68,7 @@ export default function AdminBulkGrantPage() {
       </div>
 
       {/* 설정 카드 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-5">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-5">
         {/* 플랜 */}
         <div>
           <p className="text-xs font-bold text-dim mb-2">플랜</p>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 interface Member {
   id: string;
@@ -217,7 +218,7 @@ export default function AdminMembersPage() {
           type="button"
           onClick={() => setTodayModalOpen(true)}
           disabled={!stats || stats.dau === 0}
-          className="bg-surface border border-border rounded-xl px-4 py-3 text-left hover:border-accent/40 transition cursor-pointer disabled:cursor-default disabled:hover:border-border"
+          className="bg-surface border border-border rounded-lg px-4 py-3 text-left hover:border-accent/40 transition cursor-pointer disabled:cursor-default disabled:hover:border-border"
         >
           <p className="text-[11px] text-dim font-semibold">DAU · 오늘</p>
           <p className="font-rank font-extrabold text-2xl text-accent">
@@ -228,14 +229,14 @@ export default function AdminMembersPage() {
             <p className="text-[10px] text-accent mt-0.5">클릭해서 목록 보기 →</p>
           )}
         </button>
-        <div className="bg-surface border border-border rounded-xl px-4 py-3">
+        <div className="bg-surface border border-border rounded-lg px-4 py-3">
           <p className="text-[11px] text-dim font-semibold">WAU · 최근 7일</p>
           <p className="font-rank font-extrabold text-2xl">
             {stats ? stats.wau.toLocaleString() : '-'}
             <span className="text-xs text-dim font-semibold ml-1">명</span>
           </p>
         </div>
-        <div className="bg-surface border border-border rounded-xl px-4 py-3">
+        <div className="bg-surface border border-border rounded-lg px-4 py-3">
           <p className="text-[11px] text-dim font-semibold">MAU · 최근 30일</p>
           <p className="font-rank font-extrabold text-2xl">
             {stats ? stats.mau.toLocaleString() : '-'}
@@ -259,7 +260,7 @@ export default function AdminMembersPage() {
       </form>
 
       {/* 테이블/카드 */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-lg border border-border overflow-hidden">
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
@@ -575,23 +576,15 @@ export default function AdminMembersPage() {
                   <div className="bg-bg rounded-xl p-3 border border-accent/30 space-y-3">
                     <p className="text-xs font-bold text-accent">플랜 변경</p>
                     <div className="flex gap-1.5">
-                      {([
-                        ['INFLUENCER', '인플루언서'],
-                        ['BLOGGER', '블로거'],
-                        ['FREE', '무료(해제)'],
-                      ] as const).map(([val, label]) => (
-                        <button
-                          key={val}
-                          onClick={() => setPlanChoice(val)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                            planChoice === val
-                              ? 'bg-accent text-white'
-                              : 'bg-surface text-dim border border-border hover:text-text'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                      <SegmentedFilter
+                        options={[
+                          { value: 'INFLUENCER' as const, label: '인플루언서' },
+                          { value: 'BLOGGER' as const, label: '블로거' },
+                          { value: 'FREE' as const, label: '무료(해제)' },
+                        ]}
+                        value={planChoice}
+                        onChange={setPlanChoice}
+                      />
                     </div>
 
                     {planChoice !== 'FREE' && (

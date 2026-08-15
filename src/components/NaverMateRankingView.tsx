@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatCountK as formatCount } from '@/lib/format';
 import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
+import FilterPills from '@/components/analytics/FilterPills';
 
 interface Item {
   id: string;
@@ -99,7 +100,7 @@ export default function NaverMateRankingView() {
 
   if (state.kind === 'error') {
     return (
-      <div className="bg-surface rounded-xl border border-border p-6 text-center">
+      <div className="bg-surface rounded-lg border border-border p-6 text-center">
         <p className="text-sm text-down">{state.message}</p>
       </div>
     );
@@ -107,7 +108,7 @@ export default function NaverMateRankingView() {
 
   if (state.kind === 'empty') {
     return (
-      <div className="bg-surface rounded-xl border border-border p-8 text-center">
+      <div className="bg-surface rounded-lg border border-border p-8 text-center">
         <p className="text-sm text-dim">아직 수집된 네이버 메이트 데이터가 없습니다.</p>
       </div>
     );
@@ -159,30 +160,14 @@ export default function NaverMateRankingView() {
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        <button
-          onClick={() => setCategory('')}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
-            category === '' ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:text-text'
-          }`}
-        >
-          전체
-        </button>
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
-              category === cat ? 'bg-accent text-white' : 'bg-surface border border-border text-dim hover:text-text'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+      <FilterPills
+        options={[{ value: '', label: '전체' }, ...categories.map(cat => ({ value: cat, label: cat }))]}
+        value={category}
+        onChange={setCategory}
+      />
 
       {items.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border p-8 text-center">
+        <div className="bg-surface rounded-lg border border-border p-8 text-center">
           <p className="text-sm text-dim">
             {platform
               ? `‘${category || '전체'}’ 분야에는 ${PLATFORM_LABEL[platform]} 메이트가 없습니다.`
@@ -192,7 +177,7 @@ export default function NaverMateRankingView() {
           </p>
         </div>
       ) : (
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-lg border border-border overflow-hidden">
         <ul className="divide-y divide-border">
           {items.map((it, idx) => (
             <li key={it.id}>

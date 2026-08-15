@@ -69,7 +69,7 @@ export default function UsagePeriodCard({
   return (
     <div className={gridClass}>
       {cards.map((c) => (
-        <div key={c.label} className="bg-surface rounded-xl border border-border p-4">
+        <div key={c.label} className="bg-surface rounded-lg border border-border p-4">
           <p className="text-[11px] text-dim mb-1">{c.label}</p>
           <p className={`text-xl font-extrabold ${toneClass(c.tone)} font-rank`}>{c.value}</p>
           <p className="text-[10px] text-dim mt-1">{c.sub}</p>

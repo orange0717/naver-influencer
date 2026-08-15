@@ -143,50 +143,50 @@ export default function AdSignupPage() {
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">담당자명</label>
               <input type="text" value={contactName} onChange={e => setContactName(e.target.value)} placeholder="홍길동" maxLength={50} autoFocus
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@company.com"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_PLACEHOLDER}
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">비밀번호 확인</label>
               <input type="password" value={passwordConfirm} onChange={e => setPasswordConfirm(e.target.value)} placeholder="비밀번호를 다시 입력해주세요"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">회사명 / 상호</label>
               <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="(주)오렌지" maxLength={100}
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">사업자등록번호 (선택)</label>
               <input type="text" value={businessNumber} onChange={e => handleBusinessNumberChange(e.target.value)} placeholder="000-00-00000"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
               <p className="text-[11px] text-dim mt-1">나중에 입력할 수 있습니다</p>
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">연락처 (선택)</label>
               <input type="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} placeholder="010-0000-0000"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition" />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">업종 (선택)</label>
               <select value={industry} onChange={e => setIndustry(e.target.value)}
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition">
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition">
                 <option value="">선택해주세요</option>
                 {INDUSTRIES.map(ind => (
                   <option key={ind} value={ind}>{ind}</option>

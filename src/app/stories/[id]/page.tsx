@@ -188,7 +188,7 @@ export default function StoryDetailPage() {
         </div>
       )}
 
-      <div className="bg-surface rounded-xl border border-border p-6 space-y-4">
+      <div className="bg-surface rounded-lg border border-border p-6 space-y-4">
         <h1 className="type-page-title">{story.title}</h1>
         <div className="flex items-center gap-3 text-sm text-dim">
           <span>{story.author_name}</span>
@@ -252,7 +252,7 @@ export default function StoryDetailPage() {
       </div>
 
       {isApproved && (
-        <div className="bg-surface rounded-xl border border-border p-6 space-y-4">
+        <div className="bg-surface rounded-lg border border-border p-6 space-y-4">
           <h2 className="text-base font-bold">댓글 {story.comment_count || 0}</h2>
 
           <form onSubmit={handleSubmitComment} className="space-y-2">

@@ -218,7 +218,7 @@ export default function LinkInfluencerClient() {
         <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder="네이버 인플루언서 ID (예: orangelibrary)"
-          className="flex-1 px-4 py-3 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent" />
+          className="flex-1 px-4 py-3 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent" />
         <button onClick={handleSearch} disabled={searching}
           className="px-5 py-3 bg-accent text-white rounded-xl font-semibold text-sm hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
           {searching ? '...' : '검색'}

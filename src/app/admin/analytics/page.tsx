@@ -244,7 +244,7 @@ export default function AdminAnalyticsPage() {
             { label: `${periodLabel} 페이지뷰(PV)`, sub: '페이지 이동마다', value: periodPageviews, total: stats?.totalPageviews || 0, accent: true },
             { label: `${periodLabel} 가입`, sub: '신규 회원', value: periodSignups, total: stats?.totalSignups || 0, accent: true },
           ].map(item => (
-            <div key={item.label} className="bg-surface rounded-xl border border-border p-4">
+            <div key={item.label} className="bg-surface rounded-lg border border-border p-4">
               <div className="flex items-baseline justify-between mb-1">
                 <p className="text-xs text-dim font-semibold">{item.label}</p>
                 <p className="text-[10px] text-dim">{item.sub}</p>
@@ -259,7 +259,7 @@ export default function AdminAnalyticsPage() {
       </div>
 
       {/* 오늘 방문 로그 */}
-      <div className="bg-surface rounded-xl border border-border p-4">
+      <div className="bg-surface rounded-lg border border-border p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-sm font-extrabold">오늘 방문 로그</h2>
@@ -390,7 +390,7 @@ export default function AdminAnalyticsPage() {
 
       {/* 일별 방문 추이 — UV/PV 같이 표시 */}
       {stats?.daily && stats.daily.length > 0 && (
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold">일별 방문 추이</h2>
             <div className="flex items-center gap-3 text-[10px] text-dim">
@@ -431,7 +431,7 @@ export default function AdminAnalyticsPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* 유입 경로 */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">유입 경로</h2>
           {referrers?.referrers.length ? (
             <div className="space-y-2">
@@ -459,7 +459,7 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* 채널 자동분류 (검색엔진/AI/SNS/외부/직접) */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">채널 자동분류</h2>
           <CrossTabList
             groups={referrers?.channels?.map(c => ({ device: c.label, total: c.total, items: c.items }))}
@@ -468,7 +468,7 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* 기기 비율 (UV 기준) */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-sm font-bold">기기</h2>
             <span className="text-[10px] text-dim">{periodLabel} · UV 기준</span>
@@ -500,31 +500,31 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* OS */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">OS</h2>
           <BarList items={referrers?.os_stats} colorMap={OS_COLORS} />
         </div>
 
         {/* 브라우저 */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">브라우저</h2>
           <BarList items={referrers?.browser_stats} colorMap={BROWSER_COLORS} />
         </div>
 
         {/* 기기 × OS */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">기기 × OS</h2>
           <CrossTabList groups={referrers?.device_os_stats} colorMap={OS_COLORS} />
         </div>
 
         {/* 기기 × 브라우저 */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">기기 × 브라우저</h2>
           <CrossTabList groups={referrers?.device_browser_stats} colorMap={BROWSER_COLORS} />
         </div>
 
         {/* 인기 페이지 */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">인기 페이지</h2>
           {referrers?.pages.length ? (
             <div className="space-y-2">
@@ -544,7 +544,7 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* UTM 캠페인 */}
-        <div className="bg-surface rounded-xl border border-border p-5">
+        <div className="bg-surface rounded-lg border border-border p-5">
           <h2 className="text-sm font-bold mb-3">UTM 캠페인</h2>
           {referrers?.utm_sources.length ? (
             <div className="space-y-2">

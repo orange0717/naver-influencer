@@ -206,7 +206,7 @@ export default function MyFansPage() {
         </div>
 
         {/* 동기화 안내 박스 */}
-        <div className="mb-5 p-4 bg-surface rounded-xl border border-border">
+        <div className="mb-5 p-4 bg-surface rounded-lg border border-border">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <p className="text-sm font-semibold text-text">데이터 동기화</p>
@@ -383,7 +383,7 @@ export default function MyFansPage() {
               </div>
 
               {/* 관계 */}
-              <div className="rounded-xl border border-border bg-surface p-4 space-y-2">
+              <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
                 <p className="text-xs font-semibold text-dim">팬 관계</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-dim">내가 팬함</span>

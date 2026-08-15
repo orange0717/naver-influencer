@@ -12,6 +12,7 @@ import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 import { filterMissing, countMissing } from '@/lib/missing-rate';
 import type { BloggerProfile, BlogPost, MissingResult, BlogScoreData, BlogAnalysisMetrics, BlogAnalysisAverages } from './BlogAnalysisSection.helpers';
+import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 import {
   CATEGORIES,
   CHECK_FRESH_MS,
@@ -601,7 +602,7 @@ export default function BlogAnalysisSection() {
             <p className="text-sm text-dim">블로그 분석 기능을 이용하려면 블로그 주소가 필요합니다.</p>
           </div>
           <div className="flex items-center gap-2 max-w-sm mx-auto">
-            <div className="flex items-center flex-1 bg-bg border border-border rounded-xl overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+            <div className="flex items-center flex-1 bg-bg border border-border rounded-lg overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
               <span className="px-3 text-sm text-dim shrink-0 border-r border-border bg-border/30">blog.naver.com/</span>
               <input id="blog-id-input" type="text" placeholder="블로그 아이디"
                 className="flex-1 px-3 py-3 bg-transparent text-sm text-text placeholder:text-dim/60 focus:outline-none"
@@ -760,19 +761,16 @@ export default function BlogAnalysisSection() {
         <div className="px-5 py-4 border-b border-border bg-bg/30 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3 flex-wrap">
             <h3 className="font-bold text-[15px]">내 포스팅 · 블로그 누락</h3>
-            <div className="flex rounded-lg border border-border overflow-hidden text-[11px]">
-              {[10, 30, 60, 90, 180].map(n => (
-                <button key={n} onClick={() => {
-                  setPostsPerPage(n);
-                  setBlogPostsPage(1);
-                  if (profile) fetchBlogPosts(profile.blogId, 1);
-                  if (!checkingAll) checkMissingForCount(n);
-                }}
-                  className={`px-2.5 py-1 font-semibold transition cursor-pointer ${postsPerPage === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
-                  {n}개
-                </button>
-              ))}
-            </div>
+            <SegmentedFilter
+              options={[10, 30, 60, 90, 180].map(n => ({ value: n, label: `${n}개` }))}
+              value={postsPerPage}
+              onChange={n => {
+                setPostsPerPage(n);
+                setBlogPostsPage(1);
+                if (profile) fetchBlogPosts(profile.blogId, 1);
+                if (!checkingAll) checkMissingForCount(n);
+              }}
+            />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex rounded-lg border border-border overflow-hidden text-[11px] shrink-0">

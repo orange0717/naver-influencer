@@ -93,7 +93,7 @@ export default function AdminCouponsPage() {
       </div>
 
       {/* 발급 폼 */}
-      <div className="bg-surface rounded-xl border border-border p-5 space-y-5 max-w-2xl">
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-5 max-w-2xl">
         <div>
           <p className="text-xs font-bold text-dim mb-2">대상 회원 이메일</p>
           <input
@@ -165,7 +165,7 @@ export default function AdminCouponsPage() {
       </div>
 
       {/* 발급 내역 */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-lg overflow-hidden">
         {loading ? (
           <div className="text-center py-10 text-dim text-sm">로딩 중...</div>
         ) : coupons.length === 0 ? (

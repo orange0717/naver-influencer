@@ -79,7 +79,7 @@ export default function StoriesPage() {
             <Link
               key={story.id}
               href={`/stories/${story.id}`}
-              className="block bg-surface rounded-xl border border-border p-5 hover:border-accent/30 transition"
+              className="block bg-surface rounded-lg border border-border p-5 hover:border-accent/30 transition"
             >
               <div className="flex items-center gap-2 mb-2">
                 {story.is_featured && (
