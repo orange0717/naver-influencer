@@ -1,0 +1,50 @@
+/* ═══════════════════════════════════════════════════════════════
+   분석 화면(키워드 순위 · AI 브리핑 · 노출 현황) 공용 디자인 토큰.
+
+   왜 전역(globals.css @theme)이 아니라 스코프 변수인가
+   ─ 앱 전역 팔레트는 저채도 로즈브라운(--color-accent: #B0796B)으로 가는 중이고,
+     분석 화면 스펙은 코랄 오렌지(#D86B56) + 구글식 상태색이다. 전역을 바꾸면
+     랜딩·구독·관리자 등 전 화면이 함께 흔들린다. 그래서 `.analytics-scope`
+     안에서만 유효한 별도 토큰 레이어로 둔다.
+
+   앱 팔레트에 맞추고 싶어지면 아래 값 4줄만 var(--color-*)로 바꾸면 된다.
+   컴포넌트는 전부 --a-* 만 참조하므로 다른 파일은 손대지 않는다.
+   ═══════════════════════════════════════════════════════════════ */
+
+.analytics-scope {
+  /* Primary / Accent */
+  --a-accent: #d86b56;
+  --a-accent-hover: #c25c48;
+  --a-accent-soft: rgba(216, 107, 86, 0.1);
+  --a-accent-line: rgba(216, 107, 86, 0.35);
+
+  /* 면(surface) — 캔버스 → 카드/테이블 순으로 명도가 올라간다 */
+  --a-canvas: #f9f7f5;
+  --a-surface: #ffffff;
+  --a-surface-hover: #faf8f7;
+  --a-border: #ebebeb;
+  --a-border-soft: rgba(235, 235, 235, 0.6);
+
+  /* 텍스트 위계 */
+  --a-text: #202124;
+  --a-text-2: #5f6368;
+  --a-dim: #9aa0a6;
+
+  /* 상태 배지 — bg / fg 쌍. 배지·아이콘·표 셀이 모두 이 쌍만 쓴다. */
+  --a-success-bg: #e6f4ea;
+  --a-success-fg: #137333;
+  --a-warning-bg: #fef7e0;
+  --a-warning-fg: #b06000;
+  --a-danger-bg: #fce8e6;
+  --a-danger-fg: #c5221f;
+  --a-neutral-bg: #f1f3f4;
+  --a-neutral-fg: #5f6368;
+  --a-info-bg: var(--a-accent-soft);
+  --a-info-fg: var(--a-accent);
+}
+
+/* paintCanvas 옵션을 켠 화면에서만 배경까지 스펙 캔버스로 칠한다.
+   기본값은 앱 캔버스를 그대로 두고 토큰만 제공한다(라이브 화면 회귀 방지). */
+.analytics-scope[data-canvas='on'] {
+  background: var(--a-canvas);
+}

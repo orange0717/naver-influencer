@@ -5,12 +5,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import SectionHeader from '@/components/dashboard/SectionHeader';
-import SummaryCards from '@/components/analytics/SummaryCards';
+import DashboardLayout, { type SummaryCard } from '@/components/analytics/DashboardLayout';
 import PeriodFilter from '@/components/analytics/PeriodFilter';
 import SegmentedFilter, { type SegmentOption } from '@/components/analytics/SegmentedFilter';
 import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar';
-import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
-import PageHeader from '@/components/analytics/PageHeader';
 import Pagination from '@/components/analytics/Pagination';
 import MoreMenu, { menuItemClass, menuItemDangerClass } from '@/components/analytics/MoreMenu';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,10 +39,7 @@ import CheckProgress from '@/components/analytics/CheckProgress';
 import { extractRepresentativeKeyword } from '@/lib/representative-keyword-client';
 import {
   computeCitationStatus,
-  rollupPostCitationStatus,
-  CITATION_FILTER_OPTIONS,
   CITATION_STATUS_LABELS,
-  type CitationFilter,
   type CitationState,
 } from '@/lib/ai-citation-status';
 import { BULK_RUN_CAP, BATCH_DELAY_MS, CITATION_FRESH_TTL_MS } from '@/lib/ai-citation-batch';
@@ -70,6 +65,39 @@ interface BulkEstimate {
 }
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/** 안내 배너를 닫은 상태 저장 키 — 사용자가 닫으면 다음 방문에도 닫힌 채로 둔다. */
+const NOTICE_DISMISS_KEY = 'ai-briefing-notice-dismissed';
+
+/**
+ * 상태 탭(스펙 #17) — 이 화면은 브리핑·탭을 "독립" 채널로 보므로 종합 상태(CitationFilter)가 아니라
+ * 채널별 필터를 쓴다. 브리핑 노출과 탭 노출은 서로 배타가 아니라 둘 다 걸리는 포스팅도 있다.
+ */
+type BriefingFilter = 'all' | 'briefing' | 'tab' | 'missing' | 'unchecked' | 'failed';
+
+const BRIEFING_FILTER_OPTIONS: { key: BriefingFilter; label: string }[] = [
+  { key: 'all', label: '전체' },
+  { key: 'briefing', label: '브리핑 노출' },
+  { key: 'tab', label: '탭 노출' },
+  { key: 'missing', label: '미노출' },
+  { key: 'unchecked', label: '확인전' },
+  { key: 'failed', label: '확인실패' },
+];
+
+/**
+ * 대표 키워드 확인 결과 → 상태 탭 매칭.
+ * 요약 카드(channelCounts)와 "같은" 분기 순서를 쓴다 — 카드 숫자와 탭 필터 결과가 어긋나면 안 된다.
+ * 오류·분석불가·미확인은 절대 '미노출'로 세지 않는다(정확도 원칙 #8).
+ */
+function matchesBriefingFilter(f: BriefingFilter, r?: BriefingResult): boolean {
+  if (f === 'all') return true;
+  if (!r || (!r.checkedAt && !r.checkStatus)) return f === 'unchecked';
+  if (r.checkStatus === 'transient_error' || r.checkStatus === 'unanalyzable') return f === 'failed';
+  if (f === 'briefing') return r.exposed === true;
+  if (f === 'tab') return r.tabExposed === true;
+  if (f === 'missing') return r.exposed !== true && r.tabExposed !== true;
+  return false;
+}
 
 /** CSV 라벨 — 화면 배지와 같은 문구를 쓴다(스펙 #8). 실패는 절대 미인용으로 적지 않는다. */
 function briefingCsvLabel(r?: BriefingResult): string {
@@ -112,8 +140,8 @@ export default function AiBriefingSection() {
   const [errorMessage, setErrorMessage] = useState('');
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 상태 필터: 전체/인용/일부 인용/미인용/미확인/확인실패
-  const [filter, setFilter] = useState<CitationFilter>('all');
+  // 상태 필터: 전체/브리핑 노출/탭 노출/미노출/확인전/확인실패 (채널별 독립 판정)
+  const [filter, setFilter] = useState<BriefingFilter>('all');
   // 기간·검색·정렬 필터 — 키워드순위 화면과 동일 UX로 통일(스펙 #1)
   const [period, setPeriod] = useState(30);
   const [customFrom, setCustomFrom] = useState('');
@@ -145,6 +173,19 @@ export default function AiBriefingSection() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string }>({ done: 0, total: 0, current: '' });
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const bulkAbortRef = useRef(false);
+
+  // 표 상단 안내 배너(공식 API 부재·소요 시간) — 닫으면 기억한다.
+  // 초깃값은 true로 두고 마운트 후에 저장값을 읽어 SSR/CSR 마크업이 어긋나지 않게 한다.
+  const [noticeOpen, setNoticeOpen] = useState(true);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(NOTICE_DISMISS_KEY) === '1') setNoticeOpen(false);
+    } catch { /* 저장소 접근 불가 — 배너를 그대로 둔다 */ }
+  }, []);
+  const dismissNotice = () => {
+    setNoticeOpen(false);
+    try { window.localStorage.setItem(NOTICE_DISMISS_KEY, '1'); } catch { /* ignore */ }
+  };
 
   // 대표키워드 점검·재추출(스펙 #18~21) — 규칙 기반(네이버 무호출).
   type KeywordAudit = {
@@ -731,12 +772,11 @@ export default function AiBriefingSection() {
     });
   };
 
-  // 포스팅 단위 상태는 대표 키워드 결과 하나로만 판정한다(스펙 #10/#11) —
+  // 포스팅 단위 판정은 대표 키워드 결과 하나로만 한다(스펙 #10/#11) —
   // 보조 키워드 결과까지 합치면 같은 포스팅이 여러 상태로 중복 집계된다.
-  const postStatusInputs = (postId: string) => {
+  const postRepResult = (postId: string): BriefingResult | undefined => {
     const rep = (repKeywords[postId]?.keyword || '').trim();
-    const r = rep ? resultFor(postId, rep, true) : undefined;
-    return r ? [{ exposed: r.exposed, tabExposed: r.tabExposed, checkStatus: r.checkStatus, checkedAt: r.checkedAt }] : [];
+    return rep ? resultFor(postId, rep, true) : undefined;
   };
 
   // 최근 확인(캐시 신선) 여부 — 배치 큐가 재조회 대상을 고를 때 사용(스펙 #14)
@@ -747,16 +787,18 @@ export default function AiBriefingSection() {
    * 상단 통계 카드(스펙 #11) — AI 브리핑·AI 탭 노출 여부를 채널별로 "독립" 집계한다(스펙 #7).
    * 포스팅당 대표 키워드 결과 1건만 세므로 중복 집계가 없고, 확인하지 않은 건 임의 추정하지 않는다.
    * 오류·분석불가는 어느 쪽 '미노출'에도 넣지 않고 '확인 실패'로만 센다.
+   * 분기 순서는 matchesBriefingFilter 와 동일해야 한다(카드 숫자 = 탭 필터 결과 수).
    */
   const channelCounts = blogPosts.reduce((acc, post) => {
-    const rep = (repKeywords[post.id]?.keyword || '').trim();
-    const r = rep ? resultFor(post.id, rep, true) : undefined;
+    const r = postRepResult(post.id);
     if (!r || (!r.checkedAt && !r.checkStatus)) { acc.unchecked += 1; return acc; }
     if (r.checkStatus === 'transient_error' || r.checkStatus === 'unanalyzable') { acc.failed += 1; return acc; }
-    if (r.exposed) acc.briefingExposed += 1; else acc.briefingMissing += 1;
-    if (r.tabExposed) acc.tabExposed += 1; else acc.tabMissing += 1;
+    if (r.exposed) acc.briefingExposed += 1;
+    if (r.tabExposed) acc.tabExposed += 1;
+    // 확인은 끝났지만 브리핑·탭 어디에도 인용되지 않은 포스팅 — '확인 전'과 합쳐 한 카드로 보여준다.
+    if (r.exposed !== true && r.tabExposed !== true) acc.bothMissing += 1;
     return acc;
-  }, { briefingExposed: 0, briefingMissing: 0, tabExposed: 0, tabMissing: 0, unchecked: 0, failed: 0 });
+  }, { briefingExposed: 0, tabExposed: 0, bothMissing: 0, unchecked: 0, failed: 0 });
 
   // 아직 제목 분석이 끝나지 않은 포스팅 수 — 헤더의 "키워드 추출" CTA에 표시(스펙 #1)
   const missingKeywordCount = blogPosts.filter(p => !(repKeywords[p.id]?.keyword || '').trim()).length;
@@ -791,7 +833,7 @@ export default function AiBriefingSection() {
     }
 
     if (filter !== 'all') {
-      list = list.filter(post => rollupPostCitationStatus(postStatusInputs(post.id)) === filter);
+      list = list.filter(post => matchesBriefingFilter(filter, postRepResult(post.id)));
     }
 
     const arr = [...list];
@@ -1014,8 +1056,13 @@ export default function AiBriefingSection() {
     return typeof rk.confidence === 'number' && rk.confidence < 0.6;
   };
 
-  return (
-    <div className="flex flex-col gap-6">
+  // ── 화면 조립 ────────────────────────────────────────────────────────────
+  // 골격(헤더 → 지표카드 → 필터 → 표 → 부가영역)은 공용 DashboardLayout이 갖고,
+  // 이 화면은 각 슬롯에 넣을 내용만 만든다 — 키워드순위 화면과 같은 구성.
+
+  // 최상단 알림 — 오류·단건 확인 진행 상태
+  const alertBanners = (
+    <>
       {errorMessage && (
         <div className="px-4 py-3 rounded-xl bg-down/10 border border-down/30 text-down text-sm flex items-start gap-2">
           <span className="font-bold shrink-0">!</span>
@@ -1035,17 +1082,13 @@ export default function AiBriefingSection() {
           <span className="flex-1">{STAGE_LABELS[checkingStage] || '확인 중...'}</span>
         </div>
       )}
-      {/* 헤더 + 주요 실행 버튼 — 키워드순위 화면과 동일 구성 */}
-      <PageHeader
-        title="AI 브리핑 · AI 탭"
-        description={`내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 ${blogPostsTotal.toLocaleString()}개`}
-        note={<>
-          AI 브리핑·AI 탭 인용 여부는 공식 API가 없어 실제 브라우저로 두 화면을 순차 방문해 확인하므로 건당 30~50초가 걸립니다.
-          네이버가 짧은 시간의 반복 자동화를 제한하기 때문에, &ldquo;전체 업데이트&rdquo;는 1회에 소수만 안전하게 확인하고 나머지는 미확인으로 두었다가
-          다시 눌러 이어서 채웁니다(재개형). 확인 불가·오류는 절대 &lsquo;미인용&rsquo;으로 처리하지 않습니다.
-        </>}
-        actions={<>
-          {extractingAll ? (
+    </>
+  );
+
+  // 헤더 우측 실행 버튼 — 주 액션은 '전체 업데이트'
+  const headerActions = (
+    <>
+      {extractingAll ? (
             <CheckProgress current={extractProgress.current} total={extractProgress.total} label="키워드 추출 중" onStop={stopExtractingAll} />
           ) : missingKeywordCount > 0 && (
             <button
@@ -1104,12 +1147,14 @@ export default function AiBriefingSection() {
                   초기화
                 </button>
               </>
-            )}
-          </MoreMenu>
-        </>}
-      />
+        )}
+      </MoreMenu>
+    </>
+  );
 
-      {/* 배치 진행률(스펙 #15) */}
+  // 배치 진행률·결과 안내(스펙 #15)
+  const bulkBanners = (
+    <>
       {bulkRunning && (
         <div className="px-4 py-3 rounded-xl bg-accent/5 border border-accent/30 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
@@ -1133,7 +1178,12 @@ export default function AiBriefingSection() {
           <button onClick={() => setBulkNotice(null)} className="text-dim hover:text-text cursor-pointer shrink-0" aria-label="닫기">✕</button>
         </div>
       )}
+    </>
+  );
 
+  // 표 아래 부가 영역 — 확인 모달 2종 + 단건 즉시 확인 도구 + 분석 히스토리
+  const footer = (
+    <>
       {/* 대표키워드 점검·재추출 확인 모달(스펙 #18~21) */}
       {auditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAuditOpen(false)}>
@@ -1243,8 +1293,8 @@ export default function AiBriefingSection() {
         </div>
       )}
 
-      {/* 단건 즉시 확인(보조 도구) — 전체 목록 아래로 배치(order-2). 특정 키워드 하나를 바로 분석할 때 사용. */}
-      <GlassCard padding="none" className="order-2">
+      {/* 단건 즉시 확인(보조 도구) — 전체 목록 아래에 둔다. 특정 키워드 하나를 바로 분석할 때 사용. */}
+      <GlassCard padding="none">
         <div className="px-5 pt-5">
           <SectionHeader title="단건 즉시 확인" subtitle="특정 키워드 하나를 바로 분석 — 노출 여부·순위·검색량·경쟁도·관련 키워드까지 확인합니다" />
         </div>
@@ -1361,7 +1411,7 @@ export default function AiBriefingSection() {
 
       {/* 결과 히스토리 (단건 확인 이력) */}
       {analysisHistory.length > 0 && (
-        <GlassCard padding="none" className="order-3">
+        <GlassCard padding="none">
           <div className="px-5 py-4 border-b border-border bg-bg/30">
             <h3 className="font-bold text-[15px]">분석 히스토리</h3>
           </div>
@@ -1436,26 +1486,29 @@ export default function AiBriefingSection() {
         </GlassCard>
       )}
 
-      {/* 전체 포스팅 목록 — 기본(항상 표시) 관리 화면(스펙 #1). order-1로 단건 도구보다 위에 배치. */}
-      <div className="order-1 space-y-4">
+    </>
+  );
 
-      {/* 요약 카드(스펙 #11) — 키워드순위 화면과 동일한 SummaryCards(kpi). 브리핑·탭을 각각 독립 집계한다. */}
-      <SummaryCards
-        loading={postsLoading}
-        cards={[
-          { key: 'total', label: '전체 포스팅', value: blogPostsTotal, color: 'accent' },
-          { key: 'briefing-exposed', label: 'AI 브리핑 노출', value: channelCounts.briefingExposed, color: 'up' },
-          { key: 'briefing-missing', label: 'AI 브리핑 미노출', value: channelCounts.briefingMissing, color: 'down' },
-          { key: 'tab-exposed', label: 'AI 탭 노출', value: channelCounts.tabExposed, color: 'up' },
-          { key: 'tab-missing', label: 'AI 탭 미노출', value: channelCounts.tabMissing, color: 'down' },
-          { key: 'unchecked', label: '확인 전', value: channelCounts.unchecked, color: 'dim' },
-          { key: 'failed', label: '확인 실패', value: channelCounts.failed, color: 'gold' },
-        ]}
-      />
+  // 요약 카드(스펙 #11) — 키워드순위 화면과 동일한 SummaryCards(kpi) 5장. 브리핑·탭은 각각 독립 집계.
+  const metricCards: SummaryCard[] = [
+    { key: 'total', label: '전체 포스팅', value: blogPostsTotal, color: 'accent' },
+    { key: 'briefing-exposed', label: 'AI 브리핑 노출', value: channelCounts.briefingExposed, color: 'up' },
+    { key: 'tab-exposed', label: 'AI 탭 노출', value: channelCounts.tabExposed, color: 'up' },
+    {
+      key: 'missing',
+      label: '미노출 · 확인 전',
+      value: channelCounts.bothMissing + channelCounts.unchecked,
+      color: 'dim',
+      // 성격이 다른 두 값을 합친 카드라 내역을 함께 적는다(확인 전을 미노출로 오해하지 않도록).
+      description: `미노출 ${channelCounts.bothMissing.toLocaleString()} · 확인 전 ${channelCounts.unchecked.toLocaleString()}`,
+    },
+    { key: 'failed', label: '확인 실패', value: channelCounts.failed, color: 'gold' },
+  ];
 
-      {/* 필터 영역 — 키워드순위 화면과 동일 구성(기간·상태·검색·정렬) (스펙 #1/#17) */}
-      <div className="flex flex-col gap-3">
-        <PeriodFilter
+  // 필터 영역 — 키워드순위 화면과 동일 구성(기간·상태·검색·정렬) (스펙 #1/#17)
+  const filters = (
+    <>
+      <PeriodFilter
           period={period}
           onPeriod={p => { setPeriod(p); setCurrentPage(1); }}
           customFrom={customFrom}
@@ -1466,7 +1519,7 @@ export default function AiBriefingSection() {
           onResetCustom={() => { setCustomFrom(''); setCustomTo(''); setCurrentPage(1); }}
         />
         <SegmentedFilter
-          options={CITATION_FILTER_OPTIONS.map((o): SegmentOption<CitationFilter> => ({ value: o.key, label: o.label }))}
+          options={BRIEFING_FILTER_OPTIONS.map((o): SegmentOption<BriefingFilter> => ({ value: o.key, label: o.label }))}
           value={filter}
           onChange={v => { setFilter(v); setCurrentPage(1); }}
         />
@@ -1479,14 +1532,48 @@ export default function AiBriefingSection() {
           <select value={postsPerPage} onChange={e => { setPostsPerPage(Number(e.target.value)); setCurrentPage(1); }} className={selectClass} title="페이지당 포스팅 수">
             <option value={30}>30개씩</option>
             <option value={60}>60개씩</option>
-            <option value={90}>90개씩</option>
-          </select>
-        </PostSearchBar>
-      </div>
+          <option value={90}>90개씩</option>
+        </select>
+      </PostSearchBar>
+    </>
+  );
 
-      {/* 테이블 — 키워드순위 화면과 동일한 AnalyticsTableShell(제목·건수 헤더) */}
-      <AnalyticsTableShell title="포스팅 목록" loading={postsLoading} count={`${filteredPosts.length.toLocaleString()}개`}>
-        {postsLoading ? (
+  return (
+    <DashboardLayout
+      title="AI 브리핑 · AI 탭"
+      description={`내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 ${blogPostsTotal.toLocaleString()}개`}
+      banners={<>{alertBanners}{bulkBanners}</>}
+      actions={headerActions}
+      cards={metricCards}
+      cardsLoading={postsLoading}
+      filters={filters}
+      tableCount={`${filteredPosts.length.toLocaleString()}개`}
+      tableLoading={postsLoading}
+      footer={footer}
+    >
+      {/* 표 상단 안내(공식 API 부재·소요 시간) — 닫을 수 있는 옅은 주황 콜아웃 */}
+      {noticeOpen && (
+        <div className="px-5 pt-4">
+          <div className="flex items-start gap-2 px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs leading-relaxed text-dim">
+            <span aria-hidden className="shrink-0 font-bold text-amber-600">ⓘ</span>
+            <p className="flex-1">
+              AI 브리핑·AI 탭 인용 여부는 <b className="text-text">공식 API가 없어</b> 실제 브라우저로 두 화면을 순차 방문해 확인하므로
+              건당 30~50초가 걸립니다. 네이버가 짧은 시간의 반복 자동화를 제한하기 때문에 &ldquo;전체 업데이트&rdquo;는 1회에 소수만 안전하게
+              확인하고, 나머지는 미확인으로 두었다가 다시 눌러 이어서 채웁니다(재개형).
+              확인 불가·오류는 절대 &lsquo;미노출&rsquo;로 처리하지 않습니다.
+            </p>
+            <button
+              onClick={dismissNotice}
+              className="shrink-0 text-dim hover:text-text cursor-pointer"
+              aria-label="안내 닫기"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {postsLoading ? (
           <div className="p-12 text-center text-dim text-sm">포스팅을 불러오는 중...</div>
         ) : filteredPosts.length === 0 ? (
           <div className="p-12 text-center text-dim text-sm">포스팅이 없습니다.</div>
@@ -1498,22 +1585,19 @@ export default function AiBriefingSection() {
               <table className="w-full min-w-[1200px] text-sm table-fixed">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase whitespace-nowrap">
-                    <th className="text-left px-4 py-3 font-semibold w-[3%]">#</th>
-                    <th className="text-left px-3 py-3 font-semibold w-[22%]">포스팅 제목</th>
+                    <th className="text-left px-4 py-3 font-semibold w-[23%]">포스팅 제목</th>
                     <th className="text-center px-3 py-3 font-semibold w-[19%]">추출 키워드</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[16%]">대표 키워드</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[17%]">타겟 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-[9%]">AI 브리핑</th>
                     <th className="text-center px-3 py-3 font-semibold w-[9%]">AI 탭</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[7%]">마지막 확인</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[6%]">상태</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[5%]">다시 검사</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[4%]">상세</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[8%]">마지막 확인</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[7%]">상태</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[8%]">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {pagePosts.map((post, i) => {
+                  {pagePosts.map(post => {
                     const rows = keywordRowsFor(post);
-                    const no = (safePage - 1) * postsPerPage + i + 1;
                     const editing = editingRepPost === post.id;
                     const needsReview = repNeedsReview(post);
                     const entry = repKeywords[post.id];
@@ -1533,7 +1617,7 @@ export default function AiBriefingSection() {
                     );
 
                     const titleCell = (
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-4 py-3 align-top">
                         <a href={post.url} target="_blank" rel="noopener noreferrer"
                           className="font-semibold hover:text-accent transition truncate block max-w-full" title={post.title}>
                           {post.title}
@@ -1566,7 +1650,6 @@ export default function AiBriefingSection() {
                       <tr className="hover:bg-surface-hover transition">
                         <td className="px-4 py-2" />
                         <td className="px-3 py-2" />
-                        <td className="px-3 py-2" />
                         <td className="px-3 py-2 align-top text-center">
                           <AddKeywordControl
                             open={addingFor === post.id}
@@ -1579,7 +1662,7 @@ export default function AiBriefingSection() {
                             onSubmit={() => submitAddKeyword(post)}
                           />
                         </td>
-                        <td colSpan={6} />
+                        <td colSpan={5} />
                       </tr>
                     );
 
@@ -1588,7 +1671,6 @@ export default function AiBriefingSection() {
                       return (
                         <Fragment key={post.id}>
                         <tr className="hover:bg-surface-hover transition">
-                          <td className="px-4 py-3 text-dim text-xs align-top">{no}</td>
                           {titleCell}
                           {extractedCell}
                           <td className="px-3 py-3 align-top text-center">
@@ -1597,8 +1679,8 @@ export default function AiBriefingSection() {
                                 className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">직접 입력</button>
                             )}
                           </td>
-                          <td colSpan={6} className="px-3 py-3 text-center text-[11px] text-dim">
-                            대표 키워드를 지정하면 AI 브리핑·AI 탭을 확인할 수 있습니다.
+                          <td colSpan={5} className="px-3 py-3 text-center text-[11px] text-dim">
+                            타겟 키워드를 지정하면 AI 브리핑·AI 탭을 확인할 수 있습니다.
                           </td>
                         </tr>
                         {addKeywordRow}
@@ -1617,9 +1699,8 @@ export default function AiBriefingSection() {
                           return (
                             <Fragment key={key}>
                               <tr className="group hover:bg-surface-hover transition">
-                                <td className="px-4 py-3 text-dim text-xs align-top">{j === 0 ? no : ''}</td>
                                 {j === 0 ? titleCell : (
-                                  <td className="px-3 py-3 align-top text-dim/50 text-xs">↳</td>
+                                  <td className="px-4 py-3 align-top text-dim/50 text-xs">↳</td>
                                 )}
                                 {j === 0 ? extractedCell : <td className="px-3 py-3" />}
                                 <td className="px-3 py-3 align-top text-center">
@@ -1663,27 +1744,28 @@ export default function AiBriefingSection() {
                                     </div>
                                   )}
                                 </td>
-                                <td className="text-center px-3 py-3">
-                                  <button
-                                    onClick={() => recheckKeyword(post, row.keyword)}
-                                    disabled={!!checkingKey}
-                                    className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
-                                  >
-                                    {checkingKey === key ? (
-                                      <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                                    ) : result?.checkedAt ? '다시 검사' : '검사'}
-                                  </button>
-                                </td>
-                                <td className="text-center px-3 py-3">
-                                  <button onClick={() => setDetailKey(prev => prev === key ? '' : key)}
-                                    className="text-[11px] text-dim hover:text-accent cursor-pointer hover:underline">
-                                    {detailKey === key ? '닫기' : '상세'}
-                                  </button>
+                                {/* 관리 — 다시 검사 / 상세를 한 열에 모은다(키워드순위 '관리' 열과 동일 패턴) */}
+                                <td className="px-3 py-3">
+                                  <div className="flex items-center justify-center gap-2.5">
+                                    <button
+                                      onClick={() => recheckKeyword(post, row.keyword)}
+                                      disabled={!!checkingKey}
+                                      className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                                    >
+                                      {checkingKey === key ? (
+                                        <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+                                      ) : result?.checkedAt ? '다시 검사' : '검사'}
+                                    </button>
+                                    <button onClick={() => setDetailKey(prev => prev === key ? '' : key)}
+                                      className="text-[11px] text-dim hover:text-accent cursor-pointer hover:underline">
+                                      {detailKey === key ? '닫기' : '상세'}
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                               {detailKey === key && (
                                 <tr>
-                                  <td colSpan={10} className="px-4 pb-4 pt-1 bg-bg/30">
+                                  <td colSpan={8} className="px-4 pb-4 pt-1 bg-bg/30">
                                     <CitationDetailPanel post={post} keyword={row.keyword} result={result} isPrimary={row.isPrimary} />
                                   </td>
                                 </tr>
@@ -1701,27 +1783,22 @@ export default function AiBriefingSection() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {pagePosts.map((post, i) => {
+              {pagePosts.map(post => {
                 const rows = keywordRowsFor(post);
                 const needsReview = repNeedsReview(post);
                 const entry = repKeywords[post.id];
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
-                    <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-dim w-5 shrink-0 pt-0.5">
-                        {(safePage - 1) * postsPerPage + i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <a href={post.url} target="_blank" rel="noopener noreferrer"
-                          className="font-semibold text-sm hover:text-accent transition line-clamp-2">
-                          {post.title}
-                        </a>
-                        <span className="text-[10px] text-dim ml-1">{post.date}</span>
-                      </div>
+                    <div className="min-w-0">
+                      <a href={post.url} target="_blank" rel="noopener noreferrer"
+                        className="font-semibold text-sm hover:text-accent transition line-clamp-2">
+                        {post.title}
+                      </a>
+                      <span className="text-[10px] text-dim ml-1">{post.date}</span>
                     </div>
 
                     {editingRepPost === post.id && (
-                      <div className="pl-7">
+                      <div>
                         <input
                           autoFocus
                           value={repDraft}
@@ -1738,7 +1815,7 @@ export default function AiBriefingSection() {
                     )}
 
                     {/* 추출 키워드(스펙 #1/#2) — 데스크톱 '추출 키워드' 열과 같은 컴포넌트 */}
-                    <div className="pl-7">
+                    <div>
                       <ExtractedKeywordsCell
                         candidates={entry?.candidates || []}
                         representative={entry?.keyword || null}
@@ -1750,7 +1827,7 @@ export default function AiBriefingSection() {
                     </div>
 
                     {rows.length === 0 ? (
-                      <div className="pl-7 flex items-center gap-2 flex-wrap text-[11px] text-dim">
+                      <div className="flex items-center gap-2 flex-wrap text-[11px] text-dim">
                         <span>대표 키워드 없음</span>
                         <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
                           className="hover:text-accent hover:underline">직접 입력</button>
@@ -1761,7 +1838,7 @@ export default function AiBriefingSection() {
                       const state = keywordStatus(post.id, row.keyword, row.isPrimary);
                       const staleByKeywordChange = row.isPrimary && repNeedsRecheck(post.id, row.keyword);
                       return (
-                        <div key={key} className="ml-7 rounded-lg border border-border/60 bg-bg/40 p-2.5 space-y-1.5">
+                        <div key={key} className="rounded-lg border border-border/60 bg-bg/40 p-2.5 space-y-1.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-xs font-semibold">{row.keyword}</span>
                             {row.isPrimary ? (
@@ -1811,7 +1888,7 @@ export default function AiBriefingSection() {
                       );
                     })}
 
-                    <div className="pl-7">
+                    <div>
                       <AddKeywordControl
                         open={addingFor === post.id}
                         value={addValue}
@@ -1832,9 +1909,6 @@ export default function AiBriefingSection() {
             <Pagination page={safePage} totalPages={totalPages} onChange={setCurrentPage} />
           </>
         )}
-      </AnalyticsTableShell>
-
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }
