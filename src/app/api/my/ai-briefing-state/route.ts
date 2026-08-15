@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
 
-  // 클라이언트 모델: postKeywords(postId→키워드[]) + briefingResults("postId::keyword"→결과)
-  const postKeywords: Record<string, string[]> = {};
+  // 결과 전용 모델: briefingResults("postId::keyword"→결과).
+  // 키워드 목록은 키워드순위(keyword_rank_lookups)가 SoT이므로 여기서 만들지 않는다.
   const briefingResults: Record<string, BriefingResult> = {};
   for (const r of (data ?? []) as Array<{
     post_id: string; keyword: string;
@@ -77,7 +77,6 @@ export async function GET(request: NextRequest) {
     search_volume_monthly: number | null; competition: string | null; related_keyword_count: number | null;
     check_status: CheckStatus | null; last_error: string | null;
   }>) {
-    (postKeywords[r.post_id] ??= []).push(r.keyword);
     // 성공 확인(checked_at) 또는 실패 상태(check_status)가 있으면 결과로 노출한다.
     // 실패만 있는 경우도 반환해야 UI에서 "미확인"이 아니라 "일시적 오류/분석불가"로 구분된다.
     if (r.checked_at || r.check_status) {
@@ -105,55 +104,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ postKeywords, briefingResults });
-}
-
-/** PUT: 한 포스트의 타겟 키워드 할당을 저장 (신규 upsert + 제거된 키워드 삭제). 기존 결과는 보존. */
-export async function PUT(request: NextRequest) {
-  const g = await guard(request);
-  if ('res' in g) return g.res;
-
-  const { blogId, postId, keywords } = await request.json();
-  if (typeof blogId !== 'string' || typeof postId !== 'string' || !Array.isArray(keywords)) {
-    return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
-  }
-
-  const clean = [...new Set(
-    keywords.map((k: unknown) => (typeof k === 'string' ? k.trim() : '')).filter(Boolean),
-  )].slice(0, 20);
-
-  const supabase = createServiceClient();
-
-  if (clean.length > 0) {
-    const { error: upsertErr } = await supabase
-      .from('ai_briefing_exposures')
-      .upsert(
-        clean.map(keyword => ({ user_id: g.userId, blog_id: blogId, post_id: postId, keyword })),
-        { onConflict: 'user_id,post_id,keyword', ignoreDuplicates: true },
-      );
-    if (upsertErr) return NextResponse.json({ error: '저장에 실패했습니다.' }, { status: 500 });
-  }
-
-  const { data: existing } = await supabase
-    .from('ai_briefing_exposures')
-    .select('keyword')
-    .eq('user_id', g.userId)
-    .eq('post_id', postId);
-
-  const removed = ((existing ?? []) as Array<{ keyword: string }>)
-    .map(r => r.keyword)
-    .filter(k => !clean.includes(k));
-
-  if (removed.length > 0) {
-    await supabase
-      .from('ai_briefing_exposures')
-      .delete()
-      .eq('user_id', g.userId)
-      .eq('post_id', postId)
-      .in('keyword', removed);
-  }
-
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ briefingResults });
 }
 
 /** PATCH: 단일 (post, keyword) AI 브리핑 확인 결과 갱신 */

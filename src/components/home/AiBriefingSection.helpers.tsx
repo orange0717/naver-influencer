@@ -17,113 +17,6 @@ export interface BlogPost {
   viewCount?: number;
 }
 
-export interface SubScores {
-  sourceUsage: number;
-  faq: number;
-  table: number;
-  image: number;
-  freshness: number;
-  length: number;
-  headings: number;
-  keywordDensity: number;
-  entity: number;
-  internalLink: number;
-  externalLink: number;
-  eeat: number;
-  schema: null;
-}
-
-export interface PostScore {
-  postId: string;
-  title: string | null;
-  viewCount: number | null;
-  publishedAt: string | null;
-  representativeKeyword: string | null;
-  aiScore: number;
-  seoScore: number;
-  geoScore: number;
-  aeoScore: number;
-  subScores: SubScores;
-  causeTags: string[];
-  computedAt: string;
-}
-
-export const SCORE_API = '/api/blog/analyze-post-score';
-
-const SUB_SCORE_LABELS: Record<keyof Omit<SubScores, 'schema'>, string> = {
-  sourceUsage: '출처 활용',
-  faq: 'FAQ',
-  table: '표',
-  image: '이미지',
-  freshness: '최신성',
-  length: '본문 길이',
-  headings: '소제목',
-  keywordDensity: '키워드 밀도',
-  entity: '엔티티',
-  internalLink: '내부링크',
-  externalLink: '외부링크',
-  eeat: 'E-E-A-T',
-};
-
-const IMPROVEMENT_SUGGESTIONS: Partial<Record<keyof Omit<SubScores, 'schema'>, string>> = {
-  sourceUsage: '뉴스·정부·공공기관 등 공식 출처 링크를 1~2개 추가하세요.',
-  faq: '"자주 묻는 질문" 형태의 FAQ 섹션을 추가하세요.',
-  table: '핵심 정보를 정리한 표를 1개 이상 추가하세요.',
-  image: '사진(직접 촬영 원본 포함)을 3~5장 이상 추가하세요.',
-  freshness: '오래된 정보라면 최신 내용으로 갱신하고 발행일을 새로 올리세요.',
-  length: '본문을 800자 이상으로 보강하세요.',
-  headings: '소제목(H태그)을 2~3개 이상 추가해 구조를 명확히 하세요.',
-  keywordDensity: '대표 키워드를 본문에 자연스럽게 더 포함시키세요(0.5~2.5% 권장).',
-  entity: '주제와 관련된 구체적인 용어·개체명을 더 다양하게 언급하세요.',
-  internalLink: '내 블로그의 관련 포스팅으로 연결되는 링크를 추가하세요.',
-  externalLink: '신뢰할 수 있는 외부 자료로 연결되는 링크를 추가하세요.',
-  eeat: '1인칭 경험(직접 해봤어요 등)과 인용·근거 표기를 추가하세요.',
-};
-
-export function scoreColor(score: number): string {
-  if (score >= 70) return 'text-up';
-  if (score >= 40) return 'text-gold';
-  return 'text-down';
-}
-
-export function ScoreCell({ score }: { score: number | undefined }) {
-  if (score === undefined) return <span className="text-[10px] text-dim/50">--</span>;
-  return <span className={`text-xs font-bold ${scoreColor(score)}`}>{score}</span>;
-}
-
-/** "개선하기" 패널 — Phase 1은 규칙 기반 sub-score만으로 약점을 나열하는 기초 진단(Claude 미사용). */
-export function ImprovePanel({ score }: { score: PostScore }) {
-  const weakItems = (Object.keys(SUB_SCORE_LABELS) as (keyof Omit<SubScores, 'schema'>)[])
-    .filter(key => score.subScores[key] < 50)
-    .sort((a, b) => score.subScores[a] - score.subScores[b]);
-
-  return (
-    <div className="rounded-xl border border-border bg-surface p-3.5 space-y-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3 text-xs">
-          <span>AI <b className={scoreColor(score.aiScore)}>{score.aiScore}</b></span>
-          <span>SEO <b className={scoreColor(score.seoScore)}>{score.seoScore}</b></span>
-          <span>GEO <b className={scoreColor(score.geoScore)}>{score.geoScore}</b></span>
-          <span>AEO <b className={scoreColor(score.aeoScore)}>{score.aeoScore}</b></span>
-        </div>
-        <span className="text-[10px] text-dim">규칙 기반 기초 진단입니다 — AI(Claude) 분석 기능은 준비 중입니다.</span>
-      </div>
-      {weakItems.length === 0 ? (
-        <p className="text-xs text-dim">뚜렷한 약점이 발견되지 않았습니다.</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {weakItems.map(key => (
-            <li key={key} className="text-xs flex items-start gap-2">
-              <span className="font-semibold text-down shrink-0">{SUB_SCORE_LABELS[key]}({score.subScores[key]}점)</span>
-              <span className="text-dim">{IMPROVEMENT_SUGGESTIONS[key]}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 export type CheckStatus = 'ok' | 'transient_error' | 'unanalyzable';
 
 export interface BriefingResult {
@@ -159,10 +52,12 @@ export const EMPTY_BRIEFING: BriefingResult = {
 };
 
 export const STATE_API = '/api/my/ai-briefing-state';
+/** 키워드 SoT — 키워드순위 화면과 "같은" 저장소(keyword_rank_lookups). AI 브리핑은 여기서 읽기만 한다. */
+export const RANKING_STATE_API = '/api/my/keyword-ranking-state';
 
-// 서버(DB)에서 저장된 타겟 키워드/AI 브리핑 결과를 복원한다. (기기 간 동기화)
+// 서버(DB)에서 저장된 AI 브리핑/AI 탭 결과를 복원한다. (기기 간 동기화)
+// 키워드 목록은 여기서 읽지 않는다 — 키워드 SoT는 fetchSharedKeywordState(키워드순위)다.
 export async function fetchBriefingState(blogId: string): Promise<{
-  postKeywords: Record<string, string[]>;
   briefingResults: Record<string, BriefingResult>;
 }> {
   const res = await fetch(`${STATE_API}?blogId=${encodeURIComponent(blogId)}`);
@@ -170,12 +65,38 @@ export async function fetchBriefingState(blogId: string): Promise<{
   return res.json();
 }
 
-// 포스트별 타겟 키워드 할당을 DB에 저장 (제거된 키워드 삭제 포함)
-export function saveKeywordsToDb(blogId: string, postId: string, keywords: string[]): void {
-  fetch(STATE_API, {
+export interface KeywordMeta {
+  keywordType?: string | null;
+  isPrimary?: boolean | null;
+  baseKeyword?: string | null;
+  normalizedKeyword?: string | null;
+  postUrl?: string | null;
+}
+
+/**
+ * 키워드순위가 쓰는 키워드 목록을 그대로 읽어온다(스펙 #1/#10).
+ * X-View-Token을 붙이지 않으므로 무료 조회 한도를 소모하지 않는다(analysis-quota requireToken).
+ */
+export async function fetchSharedKeywordState(blogId: string): Promise<{
+  postKeywords: Record<string, string[]>;
+  keywordMeta: Record<string, KeywordMeta>;
+}> {
+  const res = await fetch(`${RANKING_STATE_API}?blogId=${encodeURIComponent(blogId)}`);
+  if (!res.ok) throw new Error('키워드 로드 실패');
+  const data = await res.json();
+  return { postKeywords: data.postKeywords || {}, keywordMeta: data.keywordMeta || {} };
+}
+
+/**
+ * 포스트의 키워드 목록을 키워드순위와 "같은" 저장소에 저장한다.
+ * AI 브리핑 전용 키워드 테이블을 따로 두지 않기 위한 유일한 쓰기 경로(스펙 #10).
+ * PUT은 넘긴 목록으로 치환하므로 항상 기존 목록 + 신규를 합쳐서 보낸다.
+ */
+export function saveSharedKeywords(blogId: string, postId: string, keywords: string[], postUrl?: string): void {
+  fetch(RANKING_STATE_API, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blogId, postId, keywords }),
+    body: JSON.stringify({ blogId, postId, keywords, postUrl }),
   }).catch(() => { /* 낙관적 UI — 실패는 다음 동작에서 재시도됨 */ });
 }
 
@@ -204,9 +125,9 @@ export function rankKey(postId: string, keyword: string): string {
 }
 
 /**
- * 확인 실패 상태(일시적 오류/분석불가) 공용 배지 — 성공 판정(인용/미인용)과 시각적으로 구분한다.
+ * 확인 실패 상태(일시적 오류/분석불가) 공용 배지 — 성공 판정과 시각적으로 구분한다.
  * check_status가 오류일 때는 직전에 남아있던 exposed 값이 아니라 "마지막 확인이 실패했음"을
- * 정직하게 표기한다(정확도 우선 원칙 #8: 검증 불가는 인용으로 처리하지 않는다).
+ * 정직하게 표기한다(스펙 #8: 검증 불가는 절대 미인용/미노출로 처리하지 않는다).
  */
 function ErrorStatusBadge({ status, lastError }: { status: CheckStatus; lastError?: string | null }) {
   if (status === 'unanalyzable') {
@@ -218,78 +139,85 @@ function ErrorStatusBadge({ status, lastError }: { status: CheckStatus; lastErro
   }
   return (
     <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full" title={lastError || '네이버 접근 제한 등 일시적 오류로 확인하지 못했습니다.'}>
-      일시적 오류
+      조회 실패
     </span>
   );
 }
 
+function UncheckedBadge({ title }: { title: string }) {
+  return <span className="text-xs text-dim/70 bg-bg px-2 py-0.5 rounded-full" title={title}>확인 전</span>;
+}
+
 /**
- * "AI 브리핑" 컬럼 배지 — 통합검색 인라인 위젯(AI 탭과 무관한 별개 서비스) 결과만 사용.
- * 2026-07-04(6차) 오렌지 지시: 성공 판정 문구는 "인용"/"미인용" 두 가지로만 통일한다.
- * 콘텐츠 자체가 생성되지 않은 경우("없음")와 생성됐지만 내 글이 인용되지 않은 경우를
- * 더 이상 구분 표시하지 않고 둘 다 "미인용"으로 표기한다 — exposed 단일 필드로만 판정.
- * 단, 확인 실패(일시적 오류/분석불가)는 "미인용"과 섞지 않고 별도 상태로 표기한다.
+ * "AI 브리핑" 컬럼 배지(스펙 #8) — 통합검색 인라인 위젯 결과만 사용.
+ * 확인 전 / 인용됨 / 미인용(브리핑은 떴으나 내 글 없음) / 브리핑 없음(그 키워드에 브리핑 자체가 안 뜸) / 조회 실패.
  */
 export function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
-  if (!result || (!result.checkedAt && !result.checkStatus)) return <span className="text-[10px] text-dim/50">--</span>;
+  if (!result || (!result.checkedAt && !result.checkStatus)) return <UncheckedBadge title="아직 이 키워드로 AI 브리핑을 확인한 적이 없습니다." />;
   if (result.checkStatus === 'transient_error' || result.checkStatus === 'unanalyzable') {
     return <ErrorStatusBadge status={result.checkStatus} lastError={result.lastError} />;
   }
-  if (!result.exposed) {
+  if (result.exposed) {
     return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 브리핑 출처 목록에 이 게시글이 없습니다.">
-        미인용
+      <span className="inline-flex items-center gap-1">
+        <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 브리핑의 출처 목록에 이 게시글이 포함되어 있습니다.">
+          인용됨
+        </span>
+        {result.sourceIndex && (
+          <span className="text-[10px] text-dim">
+            출처 #{result.sourceIndex}{result.sourceTotal ? `/${result.sourceTotal}` : ''}
+          </span>
+        )}
+      </span>
+    );
+  }
+  if (result.hasAiBriefing === false) {
+    return (
+      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로 검색해도 AI 브리핑 자체가 생성되지 않았습니다.">
+        브리핑 없음
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 브리핑의 출처 목록에 이 게시글이 포함되어 있습니다.">
-        인용
-      </span>
-      {result.sourceIndex && (
-        <span className="text-[10px] text-dim">
-          출처 #{result.sourceIndex}{result.sourceTotal ? `/${result.sourceTotal}` : ''}
-        </span>
-      )}
+    <span className="text-xs text-down bg-down/10 px-2 py-0.5 rounded-full" title="AI 브리핑은 생성됐지만 출처 목록에 이 게시글이 없습니다.">
+      미인용
     </span>
   );
 }
 
 /**
- * "AI 탭" 컬럼 배지 — AI 탭(전체화면 채팅형 UI, AI 브리핑과 무관한 별개 서비스) 결과만 사용.
+ * "AI 탭" 컬럼 배지(스펙 #8) — AI 탭 결과만 사용. 확인 전 / 노출 / 미노출 / 조회 실패.
  * ⚠️ 절대 hasAiBriefing/exposed(AI 브리핑 필드)를 참조하지 않는다 — 같은 키워드라도 두 서비스는
- * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 미인용+탭 인용" 같은 조합도 정상적으로 나올 수 있다.
- * 2026-07-04(6차) 오렌지 지시: 상태 문구를 "인용"/"미인용" 두 가지로만 통일(BriefingLabelBadge와 동일 원칙).
+ * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 미인용 + 탭 노출" 같은 조합도 정상적으로 나온다(스펙 #4).
  */
 export function AiTabBadge({ result }: { result?: BriefingResult }) {
-  if (!result || (!result.checkedAt && !result.checkStatus)) return <span className="text-[10px] text-dim/50">--</span>;
+  if (!result || (!result.checkedAt && !result.checkStatus)) return <UncheckedBadge title="아직 이 키워드로 AI 탭을 확인한 적이 없습니다." />;
   if (result.checkStatus === 'transient_error' || result.checkStatus === 'unanalyzable') {
     return <ErrorStatusBadge status={result.checkStatus} lastError={result.lastError} />;
   }
-  if (!result.tabExposed) {
+  if (result.tabExposed) {
     return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="AI 탭 출처 목록에 이 게시글이 없습니다.">
-        미인용
+      <span className="inline-flex items-center gap-1">
+        <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 탭의 출처 목록에 이 게시글이 포함되어 있습니다.">
+          노출
+        </span>
+        {result.tabSourceIndex && (
+          <span className="text-[10px] text-dim">
+            {result.tabSourceIndex}번째{result.tabSourceTotal ? `/${result.tabSourceTotal}` : ''}
+          </span>
+        )}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 탭의 출처 목록에 이 게시글이 포함되어 있습니다.">
-        인용
-      </span>
-      {result.tabSourceIndex && (
-        <span className="text-[10px] text-dim">
-          출처 #{result.tabSourceIndex}{result.tabSourceTotal ? `/${result.tabSourceTotal}` : ''}
-        </span>
-      )}
+    <span className="text-xs text-down bg-down/10 px-2 py-0.5 rounded-full" title="AI 탭의 출처 목록에 이 게시글이 없습니다.">
+      미노출
     </span>
   );
 }
 
 /**
- * 종합 인용 상태 배지(스펙 #18) — 브리핑·탭을 합친 하나의 상태(인용/일부 인용/미인용/미확인/확인중/확인실패/지원안함).
+ * 종합 상태 배지(스펙 #7 "상태" 컬럼) — 브리핑·탭을 합친 하나의 상태.
  * 색상·라벨은 ai-citation-status.ts의 단일 소스를 그대로 사용한다.
  */
 export function CitationStatusBadge({ state }: { state: CitationState }) {
@@ -313,62 +241,57 @@ export function CitationStatusBadge({ state }: { state: CitationState }) {
 }
 
 /**
- * 개별 상세 패널(스펙 #16) — 한 포스트의 타겟 키워드별 AI 브리핑/AI 탭 상태 + 인용 근거 URL(스펙 #8/#19) +
- * 출처순번 + 최근 확인시각을 보여준다. briefingResults는 이미 로드된 값만 쓰므로 추가 API 호출 없음.
+ * 상세 패널(스펙 #7 "상세" · #12) — 한 (포스팅, 키워드) 행의 실제 조회 결과를 보여준다.
+ * 인용 근거 URL·출처 순번·마지막 확인 시각·실패 사유까지 저장된 값 그대로 표시한다.
  */
 export function CitationDetailPanel({
-  post, keywords, results, repKeyword,
+  post, keyword, result, isPrimary,
 }: {
   post: BlogPost;
-  keywords: string[];
-  results: Record<string, BriefingResult>;
-  repKeyword: string | null;
+  keyword: string;
+  result?: BriefingResult;
+  isPrimary: boolean;
 }) {
-  const rows = keywords.map(k => k.trim()).filter(Boolean);
   return (
     <div className="rounded-xl border border-border bg-surface p-3.5 space-y-3 text-xs">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-dim">대표키워드</span>
-        <span className="font-semibold">{repKeyword || '—'}</span>
+        <span className="text-dim">키워드</span>
+        <span className="font-semibold">{keyword}</span>
+        {isPrimary && <span className="text-[9px] text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">대표</span>}
+        {result?.checkedAt && <span className="text-[10px] text-dim">마지막 확인 {timeAgo(result.checkedAt)}</span>}
         <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline ml-auto">포스팅 열기 ↗</a>
       </div>
-      {rows.length === 0 ? (
-        <p className="text-dim">확인된 타겟 키워드가 없습니다. 대표키워드를 지정하고 &lsquo;인용 확인&rsquo;을 눌러주세요.</p>
-      ) : (
-        <ul className="space-y-2.5">
-          {rows.map(kw => {
-            const r = results[rankKey(post.id, kw)];
-            return (
-              <li key={kw} className="rounded-lg bg-bg/60 border border-border/60 p-2.5 space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold">{kw}</span>
-                  {r?.checkedAt && <span className="text-[10px] text-dim">최근 확인 {timeAgo(r.checkedAt)}</span>}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-dim w-16 shrink-0">AI 브리핑</span>
-                  <BriefingLabelBadge result={r} />
-                  {r?.matchedUrl && (
-                    <a href={r.matchedUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:underline truncate max-w-[220px]">
-                      근거 {r.sourceIndex ? `#${r.sourceIndex}` : ''} ↗
-                    </a>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-dim w-16 shrink-0">AI 탭</span>
-                  <AiTabBadge result={r} />
-                  {r?.tabMatchedUrl && (
-                    <a href={r.tabMatchedUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:underline truncate max-w-[220px]">
-                      근거 {r.tabSourceIndex ? `#${r.tabSourceIndex}` : ''} ↗
-                    </a>
-                  )}
-                </div>
-                {(r?.checkStatus === 'transient_error' || r?.checkStatus === 'unanalyzable') && r?.lastError && (
-                  <p className="text-[10px] text-gold">사유: {r.lastError}</p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+
+      <div className="rounded-lg bg-bg/60 border border-border/60 p-2.5 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-dim w-16 shrink-0">AI 브리핑</span>
+          <BriefingLabelBadge result={result} />
+          {result?.matchedUrl && (
+            <a href={result.matchedUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:underline truncate max-w-[240px]">
+              인용 근거 {result.sourceIndex ? `#${result.sourceIndex}` : ''} ↗
+            </a>
+          )}
+          {result?.matchedTitle && <span className="text-[10px] text-dim truncate max-w-[240px]">{result.matchedTitle}</span>}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-dim w-16 shrink-0">AI 탭</span>
+          <AiTabBadge result={result} />
+          {result?.tabMatchedUrl && (
+            <a href={result.tabMatchedUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:underline truncate max-w-[240px]">
+              노출 근거 {result.tabSourceIndex ? `#${result.tabSourceIndex}` : ''} ↗
+            </a>
+          )}
+          {result?.tabMatchedTitle && <span className="text-[10px] text-dim truncate max-w-[240px]">{result.tabMatchedTitle}</span>}
+        </div>
+      </div>
+
+      {!result?.checkedAt && !result?.checkStatus && (
+        <p className="text-dim">아직 확인한 적이 없습니다. &lsquo;다시 검사&rsquo;를 눌러 이 키워드의 AI 브리핑·AI 탭을 조회하세요.</p>
+      )}
+      {(result?.checkStatus === 'transient_error' || result?.checkStatus === 'unanalyzable') && (
+        <p className="text-[11px] text-gold">
+          조회 실패 사유: {result.lastError || '알 수 없음'} — 실패는 미인용/미노출로 처리하지 않습니다.
+        </p>
       )}
     </div>
   );
@@ -392,7 +315,7 @@ export function ResultStatCard({
   );
 }
 
-/** 확인 진행 단계 → 사용자에게 보여줄 문구 (2026-07-04(6차) 진행 상태 UI) */
+/** 확인 진행 단계 → 사용자에게 보여줄 문구 */
 export const STAGE_LABELS: Record<string, string> = {
   searching: '검색 중...',
   briefing: 'AI 브리핑 확인 중...',
@@ -430,7 +353,7 @@ export async function fetchCitationHistory(blogId: string): Promise<Record<strin
 }
 
 function citationLabel(exposed: boolean | null, tabExposed: boolean | null): string {
-  return `AI 브리핑 ${exposed ? '인용' : '미인용'} · AI 탭 ${tabExposed ? '인용' : '미인용'}`;
+  return `AI 브리핑 ${exposed ? '인용됨' : '미인용'} · AI 탭 ${tabExposed ? '노출' : '미노출'}`;
 }
 
 function shortDate(iso: string): string {
@@ -440,7 +363,7 @@ function shortDate(iso: string): string {
 
 /**
  * 인용 상태 변경 타임라인 — 스냅샷이 2개 이상일 때만 "8/10 미인용 → 8/11 인용" 형태로 렌더.
- * 스냅샷은 상태가 실제로 바뀔 때만 쌓이므로 배열 자체가 변화 지점의 나열이다(spec #7).
+ * 스냅샷은 상태가 실제로 바뀔 때만 쌓이므로 배열 자체가 변화 지점의 나열이다.
  */
 export function CitationTimeline({ entries }: { entries?: HistoryEntry[] }) {
   if (!entries || entries.length < 2) return <span className="text-[10px] text-dim/40">—</span>;
