@@ -42,7 +42,8 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
   // subgroup(블로그/인플루언서)은 두 하위그룹 경계를 분명히 하도록 더 굵고 진하게, 위 여백도 크게(스펙 24항).
   if (subgroup) {
     return (
-      <div className="pl-[10px] pr-3 pt-3 pb-1 first:pt-0.5">
+      <div className="flex items-center gap-1.5 pl-[10px] pr-3 pt-3 pb-1 first:pt-0.5">
+        <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />
         <span className="text-[12px] font-medium text-text-2 tracking-wide truncate">{label}</span>
       </div>
     );
@@ -133,7 +134,7 @@ function NavLink({
       onClick={onNavigate}
       className={`flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} border-l-2 transition-colors ${
         active
-          ? 'bg-accent/[0.07] text-accent border-accent font-medium'
+          ? 'bg-accent/15 text-accent border-accent font-medium'
           : `${inactiveColor} border-transparent font-normal hover:text-text hover:bg-surface-hover`
       }`}
     >
@@ -322,7 +323,7 @@ export default function AppSidebar() {
     <>
       {/* ── 데스크탑 사이드바 ── */}
       <aside
-        className={`hidden lg:flex flex-col shrink-0 sticky top-16 z-30 h-[calc(100vh-4rem)] bg-surface border-r border-border transition-[width] duration-200 ${
+        className={`hidden lg:flex flex-col shrink-0 sticky top-16 z-30 h-[calc(100vh-4rem)] bg-sidebar border-r border-border transition-[width] duration-200 ${
           collapsed ? 'w-14' : 'w-56'
         }`}
       >
@@ -332,7 +333,7 @@ export default function AppSidebar() {
               href="/"
               title={SIDEBAR_HOME.label}
               className={`w-9 h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
-                pathname === '/' ? 'bg-accent/[0.07] text-accent' : 'text-desc hover:text-text hover:bg-surface-hover'
+                pathname === '/' ? 'bg-accent/15 text-accent' : 'text-desc hover:text-text hover:bg-surface-hover'
               }`}
             >
               {SIDEBAR_HOME.label}
@@ -378,7 +379,7 @@ export default function AppSidebar() {
 
       {/* ── 모바일 오버레이 ── */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 top-16 z-40 flex flex-col bg-surface border-t border-border">
+        <div className="lg:hidden fixed inset-0 top-16 z-40 flex flex-col bg-sidebar border-t border-border">
           <SidebarContent
             pathname={pathname}
             currentPlan={currentPlan}

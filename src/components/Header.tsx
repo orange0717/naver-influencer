@@ -84,7 +84,7 @@ export default function Header({ serverUser }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full max-w-[100vw] bg-surface border-b border-border">
+      <header className="sticky top-0 z-50 w-full max-w-[100vw] bg-header border-b border-border">
         <div className="flex h-16 w-full min-w-0 max-w-full items-center flex-nowrap gap-1.5 px-2.5 sm:gap-2 sm:px-3 lg:gap-3 lg:px-5">
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
