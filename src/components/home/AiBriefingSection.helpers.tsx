@@ -74,6 +74,89 @@ export interface KeywordMeta {
 }
 
 /**
+ * 대표 키워드 공용 소스(post_representative_keywords)에서 복원한 포스팅별 항목.
+ * 키워드순위 화면이 쓰는 것과 같은 테이블이라 한쪽에서 고치면 양쪽에 동시에 반영된다.
+ */
+export interface RepKeywordEntry {
+  keyword: string | null;
+  source: string | null;
+  confidence?: number | null;
+  /** 제목 분석으로 뽑힌 검색 가능한 키워드 후보 전체(대표 포함) — '추출 키워드' 열에 표시 */
+  candidates?: string[];
+  /** 대표 키워드가 마지막으로 바뀐 시각 — 이보다 앞선 확인 결과는 무효로 본다(스펙 #9) */
+  keywordChangedAt?: string | null;
+}
+
+/**
+ * "추출 키워드" 열 — 포스팅 제목에서 자동 추출된 키워드 후보를 그대로 보여준다(스펙 #1/#2/#5).
+ * 후보를 누르면 그 키워드가 대표 키워드가 되고, 대표가 바뀌면 이전 확인 결과는 무효가 된다.
+ */
+export function ExtractedKeywordsCell({
+  candidates, representative, onPick, onExtract, extracting, disabled,
+}: {
+  candidates: string[];
+  representative: string | null;
+  onPick: (keyword: string) => void;
+  onExtract: () => void;
+  extracting: boolean;
+  disabled?: boolean;
+}) {
+  if (extracting) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11px] text-dim">
+        <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+        키워드 추출 중...
+      </span>
+    );
+  }
+  if (candidates.length === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onExtract}
+        disabled={disabled}
+        className="text-[11px] text-accent cursor-pointer hover:underline disabled:opacity-50"
+        title="포스팅 제목을 분석해 검색 가능한 키워드 후보를 뽑습니다(네이버 무호출)"
+      >
+        키워드 추출
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center justify-center gap-1 flex-wrap">
+      {candidates.map(c => {
+        const isRep = !!representative && c === representative;
+        return (
+          <button
+            key={c}
+            type="button"
+            onClick={() => { if (!isRep) onPick(c); }}
+            disabled={isRep || disabled}
+            className={`max-w-full truncate px-1.5 py-0.5 rounded-full text-[10px] border transition ${
+              isRep
+                ? 'text-accent bg-accent/10 border-accent/30 font-semibold cursor-default'
+                : 'text-dim bg-bg border-border/60 cursor-pointer hover:text-accent hover:border-accent/40'
+            }`}
+            title={isRep ? `${c} — 현재 대표 키워드` : `${c} — 대표 키워드로 지정`}
+          >
+            {c}
+          </button>
+        );
+      })}
+      <button
+        type="button"
+        onClick={onExtract}
+        disabled={disabled}
+        className="text-[10px] text-dim/70 hover:text-accent cursor-pointer disabled:opacity-50 shrink-0"
+        title="현행 추출 규칙으로 이 포스팅의 키워드를 다시 뽑습니다"
+      >
+        ⟳
+      </button>
+    </div>
+  );
+}
+
+/**
  * 키워드순위가 쓰는 키워드 목록을 그대로 읽어온다(스펙 #1/#10).
  * X-View-Token을 붙이지 않으므로 무료 조회 한도를 소모하지 않는다(analysis-quota requireToken).
  */

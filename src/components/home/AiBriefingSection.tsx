@@ -12,7 +12,7 @@ import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar
 import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
-import type { BloggerProfile, BlogPost, BriefingResult, AnalysisEntry, KeywordMeta } from './AiBriefingSection.helpers';
+import type { BloggerProfile, BlogPost, BriefingResult, AnalysisEntry, KeywordMeta, RepKeywordEntry } from './AiBriefingSection.helpers';
 import {
   STATE_API,
   STAGE_LABELS,
@@ -31,7 +31,10 @@ import {
   ResultStatCard,
   CitationStatusBadge,
   CitationDetailPanel,
+  ExtractedKeywordsCell,
 } from './AiBriefingSection.helpers';
+import CheckProgress from '@/components/analytics/CheckProgress';
+import { extractRepresentativeKeyword } from '@/lib/representative-keyword-client';
 import {
   computeCitationStatus,
   rollupPostCitationStatus,
@@ -112,10 +115,17 @@ export default function AiBriefingSection() {
   const usingCustomRange = !!(customFrom || customTo);
 
   // 대표키워드 공용 소스(post_representative_keywords) — 키워드순위 화면과 동일 데이터(스펙 #2/#3)
-  const [repKeywords, setRepKeywords] = useState<Record<string, { keyword: string | null; source: string | null; confidence?: number | null }>>({});
+  const [repKeywords, setRepKeywords] = useState<Record<string, RepKeywordEntry>>({});
   // 대표키워드 인라인 수동 편집(스펙 #3)
   const [editingRepPost, setEditingRepPost] = useState('');
   const [repDraft, setRepDraft] = useState('');
+  // 제목 → 키워드 자동 추출 진행 상태(키워드순위 화면과 동일 UX)
+  const [extractingAll, setExtractingAll] = useState(false);
+  const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0 });
+  const extractAbortRef = useRef(false);
+  const autoExtractDoneRef = useRef<Set<string>>(new Set());
+  const autoExtractRunningRef = useRef(false);
+  const repKeywordsRef = useRef<Record<string, RepKeywordEntry>>({});
   // 상세 패널(스펙 #7) — 열려있는 행의 키(postId::keyword)
   const [detailKey, setDetailKey] = useState('');
 
@@ -182,18 +192,19 @@ export default function AiBriefingSection() {
   const handleDownload = () => {
     if (!canDownload) return;
     const headers = [
-      '포스팅 제목', '포스팅 URL', '발행일', '키워드', '대표여부',
+      '포스팅 제목', '포스팅 URL', '발행일', '추출 키워드', '키워드', '대표여부',
       'AI 브리핑', '브리핑 출처 순번', 'AI 탭', '탭 출처 순번', '마지막 확인', '상태',
     ];
     const rows: unknown[][] = [];
     for (const post of blogPosts) {
       for (const row of keywordRowsFor(post)) {
         if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
-        const result = briefingResults[rankKey(post.id, row.keyword)];
+        const result = resultFor(post.id, row.keyword, row.isPrimary);
         rows.push([
           post.title,
           post.url,
           post.date,
+          (repKeywords[post.id]?.candidates || []).join(', '),
           row.keyword,
           row.isPrimary ? '대표' : '',
           briefingCsvLabel(result),
@@ -201,7 +212,7 @@ export default function AiBriefingSection() {
           tabCsvLabel(result),
           result?.tabSourceIndex ?? '',
           result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : '',
-          CITATION_STATUS_LABELS[keywordStatus(post.id, row.keyword)],
+          CITATION_STATUS_LABELS[keywordStatus(post.id, row.keyword, row.isPrimary)],
         ]);
       }
       if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
@@ -274,19 +285,101 @@ export default function AiBriefingSection() {
     queryFn: async () => {
       const res = await fetch(`/api/my/representative-keywords-state?blogId=${encodeURIComponent(profile!.blogId)}`);
       if (!res.ok) throw new Error('대표키워드 로드 실패');
-      return res.json() as Promise<{ results: Record<string, { keyword: string | null; source: string | null; confidence?: number | null }> }>;
+      return res.json() as Promise<{ results: Record<string, RepKeywordEntry> }>;
     },
     enabled: !!profile?.blogId,
     staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
-    if (repState?.results) {
-      const map: Record<string, { keyword: string | null; source: string | null; confidence?: number | null }> = {};
-      for (const [pid, v] of Object.entries(repState.results)) map[pid] = { keyword: v.keyword, source: v.source, confidence: v.confidence ?? null };
-      setRepKeywords(map);
-    }
+    if (!repState?.results) return;
+    // 서버 값이 기준이되, 방금 이 화면에서 추출해 아직 서버 응답에 안 들어온 항목은 남긴다.
+    setRepKeywords(prev => {
+      const map = { ...prev };
+      for (const [pid, v] of Object.entries(repState.results)) {
+        map[pid] = {
+          keyword: v.keyword,
+          source: v.source,
+          confidence: v.confidence ?? null,
+          candidates: v.candidates || [],
+          keywordChangedAt: v.keywordChangedAt ?? null,
+        };
+      }
+      return map;
+    });
   }, [repState]);
+
+  // 콜백이 최신 대표키워드 맵을 참조하되 의존성으로 재생성되지 않도록 ref로 미러링(키워드순위와 동일 패턴).
+  useEffect(() => { repKeywordsRef.current = repKeywords; }, [repKeywords]);
+
+  /**
+   * 포스팅 제목을 분석해 검색 가능한 키워드 후보를 뽑고 그중 가장 적합한 하나를 대표로 확정한다(스펙 #1/#2).
+   * 키워드순위 화면이 쓰는 것과 "같은" 공용 추출 경로(post_representative_keywords)라 양쪽 값이 어긋나지 않는다.
+   * 네이버 호출이 없는 규칙기반이므로 배경 실행이 안전하다.
+   */
+  const extractRepFor = useCallback(async (
+    post: BlogPost,
+    opts: { refine?: boolean; ai?: boolean } = {},
+  ): Promise<string | null> => {
+    if (!profile?.blogId) return null;
+    const data = await extractRepresentativeKeyword(profile.blogId, post, opts);
+    if (!data) return null;
+    setRepKeywords(prev => ({
+      ...prev,
+      [post.id]: {
+        keyword: data.keyword,
+        source: data.source,
+        confidence: data.confidence,
+        candidates: data.candidates,
+        keywordChangedAt: prev[post.id]?.keywordChangedAt ?? null,
+      },
+    }));
+    return data.keyword;
+  }, [profile?.blogId]);
+
+  // 아직 키워드를 추출하지 않은 포스팅만 순차 추출(0.4초 간격). 확인(네이버 조회)은 트리거하지 않는다(스펙 #3).
+  const extractAllRepresentative = useCallback(async () => {
+    const targets = blogPosts.filter(p => !repKeywordsRef.current[p.id]?.keyword);
+    if (targets.length === 0 || extractingAll) return;
+    setExtractingAll(true);
+    extractAbortRef.current = false;
+    setExtractProgress({ current: 0, total: targets.length });
+    for (let i = 0; i < targets.length; i++) {
+      if (extractAbortRef.current) break;
+      await extractRepFor(targets[i]);
+      setExtractProgress({ current: i + 1, total: targets.length });
+      if (i < targets.length - 1) await sleep(400);
+    }
+    setExtractingAll(false);
+  }, [blogPosts, extractingAll, extractRepFor]);
+
+  const stopExtractingAll = () => { extractAbortRef.current = true; };
+
+  // 화면 진입 시 키워드가 비어있는 포스팅을 백그라운드로 자동 추출한다(스펙 #1 — "키워드 자동 추출은 필수").
+  // 규칙기반이라 저비용이고 네이버 확인은 하지 않는다. 이미 시도한 포스팅은 재시도하지 않고 언마운트 시 중단.
+  useEffect(() => {
+    if (!profile?.blogId || !repState || blogPosts.length === 0) return;
+    const known = repState.results || {};
+    const targets = blogPosts.filter(
+      p => !known[p.id]?.keyword && !repKeywordsRef.current[p.id]?.keyword && !autoExtractDoneRef.current.has(p.id),
+    );
+    if (targets.length === 0 || autoExtractRunningRef.current || extractingAll) return;
+
+    autoExtractRunningRef.current = true;
+    extractAbortRef.current = false;
+    (async () => {
+      for (const post of targets) {
+        if (extractAbortRef.current) break;
+        autoExtractDoneRef.current.add(post.id);
+        await extractRepFor(post);
+        if (extractAbortRef.current) break;
+        await sleep(400);
+      }
+      autoExtractRunningRef.current = false;
+    })();
+
+    return () => { extractAbortRef.current = true; autoExtractRunningRef.current = false; };
+  }, [profile?.blogId, repState, blogPosts, extractingAll, extractRepFor]);
 
   // 키워드 SoT — 키워드순위가 쓰는 keyword_rank_lookups를 그대로 읽는다(스펙 #10).
   // 이 화면은 여기에 자기만의 키워드를 만들어 넣지 않으므로 키워드 수정이 양쪽에서 어긋날 수 없다.
@@ -601,38 +694,64 @@ export default function AiBriefingSection() {
     return rows;
   };
 
+  /**
+   * 표시·집계에 쓸 확인 결과. 대표 키워드가 바뀐 뒤의 행은 이전 키워드로 확인한 결과이므로 무효로 본다(스펙 #9).
+   * 저장된 결과 자체는 지우지 않고(스펙 #13) 화면에서만 "확인 전"으로 되돌려 새·옛 키워드 결과가 섞이지 않게 한다.
+   * keyword_changed_at 컬럼이 아직 없는 환경에서는 changedAt이 비어 자연히 무효화가 일어나지 않는다.
+   */
+  const resultFor = (postId: string, keyword: string, isPrimary: boolean): BriefingResult | undefined => {
+    const r = (briefingResults || {})[rankKey(postId, keyword)];
+    if (!r || !isPrimary) return r;
+    const changedAt = repKeywords[postId]?.keywordChangedAt;
+    if (!changedAt || !r.checkedAt) return r;
+    return new Date(r.checkedAt).getTime() < new Date(changedAt).getTime() ? undefined : r;
+  };
+
+  // 대표 키워드가 바뀌어 재검사가 필요한 상태인지(스펙 #9)
+  const repNeedsRecheck = (postId: string, keyword: string): boolean => {
+    const raw = (briefingResults || {})[rankKey(postId, keyword)];
+    return !!raw?.checkedAt && !resultFor(postId, keyword, true);
+  };
+
   // 단일 (포스팅, 키워드) 행의 상태 — "상태" 컬럼(스펙 #7/#8)
-  const keywordStatus = (postId: string, keyword: string): CitationState => {
+  const keywordStatus = (postId: string, keyword: string, isPrimary = false): CitationState => {
     const key = rankKey(postId, keyword);
     if (checkingKey === key) return 'checking';
-    const r = (briefingResults || {})[key];
+    const r = resultFor(postId, keyword, isPrimary);
     return computeCitationStatus({
       exposed: r?.exposed, tabExposed: r?.tabExposed, checkStatus: r?.checkStatus, checkedAt: r?.checkedAt,
     });
   };
 
-  // 포스트의 키워드별 확인 결과 → 포스팅 단위 종합 상태 입력값(대시보드 집계와 동일 기준)
+  // 포스팅 단위 상태는 대표 키워드 결과 하나로만 판정한다(스펙 #10/#11) —
+  // 보조 키워드 결과까지 합치면 같은 포스팅이 여러 상태로 중복 집계된다.
   const postStatusInputs = (postId: string) => {
-    const post = blogPosts.find(p => p.id === postId);
-    const kws = post ? keywordRowsFor(post).map(r => r.keyword) : ((postKeywords || {})[postId] || []);
-    return kws
-      .map(kw => (briefingResults || {})[rankKey(postId, kw)])
-      .filter(Boolean)
-      .map(r => ({ exposed: r!.exposed, tabExposed: r!.tabExposed, checkStatus: r!.checkStatus, checkedAt: r!.checkedAt }));
+    const rep = (repKeywords[postId]?.keyword || '').trim();
+    const r = rep ? resultFor(postId, rep, true) : undefined;
+    return r ? [{ exposed: r.exposed, tabExposed: r.tabExposed, checkStatus: r.checkStatus, checkedAt: r.checkedAt }] : [];
   };
 
   // 최근 확인(캐시 신선) 여부 — 배치 큐가 재조회 대상을 고를 때 사용(스펙 #14)
   const isResultFresh = (r?: BriefingResult): boolean =>
     !!r?.checkedAt && r.checkStatus === 'ok' && (Date.now() - new Date(r.checkedAt).getTime() < CITATION_FRESH_TTL_MS);
 
-  // 전체 블로그 기준 종합상태 카운트(스펙 #17/#21) — 확인 진행 중 상태는 제외하고 안정적으로 집계
-  const statusCounts = blogPosts.reduce((acc, post) => {
-    const s = rollupPostCitationStatus(postStatusInputs(post.id));
-    acc[s] = (acc[s] || 0) + 1;
+  /**
+   * 상단 통계 카드(스펙 #11) — AI 브리핑·AI 탭 노출 여부를 채널별로 "독립" 집계한다(스펙 #7).
+   * 포스팅당 대표 키워드 결과 1건만 세므로 중복 집계가 없고, 확인하지 않은 건 임의 추정하지 않는다.
+   * 오류·분석불가는 어느 쪽 '미노출'에도 넣지 않고 '확인 실패'로만 센다.
+   */
+  const channelCounts = blogPosts.reduce((acc, post) => {
+    const rep = (repKeywords[post.id]?.keyword || '').trim();
+    const r = rep ? resultFor(post.id, rep, true) : undefined;
+    if (!r || (!r.checkedAt && !r.checkStatus)) { acc.unchecked += 1; return acc; }
+    if (r.checkStatus === 'transient_error' || r.checkStatus === 'unanalyzable') { acc.failed += 1; return acc; }
+    if (r.exposed) acc.briefingExposed += 1; else acc.briefingMissing += 1;
+    if (r.tabExposed) acc.tabExposed += 1; else acc.tabMissing += 1;
     return acc;
-  }, {} as Record<CitationState, number>);
-  const countOf = (s: CitationState) => statusCounts[s] || 0;
-  const citedTotal = countOf('cited') + countOf('partial');
+  }, { briefingExposed: 0, briefingMissing: 0, tabExposed: 0, tabMissing: 0, unchecked: 0, failed: 0 });
+
+  // 아직 제목 분석이 끝나지 않은 포스팅 수 — 헤더의 "키워드 추출" CTA에 표시(스펙 #1)
+  const missingKeywordCount = blogPosts.filter(p => !(repKeywords[p.id]?.keyword || '').trim()).length;
 
   // 기간 → 검색 → 상태 → 정렬 순으로 필터(키워드순위 화면과 동일 로직, 스펙 #1/#17).
   // 초기 return 이후에도 안전하도록 훅이 아닌 일반 계산으로 둔다(rules-of-hooks).
@@ -657,8 +776,9 @@ export default function AiBriefingSection() {
     if (q) {
       list = list.filter(p => {
         if ((p.title || '').toLowerCase().includes(q)) return true;
-        const kw = repKeywords[p.id]?.keyword;
-        return !!kw && kw.toLowerCase().includes(q);
+        const entry = repKeywords[p.id];
+        if (entry?.keyword?.toLowerCase().includes(q)) return true;
+        return (entry?.candidates || []).some(c => c.toLowerCase().includes(q));
       });
     }
 
@@ -686,22 +806,10 @@ export default function AiBriefingSection() {
   const needsBulkCheck = (post: BlogPost): boolean => {
     const kw = getPrimaryKeyword(post);
     if (!kw) return true;
-    return !isResultFresh(briefingResults[rankKey(post.id, kw)]);
+    // 키워드가 바뀐 뒤라면 이전 결과는 무효라 다시 확인 대상이다(스펙 #9).
+    return !isResultFresh(resultFor(post.id, kw, true));
   };
 
-  // 대표키워드가 없는 포스트는 공용 추출 API로 확정(post_representative_keywords에 저장, 스펙 #2/#3).
-  const ensureRepKeyword = async (post: BlogPost): Promise<string | null> => {
-    try {
-      const res = await fetch(
-        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile!.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}`,
-      );
-      if (!res.ok) return null;
-      const data = await res.json();
-      const kw = (data.representativeKeyword || data.keywords?.[0] || '').trim();
-      if (kw) setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: data.source || null, confidence: data.confidence ?? null } }));
-      return kw || null;
-    } catch { return null; }
-  };
 
   // 예상 작업량/쿼터를 서버에서 계산해 확인 모달을 연다(즉시 900개 호출 금지, 스펙 #9).
   const openBulkModal = async () => {
@@ -740,7 +848,7 @@ export default function AiBriefingSection() {
       const post = targets[i];
       setBulkProgress(p => ({ ...p, current: post.title }));
       let kw = getPrimaryKeyword(post);
-      if (!kw) kw = await ensureRepKeyword(post);
+      if (!kw) kw = await extractRepFor(post);
       if (!kw) { setBulkProgress(p => ({ ...p, done: p.done + 1 })); continue; } // 대표키워드 없음 → 확인 전 유지, 건너뜀
       const res = await checkSingleKeyword(post, kw);
       setBulkProgress(p => ({ ...p, done: p.done + 1 }));
@@ -759,12 +867,27 @@ export default function AiBriefingSection() {
     queryClient.invalidateQueries({ queryKey: ['ai-briefing-state', profile.blogId] });
   };
 
-  // 대표키워드 인라인 수동 저장(스펙 #3) — keyword_source='manual'로 공용 테이블에 저장.
-  const saveRepKeyword = async (post: BlogPost) => {
-    const kw = repDraft.trim();
-    setEditingRepPost('');
+  /**
+   * 대표 키워드를 사용자가 고른 값으로 확정한다(스펙 #2 — 직접 수정, 추출 후보 클릭 승격 공용).
+   * keyword_source='manual'로 공용 테이블에 저장되어 키워드순위 화면에도 같은 값이 즉시 반영된다.
+   * 키워드가 실제로 바뀌면 그 시점 이전 확인 결과는 무효가 된다(스펙 #9).
+   */
+  const applyRepKeyword = async (post: BlogPost, keyword: string) => {
+    const kw = keyword.trim();
     if (!kw || !profile) return;
-    setRepKeywords(prev => ({ ...prev, [post.id]: { keyword: kw, source: 'manual', confidence: 1 } }));
+    const prevEntry = repKeywords[post.id];
+    if (prevEntry?.keyword === kw) return;
+    const nowIso = new Date().toISOString();
+    setRepKeywords(prev => ({
+      ...prev,
+      [post.id]: {
+        keyword: kw,
+        source: 'manual',
+        confidence: 1,
+        candidates: [kw, ...(prev[post.id]?.candidates || []).filter(c => c !== kw)],
+        keywordChangedAt: nowIso,
+      },
+    }));
     try {
       await fetch('/api/blog/representative-keywords', {
         method: 'PATCH',
@@ -773,6 +896,12 @@ export default function AiBriefingSection() {
       });
       queryClient.invalidateQueries({ queryKey: ['rep-keywords-state', profile.blogId] });
     } catch { /* 낙관적 UI */ }
+  };
+
+  const saveRepKeyword = async (post: BlogPost) => {
+    const kw = repDraft.trim();
+    setEditingRepPost('');
+    await applyRepKeyword(post, kw);
   };
 
   // 대표키워드 점검 결과를 불러와 모달을 연다(재추출 전 카운트 확인, 스펙 #20/#21).
@@ -822,12 +951,13 @@ export default function AiBriefingSection() {
     checkSingleKeyword(post, keyword);
   };
 
-  // 대표키워드가 없을 때 제목 기반 자동 추출로 채운다(공용 소스에 저장, 스펙 #2/#3).
-  const autoExtractRep = async (post: BlogPost) => {
+  // 제목을 다시 분석해 키워드 후보를 채운다(본문 보정 허용 — 개별 버튼이라 1회성, 스펙 #1/#2).
+  const autoExtractRep = async (post: BlogPost, opts: { refine?: boolean } = {}) => {
     setExtractingPostId(post.id);
     try {
-      const kw = await ensureRepKeyword(post);
-      if (!kw) showError('이 포스팅에서 대표 키워드를 찾지 못했습니다. 직접 입력해주세요.', 5000);
+      autoExtractDoneRef.current.add(post.id);
+      const kw = await extractRepFor(post, opts);
+      if (!kw) showError('이 포스팅에서 키워드를 찾지 못했습니다. 직접 입력해주세요.', 5000);
     } finally {
       setExtractingPostId('');
     }
@@ -870,6 +1000,17 @@ export default function AiBriefingSection() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {extractingAll ? (
+            <CheckProgress current={extractProgress.current} total={extractProgress.total} label="키워드 추출 중" onStop={stopExtractingAll} />
+          ) : missingKeywordCount > 0 && (
+            <button
+              onClick={extractAllRepresentative}
+              className="inline-flex items-center gap-1.5 px-4 py-2 border border-accent/40 text-accent font-bold rounded-xl hover:bg-accent/10 transition cursor-pointer text-sm"
+              title="포스팅 제목을 분석해 검색 가능한 키워드를 추출합니다(네이버 호출 없음)."
+            >
+              키워드 추출 {missingKeywordCount.toLocaleString()}개
+            </button>
+          )}
           {!bulkRunning ? (
             <button
               onClick={openBulkModal}
@@ -1283,16 +1424,17 @@ export default function AiBriefingSection() {
       {/* 전체 포스팅 목록 — 기본(항상 표시) 관리 화면(스펙 #1). order-1로 단건 도구보다 위에 배치. */}
       <div className="order-1 space-y-4">
 
-      {/* 요약 카드 — 키워드순위 화면과 동일한 SummaryCards(kpi) */}
+      {/* 요약 카드(스펙 #11) — 키워드순위 화면과 동일한 SummaryCards(kpi). 브리핑·탭을 각각 독립 집계한다. */}
       <SummaryCards
         loading={postsLoading}
         cards={[
           { key: 'total', label: '전체 포스팅', value: blogPostsTotal, color: 'accent' },
-          { key: 'cited', label: 'AI 인용', value: citedTotal, color: 'up', description: '브리핑·탭 중 1곳 이상' },
-          { key: 'partial', label: '일부 인용', value: countOf('partial'), color: 'gold' },
-          { key: 'not_cited', label: '미인용', value: countOf('not_cited'), color: 'down' },
-          { key: 'unchecked', label: '미확인', value: countOf('unchecked'), color: 'dim' },
-          { key: 'failed', label: '확인실패', value: countOf('failed'), color: 'gold' },
+          { key: 'briefing-exposed', label: 'AI 브리핑 노출', value: channelCounts.briefingExposed, color: 'up' },
+          { key: 'briefing-missing', label: 'AI 브리핑 미노출', value: channelCounts.briefingMissing, color: 'down' },
+          { key: 'tab-exposed', label: 'AI 탭 노출', value: channelCounts.tabExposed, color: 'up' },
+          { key: 'tab-missing', label: 'AI 탭 미노출', value: channelCounts.tabMissing, color: 'down' },
+          { key: 'unchecked', label: '확인 전', value: channelCounts.unchecked, color: 'dim' },
+          { key: 'failed', label: '확인 실패', value: channelCounts.failed, color: 'gold' },
         ]}
       />
 
@@ -1341,15 +1483,16 @@ export default function AiBriefingSection() {
               <table className="w-full min-w-[1200px] text-sm table-fixed">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim uppercase whitespace-nowrap">
-                    <th className="text-left px-4 py-3 font-semibold w-[4%]">#</th>
-                    <th className="text-left px-3 py-3 font-semibold w-[29%]">포스팅 제목</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[23%]">대표 키워드</th>
+                    <th className="text-left px-4 py-3 font-semibold w-[3%]">#</th>
+                    <th className="text-left px-3 py-3 font-semibold w-[22%]">포스팅 제목</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[19%]">추출 키워드</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[16%]">대표 키워드</th>
                     <th className="text-center px-3 py-3 font-semibold w-[9%]">AI 브리핑</th>
                     <th className="text-center px-3 py-3 font-semibold w-[9%]">AI 탭</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[8%]">마지막 확인</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[7%]">상태</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[6%]">다시 검사</th>
-                    <th className="text-center px-3 py-3 font-semibold w-[5%]">상세</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[7%]">마지막 확인</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[6%]">상태</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[5%]">다시 검사</th>
+                    <th className="text-center px-3 py-3 font-semibold w-[4%]">상세</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -1358,6 +1501,21 @@ export default function AiBriefingSection() {
                     const no = (safePage - 1) * postsPerPage + i + 1;
                     const editing = editingRepPost === post.id;
                     const needsReview = repNeedsReview(post);
+                    const entry = repKeywords[post.id];
+
+                    // 제목 분석 결과(스펙 #1) — 후보를 눌러 바로 대표 키워드로 바꿀 수 있다(스펙 #2).
+                    const extractedCell = (
+                      <td className="px-3 py-3 align-top text-center">
+                        <ExtractedKeywordsCell
+                          candidates={entry?.candidates || []}
+                          representative={entry?.keyword || null}
+                          onPick={kw => applyRepKeyword(post, kw)}
+                          onExtract={() => autoExtractRep(post, { refine: true })}
+                          extracting={extractingPostId === post.id}
+                          disabled={extractingAll}
+                        />
+                      </td>
+                    );
 
                     const titleCell = (
                       <td className="px-3 py-3 align-top">
@@ -1394,17 +1552,11 @@ export default function AiBriefingSection() {
                         <tr key={post.id} className="hover:bg-surface-hover transition">
                           <td className="px-4 py-3 text-dim text-xs align-top">{no}</td>
                           {titleCell}
+                          {extractedCell}
                           <td className="px-3 py-3 align-top text-center">
                             {editing ? repEditor : (
-                              <div className="inline-flex items-center justify-center gap-2 flex-wrap">
-                                <button onClick={() => autoExtractRep(post)}
-                                  disabled={extractingPostId === post.id}
-                                  className="text-xs text-accent cursor-pointer hover:underline disabled:opacity-50">
-                                  {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
-                                </button>
-                                <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
-                                  className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">직접 입력</button>
-                              </div>
+                              <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
+                                className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">직접 입력</button>
                             )}
                           </td>
                           <td colSpan={6} className="px-3 py-3 text-center text-[11px] text-dim">
@@ -1418,8 +1570,9 @@ export default function AiBriefingSection() {
                       <Fragment key={post.id}>
                         {rows.map((row, j) => {
                           const key = rankKey(post.id, row.keyword);
-                          const result = briefingResults[key];
-                          const state = keywordStatus(post.id, row.keyword);
+                          const result = resultFor(post.id, row.keyword, row.isPrimary);
+                          const state = keywordStatus(post.id, row.keyword, row.isPrimary);
+                          const staleByKeywordChange = row.isPrimary && repNeedsRecheck(post.id, row.keyword);
                           const kwType = keywordMeta[key]?.keywordType;
                           return (
                             <Fragment key={key}>
@@ -1428,6 +1581,7 @@ export default function AiBriefingSection() {
                                 {j === 0 ? titleCell : (
                                   <td className="px-3 py-3 align-top text-dim/50 text-xs">↳</td>
                                 )}
+                                {j === 0 ? extractedCell : <td className="px-3 py-3" />}
                                 <td className="px-3 py-3 align-top text-center">
                                   {row.isPrimary && editing ? repEditor : (
                                     // 양옆 슬롯 폭을 같게 두어 키워드 pill 자체가 열 정중앙에 오도록 한다.
@@ -1461,7 +1615,14 @@ export default function AiBriefingSection() {
                                   title={result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : undefined}>
                                   {result?.checkedAt ? timeAgo(result.checkedAt) : '—'}
                                 </td>
-                                <td className="text-center px-3 py-3"><CitationStatusBadge state={state} /></td>
+                                <td className="text-center px-3 py-3">
+                                  <CitationStatusBadge state={state} />
+                                  {staleByKeywordChange && (
+                                    <div className="text-[9px] text-down mt-0.5" title="대표 키워드가 바뀌어 이전 확인 결과는 무효화되었습니다. 다시 검사해주세요.">
+                                      재검사 필요
+                                    </div>
+                                  )}
+                                </td>
                                 <td className="text-center px-3 py-3">
                                   <button
                                     onClick={() => recheckKeyword(post, row.keyword)}
@@ -1482,7 +1643,7 @@ export default function AiBriefingSection() {
                               </tr>
                               {detailKey === key && (
                                 <tr>
-                                  <td colSpan={9} className="px-4 pb-4 pt-1 bg-bg/30">
+                                  <td colSpan={10} className="px-4 pb-4 pt-1 bg-bg/30">
                                     <CitationDetailPanel post={post} keyword={row.keyword} result={result} isPrimary={row.isPrimary} />
                                   </td>
                                 </tr>
@@ -1502,6 +1663,7 @@ export default function AiBriefingSection() {
               {pagePosts.map((post, i) => {
                 const rows = keywordRowsFor(post);
                 const needsReview = repNeedsReview(post);
+                const entry = repKeywords[post.id];
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
                     <div className="flex items-start gap-2">
@@ -1534,20 +1696,29 @@ export default function AiBriefingSection() {
                       </div>
                     )}
 
+                    {/* 추출 키워드(스펙 #1/#2) — 데스크톱 '추출 키워드' 열과 같은 컴포넌트 */}
+                    <div className="pl-7">
+                      <ExtractedKeywordsCell
+                        candidates={entry?.candidates || []}
+                        representative={entry?.keyword || null}
+                        onPick={kw => applyRepKeyword(post, kw)}
+                        onExtract={() => autoExtractRep(post, { refine: true })}
+                        extracting={extractingPostId === post.id}
+                        disabled={extractingAll}
+                      />
+                    </div>
+
                     {rows.length === 0 ? (
                       <div className="pl-7 flex items-center gap-2 flex-wrap text-[11px] text-dim">
                         <span>대표 키워드 없음</span>
-                        <button onClick={() => autoExtractRep(post)} disabled={extractingPostId === post.id}
-                          className="text-accent hover:underline disabled:opacity-50">
-                          {extractingPostId === post.id ? '추출 중...' : '자동 추출'}
-                        </button>
                         <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
                           className="hover:text-accent hover:underline">직접 입력</button>
                       </div>
                     ) : rows.map(row => {
                       const key = rankKey(post.id, row.keyword);
-                      const result = briefingResults[key];
-                      const state = keywordStatus(post.id, row.keyword);
+                      const result = resultFor(post.id, row.keyword, row.isPrimary);
+                      const state = keywordStatus(post.id, row.keyword, row.isPrimary);
+                      const staleByKeywordChange = row.isPrimary && repNeedsRecheck(post.id, row.keyword);
                       return (
                         <div key={key} className="ml-7 rounded-lg border border-border/60 bg-bg/40 p-2.5 space-y-1.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -1564,6 +1735,9 @@ export default function AiBriefingSection() {
                               <span className="text-[9px] text-dim/70 bg-bg px-1.5 py-0.5 rounded-full">보조</span>
                             )}
                             <span className="ml-auto"><CitationStatusBadge state={state} /></span>
+                            {staleByKeywordChange && (
+                              <span className="text-[9px] text-down w-full">대표 키워드가 바뀌어 다시 검사가 필요합니다</span>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 flex-wrap text-[10px] text-dim">
                             <span>브리핑</span><BriefingLabelBadge result={result} />

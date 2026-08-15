@@ -123,14 +123,16 @@ export async function PATCH(request: NextRequest) {
   if (denied) return denied;
 
   try {
-    await setManualRepresentativeKeyword(blogId, postId, keyword, body.title ?? null);
-    const autoKeywords = buildAutoKeywords(keyword, [keyword], []);
+    // 후보 목록은 유지된다 — 사용자가 고른 대표 키워드만 바뀌고 추출 결과는 계속 보여야 한다.
+    const candidates = await setManualRepresentativeKeyword(blogId, postId, keyword, body.title ?? null);
+    const autoKeywords = buildAutoKeywords(keyword, candidates, []);
     return NextResponse.json({
       representativeKeyword: keyword,
-      keywords: [keyword],
+      keywords: candidates,
       candidateScreen: [],
       autoKeywords,
       source: 'manual',
+      confidence: 1,
       cached: true,
     });
   } catch (error) {

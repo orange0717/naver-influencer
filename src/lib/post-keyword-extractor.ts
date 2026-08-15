@@ -345,17 +345,37 @@ export async function setManualRepresentativeKeyword(
   postId: string,
   keyword: string,
   title?: string | null,
-): Promise<void> {
+): Promise<string[]> {
   const supabase = createServiceClient();
   const kw = keyword.trim();
-  await supabase.from('post_representative_keywords').upsert({
+
+  const { data: existing } = await supabase
+    .from('post_representative_keywords')
+    .select('*')
+    .eq('blog_id', blogId)
+    .eq('post_id', postId)
+    .maybeSingle() as { data: { representative_keyword: string | null; candidates: string[] | null } | null };
+
+  // 자동 추출된 후보 목록은 남긴다 — 사용자가 후보 중 하나를 대표로 고른 뒤에도 나머지 후보를
+  // 계속 보고 다시 고를 수 있어야 하기 때문(직접 입력한 키워드는 후보 맨 앞에 넣는다).
+  const candidates = [kw, ...(existing?.candidates || []).filter(c => c && c !== kw)];
+  // 대표 키워드가 실제로 바뀐 경우에만 변경 시각을 남긴다 — 이 값보다 앞선 순위/AI 인용 결과는
+  // '이전 키워드로 확인한 결과'이므로 화면에서 재확인 대상으로 판단한다.
+  const changed = (existing?.representative_keyword || null) !== kw;
+  const nowIso = new Date().toISOString();
+
+  await upsertRepresentativeRows(supabase, [{
     blog_id: blogId,
     post_id: postId,
     ...(title != null ? { post_title: title } : {}),
     representative_keyword: kw,
-    candidates: [kw],
+    candidates,
     candidate_screen: [],
     keyword_source: 'manual',
-    extracted_at: new Date().toISOString(),
-  }, { onConflict: 'blog_id,post_id' });
+    confidence: 1,
+    extracted_at: nowIso,
+    ...(changed ? { keyword_changed_at: nowIso } : {}),
+  }]);
+
+  return candidates;
 }

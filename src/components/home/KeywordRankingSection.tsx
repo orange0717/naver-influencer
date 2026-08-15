@@ -12,6 +12,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { BloggerProfile, BlogPost, RankingResult, RankDelta, SyncedState, KeywordRankLookupRow, RepKeywordEntry, AutoKeyword, KeywordMeta, KeywordRow } from './KeywordRankingSection.helpers';
 import { newViewToken, viewHeaders, type QuotaInfo } from '@/lib/analysis-view';
+import { extractRepresentativeKeyword } from '@/lib/representative-keyword-client';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 import {
   STATE_API,
@@ -389,34 +390,21 @@ export default function KeywordRankingSection() {
     opts: { refine?: boolean; ai?: boolean } = {},
   ): Promise<{ keyword: string | null; autoKeywords: AutoKeyword[] } | null> => {
     if (!profile) return null;
-    try {
-      const res = await fetch(
-        `/api/blog/representative-keywords?blogId=${encodeURIComponent(profile.blogId)}&postId=${encodeURIComponent(post.id)}&title=${encodeURIComponent(post.title)}${opts.refine ? '&refine=1' : ''}${opts.ai ? '&ai=1' : ''}`,
-      );
-      if (!res.ok) return null;
-      const data: {
-        representativeKeyword?: string | null;
-        source?: string;
-        keywords?: string[];
-        candidateScreen?: { keyword: string; exposed: boolean; rank: number | null }[];
-        autoKeywords?: AutoKeyword[];
-      } = await res.json();
-      const keyword = data.representativeKeyword || null;
-      const autoKeywords = data.autoKeywords || [];
-      setRepKeywords(prev => ({
-        ...prev,
-        [post.id]: {
-          keyword,
-          source: data.source,
-          candidates: data.keywords || [],
-          candidateScreen: data.candidateScreen || [],
-          autoKeywords,
-        },
-      }));
-      return { keyword, autoKeywords };
-    } catch {
-      return null;
-    }
+    // AI 브리핑·AI 탭 화면과 같은 추출 경로를 쓴다(추출 옵션이 어긋나 두 화면의 대표 키워드가
+    // 달라지는 것을 막기 위해 호출을 lib 한 곳으로 모음).
+    const data = await extractRepresentativeKeyword(profile.blogId, post, opts);
+    if (!data) return null;
+    setRepKeywords(prev => ({
+      ...prev,
+      [post.id]: {
+        keyword: data.keyword,
+        source: data.source,
+        candidates: data.candidates,
+        candidateScreen: data.candidateScreen,
+        autoKeywords: data.autoKeywords,
+      },
+    }));
+    return { keyword: data.keyword, autoKeywords: data.autoKeywords };
   }, [profile]);
 
   // 개별 재추출 버튼(⟳): 추출 + 대표 1개 즉시 순위확인(사용자의 명시적 단건 액션). 보조/변형은 백그라운드가 채운다.
