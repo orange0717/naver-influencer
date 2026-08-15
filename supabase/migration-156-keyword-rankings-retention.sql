@@ -8,14 +8,19 @@
 -- (crawl-challenge-ranks의 rank_change 조회)은 45일 lookback만 사용한다.
 -- 90일보다 오래된 스냅샷은 어떤 기능도 읽지 않는다.
 --
+-- ⚠️ 병목은 디스크가 아니라 CPU·Disk IO다. 대시보드 확인 결과 디스크는 62%(85GB/141GB)로
+--    여유가 있었고, CPU·Disk IO만 8월 8일부터 100%로 붙어 있었다. 그러므로 이 작업의 목표는
+--    "디스크 반환"이 아니라 "스캔·upsert가 훑어야 할 행 수를 줄여 IO 부담을 낮추는 것"이다.
+--    (그래서 배타적 락이 걸리는 VACUUM FULL 은 쓰지 않는다. 힙 공간은 OS로 반환되지 않지만
+--     이후 INSERT 가 재사용하므로 무방하다.)
+--
 -- ⚠️ 실행 순서를 반드시 지킬 것:
---   0. 디스크 여유 공간부터 확보 (디스크가 꽉 찬 상태면 DELETE의 WAL 기록조차
---      실패한다. Supabase 대시보드에서 디스크 증설 → Postgres 정상 기동 확인 후 시작)
 --   1. STEP 1 배치 삭제를 여러 번 반복 실행 (한 번에 전부 지우지 말 것)
---   2. STEP 2 REINDEX로 실제 디스크 공간 회수
+--   2. STEP 2 REINDEX로 인덱스 bloat 회수
 --   3. STEP 3 누락 인덱스 재생성
 -- ⚠️ STEP 2·3의 CONCURRENTLY 문은 반드시 한 문장씩 개별 실행 (트랜잭션 블록 불가)
--- ⚠️ 실행 시간대: KST 03~07시는 크롤러 크론이 도는 시간이므로 피할 것
+-- ⚠️ 실행 시간대: 크론(Vercel 34개 + GitHub Actions 10개)이 모두 중단된 지금이 최적 구간이다.
+--    크론을 되살린 뒤에는 KST 03~07시를 피할 것.
 
 
 -- ============================================================
@@ -33,6 +38,14 @@ SELECT
   max(snapshot_date) AS newest,
   (CURRENT_DATE - INTERVAL '90 days')::date AS cutoff
 FROM keyword_rankings;
+
+-- 실제 인덱스 목록과 크기 (STEP 3에서 이미 있는 인덱스인지 확인용)
+SELECT
+  indexname,
+  pg_size_pretty(pg_relation_size(('public.' || quote_ident(indexname))::regclass)) AS size
+FROM pg_indexes
+WHERE schemaname = 'public' AND tablename = 'keyword_rankings'
+ORDER BY pg_relation_size(('public.' || quote_ident(indexname))::regclass) DESC;
 
 
 -- ============================================================
@@ -59,11 +72,9 @@ SELECT EXISTS (
 -- ============================================================
 -- STEP 2. 인덱스 bloat 회수 (STEP 1 완료 후, 한 문장씩 개별 실행)
 -- ============================================================
--- 삭제만으로는 디스크가 반환되지 않는다. 특히 uq_ranking_snapshot이 18GB로
--- 가장 크므로 이것부터 재구축한다. CONCURRENTLY라 서비스 중단 없이 동작하지만
--- 각각 수십 분 걸릴 수 있다.
-
-REINDEX INDEX CONCURRENTLY uq_ranking_snapshot;
+-- 삭제만으로는 인덱스가 줄지 않는다. 아래 한 문장이 이 테이블의 모든 인덱스를
+-- 이름과 무관하게 재구축한다(스키마 파일마다 인덱스 이름 표기가 달라 개별 지정은
+-- 실패 위험이 있다). CONCURRENTLY라 서비스 중단은 없지만 수십 분 걸릴 수 있다.
 
 REINDEX TABLE CONCURRENTLY keyword_rankings;
 
