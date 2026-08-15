@@ -20,7 +20,7 @@ export default function NativeProvider({ children }: { children: React.ReactNode
       // Status bar 스타일
       import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
         StatusBar.setStyle({ style: Style.Light });
-        StatusBar.setBackgroundColor({ color: '#E4C1B8' });
+        StatusBar.setBackgroundColor({ color: '#FCFCFB' });
       }).catch(() => {});
     }).catch(() => {});
 

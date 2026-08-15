@@ -84,7 +84,7 @@ export default function ErrorReportModal({ open, payload, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-lg p-6 sm:p-7 w-full max-w-md shadow-2xl">
+      <div className="bg-surface rounded-lg p-6 sm:p-7 w-full max-w-md border border-border shadow-lg">
         {!success ? (
           <>
             <h2 className="text-lg font-extrabold text-text">오류 제보</h2>

@@ -97,7 +97,7 @@ export default function ShortformAnalysisClient() {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <h1 className="font-title text-xl font-bold text-text">릴스·쇼츠 분석</h1>
+        <h1 className="type-page-title text-text">릴스·쇼츠 분석</h1>
         <p className="text-sm text-dim">
           인스타그램 릴스·유튜브 쇼츠 URL 하나로 후킹·구성·톤·개선점을 AI가 분석합니다
         </p>
@@ -179,7 +179,7 @@ export default function ShortformAnalysisClient() {
 
           {/* 콘텐츠 DNA */}
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
-            <h2 className="text-sm font-bold text-text">🔍 콘텐츠 DNA</h2>
+            <h2 className="text-sm font-bold text-text">콘텐츠 DNA</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
               <div>
                 <p className="text-dim">주제</p>
@@ -214,7 +214,7 @@ export default function ShortformAnalysisClient() {
           {/* 후킹 진단 */}
           {result.analysis.hookAnalysis && (
             <div className="bg-surface border border-border rounded-lg p-5 space-y-2">
-              <h2 className="text-sm font-bold text-text">⚡ 오프닝 후킹 진단</h2>
+              <h2 className="text-sm font-medium text-text">오프닝 후킹 진단</h2>
               <p className="text-xs text-text leading-relaxed">{result.analysis.hookAnalysis}</p>
             </div>
           )}
@@ -237,7 +237,7 @@ export default function ShortformAnalysisClient() {
           {/* 개선 제안 */}
           {result.analysis.improvements.length > 0 && (
             <div className="bg-surface border border-border rounded-lg p-5 space-y-2">
-              <h2 className="text-sm font-bold text-text">💡 다음 숏폼을 위한 개선 제안</h2>
+              <h2 className="text-sm font-bold text-text">다음 숏폼을 위한 개선 제안</h2>
               <ul className="space-y-1.5 list-disc list-inside">
                 {result.analysis.improvements.map((s, i) => (
                   <li key={i} className="text-xs text-text leading-relaxed">

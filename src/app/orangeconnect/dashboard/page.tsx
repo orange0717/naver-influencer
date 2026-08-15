@@ -95,7 +95,7 @@ export default function AdDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-extrabold">대시보드</h1>
+        <h1 className="type-page-title">대시보드</h1>
         <p className="text-sm text-dim mt-1">{advertiser.companyName}님의 캠페인 현황</p>
       </div>
 

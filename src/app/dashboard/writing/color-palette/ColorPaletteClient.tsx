@@ -210,7 +210,7 @@ export default function ColorPaletteClient() {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="font-title text-xl font-bold text-text">컬러 팔레트</h1>
+          <h1 className="type-page-title text-text">컬러 팔레트</h1>
           <p className="text-sm text-dim">
             블로그 썸네일 이미지를 올리면 대표 색상 5가지를 추출하고, 어울리는 색상 조합·카테고리별 팔레트를 만들어드립니다.
           </p>

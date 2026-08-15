@@ -29,7 +29,7 @@ export default function MemberOnlyModal() {
       ariaLabelledBy="member-only-title"
       overlayClassName="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/45"
     >
-      <div className="relative bg-bg rounded-lg border border-border shadow-xl w-full max-w-[480px] sm:w-[90%] p-8">
+      <div className="relative bg-bg rounded-lg border border-border shadow-lg w-full max-w-[480px] sm:w-[90%] p-8">
           <button
             type="button"
             onClick={close}
@@ -42,7 +42,7 @@ export default function MemberOnlyModal() {
           </button>
 
           <h2 id="member-only-title" className="text-lg font-bold text-text text-center mb-3">
-            🔒 N인플은 회원 전용 서비스입니다.
+            N인플은 회원 전용 서비스입니다.
           </h2>
           <p className="text-sm text-dim text-center mb-4 leading-relaxed">
             이 기능은 회원만 이용할 수 있습니다.

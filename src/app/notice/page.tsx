@@ -12,8 +12,8 @@ const TAG_LABEL: Record<string, string> = {
 
 const TAG_COLOR: Record<string, string> = {
   notice: 'bg-accent/15 text-accent',
-  update: 'bg-[#c8816b]/15 text-[#c8816b]',
-  event: 'bg-[#F29C68]/15 text-[#F29C68]',
+  update: 'bg-accent2/25 text-text-2',
+  event: 'bg-gold/15 text-gold',
 };
 
 interface Notice {
@@ -58,7 +58,7 @@ export default function NoticePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">공지사항</h1>
+        <h1 className="type-page-title">공지사항</h1>
         <div className="flex items-center gap-3">
           <p className="text-sm text-dim">총 {total}건</p>
           {user.id && (

@@ -70,7 +70,7 @@ export default function BlogRankingClient() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* 헤더 */}
       <div>
-        <h1 className="font-title text-2xl font-extrabold">검색순위</h1>
+        <h1 className="type-page-title">검색순위</h1>
         <p className="text-sm text-dim mt-1">키워드를 검색하면 네이버 검색 순위를 확인할 수 있습니다</p>
       </div>
 
@@ -163,7 +163,7 @@ export default function BlogRankingClient() {
                         <td className="text-center px-4 py-3">
                           {r.rank <= 3 ? (
                             <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs text-white ${
-                              r.rank === 1 ? 'bg-yellow-500' : r.rank === 2 ? 'bg-gray-400' : 'bg-amber-600'
+                              r.rank === 1 ? 'bg-gold' : r.rank === 2 ? 'bg-silver' : 'bg-bronze'
                             }`}>
                               {r.rank}
                             </span>
@@ -202,7 +202,7 @@ export default function BlogRankingClient() {
                       <div className="shrink-0 pt-0.5">
                         {r.rank <= 3 ? (
                           <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs text-white ${
-                            r.rank === 1 ? 'bg-yellow-500' : r.rank === 2 ? 'bg-gray-400' : 'bg-amber-600'
+                            r.rank === 1 ? 'bg-gold' : r.rank === 2 ? 'bg-silver' : 'bg-bronze'
                           }`}>
                             {r.rank}
                           </span>

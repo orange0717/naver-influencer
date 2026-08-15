@@ -338,12 +338,12 @@ export default function OnboardClient() {
 
   return (
     <div className="flex min-h-screen items-start justify-center bg-bg px-4 py-10 sm:items-center">
-      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-xl sm:p-8">
+      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg sm:p-8">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-xl font-bold text-white">
             N
           </div>
-          <h1 className="text-xl font-extrabold text-text">
+          <h1 className="type-page-title text-text">
             {step === 'identify' && '환영합니다!'}
             {step === 'profile' && '환영합니다!'}
             {step === 'blog' && '블로그를 연결하세요'}

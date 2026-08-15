@@ -116,7 +116,7 @@ export default function NoticeWritePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold">공지사항 작성</h1>
+      <h1 className="type-page-title">공지사항 작성</h1>
 
       <div className="bg-surface rounded-xl border border-border p-6 space-y-5">
         {/* 태그 선택 */}

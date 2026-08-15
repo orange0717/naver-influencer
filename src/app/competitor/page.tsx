@@ -302,7 +302,7 @@ export default function CompetitorPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">경쟁자 분석</h1>
+      <h1 className="type-page-title">경쟁자 분석</h1>
 
       {/* ─── 일일 사용 현황 배너 ─── */}
       {quota && (
@@ -483,20 +483,20 @@ export default function CompetitorPage() {
                           </defs>
                           <XAxis
                             dataKey="date"
-                            tick={{ fill: '#8C7A6E', fontSize: 11 }}
+                            tick={{ fill: '#83817A', fontSize: 11 }}
                             tickFormatter={(d: string) => d.slice(5).replace('-', '/')}
-                            axisLine={{ stroke: '#F2E2DC' }}
+                            axisLine={{ stroke: '#E7E6E2' }}
                             tickLine={false}
                           />
                           <YAxis
-                            tick={{ fill: '#8C7A6E', fontSize: 11 }}
+                            tick={{ fill: '#83817A', fontSize: 11 }}
                             axisLine={false}
                             tickLine={false}
                             width={36}
                             tickFormatter={(v: number) => v.toLocaleString()}
                           />
                           <Tooltip
-                            contentStyle={{ background: '#FFFFFF', border: '1px solid #F2E2DC', borderRadius: 8, fontSize: 12 }}
+                            contentStyle={{ background: '#FCFCFB', border: '1px solid #E7E6E2', borderRadius: 8, fontSize: 12 }}
                             labelFormatter={(d) => String(d)}
                             formatter={(v) => [`${Number(v ?? 0).toLocaleString()}명`, '방문자']}
                           />

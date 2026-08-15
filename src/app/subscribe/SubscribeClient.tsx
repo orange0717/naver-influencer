@@ -136,7 +136,7 @@ export default function SubscribeClient() {
       {/* 헤더 */}
       <div className="text-center space-y-3">
         <p className="text-sm text-accent font-semibold tracking-wide">PRICING</p>
-        <h1 className="font-title text-3xl font-extrabold">이용권 안내</h1>
+        <h1 className="type-page-title">이용권 안내</h1>
         <p className="text-sm text-dim">나에게 맞는 플랜을 선택하세요</p>
       </div>
 

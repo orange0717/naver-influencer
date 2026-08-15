@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import { useUnreadCount, useNotifications, useMarkAsRead, type NotificationItem } from '@/hooks/useNotifications';
 
 const typeConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  new_top3: { label: 'TOP3 진입', color: 'text-[#D4A017]', bgColor: 'bg-[#D4A017]/15' },
+  new_top3: { label: 'TOP3 진입', color: 'text-gold', bgColor: 'bg-gold/15' },
   lost_top3: { label: 'TOP3 이탈', color: 'text-down', bgColor: 'bg-down/15' },
   rank_up_significant: { label: '상승', color: 'text-up', bgColor: 'bg-up/15' },
   rank_down_significant: { label: '하락', color: 'text-down', bgColor: 'bg-down/15' },
   momentum_up: { label: '상승 모멘텀', color: 'text-up', bgColor: 'bg-up/15' },
-  top3_opportunity: { label: 'TOP3 기회', color: 'text-[#D4A017]', bgColor: 'bg-[#D4A017]/15' },
+  top3_opportunity: { label: 'TOP3 기회', color: 'text-gold', bgColor: 'bg-gold/15' },
   new_notice: { label: '공지사항', color: 'text-accent', bgColor: 'bg-accent/15' },
   community_comment: { label: '댓글', color: 'text-text', bgColor: 'bg-dim/10' },
   community_like: { label: '좋아요', color: 'text-down', bgColor: 'bg-down/10' },
@@ -123,11 +123,11 @@ export default function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/[0.04] transition cursor-pointer relative"
+        className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-surface-hover transition cursor-pointer relative"
         title="알림"
         aria-label="알림"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-[#333333]">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-text-2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>

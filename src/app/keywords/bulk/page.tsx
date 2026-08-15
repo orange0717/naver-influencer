@@ -185,7 +185,7 @@ export default function BulkSearchVolumePage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="text-xl font-extrabold">대량 키워드 조회</h1>
+        <h1 className="type-page-title">대량 키워드 조회</h1>
         <p className="text-xs text-dim">
           {mode === 'volume' ? '여러 키워드의 검색량을 한번에 분석합니다' : '키워드 1개로 연관 키워드를 최대 1,000개까지 찾습니다'}
         </p>

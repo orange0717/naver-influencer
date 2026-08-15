@@ -47,7 +47,7 @@ export function GuestDashboard() {
       <div className="rounded-lg border border-accent/20 bg-accent/5 p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1.5">
-            <h1 className="font-title text-lg lg:text-xl font-bold text-text">내 대시보드</h1>
+            <h1 className="type-page-title text-text">내 대시보드</h1>
             <p className="text-sm text-dim leading-relaxed">
               로그인하시면 본인의 작업 데이터를 저장하고 다른 기기에서도 이어서 작업할 수 있습니다.
             </p>
@@ -73,7 +73,7 @@ export function GuestDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {placeholderStats.map((c) => (
           <div key={c.label} className="h-[142px] flex flex-col bg-surface rounded-lg border border-border shadow-xs p-5">
-            <div className="w-8 h-8 rounded-full bg-[#FAF4F2] shrink-0" />
+            <div className="w-8 h-8 rounded-full bg-sunken shrink-0" />
             <p className="stat-title mt-2 mb-0.5 shrink-0">{c.label}</p>
             <p className="stat-value stat-value-kpi text-dim mt-auto pt-1">{`-${c.suffix}`}</p>
           </div>

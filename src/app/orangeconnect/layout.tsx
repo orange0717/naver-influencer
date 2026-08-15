@@ -30,18 +30,18 @@ function AdHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-header shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
+      <header className="sticky top-0 z-50 bg-header border-b border-border">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/orangeconnect" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm">AD</div>
-              <span className="font-bold text-base text-white hidden sm:block">N인플 광고주</span>
+              <div className="w-8 h-8 rounded-md bg-sunken border border-border flex items-center justify-center text-text-2 font-semibold text-xs">AD</div>
+              <span className="font-title text-base text-text hidden sm:block">N인플 광고주</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {AD_NAV.filter(item => !item.authOnly || isLoggedIn).map(item => (
                 <Link key={item.href} href={item.href}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                    isActive(item.href, item.exact) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    isActive(item.href, item.exact) ? 'bg-sunken text-text font-semibold' : 'text-text-2 hover:text-text hover:bg-surface-hover'
                   }`}>
                   {item.label}
                 </Link>
@@ -50,33 +50,33 @@ function AdHeader() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/"
-              className="px-3 py-1.5 text-white/70 text-sm font-semibold hover:text-white transition-colors hidden sm:block">
+              className="px-3 py-1.5 text-text-2 text-sm hover:text-text transition-colors hidden sm:block">
               N인플 →
             </Link>
             {isLoading ? (
               <div className="w-16 h-8" />
             ) : isLoggedIn ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-white/80 font-semibold hidden md:block">{advertiser.companyName}</span>
+                <span className="text-xs text-desc hidden md:block">{advertiser.companyName}</span>
                 <button onClick={logout}
-                  className="px-3 py-1.5 text-white/70 text-sm font-semibold hover:text-white transition-colors cursor-pointer">
+                  className="px-3 py-1.5 text-text-2 text-sm hover:text-text transition-colors cursor-pointer">
                   로그아웃
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Link href="/orangeconnect/login"
-                  className="px-3 py-1.5 text-white/70 text-sm font-semibold hover:text-white transition-colors">
+                  className="px-3 py-1.5 text-text-2 text-sm hover:text-text transition-colors">
                   로그인
                 </Link>
                 <Link href="/orangeconnect/signup"
-                  className="px-3 py-1.5 bg-white text-accent text-sm font-semibold rounded-lg hover:bg-white/90 transition-colors">
+                  className="px-3 py-1.5 bg-accent text-white text-sm font-semibold rounded-md hover:bg-accent-hover transition-colors">
                   회원가입
                 </Link>
               </div>
             )}
             <button
-              className="md:hidden p-1 text-white/70"
+              className="md:hidden p-1 text-text-2"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-expanded={mobileOpen}
               aria-label="메뉴 열기">

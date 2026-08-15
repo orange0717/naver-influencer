@@ -65,7 +65,7 @@ export default function BodyClient() {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <h1 className="font-title text-xl font-bold text-text">본문 생성</h1>
+        <h1 className="type-page-title text-text">본문 생성</h1>
         <p className="text-sm text-dim">E-E-A-T와 AI검색 최적화를 반영한 블로그 본문 초안을 AI가 작성합니다</p>
       </div>
 

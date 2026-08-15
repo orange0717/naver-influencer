@@ -97,8 +97,7 @@ export function SecurityNotificationModal({
 
         {/* Security Badge */}
         <div className="mt-4 flex justify-center">
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-xs font-medium text-green-700 dark:text-green-400">
-            <span>🔒</span>
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-up/10 border border-up/20 text-xs font-medium text-up">
             <span>Security Alert</span>
           </span>
         </div>

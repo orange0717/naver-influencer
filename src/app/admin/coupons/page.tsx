@@ -85,7 +85,7 @@ export default function AdminCouponsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-extrabold">쿠폰 관리</h1>
+        <h1 className="type-page-title">쿠폰 관리</h1>
         <p className="text-sm text-dim mt-1">
           특정 회원 1인 전용 무료 체험 쿠폰을 발급합니다. 대상 이메일로 로그인한 회원만 1회 등록할 수 있습니다.
         </p>

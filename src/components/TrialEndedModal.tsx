@@ -36,7 +36,7 @@ export default function TrialEndedModal() {
       ariaLabelledBy="pro-required-title"
       overlayClassName="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/45"
     >
-      <div className="relative bg-bg rounded-lg border border-border shadow-xl w-full max-w-[480px] sm:w-[90%] p-8">
+      <div className="relative bg-bg rounded-lg border border-border shadow-lg w-full max-w-[480px] sm:w-[90%] p-8">
         <button
           type="button"
           onClick={close}

@@ -183,7 +183,7 @@ export default function AdSearchPage() {
           <span className="text-xs text-dim">/</span>
           <span className="text-xs text-accent font-semibold">AI 자연어 검색</span>
         </div>
-        <h1 className="text-xl font-extrabold">AI 인플루언서 추천</h1>
+        <h1 className="type-page-title">AI 인플루언서 추천</h1>
       </div>
 
       {/* 입력 영역 (상단) */}

@@ -80,24 +80,25 @@ export default function Header({ serverUser }: HeaderProps) {
   const displayChar = user.type === 'blogger'
     ? (user.name || user.id || 'B').charAt(0).toUpperCase()
     : (user.id || 'N').charAt(0).toUpperCase();
-  const badgeColor = user.type === 'blogger' ? 'bg-[#2DB400]' : 'bg-accent';
+  const badgeColor = user.type === 'blogger' ? 'bg-up' : 'bg-accent';
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full max-w-[100vw] bg-surface border-b border-[#F0F0F0]">
+      <header className="sticky top-0 z-50 w-full max-w-[100vw] bg-surface border-b border-border">
         <div className="flex h-16 w-full min-w-0 max-w-full items-center flex-nowrap gap-1.5 px-2.5 sm:gap-2 sm:px-3 lg:gap-3 lg:px-5">
           {/* ── 로고 (왼쪽 끝) ── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center text-white font-medium text-sm">N</div>
-            <span className="font-title font-medium text-[16px] text-[#222222] hidden sm:flex items-center gap-1.5">
+            {/* 브랜드 표기는 세리프 — 로고만이 헤더에서 유일한 세리프다 */}
+            <span className="font-editorial text-[17px] text-text hidden sm:flex items-baseline gap-1.5">
               N인플
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-normal leading-none bg-accent/10 text-accent">베타</span>
+              <span className="font-title px-1.5 py-0.5 rounded-full text-[10px] font-normal leading-none bg-accent/10 text-accent">베타</span>
             </span>
           </Link>
 
           {/* ── 서비스 정체성 태그라인 — "AI 서비스"가 아니라 데이터 분석 툴임을 헤더에서부터 각인 (2026-08-09) ── */}
-          <span className="hidden lg:block w-px h-3.5 bg-[#E5E5E5] shrink-0" aria-hidden="true" />
-          <span className="font-title hidden lg:inline text-[13px] font-normal text-[#777777] tracking-tight whitespace-nowrap shrink-0">
+          <span className="hidden lg:block w-px h-3.5 bg-border shrink-0" aria-hidden="true" />
+          <span className="font-title hidden lg:inline text-[13px] font-normal text-desc tracking-tight whitespace-nowrap shrink-0">
             네이버 검색 데이터 분석
           </span>
 
@@ -108,7 +109,7 @@ export default function Header({ serverUser }: HeaderProps) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="font-title px-3 py-2 rounded-lg text-[15px] font-normal text-[#222222] hover:bg-black/[0.04] transition-colors"
+                  className="font-title px-3 py-2 rounded-md text-[14px] font-normal text-text-2 hover:text-text hover:bg-black/[0.035] transition-colors"
                 >
                   {link.label}
                 </Link>
@@ -127,7 +128,7 @@ export default function Header({ serverUser }: HeaderProps) {
                   href="/download"
                   title="N인플 데스크탑 앱 다운로드"
                   aria-label="N인플 데스크탑 앱 다운로드"
-                  className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-[13px] font-normal text-[#333333] bg-white border border-[#E5E5E5] hover:bg-black/[0.03] transition-colors shrink-0"
+                  className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-md text-[13px] font-normal text-text-2 bg-surface border border-border hover:bg-surface-hover transition-colors shrink-0"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -140,7 +141,7 @@ export default function Header({ serverUser }: HeaderProps) {
                 <span
                   title="로그인 후 이용할 수 있습니다"
                   aria-label="앱 다운로드 (로그인 필요)"
-                  className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-[13px] font-normal text-[#999999] bg-white border border-[#EEEEEE] cursor-not-allowed shrink-0"
+                  className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-md text-[13px] font-normal text-dim bg-surface border border-border cursor-not-allowed shrink-0"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-70">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -168,14 +169,14 @@ export default function Header({ serverUser }: HeaderProps) {
                         {displayChar}
                       </div>
                     )}
-                    <span className="hidden max-w-[5.5rem] truncate text-[15px] font-normal text-[#333333] sm:block md:max-w-[9rem] lg:max-w-[11rem]">
+                    <span className="hidden max-w-[5.5rem] truncate text-[14px] font-normal text-text-2 sm:block md:max-w-[9rem] lg:max-w-[11rem]">
                       @{user.name || user.id}
                     </span>
                   </button>
                   {profileOpen && (
-                    <div className="absolute right-0 top-full z-[100] mt-2 w-56 rounded-xl border border-border bg-surface py-2 shadow-lg">
+                    <div className="absolute right-0 top-full z-[100] mt-2 w-56 rounded-lg border border-border bg-surface py-2 shadow-md">
                       <div className="px-4 py-2.5 border-b border-border">
-                        <p className="text-sm font-bold text-text">{user.name || user.id}</p>
+                        <p className="text-sm font-medium text-text">{user.name || user.id}</p>
                         {user.email && <p className="text-xs text-dim mt-0.5">{user.email}</p>}
                       </div>
                       <Link href="/profile" onClick={() => setProfileOpen(false)}
@@ -200,12 +201,12 @@ export default function Header({ serverUser }: HeaderProps) {
               <button
                 type="button"
                 onClick={() => openLogin()}
-                className="cursor-pointer px-4 py-2 bg-accent text-white text-[15px] font-normal rounded-lg hover:bg-accent-hover transition-colors">
+                className="cursor-pointer px-4 py-2 bg-accent text-white text-[14px] font-normal rounded-md hover:bg-accent-hover transition-colors">
                 로그인
               </button>
             )}
             <button
-              className="lg:hidden p-1 text-[#333333]"
+              className="lg:hidden p-1 text-text-2"
               onClick={() => (mobileOpen ? closeMobile() : openMobile())}
               aria-expanded={mobileOpen}
               aria-controls="mobile-menu"

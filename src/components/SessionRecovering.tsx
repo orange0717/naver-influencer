@@ -38,7 +38,7 @@ export default function SessionRecovering({
         className="mx-auto mb-5 h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent"
         aria-hidden
       />
-      <h1 className="font-title text-lg font-bold text-text mb-2">내 대시보드</h1>
+      <h1 className="type-page-title text-text mb-2">내 대시보드</h1>
       <p className="text-sm text-dim leading-relaxed">{message}</p>
       {attempt >= 3 && (
         <button

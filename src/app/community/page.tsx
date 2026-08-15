@@ -28,7 +28,7 @@ export default function CommunityPage() {
     <div className="max-w-7xl mx-auto space-y-3 min-h-[calc(100vh-10rem)] px-2 sm:px-4">
       <div className="pt-4">
         <p className="text-xs text-accent font-semibold tracking-widest mb-1">COMMUNITY</p>
-        <h1 className="font-title text-2xl md:text-3xl font-extrabold text-text">커뮤니티</h1>
+        <h1 className="type-page-title text-text">커뮤니티</h1>
         <p className="text-xs text-dim mt-1">
           예의를 지켜 대화해주세요. 비속어는 자동 필터링되며, 부적절한 메시지는 신고로 숨김 처리됩니다.
         </p>

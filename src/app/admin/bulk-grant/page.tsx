@@ -60,7 +60,7 @@ export default function AdminBulkGrantPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-xl font-extrabold">플랜 일괄 부여</h1>
+        <h1 className="type-page-title">플랜 일괄 부여</h1>
         <p className="text-sm text-dim mt-1">
           제한 사용자(RESTRICTED_USER_EMAILS + restricted_users 테이블)를 제외한 전체 회원에게 지정 플랜을 일괄 부여합니다.
         </p>

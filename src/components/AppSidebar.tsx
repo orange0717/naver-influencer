@@ -42,9 +42,8 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
   // subgroup(블로그/인플루언서)은 두 하위그룹 경계를 분명히 하도록 더 굵고 진하게, 위 여백도 크게(스펙 24항).
   if (subgroup) {
     return (
-      <div className="flex items-center gap-1.5 pl-[10px] pr-3 pt-2 pb-0.5 first:pt-0.5">
-        <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />
-        <span className="text-[13px] font-normal text-[#333333] tracking-wide truncate">{label}</span>
+      <div className="pl-[10px] pr-3 pt-3 pb-1 first:pt-0.5">
+        <span className="text-[12px] font-medium text-text-2 tracking-wide truncate">{label}</span>
       </div>
     );
   }
@@ -74,10 +73,10 @@ function NavLink({
   const router = useRouter();
   const { openGate } = useMemberOnlyGate();
   const padding = itemPadding(item.indent);
-  // 하위 메뉴(indent)는 11px·조금 연한 색, 주요 메뉴는 12px·진한 색 — 크기보다 색/들여쓰기로 계층을 표현한다.
-  const sizeClass = item.indent ? 'text-[12px]' : 'text-[13px]';
-  const padY = item.indent ? 'py-1' : 'py-1.5';
-  const inactiveColor = item.indent ? 'text-[#666666]' : 'text-[#333333]';
+  // 크기보다 색/들여쓰기로 계층을 표현한다. 기준선은 14px, 하위 메뉴만 한 단계 낮춘다.
+  const sizeClass = item.indent ? 'text-[13px]' : 'text-[14px]';
+  const padY = item.indent ? 'py-1.5' : 'py-2';
+  const inactiveColor = item.indent ? 'text-desc' : 'text-text-2';
 
   if (item.heading) {
     return <NavHeading label={item.label} subgroup={item.subgroup} />;
@@ -87,7 +86,7 @@ function NavLink({
     return (
       <span className={`flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} text-dim/50 border-l-2 border-transparent cursor-not-allowed`}>
         {item.label}
-        <span className="ml-auto text-[10px] font-normal text-dim/60 bg-bg px-1.5 py-0.5 rounded">준비중</span>
+        <span className="ml-auto text-[10px] font-normal text-dim bg-sunken px-1.5 py-0.5 rounded-sm">준비중</span>
       </span>
     );
   }
@@ -101,7 +100,7 @@ function NavLink({
           onNavigate();
           openGate(item.href);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-[#888888] border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-dim/60"><LockIcon /></span>
@@ -120,7 +119,7 @@ function NavLink({
           onNavigate();
           router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
         }}
-        className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-[#888888] border-l-2 border-transparent hover:bg-bg hover:text-text transition-colors text-left cursor-pointer`}
+        className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-accent"><LockIcon /></span>
@@ -134,8 +133,8 @@ function NavLink({
       onClick={onNavigate}
       className={`flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} border-l-2 transition-colors ${
         active
-          ? 'bg-accent/15 text-accent border-accent font-normal'
-          : `${inactiveColor} border-transparent font-normal hover:text-text hover:bg-bg`
+          ? 'bg-accent/[0.07] text-accent border-accent font-medium'
+          : `${inactiveColor} border-transparent font-normal hover:text-text hover:bg-surface-hover`
       }`}
     >
       <span className="truncate">{item.label}</span>
@@ -218,10 +217,10 @@ function SidebarContent({
   return (
     <>
       {/* "AI 서비스"가 아니라 데이터 분석 툴이라는 정체성을 사이드바 상단에서도 짧게 각인 (2026-08-09) */}
-      <p className="px-[10px] pt-2 pb-0.5 text-[11px] font-medium text-dim/70 tracking-wide">
+      <p className="lg:hidden px-[10px] pt-2 pb-0.5 text-[11px] font-medium text-dim tracking-wide">
         네이버 검색 데이터 분석
       </p>
-      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-2">
         <NavLink
           item={SIDEBAR_HOME}
           active={SIDEBAR_HOME.href === activeHref}
@@ -239,8 +238,7 @@ function SidebarContent({
                 type="button"
                 onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
-                className="w-full flex items-center gap-1 px-3 py-1 rounded-lg text-[13px] font-medium tracking-wide hover:bg-bg transition-colors cursor-pointer"
-                style={{ color: '#555555' }}
+                className="w-full flex items-center gap-1 px-3 py-2 rounded-md text-[13px] font-medium tracking-wide text-desc hover:text-text-2 transition-colors cursor-pointer"
               >
                 <span className="truncate">{group.label}</span>
                 <span className="ml-auto text-dim/60"><ChevronIcon open={isOpen} /></span>
@@ -273,8 +271,8 @@ function SidebarContent({
               key={link.href}
               href={link.href}
               onClick={onNavigate}
-              className={`block px-3 py-1 rounded-lg text-[13px] font-normal transition-colors ${
-                pathname.startsWith(link.href) ? 'text-accent' : 'text-dim hover:text-text'
+              className={`block px-3 py-1.5 rounded-md text-[13px] font-normal transition-colors ${
+                pathname.startsWith(link.href) ? 'text-accent' : 'text-desc hover:text-text'
               }`}
             >
               {link.label}
@@ -324,7 +322,7 @@ export default function AppSidebar() {
     <>
       {/* ── 데스크탑 사이드바 ── */}
       <aside
-        className={`hidden lg:flex flex-col shrink-0 sticky top-14 z-30 h-[calc(100vh-3.5rem)] bg-surface border-r border-border transition-[width] duration-200 ${
+        className={`hidden lg:flex flex-col shrink-0 sticky top-16 z-30 h-[calc(100vh-4rem)] bg-surface border-r border-border transition-[width] duration-200 ${
           collapsed ? 'w-14' : 'w-56'
         }`}
       >
@@ -333,8 +331,8 @@ export default function AppSidebar() {
             <Link
               href="/"
               title={SIDEBAR_HOME.label}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${
-                pathname === '/' ? 'bg-accent/15 text-accent' : 'text-dim hover:text-text hover:bg-bg'
+              className={`w-9 h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                pathname === '/' ? 'bg-accent/[0.07] text-accent' : 'text-desc hover:text-text hover:bg-surface-hover'
               }`}
             >
               {SIDEBAR_HOME.label}
@@ -345,7 +343,7 @@ export default function AppSidebar() {
                 type="button"
                 title={group.label}
                 onClick={toggleCollapsed}
-                className="w-9 h-9 flex items-center justify-center rounded-lg text-[11px] font-bold text-dim hover:text-text hover:bg-bg transition-colors cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-md text-[11px] font-medium text-desc hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
               >
                 {group.icon}
               </button>
@@ -368,10 +366,8 @@ export default function AppSidebar() {
           onClick={toggleCollapsed}
           title={collapsed ? '펼치기' : '접기'}
           aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-          className={`absolute top-1/2 -translate-y-1/2 -right-3 z-10 flex items-center justify-center rounded-full border border-accent shadow-md transition-colors cursor-pointer ${
-            collapsed
-              ? 'w-7 h-7 bg-accent text-white hover:brightness-110'
-              : 'w-6 h-6 bg-surface text-accent hover:bg-accent hover:text-white'
+          className={`absolute top-1/2 -translate-y-1/2 -right-3 z-10 flex items-center justify-center rounded-full border border-border shadow-xs transition-colors cursor-pointer w-6 h-6 bg-surface text-desc hover:text-text hover:bg-surface-hover ${
+            collapsed ? 'w-7 h-7' : ''
           }`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -382,7 +378,7 @@ export default function AppSidebar() {
 
       {/* ── 모바일 오버레이 ── */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 top-14 z-40 flex flex-col bg-surface border-t border-border">
+        <div className="lg:hidden fixed inset-0 top-16 z-40 flex flex-col bg-surface border-t border-border">
           <SidebarContent
             pathname={pathname}
             currentPlan={currentPlan}

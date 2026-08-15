@@ -105,7 +105,7 @@ export default function AdminPromoPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">프로모션 코드 발송</h1>
+      <h1 className="type-page-title">프로모션 코드 발송</h1>
 
       {/* 발송 폼 */}
       <div className="bg-surface rounded-xl border border-border p-5 space-y-3">
