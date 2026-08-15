@@ -82,7 +82,7 @@ export default function CompetitorDashboard({
 
     // URL 입력 시 naver_id 자동 추출 (https://in.naver.com/xxx)
     let searchTerm = query.trim();
-    const urlMatch = searchTerm.match(/in\.naver\.com\/([a-zA-Z0-9_-]+)/);
+    const urlMatch = searchTerm.match(/in\.naver\.com\/([a-zA-Z0-9_.-]+)/);
     if (urlMatch) searchTerm = urlMatch[1];
 
     searchTimerRef.current = setTimeout(async () => {
