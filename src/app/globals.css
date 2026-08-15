@@ -23,10 +23,10 @@
   --color-accent2: #D9BCB3;
   --color-accent2-hover: #C9A79D;
 
-  /* 헤더/네비/사이드바 — 옅은 뉴트럴 그레이 면으로 본문 영역과 구분한다 */
-  --color-header: #EFEEEF;
-  --color-nav: #EFEEEF;
-  --color-sidebar: #EFEEEF;
+  /* 헤더/네비/사이드바 — 거의 흰색에 가까운 뉴트럴 면 */
+  --color-header: #FCFCFC;
+  --color-nav: #FCFCFC;
+  --color-sidebar: #FCFCFC;
 
   /* 기능 컬러 — 저채도 */
   --color-up: #3A7D5F;
