@@ -883,6 +883,47 @@ export default function KeywordRankingSection() {
     return next;
   });
 
+  // 포스팅별 수동 키워드 편집기 — 데스크톱 테이블 행과 모바일 카드가 같은 UI를 쓴다.
+  const renderManualKeywordEditor = (post: BlogPost) => {
+    const keywords = editingKeywords[post.id] || [];
+    return (
+      <>
+        <div className="text-[11px] text-dim mb-1.5">키워드 추가 — 이 포스팅에서 추가로 추적할 키워드를 입력하세요(대표키워드와 별개, 최대 {MAX_MANUAL_KEYWORDS}개). 입력하면 자동 저장되고 순위 조회가 시작됩니다.</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {keywords.map((kw, kwIdx) => {
+            const kres = rankingResults[rankKey(post.id, kw.trim())];
+            return (
+              <div key={kwIdx} className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={kw}
+                  onChange={e => handleKeywordChange(post.id, kwIdx, e.target.value)}
+                  onBlur={() => handleKeywordSave(post.id)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleKeywordSave(post.id); } }}
+                  className="px-2 py-1 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none w-32"
+                  placeholder="키워드"
+                />
+                {kw.trim() && (
+                  <button onClick={() => checkSingleKeyword(post, kw, true)} disabled={checkingAll} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs" title="이 키워드 순위 조회">⟳</button>
+                )}
+                {kres && <span className="text-[10px] text-dim">{rankCellText(kres, kres.viewTab)}</span>}
+                {keywords.length > 1 && (
+                  <button onClick={() => removeKeyword(post.id, kwIdx)} className="text-dim hover:text-down text-xs cursor-pointer">x</button>
+                )}
+              </div>
+            );
+          })}
+          {keywords.length < MAX_MANUAL_KEYWORDS && (
+            <button onClick={() => addKeyword(post.id)} className="text-xs text-accent cursor-pointer hover:underline">+ 추가</button>
+          )}
+          {keywords.some(k => k.trim()) && (
+            <button onClick={() => handleClearPostKeywords(post.id)} className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">초기화</button>
+          )}
+        </div>
+      </>
+    );
+  };
+
   // ── 노출 현황과 동일한 파생 상태 (기간/상태/검색 필터 + 요약 집계, 스펙 #3~#11·#18) ──
   const usingCustomRange = Boolean(customFrom || customTo);
 
@@ -1280,7 +1321,6 @@ export default function KeywordRankingSection() {
                     const secondaries = (repKeywords[post.id]?.autoKeywords || []).filter(a => !a.isPrimary);
                     const expanded = expandedSecondary.has(post.id);
                     const isEditing = editOpen.has(post.id);
-                    const keywords = editingKeywords[post.id] || [];
                     const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
                     const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                     const manualKeywords = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
@@ -1368,41 +1408,7 @@ export default function KeywordRankingSection() {
                         </tr>
                         {isEditing && (
                           <tr key={`${post.id}-edit`} className="bg-bg/40">
-                            <td colSpan={12} className="px-5 py-3">
-                              <div className="text-[11px] text-dim mb-1.5">키워드 추가 — 이 포스팅에서 추가로 추적할 키워드를 입력하세요(대표키워드와 별개, 최대 {MAX_MANUAL_KEYWORDS}개). 입력하면 자동 저장되고 순위 조회가 시작됩니다.</div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {keywords.map((kw, kwIdx) => {
-                                  const kkey = rankKey(post.id, kw.trim());
-                                  const kres = rankingResults[kkey];
-                                  return (
-                                    <div key={kwIdx} className="flex items-center gap-1">
-                                      <input
-                                        type="text"
-                                        value={kw}
-                                        onChange={e => handleKeywordChange(post.id, kwIdx, e.target.value)}
-                                        onBlur={() => handleKeywordSave(post.id)}
-                                        onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleKeywordSave(post.id); } }}
-                                        className="px-2 py-1 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none w-32"
-                                        placeholder="키워드"
-                                      />
-                                      {kw.trim() && (
-                                        <button onClick={() => checkSingleKeyword(post, kw, true)} disabled={checkingAll} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40 text-xs" title="이 키워드 순위 조회">⟳</button>
-                                      )}
-                                      {kres && <span className="text-[10px] text-dim">{rankCellText(kres, kres.viewTab)}</span>}
-                                      {keywords.length > 1 && (
-                                        <button onClick={() => removeKeyword(post.id, kwIdx)} className="text-dim hover:text-down text-xs cursor-pointer">x</button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                                {keywords.length < MAX_MANUAL_KEYWORDS && (
-                                  <button onClick={() => addKeyword(post.id)} className="text-xs text-accent cursor-pointer hover:underline">+ 추가</button>
-                                )}
-                                {keywords.some(k => k.trim()) && (
-                                  <button onClick={() => handleClearPostKeywords(post.id)} className="text-xs text-down/60 hover:text-down cursor-pointer hover:underline">초기화</button>
-                                )}
-                              </div>
-                            </td>
+                            <td colSpan={12} className="px-5 py-3">{renderManualKeywordEditor(post)}</td>
                           </tr>
                         )}
                       </Fragment>
@@ -1419,6 +1425,8 @@ export default function KeywordRankingSection() {
                 const tier = postTier(post);
                 const meta = STATUS_META[tier];
                 const isExtracting = extractingRepId === post.id;
+                const isEditing = editOpen.has(post.id);
+                const manualKeywords = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
                 const mPrev = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
                 const mWeek = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                 return (
@@ -1460,10 +1468,23 @@ export default function KeywordRankingSection() {
                         <span title={mWeek.tooltip}>7일대비 <b className={mWeek.colorClass}>{mWeek.label}</b></span>
                       </div>
                     )}
+                    {manualKeywords.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {manualKeywords.map(kw => (
+                          <button key={kw} onClick={() => setDetail({ post, keyword: kw })} className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/5 border border-accent/20 text-dim hover:text-accent truncate max-w-[120px]" title={`${kw} — 직접 추가한 키워드, 상세 보기`}>{kw}</button>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 text-xs">
                       <button onClick={() => rep && setDetail({ post, keyword: rep })} disabled={!rep} className="text-dim hover:text-accent font-semibold cursor-pointer disabled:opacity-40">상세</button>
                       <button onClick={() => rep && checkSingleKeyword(post, rep, true)} disabled={!rep || checkingAll} className="text-dim hover:text-accent font-semibold cursor-pointer disabled:opacity-40">다시 검사</button>
+                      <button onClick={() => toggleEdit(post.id)} className="text-accent font-semibold cursor-pointer ml-auto">
+                        {isEditing ? '편집 닫기' : `+ 키워드 추가${manualKeywords.length > 0 ? ` (${manualKeywords.length})` : ''}`}
+                      </button>
                     </div>
+                    {isEditing && (
+                      <div className="rounded-xl bg-bg/40 p-3">{renderManualKeywordEditor(post)}</div>
+                    )}
                   </div>
                 );
               })}
