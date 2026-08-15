@@ -28,32 +28,36 @@ export const GET = withAnalysisView('rank_analysis', async (request: NextRequest
 
   const { year, month } = latest;
 
-  const { data: catRows } = await supabase
-    .from('naver_mate_monthly')
-    .select('naver_mates!inner(category)')
-    .eq('year', year)
-    .eq('month', month);
-  // 네이버 메이트 공식 분야 25개를 항상 전부 노출(데이터 미수집 분야 포함) + 공식 목록에 없는
-  // 과거 데이터 분야는 뒤에 덧붙인다. 공식 순서로 정렬(임의의 가나다순 아님).
-  const categorySet = new Set<string>(MATE_CATEGORIES);
-  (catRows || []).forEach((r) => {
-    const mate = Array.isArray(r.naver_mates) ? r.naver_mates[0] : r.naver_mates;
-    if (mate?.category) categorySet.add(mate.category);
-  });
-  const categories = sortByMateOrder(Array.from(categorySet));
+  // 네이버 메이트 공식 분야 25개를 항상 전부, 공식 순서로 노출(임의의 가나다순 아님)
+  const categories = MATE_CATEGORIES;
 
   let query = supabase
     .from('naver_mate_monthly')
     .select(
-      'ai_briefing_count, is_new, latest_post_title, latest_post_url, latest_post_date, naver_mates!inner(id, platform, category, display_name, profile_image_url, home_url)',
+      'mate_id, ai_briefing_count, is_new, latest_post_title, latest_post_url, latest_post_date, naver_mates!inner(id, platform, category, display_name, profile_image_url, home_url)',
     )
     .eq('year', year)
     .eq('month', month)
     .order('ai_briefing_count', { ascending: false })
     .limit(limit);
 
+  // 분야 소속은 다대다(naver_mate_topics) — 한 메이트가 여러 분야에 선정될 수 있어
+  // naver_mates.category(대표 분야) 로 거르면 겸업 메이트가 통째로 빠진다.
   if (category) {
-    query = query.eq('naver_mates.category', category);
+    const { data: memberRows, error: memberErr } = await supabase
+      .from('naver_mate_topics')
+      .select('mate_id')
+      .eq('year', year)
+      .eq('month', month)
+      .eq('category', category);
+    if (memberErr) {
+      return NextResponse.json({ error: memberErr.message }, { status: 500 });
+    }
+    const mateIds = (memberRows || []).map((r) => r.mate_id);
+    if (mateIds.length === 0) {
+      return NextResponse.json({ year, month, categories, items: [] });
+    }
+    query = query.in('mate_id', mateIds);
   }
 
   const { data: rows, error } = await query;
@@ -61,12 +65,31 @@ export const GET = withAnalysisView('rank_analysis', async (request: NextRequest
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // 노출된 메이트들이 실제로 선정된 분야 전체를 공식 순서로 붙여준다
+  const shownIds = (rows || []).map((r) => r.mate_id);
+  const categoriesByMate = new Map<string, string[]>();
+  if (shownIds.length > 0) {
+    const { data: topicRows } = await supabase
+      .from('naver_mate_topics')
+      .select('mate_id, category')
+      .eq('year', year)
+      .eq('month', month)
+      .in('mate_id', shownIds);
+    (topicRows || []).forEach((r) => {
+      const list = categoriesByMate.get(r.mate_id);
+      if (list) list.push(r.category);
+      else categoriesByMate.set(r.mate_id, [r.category]);
+    });
+  }
+
   const items = (rows || []).map((r) => {
     const mate = Array.isArray(r.naver_mates) ? r.naver_mates[0] : r.naver_mates;
+    const mateCategories = sortByMateOrder(categoriesByMate.get(r.mate_id) || []);
     return {
       id: mate?.id,
       platform: mate?.platform,
-      category: mate?.category,
+      category: mateCategories[0] || mate?.category,
+      categories: mateCategories.length > 0 ? mateCategories : [mate?.category].filter(Boolean),
       displayName: mate?.display_name,
       profileImageUrl: mate?.profile_image_url,
       homeUrl: mate?.home_url,

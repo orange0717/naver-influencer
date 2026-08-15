@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 import { crawlNaverMates } from '@/lib/naver-mate-crawler';
 
-// 25개 주제 × 4개 서비스 = 100회 순차 요청(요청 간 400ms 대기) → 넉넉히 확보
-export const maxDuration = 120;
+// 25개 주제 × 4개 서비스(주제당 4개는 병렬) + 배치 upsert. 수집만 실측 40초대라 여유를 크게 둔다.
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {

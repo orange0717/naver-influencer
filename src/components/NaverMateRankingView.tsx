@@ -9,6 +9,8 @@ interface Item {
   id: string;
   platform: 'blog' | 'cafe' | 'kin' | 'premium';
   category: string;
+  /** 이 메이트가 선정된 분야 전체 — 여러 분야에 동시 선정될 수 있음 */
+  categories: string[];
   displayName: string;
   profileImageUrl: string | null;
   homeUrl: string | null;
@@ -171,7 +173,7 @@ export default function NaverMateRankingView() {
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-bg shrink-0" />
                 )}
-                <div className="flex-1 min-w-0">
+                <div className="w-40 md:w-56 shrink-0 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-bold truncate">{it.displayName}</p>
                     {it.isNew && (
@@ -179,11 +181,26 @@ export default function NaverMateRankingView() {
                     )}
                   </div>
                   <p className="text-[11px] text-dim truncate">
-                    {it.category} · {PLATFORM_LABEL[it.platform]}
-                    {it.latestPostTitle ? ` · ${it.latestPostTitle}` : ''}
+                    {PLATFORM_LABEL[it.platform]}
+                    <span className="sm:hidden">
+                      {(it.categories.length > 0 ? it.categories : [it.category]).map((cat) => ` · ${cat}`).join('')}
+                    </span>
                   </p>
                 </div>
-                <div className="text-xs font-bold text-text shrink-0">
+                <div className="hidden sm:flex flex-wrap gap-1 w-32 md:w-48 shrink-0">
+                  {(it.categories.length > 0 ? it.categories : [it.category]).map((cat) => (
+                    <span
+                      key={cat}
+                      className="text-[10px] font-semibold text-accent bg-bg border border-border rounded px-1.5 py-0.5"
+                    >
+                      {cat}
+                    </span>
+                  ))}
+                </div>
+                <p className="hidden md:block flex-1 min-w-0 truncate text-[12px] text-dim">
+                  {it.latestPostTitle || ''}
+                </p>
+                <div className="text-xs font-bold text-text shrink-0 ml-auto md:ml-0">
                   인용 {formatCount(it.aiBriefingCount)}
                 </div>
               </a>

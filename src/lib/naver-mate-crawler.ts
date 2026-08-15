@@ -158,10 +158,29 @@ async function fetchPremiumTopic(topicId: string): Promise<NormalizedMate[]> {
 export interface CrawlResult {
   totalFetched: number;
   totalUpserted: number;
+  totalTopicLinks: number;
   failedTopics: string[];
 }
 
-/** 25개 주제 × 4개 서비스(블로그/카페/지식iN/프리미엄콘텐츠)를 순회 수집 후 DB upsert */
+interface CollectedMate extends NormalizedMate {
+  /** 이 메이트가 선정된 분야들 — 네이버 메이트 공식 순서(MATE_TOPICS)대로 쌓임 */
+  topics: { topicId: string; category: string }[];
+}
+
+const UPSERT_CHUNK = 500;
+
+function chunk<T>(rows: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+}
+
+/**
+ * 25개 주제 × 4개 서비스(블로그/카페/지식iN/프리미엄콘텐츠) 수집 후 DB 일괄 upsert.
+ *
+ * 주제당 4개 서비스는 병렬 요청하고, DB 쓰기는 메이트 1명씩이 아니라 전량 모아 배치로 쓴다.
+ * (건별 쓰기 시절엔 왕복이 수천 번이라 함수가 120초 제한에 걸려 앞의 3개 분야만 저장되고 죽었다.)
+ */
 export async function crawlNaverMates(): Promise<CrawlResult> {
   const supabase = createServiceClient();
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000); // UTC → KST 보정 (자정 근처 월 경계 오차 방지)
@@ -169,8 +188,9 @@ export async function crawlNaverMates(): Promise<CrawlResult> {
   const month = kstNow.getUTCMonth() + 1;
 
   let totalFetched = 0;
-  let totalUpserted = 0;
   const failedTopics: string[] = [];
+  // key = platform|platformKey. 한 명이 여러 분야에 선정될 수 있어 분야는 배열로 누적한다.
+  const collected = new Map<string, CollectedMate>();
 
   for (const { topicId, category } of MATE_TOPICS) {
     const fetchers: [MatePlatform, () => Promise<NormalizedMate[]>][] = [
@@ -180,67 +200,120 @@ export async function crawlNaverMates(): Promise<CrawlResult> {
       ['premium', () => fetchPremiumTopic(topicId)],
     ];
 
-    for (const [platform, fetcher] of fetchers) {
-      try {
-        const mates = await fetcher();
-        totalFetched += mates.length;
-
-        for (const mate of mates) {
-          const { data: mateRow, error: mateErr } = await supabase
-            .from('naver_mates')
-            .upsert(
-              {
-                platform: mate.platform,
-                platform_key: mate.platformKey,
-                category,
-                topic_id: topicId,
-                display_name: mate.displayName,
-                profile_image_url: mate.profileImageUrl,
-                home_url: mate.homeUrl,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'platform,platform_key' },
-            )
-            .select('id')
-            .single();
-
-          if (mateErr || !mateRow) {
-            console.error(`[naver-mate-crawler] mate upsert failed (${platform}/${mate.platformKey}):`, mateErr?.message);
-            continue;
-          }
-
-          const { error: monthlyErr } = await supabase
-            .from('naver_mate_monthly')
-            .upsert(
-              {
-                mate_id: mateRow.id,
-                year,
-                month,
-                ai_briefing_count: mate.aiBriefingCount,
-                is_new: mate.isNew,
-                expertise_value: mate.expertiseValue,
-                latest_post_title: mate.latestPostTitle,
-                latest_post_url: mate.latestPostUrl,
-                latest_post_date: mate.latestPostDate,
-                collected_at: new Date().toISOString(),
-              },
-              { onConflict: 'mate_id,year,month' },
-            );
-
-          if (monthlyErr) {
-            console.error(`[naver-mate-crawler] monthly upsert failed (${platform}/${mate.platformKey}):`, monthlyErr.message);
-            continue;
-          }
-          totalUpserted += 1;
+    const results = await Promise.all(
+      fetchers.map(async ([platform, fetcher]) => {
+        try {
+          return await fetcher();
+        } catch (err) {
+          console.error(`[naver-mate-crawler] ${platform}/${topicId} 수집 실패:`, err instanceof Error ? err.message : err);
+          failedTopics.push(`${platform}/${topicId}`);
+          return [];
         }
-      } catch (err) {
-        console.error(`[naver-mate-crawler] ${platform}/${topicId} 수집 실패:`, err instanceof Error ? err.message : err);
-        failedTopics.push(`${platform}/${topicId}`);
+      }),
+    );
+
+    for (const mate of results.flat()) {
+      totalFetched += 1;
+      const key = `${mate.platform}|${mate.platformKey}`;
+      const prev = collected.get(key);
+      if (prev) {
+        if (!prev.topics.some((t) => t.topicId === topicId)) prev.topics.push({ topicId, category });
+        prev.aiBriefingCount = Math.max(prev.aiBriefingCount, mate.aiBriefingCount);
+      } else {
+        collected.set(key, { ...mate, topics: [{ topicId, category }] });
       }
-      // 네이버 자동화 탐지 회피 — 요청 간 간격
-      await sleep(400);
     }
+
+    // 네이버 자동화 탐지 회피 — 주제 간 간격
+    await sleep(300);
   }
 
-  return { totalFetched, totalUpserted, failedTopics };
+  const mates = [...collected.values()];
+  if (mates.length === 0) {
+    return { totalFetched, totalUpserted: 0, totalTopicLinks: 0, failedTopics };
+  }
+
+  const now = new Date().toISOString();
+
+  // 1) 메이트 본체 — category/topic_id 는 공식 순서상 가장 앞선 분야(대표 분야)로 고정.
+  //    분야별 조회는 naver_mate_topics 가 담당하므로 여기서 덮어써도 분야가 유실되지 않는다.
+  const idByKey = new Map<string, string>();
+  for (const rows of chunk(mates, UPSERT_CHUNK)) {
+    const { data, error } = await supabase
+      .from('naver_mates')
+      .upsert(
+        rows.map((m) => ({
+          platform: m.platform,
+          platform_key: m.platformKey,
+          category: m.topics[0].category,
+          topic_id: m.topics[0].topicId,
+          display_name: m.displayName,
+          profile_image_url: m.profileImageUrl,
+          home_url: m.homeUrl,
+          updated_at: now,
+        })),
+        { onConflict: 'platform,platform_key' },
+      )
+      .select('id, platform, platform_key');
+
+    if (error) {
+      console.error('[naver-mate-crawler] mate 배치 upsert 실패:', error.message);
+      continue;
+    }
+    for (const r of data || []) idByKey.set(`${r.platform}|${r.platform_key}`, r.id);
+  }
+
+  // 2) 월별 스냅샷(인용수 등) — 메이트 단위 값이라 분야와 무관하게 1행
+  const monthlyRows = mates
+    .filter((m) => idByKey.has(`${m.platform}|${m.platformKey}`))
+    .map((m) => ({
+      mate_id: idByKey.get(`${m.platform}|${m.platformKey}`)!,
+      year,
+      month,
+      ai_briefing_count: m.aiBriefingCount,
+      is_new: m.isNew,
+      expertise_value: m.expertiseValue,
+      latest_post_title: m.latestPostTitle,
+      latest_post_url: m.latestPostUrl,
+      latest_post_date: m.latestPostDate,
+      collected_at: now,
+    }));
+
+  let totalUpserted = 0;
+  for (const rows of chunk(monthlyRows, UPSERT_CHUNK)) {
+    const { error } = await supabase.from('naver_mate_monthly').upsert(rows, { onConflict: 'mate_id,year,month' });
+    if (error) {
+      console.error('[naver-mate-crawler] monthly 배치 upsert 실패:', error.message);
+      continue;
+    }
+    totalUpserted += rows.length;
+  }
+
+  // 3) 분야 매칭(다대다)
+  const topicRows = mates.flatMap((m) => {
+    const mateId = idByKey.get(`${m.platform}|${m.platformKey}`);
+    if (!mateId) return [];
+    return m.topics.map((t) => ({
+      mate_id: mateId,
+      topic_id: t.topicId,
+      category: t.category,
+      year,
+      month,
+      collected_at: now,
+    }));
+  });
+
+  let totalTopicLinks = 0;
+  for (const rows of chunk(topicRows, UPSERT_CHUNK)) {
+    const { error } = await supabase
+      .from('naver_mate_topics')
+      .upsert(rows, { onConflict: 'mate_id,topic_id,year,month' });
+    if (error) {
+      console.error('[naver-mate-crawler] topic 배치 upsert 실패:', error.message);
+      continue;
+    }
+    totalTopicLinks += rows.length;
+  }
+
+  return { totalFetched, totalUpserted, totalTopicLinks, failedTopics };
 }
