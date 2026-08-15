@@ -61,6 +61,7 @@ const SYSTEM_PROMPT = [
   '   제목에 없는 단어를 새로 만들거나, 오타를 고치거나, 비슷한 말로 바꾸지 않는다.',
   '   제목이 깨져 있거나 뜻이 통하지 않는 조각(예: "야이콤", "넙데")은 primary로 뽑지 않는다.',
   '8) 단어를 부자연스럽게 자르거나 오타·부분 음절을 뽑지 않는다.',
+  '   조사가 붙은 어절을 그대로 뽑지 않는다. 예: "아이를"(X) → "아이"(O), "책의"(X) → "책"(O).',
   '9) 검색 의도가 불명확해 억지로 만들어야 하는 경우(예: "오늘도 행복한 하루 보내세요")에는',
   '   primary를 빈 문자열("")로 두어 "미확인"임을 알린다. 절대 억지로 만들지 않는다.',
   '',
@@ -93,6 +94,60 @@ function buildUserContent(input: AiKeywordInput): string {
 function cleanKeyword(raw: unknown): string {
   if (typeof raw !== 'string') return '';
   return raw.replace(/\s+/g, ' ').trim().slice(0, 60);
+}
+
+/** 비교용 압축 — 공백·기호를 지우고 소문자화. "지구 끝의 온실"과 "지구끝의온실"을 같은 것으로 본다. */
+function compactForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+/**
+ * 끝 어절의 목적격 조사 '를'을 떼어낸다("아이를" → "아이").
+ * '을'은 마을·가을·겨울·구슬처럼 명사의 끝음절과 겹쳐 오탐이 크므로 다루지 않는다.
+ * (규칙 엔진 쪽 NOUN_ENDS_EUL 사전도 불완전하다 — 사전 방식으로 넓히지 말 것)
+ */
+function stripObjectJosa(keyword: string): string {
+  const parts = keyword.trim().split(/\s+/);
+  const last = parts[parts.length - 1] || '';
+  if (last.length >= 3 && last.endsWith('를')) {
+    parts[parts.length - 1] = last.slice(0, -1);
+    return parts.join(' ');
+  }
+  return keyword;
+}
+
+/**
+ * AI가 돌려준 키워드가 계약(SYSTEM_PROMPT 규칙 7)을 지켰는지 코드로 강제한다.
+ * 프롬프트에만 적어두면 지켜지지 않는다 — 본문을 함께 넘기므로 제목에 없는 조각을
+ * primary로 뽑는 일이 실제로 발생했다("솔로몬의 지혜 오렌지도서관 단상" → "아이를").
+ *
+ * primary는 제목에 실제로 등장해야 하고, secondaries는 제목 또는 태그 범위로 제한한다.
+ * 유효한 primary가 없으면 null — 호출부는 규칙 결과로 폴백하고, 그것도 없으면 '미확인'이 된다
+ * (오렌지 확정: 억지 추출보다 미확인이 낫다).
+ */
+export function validateAiKeywords(
+  input: { title: string; tags?: string[] },
+  result: AiKeywordResult,
+): AiKeywordResult | null {
+  const titleCompact = compactForMatch(input.title);
+  const appearsInTitle = (kw: string) => {
+    const c = compactForMatch(kw);
+    return c.length >= 2 && titleCompact.includes(c);
+  };
+
+  const primary = stripObjectJosa(result.primary).trim();
+  if (!primary || !appearsInTitle(primary)) return null;
+
+  const primaryCompact = compactForMatch(primary);
+  const tagCompacts = new Set((input.tags || []).map(t => compactForMatch(t.replace(/^#/, ''))).filter(Boolean));
+  const secondaries = result.secondaries
+    .map(s => stripObjectJosa(s).trim())
+    .filter(s => s && (appearsInTitle(s) || tagCompacts.has(compactForMatch(s))))
+    .filter(s => compactForMatch(s) !== primaryCompact)
+    .filter((s, i, arr) => arr.findIndex(x => compactForMatch(x) === compactForMatch(s)) === i)
+    .slice(0, 3);
+
+  return { primary, secondaries };
 }
 
 /**
@@ -135,7 +190,8 @@ export async function aiExtractKeyword(input: AiKeywordInput): Promise<AiKeyword
           .slice(0, 3)
       : [];
 
-    return { primary, secondaries };
+    // 프롬프트 계약을 코드로 재확인 — 위반이면 null로 규칙 결과에 폴백한다.
+    return validateAiKeywords({ title, tags: input.tags }, { primary, secondaries });
   } catch (err) {
     // 키 미설정은 정상 폴백(개발/미구성 환경). 그 외 에러도 조용히 규칙 결과로 폴백한다.
     if (err instanceof ClaudeApiKeyMissingError) return null;
