@@ -37,6 +37,9 @@ import StatusBadge from '@/components/analytics/StatusBadge';
 import CheckProgress from '@/components/analytics/CheckProgress';
 import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
 
+// 포스팅당 직접 추가할 수 있는 수동 키워드 개수 — 서버(keyword-ranking-state PUT)는 20개까지 받는다.
+const MAX_MANUAL_KEYWORDS = 10;
+
 export default function KeywordRankingSection() {
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
@@ -1249,7 +1252,7 @@ export default function KeywordRankingSection() {
           <>
             {/* 데스크톱 테이블 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[1120px]">
+              <table className="w-full text-sm min-w-[1200px]">
                 <thead>
                   <tr className="border-b border-border/50 text-[11px] text-dim">
                     <th className="text-left px-5 py-3 font-semibold">제목</th>
@@ -1259,6 +1262,7 @@ export default function KeywordRankingSection() {
                     <th className="text-center px-2 py-3 font-semibold w-20">블로그</th>
                     <th className="text-center px-2 py-3 font-semibold w-24">인플루언서</th>
                     <th className="text-right px-2 py-3 font-semibold w-20">검색량</th>
+                    <th className="text-center px-2 py-3 font-semibold w-20">전일대비</th>
                     <th className="text-center px-2 py-3 font-semibold w-20">7일대비</th>
                     <th className="text-center px-2 py-3 font-semibold w-24">상태</th>
                     <th className="text-right px-3 py-3 font-semibold w-28">마지막 확인</th>
@@ -1277,7 +1281,9 @@ export default function KeywordRankingSection() {
                     const expanded = expandedSecondary.has(post.id);
                     const isEditing = editOpen.has(post.id);
                     const keywords = editingKeywords[post.id] || [];
+                    const prevDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
                     const weekDelta = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
+                    const manualKeywords = (postKeywords[post.id] || []).map(k => k.trim()).filter(Boolean);
                     return (
                       <Fragment key={post.id}>
                         <tr className="hover:bg-surface-hover transition align-top">
@@ -1287,46 +1293,62 @@ export default function KeywordRankingSection() {
                             </a>
                           </td>
                           <td className={`px-3 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>
-                            {rep ? (
-                              <div className="space-y-1">
+                            <div className="space-y-1">
+                              {rep ? (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0">대표</span>
                                   <button onClick={() => setDetail({ post, keyword: rep })} className="text-xs font-semibold truncate hover:text-accent hover:underline cursor-pointer text-left max-w-[140px]" title={`${rep} — 상세 보기`}>{rep}</button>
                                   {repKeywords[post.id]?.source === 'manual' && <span className="text-[9px] text-dim shrink-0" title="직접 지정">수동</span>}
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px]">
-                                  {secondaries.length > 0 && (
-                                    <button onClick={() => toggleSecondary(post.id)} className="text-dim hover:text-accent cursor-pointer">보조 {secondaries.length}개 {expanded ? '▲' : '▼'}</button>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미확인'}</span>
+                                  {!isExtracting && (
+                                    <>
+                                      <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">추출</button>
+                                      <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer" title="대표키워드를 직접 입력합니다">직접 설정</button>
+                                    </>
                                   )}
-                                  <button onClick={() => setEditRep({ postId: post.id, value: rep })} className="text-dim hover:text-accent cursor-pointer">수정</button>
-                                  <button onClick={() => handleExtractRepresentative(post)} disabled={isExtracting} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40" title="대표키워드 다시 추출">{isExtracting ? '추출 중…' : '재추출'}</button>
-                                  <button onClick={() => toggleEdit(post.id)} className="text-dim hover:text-accent cursor-pointer">{isEditing ? '편집 닫기' : '직접 편집'}</button>
                                 </div>
-                                {expanded && secondaries.length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {secondaries.map(ak => (
-                                      <button key={ak.keyword} onClick={() => setDetail({ post, keyword: ak.keyword })} className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg text-dim hover:text-accent truncate max-w-[120px]" title={`${ak.keyword} — 상세 보기`}>{ak.keyword}</button>
-                                    ))}
-                                  </div>
+                              )}
+                              <div className="flex items-center gap-2 text-[10px] flex-wrap">
+                                {secondaries.length > 0 && (
+                                  <button onClick={() => toggleSecondary(post.id)} className="text-dim hover:text-accent cursor-pointer">보조 {secondaries.length}개 {expanded ? '▲' : '▼'}</button>
                                 )}
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-dim">{isExtracting ? '추출 중…' : '대표키워드 미확인'}</span>
-                                {!isExtracting && (
+                                {rep && (
                                   <>
-                                    <button onClick={() => handleExtractRepresentative(post)} className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full hover:bg-accent/20 cursor-pointer">추출</button>
-                                    <button onClick={() => setEditRep({ postId: post.id, value: '' })} className="text-[10px] font-bold text-dim border border-border px-2 py-0.5 rounded-full hover:text-accent hover:border-accent/50 cursor-pointer" title="대표키워드를 직접 입력합니다">직접 설정</button>
+                                    <button onClick={() => setEditRep({ postId: post.id, value: rep })} className="text-dim hover:text-accent cursor-pointer">수정</button>
+                                    <button onClick={() => handleExtractRepresentative(post)} disabled={isExtracting} className="text-dim hover:text-accent cursor-pointer disabled:opacity-40" title="대표키워드 다시 추출">{isExtracting ? '추출 중…' : '재추출'}</button>
                                   </>
                                 )}
+                                <button onClick={() => toggleEdit(post.id)} className="font-bold text-accent hover:underline cursor-pointer" title="이 포스팅에서 추가로 추적할 키워드를 등록합니다">
+                                  {isEditing ? '편집 닫기' : `+ 키워드 추가${manualKeywords.length > 0 ? ` (${manualKeywords.length})` : ''}`}
+                                </button>
                               </div>
-                            )}
+                              {expanded && secondaries.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {secondaries.map(ak => (
+                                    <button key={ak.keyword} onClick={() => setDetail({ post, keyword: ak.keyword })} className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg text-dim hover:text-accent truncate max-w-[120px]" title={`${ak.keyword} — 상세 보기`}>{ak.keyword}</button>
+                                  ))}
+                                </div>
+                              )}
+                              {manualKeywords.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {manualKeywords.map(kw => (
+                                    <button key={kw} onClick={() => setDetail({ post, keyword: kw })} className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/5 border border-accent/20 text-dim hover:text-accent truncate max-w-[120px]" title={`${kw} — 직접 추가한 키워드, 상세 보기`}>{kw}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="text-right px-3 py-3.5 text-xs text-dim whitespace-nowrap">{post.date}</td>
                           <td className={`text-center px-2 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(result, result?.viewTab)}</td>
                           <td className={`text-center px-2 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(result, result?.blogTab)}</td>
                           <td className={`text-center px-2 py-3.5 transition-colors duration-700 ${flashing ? 'bg-accent/15' : ''}`}>{renderRankTab(result, result?.influencerTab)}</td>
                           <td className="text-right px-2 py-3.5 text-xs text-dim">{result?.searchVolume ? result.searchVolume.toLocaleString() : '--'}</td>
+                          <td className="text-center px-2 py-3.5">
+                            {prevDelta ? <span className={`text-xs font-bold ${prevDelta.colorClass}`} title={prevDelta.tooltip}>{prevDelta.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
+                          </td>
                           <td className="text-center px-2 py-3.5">
                             {weekDelta ? <span className={`text-xs font-bold ${weekDelta.colorClass}`} title={weekDelta.tooltip}>{weekDelta.label}</span> : <span className="text-[10px] text-dim/50">--</span>}
                           </td>
@@ -1346,8 +1368,8 @@ export default function KeywordRankingSection() {
                         </tr>
                         {isEditing && (
                           <tr key={`${post.id}-edit`} className="bg-bg/40">
-                            <td colSpan={11} className="px-5 py-3">
-                              <div className="text-[11px] text-dim mb-1.5">직접 키워드 편집 — 추가로 추적할 키워드를 입력하세요(대표키워드와 별개).</div>
+                            <td colSpan={12} className="px-5 py-3">
+                              <div className="text-[11px] text-dim mb-1.5">키워드 추가 — 이 포스팅에서 추가로 추적할 키워드를 입력하세요(대표키워드와 별개, 최대 {MAX_MANUAL_KEYWORDS}개). 입력하면 자동 저장되고 순위 조회가 시작됩니다.</div>
                               <div className="flex flex-wrap items-center gap-2">
                                 {keywords.map((kw, kwIdx) => {
                                   const kkey = rankKey(post.id, kw.trim());
@@ -1373,7 +1395,7 @@ export default function KeywordRankingSection() {
                                     </div>
                                   );
                                 })}
-                                {keywords.length < 5 && (
+                                {keywords.length < MAX_MANUAL_KEYWORDS && (
                                   <button onClick={() => addKeyword(post.id)} className="text-xs text-accent cursor-pointer hover:underline">+ 추가</button>
                                 )}
                                 {keywords.some(k => k.trim()) && (
@@ -1393,10 +1415,12 @@ export default function KeywordRankingSection() {
             {/* 모바일 카드 (스펙 #29) */}
             <div className="md:hidden divide-y divide-border/20">
               {displayList.map(post => {
-                const { rep, result } = repResultOf(post);
+                const { rep, result, delta } = repResultOf(post);
                 const tier = postTier(post);
                 const meta = STATUS_META[tier];
                 const isExtracting = extractingRepId === post.id;
+                const mPrev = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.prevRank ?? null, delta?.prevCheckedAt ?? null) : null;
+                const mWeek = result ? computeDeltaDisplay(result.viewTab.exposed, result.viewTab.rank, delta?.weekRank ?? null, delta?.weekCheckedAt ?? null) : null;
                 return (
                   <div key={post.id} className="px-4 py-3.5 space-y-2">
                     <div className="flex items-start justify-between gap-2">
@@ -1428,6 +1452,12 @@ export default function KeywordRankingSection() {
                         {renderRankPill('블로그', result, result.blogTab)}
                         {renderRankPill('인플루언서', result, result.influencerTab)}
                         <span className="text-[10px] text-dim ml-auto" title={result.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : ''}>{result.checkedAt ? timeAgo(result.checkedAt) : ''}</span>
+                      </div>
+                    )}
+                    {mPrev && mWeek && (
+                      <div className="flex items-center gap-3 text-[10px] text-dim">
+                        <span title={mPrev.tooltip}>전일대비 <b className={mPrev.colorClass}>{mPrev.label}</b></span>
+                        <span title={mWeek.tooltip}>7일대비 <b className={mWeek.colorClass}>{mWeek.label}</b></span>
                       </div>
                     )}
                     <div className="flex items-center gap-3 text-xs">
