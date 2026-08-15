@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ActivityEvent } from '@/lib/activity-events';
 import DashboardCard from './DashboardCard';
+import Pagination from '@/components/analytics/Pagination';
 
 interface ActivityFeedProps {
   events: ActivityEvent[];
@@ -132,23 +133,7 @@ function PaginatedList({ events, label, icon, emptyText }: {
           </div>
         )}
       </div>
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-1 mt-3">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-            <button
-              key={p}
-              onClick={() => setPage(p)}
-              className={`w-7 h-7 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-                page === p
-                  ? 'bg-accent text-white'
-                  : 'bg-border/30 text-dim hover:bg-border/50'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} numbers variant="plain" />
     </div>
   );
 }

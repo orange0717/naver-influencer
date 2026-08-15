@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import Pagination from '@/components/analytics/Pagination';
 
 interface Member {
   id: string;
@@ -427,25 +428,7 @@ export default function AdminMembersPage() {
         )}
 
         {/* 페이지네이션 */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 p-3 border-t border-border">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="px-3 py-1 rounded text-xs font-semibold border border-border disabled:opacity-30 cursor-pointer"
-            >
-              이전
-            </button>
-            <span className="text-xs text-dim">{page} / {totalPages}</span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="px-3 py-1 rounded text-xs font-semibold border border-border disabled:opacity-30 cursor-pointer"
-            >
-              다음
-            </button>
-          </div>
-        )}
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </div>
 
       {/* 오늘 방문자 모달 */}

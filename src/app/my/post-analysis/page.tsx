@@ -10,6 +10,7 @@ import type { BloggerProfile, BlogPost, PostAnalysis, AiResult, PlagiarismResult
 import { getAiBadge, sentenceTypeLabel, getProfileFromApi } from './page.helpers';
 import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
+import Pagination from '@/components/analytics/Pagination';
 
 export default function PostAnalysisPage() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
@@ -1060,25 +1061,7 @@ export default function PostAnalysisPage() {
             </div>
 
             {/* 페이지네이션 */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 px-5 py-4 border-t border-border/30">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-border/20 text-dim hover:bg-border/30 transition disabled:opacity-30 cursor-pointer disabled:cursor-default"
-                >
-                  이전
-                </button>
-                <span className="text-xs text-dim font-rank">{page} / {totalPages}</span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-border/20 text-dim hover:bg-border/30 transition disabled:opacity-30 cursor-pointer disabled:cursor-default"
-                >
-                  다음
-                </button>
-              </div>
-            )}
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </>
         )}
       </GlassCard>

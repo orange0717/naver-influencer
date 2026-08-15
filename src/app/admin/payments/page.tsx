@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
+import Pagination from '@/components/analytics/Pagination';
 
 interface Payment {
   id: string;
@@ -146,15 +147,7 @@ export default function AdminPaymentsPage() {
           </table>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 p-3 border-t border-border">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-              className="px-3 py-1 rounded text-xs font-semibold border border-border disabled:opacity-30 cursor-pointer">이전</button>
-            <span className="text-xs text-dim">{page} / {totalPages} (총 {total}건)</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-              className="px-3 py-1 rounded text-xs font-semibold border border-border disabled:opacity-30 cursor-pointer">다음</button>
-          </div>
-        )}
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} note={`(총 ${total}건)`} />
       </div>
     </div>
   );

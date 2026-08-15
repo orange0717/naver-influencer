@@ -8,6 +8,7 @@ import BookmarkButton from '@/components/keywords/BookmarkButton';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { formatCount } from '@/lib/format';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import Pagination from '@/components/analytics/Pagination';
 
 interface RankingInfo {
   influencer_name: string;
@@ -699,48 +700,7 @@ export default function MyKeywordList({
           </div>
 
           {/* 페이지네이션 */}
-          {totalPages > 1 && (
-            <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-1">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-30 disabled:cursor-default bg-border/30 text-dim hover:bg-border/50"
-              >
-                이전
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
-                .reduce<(number | 'dots')[]>((acc, p, i, arr) => {
-                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('dots');
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((item, i) =>
-                  item === 'dots' ? (
-                    <span key={`dots-${i}`} className="px-1 text-xs text-dim">...</span>
-                  ) : (
-                    <button
-                      key={item}
-                      onClick={() => setCurrentPage(item)}
-                      className={`w-8 h-8 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                        currentPage === item
-                          ? 'bg-accent text-white'
-                          : 'bg-border/30 text-dim hover:bg-border/50'
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  )
-                )}
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-30 disabled:cursor-default bg-border/30 text-dim hover:bg-border/50"
-              >
-                다음
-              </button>
-            </div>
-          )}
+          <Pagination page={currentPage} totalPages={totalPages} onChange={setCurrentPage} numbers />
         </div>
       ) : totalKeywords > 0 ? (
         <div className="text-center py-8 text-dim text-sm rounded-lg border border-border bg-bg/30">

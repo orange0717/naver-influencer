@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatCount } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
+import Pagination from '@/components/analytics/Pagination';
 
 interface InfluencerListItem {
   name: string;
@@ -105,22 +106,6 @@ export default function InfluencersListPage() {
       setOrder('desc');
     }
     setPage(1);
-  };
-
-  const getPageNumbers = () => {
-    const pages: (number | '...')[] = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (page > 3) pages.push('...');
-      const start = Math.max(2, page - 1);
-      const end = Math.min(totalPages - 1, page + 1);
-      for (let i = start; i <= end; i++) pages.push(i);
-      if (page < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
-    }
-    return pages;
   };
 
   const sortArrow = (key: SortKey) => {
@@ -325,52 +310,7 @@ export default function InfluencersListPage() {
           </div>
 
           {/* 페이지네이션 */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1.5 pt-4 flex-wrap">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default"
-                title="첫 페이지">
-                ≪
-              </button>
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
-                이전
-              </button>
-              {getPageNumbers().map((p, idx) =>
-                p === '...' ? (
-                  <span key={`dots-${idx}`} className="px-2 py-1.5 text-xs text-dim">...</span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                      page === p
-                        ? 'bg-accent text-white'
-                        : 'bg-surface border border-border text-dim hover:border-accent/40'
-                    }`}>
-                    {p}
-                  </button>
-                ),
-              )}
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
-                다음
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage(totalPages)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default"
-                title="마지막 페이지">
-                ≫
-              </button>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} numbers edges variant="plain" />
         </>
       )}
     </div>

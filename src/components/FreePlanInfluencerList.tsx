@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import CategoryFilter from '@/components/CategoryFilter';
+import Pagination from '@/components/analytics/Pagination';
 
 interface FreePlanItem {
   name: string;
@@ -146,23 +147,7 @@ export default function FreePlanInfluencerList() {
             )}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1.5 pt-2 flex-wrap">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
-                이전
-              </button>
-              <span className="text-xs text-dim px-2">{page} / {totalPages}</span>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
-                다음
-              </button>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} variant="plain" />
         </>
       )}
     </div>

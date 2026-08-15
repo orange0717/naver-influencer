@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import Pagination from '@/components/analytics/Pagination';
 
 interface Message {
   id: string;
@@ -148,25 +149,7 @@ export default function MessagesPage() {
       )}
 
       {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 pt-4">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default"
-          >
-            이전
-          </button>
-          <span className="text-xs text-dim font-rank">{page} / {totalPages}</span>
-          <button
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default"
-          >
-            다음
-          </button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} variant="plain" />
     </div>
   );
 }

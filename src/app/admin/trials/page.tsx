@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatDateTimeShort as formatDate } from '@/lib/format';
 import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
+import Pagination from '@/components/analytics/Pagination';
 
 interface TrialUser {
   id: number;
@@ -138,27 +139,7 @@ export default function AdminTrialsPage() {
       </div>
 
       {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-5">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-bg/40 cursor-pointer disabled:opacity-50 disabled:cursor-default"
-          >
-            이전
-          </button>
-          <span className="text-sm text-dim">
-            {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-bg/40 cursor-pointer disabled:opacity-50 disabled:cursor-default"
-          >
-            다음
-          </button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} variant="plain" className="mt-1" />
     </div>
   );
 }

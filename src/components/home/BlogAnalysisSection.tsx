@@ -13,6 +13,7 @@ import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 import { filterMissing, countMissing } from '@/lib/missing-rate';
 import type { BloggerProfile, BlogPost, MissingResult, BlogScoreData, BlogAnalysisMetrics, BlogAnalysisAverages } from './BlogAnalysisSection.helpers';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import Pagination from '@/components/analytics/Pagination';
 import {
   CATEGORIES,
   CHECK_FRESH_MS,
@@ -1069,21 +1070,12 @@ export default function BlogAnalysisSection() {
               const totalPages = Math.ceil(total / postsPerPage);
               return (
                 <div className="px-5 py-3 border-t border-border/50 flex flex-col items-center gap-2">
-                  {totalPages > 1 ? (
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setBlogPostsPage(p => Math.max(1, p - 1))}
-                        disabled={blogPostsPage <= 1}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30">
-                        이전
-                      </button>
-                      <span className="text-xs text-dim">{blogPostsPage} / {totalPages}</span>
-                      <button onClick={() => setBlogPostsPage(p => Math.min(totalPages, p + 1))}
-                        disabled={blogPostsPage >= totalPages}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-surface-hover transition cursor-pointer disabled:opacity-30">
-                        다음
-                      </button>
-                    </div>
-                  ) : null}
+                  <Pagination
+                    page={blogPostsPage}
+                    totalPages={totalPages}
+                    onChange={setBlogPostsPage}
+                    variant="bare"
+                  />
                   <Link href="/my/keyword-ranking" className="text-xs text-accent font-semibold hover:underline">
                     키워드순위 →
                   </Link>

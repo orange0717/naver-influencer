@@ -11,6 +11,7 @@ import SegmentedFilter, { type SegmentOption } from '@/components/analytics/Segm
 import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar';
 import AnalyticsTableShell from '@/components/analytics/AnalyticsTableShell';
 import PageHeader from '@/components/analytics/PageHeader';
+import Pagination from '@/components/analytics/Pagination';
 import MoreMenu, { menuItemClass, menuItemDangerClass } from '@/components/analytics/MoreMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
@@ -1385,25 +1386,11 @@ export default function AiBriefingSection() {
               </div>
             ))}
           </div>
-          {analysisHistory.length > HISTORY_PER_PAGE && (
-            <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
-              <button
-                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
-                disabled={historyPage === 1}
-                className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
-              >
-                이전
-              </button>
-              <span className="text-xs text-dim">{historyPage} / {Math.ceil(analysisHistory.length / HISTORY_PER_PAGE)}</span>
-              <button
-                onClick={() => setHistoryPage(p => Math.min(Math.ceil(analysisHistory.length / HISTORY_PER_PAGE), p + 1))}
-                disabled={historyPage === Math.ceil(analysisHistory.length / HISTORY_PER_PAGE)}
-                className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
-              >
-                다음
-              </button>
-            </div>
-          )}
+          <Pagination
+            page={historyPage}
+            totalPages={Math.ceil(analysisHistory.length / HISTORY_PER_PAGE)}
+            onChange={setHistoryPage}
+          />
         </GlassCard>
       )}
 
@@ -1761,25 +1748,7 @@ export default function AiBriefingSection() {
             </div>
 
             {/* 페이지네이션 (클라이언트 사이드) */}
-            {totalPages > 1 && (
-              <div className="px-5 py-3 border-t border-border/50 flex items-center justify-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(() => Math.max(1, safePage - 1))}
-                  disabled={safePage === 1}
-                  className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
-                >
-                  이전
-                </button>
-                <span className="text-xs text-dim">{safePage} / {totalPages}</span>
-                <button
-                  onClick={() => setCurrentPage(() => Math.min(totalPages, safePage + 1))}
-                  disabled={safePage === totalPages}
-                  className="px-3 py-1.5 text-xs border border-border rounded-lg disabled:opacity-30 cursor-pointer"
-                >
-                  다음
-                </button>
-              </div>
-            )}
+            <Pagination page={safePage} totalPages={totalPages} onChange={setCurrentPage} />
           </>
         )}
       </AnalyticsTableShell>
