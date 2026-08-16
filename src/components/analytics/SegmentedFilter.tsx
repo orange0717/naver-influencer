@@ -2,14 +2,10 @@
 
 // 세그먼트 pill 필터 그룹 — 노출 현황의 기간/상태 필터와 동일한 스타일.
 // (active = bg-accent text-white / inactive = text-dim hover:bg-surface-hover)
-import { ReactNode } from 'react';
 import { segmentGroupClass, segmentButtonClass, segmentGroupLgClass, segmentButtonLgClass } from './controls';
-
-export interface SegmentOption<T extends string | number> {
-  value: T;
-  label: ReactNode;
-  locked?: boolean; // 🔒 표시(회원 전용 등)
-}
+// 선택지 타입은 analytics/types 하나만 쓴다 — 여기에 같은 내용을 또 선언해 두면
+// 구조적 타이핑 탓에 두 벌이 섞여 써도 컴파일이 통과해서, 한쪽만 고친 게 드러나지 않는다.
+import type { SegmentOption } from './types';
 
 export default function SegmentedFilter<T extends string | number>({
   options,
