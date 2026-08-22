@@ -212,6 +212,7 @@ async function main() {
         .from('keyword_challenges')
         .select('id, keyword, participant_count')
         .order('participant_count', { ascending: false })
+        .order('id', { ascending: true }) // 동점 시 페이지 경계가 흔들려 중복/누락되는 것 방지
         .range(off, off + fetchSize - 1);
       if (!data || data.length === 0) break;
       tier1.push(...data);
@@ -227,6 +228,7 @@ async function main() {
         .from('keyword_challenges')
         .select('id, keyword, participant_count')
         .order('influencer_crawled_at', { ascending: true, nullsFirst: true })
+        .order('id', { ascending: true }) // NULL 동점이 5만 건대라 2차 정렬키가 없으면 페이지가 겹친다
         .range(off, off + fetchSize - 1);
       if (!data || data.length === 0) break;
       tier2.push(...data);

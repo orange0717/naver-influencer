@@ -208,19 +208,33 @@ async function main() {
     const tier1Size = Math.max(1, Math.floor(topKeywords * 0.2));
     const tier2Size = topKeywords - tier1Size;
 
-    const { data: tier1 } = await supabase.from('keyword_challenges')
-      .select('id, keyword, participant_count, naver_keyword_id')
-      .eq('is_active', true)
-      .not('naver_keyword_id', 'is', null)
-      .order('participant_count', { ascending: false })
-      .limit(tier1Size);
+    // PostgREST 는 응답을 max-rows(1000행)로 자르기 때문에 .limit(2800) 을 줘도 1000개만 온다.
+    // 2026-08-22 --top 3500 실행이 조용히 1700개(700+1000)만 돌았던 원인 — 에러도 경고도 없다.
+    // 그래서 1000행씩 range 로 끊어 가져온다. 동점(특히 influencer_crawled_at NULL 다수)에서
+    // 페이지 경계가 흔들려 중복/누락이 생기지 않도록 id 를 2차 정렬키로 고정한다.
+    async function fetchKeywordTier(column, ascending, size) {
+      const rows = [];
+      const PAGE = 1000;
+      while (rows.length < size) {
+        const from = rows.length;
+        const to = Math.min(from + PAGE, size) - 1;
+        const { data, error } = await supabase.from('keyword_challenges')
+          .select('id, keyword, participant_count, naver_keyword_id')
+          .eq('is_active', true)
+          .not('naver_keyword_id', 'is', null)
+          .order(column, { ascending, nullsFirst: ascending })
+          .order('id', { ascending: true })
+          .range(from, to);
+        if (error) { console.error(`키워드 조회 실패(${column}):`, error.message); process.exit(1); }
+        if (!data || data.length === 0) break;
+        rows.push(...data);
+        if (data.length < to - from + 1) break;
+      }
+      return rows;
+    }
 
-    const { data: tier2 } = await supabase.from('keyword_challenges')
-      .select('id, keyword, participant_count, naver_keyword_id')
-      .eq('is_active', true)
-      .not('naver_keyword_id', 'is', null)
-      .order('influencer_crawled_at', { ascending: true, nullsFirst: true })
-      .limit(tier2Size);
+    const tier1 = await fetchKeywordTier('participant_count', false, tier1Size);
+    const tier2 = await fetchKeywordTier('influencer_crawled_at', true, tier2Size);
 
     const seen = new Set();
     keywords = [];
