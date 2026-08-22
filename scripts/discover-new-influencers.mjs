@@ -62,6 +62,14 @@ const supabase = createClient(
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// 결과가 0인 이유(차단 403 / 레이트리밋 429 / 진짜 무결과 200)를 사후에 구분하기 위한 집계.
+// 응답 본문만 보면 셋이 똑같이 빈 결과로 보인다.
+const httpStatusCounts = new Map();
+const bumpStatus = (k) => httpStatusCounts.set(k, (httpStatusCounts.get(k) || 0) + 1);
+function formatStatusCounts() {
+  return [...httpStatusCounts.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}×${v}`).join(', ') || '없음';
+}
+
 async function fetchWithRetry(url) {
   for (let attempt = 0; attempt <= CONFIG.MAX_RETRIES; attempt++) {
     const ctrl = new AbortController();
@@ -77,15 +85,18 @@ async function fetchWithRetry(url) {
       });
       clearTimeout(to);
       if (res.status === 429) {
+        bumpStatus(429);
         const wait = 4000 * Math.pow(2, attempt);
         console.log(`\n  429 Rate Limited — ${wait}ms 대기`);
         await sleep(wait);
         continue;
       }
       if (res.status >= 500 && attempt < CONFIG.MAX_RETRIES) {
+        bumpStatus(res.status);
         await sleep(CONFIG.DELAY_ON_ERROR);
         continue;
       }
+      bumpStatus(res.status);
       return res;
     } catch (err) {
       clearTimeout(to);
@@ -93,6 +104,7 @@ async function fetchWithRetry(url) {
         await sleep(CONFIG.DELAY_ON_ERROR);
         continue;
       }
+      bumpStatus(err.name === 'AbortError' ? 'timeout' : 'neterr');
       throw err;
     }
   }
@@ -285,8 +297,9 @@ async function main() {
   // 33~44%이므로 90%를 넘으면 수집이 아니라 차단으로 보고 실패시킨다.
   const emptyRatio = attempted > 0 ? emptyCount / attempted : 0;
   console.log(`  0건 키워드: ${emptyCount}/${attempted} (${(emptyRatio * 100).toFixed(1)}%)`);
+  console.log(`  HTTP 응답: ${formatStatusCounts()}`);
   if (attempted >= 50 && emptyRatio >= 0.9) {
-    console.error(`::error ::수집 결과 0건 비율 ${(emptyRatio * 100).toFixed(1)}% — 네이버 차단 의심`);
+    console.error(`::error ::수집 결과 0건 비율 ${(emptyRatio * 100).toFixed(1)}% — HTTP 응답 ${formatStatusCounts()}`);
     process.exit(1);
   }
 }

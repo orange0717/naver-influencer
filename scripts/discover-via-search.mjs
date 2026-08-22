@@ -62,6 +62,14 @@ loadEnv();
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// 결과가 0인 이유(차단 403 / 레이트리밋 429 / 진짜 무결과 200)를 사후에 구분하기 위한 집계.
+// 응답 본문만 보면 셋이 똑같이 빈 결과로 보인다.
+const httpStatusCounts = new Map();
+const bumpStatus = (k) => httpStatusCounts.set(k, (httpStatusCounts.get(k) || 0) + 1);
+function formatStatusCounts() {
+  return [...httpStatusCounts.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}×${v}`).join(', ') || '없음';
+}
+
 async function fetchWithRetry(url, retries = CONFIG.MAX_RETRIES) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const ctrl = new AbortController();
@@ -77,16 +85,20 @@ async function fetchWithRetry(url, retries = CONFIG.MAX_RETRIES) {
       });
       clearTimeout(to);
       if (res.status === 429) {
+        bumpStatus(429);
         await sleep(4000 * Math.pow(2, attempt));
         continue;
       }
+      bumpStatus(res.status);
       return res;
     } catch (err) {
       clearTimeout(to);
       if (attempt < retries) { await sleep(CONFIG.DELAY_ON_ERROR_MS); continue; }
+      bumpStatus(err.name === 'AbortError' ? 'timeout' : 'neterr');
       throw err;
     }
   }
+  bumpStatus('429-소진');
   return null;
 }
 
@@ -307,8 +319,9 @@ async function main() {
   // 워크플로는 success로 끝났다. 정상일 0건 비율은 53~71%라 90% 초과는 차단으로 본다.
   const emptyRatio = attempted > 0 ? emptyCount / attempted : 0;
   console.log(`  0건 키워드: ${emptyCount}/${attempted} (${(emptyRatio * 100).toFixed(1)}%)`);
+  console.log(`  HTTP 응답: ${formatStatusCounts()}`);
   if (attempted >= 50 && emptyRatio >= 0.9) {
-    console.error(`::error ::검색 결과 0건 비율 ${(emptyRatio * 100).toFixed(1)}% — 네이버 차단 의심`);
+    console.error(`::error ::검색 결과 0건 비율 ${(emptyRatio * 100).toFixed(1)}% — HTTP 응답 ${formatStatusCounts()}`);
     process.exit(1);
   }
 }
