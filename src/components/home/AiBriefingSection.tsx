@@ -19,6 +19,7 @@ import {
   POST_SORT_OPTIONS,
   selectControlClass,
   actionButtonSecondaryClass,
+  actionButtonDangerClass,
   type MetricCardItem,
   type DataTableColumn,
   type SegmentOption,
@@ -1145,7 +1146,8 @@ export default function AiBriefingSection() {
     </>
   );
 
-  // 헤더 우측 실행 버튼 — 주 액션은 '전체 업데이트'
+  // 주 CTA(전체 업데이트)는 DashboardLayout 의 primaryAction 슬롯이 그린다 — 키워드순위 헤더와 같은 치수·위치.
+  // 여기에는 보조 버튼(키워드 추출·중단)과 더보기 메뉴만 남긴다.
   const headerActions = (
     <>
       {extractingAll ? (
@@ -1153,26 +1155,16 @@ export default function AiBriefingSection() {
           ) : missingKeywordCount > 0 && (
             <button
               onClick={extractAllRepresentative}
-              className="inline-flex items-center gap-1.5 px-4 py-2 border border-accent/40 text-accent font-bold rounded-xl hover:bg-accent/10 transition cursor-pointer text-sm"
+              className={actionButtonSecondaryClass}
               title="포스팅 제목을 분석해 검색 가능한 키워드를 추출합니다(네이버 호출 없음)."
             >
               키워드 추출 {missingKeywordCount.toLocaleString()}개
             </button>
           )}
-          {!bulkRunning ? (
-            <button
-              onClick={openBulkModal}
-              disabled={blogPosts.length === 0 || bulkLoadingEstimate}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition cursor-pointer disabled:opacity-50 text-sm"
-              title="전체 포스팅을 안전 배치(1회 소수·순차)로 확인합니다. 예상 작업량을 먼저 보여드립니다."
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>
-              {bulkLoadingEstimate ? '계산 중...' : '전체 업데이트'}
-            </button>
-          ) : (
+          {bulkRunning && (
             <button
               onClick={() => { bulkAbortRef.current = true; }}
-              className="px-4 py-2 bg-down/10 text-down border border-down/30 font-bold rounded-xl hover:bg-down/20 transition cursor-pointer text-sm"
+              className={actionButtonDangerClass}
               title="진행 중인 배치 확인을 중단합니다(이미 확인된 결과는 저장됩니다)."
             >
               중단
@@ -1584,7 +1576,7 @@ export default function AiBriefingSection() {
     );
 
     const titleCell = (
-      <td className="px-4 py-3 align-top">
+      <td className="px-3 py-3 align-top">
         <a href={post.url} target="_blank" rel="noopener noreferrer"
           className="font-semibold hover:text-accent transition truncate block max-w-full" title={post.title}>
           {post.title}
@@ -1615,7 +1607,7 @@ export default function AiBriefingSection() {
     // '＋ 키워드 추가' 행 — 키워드 열에서 직접 등록한다(키워드순위와 동일 패턴).
     const addKeywordRow = (
       <tr className="hover:bg-surface-hover transition">
-        <td className="px-4 py-2" />
+        <td className="px-3 py-2" />
         <td className="px-3 py-2" />
         <td className="px-3 py-2 align-top text-center">
           <AddKeywordControl
@@ -1667,7 +1659,7 @@ export default function AiBriefingSection() {
             <Fragment key={key}>
               <tr className="group hover:bg-surface-hover transition">
                 {j === 0 ? titleCell : (
-                  <td className="px-4 py-3 align-top text-dim/50 text-xs">↳</td>
+                  <td className="px-3 py-3 align-top text-dim/50 text-xs">↳</td>
                 )}
                 {j === 0 ? extractedCell : <td className="px-3 py-3" />}
                 <td className="px-3 py-3 align-top text-center">
@@ -1945,6 +1937,13 @@ export default function AiBriefingSection() {
       title="AI 브리핑 · AI 탭"
       description={`내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 ${postsLoading && blogPostsTotal === 0 ? '집계 중' : `${blogPostsTotal.toLocaleString()}개`}`}
       banners={<>{alertBanners}{bulkBanners}</>}
+      primaryAction={bulkRunning ? undefined : {
+        label: bulkLoadingEstimate ? '계산 중...' : '전체 업데이트',
+        onClick: openBulkModal,
+        disabled: blogPosts.length === 0 || bulkLoadingEstimate,
+        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>,
+        title: '전체 포스팅을 안전 배치(1회 소수·순차)로 확인합니다. 예상 작업량을 먼저 보여드립니다.',
+      }}
       actions={headerActions}
       metrics={metrics}
       cardsLoading={postsLoading || fullListLoading}

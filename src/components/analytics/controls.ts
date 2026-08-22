@@ -22,6 +22,9 @@ export const actionButtonClass =
   'px-4 py-2 rounded-xl bg-accent text-white text-sm font-bold hover:bg-accent-hover transition cursor-pointer disabled:opacity-50';
 export const actionButtonSecondaryClass =
   'px-4 py-2 rounded-xl border border-border bg-surface text-sm font-semibold text-dim hover:text-accent hover:border-accent/40 transition cursor-pointer disabled:opacity-50';
+/** 진행 중단 등 파괴적 헤더 액션 — 색만 다르고 치수는 위 둘과 같다 */
+export const actionButtonDangerClass =
+  'px-4 py-2 rounded-xl border border-down/30 bg-down/10 text-sm font-bold text-down hover:bg-down/20 transition cursor-pointer disabled:opacity-50';
 
 /** 페이지 주 내비게이션용 큰 세그먼트(예: 경쟁자 분석 상단 탭) */
 export const segmentGroupLgClass = 'flex h-12 rounded-xl border border-border overflow-hidden';

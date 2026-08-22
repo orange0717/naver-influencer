@@ -43,4 +43,5 @@ export {
   filterButtonClass,
   actionButtonClass,
   actionButtonSecondaryClass,
+  actionButtonDangerClass,
 } from './controls';
