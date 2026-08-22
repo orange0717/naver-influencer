@@ -6,6 +6,8 @@ import {
   type CitationState,
   type SurfaceStatusValue,
 } from '@/lib/ai-citation-status';
+import StatusBadge from '@/components/analytics/StatusBadge';
+import type { StatusTone } from '@/components/analytics/types';
 
 export interface BloggerProfile {
   blogId: string;
@@ -114,79 +116,10 @@ export interface RepKeywordEntry {
   keyword: string | null;
   source: string | null;
   confidence?: number | null;
-  /** 제목 분석으로 뽑힌 검색 가능한 키워드 후보 전체(대표 포함) — '추출 키워드' 열에 표시 */
+  /** 제목 분석으로 뽑힌 검색 가능한 키워드 후보 전체(대표 포함) — 대표 키워드 수정 시 선택지로 노출 */
   candidates?: string[];
   /** 대표 키워드가 마지막으로 바뀐 시각 — 이보다 앞선 확인 결과는 무효로 본다(스펙 #9) */
   keywordChangedAt?: string | null;
-}
-
-/**
- * "추출 키워드" 열 — 포스팅 제목에서 자동 추출된 키워드 후보를 그대로 보여준다(스펙 #1/#2/#5).
- * 후보를 누르면 그 키워드가 대표 키워드가 되고, 대표가 바뀌면 이전 확인 결과는 무효가 된다.
- */
-export function ExtractedKeywordsCell({
-  candidates, representative, onPick, onExtract, extracting, disabled,
-}: {
-  candidates: string[];
-  representative: string | null;
-  onPick: (keyword: string) => void;
-  onExtract: () => void;
-  extracting: boolean;
-  disabled?: boolean;
-}) {
-  if (extracting) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] text-dim">
-        <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-        키워드 추출 중...
-      </span>
-    );
-  }
-  if (candidates.length === 0) {
-    return (
-      <button
-        type="button"
-        onClick={onExtract}
-        disabled={disabled}
-        className="text-[11px] text-accent cursor-pointer hover:underline disabled:opacity-50"
-        title="포스팅 제목을 분석해 검색 가능한 키워드 후보를 뽑습니다(네이버 무호출)"
-      >
-        키워드 추출
-      </button>
-    );
-  }
-  return (
-    <div className="flex items-center justify-center gap-1 flex-wrap">
-      {candidates.map(c => {
-        const isRep = !!representative && c === representative;
-        return (
-          <button
-            key={c}
-            type="button"
-            onClick={() => { if (!isRep) onPick(c); }}
-            disabled={isRep || disabled}
-            className={`max-w-full truncate px-1.5 py-0.5 rounded-full text-[10px] border transition ${
-              isRep
-                ? 'text-accent bg-accent/10 border-accent/30 font-semibold cursor-default'
-                : 'text-dim bg-bg border-border/60 cursor-pointer hover:text-accent hover:border-accent/40'
-            }`}
-            title={isRep ? `${c} — 현재 대표 키워드` : `${c} — 대표 키워드로 지정`}
-          >
-            {c}
-          </button>
-        );
-      })}
-      <button
-        type="button"
-        onClick={onExtract}
-        disabled={disabled}
-        className="text-[10px] text-dim/70 hover:text-accent cursor-pointer disabled:opacity-50 shrink-0"
-        title="현행 추출 규칙으로 이 포스팅의 키워드를 다시 뽑습니다"
-      >
-        ⟳
-      </button>
-    </div>
-  );
 }
 
 // '＋ 키워드 추가' 컨트롤은 analytics/AddKeywordControl 로 옮겼다 —
@@ -373,28 +306,30 @@ export function AiTabBadge({ result }: { result?: BriefingResult }) {
  * 종합 상태 배지(스펙 #7 "상태" 컬럼) — 브리핑·탭을 합친 하나의 상태.
  * 색상·라벨은 ai-citation-status.ts의 단일 소스를 그대로 사용한다.
  */
+const CITATION_TONE: Record<ReturnType<typeof citationStatusColor>, StatusTone> = {
+  up: 'success',
+  gold: 'warning',
+  accent: 'accent',
+  down: 'danger',
+  dim: 'neutral',
+};
+
 export function CitationStatusBadge({ state }: { state: CitationState }) {
   const label = CITATION_STATUS_LABELS[state];
-  const color = citationStatusColor(state);
-  const cls: Record<string, string> = {
-    up: 'text-up bg-up/10 font-bold',
-    gold: 'text-gold bg-gold/10 font-semibold',
-    accent: 'text-accent bg-accent/10 font-semibold',
-    down: 'text-down bg-down/10 font-semibold',
-    dim: 'text-dim bg-bg',
-  };
   if (state === 'checking') {
     return (
-      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${cls.accent}`}>
+      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap bg-accent/10 text-accent">
         <span className="w-2.5 h-2.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
         {label}
       </span>
     );
   }
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${cls[color]}`} title={CITATION_STATUS_DESCRIPTIONS[state]}>
-      {label}
-    </span>
+    <StatusBadge
+      label={label}
+      tone={CITATION_TONE[citationStatusColor(state)]}
+      title={CITATION_STATUS_DESCRIPTIONS[state]}
+    />
   );
 }
 

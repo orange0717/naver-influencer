@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { KEYWORD_KIND_META } from '@/components/analytics/constants';
 
 export interface BloggerProfile {
   blogId: string;
@@ -72,11 +73,8 @@ export interface AutoKeyword {
 // 대표(자동추출 primary) / 보조(secondary·variant) / 추가(사용자 직접 입력 manual)
 export type KeywordKind = 'primary' | 'secondary' | 'manual';
 
-export const KIND_META: Record<KeywordKind, { label: string; cls: string }> = {
-  primary: { label: '대표', cls: 'text-accent bg-accent/10' },
-  secondary: { label: '보조', cls: 'text-dim bg-border/30' },
-  manual: { label: '추가', cls: 'text-blue bg-blue/10' },
-};
+// 배지 모양은 analytics/constants.ts 가 단일 소스 — AI 브리핑 표의 키워드 열과 같은 모양을 쓴다.
+export const KIND_META: Record<KeywordKind, { label: string; cls: string }> = KEYWORD_KIND_META;
 
 // 실제 정의는 analytics/constants.ts — 공용 AddKeywordControl 이 화면 helpers 를 거꾸로
 // import 하지 않게 옮겼다. 기존 호출부가 그대로 동작하도록 여기서 다시 내보낸다.

@@ -20,6 +20,7 @@ import {
   selectControlClass,
   actionButtonSecondaryClass,
   actionButtonDangerClass,
+  KEYWORD_KIND_META,
   type MetricCardItem,
   type DataTableColumn,
   type SegmentOption,
@@ -45,7 +46,6 @@ import {
   ResultStatCard,
   CitationStatusBadge,
   CitationDetailPanel,
-  ExtractedKeywordsCell,
   briefingSurfaceStatus,
   tabSurfaceStatus,
   fromEngineResult,
@@ -159,6 +159,8 @@ export default function AiBriefingSection() {
   const [checkingKey, setCheckingKey] = useState('');
   const [checkingStage, setCheckingStage] = useState('');
   const [extractingPostId, setExtractingPostId] = useState('');
+  // 보조·변형 키워드는 기본으로 접어두고 '보조 N ▼' 로만 펼친다(키워드순위와 동일).
+  const [expandedSecondary, setExpandedSecondary] = useState<Record<string, boolean>>({});
   const [errorMessage, setErrorMessage] = useState('');
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1553,63 +1555,71 @@ export default function AiBriefingSection() {
     </>
   );
 
+  // 키워드 배지 종류 — 배지 모양은 analytics/constants.ts 가 단일 소스(키워드순위 표와 동일).
+  const kindOf = (postId: string, row: { keyword: string; isPrimary: boolean }): keyof typeof KEYWORD_KIND_META => {
+    if (row.isPrimary) return 'primary';
+    const t = keywordMeta[rankKey(postId, row.keyword)]?.keywordType;
+    return t === 'variant' ? 'variant' : t === 'secondary' ? 'secondary' : 'manual';
+  };
+
   // 표 본문 — 포스팅 1개가 키워드 n행으로 펼쳐지므로 DataTable 의 renderRows 로 직접 그린다.
   // (헤더·Sticky·Loading·Empty·껍데기는 DataTable 이 소유한다)
   const renderPostRows = (post: BlogPost) => {
-    const rows = keywordRowsFor(post);
+    const allRows = keywordRowsFor(post);
     const editing = editingRepPost === post.id;
     const needsReview = repNeedsReview(post);
     const entry = repKeywords[post.id];
-
-    // 제목 분석 결과(스펙 #1) — 후보를 눌러 바로 대표 키워드로 바꿀 수 있다(스펙 #2).
-    const extractedCell = (
-      <td className="px-3 py-3 align-top text-center">
-        <ExtractedKeywordsCell
-          candidates={entry?.candidates || []}
-          representative={entry?.keyword || null}
-          onPick={kw => applyRepKeyword(post, kw)}
-          onExtract={() => autoExtractRep(post, { refine: true })}
-          extracting={extractingPostId === post.id}
-          disabled={extractingAll}
-        />
-      </td>
-    );
+    const expanded = !!expandedSecondary[post.id];
+    // 자동 추출된 보조·변형만 접는다. 직접 추가한 키워드는 항상 보인다.
+    const isFolded = (row: { keyword: string; isPrimary: boolean }) =>
+      !row.isPrimary && kindOf(post.id, row) !== 'manual';
+    const secondaryCount = allRows.filter(isFolded).length;
+    const rows = expanded ? allRows : allRows.filter(r => !isFolded(r));
 
     const titleCell = (
-      <td className="px-3 py-3 align-top">
+      <td className="px-3 py-3 align-middle">
         <a href={post.url} target="_blank" rel="noopener noreferrer"
-          className="font-semibold hover:text-accent transition truncate block max-w-full" title={post.title}>
+          className="font-semibold text-xs hover:text-accent transition truncate block max-w-full" title={post.title}>
           {post.title}
         </a>
-        <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-dim">
-          <span>{post.date}</span>
-          {typeof post.viewCount === 'number' && <span>조회 {post.viewCount.toLocaleString()}</span>}
-          {post.commentCount > 0 && <span className="text-accent">댓글 {post.commentCount}</span>}
-        </div>
       </td>
     );
 
+    // 대표 키워드 직접 입력 — 추출 후보를 눌러 바로 승격할 수도 있다(스펙 #2).
     const repEditor = (
-      <input
-        autoFocus
-        value={repDraft}
-        onChange={e => setRepDraft(e.target.value)}
-        onBlur={() => saveRepKeyword(post)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); saveRepKeyword(post); }
-          if (e.key === 'Escape') setEditingRepPost('');
-        }}
-        className="w-full px-2 py-1 text-xs bg-bg border border-accent rounded-lg outline-none"
-        placeholder="대표 키워드"
-      />
+      <div className="space-y-1">
+        <input
+          autoFocus
+          value={repDraft}
+          onChange={e => setRepDraft(e.target.value)}
+          onBlur={() => saveRepKeyword(post)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); saveRepKeyword(post); }
+            if (e.key === 'Escape') setEditingRepPost('');
+          }}
+          className="w-full px-2 py-1 text-xs bg-bg border border-accent rounded-lg outline-none"
+          placeholder="대표 키워드"
+        />
+        {(entry?.candidates || []).length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {/* onMouseDown preventDefault: input 의 onBlur 저장이 먼저 터져 클릭이 씹히는 걸 막는다 */}
+            {entry!.candidates!.map(c => (
+              <button key={c} type="button" onMouseDown={e => e.preventDefault()}
+                onClick={() => { setEditingRepPost(''); applyRepKeyword(post, c); }}
+                className="max-w-full truncate px-1.5 py-0.5 rounded-full text-[10px] border text-dim bg-bg border-border/60 cursor-pointer hover:text-accent hover:border-accent/40">
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
 
-    // '＋ 키워드 추가' 행 — 키워드 열에서 직접 등록한다(키워드순위와 동일 패턴).
+    // 두 번째 Row — '＋ 키워드 추가'(키워드 열) + '대표 재추출'(관리 열)
     const addKeywordRow = (
       <tr className="hover:bg-surface-hover transition">
-        <td className="px-3 py-2" />
-        <td className="px-3 py-2" />
-        <td className="px-3 py-2 align-top text-center">
+        {titleCell}
+        <td className="px-3 py-2.5 align-top border-l border-border/40">
           <AddKeywordControl
             open={addingFor === post.id}
             value={addValue}
@@ -1621,28 +1631,47 @@ export default function AiBriefingSection() {
             onSubmit={() => submitAddKeyword(post)}
           />
         </td>
-        <td colSpan={5} />
+        <td colSpan={5} className="border-l border-border/40" />
+        <td className="px-3 py-2.5 text-center border-l border-border/40">
+          <button type="button"
+            onClick={() => autoExtractRep(post, { refine: true })}
+            disabled={extractingPostId === post.id || extractingAll}
+            className="text-[11px] text-dim/70 hover:text-accent hover:underline cursor-pointer disabled:opacity-40"
+            title="제목을 다시 분석해 대표 키워드를 새로 뽑습니다">
+            {extractingPostId === post.id ? '재추출 중…' : '대표 재추출'}
+          </button>
+        </td>
       </tr>
     );
 
     // 키워드가 없으면 확인할 대상이 없다 — 조회하지 않고 지정 안내만 보여준다(스펙 #9).
-    if (rows.length === 0) {
+    if (allRows.length === 0) {
       return (
         <Fragment key={post.id}>
-        <tr className="hover:bg-surface-hover transition">
-          {titleCell}
-          {extractedCell}
-          <td className="px-3 py-3 align-top text-center">
-            {editing ? repEditor : (
-              <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
-                className="text-xs text-dim hover:text-accent cursor-pointer hover:underline">직접 입력</button>
-            )}
-          </td>
-          <td colSpan={5} className="px-3 py-3 text-center text-[11px] text-dim">
-            타겟 키워드를 지정하면 AI 브리핑·AI 탭을 확인할 수 있습니다.
-          </td>
-        </tr>
-        {addKeywordRow}
+          <tr className="hover:bg-surface-hover transition">
+            {titleCell}
+            <td className="px-3 py-3 align-middle border-l border-border/40">
+              {editing ? repEditor : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] text-dim">키워드 없음</span>
+                  <button type="button" onClick={() => autoExtractRep(post, { refine: true })}
+                    disabled={extractingPostId === post.id || extractingAll}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/60 bg-bg text-dim hover:text-accent hover:border-accent/40 cursor-pointer disabled:opacity-40">
+                    {extractingPostId === post.id ? '추출 중…' : '자동 추출'}
+                  </button>
+                  <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/60 bg-bg text-dim hover:text-accent hover:border-accent/40 cursor-pointer">
+                    직접 설정
+                  </button>
+                </div>
+              )}
+            </td>
+            <td className="px-3 py-3 text-right text-[11px] text-dim border-l border-border/40">{post.date}</td>
+            <td colSpan={5} className="px-3 py-3 text-center text-[11px] text-dim border-l border-border/40">
+              키워드를 지정하면 AI 브리핑·AI 탭을 확인할 수 있습니다.
+            </td>
+          </tr>
+          {addKeywordRow}
         </Fragment>
       );
     }
@@ -1654,48 +1683,38 @@ export default function AiBriefingSection() {
           const result = resultFor(post.id, row.keyword, row.isPrimary);
           const state = keywordStatus(post.id, row.keyword, row.isPrimary);
           const staleByKeywordChange = row.isPrimary && repNeedsRecheck(post.id, row.keyword);
-          const kwType = keywordMeta[key]?.keywordType;
+          const kindMeta = KEYWORD_KIND_META[kindOf(post.id, row)];
           return (
             <Fragment key={key}>
               <tr className="group hover:bg-surface-hover transition">
-                {j === 0 ? titleCell : (
-                  <td className="px-3 py-3 align-top text-dim/50 text-xs">↳</td>
-                )}
-                {j === 0 ? extractedCell : <td className="px-3 py-3" />}
-                <td className="px-3 py-3 align-top text-center">
+                {titleCell}
+                <td className="px-3 py-3 align-middle border-l border-border/40">
                   {row.isPrimary && editing ? repEditor : (
-                    // 양옆 슬롯 폭을 같게 두어 키워드 pill 자체가 열 정중앙에 오도록 한다.
-                    <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center">
-                      <span aria-hidden />
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${kindMeta.cls}`}>
+                        {kindMeta.label}
+                      </span>
                       <span
-                        className={`justify-self-center max-w-full truncate px-2.5 py-1 rounded-full bg-bg border text-[11px] text-text ${
-                          row.isPrimary && needsReview ? 'border-down/40' : 'border-border/60'
-                        }`}
+                        className={`text-xs font-semibold truncate ${row.isPrimary && needsReview ? 'text-down' : ''}`}
                         title={row.isPrimary && needsReview ? `${row.keyword} — 대표 키워드 확인 필요` : row.keyword}>
                         {row.keyword}
                       </span>
-                      <span className="flex items-center justify-end">
-                        {row.isPrimary ? (
-                          <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(row.keyword); }}
-                            className="text-[10px] text-dim hover:text-accent cursor-pointer hover:underline shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                            title="대표 키워드 직접 수정 — 키워드순위와 같은 값이 바뀝니다">수정</button>
-                        ) : (
-                          <span className="text-[9px] text-dim/70 bg-bg px-1.5 py-0.5 rounded-full shrink-0"
-                            title={kwType === 'variant' ? '변형 키워드' : kwType === 'secondary' ? '보조 키워드' : '추가 키워드'}>
-                            {kwType === 'variant' ? '변형' : kwType === 'secondary' ? '보조' : '추가'}
-                          </span>
-                        )}
-                      </span>
+                      {j === 0 && secondaryCount > 0 && (
+                        <button type="button" onClick={() => setExpandedSecondary(p => ({ ...p, [post.id]: !p[post.id] }))}
+                          className="text-[10px] text-dim hover:text-accent cursor-pointer shrink-0"
+                          title={expanded ? '보조 키워드 접기' : '보조 키워드 펼치기'}>
+                          보조 {secondaryCount} {expanded ? '▲' : '▼'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </td>
-                <td className="text-center px-3 py-3"><BriefingLabelBadge result={result} /></td>
-                <td className="text-center px-3 py-3"><AiTabBadge result={result} /></td>
-                <td className="text-center px-3 py-3 text-[10px] text-dim"
-                  title={result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : undefined}>
-                  {result?.checkedAt ? timeAgo(result.checkedAt) : '—'}
+                <td className="px-3 py-3 text-right text-[11px] text-dim border-l border-border/40">
+                  {j === 0 ? post.date : ''}
                 </td>
-                <td className="text-center px-3 py-3">
+                <td className="text-center px-3 py-3 border-l border-border/40"><BriefingLabelBadge result={result} /></td>
+                <td className="text-center px-3 py-3"><AiTabBadge result={result} /></td>
+                <td className="text-center px-3 py-3 border-l border-border/40">
                   <CitationStatusBadge state={state} />
                   {staleByKeywordChange && (
                     <div className="text-[9px] text-down mt-0.5" title="대표 키워드가 바뀌어 이전 확인 결과는 무효화되었습니다. 다시 검사해주세요.">
@@ -1703,22 +1722,31 @@ export default function AiBriefingSection() {
                     </div>
                   )}
                 </td>
-                {/* 관리 — 다시 검사 / 상세를 한 열에 모은다(키워드순위 '관리' 열과 동일 패턴) */}
-                <td className="px-3 py-3">
-                  <div className="flex items-center justify-center gap-2.5">
+                <td className="text-right px-3 py-3 text-[10px] text-dim"
+                  title={result?.checkedAt ? new Date(result.checkedAt).toLocaleString('ko-KR') : undefined}>
+                  {result?.checkedAt ? timeAgo(result.checkedAt) : '—'}
+                </td>
+                {/* 관리 — 보기 / 재검사 / 수정 (키워드순위 '관리' 열과 동일 배치) */}
+                <td className="px-3 py-3 border-l border-border/40">
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => setDetailKey(prev => prev === key ? '' : key)}
+                      className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer">
+                      {detailKey === key ? '닫기' : '보기'}
+                    </button>
                     <button
                       onClick={() => recheckKeyword(post, row.keyword)}
                       disabled={!!checkingKey}
-                      className="text-[11px] text-accent hover:underline cursor-pointer disabled:opacity-50"
+                      className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-50"
                     >
                       {checkingKey === key ? (
                         <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
-                      ) : result?.checkedAt ? '다시 검사' : '검사'}
+                      ) : '재검사'}
                     </button>
-                    <button onClick={() => setDetailKey(prev => prev === key ? '' : key)}
-                      className="text-[11px] text-dim hover:text-accent cursor-pointer hover:underline">
-                      {detailKey === key ? '닫기' : '상세'}
-                    </button>
+                    {row.isPrimary && (
+                      <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(row.keyword); }}
+                        className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer"
+                        title="대표 키워드 직접 수정 — 키워드순위와 같은 값이 바뀝니다">수정</button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -1769,23 +1797,29 @@ export default function AiBriefingSection() {
           </div>
         )}
 
-        {/* 추출 키워드(스펙 #1/#2) — 데스크톱 '추출 키워드' 열과 같은 컴포넌트 */}
-        <div>
-          <ExtractedKeywordsCell
-            candidates={entry?.candidates || []}
-            representative={entry?.keyword || null}
-            onPick={kw => applyRepKeyword(post, kw)}
-            onExtract={() => autoExtractRep(post, { refine: true })}
-            extracting={extractingPostId === post.id}
-            disabled={extractingAll}
-          />
-        </div>
+        {/* 추출 후보(스펙 #2) — 편집 중일 때만 노출해 표와 같은 '대표 배지 + 키워드' 형태를 유지한다 */}
+        {editingRepPost === post.id && (entry?.candidates || []).length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {entry!.candidates!.map(c => (
+              <button key={c} type="button" onMouseDown={e => e.preventDefault()}
+                onClick={() => { setEditingRepPost(''); applyRepKeyword(post, c); }}
+                className="max-w-full truncate px-1.5 py-0.5 rounded-full text-[10px] border text-dim bg-bg border-border/60 cursor-pointer hover:text-accent">
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
 
         {rows.length === 0 ? (
           <div className="flex items-center gap-2 flex-wrap text-[11px] text-dim">
-            <span>대표 키워드 없음</span>
+            <span>키워드 없음</span>
+            <button type="button" onClick={() => autoExtractRep(post, { refine: true })}
+              disabled={extractingPostId === post.id || extractingAll}
+              className="hover:text-accent hover:underline disabled:opacity-40">
+              {extractingPostId === post.id ? '추출 중…' : '자동 추출'}
+            </button>
             <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(''); }}
-              className="hover:text-accent hover:underline">직접 입력</button>
+              className="hover:text-accent hover:underline">직접 설정</button>
           </div>
         ) : rows.map(row => {
           const key = rankKey(post.id, row.keyword);
@@ -1795,17 +1829,16 @@ export default function AiBriefingSection() {
           return (
             <div key={key} className="rounded-lg border border-border/60 bg-bg/40 p-2.5 space-y-1.5">
               <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${KEYWORD_KIND_META[kindOf(post.id, row)].cls}`}>
+                  {KEYWORD_KIND_META[kindOf(post.id, row)].label}
+                </span>
                 <span className="text-xs font-semibold">{row.keyword}</span>
-                {row.isPrimary ? (
+                {row.isPrimary && (
                   <>
-                    <span className="text-[9px] text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">대표</span>
                     <button type="button" onClick={() => { setEditingRepPost(post.id); setRepDraft(row.keyword); }}
                       className="text-[10px] text-dim hover:text-accent hover:underline">수정</button>
-                    {repKeywords[post.id]?.source === 'manual' && <span className="text-[9px] text-accent">직접 지정</span>}
                     {needsReview && repKeywords[post.id]?.source !== 'manual' && <span className="text-[9px] text-down">확인 필요</span>}
                   </>
-                ) : (
-                  <span className="text-[9px] text-dim/70 bg-bg px-1.5 py-0.5 rounded-full">보조</span>
                 )}
                 <span className="ml-auto"><CitationStatusBadge state={state} /></span>
                 {staleByKeywordChange && (
@@ -1843,7 +1876,7 @@ export default function AiBriefingSection() {
           );
         })}
 
-        <div>
+        <div className="flex items-center gap-3 flex-wrap">
           <AddKeywordControl
             open={addingFor === post.id}
             value={addValue}
@@ -1854,6 +1887,13 @@ export default function AiBriefingSection() {
             onChange={v => { setAddValue(v); if (addError) setAddError(''); }}
             onSubmit={() => submitAddKeyword(post)}
           />
+          {rows.length > 0 && (
+            <button type="button" onClick={() => autoExtractRep(post, { refine: true })}
+              disabled={extractingPostId === post.id || extractingAll}
+              className="ml-auto text-[11px] text-dim/70 hover:text-accent hover:underline cursor-pointer disabled:opacity-40">
+              {extractingPostId === post.id ? '재추출 중…' : '대표 재추출'}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1884,14 +1924,14 @@ export default function AiBriefingSection() {
 
   // 표 컬럼 — 본문은 renderPostRows 가 그리므로 여기서는 헤더와 열 폭만 정의한다.
   const columns: DataTableColumn<BlogPost>[] = [
-    { key: 'title', header: '포스팅 제목', width: 'w-[23%]' },
-    { key: 'extracted', header: '추출 키워드', align: 'center', width: 'w-[19%]' },
-    { key: 'target', header: '타겟 키워드', align: 'center', width: 'w-[17%]' },
-    { key: 'briefing', header: 'AI 브리핑', align: 'center', width: 'w-[9%]' },
+    { key: 'title', header: '포스팅 제목', width: 'w-[24%]' },
+    { key: 'keyword', header: '키워드', width: 'w-[21%]', divider: true },
+    { key: 'date', header: '작성일', align: 'right', width: 'w-[8%]', divider: true },
+    { key: 'briefing', header: 'AI 브리핑', align: 'center', width: 'w-[10%]', divider: true },
     { key: 'aitab', header: 'AI 탭', align: 'center', width: 'w-[9%]' },
-    { key: 'checked', header: '마지막 확인', align: 'center', width: 'w-[8%]' },
-    { key: 'status', header: '상태', align: 'center', width: 'w-[7%]' },
-    { key: 'manage', header: '관리', align: 'center', width: 'w-[8%]' },
+    { key: 'status', header: '상태', align: 'center', width: 'w-[9%]', divider: true },
+    { key: 'checked', header: '마지막 확인', align: 'right', width: 'w-[7%]' },
+    { key: 'manage', header: '관리', align: 'center', width: 'w-[12%]', divider: true },
   ];
 
   // 필터 영역 — 키워드순위 화면과 같은 FilterControlBar(기간 / 상태·검색·정렬) (스펙 #1/#17)
