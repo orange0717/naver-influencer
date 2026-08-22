@@ -226,6 +226,8 @@ async function main() {
   let discovered = 0;
   let newCount = 0;
   let skipped = 0;
+  let emptyCount = 0;
+  let attempted = 0;
   let cancelled = false;
   process.on('SIGINT', () => { console.log('\n중단 요청. 진행 저장 후 종료'); cancelled = true; });
 
@@ -235,6 +237,8 @@ async function main() {
     if (processed.has(kw.id)) { skipped++; continue; }
 
     const items = await fetchInfluencersByKeyword(kw.naver_keyword_id);
+    attempted++;
+    if (items.length === 0) emptyCount++;
     discovered += items.length;
     const fresh = items.filter(x => !existingIds.has(x.naver_id));
     newCount += fresh.length;
@@ -275,6 +279,16 @@ async function main() {
   console.log(`  신규 발굴(기존 미등록): ${newCount}명`);
   console.log(`  skip(이미 처리): ${skipped}개`);
   if (!isApply) console.log('\n*** dry-run — 실제 저장하려면 --apply 추가 ***');
+
+  // 네이버가 러너 IP를 차단하면 모든 키워드가 조용히 0명을 반환해 워크플로가 success로 끝난다
+  // (2026-08-22 discover-via-search 실측: 3,462개 중 3,461개가 0건). 정상일의 0건 비율은
+  // 33~44%이므로 90%를 넘으면 수집이 아니라 차단으로 보고 실패시킨다.
+  const emptyRatio = attempted > 0 ? emptyCount / attempted : 0;
+  console.log(`  0건 키워드: ${emptyCount}/${attempted} (${(emptyRatio * 100).toFixed(1)}%)`);
+  if (attempted >= 50 && emptyRatio >= 0.9) {
+    console.error(`::error ::수집 결과 0건 비율 ${(emptyRatio * 100).toFixed(1)}% — 네이버 차단 의심`);
+    process.exit(1);
+  }
 }
 
 main().catch(err => {

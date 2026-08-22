@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       top:
-        description: '상위 N개 키워드 (기본 200)'
+        description: '상위 N개 키워드 (기본 3500)'
         required: false
-        default: '200'
+        default: '3500'
 
 jobs:
   discover:
@@ -38,9 +38,12 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env.local
 
+      # keyword_challenges 11.5만개를 하루 200개씩 돌면 한 바퀴에 약 2년이 걸려
+      # 신규 선정자 발굴이 중앙값 50일 지연됐다(2026-08-22 실측). 3,500개면 주기가 약 한 달.
+      # 실측 1.6초/키워드 기준 약 93분 — timeout-minutes 180 안.
       - name: 실행
         run: |
-          TOP=${{ inputs.top || '200' }}
+          TOP=${{ inputs.top || '3500' }}
           node scripts/discover-new-influencers.mjs --apply --top "$TOP"
 
       - name: 정리

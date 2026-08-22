@@ -241,12 +241,15 @@ async function main() {
   process.on('SIGINT', () => { console.log('\n중단 요청. 진행 저장.'); cancelled = true; });
 
   const candidates = new Set(); // 우리 DB에 없는 핸들
+  let emptyCount = 0, attempted = 0;
   for (let i = 0; i < keywords.length; i++) {
     if (cancelled) break;
     const kw = keywords[i];
     if (processed.has(kw)) continue;
     try {
       const handles = await searchInfluencers(kw);
+      attempted++;
+      if (handles.length === 0) emptyCount++;
       let newOnes = 0;
       for (const h of handles) {
         if (!existing.has(h) && !candidates.has(h)) {
@@ -299,6 +302,15 @@ async function main() {
   console.log('\n\n=== 완료 ===');
   console.log(`  키워드: ${keywords.length}, 후보: ${candidates.size}`);
   console.log(`  ${isApply ? '등록' : 'dry-run'}: ${inserted}, skip(인플 아님): ${skipped}, fail: ${failed}`);
+
+  // 2026-08-22 실측: 네이버가 러너 IP를 막자 3,462개 중 3,461개가 결과 0으로 돌아왔는데도
+  // 워크플로는 success로 끝났다. 정상일 0건 비율은 53~71%라 90% 초과는 차단으로 본다.
+  const emptyRatio = attempted > 0 ? emptyCount / attempted : 0;
+  console.log(`  0건 키워드: ${emptyCount}/${attempted} (${(emptyRatio * 100).toFixed(1)}%)`);
+  if (attempted >= 50 && emptyRatio >= 0.9) {
+    console.error(`::error ::검색 결과 0건 비율 ${(emptyRatio * 100).toFixed(1)}% — 네이버 차단 의심`);
+    process.exit(1);
+  }
 }
 
 main().catch(e => { console.error('Fatal:', e); process.exit(1); });
