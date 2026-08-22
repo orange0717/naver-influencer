@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aiBriefingLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
-import { checkAiBriefingExposure, type AiBriefingStage } from '@/lib/naver-ai-briefing';
+import { checkAiBriefingExposure, isVerifiedStatus, type AiBriefingStage } from '@/lib/naver-ai-briefing';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // 통합검색 AI 브리핑 + AI 탭(스트리밍 완료 폴링 최대 20초) 순차 확인 2단계 구조 + 브라우저 콜드스타트 여유
@@ -82,7 +82,11 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      await cacheSet(cacheKey, result, CACHE_TTL_SEC);
+      // 두 표면 모두 "인용/미인용"으로 확정된 경우에만 캐시한다.
+      // 확인불가/오류를 캐시하면 30분간 재시도가 막혀 실패 상태가 굳는다.
+      if (isVerifiedStatus(result.briefing.status) && isVerifiedStatus(result.tab.status)) {
+        await cacheSet(cacheKey, result, CACHE_TTL_SEC);
+      }
       enqueue({ stage: 'done', result });
     });
   } catch (e) {

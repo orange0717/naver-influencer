@@ -1,5 +1,11 @@
 import { ReactNode } from 'react';
-import { CITATION_STATUS_LABELS, citationStatusColor, type CitationState } from '@/lib/ai-citation-status';
+import {
+  CITATION_STATUS_LABELS,
+  CITATION_STATUS_DESCRIPTIONS,
+  citationStatusColor,
+  type CitationState,
+  type SurfaceStatusValue,
+} from '@/lib/ai-citation-status';
 
 export interface BloggerProfile {
   blogId: string;
@@ -17,7 +23,7 @@ export interface BlogPost {
   viewCount?: number;
 }
 
-export type CheckStatus = 'ok' | 'transient_error' | 'unanalyzable';
+export type CheckStatus = 'ok' | 'partial' | 'transient_error' | 'unanalyzable';
 
 export interface BriefingResult {
   // AI 브리핑(통합검색 인라인 위젯) — AI 탭과 완전히 별개인 독립 서비스
@@ -43,13 +49,40 @@ export interface BriefingResult {
   checkedAt?: string | null;
   checkStatus?: CheckStatus | null;
   lastError?: string | null;
+  // ── 표면별 상태(스펙 §2·§5) — 화면은 이 값을 우선으로 읽는다 ──────────────
+  // exposed/tabExposed 는 CITED/NOT_CITED 로 확정됐을 때만 값이 들어온다.
+  // 확인불가·오류·미확인일 때 null 을 false 로 읽으면 그게 곧 "미인용 오판"이다.
+  briefingStatus?: SurfaceStatusValue | null;
+  briefingErrorCode?: string | null;
+  briefingError?: string | null;
+  tabStatus?: SurfaceStatusValue | null;
+  tabErrorCode?: string | null;
+  tabError?: string | null;
+  checkingStartedAt?: string | null;
 }
 
 export const EMPTY_BRIEFING: BriefingResult = {
   hasAiBriefing: null, exposed: null, sourceIndex: null, sourceTotal: null, matchedTitle: null,
   hasAiTab: null, tabExposed: null, tabSourceIndex: null, tabSourceTotal: null, tabMatchedTitle: null,
   checkedAt: null, checkStatus: null, lastError: null,
+  briefingStatus: null, tabStatus: null,
 };
+
+/** 표면 상태를 읽는 유일한 경로. 값이 없는 레거시 행은 exposed 를 근거로 추정하되 미인용은 만들지 않는다. */
+export function briefingSurfaceStatus(r?: BriefingResult): SurfaceStatusValue | null {
+  if (!r) return null;
+  if (r.briefingStatus) return r.briefingStatus;
+  if (r.exposed === true) return 'CITED';
+  // 구 데이터의 exposed=false 는 "미인용"인지 "확인 실패"인지 구분할 수 없다 → 확정하지 않는다.
+  return r.checkedAt || r.checkStatus ? 'UNVERIFIED' : null;
+}
+
+export function tabSurfaceStatus(r?: BriefingResult): SurfaceStatusValue | null {
+  if (!r) return null;
+  if (r.tabStatus) return r.tabStatus;
+  if (r.tabExposed === true) return 'CITED';
+  return r.checkedAt || r.checkStatus ? 'UNVERIFIED' : null;
+}
 
 export const STATE_API = '/api/my/ai-briefing-state';
 /** 키워드 SoT — 키워드순위 화면과 "같은" 저장소(keyword_rank_lookups). AI 브리핑은 여기서 읽기만 한다. */
@@ -186,8 +219,37 @@ export function saveSharedKeywords(blogId: string, postId: string, keywords: str
   }).catch(() => { /* 낙관적 UI — 실패는 다음 동작에서 재시도됨 */ });
 }
 
+/** 엔진 응답의 표면 객체(briefing/tab)를 화면이 쓰는 평면 필드로 옮긴다. */
+export function fromEngineResult(raw: Record<string, unknown>): BriefingResult {
+  const surfaceOf = (v: unknown) => (v ?? {}) as {
+    status?: SurfaceStatusValue; present?: boolean | null;
+    errorCode?: string | null; errorMessage?: string | null;
+  };
+  const b = surfaceOf(raw.briefing);
+  const t = surfaceOf(raw.tab);
+  return {
+    ...(raw as unknown as BriefingResult),
+    briefingStatus: b.status ?? null,
+    briefingErrorCode: b.errorCode ?? null,
+    briefingError: b.errorMessage ?? null,
+    tabStatus: t.status ?? null,
+    tabErrorCode: t.errorCode ?? null,
+    tabError: t.errorMessage ?? null,
+    checkingStartedAt: null,
+  };
+}
+
+/** 확인을 시작했음을 DB에 남긴다 — 중간에 중단돼도 미인용으로 굳지 않게 하기 위함(스펙 §8·§9). */
+export function markCheckingInDb(blogId: string, postId: string, keyword: string): void {
+  fetch(STATE_API, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blogId, postId, keyword, checkStatus: 'checking' }),
+  }).catch(() => { /* 낙관적 UI — 실패해도 확인 자체는 진행된다 */ });
+}
+
 // 단일 (post, keyword) AI 브리핑 확인 결과를 DB에 갱신. postUrl을 넘기면 인용 근거와 함께 post_url도 저장(스펙 #19).
-export function saveBriefingResultToDb(blogId: string, postId: string, keyword: string, result: BriefingResult, postUrl?: string): void {
+export function saveBriefingResultToDb(blogId: string, postId: string, keyword: string, result: BriefingResult | Record<string, unknown>, postUrl?: string): void {
   fetch(STATE_API, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -210,95 +272,100 @@ export function rankKey(postId: string, keyword: string): string {
   return `${postId}::${keyword}`;
 }
 
-/**
- * 확인 실패 상태(일시적 오류/분석불가) 공용 배지 — 성공 판정과 시각적으로 구분한다.
- * check_status가 오류일 때는 직전에 남아있던 exposed 값이 아니라 "마지막 확인이 실패했음"을
- * 정직하게 표기한다(스펙 #8: 검증 불가는 절대 미인용/미노출로 처리하지 않는다).
- */
-function ErrorStatusBadge({ status, lastError }: { status: CheckStatus; lastError?: string | null }) {
-  if (status === 'unanalyzable') {
-    return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title={lastError || '구조적으로 분석할 수 없습니다.'}>
-        분석불가
-      </span>
-    );
-  }
-  return (
-    <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full" title={lastError || '네이버 접근 제한 등 일시적 오류로 확인하지 못했습니다.'}>
-      조회 실패
-    </span>
-  );
-}
-
 function UncheckedBadge({ title }: { title: string }) {
   return <span className="text-xs text-dim/70 bg-bg px-2 py-0.5 rounded-full" title={title}>확인 전</span>;
 }
 
-/**
- * "AI 브리핑" 컬럼 배지(스펙 #8) — 통합검색 인라인 위젯 결과만 사용.
- * 확인 전 / 인용됨 / 미인용(브리핑은 떴으나 내 글 없음) / 브리핑 없음(그 키워드에 브리핑 자체가 안 뜸) / 조회 실패.
- */
-export function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
-  if (!result || (!result.checkedAt && !result.checkStatus)) return <UncheckedBadge title="아직 이 키워드로 AI 브리핑을 확인한 적이 없습니다." />;
-  if (result.checkStatus === 'transient_error' || result.checkStatus === 'unanalyzable') {
-    return <ErrorStatusBadge status={result.checkStatus} lastError={result.lastError} />;
-  }
-  if (result.exposed) {
-    return (
-      <span className="inline-flex items-center gap-1">
-        <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 브리핑의 출처 목록에 이 게시글이 포함되어 있습니다.">
-          인용됨
-        </span>
-        {result.sourceIndex && (
-          <span className="text-[10px] text-dim">
-            출처 #{result.sourceIndex}{result.sourceTotal ? `/${result.sourceTotal}` : ''}
-          </span>
-        )}
-      </span>
-    );
-  }
-  if (result.hasAiBriefing === false) {
-    return (
-      <span className="text-xs text-dim bg-bg px-2 py-0.5 rounded-full" title="이 키워드로 검색해도 AI 브리핑 자체가 생성되지 않았습니다.">
-        브리핑 없음
-      </span>
-    );
-  }
+function CheckingBadge() {
   return (
-    <span className="text-xs text-down bg-down/10 px-2 py-0.5 rounded-full" title="AI 브리핑은 생성됐지만 출처 목록에 이 게시글이 없습니다.">
-      미인용
+    <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+      <span className="w-2.5 h-2.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+      확인중
+    </span>
+  );
+}
+
+/** 표면 상태별 배지 클래스·기본 설명. 확인 실패 3종은 각각 다른 문구로 구분해 보여준다(스펙 §14). */
+const SURFACE_BADGE: Record<SurfaceStatusValue, { cls: string; label: string; title: string }> = {
+  CITED: { cls: 'text-up bg-up/10 font-bold', label: '인용됨', title: '출처 목록에서 이 게시글을 확인했습니다.' },
+  NOT_CITED: { cls: 'text-down bg-down/10', label: '미인용', title: '출처 목록을 끝까지 확인했고 이 게시글이 없었습니다.' },
+  UNVERIFIED: { cls: 'text-dim bg-bg', label: '미확인', title: '확인을 시도했지만 판정에 필요한 정보를 얻지 못했습니다. 미인용이 아닙니다.' },
+  UNAVAILABLE: { cls: 'text-gold bg-gold/10', label: '확인불가', title: '네이버 접근 제한 등으로 확인할 수 없었습니다. 미인용이 아닙니다.' },
+  ERROR: { cls: 'text-down bg-down/10 font-semibold', label: '오류', title: '확인 중 오류가 발생했습니다. 미인용이 아닙니다.' },
+};
+
+/**
+ * 표면 하나(AI 브리핑 or AI 탭)의 상태 배지.
+ * 5개 상태를 모두 "글자"로 구분해 표시한다 — 색/아이콘만으로 구분하지 않는다(스펙 §14).
+ */
+function SurfaceBadge({
+  status, errorMessage, sourceIndex, sourceTotal, present, absentLabel, indexPrefix,
+}: {
+  status: SurfaceStatusValue;
+  errorMessage?: string | null;
+  sourceIndex?: number | null;
+  sourceTotal?: number | null;
+  present?: boolean | null;
+  absentLabel: string;
+  indexPrefix: string;
+}) {
+  const meta = SURFACE_BADGE[status];
+  // "그 키워드엔 해당 AI 영역 자체가 안 뜬다"는 미인용과 다른 사실이므로 따로 알려준다.
+  const label = status === 'NOT_CITED' && present === false ? absentLabel : meta.label;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={`text-xs px-2 py-0.5 rounded-full ${meta.cls}`} title={errorMessage || meta.title}>
+        {label}
+      </span>
+      {status === 'CITED' && !!sourceIndex && (
+        <span className="text-[10px] text-dim">
+          {indexPrefix}{sourceIndex}{sourceTotal ? `/${sourceTotal}` : ''}
+        </span>
+      )}
     </span>
   );
 }
 
 /**
- * "AI 탭" 컬럼 배지(스펙 #8) — AI 탭 결과만 사용. 확인 전 / 노출 / 미노출 / 조회 실패.
+ * "AI 브리핑" 컬럼 배지 — 통합검색 인라인 위젯 결과만 사용.
+ * 인용됨 / 미인용 / 브리핑 없음 / 미확인 / 확인불가 / 오류.
+ */
+export function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
+  if (result?.checkingStartedAt) return <CheckingBadge />;
+  const status = briefingSurfaceStatus(result);
+  if (!status) return <UncheckedBadge title="아직 이 키워드로 AI 브리핑을 확인한 적이 없습니다." />;
+  return (
+    <SurfaceBadge
+      status={status}
+      errorMessage={result?.briefingError ?? result?.lastError}
+      sourceIndex={result?.sourceIndex}
+      sourceTotal={result?.sourceTotal}
+      present={result?.hasAiBriefing}
+      absentLabel="브리핑 없음"
+      indexPrefix="출처 #"
+    />
+  );
+}
+
+/**
+ * "AI 탭" 컬럼 배지 — AI 탭 결과만 사용.
  * ⚠️ 절대 hasAiBriefing/exposed(AI 브리핑 필드)를 참조하지 않는다 — 같은 키워드라도 두 서비스는
- * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 미인용 + 탭 노출" 같은 조합도 정상적으로 나온다(스펙 #4).
+ * 서로 다른 소스 큐레이션을 쓰므로 "브리핑 인용됨 + 탭 확인불가" 같은 조합이 정상적으로 나온다(스펙 §2).
  */
 export function AiTabBadge({ result }: { result?: BriefingResult }) {
-  if (!result || (!result.checkedAt && !result.checkStatus)) return <UncheckedBadge title="아직 이 키워드로 AI 탭을 확인한 적이 없습니다." />;
-  if (result.checkStatus === 'transient_error' || result.checkStatus === 'unanalyzable') {
-    return <ErrorStatusBadge status={result.checkStatus} lastError={result.lastError} />;
-  }
-  if (result.tabExposed) {
-    return (
-      <span className="inline-flex items-center gap-1">
-        <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full" title="AI 탭의 출처 목록에 이 게시글이 포함되어 있습니다.">
-          노출
-        </span>
-        {result.tabSourceIndex && (
-          <span className="text-[10px] text-dim">
-            {result.tabSourceIndex}번째{result.tabSourceTotal ? `/${result.tabSourceTotal}` : ''}
-          </span>
-        )}
-      </span>
-    );
-  }
+  if (result?.checkingStartedAt) return <CheckingBadge />;
+  const status = tabSurfaceStatus(result);
+  if (!status) return <UncheckedBadge title="아직 이 키워드로 AI 탭을 확인한 적이 없습니다." />;
   return (
-    <span className="text-xs text-down bg-down/10 px-2 py-0.5 rounded-full" title="AI 탭의 출처 목록에 이 게시글이 없습니다.">
-      미노출
-    </span>
+    <SurfaceBadge
+      status={status}
+      errorMessage={result?.tabError ?? result?.lastError}
+      sourceIndex={result?.tabSourceIndex}
+      sourceTotal={result?.tabSourceTotal}
+      present={result?.hasAiTab}
+      absentLabel="AI 탭 없음"
+      indexPrefix=""
+    />
   );
 }
 
@@ -313,6 +380,7 @@ export function CitationStatusBadge({ state }: { state: CitationState }) {
     up: 'text-up bg-up/10 font-bold',
     gold: 'text-gold bg-gold/10 font-semibold',
     accent: 'text-accent bg-accent/10 font-semibold',
+    down: 'text-down bg-down/10 font-semibold',
     dim: 'text-dim bg-bg',
   };
   if (state === 'checking') {
@@ -323,7 +391,11 @@ export function CitationStatusBadge({ state }: { state: CitationState }) {
       </span>
     );
   }
-  return <span className={`text-xs px-2 py-0.5 rounded-full ${cls[color]}`}>{label}</span>;
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full ${cls[color]}`} title={CITATION_STATUS_DESCRIPTIONS[state]}>
+      {label}
+    </span>
+  );
 }
 
 /**
@@ -371,12 +443,21 @@ export function CitationDetailPanel({
         </div>
       </div>
 
-      {!result?.checkedAt && !result?.checkStatus && (
+      {!result?.checkedAt && !result?.checkStatus && !result?.checkingStartedAt && (
         <p className="text-dim">아직 확인한 적이 없습니다. &lsquo;다시 검사&rsquo;를 눌러 이 키워드의 AI 브리핑·AI 탭을 조회하세요.</p>
       )}
-      {(result?.checkStatus === 'transient_error' || result?.checkStatus === 'unanalyzable') && (
+
+      {/* 표면별 실패 사유는 따로 적는다 — 한쪽만 실패한 경우 어느 쪽인지 알 수 없으면 재확인 판단을 못 한다. */}
+      {result?.briefingStatus && !['CITED', 'NOT_CITED'].includes(result.briefingStatus) && (
         <p className="text-[11px] text-gold">
-          조회 실패 사유: {result.lastError || '알 수 없음'} — 실패는 미인용/미노출로 처리하지 않습니다.
+          AI 브리핑 미확정({result.briefingErrorCode || result.briefingStatus}): {result.briefingError || '사유 미기록'}
+          {' '}— 확인하지 못한 것은 미인용이 아닙니다.
+        </p>
+      )}
+      {result?.tabStatus && !['CITED', 'NOT_CITED'].includes(result.tabStatus) && (
+        <p className="text-[11px] text-gold">
+          AI 탭 미확정({result.tabErrorCode || result.tabStatus}): {result.tabError || '사유 미기록'}
+          {' '}— 확인하지 못한 것은 미인용이 아닙니다.
         </p>
       )}
     </div>

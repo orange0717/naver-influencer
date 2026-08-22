@@ -1,12 +1,15 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
+/** 실제 Chrome 을 띄우는 브라우저 검증 전용 설정 — 기본 `npm test` 와 분리한다. */
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    // *.browser.test.ts 는 실제 Chrome 을 띄우므로 기본 유닛 실행에서 제외한다(npm run test:browser).
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/*.browser.test.ts'],
+    include: ['src/**/*.browser.test.ts'],
+    testTimeout: 150_000,
+    hookTimeout: 60_000,
+    fileParallelism: false,
   },
   resolve: {
     alias: {

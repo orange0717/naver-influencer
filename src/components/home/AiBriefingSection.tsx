@@ -45,13 +45,19 @@ import {
   CitationStatusBadge,
   CitationDetailPanel,
   ExtractedKeywordsCell,
+  briefingSurfaceStatus,
+  tabSurfaceStatus,
+  fromEngineResult,
+  markCheckingInDb,
 } from './AiBriefingSection.helpers';
 import CheckProgress from '@/components/analytics/CheckProgress';
 import { extractRepresentativeKeyword } from '@/lib/representative-keyword-client';
 import {
   computeCitationStatus,
   CITATION_STATUS_LABELS,
+  SURFACE_STATUS_LABELS,
   type CitationState,
+  type SurfaceStatusValue,
 } from '@/lib/ai-citation-status';
 import { BULK_RUN_CAP, BATCH_DELAY_MS, CITATION_FRESH_TTL_MS } from '@/lib/ai-citation-batch';
 import { MAX_KEYWORDS_PER_POST, normalizeForCompare } from './KeywordRankingSection.helpers';
@@ -84,46 +90,51 @@ const NOTICE_DISMISS_KEY = 'ai-briefing-notice-dismissed';
  * 상태 탭(스펙 #17) — 이 화면은 브리핑·탭을 "독립" 채널로 보므로 종합 상태(CitationFilter)가 아니라
  * 채널별 필터를 쓴다. 브리핑 노출과 탭 노출은 서로 배타가 아니라 둘 다 걸리는 포스팅도 있다.
  */
-type BriefingFilter = 'all' | 'briefing' | 'tab' | 'missing' | 'unchecked' | 'failed';
+type BriefingFilter = 'all' | 'briefing' | 'tab' | 'missing' | 'unchecked' | 'unresolved';
 
 const BRIEFING_FILTER_OPTIONS: { key: BriefingFilter; label: string }[] = [
   { key: 'all', label: '전체' },
-  { key: 'briefing', label: '브리핑 노출' },
-  { key: 'tab', label: '탭 노출' },
-  { key: 'missing', label: '미노출' },
+  { key: 'briefing', label: '브리핑 인용' },
+  { key: 'tab', label: '탭 인용' },
+  { key: 'missing', label: '미인용' },
   { key: 'unchecked', label: '확인전' },
-  { key: 'failed', label: '확인실패' },
+  { key: 'unresolved', label: '미확인·확인불가·오류' },
 ];
 
 /**
  * 대표 키워드 확인 결과 → 상태 탭 매칭.
  * 요약 카드(channelCounts)와 "같은" 분기 순서를 쓴다 — 카드 숫자와 탭 필터 결과가 어긋나면 안 된다.
- * 오류·분석불가·미확인은 절대 '미노출'로 세지 않는다(정확도 원칙 #8).
+ *
+ * ⚠️ '미인용'은 두 표면 모두 NOT_CITED(화면에서 없음을 확인)일 때만이다.
+ *    미확인·확인불가·오류는 별도 탭('unresolved')으로 빠진다.
  */
 function matchesBriefingFilter(f: BriefingFilter, r?: BriefingResult): boolean {
   if (f === 'all') return true;
-  if (!r || (!r.checkedAt && !r.checkStatus)) return f === 'unchecked';
-  if (r.checkStatus === 'transient_error' || r.checkStatus === 'unanalyzable') return f === 'failed';
-  if (f === 'briefing') return r.exposed === true;
-  if (f === 'tab') return r.tabExposed === true;
-  if (f === 'missing') return r.exposed !== true && r.tabExposed !== true;
+  const b = briefingSurfaceStatus(r);
+  const t = tabSurfaceStatus(r);
+  if (!b && !t) return f === 'unchecked';
+  if (f === 'briefing') return b === 'CITED';
+  if (f === 'tab') return t === 'CITED';
+  if (f === 'missing') return b === 'NOT_CITED' && t === 'NOT_CITED';
+  if (f === 'unresolved') {
+    return b !== 'CITED' && t !== 'CITED' && !(b === 'NOT_CITED' && t === 'NOT_CITED');
+  }
   return false;
 }
 
-/** CSV 라벨 — 화면 배지와 같은 문구를 쓴다(스펙 #8). 실패는 절대 미인용으로 적지 않는다. */
+/** CSV 라벨 — 화면 배지와 같은 문구를 쓴다. 확인 실패는 절대 미인용으로 적지 않는다. */
+function surfaceCsvLabel(status: SurfaceStatusValue | null, present: boolean | null | undefined, absentLabel: string): string {
+  if (!status) return '확인 전';
+  if (status === 'NOT_CITED' && present === false) return absentLabel;
+  return SURFACE_STATUS_LABELS[status];
+}
+
 function briefingCsvLabel(r?: BriefingResult): string {
-  if (!r || (!r.checkedAt && !r.checkStatus)) return '확인 전';
-  if (r.checkStatus === 'transient_error') return '조회 실패';
-  if (r.checkStatus === 'unanalyzable') return '분석불가';
-  if (r.exposed) return '인용됨';
-  return r.hasAiBriefing === false ? '브리핑 없음' : '미인용';
+  return surfaceCsvLabel(briefingSurfaceStatus(r), r?.hasAiBriefing, '브리핑 없음');
 }
 
 function tabCsvLabel(r?: BriefingResult): string {
-  if (!r || (!r.checkedAt && !r.checkStatus)) return '확인 전';
-  if (r.checkStatus === 'transient_error') return '조회 실패';
-  if (r.checkStatus === 'unanalyzable') return '분석불가';
-  return r.tabExposed ? '노출' : '미노출';
+  return surfaceCsvLabel(tabSurfaceStatus(r), r?.hasAiTab, 'AI 탭 없음');
 }
 
 export default function AiBriefingSection() {
@@ -500,7 +511,18 @@ export default function AiBriefingSection() {
       saveBriefingErrorToDb(profile.blogId, post.id, kw, 'transient_error', msg);
       setBriefingResults(prev => {
         const prevRes = prev[key];
-        return { ...prev, [key]: { ...(prevRes ?? EMPTY_BRIEFING), checkStatus: 'transient_error', lastError: msg ?? null } };
+        return {
+          ...prev,
+          [key]: {
+            ...(prevRes ?? EMPTY_BRIEFING),
+            checkStatus: 'transient_error',
+            lastError: msg ?? null,
+            // 확인 실패는 두 표면 모두 "미확인"이다 — 직전 exposed 값을 그대로 두면 실패가 결과로 오독된다.
+            briefingStatus: 'UNVERIFIED', briefingError: msg ?? null,
+            tabStatus: 'UNVERIFIED', tabError: msg ?? null,
+            checkingStartedAt: null,
+          },
+        };
       });
     };
     // 성공 저장(fire-and-forget) + 서버측 이력 스냅샷 insert가 커밋될 시간을 주고 타임라인을 갱신한다.
@@ -509,6 +531,9 @@ export default function AiBriefingSection() {
     };
     setCheckingKey(key);
     setCheckingStage('searching');
+    // 확인 시작을 DB에도 남긴다. 브라우저를 닫거나 배치가 중단돼도 이 행은 "확인중"으로 남았다가
+    // 5분 뒤 조회 시 "미확인"으로 회수된다 — 절대 미인용으로 굳지 않는다.
+    markCheckingInDb(profile.blogId, post.id, kw);
     try {
       const res = await fetch('/api/blog/check-ai-briefing', {
         method: 'POST',
@@ -540,10 +565,11 @@ export default function AiBriefingSection() {
       if (!isStream) {
         // 캐시 적중 등 — 일반 JSON 즉시 응답
         const data = await res.json();
-        setBriefingResults(prev => ({ ...prev, [key]: data }));
+        const parsed = fromEngineResult(data);
+        setBriefingResults(prev => ({ ...prev, [key]: parsed }));
         saveBriefingResultToDb(profile.blogId, post.id, kw, data, post.url);
         refreshHistorySoon();
-        return { ok: true, status: res.status, cached: data?.cached === true, result: data };
+        return { ok: true, status: res.status, cached: data?.cached === true, result: parsed };
       }
 
       // NDJSON 스트림: 줄 단위로 진행 단계({stage}) 및 최종 결과({stage:'done'|'error', ...})를 수신
@@ -580,9 +606,10 @@ export default function AiBriefingSection() {
         return { ok: false, status: res.status, cached: false, result: null, errorMsg: streamError };
       }
       if (finalData) {
-        const parsed = finalData as unknown as BriefingResult;
+        const parsed = fromEngineResult(finalData);
         setBriefingResults(prev => ({ ...prev, [key]: parsed }));
-        saveBriefingResultToDb(profile.blogId, post.id, kw, parsed, post.url);
+        // DB에는 표면 객체가 들어있는 원본을 그대로 보낸다 — 서버가 표면별 상태를 직접 읽는다.
+        saveBriefingResultToDb(profile.blogId, post.id, kw, finalData, post.url);
         refreshHistorySoon();
         return { ok: true, status: res.status, cached: false, result: parsed };
       }
@@ -805,7 +832,9 @@ export default function AiBriefingSection() {
     if (checkingKey === key) return 'checking';
     const r = resultFor(postId, keyword, isPrimary);
     return computeCitationStatus({
+      briefingStatus: r?.briefingStatus, tabStatus: r?.tabStatus,
       exposed: r?.exposed, tabExposed: r?.tabExposed, checkStatus: r?.checkStatus, checkedAt: r?.checkedAt,
+      checkingStartedAt: r?.checkingStartedAt,
     });
   };
 
@@ -816,26 +845,36 @@ export default function AiBriefingSection() {
     return rep ? resultFor(postId, rep, true) : undefined;
   };
 
-  // 최근 확인(캐시 신선) 여부 — 배치 큐가 재조회 대상을 고를 때 사용(스펙 #14)
-  const isResultFresh = (r?: BriefingResult): boolean =>
-    !!r?.checkedAt && r.checkStatus === 'ok' && (Date.now() - new Date(r.checkedAt).getTime() < CITATION_FRESH_TTL_MS);
+  /**
+   * 두 표면 모두 인용/미인용까지 확정됐고, 그 확인이 아직 신선한지.
+   * 한쪽이라도 미확정이면 "다시 확인해야 할 대상"이다 — 실패를 확정처럼 굳히지 않기 위함(스펙 §7).
+   */
+  const isResultFresh = (r?: BriefingResult): boolean => {
+    if (!r?.checkedAt) return false;
+    const b = briefingSurfaceStatus(r);
+    const t = tabSurfaceStatus(r);
+    const settled = (s: SurfaceStatusValue | null) => s === 'CITED' || s === 'NOT_CITED';
+    if (!settled(b) || !settled(t)) return false;
+    return Date.now() - new Date(r.checkedAt).getTime() < CITATION_FRESH_TTL_MS;
+  };
 
   /**
-   * 상단 통계 카드(스펙 #11) — AI 브리핑·AI 탭 노출 여부를 채널별로 "독립" 집계한다(스펙 #7).
+   * 상단 통계 카드 — AI 브리핑·AI 탭 인용 여부를 채널별로 "독립" 집계한다.
    * 포스팅당 대표 키워드 결과 1건만 세므로 중복 집계가 없고, 확인하지 않은 건 임의 추정하지 않는다.
-   * 오류·분석불가는 어느 쪽 '미노출'에도 넣지 않고 '확인 실패'로만 센다.
+   * 미확인·확인불가·오류는 어느 쪽 '미인용'에도 넣지 않고 unresolved 로만 센다.
    * 분기 순서는 matchesBriefingFilter 와 동일해야 한다(카드 숫자 = 탭 필터 결과 수).
    */
   const channelCounts = blogPosts.reduce((acc, post) => {
     const r = postRepResult(post.id);
-    if (!r || (!r.checkedAt && !r.checkStatus)) { acc.unchecked += 1; return acc; }
-    if (r.checkStatus === 'transient_error' || r.checkStatus === 'unanalyzable') { acc.failed += 1; return acc; }
-    if (r.exposed) acc.briefingExposed += 1;
-    if (r.tabExposed) acc.tabExposed += 1;
-    // 확인은 끝났지만 브리핑·탭 어디에도 인용되지 않은 포스팅 — '확인 전'과 합쳐 한 카드로 보여준다.
-    if (r.exposed !== true && r.tabExposed !== true) acc.bothMissing += 1;
+    const b = briefingSurfaceStatus(r);
+    const t = tabSurfaceStatus(r);
+    if (!b && !t) { acc.unchecked += 1; return acc; }
+    if (b === 'CITED') acc.briefingExposed += 1;
+    if (t === 'CITED') acc.tabExposed += 1;
+    if (b === 'NOT_CITED' && t === 'NOT_CITED') acc.bothMissing += 1;
+    else if (b !== 'CITED' && t !== 'CITED') acc.unresolved += 1;
     return acc;
-  }, { briefingExposed: 0, tabExposed: 0, bothMissing: 0, unchecked: 0, failed: 0 });
+  }, { briefingExposed: 0, tabExposed: 0, bothMissing: 0, unchecked: 0, unresolved: 0 });
 
   // 아직 제목 분석이 끝나지 않은 포스팅 수 — 헤더의 "키워드 추출" CTA에 표시(스펙 #1)
   const missingKeywordCount = blogPosts.filter(p => !(repKeywords[p.id]?.keyword || '').trim()).length;
@@ -1848,17 +1887,23 @@ export default function AiBriefingSection() {
   // tone 은 공용 상태 토큰이라 같은 성격의 지표가 두 화면에서 같은 색·아이콘으로 보인다.
   const metrics: MetricCardItem[] = [
     { key: 'total', label: '전체 포스팅', value: blogPostsTotal, tone: 'accent' },
-    { key: 'briefing-exposed', label: 'AI 브리핑 노출', value: channelCounts.briefingExposed, tone: 'success' },
-    { key: 'tab-exposed', label: 'AI 탭 노출', value: channelCounts.tabExposed, tone: 'success' },
+    { key: 'briefing-exposed', label: 'AI 브리핑 인용', value: channelCounts.briefingExposed, tone: 'success' },
+    { key: 'tab-exposed', label: 'AI 탭 인용', value: channelCounts.tabExposed, tone: 'success' },
     {
       key: 'missing',
-      label: '미노출 · 확인 전',
-      value: channelCounts.bothMissing + channelCounts.unchecked,
+      label: '미인용',
+      value: channelCounts.bothMissing,
       tone: 'neutral',
-      // 성격이 다른 두 값을 합친 카드라 내역을 함께 적는다(확인 전을 미노출로 오해하지 않도록).
-      description: `미노출 ${channelCounts.bothMissing.toLocaleString()} · 확인 전 ${channelCounts.unchecked.toLocaleString()}`,
+      description: '두 영역 출처를 끝까지 확인했고 없었던 포스팅',
     },
-    { key: 'failed', label: '확인 실패', value: channelCounts.failed, tone: 'warning' },
+    {
+      key: 'unresolved',
+      label: '미확인 · 확인불가 · 오류',
+      value: channelCounts.unresolved + channelCounts.unchecked,
+      tone: 'warning',
+      // 미인용과 성격이 완전히 다른 값이라 내역을 함께 적는다.
+      description: `확인 실패 ${channelCounts.unresolved.toLocaleString()} · 확인 전 ${channelCounts.unchecked.toLocaleString()}`,
+    },
   ];
 
   // 표 컬럼 — 본문은 renderPostRows 가 그리므로 여기서는 헤더와 열 폭만 정의한다.

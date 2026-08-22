@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       .then(({ data }) => data ?? []),
     supabase
       .from('ai_briefing_exposures')
-      .select('post_id, check_status, checked_at')
+      .select('post_id, check_status, checked_at, briefing_status, tab_status')
       .eq('user_id', auth.userId)
       .eq('blog_id', blogId)
       .then(({ data }) => data ?? []),
@@ -64,11 +64,21 @@ export async function GET(request: NextRequest) {
   );
   const repMissing = Math.max(0, totalPosts - repPresentPosts.size);
 
-  // 확인 완료(check_status='ok') 포스팅 — 최근 확인(캐시 신선) 여부로 분류
+  // "확인 완료"는 두 표면 모두 인용/미인용까지 확정된 경우만이다(스펙 §7).
+  // 확인불가·오류·미확인은 재조회 대상으로 남겨야 하므로 완료로 세지 않는다.
+  const settled = (s: string | null) => s === 'CITED' || s === 'NOT_CITED';
   const everCheckedPosts = new Set<string>();
   const freshCheckedPosts = new Set<string>();
-  for (const r of aiRows as Array<{ post_id: string; check_status: string | null; checked_at: string | null }>) {
-    if (r.check_status !== 'ok' || !r.checked_at) continue;
+  for (const r of aiRows as Array<{
+    post_id: string; check_status: string | null; checked_at: string | null;
+    briefing_status: string | null; tab_status: string | null;
+  }>) {
+    if (!r.checked_at) continue;
+    // 표면 상태가 없는 레거시 행은 기존 기준(check_status='ok')으로 판단한다.
+    const done = (r.briefing_status || r.tab_status)
+      ? settled(r.briefing_status) && settled(r.tab_status)
+      : r.check_status === 'ok';
+    if (!done) continue;
     everCheckedPosts.add(r.post_id);
     if (now - new Date(r.checked_at).getTime() < CITATION_FRESH_TTL_MS) {
       freshCheckedPosts.add(r.post_id);

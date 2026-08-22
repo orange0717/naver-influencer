@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
     fetchBlogProfileStats(blogId).catch(() => null),
     supabase
       .from('ai_briefing_exposures')
-      .select('post_id, keyword, exposed, tab_exposed, check_status, checked_at')
+      .select('post_id, keyword, exposed, tab_exposed, check_status, checked_at, briefing_status, tab_status')
       .eq('user_id', auth.userId)
       .eq('blog_id', blogId)
       .then(({ data, error }) => ({ rows: data ?? [], ok: !error })),
@@ -186,16 +186,20 @@ export async function GET(request: NextRequest) {
   const profileUpdatedAt = profileOk ? new Date().toISOString() : null; // 라이브 크롤링 결과
 
   // ─────────────────── AI 브리핑·AI 탭 (BLOG_AI_CITATION) ───────────────────
-  // 확인 완료(check_status='ok')된 행만 집계 대상으로 삼아, 상세 요약 카드(aiExposure)와 숫자를 일치시킨다(스펙 10항).
+  // 표면별로 "확정된(CITED/NOT_CITED)" 행만 집계 대상으로 삼는다.
+  // 확인불가·오류·미확인을 분모에 넣으면 인용률이 실제보다 낮게 보이고, 사실상 미인용으로 취급된다.
   const briefingRows = briefing.rows;
-  const okRows = briefingRows.filter(r => r.check_status === 'ok');
+  const isSettled = (s: string | null) => s === 'CITED' || s === 'NOT_CITED';
+  // 표면 상태가 없는 레거시 행은 check_status='ok'로 확정 여부를 판단한다.
+  const okRows = briefingRows.filter(r =>
+    r.briefing_status || r.tab_status
+      ? isSettled(r.briefing_status) || isSettled(r.tab_status)
+      : r.check_status === 'ok');
   const analyzedPostCount = new Set(okRows.map(r => r.post_id)).size;
   const analyzedKeywordCount = okRows.length;
-  const briefingCitedPosts = new Set(okRows.filter(r => r.exposed === true).map(r => r.post_id));
-  const tabCitedPosts = new Set(okRows.filter(r => r.tab_exposed === true).map(r => r.post_id));
-  const overallCitedPosts = new Set(
-    okRows.filter(r => r.exposed === true || r.tab_exposed === true).map(r => r.post_id),
-  );
+  const briefingCitedPosts = new Set(okRows.filter(r => r.briefing_status === 'CITED' || (!r.briefing_status && r.exposed === true)).map(r => r.post_id));
+  const tabCitedPosts = new Set(okRows.filter(r => r.tab_status === 'CITED' || (!r.tab_status && r.tab_exposed === true)).map(r => r.post_id));
+  const overallCitedPosts = new Set([...briefingCitedPosts, ...tabCitedPosts]);
 
   // 포스팅 단위 종합 상태(스펙 #18/#21) — AI 브리핑·AI 탭 화면과 "동일한" rollup 헬퍼로 계산해 숫자를 일치시킨다.
   const rowsByPost = new Map<string, typeof briefingRows>();
@@ -207,11 +211,20 @@ export async function GET(request: NextRequest) {
   let partialCitedCount = 0, notCitedCount = 0, uncheckedCount = 0;
   for (const rows of rowsByPost.values()) {
     const state = rollupPostCitationStatus(
-      rows.map(r => ({ exposed: r.exposed, tabExposed: r.tab_exposed, checkStatus: r.check_status, checkedAt: r.checked_at })),
+      rows.map(r => ({
+        briefingStatus: r.briefing_status,
+        tabStatus: r.tab_status,
+        exposed: r.exposed,
+        tabExposed: r.tab_exposed,
+        checkStatus: r.check_status,
+        checkedAt: r.checked_at,
+      })),
     );
     if (state === 'partial') partialCitedCount++;
     else if (state === 'not_cited') notCitedCount++;
-    else if (state === 'unchecked') uncheckedCount++;
+    // 확인 전/미확인/확인불가/오류는 모두 "아직 인용 여부를 모르는" 상태다.
+    // 이걸 미인용으로 흘려보내지 않기 위해 한 묶음으로 센다.
+    else if (state === 'pending' || state === 'unverified' || state === 'unavailable' || state === 'error') uncheckedCount++;
   }
 
   const pct = (n: number) => (analyzedPostCount > 0 ? Math.round((n / analyzedPostCount) * 1000) / 10 : 0);
