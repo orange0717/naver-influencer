@@ -25,6 +25,12 @@ const CRON_LOCK_KEY = 'cron:crawl-challenge-ranks';
 const CRON_LOCK_TTL_SECONDS = 330;
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_RUNTIME_MS = 285_000; // 300초 중 안전 마진 15초
+// 마감 검사는 웨이브를 "시작하기 전"에만 돌고, 일단 출발한 웨이브는 중간에 멈출 수 없다.
+// 따라서 남은 시간이 웨이브 하나를 담을 만큼인지 확인해야 한다. 실측(2026-08-22 shard 0/1)에서
+// 평균 웨이브는 11.1초였고 무거운 인플루언서(40페이지 페이지네이션)가 섞이면 17~18초까지 갔다.
+// 마진 15초로는 이걸 못 담아 절반이 300초를 넘겨 504로 죽었다 — 그래서 관측된 최대 웨이브
+// 시간을 예약해두고, 그만큼 남지 않으면 새 웨이브를 시작하지 않는다.
+const WAVE_RESERVE_FLOOR_MS = 20_000;
 
 /** keyword를 정규화 (keyword_clean 생성용) */
 function cleanKeyword(keyword: string): string {
@@ -597,11 +603,14 @@ export async function GET(request: NextRequest) {
     }
 
     // CONCURRENCY 만큼 병렬 처리 (웨이브)
+    // 이번 실행에서 관측된 가장 느린 웨이브. 다음 웨이브를 시작해도 되는지 판단하는 예약 시간이다.
+    let maxWaveMs = WAVE_RESERVE_FLOOR_MS;
     for (let i = 0; i < influencers.length; i += CONCURRENCY) {
-      if (Date.now() - startTime > MAX_RUNTIME_MS) {
-        console.log(`[crawl-challenge-ranks] Time limit reached, stopping early at ${i}/${influencers.length}`);
+      if (Date.now() - startTime + maxWaveMs > MAX_RUNTIME_MS) {
+        console.log(`[crawl-challenge-ranks] Time limit reached, stopping early at ${i}/${influencers.length} (reserve ${maxWaveMs}ms)`);
         break;
       }
+      const waveStart = Date.now();
       const wave = influencers.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(wave.map(inf =>
         processInfluencer(inf).catch(err => {
@@ -617,6 +626,7 @@ export async function GET(request: NextRequest) {
           totalFailed++;
         }
       }
+      maxWaveMs = Math.max(maxWaveMs, Date.now() - waveStart);
       await sleep(80);
     }
 
