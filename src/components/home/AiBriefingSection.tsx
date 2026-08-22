@@ -83,9 +83,6 @@ interface BulkEstimate {
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-/** 안내 배너를 닫은 상태 저장 키 — 사용자가 닫으면 다음 방문에도 닫힌 채로 둔다. */
-const NOTICE_DISMISS_KEY = 'ai-briefing-notice-dismissed';
-
 /**
  * 상태 탭(스펙 #17) — 이 화면은 브리핑·탭을 "독립" 채널로 보므로 종합 상태(CitationFilter)가 아니라
  * 채널별 필터를 쓴다. 브리핑 노출과 탭 노출은 서로 배타가 아니라 둘 다 걸리는 포스팅도 있다.
@@ -197,19 +194,6 @@ export default function AiBriefingSection() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string }>({ done: 0, total: 0, current: '' });
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const bulkAbortRef = useRef(false);
-
-  // 표 상단 안내 배너(공식 API 부재·소요 시간) — 닫으면 기억한다.
-  // 초깃값은 true로 두고 마운트 후에 저장값을 읽어 SSR/CSR 마크업이 어긋나지 않게 한다.
-  const [noticeOpen, setNoticeOpen] = useState(true);
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(NOTICE_DISMISS_KEY) === '1') setNoticeOpen(false);
-    } catch { /* 저장소 접근 불가 — 배너를 그대로 둔다 */ }
-  }, []);
-  const dismissNotice = () => {
-    setNoticeOpen(false);
-    try { window.localStorage.setItem(NOTICE_DISMISS_KEY, '1'); } catch { /* ignore */ }
-  };
 
   // 대표키워드 점검·재추출(스펙 #18~21) — 규칙 기반(네이버 무호출).
   type KeywordAudit = {
@@ -1971,28 +1955,6 @@ export default function AiBriefingSection() {
       tableLoading={postsLoading}
       footer={footer}
     >
-      {/* 표 상단 안내(공식 API 부재·소요 시간) — 닫을 수 있는 옅은 주황 콜아웃 */}
-      {noticeOpen && (
-        <div className="px-5 pt-4">
-          <div className="flex items-start gap-2 px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs leading-relaxed text-dim">
-            <span aria-hidden className="shrink-0 font-bold text-amber-600">ⓘ</span>
-            <p className="flex-1">
-              AI 브리핑·AI 탭 인용 여부는 <b className="text-text">공식 API가 없어</b> 실제 브라우저로 두 화면을 순차 방문해 확인하므로
-              건당 30~50초가 걸립니다. 네이버가 짧은 시간의 반복 자동화를 제한하기 때문에 &ldquo;전체 업데이트&rdquo;는 1회에 소수만 안전하게
-              확인하고, 나머지는 미확인으로 두었다가 다시 눌러 이어서 채웁니다(재개형).
-              확인 불가·오류는 절대 &lsquo;미노출&rsquo;로 처리하지 않습니다.
-            </p>
-            <button
-              onClick={dismissNotice}
-              className="shrink-0 text-dim hover:text-text cursor-pointer"
-              aria-label="안내 닫기"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 표 본문 — 헤더 고정·로딩·빈 상태는 DataTable 이 담당한다 */}
       <DataTable<BlogPost>
         columns={columns}
