@@ -133,6 +133,8 @@ export default function AiBriefingSection() {
   const [currentPage, setCurrentPage] = useState(1);
   const [postsPerPage, setPostsPerPage] = useState(30);
   const [postsLoading, setPostsLoading] = useState(false);
+  // 첫 페이지는 그렸지만 전체 목록(all=true)은 아직 받는 중 — KPI는 이때 집계하면 부분 수치가 나온다.
+  const [fullListLoading, setFullListLoading] = useState(false);
   const queryClient = useQueryClient();
 
   // postId → 키워드 목록. 키워드순위(keyword_rank_lookups)와 "같은" 저장소에서 읽어온다(스펙 #10).
@@ -302,10 +304,31 @@ export default function AiBriefingSection() {
     }
   }, [profile, showError]);
 
-  // 전체 포스팅을 한 번에 로드(스펙 #1) — 네이버 PostList가 최신 발행순으로 반환하므로 그 순서를 유지한다.
+  // 전체 포스팅을 로드(스펙 #1) — 네이버 PostList가 최신 발행순으로 반환하므로 그 순서를 유지한다.
   // 이후 페이지네이션·필터·KPI는 이 전체 목록을 클라이언트에서 처리한다(전체 블로그 기준).
+  //
+  // 2단계로 받는다. all=true는 30개씩 수십 페이지를 순차 크롤링해 900여 개 기준 12~25초가 걸려서,
+  // 한 번에 기다리면 그동안 화면이 "전체 0개" + 스켈레톤으로만 남는다. 첫 페이지(30개)에는 이미
+  // 전체 개수(totalCount)가 들어 있으므로 그것으로 먼저 화면을 열고 전체 목록으로 교체한다.
   const fetchBlogPosts = useCallback(async (blogId: string) => {
     setPostsLoading(true);
+    setFullListLoading(true);
+    let opened = false;
+    try {
+      const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&page=1&count=30`);
+      if (res.ok) {
+        const data = await res.json();
+        const posts: BlogPost[] = data.posts || [];
+        if (posts.length > 0) {
+          setBlogPosts(posts);
+          setBlogPostsTotal(data.totalCount || posts.length);
+          setCurrentPage(1);
+          opened = true;
+          setPostsLoading(false);
+        }
+      }
+    } catch { /* 전체 목록 조회로 이어간다 */ }
+
     try {
       const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&all=true`);
       if (res.ok) {
@@ -316,7 +339,10 @@ export default function AiBriefingSection() {
         setCurrentPage(1);
       }
     } catch { /* ignore */ }
-    finally { setPostsLoading(false); }
+    finally {
+      setFullListLoading(false);
+      if (!opened) setPostsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -1888,13 +1914,15 @@ export default function AiBriefingSection() {
   return (
     <DashboardLayout
       title="AI 브리핑 · AI 탭"
-      description={`내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 ${blogPostsTotal.toLocaleString()}개`}
+      description={`내 블로그 전체 포스팅의 대표키워드로 네이버 AI 브리핑·AI 탭 인용 여부를 확인·관리합니다. · 전체 ${postsLoading && blogPostsTotal === 0 ? '집계 중' : `${blogPostsTotal.toLocaleString()}개`}`}
       banners={<>{alertBanners}{bulkBanners}</>}
       actions={headerActions}
       metrics={metrics}
-      cardsLoading={postsLoading}
+      cardsLoading={postsLoading || fullListLoading}
       filters={filters}
-      tableCount={`${filteredPosts.length.toLocaleString()}개`}
+      tableCount={fullListLoading
+        ? `${filteredPosts.length.toLocaleString()}개 · 전체 목록 불러오는 중`
+        : `${filteredPosts.length.toLocaleString()}개`}
       tableLoading={postsLoading}
       footer={footer}
     >
