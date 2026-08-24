@@ -26,9 +26,13 @@ export default function BlogRankingClient() {
   const [keyword, setKeyword] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('view');
   const [results, setResults] = useState<Record<Tab, BlogResult[]>>({ view: [], blog: [], influencer: [] });
+  // 조회 실패 탭. "결과 0건"과 구분하지 않으면 네이버가 응답하지 않은 것을
+  // "그 키워드엔 노출된 글이 없다"로 잘못 읽게 된다.
+  const [failed, setFailed] = useState<Record<Tab, boolean>>({ view: false, blog: false, influencer: false });
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [searchedKeyword, setSearchedKeyword] = useState('');
+  const [searchedAt, setSearchedAt] = useState<Date | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = async (e?: React.FormEvent) => {
@@ -40,31 +44,27 @@ export default function BlogRankingClient() {
     setSearched(true);
     setSearchedKeyword(q);
 
-    // 3개 탭 동시 검색
-    try {
-      const [viewRes, blogRes, infRes] = await Promise.all([
-        fetch(`/api/keywords/blog-top?keyword=${encodeURIComponent(q)}&tab=view&count=30`),
-        fetch(`/api/keywords/blog-top?keyword=${encodeURIComponent(q)}&tab=blog&count=30`),
-        fetch(`/api/keywords/blog-top?keyword=${encodeURIComponent(q)}&tab=influencer&count=30`),
-      ]);
+    const fetchTab = async (tab: Tab): Promise<{ results: BlogResult[]; failed: boolean }> => {
+      try {
+        const res = await fetch(`/api/keywords/blog-top?keyword=${encodeURIComponent(q)}&tab=${tab}&count=30`);
+        if (!res.ok) return { results: [], failed: true };
+        const data = await res.json();
+        return { results: data.results || [], failed: false };
+      } catch {
+        return { results: [], failed: true };
+      }
+    };
 
-      const viewData = viewRes.ok ? await viewRes.json() : { results: [] };
-      const blogData = blogRes.ok ? await blogRes.json() : { results: [] };
-      const infData = infRes.ok ? await infRes.json() : { results: [] };
-
-      setResults({
-        view: viewData.results || [],
-        blog: blogData.results || [],
-        influencer: infData.results || [],
-      });
-    } catch {
-      setResults({ view: [], blog: [], influencer: [] });
-    } finally {
-      setLoading(false);
-    }
+    // 3개 탭 동시 검색 — 한 탭이 실패해도 나머지 결과는 그대로 보여준다.
+    const [view, blog, influencer] = await Promise.all([fetchTab('view'), fetchTab('blog'), fetchTab('influencer')]);
+    setResults({ view: view.results, blog: blog.results, influencer: influencer.results });
+    setFailed({ view: view.failed, blog: blog.failed, influencer: influencer.failed });
+    setSearchedAt(new Date());
+    setLoading(false);
   };
 
   const currentResults = results[activeTab];
+  const currentFailed = failed[activeTab];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -123,7 +123,11 @@ export default function BlogRankingClient() {
                 }`}
               >
                 {tab.label}
-                {results[tab.key].length > 0 && (
+                {failed[tab.key] ? (
+                  <span className={`ml-1.5 text-[10px] ${activeTab === tab.key ? 'text-white/70' : 'text-down'}`} title="확인 실패">
+                    !
+                  </span>
+                ) : results[tab.key].length > 0 && (
                   <span className={`ml-1.5 text-[10px] ${activeTab === tab.key ? 'text-white/70' : 'text-dim'}`}>
                     {results[tab.key].length}
                   </span>
@@ -136,11 +140,33 @@ export default function BlogRankingClient() {
           <div className="flex items-center justify-between">
             <p className="text-sm text-dim">
               <span className="font-semibold text-text">&quot;{searchedKeyword}&quot;</span> {TABS.find(t => t.key === activeTab)?.label} 결과
+              {searchedAt && (
+                <span className="ml-2 text-xs text-dim/70">
+                  {searchedAt.toLocaleString('ko-KR', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })} 기준
+                </span>
+              )}
             </p>
-            <span className="text-xs text-dim">{currentResults.length}개</span>
+            <span className={`text-xs ${currentFailed ? 'text-down' : 'text-dim'}`}>
+              {currentFailed ? '확인 실패' : `${currentResults.length}개`}
+            </span>
           </div>
 
-          {currentResults.length === 0 ? (
+          {currentFailed ? (
+            <div className="py-12 text-center text-sm space-y-3">
+              <p className="text-down font-semibold">검색 순위를 확인하지 못했습니다.</p>
+              <p className="text-dim text-xs leading-relaxed">
+                네이버 응답을 받지 못했습니다. 결과가 없는 것이 아니라 확인 자체가 되지 않은 상태입니다.<br />
+                잠시 후 다시 시도해주세요.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleSearch()}
+                className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-text hover:bg-surface transition cursor-pointer"
+              >
+                다시 시도
+              </button>
+            </div>
+          ) : currentResults.length === 0 ? (
             <div className="py-12 text-center text-dim text-sm">
               검색 결과가 없습니다.
             </div>

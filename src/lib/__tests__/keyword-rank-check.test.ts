@@ -73,6 +73,22 @@ describe('차단/점검 응답을 미노출로 확정하지 않는다', () => {
     expect(res.error).toBeUndefined();
   });
 
+  // "30위 밖"이라고 적으려면 30위까지 실제로 읽었어야 한다. 페이지에 3건뿐이면 확인 범위는 3위다.
+  it('조회 범위는 실제로 읽어낸 최대 순위까지만 주장한다', async () => {
+    mockFetchHtml(resultPage(
+      [1, 2, 3].map(r => `<a data-url="https://blog.naver.com/other/${r}" data-cr-on="r=${r}"></a>`).join(''),
+    ));
+    const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+    expect(res.scannedDepth).toBe(3);
+  });
+
+  it('순위를 하나도 읽지 못하면 조회 범위를 주장하지 않는다', async () => {
+    mockFetchHtml(resultPage('<div>결과 없음</div>'));
+    const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+    expect(res.exposed).toBe(false);
+    expect(res.scannedDepth).toBeUndefined();
+  });
+
   it('postId 가 없으면 조회 자체가 성립하지 않으므로 확인 불가로 신호한다', async () => {
     mockFetchHtml(resultPage(''));
     const res = await checkBlogTab('강아지', 'myblog', '', { force: true });

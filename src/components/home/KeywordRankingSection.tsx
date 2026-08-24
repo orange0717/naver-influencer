@@ -112,7 +112,9 @@ export default function KeywordRankingSection() {
   const [extractingAll, setExtractingAll] = useState(false);
   const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0 });
   const [stateReady, setStateReady] = useState(false);
-  const [checkingKey, setCheckingKey] = useState('');
+  // 검사 중인 키. 행마다 따로 재검사할 수 있으므로 집합으로 둔다 — 단일 문자열이면
+  // 두 행을 잇달아 눌렀을 때 먼저 끝난 쪽이 아직 도는 행의 '검사 중' 표시까지 지운다.
+  const [checkingKeys, setCheckingKeys] = useState<ReadonlySet<string>>(() => new Set());
   // 자동/수동 백그라운드 일괄 갱신 진행 여부 (화면을 막지 않는 작은 표시용)
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
@@ -340,7 +342,7 @@ export default function KeywordRankingSection() {
   ): Promise<{ ok: boolean; status: number; cached: boolean }> => {
     if (!profile || !keyword.trim()) return { ok: false, status: 0, cached: false };
     const key = rankKey(post.id, keyword.trim());
-    setCheckingKey(key);
+    setCheckingKeys(prev => new Set(prev).add(key));
     try {
       const res = await fetch('/api/blog/check-missing', {
         method: 'POST',
@@ -415,7 +417,13 @@ export default function KeywordRankingSection() {
     } catch {
       showError('네트워크 오류로 순위를 확인하지 못했습니다.');
       return { ok: false, status: 0, cached: false };
-    } finally { setCheckingKey(''); }
+    } finally {
+      setCheckingKeys(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   }, [profile, showError, flashCell, queryClient]);
 
   // 포스팅 제목+본문을 분석해 대표 키워드를 자동추출(post_representative_keywords에 영속화)하고,
@@ -1443,7 +1451,7 @@ export default function KeywordRankingSection() {
           const key = rankKey(post.id, row.keyword);
           const res = rankingResults[key];
           const d = rankDeltas[key];
-          const checking = checkingKey === key;
+          const checking = checkingKeys.has(key);
           const flashing = flashKeys.has(key);
           const st = STATUS_META[resultTier(res)];
           const kindMeta = KIND_META[row.kind];
@@ -1601,7 +1609,7 @@ export default function KeywordRankingSection() {
           const key = rankKey(post.id, row.keyword);
           const res = rankingResults[key];
           const d = rankDeltas[key];
-          const checking = checkingKey === key;
+          const checking = checkingKeys.has(key);
           const st = STATUS_META[resultTier(res)];
           const kindMeta = KIND_META[row.kind];
           const isSub = row.kind !== 'primary';

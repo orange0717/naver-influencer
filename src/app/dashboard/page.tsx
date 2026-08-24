@@ -39,8 +39,10 @@ export default async function DashboardPage() {
     // 된 애매한 경우(로그인 상태인데 사이드바 '블로그' 클릭 시 홈으로 튕기던 문제)는
     // 홈으로 돌려보내지 않고 대시보드 쉘을 렌더한다 — 하위 컴포넌트가 클라이언트 세션으로
     // 프로필/데이터를 다시 불러오므로 정상 동작한다.
+    // 미들웨어가 다른 회원 전용 경로에 붙이는 것과 같은 쿼리를 붙인다 —
+    // 아무 설명 없이 홈으로 튕기면 사용자는 자기가 뭘 잘못했는지 알 수 없다.
     const hasSession = await hasSupabaseAuthCookie();
-    if (!hasSession) redirect('/');
+    if (!hasSession) redirect('/?memberOnly=1&redirect=%2Fdashboard');
   }
 
   const supabase = createServiceClient();

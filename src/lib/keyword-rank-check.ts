@@ -159,7 +159,10 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
   // 한 페이지라도 정상 로드됐는지 추적 — 전 페이지가 실패하면 "미노출"이 아니라 "일시적 오류"로 신호한다
   // (네이버 다운/차단으로 인한 오탐을 미노출로 잘못 집계하지 않기 위함)
   let anyPageLoaded = false;
-  let pagesLoaded = 0; // "조회 범위 밖"(스펙 #10) 판정용 — 정상 로드된 페이지 수 × 10 = 확인한 상위 순위 범위
+  // "조회 범위 밖"(스펙 #10) 판정용 — 실제로 순위를 읽어낸 최대 절대순위.
+  // 페이지당 10건을 가정해 (로드 페이지 수 × 10)으로 잡으면(과거 동작) 마지막 페이지가 덜 찼을 때
+  // 확인하지 않은 순위까지 확인한 것처럼 표시된다.
+  let deepestRank = 0;
 
   for (let page = 1; page <= 3; page++) {
     const start = (page - 1) * 10 + 1;
@@ -173,7 +176,6 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
       }
 
       anyPageLoaded = true;
-      pagesLoaded++;
 
       // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
       // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
@@ -188,9 +190,11 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
         if (seen.has(key)) continue;
         seen.add(key);
 
+        // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
+        const absoluteRank = start + parseInt(rankStr) - 1;
+        if (absoluteRank > deepestRank) deepestRank = absoluteRank;
+
         if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-          // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
-          const absoluteRank = start + parseInt(rankStr) - 1;
           return { exposed: true, rank: absoluteRank };
         }
       }
@@ -214,6 +218,7 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
 
         for (const link of blogLinks) {
           globalRank++;
+          if (globalRank > deepestRank) deepestRank = globalRank;
           if (link.blogId.toLowerCase() === blogIdLower && link.postId === postIdStr) {
             return { exposed: true, rank: globalRank };
           }
@@ -231,9 +236,12 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
     console.warn(`[keyword-rank-check] checkBlogTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
     return { exposed: false, rank: null, error: true };
   }
-  console.info(`[keyword-rank-check] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (상위 ${pagesLoaded * 10}위 내 매칭 없음)`);
-  // 정상 조회했으나 확인 범위(상위 pagesLoaded*10위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21)
-  return { exposed: false, rank: null, scannedDepth: pagesLoaded * 10 };
+  console.info(`[keyword-rank-check] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (상위 ${deepestRank}위 내 매칭 없음)`);
+  // 정상 조회했으나 확인 범위(상위 deepestRank위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21).
+  // 순위를 하나도 읽지 못했으면 확인 범위를 주장하지 않는다.
+  return deepestRank > 0
+    ? { exposed: false, rank: null, scannedDepth: deepestRank }
+    : { exposed: false, rank: null };
 }
 
 /**
@@ -351,8 +359,10 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   // maxPages는 이제 "webkr OpenAPI 폴백 사용 여부(정밀조회=3 / 스크리닝=1)" 플래그로만 쓴다.
   const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
-  // "조회 범위 밖"(스펙 #10) 스캔 깊이 — 통합검색 HTML 1페이지는 통상 상위 30위 범위. webkr OpenAPI 폴백(display=100)까지 쓰면 100.
-  let scannedDepth = 30;
+  // "조회 범위 밖"(스펙 #10) 스캔 깊이 — 실제로 순위를 읽어낸 최대 깊이만 센다.
+  // 페이지당 30건을 가정해 30을 고정으로 쓰면(과거 동작) 22건만 실린 결과에도 "30위 밖"이라 적어,
+  // 확인하지 않은 23~30위까지 확인한 것처럼 보이게 된다(2026-08-24 실측: 한국소설 22건).
+  let scannedDepth = 0;
   try {
     const html = await fetchSearchHtml(baseUrl, opts);
     if (html === null) {
@@ -374,8 +384,11 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
         if (seen.has(key)) continue;
         seen.add(key);
 
+        const entryRank = parseInt(rankStr);
+        if (entryRank > scannedDepth) scannedDepth = entryRank;
+
         if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-          return { exposed: true, rank: parseInt(rankStr) };
+          return { exposed: true, rank: entryRank };
         }
       }
     }
@@ -399,7 +412,6 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
         if (apiRes.ok) {
           const apiData = await apiRes.json();
           const items = apiData.items || [];
-          scannedDepth = 100; // API 폴백까지 확인 → 조회 범위를 상위 100위로 확장
           let rank = 0;
           for (const item of items) {
             const link = item.link || '';
@@ -410,6 +422,9 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
               return { exposed: true, rank };
             }
           }
+          // API 폴백까지 확인한 실제 건수(최대 100)로 조회 범위를 넓힌다 — display=100 을 요청했다고
+          // 항상 100건이 오는 게 아니므로 요청값이 아니라 받은 건수를 쓴다.
+          if (rank > scannedDepth) scannedDepth = rank;
         }
       } catch (err) {
         console.error(`[keyword-rank-check] checkViewTab webkr API 폴백 실패 query="${query}":`, err);
@@ -421,8 +436,11 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   }
 
   console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (통합검색 상위 ${scannedDepth}위 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
-  // 정상 조회했으나 확인 범위(상위 scannedDepth위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21)
-  return { exposed: false, rank: null, scannedDepth };
+  // 정상 조회했으나 확인 범위(상위 scannedDepth위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21).
+  // 순위를 하나도 읽지 못했으면 확인 범위를 주장하지 않는다(scannedDepth 생략 → 일반 미노출 표기).
+  return scannedDepth > 0
+    ? { exposed: false, rank: null, scannedDepth }
+    : { exposed: false, rank: null };
 }
 
 /**
