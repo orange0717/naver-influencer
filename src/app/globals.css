@@ -350,3 +350,8 @@ a:hover:not(.btn) {
   color: var(--color-desc);
   line-height: 1.45;
 }
+
+.category-title {
+  color: #A36B63; /* 브랜드 메인 포인트 컬러 (짙은 핑크/버건디) */
+  font-weight: bold;
+}
