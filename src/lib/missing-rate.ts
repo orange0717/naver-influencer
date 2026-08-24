@@ -171,10 +171,11 @@ export function countIndexingWait(posts: PostLike[], results: MissingResultsMap,
   return n;
 }
 
-// 누락율(%) — 분모는 인자로 받은 posts.length (현재 화면에 표시된 슬라이스 길이)
-// posts가 비면 0 반환. 결과는 0~100 정수(반올림).
+// 누락율(%) — 분모는 "실제로 확인 기록이 있는" 게시글 수다. 아직 확인하지 않은 글까지 분모에 넣으면
+// 확인도 안 한 글을 노출로 친 셈이 되어 미노출률이 실제보다 낮게 나온다(화면 카드도 확인 건수 기준으로 표기한다).
+// 확인된 글이 하나도 없으면 0 반환. 결과는 0~100 정수(반올림).
 export function calculateMissingRate(posts: PostLike[], results: MissingResultsMap, now: number = Date.now()): number {
-  if (posts.length === 0) return 0;
-  const missing = countMissing(posts, results, now);
-  return Math.round((missing / posts.length) * 100);
+  const checked = posts.filter(p => results[p.id]);
+  if (checked.length === 0) return 0;
+  return Math.round((countMissing(checked, results, now) / checked.length) * 100);
 }

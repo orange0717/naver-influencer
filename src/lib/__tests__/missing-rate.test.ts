@@ -138,6 +138,16 @@ describe('calculateMissingRate', () => {
     expect(calculateMissingRate([], {})).toBe(0);
   });
 
+  // 확인하지 않은 글을 분모에 넣으면 "확인해보니 노출이었다"고 말하는 것과 같아진다.
+  it('아직 확인하지 않은 글은 분모에서 빠진다', () => {
+    const r: MissingResultsMap = { a: { viewTab: missing, blogTab: missing } };
+    expect(calculateMissingRate([post('a'), post('b'), post('c')], r)).toBe(100);
+  });
+
+  it('확인된 글이 하나도 없으면 0', () => {
+    expect(calculateMissingRate([post('a'), post('b')], {})).toBe(0);
+  });
+
   it('전체 미노출은 100', () => {
     const r: MissingResultsMap = {
       a: { viewTab: missing, blogTab: missing },
