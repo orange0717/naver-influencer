@@ -241,9 +241,9 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
     if (i > 0 && allExposed) break;
     const cand = candidates[i];
     const [cBlog, cView, cInf] = await Promise.all([
-      !blog.exposed ? checkBlogTab(cand, blogId, postId || '', { force }) : Promise.resolve({ exposed: true, rank: blog.rank, error: false }),
-      !view.exposed ? checkViewTab(cand, blogId, postId || '', 3, { force }) : Promise.resolve({ exposed: true, rank: view.rank, error: false }),
-      (hasKeyword && !inf.exposed) ? checkInfluencerTab(cand, blogId, postId || '', { force }) : Promise.resolve({ exposed: inf.exposed, rank: inf.rank, error: false }),
+      !blog.exposed ? checkBlogTab(cand, blogId, postId || '', { force, postTitle }) : Promise.resolve({ exposed: true, rank: blog.rank, error: false }),
+      !view.exposed ? checkViewTab(cand, blogId, postId || '', 3, { force, postTitle }) : Promise.resolve({ exposed: true, rank: view.rank, error: false }),
+      (hasKeyword && !inf.exposed) ? checkInfluencerTab(cand, blogId, postId || '', { force, postTitle }) : Promise.resolve({ exposed: inf.exposed, rank: inf.rank, error: false }),
     ]);
     if (!blog.exposed && !cBlog.error) { blog.loaded = true; if (cBlog.exposed) { blog.exposed = true; blog.rank = cBlog.rank; } else if ('scannedDepth' in cBlog && cBlog.scannedDepth != null) { blog.scannedDepth = cBlog.scannedDepth; } }
     if (!view.exposed && !cView.error) { view.loaded = true; if (cView.exposed) { view.exposed = true; view.rank = cView.rank; } else if ('scannedDepth' in cView && cView.scannedDepth != null) { view.scannedDepth = cView.scannedDepth; } }
@@ -273,9 +273,9 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
     await new Promise(r => setTimeout(r, 1200)); // 네이버 순간 변동을 피하기 위한 짧은 간격
     // 재검증은 네이버의 순간 변동을 새로 관측해야 하므로 HTML 공유 캐시를 반드시 우회(force:true)
     const [rBlog, rView, rInf] = await Promise.all([
-      blogExposed === false ? checkBlogTab(query, blogId, postId || '', { force: true }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
-      viewExposed === false ? checkViewTab(query, blogId, postId || '', 3, { force: true }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
-      (hasKeyword && infExposed === false) ? checkInfluencerTab(query, blogId, postId || '', { force: true }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
+      blogExposed === false ? checkBlogTab(query, blogId, postId || '', { force: true, postTitle }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
+      viewExposed === false ? checkViewTab(query, blogId, postId || '', 3, { force: true, postTitle }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
+      (hasKeyword && infExposed === false) ? checkInfluencerTab(query, blogId, postId || '', { force: true, postTitle }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
     ]);
     if (!rBlog.error && rBlog.exposed) { blogExposed = true; blog.rank = rBlog.rank; reverifyFlippedToExposed = true; }
     if (!rView.error && rView.exposed) { viewExposed = true; view.rank = rView.rank; reverifyFlippedToExposed = true; }

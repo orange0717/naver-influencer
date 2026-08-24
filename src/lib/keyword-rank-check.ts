@@ -28,6 +28,12 @@ export interface TabFetchOpts {
    * 미지정 시 blog_id 와 blog_id 의 뒤 '_' 제거형까지 허용한다.
    */
   influencerHandle?: string;
+  /**
+   * 검사 중인 포스팅의 제목. in.naver 콘텐츠는 blog logNo 를 노출하지 않아 handle 로만 매칭해왔는데,
+   * 그러면 "같은 인플루언서의 *다른* 글"이 걸려도 이 글이 노출됐다고 판정된다(오탐 + 잘못된 순위 표시).
+   * 제목을 넘기면 handle 이 맞더라도 제목까지 일치하는 항목만 이 글로 인정한다.
+   */
+  postTitle?: string;
 }
 
 /** in.naver 콘텐츠 매칭에 허용할 핸들 집합 — blog_id, 뒤 '_' 제거형, 명시된 influencerHandle */
@@ -115,13 +121,65 @@ export type RankCheckResult = {
 // 뒤 순위가 그만큼 당겨진다 — "한국소설" 2위 글이 1위로 표시되던 원인.
 const IN_CONTENT_REGEX_SOURCE = () => /in\.naver\.com\/([a-zA-Z0-9_.-]+)\/contents\/internal\/(\d+)/g;
 
+/** in.naver 콘텐츠 앵커 — 제목 텍스트까지 함께 잡는다(글 단위 구분용). */
+const IN_ANCHOR_REGEX_SOURCE = () =>
+  /<a\b[^>]*href="[^"]*?in\.naver\.com\/([a-zA-Z0-9_.-]+)\/contents\/internal\/(\d+)[^"]*"[^>]*>([\s\S]{0,600}?)<\/a>/g;
+
+/** 제목 비교용 정규화 — 태그·엔티티·"새 창 열림" 같은 접근성 텍스트·기호·공백을 걷어낸다. */
+function normalizeTitleForMatch(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&[a-z]+;|&#\d+;/gi, ' ')
+    .replace(/새\s*창\s*열림/g, ' ')
+    .toLowerCase()
+    .replace(/[^0-9a-z가-힣]+/g, '');
+}
+
+/**
+ * 검색결과 항목 제목이 검사 대상 포스팅과 같은 글인지 판단한다.
+ * 네이버는 제목을 말줄임하거나 접미 텍스트를 붙이므로 완전 일치를 요구하지 않고,
+ * 한쪽이 다른 쪽을 포함하거나 충분히 겹치면 같은 글로 본다(엄격할수록 미노출 오판이 늘기 때문).
+ */
+function isSameTitle(entryTitle: string, postTitle: string): boolean {
+  const a = normalizeTitleForMatch(entryTitle);
+  const b = normalizeTitleForMatch(postTitle);
+  if (!a || !b) return false;
+  if (a.includes(b) || b.includes(a)) return true;
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length <= b.length ? b : a;
+  // 말줄임 대응: 짧은 쪽 앞부분이 긴 쪽에 통째로 들어 있으면 같은 글로 본다.
+  const head = shorter.slice(0, Math.max(8, Math.floor(shorter.length * 0.6)));
+  return head.length >= 8 && longer.includes(head);
+}
+
 /**
  * 신형 인플루언서 콘텐츠(in.naver.com/{handle}/contents/internal/{id}) 링크를 등장 순서로 세어
- * handle 이 handles 집합(blog_id·naver_id 등)에 속하는 첫 항목의 순위를 반환한다. 없으면 null.
+ * handle 이 handles 집합(blog_id·naver_id 등)에 속하는 항목의 순위를 반환한다. 없으면 null.
  * 신형 마크업엔 data-cr-on="r=" 순위 속성이 없어 DOM 등장 순서를 순위로 사용한다.
- * (blog logNo ↔ 인플루언서 contentId는 체계가 달라 글 단위 정밀 매칭은 불가 — handle 기준 근사)
+ *
+ * postTitle 을 넘기면 handle 이 같아도 제목이 다른 항목(=같은 인플루언서의 다른 글)은 이 글로 인정하지 않는다.
+ * 단 제목을 하나도 못 뽑아낸 마크업에서는 검증을 포기하고 handle 기준으로 되돌아간다 —
+ * 제목 추출이 깨졌다는 이유로 멀쩡히 노출 중인 글을 미노출로 뒤집는 쪽이 훨씬 나쁜 오판이기 때문이다.
  */
-export function matchInfluencerContentByHandle(html: string, handles: Set<string>, rankBase: number): number | null {
+export function matchInfluencerContentByHandle(
+  html: string,
+  handles: Set<string>,
+  rankBase: number,
+  postTitle?: string,
+): number | null {
+  // 앵커에서 뽑은 제목 맵. 비어 있으면(마크업 변경 등) 제목 검증을 적용하지 않는다.
+  const titleByKey = new Map<string, string>();
+  if (postTitle) {
+    const anchorRegex = IN_ANCHOR_REGEX_SOURCE();
+    let a;
+    while ((a = anchorRegex.exec(html)) !== null) {
+      const key = `${a[1]}/${a[2]}`;
+      const title = normalizeTitleForMatch(a[3]);
+      if (title && !titleByKey.has(key)) titleByKey.set(key, a[3]);
+    }
+  }
+  const verifyTitle = Boolean(postTitle) && titleByKey.size > 0;
+
   const inRegex = IN_CONTENT_REGEX_SOURCE();
   const seen = new Set<string>();
   let rank = rankBase;
@@ -133,9 +191,13 @@ export function matchInfluencerContentByHandle(html: string, handles: Set<string
     if (seen.has(key)) continue;
     seen.add(key);
     rank++;
-    if (handles.has(handle.toLowerCase())) {
-      return rank;
-    }
+    if (!handles.has(handle.toLowerCase())) continue;
+    if (!verifyTitle) return rank;
+    const entryTitle = titleByKey.get(key);
+    // 이 항목의 제목만 못 뽑았으면 검증 불가 → 기존(handle) 기준으로 인정한다.
+    if (!entryTitle) return rank;
+    if (isSameTitle(entryTitle, postTitle!)) return rank;
+    // handle 은 같지만 다른 글이다 — 계속 훑는다(같은 인플루언서가 여러 건 노출될 수 있음).
   }
   return null;
 }
@@ -236,12 +298,16 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
     console.warn(`[keyword-rank-check] checkBlogTab 전 페이지 로드 실패 → 일시적 오류 query="${query}" blogId=${blogId} postId=${postId}`);
     return { exposed: false, rank: null, error: true };
   }
+  // 페이지는 떴는데 순위를 하나도 읽지 못했다 = 결과 골격이 바뀌었거나 결과가 비어 있다.
+  // 이건 "미노출을 확인한 것"이 아니라 "아무것도 확인하지 못한 것"이므로 확인 불가로 돌린다(§15).
+  if (deepestRank === 0) {
+    console.warn(`[keyword-rank-check] checkBlogTab 결과 항목 0건 파싱 → 미노출이 아니라 확인 불가로 처리 query="${query}" blogId=${blogId} postId=${postId}`);
+    return { exposed: false, rank: null, error: true };
+  }
+
   console.info(`[keyword-rank-check] checkBlogTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (상위 ${deepestRank}위 내 매칭 없음)`);
   // 정상 조회했으나 확인 범위(상위 deepestRank위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21).
-  // 순위를 하나도 읽지 못했으면 확인 범위를 주장하지 않는다.
-  return deepestRank > 0
-    ? { exposed: false, rank: null, scannedDepth: deepestRank }
-    : { exposed: false, rank: null };
+  return { exposed: false, rank: null, scannedDepth: deepestRank };
 }
 
 /**
@@ -252,8 +318,9 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
  */
 export async function checkInfluencerTab(query: string, blogId: string, postId: string, opts?: TabFetchOpts): Promise<TabCheckResult> {
   // 인플루언서 콘텐츠는 in.naver.com handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
+  // blogId 가 없으면 매칭 기준이 없어 판정 자체가 성립하지 않는다 → '미노출'이 아니라 '확인 불가'.
   if (!blogId) {
-    return { exposed: false, rank: null };
+    return { exposed: false, rank: null, error: true };
   }
 
   const blogIdLower = blogId.toLowerCase();
@@ -275,7 +342,7 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
 
     // 신형 인플루언서 탭(fender-ui SDS)은 결과가 in.naver.com/{handle}/contents/internal/{id} 링크로 노출되고
     // data-cr-on="r=" 순위 속성이 없다. 등장 순서(dedupe 후)를 순위로 사용하고 handle(blog_id·naver_id)로 매칭한다.
-    const inRank = matchInfluencerContentByHandle(html, handleSet, 0);
+    const inRank = matchInfluencerContentByHandle(html, handleSet, 0, opts?.postTitle);
     if (inRank !== null) {
       return { exposed: true, rank: inRank };
     }
@@ -322,9 +389,18 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
     return { exposed: false, rank: null, error: true };
   }
 
-  console.info(`[keyword-rank-check] checkInfluencerTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (인플루언서 1페이지 내 매칭 없음)`);
   // "조회 범위 밖" 판정용: 이 페이지에서 확인한 인플루언서 콘텐츠 개수를 스캔 깊이로 기록(0이면 미기록)
   const inCount = html ? countInfluencerEntries(html) : 0;
+  // 판정 대상 항목을 하나도 관측하지 못했으면(인플루언서 콘텐츠 0건 + 블로그 링크 0건)
+  // 미노출을 주장할 근거가 없다 → '확인 불가'. 페이지가 200으로 떠도 결과 골격이 바뀌거나
+  // 결과가 비어 있으면 여기로 온다.
+  const blogEntryCount = html ? new Set([...html.matchAll(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/g)].map(m => `${m[1]}/${m[2]}`)).size : 0;
+  if (inCount === 0 && blogEntryCount === 0) {
+    console.warn(`[keyword-rank-check] checkInfluencerTab 결과 항목 0건 파싱 → 미노출이 아니라 확인 불가로 처리 query="${query}" blogId=${blogId} postId=${postId}`);
+    return { exposed: false, rank: null, error: true };
+  }
+
+  console.info(`[keyword-rank-check] checkInfluencerTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (인플루언서 콘텐츠 ${inCount}건·블로그 링크 ${blogEntryCount}건 확인, 매칭 없음)`);
   return inCount > 0
     ? { exposed: false, rank: null, scannedDepth: inCount }
     : { exposed: false, rank: null };
@@ -345,8 +421,9 @@ function countInfluencerEntries(html: string): number {
  */
 export async function checkViewTab(query: string, blogId: string, postId?: string, maxPages: number = 3, opts?: TabFetchOpts): Promise<TabCheckResult> {
   // 인플루언서 콘텐츠(in.naver.com)는 handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
+  // 다만 blogId 가 없으면 매칭 기준 자체가 없어 조회해봐야 판정이 성립하지 않는다 → '미노출'이 아니라 '확인 불가'.
   if (!blogId) {
-    return { exposed: false, rank: null };
+    return { exposed: false, rank: null, error: true };
   }
 
   const blogIdLower = blogId.toLowerCase();
@@ -363,6 +440,12 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   // 페이지당 30건을 가정해 30을 고정으로 쓰면(과거 동작) 22건만 실린 결과에도 "30위 밖"이라 적어,
   // 확인하지 않은 23~30위까지 확인한 것처럼 보이게 된다(2026-08-24 실측: 한국소설 22건).
   let scannedDepth = 0;
+  // 이번 조회에서 "판정 대상 항목"을 실제로 하나라도 관측했는가.
+  // 페이지는 200으로 정상 로드됐지만 결과 항목을 0건 파싱했다면 그건 "미노출을 확인한 것"이 아니라
+  // "아무것도 확인하지 못한 것"이다. 0건인 채로 exposed:false 를 돌려주면 상태머신이 이를
+  // 확정 미노출 근거로 쓰게 된다(§15 위반). 2026-08-24 실측: 통합검색 마크업이 fender-ui 로 바뀌면서
+  // data-cr-on / blog.naver.com 포스트 링크가 통째로 사라져 HTML 파싱이 상시 0건이 됐다.
+  let observedEntries = 0;
   try {
     const html = await fetchSearchHtml(baseUrl, opts);
     if (html === null) {
@@ -386,6 +469,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
 
         const entryRank = parseInt(rankStr);
         if (entryRank > scannedDepth) scannedDepth = entryRank;
+        observedEntries++;
 
         if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
           return { exposed: true, rank: entryRank };
@@ -394,7 +478,8 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
     }
 
     // 인플루언서 콘텐츠(in.naver.com)로 통합검색에 노출된 경우 — handle 기준 등장순서 매칭(1페이지 기준)
-    const inRank = matchInfluencerContentByHandle(html, handleSet, 0);
+    observedEntries += countInfluencerEntries(html);
+    const inRank = matchInfluencerContentByHandle(html, handleSet, 0, opts?.postTitle);
     if (inRank !== null) {
       return { exposed: true, rank: inRank };
     }
@@ -425,6 +510,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
           // API 폴백까지 확인한 실제 건수(최대 100)로 조회 범위를 넓힌다 — display=100 을 요청했다고
           // 항상 100건이 오는 게 아니므로 요청값이 아니라 받은 건수를 쓴다.
           if (rank > scannedDepth) scannedDepth = rank;
+          observedEntries += rank;
         }
       } catch (err) {
         console.error(`[keyword-rank-check] checkViewTab webkr API 폴백 실패 query="${query}":`, err);
@@ -435,7 +521,13 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
     return { exposed: false, rank: null, error: true };
   }
 
-  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (통합검색 상위 ${scannedDepth}위 내 매칭 없음, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
+  // 판정 대상 항목을 하나도 관측하지 못했으면 미노출을 주장할 근거가 없다 → '확인 불가'.
+  if (observedEntries === 0) {
+    console.warn(`[keyword-rank-check] checkViewTab 결과 항목 0건 파싱 → 미노출이 아니라 확인 불가로 처리 query="${query}" blogId=${blogId} postId=${postId} (webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
+    return { exposed: false, rank: null, error: true };
+  }
+
+  console.info(`[keyword-rank-check] checkViewTab 미노출 판정 query="${query}" blogId=${blogId} postId=${postId} (통합검색 상위 ${scannedDepth}위 내 매칭 없음, 관측 ${observedEntries}건, webkr API ${NAVER_SEARCH_CLIENT_ID ? '사용가능' : '미설정'})`);
   // 정상 조회했으나 확인 범위(상위 scannedDepth위) 내 미발견 → "조회 범위 밖"(스펙 #10/#21).
   // 순위를 하나도 읽지 못했으면 확인 범위를 주장하지 않는다(scannedDepth 생략 → 일반 미노출 표기).
   return scannedDepth > 0
