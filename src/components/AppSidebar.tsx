@@ -55,13 +55,13 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
   );
 }
 
-/** 소제목(NavHeading)과 같은 점 + 라벨 — bullet 항목만 점이 붙는다 */
+/** 점(•) + 라벨 — bullet 항목만 점이 붙는다 */
 function ItemLabel({ item }: { item: SidebarItem }) {
   return (
-    <>
-      {item.bullet && <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />}
-      <span className="truncate">{item.label}</span>
-    </>
+    <span className="truncate">
+      {item.bullet && <span className="text-[#c05e4e] font-bold mr-1.5" aria-hidden="true">•</span>}
+      {item.label}
+    </span>
   );
 }
 
