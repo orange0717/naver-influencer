@@ -50,6 +50,7 @@ import {
   tabSurfaceStatus,
   fromEngineResult,
   markCheckingInDb,
+  clearCheckingInDb,
 } from './AiBriefingSection.helpers';
 import CheckProgress from '@/components/analytics/CheckProgress';
 import { extractRepresentativeKeyword } from '@/lib/representative-keyword-client';
@@ -536,7 +537,9 @@ export default function AiBriefingSection() {
         let errMsg = `AI 브리핑 확인 실패 (오류 ${res.status}).`;
         if (res.status === 429) {
           // 클라이언트 레이트리밋 — 네이버 확인 자체를 시도하지 않았으므로 상태를 남기지 않는다.
+          // 다만 직전에 찍은 '확인중' 표시는 지운다. 그대로 두면 돌고 있지도 않은 확인이 5분간 확인중으로 보인다.
           errMsg = '요청이 너무 많습니다. 5분 후 다시 시도해주세요.';
+          clearCheckingInDb(profile.blogId, post.id, kw);
           showError(errMsg);
         } else {
           const body = await res.json().catch(() => null);

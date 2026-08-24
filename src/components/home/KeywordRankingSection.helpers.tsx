@@ -311,13 +311,19 @@ function missLabel(tab: RankTab): { text: string; title: string } {
   return { text: '순위권 밖', title: '조회 범위 밖 — 확인한 상위 결과에서 발견되지 않았습니다' };
 }
 
+/**
+ * '분석불가'는 미노출이 아니라 "연속 실패로 자동 재조회를 멈춘 상태"다. 그 사실과 되살리는 방법을
+ * 같이 적지 않으면 사용자는 영영 끝난 상태로 읽는다(실제로는 재검사 성공 시 자동 갱신 대상으로 복귀한다).
+ */
+const UNANALYZABLE_HINT = '분석불가 — 연속 조회 실패로 자동 갱신을 멈췄습니다. 미노출이 아니며, 재검사를 누르면 다시 확인합니다.';
+
 // 순위 셀 5구분 렌더 (스펙 #8·#10·#21) — 임의 숫자(0위/999위) 금지, 상태를 명시적으로 구분한다.
 //   노출(N위) / 조회 범위 밖(N위 밖) / 분석중(--) / 분석불가 / 일시오류
 // tab.exposed: true=노출, false=미노출/조회범위밖, null=미확인. result.status로 error/unanalyzable 구분.
 export function renderRankTab(result: RankingResult | undefined, tab: RankTab | null | undefined): ReactNode {
   if (!result) return <span className="text-[10px] text-dim/50" title="분석중 — 아직 순위를 확인하지 않았습니다">--</span>;
   if (result.status === 'unanalyzable') {
-    return <span className="text-[10px] text-dim/70" title="분석불가 — 검색이 불가하거나 연속 조회에 실패했습니다">분석불가</span>;
+    return <span className="text-[10px] text-dim/70" title={UNANALYZABLE_HINT}>분석불가</span>;
   }
   // 일시적 오류이거나 해당 탭이 미확인(null)이면 '미노출'로 오표기하지 않는다.
   if (result.status === 'error' || !tab || tab.exposed === null || tab.exposed === undefined) {
@@ -343,7 +349,7 @@ export function rankCellText(result: RankingResult | undefined, tab: RankTab | n
 export function renderRankPill(label: string, result: RankingResult | undefined, tab: RankTab | null | undefined): ReactNode {
   const base = 'text-[10px] font-bold px-1.5 py-0.5 rounded-full';
   if (!result) return <span className={`${base} bg-bg text-dim`}>{label} --</span>;
-  if (result.status === 'unanalyzable') return <span className={`${base} bg-bg text-dim/70`} title="분석불가">{label} 분석불가</span>;
+  if (result.status === 'unanalyzable') return <span className={`${base} bg-bg text-dim/70`} title={UNANALYZABLE_HINT}>{label} 분석불가</span>;
   if (result.status === 'error' || !tab || tab.exposed === null || tab.exposed === undefined) {
     return <span className={`${base} bg-bg text-down/70`} title="일시적 오류 — 잠시 후 자동 재조회">{label} 일시오류</span>;
   }

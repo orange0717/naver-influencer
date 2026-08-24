@@ -181,6 +181,18 @@ export function markCheckingInDb(blogId: string, postId: string, keyword: string
   }).catch(() => { /* 낙관적 UI — 실패해도 확인 자체는 진행된다 */ });
 }
 
+/**
+ * 확인 표시를 되돌린다 — 레이트리밋처럼 "확인이 시작조차 안 된" 경우 전용.
+ * 실패 상태(UNVERIFIED)로 적으면 확인을 시도한 것처럼 보이므로, 표시만 지우고 이전 결과는 그대로 둔다.
+ */
+export function clearCheckingInDb(blogId: string, postId: string, keyword: string): void {
+  fetch(STATE_API, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blogId, postId, keyword, checkStatus: 'not_started' }),
+  }).catch(() => { /* ignore — 남아도 5분 뒤 서버가 회수한다 */ });
+}
+
 // 단일 (post, keyword) AI 브리핑 확인 결과를 DB에 갱신. postUrl을 넘기면 인용 근거와 함께 post_url도 저장(스펙 #19).
 export function saveBriefingResultToDb(blogId: string, postId: string, keyword: string, result: BriefingResult | Record<string, unknown>, postUrl?: string): void {
   fetch(STATE_API, {

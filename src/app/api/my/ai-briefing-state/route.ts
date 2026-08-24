@@ -185,7 +185,19 @@ export async function PATCH(request: NextRequest) {
   const supabase = createServiceClient();
   const now = new Date().toISOString();
 
-  const status = (checkStatus ?? null) as CheckStatus | 'checking' | null;
+  const status = (checkStatus ?? null) as CheckStatus | 'checking' | 'not_started' | null;
+
+  // 확인 표시 회수. 레이트리밋 등으로 확인이 시작조차 되지 않았을 때 쓴다 — 실패로 기록하면
+  // 시도한 적 없는 확인이 '미확인'으로 남는다. 없는 행은 만들지 않도록 upsert가 아닌 update다.
+  if (status === 'not_started') {
+    await supabase
+      .from('ai_briefing_exposures')
+      .update({ checking_started_at: null, updated_at: now })
+      .eq('user_id', g.userId)
+      .eq('post_id', postId)
+      .eq('keyword', kw);
+    return NextResponse.json({ success: true });
+  }
 
   // 확인 시작 표시. 이 행이 지금 확인 중임을 남겨, 중간에 중단돼도 다음 조회에서
   // "미인용"이 아니라 "확인중 → (5분 후) 미확인"으로 회수되게 한다(스펙 §7·§8·§9).
