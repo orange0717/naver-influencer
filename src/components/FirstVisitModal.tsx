@@ -70,11 +70,11 @@ function FirstVisitModalInner() {
             N인플에 처음 방문하셨습니까?
           </h2>
           <p className="text-sm text-dim text-center mb-3 leading-relaxed">
-            <span className="text-accent font-semibold">회원가입 없이 하루 3회 무료</span>로<br />
+            홈 화면의 <span className="text-accent font-semibold">N인플 AI 질문은 회원가입 없이 하루 3회</span><br />
             바로 체험해보실 수 있습니다.
           </p>
           <p className="text-[11px] text-dim/80 text-center mb-8 leading-relaxed">
-            더 많이 이용하시려면 이용권을 구매해보세요.
+            키워드 순위·미노출 분석 등 나머지 기능은 회원 전용입니다.
           </p>
           <div className="flex gap-3">
             <button

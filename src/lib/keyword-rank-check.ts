@@ -40,15 +40,38 @@ function buildHandleSet(blogId: string, influencerHandle?: string): Set<string> 
   return s;
 }
 
+/** 검색 결과 컨테이너 — 통합검색·블로그탭·인플루언서탭이 모두 갖고 있다(2026-08-24 3면 실측). */
+const SEARCH_RESULT_CONTAINER_REGEX = /id=["']main_pack["']/;
+
+/** 네이버 응답 대기 상한 — 없으면 한 요청이 배치 전체를 무한정 붙잡는다. */
+const SEARCH_FETCH_TIMEOUT_MS = 15_000;
+
+/**
+ * 받아온 HTML이 "정상적으로 렌더된 검색 결과 페이지"인지 확인한다.
+ *
+ * 네이버는 자동화 차단·보안문자·점검 상황에서도 HTTP 200으로 안내 페이지를 내려준다.
+ * 따라서 상태코드만 믿으면 결과를 0건 파싱하고도 "상위 N위 내 매칭 없음"으로 확정해버려,
+ * 확인하지 못한 것이 미노출로 굳는다(이 파일이 막아야 할 오판의 핵심 경로).
+ *
+ * 판정은 결과 컨테이너 존재 여부로만 한다. 안내/차단 페이지는 이 골격 자체가 없다.
+ * 본문 문구 매칭은 일부러 쓰지 않는다 — 정상 검색 페이지의 인라인 스크립트에도
+ * '일시적인 오류가 발생' 같은 안내 문자열이 들어 있어, raw HTML 문자열 검색으로는
+ * 정상 응답을 통째로 오류 처리하게 된다(2026-08-24 통합검색·인플탭에서 실측 확인).
+ */
+function isSearchResultPage(html: string): boolean {
+  return SEARCH_RESULT_CONTAINER_REGEX.test(html);
+}
+
 /**
  * 검색 결과 페이지 HTML을 가져온다. 같은 URL(=같은 키워드·탭·페이지)은 짧은 TTL 동안 공유 캐시에서 재사용(스펙 #24).
- * 반환 null = 응답 비정상/네트워크 오류(호출측이 '일시적 오류'로 처리).
+ * 반환 null = 응답 비정상/차단/네트워크 오류(호출측이 '일시적 오류'로 처리).
  */
 async function fetchSearchHtml(url: string, opts?: TabFetchOpts): Promise<string | null> {
   const cacheKey = `srchhtml:${url}`;
   if (!opts?.force) {
     const cached = await cacheGet<string>(cacheKey);
-    if (cached !== null) return cached;
+    // 차단 페이지가 캐시에 남아 있으면 TTL 동안 같은 배치의 모든 포스팅이 함께 오판된다.
+    if (cached !== null && isSearchResultPage(cached)) return cached;
   }
   const res = await fetch(url, {
     headers: {
@@ -58,9 +81,14 @@ async function fetchSearchHtml(url: string, opts?: TabFetchOpts): Promise<string
       'Accept-Encoding': 'gzip, deflate',
       'Referer': 'https://search.naver.com/',
     },
+    signal: AbortSignal.timeout(SEARCH_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) return null;
   const html = await res.text();
+  if (!isSearchResultPage(html)) {
+    console.warn(`[keyword-rank-check] 검색 결과 페이지 아님(차단/점검 추정) → 일시적 오류 처리 url=${url} len=${html.length}`);
+    return null;
+  }
   if (html.length <= HTML_CACHE_MAX_BYTES) {
     await cacheSet(cacheKey, html, HTML_CACHE_TTL_SEC);
   }
@@ -118,8 +146,10 @@ export function matchInfluencerContentByHandle(html: string, handles: Set<string
  * 폴백: <a> href에서 blog.naver.com 링크 수동 카운트
  */
 export async function checkBlogTab(query: string, blogId: string, postId: string, opts?: TabFetchOpts): Promise<TabCheckResult> {
+  // 블로그탭은 blogId+postId 정밀 매칭이 유일한 판정 수단이다. 둘 중 하나라도 없으면
+  // 조회를 해봐야 매칭이 성립하지 않으므로 '미노출'이 아니라 '확인 불가'다.
   if (!blogId || !postId) {
-    return { exposed: false, rank: null };
+    return { exposed: false, rank: null, error: true };
   }
 
   const blogIdLower = blogId.toLowerCase();

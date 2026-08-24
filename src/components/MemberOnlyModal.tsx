@@ -47,8 +47,9 @@ export default function MemberOnlyModal() {
           <p className="text-sm text-dim text-center mb-4 leading-relaxed">
             이 기능은 회원만 이용할 수 있습니다.
             <br /><br />
-            비회원도 하루 3회는 로그인 없이 체험할 수 있습니다.<br />
-            더 많이 이용하시려면 회원가입 후 이용권을 구매해보세요.
+            로그인 없이 체험할 수 있는 건 홈 화면의<br />
+            N인플 AI 질문 하루 3회뿐입니다.<br />
+            나머지 기능은 회원가입 후 이용할 수 있습니다.
             <br /><br />
             블로그 분석, 인플루언서 분석,<br />
             AI 브리핑, 키워드 챌린지,<br />
