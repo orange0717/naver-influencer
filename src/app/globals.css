@@ -355,3 +355,9 @@ a:hover:not(.btn) {
   color: #A36B63; /* 브랜드 메인 포인트 컬러 (짙은 핑크/버건디) */
   font-weight: bold;
 }
+/* unlayered 규칙이라 부모의 hover:text-* 유틸리티를 이긴다.
+   클릭 가능한 카테고리명은 호버 신호를 잃지 않도록 여기서 직접 되살린다. */
+button:hover .category-title,
+a:hover .category-title {
+  color: var(--color-accent);
+}

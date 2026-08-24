@@ -514,7 +514,7 @@ export default function KeywordsPage() {
             <div key={topic.topic}>
               {/* 주제 헤더 */}
               <div className="flex items-center gap-3 mb-3">
-                <h2 className="text-lg font-extrabold">{topic.topic}</h2>
+                <h2 className="category-title text-lg">{topic.topic}</h2>
                 <span className="text-xs text-dim font-rank">{topic.total.toLocaleString()}개</span>
               </div>
 
@@ -528,7 +528,7 @@ export default function KeywordsPage() {
                         onClick={() => handleCategoryChange(group.category)}
                         className="flex items-center gap-2 hover:text-accent transition-colors cursor-pointer"
                       >
-                        <span className="font-bold text-sm">{group.category}</span>
+                        <span className="category-title text-sm">{group.category}</span>
                         <span className="text-xs text-accent">전체보기 →</span>
                       </button>
                       <span className="text-xs text-dim font-rank">{group.total.toLocaleString()}개</span>
