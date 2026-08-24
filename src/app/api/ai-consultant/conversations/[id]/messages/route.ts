@@ -169,18 +169,23 @@ export async function POST(
   });
   if (!gate.ok) return gate.response;
 
+  // 이 아래는 무료 1회가 이미 차감된 뒤다. 답을 못 주고 끝나는 경로는 전부 되돌려준다 —
+  // 특히 빈 질문·길이 초과 같은 입력 오류는 AI를 부르지도 않았으므로 차감될 이유가 없다.
   let body: { content?: string };
   try {
     body = await request.json();
   } catch {
+    await gate.refund();
     return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
 
   const content = (body.content || '').trim();
   if (!content) {
+    await gate.refund();
     return NextResponse.json({ error: '질문을 입력해주세요.' }, { status: 400 });
   }
   if (content.length > QUERY_MAX_LENGTH) {
+    await gate.refund();
     return NextResponse.json({ error: `질문은 ${QUERY_MAX_LENGTH}자 이내로 입력해주세요.` }, { status: 400 });
   }
 
@@ -188,7 +193,8 @@ export async function POST(
   try {
     anthropic = getAnthropicClient();
   } catch {
-    return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
+    await gate.refund();
+    return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다. 무료 횟수는 차감되지 않았습니다.' }, { status: 503 });
   }
 
   // 사용자 메시지 먼저 저장 (Claude 호출 전에 — 실패해도 질문 자체는 남도록)
@@ -219,7 +225,8 @@ export async function POST(
       (block): block is Extract<typeof block, { type: 'tool_use' }> => block.type === 'tool_use',
     );
     if (!toolUseBlock) {
-      return NextResponse.json({ error: '추천을 생성하지 못했습니다.' }, { status: 502 });
+      await gate.refund();
+      return NextResponse.json({ error: '답변을 생성하지 못했습니다. 무료 횟수는 차감되지 않았으니 잠시 후 다시 시도해주세요.' }, { status: 502 });
     }
 
     const input = toolUseBlock.input as {
@@ -269,6 +276,7 @@ export async function POST(
     });
   } catch (err) {
     console.error('[ai-consultant] Claude call failed:', err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: '응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
+    await gate.refund();
+    return NextResponse.json({ error: '답변을 생성하지 못했습니다. 무료 횟수는 차감되지 않았으니 잠시 후 다시 시도해주세요.' }, { status: 502 });
   }
 }

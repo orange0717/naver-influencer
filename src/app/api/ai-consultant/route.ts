@@ -49,6 +49,10 @@ export const maxDuration = 30;
 const QUERY_MAX_LENGTH = 400;
 const ANSWER_STORE_LIMIT = 4000;
 
+// 답변 실패 안내. 하루 3회뿐이라 "내 무료 횟수가 날아갔나"가 사용자의 첫 걱정이 된다 —
+// 실제로 환불했으므로 그 사실까지 같이 말한다(이 문구를 쓰는 곳은 전부 gate.refund() 뒤다).
+const FAILED_ANSWER_MESSAGE = '답변을 생성하지 못했습니다. 무료 횟수는 차감되지 않았으니 잠시 후 다시 시도해주세요.';
+
 // OpenAI(ChatGPT) structured output 스키마. 실제 정보성 답변(answer)과, 그와 관련해
 // N인플에 이미 있는 기능 추천(recommendations)을 한 번의 호출로 함께 받는다.
 // strict 모드라 모든 필드가 required + additionalProperties:false 여야 한다.
@@ -201,7 +205,9 @@ export async function POST(request: NextRequest) {
   try {
     openai = getOpenAiClient();
   } catch {
-    return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다.' }, { status: 503 });
+    // 여기부터는 무료 1회가 이미 차감된 뒤다. 답을 못 주는 실패는 전부 되돌려준다.
+    await gate.refund();
+    return NextResponse.json({ error: 'AI 서비스가 설정되지 않았습니다. 무료 횟수는 차감되지 않았습니다.' }, { status: 503 });
   }
 
   // ── N인플 데이터 검색(RAG) — 질문 의도를 분석해 실제 저장 데이터를 조회하고 Context 로 만든다.
@@ -245,7 +251,8 @@ export async function POST(request: NextRequest) {
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
-      return NextResponse.json({ error: '응답을 생성하지 못했습니다.' }, { status: 502 });
+      await gate.refund();
+      return NextResponse.json({ error: FAILED_ANSWER_MESSAGE }, { status: 502 });
     }
 
     let parsed: {
@@ -256,7 +263,8 @@ export async function POST(request: NextRequest) {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      return NextResponse.json({ error: '응답을 생성하지 못했습니다.' }, { status: 502 });
+      await gate.refund();
+      return NextResponse.json({ error: FAILED_ANSWER_MESSAGE }, { status: 502 });
     }
 
     // 2차 범위 강제(마케팅 전용): 모델이 오프토픽으로 판정하면 모델의 자유 답변을 그대로 내보내지 않고
@@ -286,7 +294,8 @@ export async function POST(request: NextRequest) {
     // interpretation 컬럼에 ChatGPT의 실제 답변을 저장한다(기존 스키마 재사용 — DB 마이그레이션 불필요).
     const interpretation = (parsed.answer || '').trim().slice(0, ANSWER_STORE_LIMIT);
     if (!interpretation) {
-      return NextResponse.json({ error: '응답을 생성하지 못했습니다.' }, { status: 502 });
+      await gate.refund();
+      return NextResponse.json({ error: FAILED_ANSWER_MESSAGE }, { status: 502 });
     }
 
     // 이력 저장 (로그인 사용자만 — user_id 필수 컬럼. 비회원 호출은 "최근 분석" 목록에 안 남을 뿐
@@ -321,6 +330,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error('[ai-consultant] OpenAI call failed:', err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: '응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
+    await gate.refund();
+    return NextResponse.json({ error: FAILED_ANSWER_MESSAGE }, { status: 502 });
   }
 }

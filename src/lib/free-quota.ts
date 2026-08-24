@@ -93,6 +93,38 @@ export async function consumeFreeDailyQuota(opts: {
  * 사용자 1명이 고가 모델(Sonnet)을 무제한 호출해 마진을 잠식하는 경우만 차단한다.
  * 비즈니스 상황에 맞게 조정 가능. (참고: 무료 한도 MEMBER_DAILY_FREE_LIMIT와는 별개 축)
  */
+/**
+ * 소모한 무료 1회를 되돌린다 — 차감은 됐는데 정작 결과를 주지 못한 경우(AI 미설정·모델 오류 등) 전용.
+ * 하루 3회뿐이라 실패 한 번에 1/3이 사라지는 건 사용자에겐 과금 오류로 보인다.
+ *
+ * day 값 대신 "가장 최근 행"을 되돌린다 — 차감 직후에 부르는 함수이므로 그 행이 방금 올린 행이고,
+ * DB의 current_date 와 서버 로컬 날짜가 어긋나는 문제를 아예 만들지 않는다.
+ * count 일치 조건을 걸어, 그사이 다른 요청이 올렸으면 건드리지 않는다.
+ * 실패는 조용히 넘어간다: 환불이 안 되는 건 종전 동작이라 응답까지 막을 이유가 없다.
+ */
+export async function refundFreeDailyQuota(subjectKey: string): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('free_daily_usage')
+      .select('id, count')
+      .eq('subject_key', subjectKey)
+      .order('day', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data || data.count <= 0) return;
+
+    await supabase
+      .from('free_daily_usage')
+      .update({ count: data.count - 1 })
+      .eq('id', data.id)
+      .eq('count', data.count);
+  } catch (err) {
+    console.error('[refundFreeDailyQuota] failed:', err);
+  }
+}
+
 export const PAID_AI_DAILY_CAP = 50;
 
 /**

@@ -485,6 +485,14 @@ export default function AiConsultantClient() {
             </p>
           </div>
 
+          {/* 오류는 질문 입력창 바로 아래에 둔다. 추천 칩·강의 카드 뒤에 두면 화면 한참 아래로
+              밀려나, 사용자 눈에는 버튼을 눌러도 아무 일도 일어나지 않은 것처럼 보인다. */}
+          {error && (
+            <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-center">
+              <p className="text-sm text-down font-semibold">{error}</p>
+            </div>
+          )}
+
           {!result && !loading && (
             <div className="space-y-2.5 pt-3 mt-2 border-t border-border/60">
               <p className="text-xs font-medium text-dim">추천 분석 — N인플 기능 바로가기</p>
@@ -512,12 +520,6 @@ export default function AiConsultantClient() {
                 <p className="text-xs text-dim">&ldquo;{submittedQuery}&rdquo; 답변 생성 중...</p>
                 <p className="text-[11px] text-dim/60 mt-1">질문 분석 → AI 답변 작성 중</p>
               </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-down font-semibold">{error}</p>
             </div>
           )}
 
