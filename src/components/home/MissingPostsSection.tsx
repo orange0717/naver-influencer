@@ -16,6 +16,7 @@ import type { BloggerProfile, BlogPost } from './BlogAnalysisSection.helpers';
 import { fetchWithTimeout, getProfileFromApi, CHECK_FRESH_MS } from './BlogAnalysisSection.helpers';
 import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
+import { estimateEta } from '@/components/analytics/CheckProgress';
 import { useAuth } from '@/hooks/useAuth';
 import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { useRouter } from 'next/navigation';
@@ -186,6 +187,8 @@ export default function MissingPostsSection() {
   const [missingResults, setMissingResults] = useState<MissingResultsMap>({});
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  // 배치 시작 시각 — 실제 경과 속도로 남은 시간을 추정해 진행률 옆에 보여준다
+  const [batchStartedAt, setBatchStartedAt] = useState<number | null>(null);
   // §12 배치 검사 완료 요약 — "N개 확인 완료 · 노출 X · 미노출 Y". 다음 배치 시작 시 초기화.
   const [batchSummary, setBatchSummary] = useState<{ checked: number; exposed: number; missing: number; other: number } | null>(null);
   const [checkingPostId, setCheckingPostId] = useState<string | null>(null);
@@ -203,6 +206,7 @@ export default function MissingPostsSection() {
   const [detailHistory, setDetailHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const abortRef = useRef(false);
+  const batchRunningRef = useRef(false);
   const autoCheckedRef = useRef(false); // 진입 자동검사 1회만 실행
 
   // 회원/권한 (§3·§12·§13) + 크레딧 정책 모달 (§2·§6·§8)
@@ -374,11 +378,14 @@ export default function MissingPostsSection() {
   }, [missingResults]);
 
   const runBatch = useCallback(async (targets: BlogPost[], opts?: { force?: boolean }) => {
-    if (!profile || targets.length === 0) return;
+    // 진행 중 재진입 차단 — 두 배치가 겹치면 같은 글을 두 번 조회하고 진행률도 서로 덮어쓴다
+    if (!profile || targets.length === 0 || batchRunningRef.current) return;
+    batchRunningRef.current = true;
     setCheckingAll(true);
     setBatchSummary(null); // 이전 요약 초기화 — 새 배치가 시작됨
     abortRef.current = false;
     setCheckProgress({ current: 0, total: targets.length });
+    setBatchStartedAt(Date.now());
     const now = Date.now();
     // §12 완료 요약용 집계 — 실제로 이번 배치에서 확인(checkOne 호출)된 글만 센다(캐시로 건너뛴 글 제외).
     const tally = { checked: 0, exposed: 0, missing: 0, other: 0 };
@@ -405,6 +412,8 @@ export default function MissingPostsSection() {
     }
     setCheckingPostId(null);
     setCheckingAll(false);
+    setBatchStartedAt(null);
+    batchRunningRef.current = false;
     if (tally.checked > 0) setBatchSummary(tally);
   }, [profile, willHitNaver, checkOne]);
 
@@ -642,6 +651,9 @@ export default function MissingPostsSection() {
     return <AnalysisQuotaNotice quota={quota} />;
   }
 
+  // 진행률이 한 칸 오를 때마다 다시 계산된다(별도 타이머 불필요 — 건당 몇 초 단위로 진행)
+  const batchEta = estimateEta(batchStartedAt, checkProgress.current, checkProgress.total, Date.now());
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -653,6 +665,7 @@ export default function MissingPostsSection() {
               <span className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white font-bold rounded-xl text-xs">
                 <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 {checkProgress.current}/{checkProgress.total} 분석 중
+                {batchEta && <span className="font-semibold text-white/75">· {batchEta}</span>}
               </span>
               <button onClick={() => { abortRef.current = true; }}
                 className="px-3 py-2 border border-border text-dim font-semibold rounded-xl hover:bg-surface-hover transition cursor-pointer text-xs">

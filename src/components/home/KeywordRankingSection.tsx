@@ -118,6 +118,8 @@ export default function KeywordRankingSection() {
   // 자동/수동 백그라운드 일괄 갱신 진행 여부 (화면을 막지 않는 작은 표시용)
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  // 배치 시작 시각 — 진행률 pill이 실제 경과 속도로 남은 시간을 추정하는 데 쓴다(추출·순위확인 동시 실행 없음)
+  const [batchStartedAt, setBatchStartedAt] = useState<number | null>(null);
   // '지금 업데이트' 사전 예상치 확인(스펙 #11/#14) — 무조건 조회 대신 대상 수·예상 호출·캐시 제외를 먼저 보여준다.
   const [refreshEstimate, setRefreshEstimate] = useState<{
     pairs: { post: BlogPost; keyword: string; meta?: KeywordMeta }[];
@@ -487,6 +489,7 @@ export default function KeywordRankingSection() {
     setExtractingAll(true);
     extractAbortRef.current = false;
     setExtractProgress({ current: 0, total: targets.length });
+    setBatchStartedAt(Date.now());
 
     let done = 0;
     let ok = true;
@@ -535,6 +538,7 @@ export default function KeywordRankingSection() {
     }
 
     setExtractingAll(false);
+    setBatchStartedAt(null);
     // 서버가 확정한 값으로 다시 맞춘다(다른 화면·기기와 같은 대표 키워드를 보게 유지)
     queryClient.invalidateQueries({ queryKey: ['rep-keywords-state', profile.blogId] });
     return ok;
@@ -630,6 +634,7 @@ export default function KeywordRankingSection() {
     abortRef.current = false;
     setCheckingAll(true);
     setCheckProgress({ current: 0, total: pairs.length });
+    setBatchStartedAt(Date.now());
 
     for (let i = 0; i < pairs.length; i++) {
       if (abortRef.current) break;
@@ -647,6 +652,7 @@ export default function KeywordRankingSection() {
 
     setCheckingAll(false);
     setCheckProgress({ current: 0, total: 0 });
+    setBatchStartedAt(null);
     refreshingRef.current = false;
   }, [checkSingleKeyword, showError]);
 
@@ -1205,9 +1211,9 @@ export default function KeywordRankingSection() {
   const headerActions = (
     <>
       {extractingAll ? (
-        <CheckProgress current={extractProgress.current} total={extractProgress.total} label="대표키워드 추출 중" onStop={stopExtractingAll} />
+        <CheckProgress current={extractProgress.current} total={extractProgress.total} label="대표키워드 추출 중" onStop={stopExtractingAll} startedAt={batchStartedAt} />
       ) : checkingAll ? (
-        <CheckProgress current={checkProgress.current} total={checkProgress.total} label="순위 확인 중" onStop={stopChecking} />
+        <CheckProgress current={checkProgress.current} total={checkProgress.total} label="순위 확인 중" onStop={stopChecking} startedAt={batchStartedAt} />
       ) : (
         <button
           onClick={openRefreshEstimate}
