@@ -62,7 +62,7 @@ const STATUS_LABEL: Record<Exclude<BlogMetricStatus, 'FRESH'>, string> = {
 };
 
 export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['blog-dashboard-summary', blogId],
     queryFn: () => fetchSummary(blogId!),
     enabled: !!blogId,
@@ -84,8 +84,17 @@ export default function BlogDashboardKpiBar({ blogId }: { blogId: string | null 
 
   if (isError || !data) {
     return (
-      <GlassCard padding="md" className="text-center">
-        <p className="text-sm text-dim">KPI 데이터를 불러오지 못했습니다.</p>
+      <GlassCard padding="md" className="text-center space-y-2">
+        <p className="text-sm text-text font-semibold">KPI 요약을 불러오지 못했습니다.</p>
+        {/* 수치가 0인 것과 조회 자체가 실패한 것은 다른 상태다. 다시 시도할 방법도 함께 준다. */}
+        <p className="text-xs text-dim">수치가 0인 것이 아니라 조회 자체가 되지 않은 상태입니다.</p>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="px-4 py-2 bg-accent text-white text-xs font-bold rounded-xl cursor-pointer disabled:opacity-50"
+        >
+          {isFetching ? '다시 불러오는 중…' : '다시 시도'}
+        </button>
       </GlassCard>
     );
   }

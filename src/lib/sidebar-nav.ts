@@ -78,8 +78,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '키워드 검색', href: '/keywords/blogger', indent: true },
       { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '인플루언서 리스트', href: '#list', heading: true, subgroup: true },
-      { label: '무료', href: '/influencers/free-plan', authOnly: true, indent: true },
-      { label: '유료', href: '/influencers', requiredPlan: 'influencer', authOnly: true, indent: true },
+      // 라벨은 요금제가 아니라 "무엇이 들어있는 목록인지"로 적는다 — 유료 항목엔 이미 자물쇠가 붙는다.
+      { label: '기본 명단', href: '/influencers/free-plan', authOnly: true, indent: true },
+      { label: '전체 리스트', href: '/influencers', requiredPlan: 'influencer', authOnly: true, indent: true },
     ],
   },
   {
