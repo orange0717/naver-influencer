@@ -55,6 +55,16 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
   );
 }
 
+/** 소제목(NavHeading)과 같은 점 + 라벨 — bullet 항목만 점이 붙는다 */
+function ItemLabel({ item }: { item: SidebarItem }) {
+  return (
+    <>
+      {item.bullet && <span className="w-1 h-1 rounded-full bg-accent shrink-0" aria-hidden="true" />}
+      <span className="truncate">{item.label}</span>
+    </>
+  );
+}
+
 function NavLink({
   item,
   active,
@@ -103,7 +113,7 @@ function NavLink({
         }}
         className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
-        <span className="truncate">{item.label}</span>
+        <ItemLabel item={item} />
         <span className="ml-auto text-dim/60"><LockIcon /></span>
       </button>
     );
@@ -122,7 +132,7 @@ function NavLink({
         }}
         className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
-        <span className="truncate">{item.label}</span>
+        <ItemLabel item={item} />
         <span className="ml-auto text-accent"><LockIcon /></span>
       </button>
     );
@@ -138,7 +148,7 @@ function NavLink({
           : `${inactiveColor} border-transparent font-normal hover:text-text hover:bg-surface-hover`
       }`}
     >
-      <span className="truncate">{item.label}</span>
+      <ItemLabel item={item} />
     </Link>
   );
 }

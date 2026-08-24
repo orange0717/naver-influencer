@@ -22,6 +22,8 @@ export interface SidebarItem {
   subgroup?: boolean;
   /** 직전 heading 하위 항목임을 표시해 들여쓰기를 한 단계 추가 적용 */
   indent?: boolean;
+  /** 하위그룹 소제목이 없는 단독 항목에도 소제목과 같은 점(•)을 붙여 시각적 계층을 맞춘다 */
+  bullet?: boolean;
 }
 
 export interface SidebarGroup {
@@ -102,7 +104,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     label: '구글',
     icon: 'G',
     items: [
-      { label: 'Google 색인 관리', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true },
+      { label: 'Google 색인 관리', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true, bullet: true },
     ],
   },
 ];
