@@ -198,6 +198,10 @@ export default function AiBriefingSection() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string }>({ done: 0, total: 0, current: '' });
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const bulkAbortRef = useRef(false);
+  // 단건 AI 확인('다시 검사' / '분석') 중복 실행 방지 — 헤드리스 브라우저로 네이버를 실제 조회하므로
+  // 이중 실행은 비용도 두 배지만 네이버 차단 위험이 더 크다(요청 간격 제한을 스스로 깨는 셈).
+  // disabled 는 state 라 같은 프레임의 빠른 연속 클릭을 못 막으므로 동기적으로 읽히는 ref 로 막는다.
+  const aiCheckRef = useRef(false);
 
   // 대표키워드 점검·재추출(스펙 #18~21) — 규칙 기반(네이버 무호출).
   type KeywordAudit = {
@@ -628,7 +632,8 @@ export default function AiBriefingSection() {
   }
 
   const runFullAnalysis = async (post: BlogPost, kw: string) => {
-    if (!profile) return;
+    if (!profile || aiCheckRef.current) return; // 중복 클릭 차단(이중 조회·차단 위험 방지)
+    aiCheckRef.current = true;
     setAnalyzing(true);
     try {
       const [briefingRes, volumeRes, relatedRes] = await Promise.all([
@@ -663,6 +668,7 @@ export default function AiBriefingSection() {
       }).catch(() => {});
     } finally {
       setAnalyzing(false);
+      aiCheckRef.current = false;
     }
   };
 
@@ -1063,8 +1069,9 @@ export default function AiBriefingSection() {
 
   // "다시 검사"(스펙 #5/#7) — 한 (포스팅, 키워드) 행만 재조회한다.
   const recheckKeyword = (post: BlogPost, keyword: string) => {
-    if (!keyword || !!checkingKey) return;
-    checkSingleKeyword(post, keyword);
+    if (!keyword || !!checkingKey || aiCheckRef.current) return; // 중복 클릭 차단(이중 조회·차단 위험 방지)
+    aiCheckRef.current = true;
+    checkSingleKeyword(post, keyword).finally(() => { aiCheckRef.current = false; });
   };
 
   const openAddKeyword = (postId: string) => { setAddingFor(postId); setAddValue(''); setAddError(''); };

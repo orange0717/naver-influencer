@@ -215,6 +215,10 @@ export default function MissingPostsSection() {
   const abortRef = useRef(false);
   const batchRunningRef = useRef(false);
   const autoCheckedRef = useRef(false); // 진입 자동검사 1회만 실행
+  // 개별 재검사(목록 '다시 검사' / 상세 '재검사') 중복 실행 방지 — 둘 다 force:true 라 캐시를 건너뛰고
+  // 네이버를 실제로 치며 실행 시점에 과금된다. disabled 는 state 라 같은 프레임의 빠른 연속 클릭을
+  // 못 막으므로(리렌더 전) 동기적으로 읽히는 ref 로 막는다. 목록/상세 버튼이 같은 글을 동시에 치는 것도 함께 차단.
+  const singleCheckRef = useRef(false);
 
   // 회원/권한 (§3·§12·§13) + 크레딧 정책 모달 (§2·§6·§8)
   const { user, isError: authError } = useAuth();
@@ -359,21 +363,34 @@ export default function MissingPostsSection() {
 
   // 상세 패널에서 포스팅 제목 기반으로 강제 재검사 (캐시 무시, 최신 노출 여부 재확인)
   const recheckDetail = useCallback(async (post: BlogPost) => {
+    if (singleCheckRef.current) return; // 중복 클릭 차단(이중 조회·이중 차감 방지)
+    singleCheckRef.current = true;
     setDetailChecking(true);
     setDetailError('');
-    const { status } = await checkOne(post, { force: true });
-    if (status === 'failed') setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
-    else if (profile) fetchDetailHistory(profile.blogId, post.id); // 전환이 기록됐을 수 있으니 이력 갱신
-    setDetailChecking(false);
+    try {
+      const { status } = await checkOne(post, { force: true });
+      if (status === 'failed') setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      else if (profile) fetchDetailHistory(profile.blogId, post.id); // 전환이 기록됐을 수 있으니 이력 갱신
+    } finally {
+      // 예외로 빠져나가도 버튼이 '검사 중...'에 영구히 잠기지 않도록 반드시 해제한다
+      setDetailChecking(false);
+      singleCheckRef.current = false;
+    }
   }, [checkOne, profile, fetchDetailHistory]);
 
   // §10 개별 게시글 '다시 검사' — 이 글 하나만 강제 재조회(전체 API 재호출 아님). 목록/카드는 checkOne 이 즉시 갱신.
   const recheckSingle = useCallback(async (post: BlogPost) => {
-    if (checkingAll) return; // 배치 검사 중엔 개별 재검사 비활성
+    if (checkingAll || singleCheckRef.current) return; // 배치 검사 중엔 비활성 + 중복 클릭 차단(이중 조회·이중 차감 방지)
+    singleCheckRef.current = true;
     setCheckingPostId(post.id);
     setBatchSummary(null);
-    await checkOne(post, { force: true });
-    setCheckingPostId(null);
+    try {
+      await checkOne(post, { force: true });
+    } finally {
+      // 예외로 빠져나가도 버튼이 '검사 중'에 영구히 잠기지 않도록 반드시 해제한다
+      setCheckingPostId(null);
+      singleCheckRef.current = false;
+    }
   }, [checkingAll, checkOne]);
 
   // 실제로 네이버 검색이 발생할 글만 센다 — 비공개(분석불가)·최근 성공검사(캐시 신선)는 호출이 없으므로 조회량 추정에서 제외
