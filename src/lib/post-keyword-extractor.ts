@@ -341,7 +341,12 @@ export async function getOrPersistRepresentativeKeyword(
     .select('*')
     .eq('blog_id', blogId)
     .eq('post_id', postId)
-    .maybeSingle() as { data: { representative_keyword: string | null; candidates: string[] | null; keyword_source: string | null; extracted_at: string | null; confidence: number | null } | null };
+    .maybeSingle() as { data: { representative_keyword: string | null; candidates: string[] | null; keyword_source: string | null; extracted_at: string | null; confidence: number | null; post_title: string | null } | null };
+
+  // 제목 없이 호출되면(=GET ?title= 생략) 재추출이 빈 제목을 분석해 멀쩡한 저장값을 null로 덮어쓴다.
+  // 예전에는 캐시 히트가 이를 가려줬지만, 저신뢰 재추출을 켠 뒤로는 실제로 발동할 수 있는 경로다.
+  // 저장해 둔 post_title 을 폴백으로 쓴다.
+  const effectiveTitle = (title || '').trim() || (existing?.post_title || '');
 
   // 사용자가 직접 수정한 대표 키워드(keyword_source='manual')는 항상 최우선 — TTL 만료와 무관하게
   // 자동 추출로 절대 덮어쓰지 않는다(스펙 #3/#19). 저장된 값을 그대로 반환한다.
@@ -368,7 +373,19 @@ export async function getOrPersistRepresentativeKeyword(
     };
   }
 
-  const result = await extractRepresentativeKeywords(blogId, postId, title, opts);
+  // 제목을 끝내 확보하지 못하면(신규 글인데 title 미전달) 추출해봐야 빈 결과다 —
+  // 저장값을 null 로 덮지 않도록 기존 행이 있으면 그대로 돌려준다.
+  if (!effectiveTitle && existing) {
+    return {
+      representativeKeyword: existing.representative_keyword,
+      candidates: existing.candidates || [],
+      source: (existing.keyword_source as RepresentativeKeywordResult['source']) || 'none',
+      confidence: typeof existing.confidence === 'number' ? existing.confidence : 0.5,
+      cached: true,
+    };
+  }
+
+  const result = await extractRepresentativeKeywords(blogId, postId, effectiveTitle, opts);
   const representativeKeyword = result.keywords[0] || null;
 
   // 대표 키워드가 바뀌면 keyword_changed_at을 갱신해 하위 순위/AI 인용 결과를 '재확인 필요'로 판단할 수 있게 한다(스펙 #23).
@@ -378,7 +395,7 @@ export async function getOrPersistRepresentativeKeyword(
   await upsertRepresentativeRows(supabase, [{
     blog_id: blogId,
     post_id: postId,
-    post_title: title || null,
+    post_title: effectiveTitle || null,
     representative_keyword: representativeKeyword,
     candidates: result.keywords,
     keyword_source: result.source,
