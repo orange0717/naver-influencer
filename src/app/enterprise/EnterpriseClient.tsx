@@ -4,13 +4,17 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import LegalModal from '@/components/legal/LegalModal';
 import PrivacyContent from '@/components/legal/PrivacyContent';
+import { CONTACT_EMAIL } from '@/lib/site-contact';
 import {
   COMPANY_TYPES,
   INTEREST_OPTIONS,
   TEAM_SIZES,
+  buildInquiryMailto,
   type CompanyType,
   type TeamSize,
 } from '@/lib/enterprise-inquiry';
+
+const MAILTO_HREF = buildInquiryMailto(CONTACT_EMAIL);
 
 const INPUT_CLASS =
   'w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30';
@@ -187,12 +191,28 @@ export default function EnterpriseClient() {
         <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-dim md:text-sm">
           사용 인원, 관리 대상, 필요한 기능에 따라 맞춤형으로 상담해드립니다.
         </p>
-        <a
-          href="#inquiry-form"
-          className="mt-8 inline-block rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white transition hover:bg-accent-hover"
-        >
-          기업용 문의하기
-        </a>
+        <p className="mt-8 text-sm font-bold text-text">기업용 문의하기</p>
+        <p className="mt-1 text-xs text-dim md:text-sm">온라인으로 문의하거나 이메일로 직접 문의하실 수 있습니다.</p>
+        <div className="mt-4 flex flex-col items-stretch gap-2.5 px-4 sm:flex-row sm:items-center sm:justify-center sm:px-0">
+          <a
+            href="#inquiry-form"
+            className="rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white transition hover:bg-accent-hover"
+          >
+            온라인 문의
+          </a>
+          <a
+            href={MAILTO_HREF}
+            className="rounded-xl border border-border bg-surface px-6 py-3 text-sm font-semibold text-text-2 transition hover:border-accent/40 hover:text-accent"
+          >
+            이메일로 문의하기
+          </a>
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-dim">
+          이메일로 문의하시면 기본 질문이 포함된 메일 작성 화면이 열립니다.
+          <br className="sm:hidden" />
+          <span className="hidden sm:inline"> · </span>
+          <a href={MAILTO_HREF} className="underline underline-offset-2 hover:text-accent">{CONTACT_EMAIL}</a>
+        </p>
       </section>
 
       {/* ── 상담 가능 영역 ── */}
@@ -244,9 +264,21 @@ export default function EnterpriseClient() {
       <section id="inquiry-form" className="scroll-mt-20 px-4 pb-20 md:pb-28">
         <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-6 md:p-8">
           <h2 className="font-title mb-1.5 text-xl text-text md:text-2xl">기업용 문의하기</h2>
-          <p className="mb-7 text-xs leading-relaxed text-dim md:text-sm">
+          <p className="mb-5 text-xs leading-relaxed text-dim md:text-sm">
             상담에 필요한 최소한의 정보만 받습니다. 접수 후 담당자가 이메일 또는 연락처로 회신드립니다.
           </p>
+
+          <div className="mb-7 flex flex-col gap-3 rounded-xl border border-border bg-bg p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-relaxed text-text-2">
+              메일이 편하시다면 폼을 채우지 않으셔도 됩니다. 기본 질문이 미리 작성된 메일 화면이 열립니다.
+            </p>
+            <a
+              href={MAILTO_HREF}
+              className="shrink-0 rounded-lg border border-border bg-surface px-4 py-2 text-center text-xs font-semibold text-text-2 transition hover:border-accent/40 hover:text-accent"
+            >
+              이메일로 문의하기
+            </a>
+          </div>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             <Field id="field-companyName" label="회사명" required error={errors.companyName}>
