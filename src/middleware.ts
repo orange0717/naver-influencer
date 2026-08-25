@@ -577,6 +577,9 @@ export async function middleware(request: NextRequest) {
     "https://*.iamport.kr",
     "https://*.iamport.co",
     "https://*.kpn.co.kr",
+    // KPN 결제창의 실제 호스트는 kpn.co.kr 이 아니라 퍼스트페이(pg.firstpay.co.kr) 다.
+    // 빠지면 결제창 iframe 이 frame-src 로 차단돼 회색 빈 화면만 뜬다.
+    "https://*.firstpay.co.kr",
   ];
   if (isCapacitor) {
     connectSrc.push("capacitor://localhost", "https://localhost");
