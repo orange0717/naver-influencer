@@ -463,11 +463,11 @@ export default function KeywordDetailPage() {
             <table className="w-full text-sm hidden sm:table">
               <thead>
                 <tr className="bg-bg/50 border-b border-border">
-                  <th className="py-2.5 px-4 text-left text-xs font-semibold text-dim">순위</th>
-                  <th className="py-2.5 px-4 text-center text-xs font-semibold text-dim">변동</th>
-                  <th className="py-2.5 px-4 text-left text-xs font-semibold text-dim">인플루언서</th>
-                  <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim">카테고리</th>
-                  <th className="py-2.5 px-4 text-right text-xs font-semibold text-dim">팬 수</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-dim">순위</th>
+                  <th className="py-3 px-4 text-center text-xs font-semibold text-dim">변동</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-dim">인플루언서</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-dim">카테고리</th>
+                  <th className="py-3 px-4 text-right text-xs font-semibold text-dim">팬 수</th>
                   <th className="py-2.5 px-4 text-left text-xs font-semibold text-dim hidden lg:table-cell">최근 포스트</th>
                 </tr>
               </thead>
@@ -476,11 +476,11 @@ export default function KeywordDetailPage() {
                   <tr key={r.id} className={`border-b border-border/50 hover:bg-surface-hover transition-colors ${
                     r.rank_position <= 3 ? 'bg-accent/[0.03]' : ''
                   }`}>
-                    <td className="py-3 px-4"><RankBadge rank={r.rank_position} size="sm" /></td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3.5 px-4"><RankBadge rank={r.rank_position} size="sm" /></td>
+                    <td className="py-3.5 px-4 text-center">
                       <RankChange change={r.rank_change} />
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4">
                       {r.naver_id ? (
                         <a href={`https://in.naver.com/${r.naver_id}`} target="_blank" rel="noopener noreferrer"
                           className="font-semibold hover:text-accent transition-colors">
@@ -496,16 +496,16 @@ export default function KeywordDetailPage() {
                       )}
                       {r.naver_id && <span className="block text-xs text-dim">@{r.naver_id}</span>}
                     </td>
-                    <td className="py-3 px-4 text-right text-xs text-dim">{r.influencer_category}</td>
-                    <td className="py-3 px-4 text-right text-xs font-bold font-rank">{r.fan_count || '-'}</td>
-                    <td className="py-3 px-4 text-xs text-dim truncate max-w-[200px] hidden lg:table-cell">
+                    <td className="py-3.5 px-4 text-left text-xs text-dim">{r.influencer_category}</td>
+                    <td className="py-3.5 px-4 text-right text-xs font-bold font-rank tabular-nums">{r.fan_count || <span className="text-dim" title="팬 수 미수집">—</span>}</td>
+                    <td className="py-3.5 px-4 text-xs text-dim truncate max-w-[200px] hidden lg:table-cell">
                       {r.post_url ? (
                         <a href={r.post_url} target="_blank" rel="noopener noreferrer"
                           className="hover:text-accent transition-colors">
-                          {r.post_title || '-'}
+                          {r.post_title || '—'}
                         </a>
                       ) : (
-                        r.post_title || '-'
+                        r.post_title || '—'
                       )}
                     </td>
                   </tr>

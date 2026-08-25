@@ -590,7 +590,7 @@ export default function CompetitorPage() {
                       <th className="text-center px-3 py-3 font-semibold w-20">통합검색</th>
                       <th className="text-center px-3 py-3 font-semibold w-20">블로그탭</th>
                       <th className="text-center px-3 py-3 font-semibold w-24">AI 의심도</th>
-                      <th className="text-right px-3 py-3 font-semibold w-24">작성일</th>
+                      <th className="text-left px-3 py-3 font-semibold w-24">작성일</th>
                       <th className="text-center px-5 py-3 font-semibold w-28">확인</th>
                     </tr>
                   </thead>
@@ -613,14 +613,14 @@ export default function CompetitorPage() {
                           {post.viewTab ? (
                             post.viewTab.exposed ? (
                               <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">{post.viewTab.rank}위</span>
-                            ) : <span className="text-xs text-dim">-</span>
+                            ) : <span className="text-xs text-dim" title="검색 결과에 없음">—</span>
                           ) : <span className="text-[10px] text-dim/50">&mdash;</span>}
                         </td>
                         <td className="text-center px-3 py-3.5">
                           {post.blogTab ? (
                             post.blogTab.exposed ? (
                               <span className="text-xs font-bold text-up bg-up/10 px-2 py-0.5 rounded-full">{post.blogTab.rank}위</span>
-                            ) : <span className="text-xs text-dim">-</span>
+                            ) : <span className="text-xs text-dim" title="검색 결과에 없음">—</span>
                           ) : <span className="text-[10px] text-dim/50">&mdash;</span>}
                         </td>
                         <td className="text-center px-3 py-3.5">

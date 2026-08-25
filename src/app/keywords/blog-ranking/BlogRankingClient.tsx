@@ -180,7 +180,7 @@ export default function BlogRankingClient() {
                       <th className="text-center px-4 py-3 font-semibold w-14">순위</th>
                       <th className="text-left px-3 py-3 font-semibold w-32">블로그</th>
                       <th className="text-left px-3 py-3 font-semibold">포스팅</th>
-                      <th className="text-right px-4 py-3 font-semibold w-24">작성일</th>
+                      <th className="text-left px-4 py-3 font-semibold w-24">작성일</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/20">
@@ -194,7 +194,7 @@ export default function BlogRankingClient() {
                               {r.rank}
                             </span>
                           ) : (
-                            <span className="text-dim font-semibold">{r.rank}</span>
+                            <span className="text-dim font-semibold tabular-nums">{r.rank}</span>
                           )}
                         </td>
                         <td className="px-3 py-3">
@@ -213,7 +213,7 @@ export default function BlogRankingClient() {
                             )}
                           </a>
                         </td>
-                        <td className="text-right px-4 py-3 text-xs text-dim shrink-0">{r.date}</td>
+                        <td className="text-left px-4 py-3 text-xs text-dim shrink-0">{r.date}</td>
                       </tr>
                     ))}
                   </tbody>

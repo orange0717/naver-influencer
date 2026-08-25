@@ -255,15 +255,15 @@ export default function BloggerKeywordsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-bg/50">
-                  <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs w-8">#</th>
-                  <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">키워드</th>
-                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyTotal')}>
+                  <th className="text-left py-3.5 px-4 font-semibold text-dim text-xs w-8">#</th>
+                  <th className="text-left py-3.5 px-4 font-semibold text-dim text-xs">키워드</th>
+                  <th className="text-right py-3.5 px-4 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('monthlyTotal')}>
                     월간 검색량{sortArrow('monthlyTotal')}
                   </th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyPc')}>
+                  <th className="text-right py-3.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('monthlyPc')}>
                     PC{sortArrow('monthlyPc')}
                   </th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('monthlyMobile')}>
+                  <th className="text-right py-3.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('monthlyMobile')}>
                     모바일{sortArrow('monthlyMobile')}
                   </th>
                   <th className="w-10"></th>
@@ -272,14 +272,14 @@ export default function BloggerKeywordsPage() {
               <tbody>
                 {sorted.map((kw, i) => (
                   <tr key={kw.keyword} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
-                    <td className="py-2.5 px-4 font-bold text-dim font-rank text-sm">{i + 1}</td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-3.5 px-4 font-bold text-dim font-rank tabular-nums text-sm">{i + 1}</td>
+                    <td className="py-3.5 px-4">
                       <span className={`text-[15px] font-bold ${i === 0 ? 'text-accent' : ''}`}>{kw.keyword}</span>
                     </td>
-                    <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{formatNum(kw.monthlyTotal)}</td>
-                    <td className="py-2.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyPc)}</td>
-                    <td className="py-2.5 px-3 text-right font-rank text-sm">{formatNum(kw.monthlyMobile)}</td>
-                    <td className="py-2.5 px-2">
+                    <td className="py-3.5 px-4 text-right font-bold font-rank tabular-nums text-sm">{formatNum(kw.monthlyTotal)}</td>
+                    <td className="py-3.5 px-3 text-right font-rank tabular-nums text-sm">{formatNum(kw.monthlyPc)}</td>
+                    <td className="py-3.5 px-3 text-right font-rank tabular-nums text-sm">{formatNum(kw.monthlyMobile)}</td>
+                    <td className="py-3.5 px-2">
                       <button
                         onClick={() => toggleSave(kw)}
                         disabled={savingKeyword === kw.keyword}

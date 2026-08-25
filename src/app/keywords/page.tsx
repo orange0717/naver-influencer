@@ -11,6 +11,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
 import AnalysisQuotaNotice from '@/components/AnalysisQuotaNotice';
 import { controlBoxClass } from '@/components/analytics/controls';
+import StatusBadge from '@/components/analytics/StatusBadge';
+import { ANALYTICS_SCOPE } from '@/components/analytics/tokens';
+import '@/components/analytics/analytics-tokens.css';
 
 const compTextMap: Record<string, string> = { low: '낮음', medium: '보통', high: '높음' };
 
@@ -337,10 +340,11 @@ export default function KeywordsPage() {
     setCurrentPageIndex(currentPageIndex - 1);
   };
 
+  // 경쟁도는 분석 화면 공용 상태 토큰(초록/주황/빨강)만 쓴다 — /my '내 키워드' 배지와 같은 색.
   const compBadge = (level: string) => {
-    if (level === 'low') return <span className="text-xs font-bold text-up bg-up/12 px-2 py-0.5 rounded-full">낮음</span>;
-    if (level === 'medium') return <span className="text-xs font-bold text-gold bg-gold/12 px-2 py-0.5 rounded-full">보통</span>;
-    return <span className="text-xs font-bold text-down bg-down/12 px-2 py-0.5 rounded-full">높음</span>;
+    if (level === 'low') return <StatusBadge tone="success" label="낮음" />;
+    if (level === 'medium') return <StatusBadge tone="warning" label="보통" />;
+    return <StatusBadge tone="danger" label="높음" />;
   };
 
   const startNum = currentPageIndex * 50;
@@ -419,7 +423,7 @@ export default function KeywordsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`${ANALYTICS_SCOPE} space-y-6`}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="type-page-title">키워드 전체 목록</h1>
@@ -450,7 +454,7 @@ export default function KeywordsPage() {
         {(search || category !== '전체' || subFilter !== '전체' || sortKey) && (
           <button
             onClick={() => { setSearch(''); setCategory('전체'); setSubFilter('전체'); setSortKey(null); setSortOrder('desc'); setCursorHistory([null]); setCurrentPageIndex(0); setNextCursor(null); loadedCountRef.current = 0; }}
-            className="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold bg-down/10 text-down border border-down/20 hover:bg-down/20 transition-colors cursor-pointer"
+            className="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold bg-surface text-text-2 border border-border hover:border-border-strong hover:text-text transition-colors cursor-pointer"
           >
             초기화
           </button>
@@ -503,7 +507,7 @@ export default function KeywordsPage() {
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
+            <div className="animate-spin w-8 h-8 border-2 border-text-2 border-t-transparent rounded-full mx-auto mb-3" />
             <p className="text-sm text-dim">네이버에서 키워드를 가져오는 중...</p>
           </div>
         </div>
@@ -541,30 +545,30 @@ export default function KeywordsPage() {
                           const sub = getSubcategory(kw.category, kw.keyword);
                           return (
                           <tr key={kw.id} className="border-b border-border/30 last:border-0 hover:bg-surface-hover transition-colors">
-                            <td className="py-3 px-4 font-bold text-dim font-rank text-sm w-8">{i + 1}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors shrink-0">
+                            <td className="py-3.5 px-4 font-bold text-dim font-rank tabular-nums text-sm w-8">{i + 1}</td>
+                            <td className="py-3.5 px-4">
+                              <div className="min-w-0">
+                                <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors truncate block">
                                   {kw.keyword}
                                 </Link>
                                 {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
-                                  <span className="text-xs text-dim truncate">
+                                  <div className="mt-1 text-[11px] text-dim truncate" title={top3Map[kw.id].map(t => `${t.rank}위 ${t.name}`).join(' · ')}>
                                     {top3Map[kw.id].map((t, idx) => (
                                       <span key={t.naver_id}>
-                                        <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
-                                        <span className="ml-0.5">{t.name}</span>
-                                        {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">|</span>}
+                                        <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}위</span>
+                                        <span className="ml-0.5 text-text-2 font-medium">{t.name}</span>
+                                        {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">·</span>}
                                       </span>
                                     ))}
-                                  </span>
+                                  </div>
                                 )}
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-sm text-dim">{kw.category}</td>
-                            {sub && <td className="py-3 px-2 text-sm text-accent font-semibold">{sub}</td>}
-                            <td className="py-3 px-4 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}명</td>
-                            <td className="py-3 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
-                            <td className="py-3 px-2 text-center w-10">
+                            <td className="py-3.5 px-3 text-sm text-dim">{kw.category}</td>
+                            {sub && <td className="py-3.5 px-2 text-sm text-text-2 font-semibold">{sub}</td>}
+                            <td className="py-3.5 px-4 text-right font-bold font-rank tabular-nums text-sm">{kw.participant_count.toLocaleString()}<span className="text-[11px] text-dim ml-0.5">명</span></td>
+                            <td className="py-3.5 px-4 text-center w-20">{compBadge(kw.competition_level)}</td>
+                            <td className="py-3.5 px-2 text-center w-10">
                               <BookmarkButton
                                 isSaved={savedSet.has(kw.keyword)}
                                 onClick={() => handleToggleSave(kw)}
@@ -587,7 +591,7 @@ export default function KeywordsPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold text-dim font-rank w-5">{i + 1}</span>
                               <span className="font-medium text-sm">{kw.keyword}</span>
-                              {sub && <span className="text-xs text-accent font-semibold">{sub}</span>}
+                              {sub && <span className="text-xs text-text-2 font-semibold">{sub}</span>}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-rank text-dim">{kw.participant_count.toLocaleString()}명</span>
@@ -640,20 +644,20 @@ export default function KeywordsPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-sm">키워드</th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-sm">카테고리</th>
                   <th className="text-left py-3 px-2 font-semibold text-dim text-sm">세부분류</th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('participant_count')}>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('participant_count')}>
                     참여자{sortArrow('participant_count')}
                   </th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('search_volume_monthly')}>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('search_volume_monthly')}>
                     월 검색량{sortArrow('search_volume_monthly')}
                   </th>
-                  <th className="text-right py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('search_volume_pc')}>
+                  <th className="text-right py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('search_volume_pc')}>
                     PC{sortArrow('search_volume_pc')}
                   </th>
-                  <th className="text-right py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('search_volume_mobile')}>
+                  <th className="text-right py-3 px-2 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('search_volume_mobile')}>
                     모바일{sortArrow('search_volume_mobile')}
                   </th>
                   <th className="text-left py-3 px-3 font-semibold text-dim text-sm">등록일</th>
-                  <th className="text-center py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-accent transition-colors" onClick={() => handleSort('competition_level')}>
+                  <th className="text-center py-3 px-3 font-semibold text-dim text-sm cursor-pointer hover:text-text transition-colors" onClick={() => handleSort('competition_level')}>
                     경쟁도{sortArrow('competition_level')}
                   </th>
                   <th className="text-center py-3 px-2 font-semibold text-dim text-sm w-10">저장</th>
@@ -667,43 +671,45 @@ export default function KeywordsPage() {
                   return (
                   <Fragment key={kw.id}>
                   <tr
-                    className={`border-b border-border/50 hover:bg-surface-hover transition-colors cursor-pointer ${isExpanded ? 'bg-accent/5' : ''}`}
+                    className={`border-b border-border/50 hover:bg-surface-hover transition-colors cursor-pointer ${isExpanded ? 'bg-surface-hover' : ''}`}
                     onClick={() => toggleRankings(kw.id)}
                   >
                     <td className="py-3.5 px-4 font-bold text-dim font-rank text-sm">{startNum + i + 1}</td>
                     <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors shrink-0" onClick={e => e.stopPropagation()}>
-                          {kw.keyword}
-                        </Link>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Link href={`/keywords/${kw.id}`} className="text-[15px] font-bold hover:text-accent transition-colors truncate" onClick={e => e.stopPropagation()}>
+                            {kw.keyword}
+                          </Link>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-dim transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+                        </div>
                         {top3Map[kw.id] && top3Map[kw.id].length > 0 && (
-                          <span className="text-xs text-dim truncate">
+                          <div className="mt-1 text-[11px] text-dim truncate" title={top3Map[kw.id].map(t => `${t.rank}위 ${t.name}`).join(' · ')}>
                             {top3Map[kw.id].map((t, idx) => (
                               <span key={t.naver_id}>
-                                <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}</span>
-                                <span className="ml-0.5">{t.name}</span>
-                                {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">|</span>}
+                                <span className={t.rank === 1 ? 'text-gold font-bold' : t.rank === 2 ? 'text-silver font-bold' : 'text-bronze font-bold'}>{t.rank}위</span>
+                                <span className="ml-0.5 text-text-2 font-medium">{t.name}</span>
+                                {idx < top3Map[kw.id].length - 1 && <span className="mx-1 text-border">·</span>}
                               </span>
                             ))}
-                          </span>
+                          </div>
                         )}
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-sm text-dim">{kw.category}</td>
-                    <td className="py-3.5 px-2 text-sm text-accent font-semibold">{sub || '—'}</td>
-                    <td className="py-3.5 px-3 text-right font-bold font-rank text-sm">{kw.participant_count.toLocaleString()}</td>
-                    <td className="py-3.5 px-3 text-right font-rank text-sm">
+                    <td className="py-3.5 px-2 text-sm text-text-2 font-semibold">{sub || <span className="text-dim">—</span>}</td>
+                    <td className="py-3.5 px-3 text-right font-bold font-rank tabular-nums text-sm">{kw.participant_count.toLocaleString()}</td>
+                    <td className="py-3.5 px-3 text-right font-rank tabular-nums text-sm">
                       {kw.search_volume_monthly > 0 ? kw.search_volume_monthly.toLocaleString() : <span className="text-dim">—</span>}
                     </td>
-                    <td className="py-3.5 px-2 text-right font-rank text-xs text-dim">
-                      {kw.search_volume_pc > 0 ? kw.search_volume_pc.toLocaleString() : '—'}
+                    <td className="py-3.5 px-2 text-right font-rank tabular-nums text-xs text-dim">
+                      {kw.search_volume_pc > 0 ? kw.search_volume_pc.toLocaleString() : <span className="text-dim" title="검색량 데이터 없음">—</span>}
                     </td>
-                    <td className="py-3.5 px-2 text-right font-rank text-xs text-dim">
-                      {kw.search_volume_mobile > 0 ? kw.search_volume_mobile.toLocaleString() : '—'}
+                    <td className="py-3.5 px-2 text-right font-rank tabular-nums text-xs text-dim">
+                      {kw.search_volume_mobile > 0 ? kw.search_volume_mobile.toLocaleString() : <span className="text-dim" title="검색량 데이터 없음">—</span>}
                     </td>
                     <td className="py-3.5 px-3 text-sm text-dim">
-                      {kw.first_seen_at ? new Date(kw.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '—'}
+                      {kw.first_seen_at ? new Date(kw.first_seen_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : <span className="text-dim" title="등록일 정보 없음">—</span>}
                     </td>
                     <td className="py-3.5 px-3 text-center">{compBadge(kw.competition_level)}</td>
                     <td className="py-3.5 px-2 text-center">
@@ -718,7 +724,7 @@ export default function KeywordsPage() {
                       <td colSpan={11} className="px-4 py-3 bg-bg/60 border-b border-border/50">
                         {isLoadingRank ? (
                           <div className="flex items-center gap-2 py-2 pl-8">
-                            <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
+                            <div className="animate-spin w-4 h-4 border-2 border-text-2 border-t-transparent rounded-full" />
                             <span className="text-xs text-dim">불러오는 중...</span>
                           </div>
                         ) : relatedCache[kw.id] && relatedCache[kw.id].length > 0 ? (
@@ -766,7 +772,7 @@ export default function KeywordsPage() {
                     <span className="text-sm font-bold text-dim font-rank shrink-0">#{startNum + i + 1}</span>
                     <span className="font-bold text-[15px] truncate">{kw.keyword}</span>
                     <span className="text-dim text-sm shrink-0">{kw.category}</span>
-                    {sub && <span className="text-sm text-accent font-semibold shrink-0">{sub}</span>}
+                    {sub && <span className="text-sm text-text-2 font-semibold shrink-0">{sub}</span>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {compBadge(kw.competition_level)}

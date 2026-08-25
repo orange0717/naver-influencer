@@ -240,18 +240,18 @@ export default function AdSettlements() {
               <th className="text-left py-2.5 px-3 font-semibold">일자</th>
               <th className="text-left py-2.5 px-3 font-semibold">거래처</th>
               <th className="text-right py-2.5 px-3 font-semibold">원고료</th>
-              <th className="text-center py-2.5 px-3 font-semibold">포스팅 업로드 일자</th>
-              <th className="text-center py-2.5 px-3 font-semibold">정산일자</th>
+              <th className="text-left py-2.5 px-3 font-semibold">포스팅 업로드 일자</th>
+              <th className="text-left py-2.5 px-3 font-semibold">정산일자</th>
             </tr>
           </thead>
           <tbody>
             {settlements.length === 0 ? (
               <tr>
-                <td className="py-3 px-3 text-xs text-dim">-</td>
-                <td className="py-3 px-3 text-dim">-</td>
-                <td className="py-3 px-3 text-right text-dim">-</td>
-                <td className="py-3 px-3 text-center text-dim">-</td>
-                <td className="py-3 px-3 text-center text-dim">-</td>
+                <td className="py-3 px-3 text-xs text-dim">—</td>
+                <td className="py-3 px-3 text-dim">—</td>
+                <td className="py-3 px-3 text-right text-dim">—</td>
+                <td className="py-3 px-3 text-left text-dim">—</td>
+                <td className="py-3 px-3 text-left text-dim">—</td>
               </tr>
             ) : (
               settlements.map(s => {
@@ -260,18 +260,18 @@ export default function AdSettlements() {
                 return (
                   <tr key={s.id} className="border-b border-border/50 hover:bg-bg/50 transition-colors">
                     <td className="py-3 px-3 text-xs text-dim">{formatDate(s.order_date || s.settled_date)}</td>
-                    <td className="py-3 px-3 font-semibold">{s.client_name || '-'}</td>
-                    <td className="py-3 px-3 text-right font-bold">{s.fee.toLocaleString()}<span className="text-xs text-dim font-normal ml-0.5">원</span></td>
-                    <td className="py-3 px-3 text-center">
+                    <td className="py-3 px-3 font-semibold">{s.client_name || <span className="text-dim">—</span>}</td>
+                    <td className="py-3 px-3 text-right font-bold tabular-nums">{s.fee.toLocaleString()}<span className="text-xs text-dim font-normal ml-0.5">원</span></td>
+                    <td className="py-3 px-3 text-left">
                       {s.posting_deadline ? (
                         <span className={`text-xs font-semibold ${isPastDeadline ? 'text-down' : 'text-text'}`}>
                           {formatDate(s.posting_deadline)}
                         </span>
                       ) : (
-                        <span className="text-xs text-dim">-</span>
+                        <span className="text-xs text-dim">—</span>
                       )}
                     </td>
-                    <td className="py-3 px-3 text-center">
+                    <td className="py-3 px-3 text-left">
                       {isSettled ? (
                         <span className="text-xs font-semibold text-up">{formatDate(s.settled_date)}</span>
                       ) : (
@@ -300,7 +300,7 @@ export default function AdSettlements() {
               return (
                 <div key={s.id} className="bg-bg rounded-xl p-3.5 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm">{s.client_name || '-'}</span>
+                    <span className="font-semibold text-sm">{s.client_name || <span className="text-dim">—</span>}</span>
                     <span className="font-bold text-sm">{s.fee.toLocaleString()}원</span>
                   </div>
                   <div className="flex items-center gap-3 text-[11px] text-dim">

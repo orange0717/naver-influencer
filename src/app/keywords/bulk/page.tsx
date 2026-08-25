@@ -1,4 +1,9 @@
 'use client';
+
+import StatusBadge from '@/components/analytics/StatusBadge';
+import { ANALYTICS_SCOPE } from '@/components/analytics/tokens';
+import type { StatusTone } from '@/components/analytics/types';
+import '@/components/analytics/analytics-tokens.css';
 import { useState, useRef } from 'react';
 
 interface KeywordResult {
@@ -10,12 +15,21 @@ interface KeywordResult {
   found: boolean;
 }
 
-const COMP_COLOR: Record<string, string> = {
-  '낮음': 'text-up',
-  '중간': 'text-warning',
-  '높음': 'text-down',
-  '-': 'text-dim',
+// 경쟁도는 분석 화면 공용 상태 토큰(초록/주황/빨강) pill 로 통일한다.
+// (네이버 검색광고 API 는 '중간', 챌린지 데이터는 '보통' 을 쓴다 — 둘 다 받는다)
+const COMP_TONE: Record<string, StatusTone> = {
+  '낮음': 'success',
+  '중간': 'warning',
+  '보통': 'warning',
+  '높음': 'danger',
 };
+
+function CompetitionCell({ level, found = true }: { level: string; found?: boolean }) {
+  if (!found || !level || level === '-') {
+    return <span className="text-dim" title="경쟁도 데이터 없음">—</span>;
+  }
+  return <StatusBadge tone={COMP_TONE[level] ?? 'neutral'} label={level} />;
+}
 
 type Mode = 'volume' | 'related';
 type RelatedSort = 'order' | 'volume' | 'alpha';
@@ -183,7 +197,7 @@ export default function BulkSearchVolumePage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`${ANALYTICS_SCOPE} space-y-4`}>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="type-page-title">대량 키워드 조회</h1>
         <p className="text-xs text-dim">
@@ -345,27 +359,27 @@ export default function BulkSearchVolumePage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border bg-bg/50">
-                      <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs w-8">#</th>
-                      <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">키워드</th>
+                      <th className="text-left py-3.5 px-4 font-semibold text-dim text-xs w-8">#</th>
+                      <th className="text-left py-3.5 px-4 font-semibold text-dim text-xs">키워드</th>
                       <th
-                        className="text-right py-2.5 px-4 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors"
+                        className="text-right py-3.5 px-4 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors"
                         onClick={() => handleSort('monthlyTotal')}
                       >
                         월간 검색량{sortArrow('monthlyTotal')}
                       </th>
                       <th
-                        className="text-right py-2.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors"
+                        className="text-right py-3.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors"
                         onClick={() => handleSort('monthlyPc')}
                       >
                         PC{sortArrow('monthlyPc')}
                       </th>
                       <th
-                        className="text-right py-2.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors"
+                        className="text-right py-3.5 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors"
                         onClick={() => handleSort('monthlyMobile')}
                       >
                         모바일{sortArrow('monthlyMobile')}
                       </th>
-                      <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs">경쟁도</th>
+                      <th className="text-center py-3.5 px-3 font-semibold text-dim text-xs">경쟁도</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -374,24 +388,22 @@ export default function BulkSearchVolumePage() {
                         key={kw.keyword + i}
                         className={`border-b border-border/50 hover:bg-surface-hover transition-colors ${!kw.found ? 'opacity-50' : ''}`}
                       >
-                        <td className="py-2.5 px-4 font-bold text-dim font-rank text-sm">{i + 1}</td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-3.5 px-4 font-bold text-dim font-rank tabular-nums text-sm">{i + 1}</td>
+                        <td className="py-3.5 px-4">
                           <span className="text-[15px] font-bold">{kw.keyword}</span>
                           {!kw.found && <span className="ml-2 text-[11px] text-dim bg-border/50 px-1.5 py-0.5 rounded">데이터 없음</span>}
                         </td>
-                        <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">
-                          {kw.found ? fmt(kw.monthlyTotal) : '-'}
+                        <td className="py-3.5 px-4 text-right font-bold font-rank tabular-nums text-sm">
+                          {kw.found ? fmt(kw.monthlyTotal) : <span className="text-dim" title="검색광고 API 에 없는 키워드">—</span>}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-rank text-sm">
-                          {kw.found ? fmt(kw.monthlyPc) : '-'}
+                        <td className="py-3.5 px-3 text-right font-rank tabular-nums text-sm">
+                          {kw.found ? fmt(kw.monthlyPc) : <span className="text-dim">—</span>}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-rank text-sm">
-                          {kw.found ? fmt(kw.monthlyMobile) : '-'}
+                        <td className="py-3.5 px-3 text-right font-rank tabular-nums text-sm">
+                          {kw.found ? fmt(kw.monthlyMobile) : <span className="text-dim">—</span>}
                         </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`text-xs font-bold ${COMP_COLOR[kw.competition] || 'text-dim'}`}>
-                            {kw.found ? kw.competition : '-'}
-                          </span>
+                        <td className="py-3.5 px-3 text-center">
+                          <CompetitionCell level={kw.competition} found={kw.found} />
                         </td>
                       </tr>
                     ))}
@@ -412,9 +424,7 @@ export default function BulkSearchVolumePage() {
                         <span className="font-bold text-[15px] truncate">{kw.keyword}</span>
                       </div>
                       {kw.found && (
-                        <span className={`text-xs font-bold shrink-0 ${COMP_COLOR[kw.competition]}`}>
-                          {kw.competition}
-                        </span>
+                        <span className="shrink-0"><CompetitionCell level={kw.competition} /></span>
                       )}
                     </div>
                     {kw.found ? (
@@ -584,12 +594,12 @@ export default function BulkSearchVolumePage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border bg-bg/50">
-                      <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs w-8">#</th>
-                      <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">키워드</th>
-                      <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">월간 검색량</th>
-                      <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">PC</th>
-                      <th className="text-right py-2.5 px-3 font-semibold text-dim text-xs">모바일</th>
-                      <th className="text-center py-2.5 px-3 font-semibold text-dim text-xs">경쟁도</th>
+                      <th className="text-left py-3.5 px-4 font-semibold text-dim text-xs w-8">#</th>
+                      <th className="text-left py-3.5 px-4 font-semibold text-dim text-xs">키워드</th>
+                      <th className="text-right py-3.5 px-4 font-semibold text-dim text-xs">월간 검색량</th>
+                      <th className="text-right py-3.5 px-3 font-semibold text-dim text-xs">PC</th>
+                      <th className="text-right py-3.5 px-3 font-semibold text-dim text-xs">모바일</th>
+                      <th className="text-center py-3.5 px-3 font-semibold text-dim text-xs">경쟁도</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -598,20 +608,18 @@ export default function BulkSearchVolumePage() {
                         key={kw.keyword + i}
                         className="border-b border-border/50 hover:bg-surface-hover transition-colors"
                       >
-                        <td className="py-2.5 px-4 font-bold text-dim font-rank text-sm">{i + 1}</td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-3.5 px-4 font-bold text-dim font-rank tabular-nums text-sm">{i + 1}</td>
+                        <td className="py-3.5 px-4">
                           <span className="text-[15px] font-bold">{kw.keyword}</span>
                           {kw.keyword === seedKeyword && (
                             <span className="ml-2 text-[11px] text-accent bg-accent/10 px-1.5 py-0.5 rounded">시드</span>
                           )}
                         </td>
-                        <td className="py-2.5 px-4 text-right font-bold font-rank text-sm">{fmt(kw.monthlyTotal)}</td>
-                        <td className="py-2.5 px-3 text-right font-rank text-sm">{fmt(kw.monthlyPc)}</td>
-                        <td className="py-2.5 px-3 text-right font-rank text-sm">{fmt(kw.monthlyMobile)}</td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`text-xs font-bold ${COMP_COLOR[kw.competition] || 'text-dim'}`}>
-                            {kw.competition}
-                          </span>
+                        <td className="py-3.5 px-4 text-right font-bold font-rank tabular-nums text-sm">{fmt(kw.monthlyTotal)}</td>
+                        <td className="py-3.5 px-3 text-right font-rank tabular-nums text-sm">{fmt(kw.monthlyPc)}</td>
+                        <td className="py-3.5 px-3 text-right font-rank tabular-nums text-sm">{fmt(kw.monthlyMobile)}</td>
+                        <td className="py-3.5 px-3 text-center">
+                          <CompetitionCell level={kw.competition} />
                         </td>
                       </tr>
                     ))}
@@ -628,9 +636,7 @@ export default function BulkSearchVolumePage() {
                         <span className="text-sm font-bold text-dim font-rank shrink-0">#{i + 1}</span>
                         <span className="font-bold text-[15px] truncate">{kw.keyword}</span>
                       </div>
-                      <span className={`text-xs font-bold shrink-0 ${COMP_COLOR[kw.competition]}`}>
-                        {kw.competition}
-                      </span>
+                      <span className="shrink-0"><CompetitionCell level={kw.competition} /></span>
                     </div>
                     <div className="flex items-center gap-3 text-sm text-dim">
                       <span>월 <span className="text-text font-bold font-rank">{fmt(kw.monthlyTotal)}</span>회</span>

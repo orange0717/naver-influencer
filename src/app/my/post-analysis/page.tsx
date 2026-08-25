@@ -401,9 +401,9 @@ export default function PostAnalysisPage() {
                 <thead>
                   <tr className="border-b border-border/50 text-xs text-dim">
                     <th className="text-left px-5 py-3 font-semibold">제목</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">글자수</th>
-                    <th className="text-center px-3 py-3 font-semibold w-16">이미지</th>
-                    <th className="text-center px-3 py-3 font-semibold whitespace-nowrap min-w-[7.5rem]">날짜</th>
+                    <th className="text-right px-3 py-3 font-semibold w-16">글자수</th>
+                    <th className="text-right px-3 py-3 font-semibold w-16">이미지</th>
+                    <th className="text-left px-3 py-3 font-semibold whitespace-nowrap min-w-[7.5rem]">날짜</th>
                     <th className="text-right px-5 py-3 font-semibold w-56">분석</th>
                   </tr>
                 </thead>
@@ -420,7 +420,7 @@ export default function PostAnalysisPage() {
                     const isAnalyzingText = analyzingText === post.id;
 
                     return (<>
-                      <tr key={post.id} id={`post-row-${post.id}`} className={`group hover:bg-surface-hover/50 transition-colors cursor-pointer ${isExpanded ? 'bg-accent/5' : ''}`} onClick={() => setExpandedPost(isExpanded ? null : post.id)}>
+                      <tr key={post.id} id={`post-row-${post.id}`} className={`group hover:bg-surface-hover/50 transition-colors cursor-pointer ${isExpanded ? 'bg-surface-hover' : ''}`} onClick={() => setExpandedPost(isExpanded ? null : post.id)}>
                         <td className="px-5 py-3.5">
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold text-sm hover:text-accent transition-colors line-clamp-1 block"
@@ -438,17 +438,17 @@ export default function PostAnalysisPage() {
                             </span>
                           )}
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-right px-3 py-3.5">
                           {analysis ? (
-                            <span className="text-xs">{analysis.charCount.toLocaleString()}</span>
-                          ) : <span className="text-[10px] text-dim">-</span>}
+                            <span className="text-xs tabular-nums">{analysis.charCount.toLocaleString()}</span>
+                          ) : <span className="text-dim" title="아직 분석하지 않은 글">—</span>}
                         </td>
-                        <td className="text-center px-3 py-3.5">
+                        <td className="text-right px-3 py-3.5">
                           {analysis ? (
-                            <span className="text-xs">{analysis.imageCount}</span>
-                          ) : <span className="text-[10px] text-dim">-</span>}
+                            <span className="text-xs tabular-nums">{analysis.imageCount}</span>
+                          ) : <span className="text-dim" title="아직 분석하지 않은 글">—</span>}
                         </td>
-                        <td className="text-center px-3 py-3.5 whitespace-nowrap align-middle">
+                        <td className="text-left px-3 py-3.5 whitespace-nowrap align-middle">
                           <span className="text-sm text-dim tabular-nums">{post.date}</span>
                         </td>
                         <td className="text-right px-5 py-3.5">

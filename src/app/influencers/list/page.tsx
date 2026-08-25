@@ -201,10 +201,10 @@ export default function InfluencersListPage() {
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs w-8">#</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">인플루언서</th>
                   <th className="text-left py-3 px-4 font-semibold text-dim text-xs">활동 분야</th>
-                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('subscriber_count')}>
+                  <th className="text-right py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors" onClick={() => handleSortChange('subscriber_count')}>
                     팬수{sortArrow('subscriber_count')}
                   </th>
-                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-accent transition-colors" onClick={() => handleSortChange('first_seen_at')}>
+                  <th className="text-left py-3 px-3 font-semibold text-dim text-xs cursor-pointer hover:text-text transition-colors" onClick={() => handleSortChange('first_seen_at')}>
                     선정일{sortArrow('first_seen_at')}
                   </th>
                 </tr>
@@ -212,7 +212,7 @@ export default function InfluencersListPage() {
               <tbody>
                 {influencers.map((inf, i) => (
                   <tr key={inf.naverId || inf.name + i} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
-                    <td className="py-3 px-4 font-bold font-rank text-xs">
+                    <td className="py-3 px-4 font-bold font-rank tabular-nums text-xs">
                       <span className="text-dim">{(page - 1) * 50 + i + 1}</span>
                     </td>
                     <td className="py-3 px-4">
@@ -240,7 +240,7 @@ export default function InfluencersListPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="text-xs">
-                        <span className="font-semibold text-text">{inf.myKeywordCategory || '-'}</span>
+                        <span className="font-semibold text-text">{inf.myKeywordCategory || <span className="text-dim">—</span>}</span>
                         {inf.categoryMyType && (
                           <span className="text-dim ml-1">· {inf.categoryMyType}</span>
                         )}
@@ -249,7 +249,7 @@ export default function InfluencersListPage() {
                         <div className="text-[10px] text-dim mt-0.5">{inf.myKeyword}</div>
                       )}
                     </td>
-                    <td className="py-3 px-3 text-right text-xs font-bold font-rank text-accent">
+                    <td className="py-3 px-3 text-right text-xs font-bold font-rank tabular-nums text-accent">
                       {formatCount(inf.subscriberCount || inf.totalFollowerCount)}
                     </td>
                     <td className="py-3 px-3 text-xs text-dim">

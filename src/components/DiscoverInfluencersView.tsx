@@ -238,18 +238,18 @@ export default function DiscoverInfluencersView() {
               <tbody>
                 {items.map(item => (
                   <tr key={item.urlId} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
-                    <td className="py-3 px-4 font-bold font-rank text-xs text-dim">{item.rank}</td>
+                    <td className="py-3 px-4 font-bold font-rank tabular-nums text-xs text-dim">{item.rank}</td>
                     <td className="py-3 px-4 font-bold">{item.name}</td>
-                    <td className="py-3 px-3 text-right text-xs font-bold font-rank text-accent">{item.totalTopics}</td>
-                    <td className="py-3 px-3 text-right text-xs font-rank">{item.last7Days}</td>
-                    <td className="py-3 px-3 text-right text-xs font-rank">{item.last30Days}</td>
+                    <td className="py-3 px-3 text-right text-xs font-bold font-rank tabular-nums text-accent">{item.totalTopics}</td>
+                    <td className="py-3 px-3 text-right text-xs font-rank tabular-nums">{item.last7Days}</td>
+                    <td className="py-3 px-3 text-right text-xs font-rank tabular-nums">{item.last30Days}</td>
                     <td className="py-3 px-3 text-xs text-dim">{formatDate(item.lastPublish)}</td>
                     {topCategoryKeys.map(key => (
-                      <td key={key} className="py-3 px-3 text-right text-xs font-rank text-dim">
+                      <td key={key} className="py-3 px-3 text-right text-xs font-rank tabular-nums text-dim">
                         {item.categories[key] || 0}
                       </td>
                     ))}
-                    <td className="py-3 px-3 text-right text-xs font-rank text-dim">{otherCount(item)}</td>
+                    <td className="py-3 px-3 text-right text-xs font-rank tabular-nums text-dim">{otherCount(item)}</td>
                   </tr>
                 ))}
               </tbody>

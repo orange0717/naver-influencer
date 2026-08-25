@@ -788,7 +788,7 @@ export default function ProfilePage() {
                   <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">내역</th>
                   <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">크레딧</th>
                   <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">잔액</th>
-                  <th className="text-right py-2.5 px-4 font-semibold text-dim text-xs">날짜</th>
+                  <th className="text-left py-2.5 px-4 font-semibold text-dim text-xs">날짜</th>
                 </tr>
               </thead>
               <tbody>
@@ -796,12 +796,12 @@ export default function ProfilePage() {
                   <tr key={idx} className="border-b border-border/50">
                     <td className="py-3 px-4 text-sm">{h.label}</td>
                     <td className="py-3 px-4 text-right">
-                      <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
+                      <span className={`font-bold text-sm font-rank tabular-nums ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
                         {h.amount > 0 ? '+' : ''}{h.amount.toLocaleString()}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right text-xs text-dim font-rank">{h.balanceAfter.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right text-xs text-dim">
+                    <td className="py-3 px-4 text-right text-xs text-dim font-rank tabular-nums">{h.balanceAfter.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-left text-xs text-dim tabular-nums">
                       {new Date(h.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </td>
                   </tr>
@@ -819,7 +819,7 @@ export default function ProfilePage() {
                       {new Date(h.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
-                  <span className={`font-bold text-sm font-rank ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
+                  <span className={`font-bold text-sm font-rank tabular-nums ${h.amount > 0 ? 'text-up' : 'text-down'}`}>
                     {h.amount > 0 ? '+' : ''}{h.amount.toLocaleString()}
                   </span>
                 </div>
