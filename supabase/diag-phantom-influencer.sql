@@ -10,6 +10,27 @@
 -- 이 파일은 **이미 만들어진 오염 행이 있는지** 확인하고 정리하기 위한 것이다.
 --
 -- ⚠️ §1 만 먼저 실행할 것. §2 는 §1 결과를 보고 판단한 뒤에 실행한다.
+--
+-- ─────────────────────────────────────────────────────────────
+-- 2026-08-25 실측 결과 (오렌지 실행)
+-- ─────────────────────────────────────────────────────────────
+-- §1 → 1행.
+--   naver_id='오후 10:00' (포스팅 시각 표기가 ID 자리에 들어감), display_name='오후열시'
+--   rank_rows=0 · keyword_rows=0 · linked_users=0
+--
+-- 즉 **여러 사람의 순위가 한 행으로 합쳐지는 최악의 시나리오는 일어나지 않았다.**
+-- 순위 데이터가 0건이라 집계·화면에 기여한 값이 없다. 껍데기 행 하나만 남은 상태.
+--
+-- ⚠️ influencers 를 참조하는 외래키는 3개가 아니라 **5개**다 (실측):
+--   competitor_watches.competitor_id            CASCADE   ← 회원이 만든 데이터! 조용히 같이 지워진다
+--   influencer_keywords.influencer_id           CASCADE
+--   keyword_rankings.influencer_id              CASCADE
+--   users.linked_influencer_id                  NO ACTION ← 삭제를 막아주는 유일한 안전장치
+--   naver_official_rankings.linked_influencer_id SET NULL
+--
+-- 처음엔 앞의 3개만 알고 있었다. competitor_watches 를 모른 채 지웠다면
+-- 회원이 등록해 둔 경쟁자 목록이 경고 없이 사라졌을 수 있다.
+-- **앞으로 influencers 행을 지울 땐 이 5개를 전부 확인할 것.**
 
 
 -- ─────────────────────────────────────────────────────────────
@@ -44,13 +65,16 @@ ORDER BY rank_rows DESC;
 -- ─────────────────────────────────────────────────────────────
 -- §2. 정리 (파괴적 — §1 이 행을 돌려줬을 때만)
 -- ─────────────────────────────────────────────────────────────
--- 실행 전 확인:
---   · §1 의 linked_users 가 모두 0 인가?
---     0 이 아니면 그 행은 지우지 말 것. users.linked_influencer_id 는 ON DELETE 절이 없어서
---     (NO ACTION) DELETE 자체가 외래키 위반으로 실패한다. 회원 연결을 먼저 옳은 인플루언서로
---     옮기거나 해제한 뒤에 지워야 한다.
---   · keyword_rankings · influencer_keywords 는 ON DELETE CASCADE 라 같이 지워진다.
---     따로 DELETE 할 필요가 없다.
+-- 방어 조건으로 외래키 5개를 **전부** 건다. 하나라도 걸리는 게 있으면 그 행은
+-- 조용히 건너뛴다(0행 삭제). 그래서 확인 쿼리보다 먼저 돌려도 안전하다.
+--
+--   · users.linked_influencer_id 는 NO ACTION 이라 DELETE 자체가 실패한다 →
+--     실패시키지 말고 아예 대상에서 빼는 게 낫다(에러 없이 0행).
+--   · competitor_watches 는 CASCADE 다. 회원이 이 인플루언서를 경쟁자로 등록해 뒀다면
+--     그 등록이 **아무 경고 없이** 같이 지워진다. 반드시 0건인지 확인하고 지운다.
+--   · naver_official_rankings 는 SET NULL 이라 순위 행 자체는 남고 연결만 끊긴다.
+--     다만 연결이 있었다면 = 공식 순위가 이 유령에 잘못 붙어 있었다는 뜻이므로,
+--     지우기 전에 그 순위를 옳은 인플루언서로 옮길지 먼저 판단할 것.
 --
 -- 트랜잭션으로 감싸서 삭제 건수를 먼저 확인하고 커밋한다.
 
@@ -63,7 +87,11 @@ ORDER BY rank_rows DESC;
 --       OR btrim(i.naver_id) = ''
 --       OR i.naver_id ~ '[/?=&[:space:]#]'
 --       OR i.naver_id ~* '^https?:')
---     AND NOT EXISTS (SELECT 1 FROM users u WHERE u.linked_influencer_id = i.id)
+--     AND NOT EXISTS (SELECT 1 FROM users u                   WHERE u.linked_influencer_id  = i.id)
+--     AND NOT EXISTS (SELECT 1 FROM keyword_rankings kr       WHERE kr.influencer_id        = i.id)
+--     AND NOT EXISTS (SELECT 1 FROM influencer_keywords ik    WHERE ik.influencer_id        = i.id)
+--     AND NOT EXISTS (SELECT 1 FROM competitor_watches cw     WHERE cw.competitor_id        = i.id)
+--     AND NOT EXISTS (SELECT 1 FROM naver_official_rankings nr WHERE nr.linked_influencer_id = i.id)
 -- )
 -- DELETE FROM influencers WHERE id IN (SELECT id FROM phantom)
 -- RETURNING id, naver_id, display_name;
@@ -80,5 +108,26 @@ ORDER BY rank_rows DESC;
 --
 -- 이 함수는 service_role 에만 EXECUTE 가 있다(migration-106).
 -- Supabase SQL Editor 는 postgres 로 실행되므로 그대로 호출된다.
+--
+-- 단 2026-08-25 건은 지운 행의 ninfl_rank 가 NULL 이었다(순위에 낀 적이 없음).
+-- 그런 경우엔 재계산이 필요 없다. **ninfl_rank 가 NULL 이 아닌 행을 지웠을 때만** 실행할 것.
 
 -- SELECT public.recompute_ninfl_ranks();
+
+
+-- ─────────────────────────────────────────────────────────────
+-- §4. 삭제 전 마지막 확인 (읽기 전용) — 특정 id 하나를 지울 때
+-- ─────────────────────────────────────────────────────────────
+-- Supabase SQL Editor 는 여러 statement 를 실행하면 **마지막 결과만** 보여준다.
+-- 그래서 확인 항목을 UNION ALL 로 한 결과에 모아 둔다.
+
+-- SELECT '① 같은 이름의 인플루언서 행' AS 항목,
+--        i.id::text AS 값1, i.naver_id AS 값2, i.display_name AS 값3, i.created_at::text AS 값4
+-- FROM influencers i
+-- WHERE i.display_name ILIKE '%대상이름%'
+-- UNION ALL
+-- SELECT '② 경쟁자 등록 건수(회원 데이터·CASCADE)', count(*)::text, '', '', ''
+-- FROM competitor_watches WHERE competitor_id = '대상-uuid'
+-- UNION ALL
+-- SELECT '③ 네이버 공식순위 연결 건수(SET NULL)', count(*)::text, '', '', ''
+-- FROM naver_official_rankings WHERE linked_influencer_id = '대상-uuid';
