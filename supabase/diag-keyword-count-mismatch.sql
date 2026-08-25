@@ -1,25 +1,28 @@
 -- 「참여 키워드」와 「순위별 키워드 분포 합」이 어긋날 때 원인 확인용 (2026-08-26)
 --
--- ⚠️ Supabase SQL 편집기에는 psql 바인드 문법(:inf)이 없다. 각 블록 안의 '내아이디' 를
---    본인 네이버 아이디로 바꿔 그 블록만 통째로 실행한다.
---    (아이디는 in.naver.com/{여기} 의 그 값 = influencers.naver_id)
+-- ⚠️ Supabase SQL 편집기에는 psql 바인드 문법(:inf)이 없다. 각 블록 안의
+--    '내이메일@example.com' 을 로그인 이메일로 바꿔 그 블록만 통째로 실행한다.
+--    (users.email → linked_influencer_id 로 본인 인플루언서를 자동으로 찾는다.
+--     이메일 대신 네이버 아이디로 찾고 싶으면 me CTE 를 아래로 바꾼다:
+--       SELECT id FROM influencers WHERE naver_id = '내아이디')
 --
 -- ⚠️ 이 서비스에는 challenge_keywords 라는 단일 테이블이 없다. 참여 관계와 순위가 분리돼 있다.
 --    influencer_keywords : (influencer_id, keyword_id) 참여 관계. PK 라 중복 자체가 불가능.
 --    keyword_rankings    : 일자별 순위 스냅샷. 네이버가 rank=0(미노출)로 준 키워드는 아예 안 들어간다.
 
 
--- ─── 0. 내 인플루언서 행 확인 (여기서 0행이면 아이디가 틀린 것) ───
-SELECT id, naver_id, display_name,
-       total_keywords AS "네이버_원본_전체키워드",
-       last_crawled_at
-FROM influencers
-WHERE naver_id = '내아이디';
+-- ─── 0. 내 인플루언서 행 확인 (여기서 0행이면 이메일이 틀렸거나 인플루언서 미연결) ───
+SELECT i.id, i.naver_id, i.display_name,
+       i.total_keywords AS "네이버_원본_전체키워드",
+       i.last_crawled_at
+FROM users u
+JOIN influencers i ON i.id = u.linked_influencer_id
+WHERE u.email = '내이메일@example.com';
 
 
 -- ─── 1. 차이(예: 14개)의 정체 ───
 WITH me AS (
-  SELECT id FROM influencers WHERE naver_id = '내아이디'
+  SELECT linked_influencer_id AS id FROM users WHERE email = '내이메일@example.com' LIMIT 1
 ),
 ranked AS (
   SELECT DISTINCT ON (keyword_id) keyword_id
@@ -48,7 +51,7 @@ WHERE ik.influencer_id = (SELECT id FROM me);
 
 -- ─── 2. 순위가 없는 살아있는 참여 키워드를 눈으로 확인 ───
 WITH me AS (
-  SELECT id FROM influencers WHERE naver_id = '내아이디'
+  SELECT linked_influencer_id AS id FROM users WHERE email = '내이메일@example.com' LIMIT 1
 ),
 ranked AS (
   SELECT DISTINCT ON (keyword_id) keyword_id
@@ -77,8 +80,8 @@ SELECT ksr.started_at, ksr.finished_at, ksr.source, ksr.status,
        ksr.fetched_count, ksr.reported_total, ksr.linked_count,
        ksr.tombstoned, ksr.restored, ksr.note
 FROM keyword_sync_runs ksr
-JOIN influencers i ON i.id = ksr.influencer_id
-WHERE i.naver_id = '내아이디'
+JOIN users u ON u.linked_influencer_id = ksr.influencer_id
+WHERE u.email = '내이메일@example.com'
 ORDER BY ksr.started_at DESC
 LIMIT 20;
 -- 0행                 → migration-162 이후 아직 동기화가 한 번도 안 돌았다.
@@ -90,8 +93,8 @@ LIMIT 20;
 -- ─── 4. 중복 확인 (스키마상 불가능하지만 확인용) ───
 SELECT ik.influencer_id, ik.keyword_id, COUNT(*)
 FROM influencer_keywords ik
-JOIN influencers i ON i.id = ik.influencer_id
-WHERE i.naver_id = '내아이디'
+JOIN users u ON u.linked_influencer_id = ik.influencer_id
+WHERE u.email = '내이메일@example.com'
 GROUP BY 1, 2
 HAVING COUNT(*) > 1;
 -- influencer_keywords 는 PRIMARY KEY (influencer_id, keyword_id) 라 항상 0행이어야 한다.
