@@ -237,6 +237,31 @@ const REP_KEYWORD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // TTL이 남아 있어도 옛 규칙의 결과이므로 재추출한다 — 규칙을 고쳐도 화면이 30일간 그대로인 문제 방지.
 const RULE_ENGINE_EPOCH_MS = Date.parse('2026-08-15T08:45:00Z');
 
+// 저장된 대표 키워드가 "AI 보정을 거치지 않은 저신뢰 규칙 결과"일 때, AI 보정이 허용된 호출에서는
+// TTL이 남아 있어도 한 번 더 추출한다.
+//
+// 왜 필요한가(2026-08-25 프로덕션 실측): 목록 화면 자동 추출(`/api/my/representative-keywords/extract`)은
+// 대량 처리라 의도적으로 allowAI:false 로 규칙 최선값만 저장한다. 그런데 그 값이 30일 TTL 캐시로 굳어,
+// 정작 AI 보정이 켜져 있는 미노출 검사(check-missing)·노출 크론에서도 캐시 히트로 반환돼 AI가 한 번도
+// 호출되지 않았다. 그 결과 규칙 엔진이 스스로 ambiguous=true(확신 못 함)라고 신고한 파편이
+// 그대로 검색어가 됐다 — 실측 사례: "나를"(0.52) · "힘들때"(0.58) · "오렌지도서관의"(0.28).
+// 이런 조각으로 검색한 결과가 '미노출'로 기록되면 판정 근거 자체가 성립하지 않는다.
+//
+// 임계값 0.7 근거: keyword-candidates 의 confidence 는 topScore/12 에 감점 계수를 곱한 값이라
+// ambiguous=false 의 하한이 0.5(topScore=CONFIDENT_SCORE=6), ambiguous=true 의 상한이 0.69
+// (topScore=12 · strongRegions≥2 → 0.99×0.7)다. 두 구간이 [0.5, 0.69]에서 겹치므로 confidence 만으로
+// 완전히 가를 수는 없지만, 경계 구간을 AI 쪽으로 넘겨도 손해가 없다 — AI 결과는 validateAiKeywords 로
+// 사후 검증되고 실패하면 규칙값으로 폴백하므로 지금보다 나빠지지 않는다.
+// ⚠️ confidence 컬럼이 없는 환경(migration-154 미적용)에서는 값이 number 가 아니므로 이 재추출을
+//    발동시키지 않는다 — 컬럼 부재를 저신뢰로 오인해 전 건 AI 재추출이 도는 것을 막기 위함이다.
+const AI_RETRY_CONFIDENCE = 0.7;
+
+// 저신뢰 재추출을 시도했는데 AI가 또 실패하면(키 미설정·쿼터·검증 탈락) 결과는 다시 저신뢰로 저장된다.
+// 쿨다운이 없으면 그 글은 검사할 때마다 매번 AI를 다시 때리게 되므로, 재시도 간격을 둔다.
+// 사용자가 명시적으로 누르는 '대표키워드 다시 추출'은 extractRepresentativeKeywords 를 직접 호출해
+// 이 캐시 경로를 타지 않으므로 이 쿨다운에 막히지 않는다.
+const AI_RETRY_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
 // migration-154(confidence, keyword_changed_at)가 아직 적용되지 않은 환경에서도 안전하게 저장되도록
 // 추가 컬럼이 없으면 그 키만 빼고 재시도한다(무중단 배포 — 마이그레이션은 나중에 활성화만).
 const ADDITIVE_REP_COLUMNS = ['confidence', 'keyword_changed_at'];
@@ -271,6 +296,38 @@ export async function upsertRepresentativeRows(
  * 대표 키워드를 (blog_id, post_id) 기준으로 조회 → 없거나 오래됐으면 추출 후 저장.
  * 미노출/키워드순위/AI브리핑·탭 메뉴가 모두 이 함수를 통해 동일한 대표 키워드를 공유한다.
  */
+/** shouldReuseCachedKeyword 가 보는 저장 행의 최소 형태 — 테스트에서 DB 없이 재현하기 위해 분리했다. */
+export interface CachedKeywordRow {
+  keyword_source: string | null;
+  extracted_at: string | null;
+  confidence: number | null;
+}
+
+/**
+ * 저장된 대표 키워드를 그대로 재사용해도 되는가(= 재추출을 건너뛸 것인가).
+ *
+ * 재사용하지 않는 조건은 셋이다.
+ *   1) TTL(30일) 경과
+ *   2) 추출 규칙이 그 뒤에 바뀜(RULE_ENGINE_EPOCH_MS)
+ *   3) AI 보정이 허용된 호출인데 저장값이 AI를 안 거친 저신뢰 결과 — AI_RETRY_CONFIDENCE 주석 참고
+ *
+ * manual(사용자 지정)은 이 함수에 오기 전에 호출부에서 먼저 반환하므로 여기서 다루지 않는다.
+ */
+export function shouldReuseCachedKeyword(row: CachedKeywordRow, allowAI: boolean, now = Date.now()): boolean {
+  const extractedAtMs = row.extracted_at ? new Date(row.extracted_at).getTime() : 0;
+  if (!extractedAtMs) return false;
+  if (now - extractedAtMs >= REP_KEYWORD_TTL_MS) return false;
+  if (extractedAtMs < RULE_ENGINE_EPOCH_MS) return false;
+
+  const lowConfidence =
+    allowAI &&
+    row.keyword_source !== 'ai' &&
+    typeof row.confidence === 'number' &&
+    row.confidence < AI_RETRY_CONFIDENCE &&
+    now - extractedAtMs >= AI_RETRY_COOLDOWN_MS;
+  return !lowConfidence;
+}
+
 export async function getOrPersistRepresentativeKeyword(
   blogId: string,
   postId: string,
@@ -301,8 +358,7 @@ export async function getOrPersistRepresentativeKeyword(
     };
   }
 
-  const extractedAtMs = existing?.extracted_at ? new Date(existing.extracted_at).getTime() : 0;
-  if (existing && extractedAtMs && Date.now() - extractedAtMs < REP_KEYWORD_TTL_MS && extractedAtMs >= RULE_ENGINE_EPOCH_MS) {
+  if (existing && shouldReuseCachedKeyword(existing, !!opts.allowAI)) {
     return {
       representativeKeyword: existing.representative_keyword,
       candidates: existing.candidates || [],
