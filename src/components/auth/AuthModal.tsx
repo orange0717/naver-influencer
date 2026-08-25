@@ -8,6 +8,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { withTimeout, TimeoutError } from '@/lib/with-timeout';
 import { login as gaLogin, signUp as gaSignUp } from '@/lib/gtag';
 import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
+import { mapSupabaseAuthError } from '@/lib/auth-error-messages';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 import LegalModal from '@/components/legal/LegalModal';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
@@ -20,6 +21,11 @@ const RequiredMark = () => <span className="text-down ml-0.5">*</span>;
 
 const REASON_MESSAGES: Record<string, string> = {
   session_taken: '다른 기기에서 로그인되어 자동 로그아웃되었습니다. 다시 로그인해 주세요.',
+  // /auth/callback 이 실패했을 때. 예전에는 `?error=confirm_failed` 로 붙여 보냈는데
+  // 그 파라미터를 읽는 코드가 어디에도 없어서, 구글 계정 선택까지 마친 사용자가
+  // 아무 설명 없는 빈 로그인 모달만 보고 같은 버튼을 계속 눌렀다.
+  confirm_failed: '로그인 인증이 만료되었거나 처리에 실패했습니다. 다시 시도해주세요.',
+  oauth_cancelled: '구글 로그인이 취소되었습니다. 다시 시도하시려면 아래 버튼을 눌러주세요.',
 };
 
 // blog.naver.com/foo, https://blog.naver.com/foo?bar 등에서 'foo' 만 추출
@@ -116,7 +122,8 @@ export default function AuthModal() {
         options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
       });
       if (error) {
-        setLoginError(error.message);
+        // Supabase 는 영문으로 답한다 — 그대로 뿌리지 않는다.
+        setLoginError(mapSupabaseAuthError(error, '구글 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.'));
         setGoogleLoading(false);
       }
     } catch {
@@ -176,11 +183,11 @@ export default function AuthModal() {
       console.info(`[login] auth stage=${Math.round(performance.now() - tAuth)}ms`);
 
       if (authError) {
-        setLoginError(
-          authError.message.includes('Invalid login credentials')
-            ? '이메일 또는 비밀번호가 올바르지 않습니다.'
-            : authError.message,
-        );
+        // 예전에는 'Invalid login credentials' 한 가지만 한글로 바꾸고 나머지는 영문 원문을
+        // 그대로 띄웠다. 'Email not confirmed'(메일함을 봐야 함)·'For security purposes, you
+        // can only request this after 47 seconds'(기다려야 함)처럼 **해야 할 일이 완전히 다른**
+        // 상황들이 전부 알 수 없는 영문 한 줄로 뭉개졌다.
+        setLoginError(mapSupabaseAuthError(authError, '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.'));
         report('fail', 'auth_error');
         return;
       }
@@ -255,6 +262,9 @@ export default function AuthModal() {
   }
 
   async function handleSignup() {
+    // 로그인(handleLogin)에는 있는데 회원가입에만 없던 가드. 버튼 disabled 만으로는
+    // Enter 키 경로를 못 막아서, 연타하면 signUp 요청이 두 번 나갈 수 있었다.
+    if (signupLoading) return;
     setSignupError('');
 
     if (!email.trim()) {
@@ -338,21 +348,27 @@ export default function AuthModal() {
       }
 
       if (authError) {
-        setSignupError(
-          authError.message?.includes('already registered')
-            ? '이미 가입된 이메일입니다. 로그인해주세요.'
-            : authError.message || '회원가입 중 오류가 발생했습니다.',
-        );
+        setSignupError(mapSupabaseAuthError(authError, '회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'));
         return;
       }
 
       if (!authData.user) {
-        setSignupError('회원가입에 실패했습니다.');
+        setSignupError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
 
       if (!authData.session) {
-        setSignupError('이미 가입된 이메일입니다. 로그인 탭에서 로그인해주세요.');
+        // 세션이 없는 데는 원인이 **두 가지**인데 예전에는 둘 다 "이미 가입된 이메일"로 단정했다.
+        //   1) 이미 가입된 이메일  → Supabase 가 계정 존재를 숨기려고 identities 를 빈 배열로 준다.
+        //   2) 이메일 확인이 켜져 있음 → 정상 신규 가입이고 메일함의 링크를 눌러야 한다.
+        // Confirm email 설정이 켜지는 순간 2)가 전부 1)로 오인돼 **모든 신규 가입자**가
+        // "이미 가입된 이메일"을 보게 된다. 실제로는 메일만 확인하면 되는 상황인데도.
+        const looksAlreadyRegistered = (authData.user.identities?.length ?? 0) === 0;
+        setSignupError(
+          looksAlreadyRegistered
+            ? '이미 가입된 이메일입니다. 로그인 탭에서 로그인해주세요.'
+            : '가입 확인 메일을 보냈습니다. 메일함(스팸함 포함)에서 링크를 누르면 가입이 완료됩니다.',
+        );
         return;
       }
 
@@ -371,9 +387,17 @@ export default function AuthModal() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         await supabase.auth.signOut();
-        setSignupError(typeof data.error === 'string' && data.error ? data.error : '프로필 생성에 실패했습니다.');
+        const reason = typeof data.error === 'string' && data.error ? data.error : '프로필 생성에 실패했습니다.';
+        // 409 = 닉네임·블로그 중복. 서버가 방금 만든 auth 계정을 지우므로 같은 이메일로 다시
+        // 가입할 수 있다 — 그 사실을 알려주지 않으면 사용자는 "이미 가입된 이메일" 과
+        // "가입이 완료되지 않은 계정" 사이를 오가며 영영 빠져나오지 못한다.
+        setSignupError(
+          res.status === 409
+            ? `${reason} 값을 바꿔서 다시 "가입하기"를 눌러주세요. (같은 이메일로 다시 가입할 수 있습니다.)`
+            : reason,
+        );
         return;
       }
 
@@ -450,6 +474,7 @@ export default function AuthModal() {
                   type="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
+                  autoComplete="email"
                   placeholder="example@email.com"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
@@ -460,6 +485,7 @@ export default function AuthModal() {
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  autoComplete="current-password"
                   placeholder="비밀번호를 입력해주세요"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
@@ -511,13 +537,19 @@ export default function AuthModal() {
               />
             </form>
           ) : (
-            <div className="space-y-4">
+            // 예전에는 <div> 라 Enter 키가 아무 일도 하지 않았다. 로그인 탭은 Enter 가 되는데
+            // 회원가입만 안 되니 사용자는 "가입 버튼이 고장났다"고 느꼈다.
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleSignup(); }}
+              className="space-y-4"
+            >
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-dim">닉네임<RequiredMark /></label>
                 <input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
+                  autoComplete="nickname"
                   placeholder="닉네임을 입력해주세요"
                   maxLength={20}
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
@@ -530,6 +562,7 @@ export default function AuthModal() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   placeholder="example@email.com"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
@@ -541,9 +574,20 @@ export default function AuthModal() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
                   placeholder={PASSWORD_PLACEHOLDER}
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
+                {/* 규칙이 placeholder 에만 있으면 한 글자 입력하는 순간 사라진다 →
+                    다 채우고 "가입하기"를 누른 뒤에야 "숫자를 포함해주세요"를 보게 된다.
+                    입력 중에도 무엇이 남았는지 보이도록 상시 표기한다. */}
+                <p className={`mt-1.5 text-[11px] ${password && !validatePassword(password).ok ? 'text-down' : 'text-dim'}`}>
+                  {password
+                    ? (validatePassword(password).ok
+                        ? '사용할 수 있는 비밀번호입니다.'
+                        : (validatePassword(password) as { ok: false; error: string }).error)
+                    : `${PASSWORD_PLACEHOLDER}으로 입력해주세요.`}
+                </p>
               </div>
 
               <div>
@@ -552,9 +596,14 @@ export default function AuthModal() {
                   type="password"
                   value={passwordConfirm}
                   onChange={(e) => setPasswordConfirm(e.target.value)}
+                  autoComplete="new-password"
                   placeholder="비밀번호를 다시 입력해주세요"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
+                {/* 불일치를 제출한 뒤에야 알려주면 처음부터 다시 입력해야 한다. */}
+                {passwordConfirm && password !== passwordConfirm && (
+                  <p className="mt-1.5 text-[11px] text-down">비밀번호가 일치하지 않습니다.</p>
+                )}
               </div>
 
               <div className="space-y-2.5 rounded-xl border-2 border-accent/25 bg-accent/5 p-4">
@@ -633,8 +682,7 @@ export default function AuthModal() {
               </div>
 
               <button
-                type="button"
-                onClick={handleSignup}
+                type="submit"
                 disabled={signupLoading || !allAgreed}
                 className="w-full cursor-pointer rounded-xl bg-accent py-3 font-bold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -667,7 +715,7 @@ export default function AuthModal() {
                   기업용 문의하기
                 </Link>
               </div>
-            </div>
+            </form>
           )}
         </div>
       </div>

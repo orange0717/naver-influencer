@@ -46,6 +46,8 @@ export default function OnboardClient() {
   const [identifyBlogInput, setIdentifyBlogInput] = useState('');
   const [identifyLoading, setIdentifyLoading] = useState(false);
   const [identifyError, setIdentifyError] = useState('');
+  /** 하루 조회 한도(429)에 걸린 상태. 조회 버튼을 막고 신규 가입 경로만 남긴다. */
+  const [identifyBlocked, setIdentifyBlocked] = useState(false);
   const [matchMethod, setMatchMethod] = useState<'blog_id' | 'nickname' | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
@@ -91,6 +93,7 @@ export default function OnboardClient() {
 
   async function handleIdentifySubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (identifyLoading) return; // 버튼 disabled 만으로는 Enter 연타를 못 막는다
     setIdentifyError('');
 
     if (!identifyNickname.trim()) {
@@ -120,6 +123,16 @@ export default function OnboardClient() {
       });
       const data = await res.json();
       if (!res.ok) {
+        // 하루 5회 조회 제한(429)에 걸리면 이 단계에서 **가입 자체를 끝낼 수 없었다.**
+        // 닉네임 오타로 5번 조회한 신규 사용자는 세션만 살아 있고 users 행이 없는 상태로
+        // 갇혀서, 어느 메뉴를 가도 비로그인 취급을 받고 UTC 자정까지 손쓸 방법이 없었다.
+        // 조회 제한은 남의 계정을 캐내는 걸 막는 장치이므로 그대로 두고,
+        // '조회를 건너뛰고 신규 가입' 경로를 열어 준다 — 조회를 안 하니 제한과 무관하다.
+        if (res.status === 429) {
+          setIdentifyBlocked(true);
+          setIdentifyError('오늘 계정 찾기 조회 횟수를 모두 사용했습니다. 아래 "N인플이 처음이에요 — 바로 가입하기"로 가입을 계속할 수 있습니다.');
+          return;
+        }
         setIdentifyError(data.error || '조회 중 오류가 발생했습니다.');
         return;
       }
@@ -387,7 +400,7 @@ export default function OnboardClient() {
 
             <button
               type="submit"
-              disabled={identifyLoading}
+              disabled={identifyLoading || identifyBlocked}
               className="w-full cursor-pointer rounded-xl bg-accent py-3 font-bold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {identifyLoading ? (
@@ -396,6 +409,20 @@ export default function OnboardClient() {
                   확인 중...
                 </span>
               ) : '다음'}
+            </button>
+
+            {/* 이 우회 경로는 **항상** 보여야 한다. 예전에는 기존 회원 후보가 발견됐을 때만
+                나타나서, 첫 화면에서 조회 한도(하루 5회)에 걸린 신규 사용자는 가입을 끝낼
+                방법이 전혀 없었다. 계정 찾기는 어디까지나 선택 단계다. */}
+            <button
+              type="button"
+              onClick={goToProfile}
+              disabled={identifyLoading}
+              className={`w-full cursor-pointer text-center text-xs underline transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                identifyBlocked ? 'font-bold text-accent' : 'text-dim hover:text-accent'
+              }`}
+            >
+              N인플이 처음이에요 — 바로 가입하기
             </button>
           </form>
         )}

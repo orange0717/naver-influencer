@@ -97,6 +97,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 에러 시 메인페이지 로그인 모달로 리다이렉트
-  return NextResponse.redirect(`${origin}/?authModal=login&error=confirm_failed`);
+  // 실패 시 메인페이지 로그인 모달로 리다이렉트한다.
+  // ⚠️ 파라미터 이름은 반드시 `reason` 이어야 한다. AuthModalQueryHandler 는 `reason` 만 읽고
+  //    `error` 는 읽지도 지우지도 않는다 — 예전에는 `error=confirm_failed` 로 보내서
+  //    구글 계정 선택까지 마친 사용자가 **아무 설명 없는 빈 로그인 모달**만 보고
+  //    주소창에 정체 모를 쿼리만 남은 채 같은 버튼을 반복해서 눌렀다.
+  // code 자체가 없으면 사용자가 구글 동의 화면에서 취소한 것이고,
+  // code 는 있는데 교환이 실패했으면 링크 만료/재사용이다 — 해야 할 일이 다르므로 구분한다.
+  const reason = code ? 'confirm_failed' : 'oauth_cancelled';
+  return NextResponse.redirect(`${origin}/?authModal=login&reason=${reason}`);
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { mapSupabaseAuthError } from '@/lib/auth-error-messages';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -30,7 +31,9 @@ export default function ForgotPasswordPage() {
       const redirectTo = `${window.location.origin}/auth/callback?next=/auth/reset`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(trimmed, { redirectTo });
       if (resetError) {
-        setError(resetError.message || '메일 발송에 실패했습니다.');
+        // 이 화면에서 가장 흔한 실패는 재발송 쿨다운("...after N seconds")과 발송 한도다.
+        // 영문 원문을 그대로 띄우면 사용자는 몇 초를 기다려야 하는지조차 알 수 없다.
+        setError(mapSupabaseAuthError(resetError, '메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.'));
         return;
       }
       setSent(true);
@@ -72,6 +75,7 @@ export default function ForgotPasswordPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="example@email.com"
+                  autoComplete="email"
                   autoFocus
                   className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
                 />

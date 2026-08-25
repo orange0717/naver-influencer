@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
+import { mapSupabaseAuthError } from '@/lib/auth-error-messages';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -43,7 +44,8 @@ export default function ResetPasswordPage() {
       const supabase = createSupabaseBrowserClient();
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
-        setError(updateError.message || '비밀번호 변경에 실패했습니다.');
+        // "New password should be different from the old password." 같은 영문이 그대로 나가던 자리.
+        setError(mapSupabaseAuthError(updateError, '비밀번호 변경에 실패했습니다. 잠시 후 다시 시도해주세요.'));
         return;
       }
       setDone(true);
@@ -98,9 +100,18 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder={PASSWORD_PLACEHOLDER}
+                  autoComplete="new-password"
                   autoFocus
                   className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
                 />
+                {/* 규칙이 placeholder 에만 있으면 입력을 시작하는 순간 사라진다. */}
+                <p className={`mt-1.5 text-[11px] ${password && !validatePassword(password).ok ? 'text-down' : 'text-dim'}`}>
+                  {password
+                    ? (validatePassword(password).ok
+                        ? '사용할 수 있는 비밀번호입니다.'
+                        : (validatePassword(password) as { ok: false; error: string }).error)
+                    : `${PASSWORD_PLACEHOLDER}으로 입력해주세요.`}
+                </p>
               </div>
 
               <div>
@@ -110,8 +121,12 @@ export default function ResetPasswordPage() {
                   value={passwordConfirm}
                   onChange={e => setPasswordConfirm(e.target.value)}
                   placeholder="비밀번호를 다시 입력해주세요"
+                  autoComplete="new-password"
                   className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm text-text placeholder:text-dim/60 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition"
                 />
+                {passwordConfirm && password !== passwordConfirm && (
+                  <p className="mt-1.5 text-[11px] text-down">비밀번호가 일치하지 않습니다.</p>
+                )}
               </div>
 
               {error && (

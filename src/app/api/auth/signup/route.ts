@@ -70,6 +70,21 @@ export async function POST(request: NextRequest) {
     return res;
   }
 
+  // 사전 중복 검증에서 막을 때도 방금 만들어진 auth.users 고아 레코드를 반드시 지운다.
+  // 예전에는 아래 INSERT 실패 경로(23505)에만 cleanup 이 있고 이 사전 체크에는 없었다.
+  //   → 닉네임이 겹쳐 409 를 받은 사용자는 auth 계정만 남은 채,
+  //     닉네임을 바꿔 재시도하면 "이미 가입된 이메일입니다" (signUp 단계),
+  //     로그인하면 "회원가입이 완료되지 않은 계정입니다" (users 행 없음)
+  //     사이를 무한 왕복하게 된다. 다른 이메일로 가입하는 것 외에 출구가 없었다.
+  const conflict = async (message: string) => {
+    try {
+      await supabase.auth.admin.deleteUser(authUser.id);
+    } catch (cleanupErr) {
+      console.error('[signup] cleanup deleteUser failed:', cleanupErr);
+    }
+    return NextResponse.json({ error: message }, { status: 409 });
+  };
+
   // 중복 검증 (case-insensitive). DB UNIQUE 제약이 없어 race condition 까지는 못 막지만
   // 일반적인 동시 가입자 수 기준으로는 충분. 추후 DB UNIQUE 마이그레이션 권장.
   const nicknameTrimmed = nickname.trim();
@@ -79,7 +94,7 @@ export async function POST(request: NextRequest) {
     .ilike('nickname', nicknameTrimmed)
     .limit(1);
   if (dupNickname && dupNickname.length > 0) {
-    return NextResponse.json({ error: '이미 사용 중인 닉네임입니다.' }, { status: 409 });
+    return conflict('이미 사용 중인 닉네임입니다.');
   }
 
   if (blogId) {
@@ -89,7 +104,7 @@ export async function POST(request: NextRequest) {
       .ilike('blog_id', blogId)
       .limit(1);
     if (dupBlog && dupBlog.length > 0) {
-      return NextResponse.json({ error: '이미 등록된 네이버 블로그입니다.' }, { status: 409 });
+      return conflict('이미 등록된 네이버 블로그입니다.');
     }
   }
 
