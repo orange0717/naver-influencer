@@ -43,6 +43,11 @@ export interface ExposureEvidence {
   reverifyFlippedToExposed: boolean;
   /** §6 블로그 노출이 공식 검색 API(보조 채널)로 확인됐는가 — SERP엔 없지만 공식 색인엔 존재 */
   blogApiCorroborated?: boolean;
+  /**
+   * 대표 키워드 추출이 저신뢰(ambiguous)라 1순위 검색어로 쓰지 않았는가(REP_KEYWORD_TRUST_MIN 참고).
+   * 화면에서 "이 검색어는 제목에서 자동 추출한 것이고 확실하지 않다"고 알리는 근거로 쓴다.
+   */
+  keywordUncertain?: boolean;
   checkedAt: string;
 }
 
@@ -147,6 +152,28 @@ export function buildTitleSearchCandidates(title: string, blogId: string, displa
 
 // ── 노출 판정 파이프라인 ──────────────────────────────────────────────────
 
+/**
+ * 대표 키워드를 "1순위 검색어로 써도 되는" 최소 확신도.
+ *
+ * 규칙 엔진(keyword-candidates.ts)이 대표 키워드를 못 고르면 ambiguous=true 로 표시하고
+ * confidence 는 0.69 이하로 떨어진다. 그 값은 "제목에서 대표 키워드를 확정하지 못했다"는 뜻이지
+ * "이 파편이 대표 키워드다"라는 뜻이 아니다.
+ *
+ * 그런데 후보 목록에서 대표 키워드가 제목 기반 검색어보다 앞에 있으면 candidates[0] = query 가 되고,
+ * 그 query 하나가 아래 세 곳을 전부 지배한다:
+ *   1) §11 2차 재검증 — 실패 영역을 query 로만 재조회한다. 파편("나를")으로 재조회하면 당연히 못 찾고
+ *      미노출이 그대로 확정된다. → 실제로는 노출인 글이 미노출로 굳는 오탐 경로.
+ *   2) getSearchVolume(query) — 파편 기준 검색량이 저장돼 화면 숫자가 어긋난다.
+ *   3) 화면에 "검사에 사용한 검색어"로 표시 — 사용자가 납득할 수 없는 검색어를 보게 된다.
+ * 게다가 후보는 §12 요청량 상한으로 4개까지만 쓰므로, 파편이 앞자리를 먹으면 멀쩡한
+ * 제목 기반 후보 하나가 통째로 밀려난다.
+ *
+ * 그래서 저신뢰 키워드는 버리지 않고(노출을 잡을 기회는 남긴다) 제목 기반 검색어 뒤로만 보낸다.
+ * 경계값 0.7 근거는 keyword-candidates.ts — ambiguous=false 의 하한이 0.5, ambiguous=true 의 상한이 0.69라
+ * 0.7이 두 집합을 가르는 안전한 분기점이다.
+ */
+export const REP_KEYWORD_TRUST_MIN = 0.7;
+
 export interface ComputeExposureInput {
   blogId: string;
   postTitle: string;
@@ -164,6 +191,12 @@ export interface ComputeExposureInput {
    */
   keywordCandidates?: string[];
   /**
+   * keywordCandidates 를 뽑아낸 대표 키워드 추출의 확신도(0~1).
+   * REP_KEYWORD_TRUST_MIN 미만이면 대표 키워드를 1순위 검색어로 쓰지 않는다 — 아래 상수 주석 참고.
+   * 미지정(undefined)이면 신뢰하는 것으로 본다(레거시 호출부 호환).
+   */
+  keywordConfidence?: number | null;
+  /**
    * §11 모든 영역 미노출 감지 시 곧바로 확정하지 않고 in-request 2차 재검증을 1회 수행할지(기본 true).
    * 일시적 검색 변동으로 인한 오탐(실제 노출인데 미노출)을 한 번 더 걸러낸다.
    */
@@ -179,29 +212,71 @@ function matchedUrlFor(area: 'view' | 'blog' | 'influencer', exposed: boolean | 
   return postId ? `https://blog.naver.com/${blogId}/${postId}` : `https://blog.naver.com/${blogId}`;
 }
 
+/** §12 네이버 요청량 상한 — 한 포스트당 시도할 검색어 개수 */
+export const MAX_SEARCH_CANDIDATES = 4;
+
+export interface SearchCandidateInput {
+  postTitle: string;
+  blogId: string;
+  displayName?: string;
+  /** 사용자가 직접 등록한 키워드 — 있으면 확신도와 무관하게 항상 1순위 */
+  keyword?: string;
+  /** 추출한 대표/연관 키워드 */
+  keywordCandidates?: string[];
+  /** 대표 키워드 추출 확신도(0~1). undefined 면 신뢰하는 것으로 본다(레거시 호환) */
+  keywordConfidence?: number | null;
+}
+
+/**
+ * 검색 후보 목록을 우선순위대로 만든다 (§3·§4·§5).
+ *   기본 순서 : ①사용자 등록 키워드 → ②추출 대표/연관 키워드 → ③제목 기반
+ *   저신뢰일 때: ①사용자 등록 키워드 → ③제목 기반 → ②추출 대표/연관 키워드
+ *
+ * URL(blogId+postId) 매칭이므로 넓은 키워드를 섞어도 오탐(FP)은 안 늘고 미탐(FN)만 줄어든다.
+ * 어느 후보에서든 노출이 확인되면 '노출'로 처리한다.
+ * 순서가 중요한 이유는 candidates[0] 이 query 가 되어 재검증·검색량·화면 표시를 지배하기 때문 —
+ * REP_KEYWORD_TRUST_MIN 주석 참고.
+ *
+ * 네트워크를 타지 않는 순수 함수로 분리해 뒀다(테스트에서 재현하기 위함).
+ */
+export function buildSearchCandidates(input: SearchCandidateInput): { candidates: string[]; keywordUncertain: boolean } {
+  const { postTitle, blogId, displayName, keyword, keywordCandidates, keywordConfidence } = input;
+
+  const userKw = keyword && keyword.trim() ? keyword.trim() : null;
+  const repKws = (keywordCandidates || []).map(k => (k || '').trim()).filter(Boolean);
+  const titleKws = buildTitleSearchCandidates(postTitle, blogId, displayName);
+
+  // 저신뢰 대표 키워드는 1순위(=query) 자리를 제목 기반 검색어에 양보한다.
+  // 후보 목록 자체에서 빼지는 않는다 — 노출을 잡아낼 기회는 그대로 남겨두고 순서만 뒤로 민다.
+  const repTrusted = typeof keywordConfidence !== 'number' || keywordConfidence >= REP_KEYWORD_TRUST_MIN;
+  const keywordUncertain = !repTrusted && repKws.length > 0;
+  const ordered = repTrusted
+    ? [...(userKw ? [userKw] : []), ...repKws, ...titleKws]
+    : [...(userKw ? [userKw] : []), ...titleKws, ...repKws];
+
+  const seenCand = new Set<string>();
+  const candidates: string[] = [];
+  for (const cand of ordered) {
+    const key = cand.toLowerCase();
+    if (!cand || seenCand.has(key)) continue;
+    seenCand.add(key);
+    candidates.push(cand);
+    if (candidates.length >= MAX_SEARCH_CANDIDATES) break;
+  }
+  return { candidates, keywordUncertain };
+}
+
 /**
  * 포스트 1개의 통합검색 · 블로그탭 · (요청 시)인플루언서탭 노출 여부를 판정한다.
  * 캐시/inFlight/레이트리밋 은 호출측(라우트) 책임 — 이 함수는 순수 판정만 수행한다.
  */
 export async function computePostExposure(input: ComputeExposureInput): Promise<PostExposureResult> {
-  const { blogId, postTitle, postId, keyword, checkInfluencer, displayName, force, keywordCandidates } = input;
+  const { blogId, postTitle, postId, keyword, checkInfluencer, displayName, force, keywordCandidates, keywordConfidence } = input;
   const reverifyOnAllMissing = input.reverifyOnAllMissing !== false;
 
-  // 검색 후보 우선순위(§3·§4·§5): ①사용자 등록 키워드 → ②추출 대표/연관 키워드 → ③제목 기반.
-  // URL(blogId+postId) 매칭이므로 넓은 키워드를 섞어도 오탐(FP)은 안 늘고 미탐(FN)만 줄어든다.
-  // 어느 후보에서든 노출이 확인되면 '노출'로 처리한다.
-  const userKw = keyword && keyword.trim() ? keyword.trim() : null;
-  const repKws = (keywordCandidates || []).map(k => (k || '').trim()).filter(Boolean);
-  const titleKws = buildTitleSearchCandidates(postTitle, blogId, displayName);
-  const seenCand = new Set<string>();
-  const candidates: string[] = [];
-  for (const cand of [...(userKw ? [userKw] : []), ...repKws, ...titleKws]) {
-    const key = cand.toLowerCase();
-    if (!cand || seenCand.has(key)) continue;
-    seenCand.add(key);
-    candidates.push(cand);
-    if (candidates.length >= 4) break; // 네이버 요청량 상한(§12)
-  }
+  const { candidates, keywordUncertain } = buildSearchCandidates({
+    postTitle, blogId, displayName, keyword, keywordCandidates, keywordConfidence,
+  });
 
   // 검색 후보를 하나도 만들 수 없으면(제목이 전부 노이즈) → 분석불가
   if (candidates.length === 0 || !candidates[0]) {
@@ -322,6 +397,7 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
       reverified,
       reverifyFlippedToExposed,
       blogApiCorroborated,
+      keywordUncertain,
       checkedAt,
     },
     checkedAt,

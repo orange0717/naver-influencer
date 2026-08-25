@@ -179,9 +179,12 @@ export async function GET(request: NextRequest) {
           try {
             // §3·§5 대표/연관 키워드를 검색 후보로 함께 사용(제목만으론 못 잡는 노출 방지, 예: 인플루언서탭 상위)
             let keywordCandidates: string[] | undefined;
+            let keywordConfidence: number | null | undefined;
             try {
               const rep = await getOrPersistRepresentativeKeyword(blogId, post.id, post.title, { allowAI: true });
               keywordCandidates = [rep.representativeKeyword, ...(rep.candidates || [])].filter((k): k is string => Boolean(k));
+              // 확신도를 함께 넘겨야 저신뢰 키워드가 1순위 검색어(=재검증·검색량 기준)를 차지하지 않는다.
+              keywordConfidence = rep.confidence;
             } catch (e) {
               console.warn(`[crawl-post-exposure] 대표 키워드 조회 실패 ${blogId}/${post.id}:`, e);
             }
@@ -190,6 +193,7 @@ export async function GET(request: NextRequest) {
               postTitle: post.title,
               postId: post.id,
               keywordCandidates,
+              keywordConfidence,
               checkInfluencer: true,
               displayName,
             });

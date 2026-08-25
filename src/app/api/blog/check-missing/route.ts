@@ -162,10 +162,13 @@ export async function POST(request: NextRequest) {
         const displayName = await getDisplayName(blogId);
         // §3·§5 사용자 키워드가 없으면 추출된 대표/연관 키워드를 검색 후보로 함께 사용(제목만으론 못 잡는 노출 방지)
         let keywordCandidates: string[] | undefined;
+        let keywordConfidence: number | null | undefined;
         if (!keyword && postId) {
           try {
             const rep = await getOrPersistRepresentativeKeyword(blogId, String(postId), postTitle || '', { allowAI: true });
             keywordCandidates = [rep.representativeKeyword, ...(rep.candidates || [])].filter((k): k is string => Boolean(k));
+            // 확신도를 함께 넘겨야 저신뢰 키워드가 1순위 검색어(=재검증·검색량 기준)를 차지하지 않는다.
+            keywordConfidence = rep.confidence;
           } catch (e) {
             console.warn(`[check-missing] 대표 키워드 조회 실패 blogId=${blogId} postId=${postId}:`, e);
           }
@@ -176,6 +179,7 @@ export async function POST(request: NextRequest) {
           postId,
           keyword,
           keywordCandidates,
+          keywordConfidence,
           checkInfluencer,
           displayName,
           force: Boolean(force), // 사용자 강제 재조회 시 HTML 공유 캐시까지 우회(스펙 #24)

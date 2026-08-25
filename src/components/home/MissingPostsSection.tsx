@@ -125,6 +125,11 @@ function buildCauseAnalysis(mr?: PostMissingEntry): string[] {
   if (missingAreas.length > 0 && mr.candidates && mr.candidates.length > 0) {
     notes.push(`검사에 사용한 검색어: "${mr.candidates.join('", "')}" (포스팅 제목 기반). 실제 색인 반영이 늦어졌을 수 있으니 아래 "재검사" 버튼으로 다시 확인해보세요.`);
   }
+  // 대표 키워드를 확정하지 못한 글은 "왜 이 검색어로 검사했는지"를 먼저 설명해야 한다.
+  // 이 안내가 없으면 사용자는 파편 같은 검색어를 보고 검사 자체를 불신하게 된다.
+  if (mr.evidence?.keywordUncertain) {
+    notes.push('이 게시글은 제목에서 대표 키워드를 확정하지 못했습니다(자동 추출 확신도 낮음). 그래서 대표 키워드 대신 제목 기반 검색어를 우선으로 검사했습니다. 실제로 노리는 키워드가 따로 있다면 대표 키워드를 직접 지정한 뒤 재검사하면 정확도가 올라갑니다.');
+  }
   if (missingAreas.length > 0 && (mr.searchVolume == null || mr.searchVolume === 0)) {
     notes.push('해당 검색어의 월간 검색량 데이터가 없습니다. 검색량이 매우 낮으면 순위 확인이 불안정할 수 있습니다.');
   }
@@ -1031,6 +1036,11 @@ export default function MissingPostsSection() {
                 {detailMr?.evidence?.reverified && (
                   <p className="text-[11px] text-dim pt-0.5">
                     ✓ 이번 검사에서 2차 재검증을 수행했습니다{detailMr.evidence.reverifyFlippedToExposed ? ' — 재검증에서 노출로 정정됨.' : '.'}
+                  </p>
+                )}
+                {detailMr?.evidence?.keywordUncertain && (
+                  <p className="text-[11px] text-amber-600 pt-0.5">
+                    ◐ 대표 키워드를 확정하지 못해 제목 기반 검색어로 검사했습니다. 판정 자체는 유효하지만, 대표 키워드를 직접 지정하면 더 정확해집니다.
                   </p>
                 )}
               </div>
