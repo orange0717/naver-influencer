@@ -208,10 +208,20 @@ export async function aiExtractKeyword(input: AiKeywordInput): Promise<AiKeyword
       : [];
 
     // 프롬프트 계약을 코드로 재확인 — 위반이면 null로 규칙 결과에 폴백한다.
-    return validateAiKeywords({ title, tags: input.tags }, { primary, secondaries });
+    const validated = validateAiKeywords({ title, tags: input.tags }, { primary, secondaries });
+    if (!validated) {
+      console.warn(`[keyword-ai-extract] AI 응답이 검증에 탈락해 규칙 결과로 폴백 title="${title}" primary="${primary}"`);
+    }
+    return validated;
   } catch (err) {
-    // 키 미설정은 정상 폴백(개발/미구성 환경). 그 외 에러도 조용히 규칙 결과로 폴백한다.
-    if (err instanceof ClaudeApiKeyMissingError) return null;
+    // 폴백 자체는 안전하지만, 조용히 삼키면 "AI 보정이 켜져 있다"고 믿는 동안 실제로는 한 번도
+    // 성공하지 않는 상태를 아무도 알아채지 못한다(2026-08-25: 저신뢰 규칙 파편이 그대로 검색어로 쓰이던
+    // 문제의 원인 추적이 로그 부재로 막혔다). 폴백은 유지하되 원인은 반드시 남긴다.
+    if (err instanceof ClaudeApiKeyMissingError) {
+      console.warn('[keyword-ai-extract] ANTHROPIC_API_KEY 미설정 — AI 보정을 건너뛰고 규칙 결과를 사용한다');
+      return null;
+    }
+    console.error(`[keyword-ai-extract] AI 보정 실패 → 규칙 결과로 폴백 title="${title}":`, err);
     return null;
   }
 }

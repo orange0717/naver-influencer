@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
     recentUsersResult,
     recentReportsResult,
     recentMatchLogsResult,
+    newEnterpriseInquiriesResult,
+    enterpriseInquiriesAllResult,
   ] = await Promise.all([
     // 총 회원수
     supabase.from('users').select('*', { count: 'exact', head: true }),
@@ -61,6 +63,10 @@ export async function GET(req: NextRequest) {
       .select('id, match_method, created_at, matched_user:matched_user_id(id, nickname)')
       .order('created_at', { ascending: false })
       .limit(20),
+    // 미확인 기업용 문의
+    supabase.from('enterprise_inquiries').select('*', { count: 'exact', head: true }).eq('status', 'new'),
+    // 전체 기업용 문의
+    supabase.from('enterprise_inquiries').select('*', { count: 'exact', head: true }),
   ]);
 
   // 총 결제금액 계산
@@ -91,5 +97,7 @@ export async function GET(req: NextRequest) {
     recentUsers: recentUsersResult.data || [],
     recentReports: recentReportsResult.data || [],
     recentMatchLogs: recentMatchLogsResult.data || [],
+    newEnterpriseInquiries: newEnterpriseInquiriesResult.count || 0,
+    totalEnterpriseInquiries: enterpriseInquiriesAllResult.count || 0,
   });
 }
