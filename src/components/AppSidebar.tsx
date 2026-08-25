@@ -59,7 +59,7 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
 function ItemLabel({ item }: { item: SidebarItem }) {
   return (
     <span className="truncate">
-      {item.bullet && <span className="text-[#c05e4e] font-bold mr-1.5" aria-hidden="true">•</span>}
+      {item.bullet && <span className="text-[#A36B63] font-bold mr-1.5" aria-hidden="true">•</span>}
       {item.label}
     </span>
   );
@@ -249,7 +249,7 @@ function SidebarContent({
                 type="button"
                 onClick={() => toggleGroup(group.label, defaultOpen)}
                 aria-expanded={isOpen}
-                className="w-full flex items-center gap-1 px-3 py-2 rounded-md text-[13px] font-medium tracking-wide text-desc hover:text-text-2 transition-colors cursor-pointer"
+                className="w-full flex items-center gap-1 px-3 py-2 rounded-md text-[13px] font-bold tracking-wide text-[#A36B63] hover:text-[#8C4A42] transition-colors cursor-pointer"
               >
                 <span className="truncate">{group.label}</span>
                 <span className="ml-auto text-dim/60"><ChevronIcon open={isOpen} /></span>
@@ -354,7 +354,7 @@ export default function AppSidebar() {
                 type="button"
                 title={group.label}
                 onClick={toggleCollapsed}
-                className="w-9 h-9 flex items-center justify-center rounded-md text-[11px] font-medium text-desc hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-md text-[11px] font-bold text-[#A36B63] hover:text-[#8C4A42] hover:bg-surface-hover transition-colors cursor-pointer"
               >
                 {group.icon}
               </button>

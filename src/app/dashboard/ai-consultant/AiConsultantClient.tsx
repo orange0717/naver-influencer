@@ -365,10 +365,19 @@ export default function AiConsultantClient() {
   // 헤더(56px) + 페이지 상하 여백을 뺀 나머지 뷰포트 안에서 정중앙에 오도록.
   // 65vh는 화면 위쪽 65%에서만 중앙 정렬돼 오히려 위로 쏠려 보였음 (2026-08-08).
   return (
-    <div className={hasConversationList ? 'w-full lg:flex lg:items-start lg:gap-6' : ''}>
+    <div
+      className={
+        hasConversationList
+          ? // 패널이 실제로 보일 때만 (패널 + 간격 + 본문 960)을 한 덩어리로 묶어 가운데 정렬한다.
+            // 그래야 패널 왼쪽 여백과 본문 오른쪽 여백이 같아진다 — 예전엔 본문만 남은 폭 안에서
+            // 따로 중앙정렬돼 패널은 왼쪽에 붙고 그 사이에 빈 구멍이 생겼다.
+            `w-full lg:flex lg:items-start lg:gap-8 ${showPanel ? 'lg:max-w-[1232px] lg:mx-auto' : ''}`
+          : ''
+      }
+    >
       {/* ── 보조 사이드바: AI 대화목록 (데스크톱, 펼침 상태) ── */}
       {showPanel && (
-        <aside className="hidden lg:flex lg:flex-col lg:w-[260px] lg:shrink-0 gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)]">
+        <aside className="hidden lg:flex lg:flex-col lg:w-[240px] lg:shrink-0 gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)]">
           <div className="flex items-center gap-2">
             <button
               onClick={startNew}
