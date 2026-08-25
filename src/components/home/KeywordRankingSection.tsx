@@ -6,6 +6,7 @@ import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import KeywordDetailDrawer from './KeywordDetailDrawer';
 import { useAuth } from '@/hooks/useAuth';
+import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
@@ -204,6 +205,9 @@ export default function KeywordRankingSection() {
   }, []);
 
   const { user } = useAuth();
+  // 세션이 끊겨 401 이 오면 "잠시 후 다시 시도" 같은 안내는 거짓말이 된다 — 기다려도 절대 풀리지 않는다.
+  // 미노출 화면(MissingPostsSection)은 같은 상황에서 이미 로그인 게이트를 띄우고 있어서 동작을 맞춘다.
+  const { openGate } = useMemberOnlyGate();
   const isLoggedIn = !!(user.id || user.authId);
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
 
@@ -410,10 +414,22 @@ export default function KeywordRankingSection() {
         }).catch(() => { /* ignore */ });
         return { ok: true, status: res.status, cached: data?.cached === true };
       }
-      if (res.status === 429) {
+      // 401/402 는 '실패'가 아니라 '시작할 수 없음'이다. 기다린다고 풀리지 않으므로
+      // "잠시 후 다시 시도"라고 말하면 안 된다. 예전에는 둘 다 `오류 401`·`오류 402` 라는
+      // HTTP 상태 코드가 그대로 화면에 나가서, 로그인이 끊긴 건지 크레딧이 없는 건지
+      // 알 수 없었다. (미노출 화면은 같은 엔드포인트에서 이미 이렇게 구분하고 있다.)
+      if (res.status === 401) {
+        openGate('/my/keyword-ranking');
+      } else if (res.status === 402) {
+        const d = await res.json().catch(() => ({}));
+        const detail = (typeof d.required === 'number' && typeof d.balance === 'number')
+          ? ` (필요 ${d.required} · 보유 ${d.balance})`
+          : '';
+        showError(`크레딧이 부족해 순위를 확인하지 못했습니다${detail}. 구독 페이지에서 충전할 수 있습니다.`, 8000);
+      } else if (res.status === 429) {
         showError('요청이 너무 많습니다. 5분 후 다시 시도해주세요.');
       } else {
-        showError(`순위 확인 실패 (오류 ${res.status}). 잠시 후 다시 시도해주세요.`);
+        showError('순위를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.');
       }
       return { ok: false, status: res.status, cached: false };
     } catch {
@@ -426,7 +442,7 @@ export default function KeywordRankingSection() {
         return next;
       });
     }
-  }, [profile, showError, flashCell, queryClient]);
+  }, [profile, showError, flashCell, queryClient, openGate]);
 
   // 포스팅 제목+본문을 분석해 대표 키워드를 자동추출(post_representative_keywords에 영속화)하고,
   // 곧바로 그 키워드로 순위까지 확인한다 — 사용자가 직접 입력하는 커스텀 키워드와 별개 트랙.
@@ -557,7 +573,12 @@ export default function KeywordRankingSection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blogId: profile.blogId, confirm: true }),
       });
-      if (!res.ok) { showError('대표키워드 재추출 중 오류가 발생했습니다.'); return; }
+      if (res.status === 401) { openGate('/my/keyword-ranking'); return; }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        showError(d.error || '대표키워드 재추출 중 오류가 발생했습니다.');
+        return;
+      }
       const data: { reextracted: number; changed: number; skippedManual: number } = await res.json();
       queryClient.invalidateQueries({ queryKey: ['rep-keywords-state', profile.blogId] });
       setNoticeMessage(`대표키워드 ${data.reextracted}건 재추출 완료 (${data.changed}건 변경, 직접 지정 ${data.skippedManual}건 유지). 변경된 포스팅은 순위를 다시 확인해 주세요.`);
@@ -908,6 +929,7 @@ export default function KeywordRankingSection() {
         showError(`방금 전체 순위를 새로고침했어요. 약 ${mins}분 후 다시 시도할 수 있습니다.`, 6000);
         return;
       }
+      if (gateRes.status === 401) { openGate('/my/keyword-ranking'); return; }
       if (!gateRes.ok) {
         showError('지금 업데이트를 시작할 수 없습니다. 잠시 후 다시 시도해주세요.', 5000);
         return;
@@ -1098,7 +1120,8 @@ export default function KeywordRankingSection() {
   const saveManualRep = async () => {
     if (!editRep || !profile) return;
     const kw = editRep.value.trim();
-    if (!kw) return;
+    // 빈 값이면 조용히 return 해서 저장 버튼이 고장난 것처럼 보였다.
+    if (!kw) { showError('대표 키워드를 입력해 주세요.', 4000); return; }
     setSavingRep(true);
     try {
       const post = blogPosts.find(p => p.id === editRep.postId);
@@ -1107,7 +1130,12 @@ export default function KeywordRankingSection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blogId: profile.blogId, postId: editRep.postId, keyword: kw, title: post?.title }),
       });
-      if (!res.ok) { showError('대표 키워드 저장에 실패했습니다.', 4000); return; }
+      if (res.status === 401) { openGate('/my/keyword-ranking'); return; }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        showError(d.error || '대표 키워드 저장에 실패했습니다.', 4000);
+        return;
+      }
       const data = await res.json();
       setRepKeywords(prev => ({
         ...prev,

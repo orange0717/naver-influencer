@@ -322,7 +322,10 @@ export default function MissingPostsSection() {
   }, [profile, fetchPosts, fetchMissingState]);
 
   // 검사 1건 결과 — status(성공/실패) + 서버가 확정한 판정(verdict). 배치 완료 요약(§12)에서 노출/미노출 집계에 쓴다.
-  type CheckOutcome = { status: 'ok' | 'failed'; verdict: ExposureVerdict | null };
+  // reason 이 있으면 '검사가 실패한 것'이 아니라 '검사를 시작할 수 없는 것'이다(로그인 끊김·크레딧 부족).
+  // 그 두 경우엔 이미 로그인 게이트/부족 모달이 떠 있으므로, 그 위에 "잠시 후 다시 시도" 같은
+  // 엉뚱한 안내를 겹쳐 띄우지 않는다 — 기다린다고 해결되는 상황이 아니다.
+  type CheckOutcome = { status: 'ok' | 'failed'; verdict: ExposureVerdict | null; reason?: 'auth' | 'credit' };
   const checkOne = useCallback(async (post: BlogPost, opts?: { force?: boolean }): Promise<CheckOutcome> => {
     if (!profile) return { status: 'failed', verdict: null };
     // 비공개 글은 검색 노출 대상이 아니므로 네이버를 치지 않고 '분석불가'로 표시 (호출량·비용 절약)
@@ -344,12 +347,12 @@ export default function MissingPostsSection() {
           body: JSON.stringify({ blogId: profile.blogId, postTitle: post.title, postId: post.id, checkInfluencer: true, force: opts?.force }),
         });
         // §20 30일 이전 글 과금 게이트 — 재시도·후속 배치 모두 같은 결과이므로 배치를 멈추고(abort) 한 번만 안내한다.
-        if (res.status === 401) { abortRef.current = true; openGate('/my/missing-posts'); return { status: 'failed', verdict: null }; }
+        if (res.status === 401) { abortRef.current = true; openGate('/my/missing-posts'); return { status: 'failed', verdict: null, reason: 'auth' }; }
         if (res.status === 402) {
           abortRef.current = true;
           const d = await res.json().catch(() => ({}));
           setExtendModal({ phase: 'insufficient', required: d.required ?? 0, balance: d.balance ?? 0 });
-          return { status: 'failed', verdict: null };
+          return { status: 'failed', verdict: null, reason: 'credit' };
         }
         if (res.ok) {
           const data = await res.json();
@@ -373,8 +376,9 @@ export default function MissingPostsSection() {
     setDetailChecking(true);
     setDetailError('');
     try {
-      const { status } = await checkOne(post, { force: true });
-      if (status === 'failed') setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      const { status, reason } = await checkOne(post, { force: true });
+      // reason 이 있으면 로그인 게이트나 크레딧 부족 모달이 이미 떠 있다 — 그 위에 겹쳐 안내하지 않는다.
+      if (status === 'failed' && !reason) setDetailError('재검사에 실패했습니다. 잠시 후 다시 시도해주세요.');
       else if (profile) fetchDetailHistory(profile.blogId, post.id); // 전환이 기록됐을 수 있으니 이력 갱신
     } finally {
       // 예외로 빠져나가도 버튼이 '검사 중...'에 영구히 잠기지 않도록 반드시 해제한다
@@ -507,7 +511,15 @@ export default function MissingPostsSection() {
         setExtendModal({ phase: 'insufficient', required: d.required ?? 0, balance: d.balance ?? 0 });
         return;
       }
-      if (!res.ok) { setErrorMessage('확장 조회 승인에 실패했습니다.'); return; }
+      if (!res.ok) {
+        // 로그인이 끊겼으면(401) 검사 배치(checkOne)와 똑같이 로그인 게이트를 띄운다.
+        // 예전에는 이 경로만 "승인에 실패했습니다" 로 끝나서, 사용자는 왜 안 되는지도
+        // 다시 로그인하면 된다는 것도 모른 채 같은 버튼을 계속 눌러야 했다.
+        if (res.status === 401) { openGate('/my/missing-posts'); return; }
+        const d = await res.json().catch(() => ({}));
+        setErrorMessage(d.error || '확장 조회 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
       const auth = await res.json();
       const newIds: string[] = Array.isArray(auth.newCheckIds) ? auth.newCheckIds : [];
       extendJobRef.current = { jobId: auth.jobId ?? null, newCheckIds: newIds };
@@ -525,9 +537,9 @@ export default function MissingPostsSection() {
           body: JSON.stringify({ jobId: jr.jobId, blogId: profile.blogId, newCheckIds: jr.newCheckIds, status: abortRef.current ? 'cancelled' : 'completed' }),
         }).catch(() => {});
       }
-    } catch { setErrorMessage('확장 조회 중 오류가 발생했습니다.'); }
+    } catch { setErrorMessage('확장 조회 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.'); }
     finally { setExtendBusy(false); runningExtendedRef.current = false; }
-  }, [profile, runBatch]);
+  }, [profile, runBatch, openGate]);
 
   // §2·§3·§12·§20 확장 조회 시작(권한·계획·모달 분기).
   const beginExtended = useCallback(async (scopeDays: Period, opts?: { fromPrompt?: boolean }) => {
@@ -542,7 +554,12 @@ export default function MissingPostsSection() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blogId: profile.blogId, candidatePostIds: candidates.map(p => p.id) }),
       });
-      if (!res.ok) { setErrorMessage('조회 대상 계산에 실패했습니다.'); return; }
+      if (!res.ok) {
+        if (res.status === 401) { openGate('/my/missing-posts'); return; }
+        const d = await res.json().catch(() => ({}));
+        setErrorMessage(d.error || '조회 대상 계산에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
       const plan: ExtendPlan = await res.json();
       if (plan.newChecks === 0) { setShowMorePrompt(false); return; } // 이미 전부 캐시/확인됨 — 추가 조회 불필요
       if (plan.creditsEnabled && plan.chargeable > 0) {
@@ -552,7 +569,7 @@ export default function MissingPostsSection() {
       // 무료(≤90 또는 크레딧 비활성): §2 프롬프트 경유면 이미 동의 → 바로 실행. 기간버튼 경유면 대량 안내 확인.
       if (opts?.fromPrompt) await runExtended(candidates);
       else setExtendModal({ phase: 'confirm', scopeDays, candidates, plan });
-    } catch { setErrorMessage('조회 대상 계산 중 오류가 발생했습니다.'); }
+    } catch { setErrorMessage('조회 대상 계산 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.'); }
     finally { setExtendBusy(false); }
   }, [profile, isMember, openGate, olderCandidatesFor, runExtended]);
 
