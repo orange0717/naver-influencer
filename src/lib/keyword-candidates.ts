@@ -201,6 +201,113 @@ function isAdnominalVerb(token: string): boolean {
   return token.length >= 3 && token.endsWith('는');
 }
 
+// ─── 대표 구 가장자리 다듬기(2026-08-25) ──────────────────────────────────────
+// 이 아래 규칙들은 "규칙 엔진이 스스로 확신 못 한(ambiguous) 구"에만 적용한다.
+//
+// 왜 필요한가: 엔진은 원래 여기까지 오면 저신뢰로 내려 AI 보정(Haiku)이 판단하게 설계돼 있다.
+// 그런데 AI 보정이 막히면(2026-08-25 실측: Anthropic 사용량 한도 소진, 9/1까지 전 호출 400)
+// 폴백된 규칙 결과가 그대로 화면과 검색어에 남는다. 실측된 대표 키워드들:
+//   "책리뷰 노동에 대해 말하지" · "이영초롱은 왜" · "내 블로그의" · "너무도 황당한 지역"
+// 아무도 이렇게 검색하지 않는다. AI가 없어도 최소한 조사·용언·의문사 꼬리는 규칙으로 떼어낼 수 있다.
+//
+// 설계 원칙 3가지:
+//   1) 양 끝만 손댄다. 가운데는 절대 건드리지 않는다 — 복합 고유명사가 쪼개지면 안 되기 때문(스펙 #3).
+//   2) 다듬은 결과가 대표로 쓸 수 없으면(빈 값·일반어만·여전히 조사 종결) 원본을 그대로 되돌린다.
+//      다듬기는 "개선 시도"지 "기능 제거"가 아니다.
+//   3) confidence·ambiguous 계산은 건드리지 않는다. 다듬었다고 신뢰도를 올리면 그 값이 곧바로
+//      1순위 검색어가 되어 post-exposure-check 의 REP_KEYWORD_TRUST_MIN 게이트를 우회한다 —
+//      파편 검색어로 인한 미노출 오탐 위험이 되돌아온다.
+
+// 구 끝의 의존명사성 부사어 — 앞말에 기대어 쓰이는 말이라 단독 검색어가 될 수 없다(…에 대해).
+const DEPENDENT_ADVERBS = new Set([
+  '대해', '대하여', '관해', '관하여', '위해', '위하여', '통해', '통하여', '비해', '비하여', '따라', '더불어',
+]);
+
+// 의문사 — 제목의 물음("이영초롱은 왜")에서 대표 명사구 뒤에 남는다.
+const INTERROGATIVES = new Set([
+  '왜', '뭐', '뭘', '무엇', '무엇을', '어떻게', '어떡해', '언제', '어디', '어디서', '누구', '누가', '얼마', '얼마나',
+]);
+
+// 용언 활용형 꼬리(말하지·생각하며·바뀌었다). 명사 오탐을 막으려고 어미를 화이트리스트로 좁혔다
+// ('잡지'·'단지'처럼 '지'로 끝나는 명사를 건드리면 안 된다).
+const VERB_INFLECTION_RE = /(하지|되지|하며|하면|해서|하여|하고|하기로|되기로)$/;
+
+/** 용언 활용형(말하지·해서·살아남는다)인지 — 명사구의 끝일 수 없다. */
+function isVerbInflection(token: string): boolean {
+  return token.length >= 3 && (VERB_INFLECTION_RE.test(token) || VERB_FINAL_RE.test(token));
+}
+
+// 조사로 끝나 보이는 마지막 글자. 다듬은 뒤에도 여기 걸리면 되돌린다(다정한 것이 → 그대로 둔다).
+const JOSA_TAIL_CHARS = new Set(['은', '는', '이', '가', '을', '를', '의', '에', '와', '과', '도', '만', '로']);
+
+// 끝 어절에서 떼어낼 조사 — stripJosa 보다 좁게 잡았다.
+// '이/가/도/만/로'는 명사 끝 글자와 겹쳐 오절단 위험이 크다(고양이→고양, 횡단보도→횡단보).
+const TRIM_JOSA = ['이라는', '라는', '에서', '에게', '한테', '까지', '부터', '으로', '은', '는', '을', '를', '의', '에', '와', '과'];
+
+/** 구의 마지막 어절에서 조사 1개를 뗀다(사람에→사람, 이영초롱은→이영초롱). 어간 2자 이상일 때만. */
+function stripTrailingJosa(token: string): string {
+  if (NOUN_ENDS_EUL.has(token)) return token;          // 가을·서울은 '을'이 조사가 아니다
+  if (token.endsWith('주의')) return token;             // 자본주의·민주주의의 '의'도 조사가 아니다
+  for (const j of TRIM_JOSA) {
+    if (token.length >= j.length + 2 && token.endsWith(j)) return token.slice(0, token.length - j.length);
+  }
+  return token;
+}
+
+/**
+ * 구의 맨 앞에서 떼어낼 어절인지 — 한 글자 관형사(내·그·이)와 정도부사(너무도)뿐이다.
+ *
+ * ⚠️ 목적격 절(미움받을)·관형형 용언(운명을 바꾸는)은 일부러 떼지 않는다. 이것들은 이미
+ * classifyToken 에서 구 경계로 처리됐는데도 대표에 남아 있다면, 앞쪽 "수식어 재결합" 로직이
+ * 작품 제목일 가능성을 보고 일부러 도로 붙인 것이다("미움받을 용기", "운명을 바꾸는 부동산 투자").
+ * 여기서 떼면 그 판단을 뒤집어 책 제목을 훼손한다 — 실측: "미움받을 용기 아들러 심리학" → "용기 아들러 심리학".
+ */
+function isDroppableHead(token: string): boolean {
+  if (token.length === 1 && !BARE_NUMBER_RE.test(token)) return true;
+  if (isModifierWord(stripJosa(token))) return true;   // 너무도 → 너무
+  return false;
+}
+
+/** 구의 맨 뒤에서 떼어낼 어절인지 — 의문사(왜), 의존부사(대해), 용언(말하지·하는·만들기), 수식어. */
+function isDroppableTail(token: string): boolean {
+  if (INTERROGATIVES.has(lower(token))) return true;   // '왜'처럼 한 글자인 의문사가 있어 길이 판정보다 먼저 본다
+  // 한 글자 꼬리는 한글이면 남긴다("혼자 있는 시간의 힘"의 '힘'). 한자·기호(中··)나 일반어(것)만 뗀다.
+  if (token.length === 1) return !/^[가-힣]$/.test(token) || isStopOrGeneric(token);
+  if (DEPENDENT_ADVERBS.has(lower(token))) return true;
+  if (isVerbInflection(token)) return true;
+  if (isAdnominalVerb(token)) return true;
+  if (isVerbalNoun(token)) return true;
+  if (isModifierWord(token)) return true;
+  return false;
+}
+
+/**
+ * 저신뢰 대표 구의 양 끝에서 명사가 아닌 어절을 떼고, 끝 어절의 조사를 벗긴다.
+ * 다듬은 결과가 대표로 못 쓸 값이면 원본을 그대로 돌려준다(되돌림 우선).
+ */
+export function trimPhraseEdges(phrase: string): string {
+  const parts = phrase.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return phrase;
+
+  let lo = 0;
+  let hi = parts.length - 1;
+  while (lo <= hi && isDroppableHead(parts[lo])) lo++;
+  while (hi >= lo && isDroppableTail(parts[hi])) hi--;
+  if (lo > hi) return phrase;                          // 전부 떨어져 나가면 다듬지 않은 것으로 본다
+
+  const kept = parts.slice(lo, hi + 1);
+  kept[kept.length - 1] = stripTrailingJosa(kept[kept.length - 1]);
+  const out = kept.join(' ');
+  if (out === phrase) return phrase;
+
+  // ── 되돌림 판정 ──
+  const last = kept[kept.length - 1];
+  if (out.replace(/\s/g, '').length < 2) return phrase;                    // 한 글자만 남음
+  if (allTokensGeneric(out)) return phrase;                                // 일반어만 남음(블로그·후기)
+  if (last.length >= 2 && JOSA_TAIL_CHARS.has(last[last.length - 1])) return phrase; // 여전히 조사 종결
+  return out;
+}
+
 // 용언 종결형(살아남는다·하였다) — 작품 제목이 문장형일 때 나타난다("다정한 것이 살아남는다").
 // 새 개체의 시작이 아니라 앞 구를 마무리하는 말이므로 구간을 끊으면 안 된다.
 const VERB_FINAL_RE = /[가-힣]다$/;
@@ -624,7 +731,31 @@ export function extractKeywordCandidates(input: ExtractInput, maxSecondaries = 3
 
   const ambiguous = !userKeyword && (primary === null || topScore < CONFIDENT_SCORE || strongRegions.length >= 2 || softened);
 
-  return { primary, secondaries, candidates: scored, ambiguous, confidence: Number(confidence.toFixed(2)) };
+  // 규칙이 확신하지 못한 구에 한해 가장자리를 다듬는다(AI 보정이 막혀도 파편이 남지 않도록, 2026-08-25).
+  // 확신한 구(ambiguous=false)와 따옴표/괄호 안 작품명은 원문 그대로 둔다 — 작품 제목이 문장형이면
+  // ("다정한 것이 살아남는다") 다듬는 쪽이 오히려 훼손이다.
+  const quoted = new Set(workTitles.map(w => normalizeKeyword(w)));
+  const canTrim = (s: string) => !userKeyword && ambiguous && !quoted.has(normalizeKeyword(s));
+  const trimmedPrimary = primary && canTrim(primary) ? trimPhraseEdges(primary) : primary;
+
+  // 대표가 다듬어지면서 보조와 겹칠 수 있으므로 정규화 기준으로 중복을 제거한다.
+  const seenSecondary = new Set<string>([normalizeKeyword(trimmedPrimary || '')]);
+  const trimmedSecondaries: string[] = [];
+  for (const s of secondaries) {
+    const t = canTrim(s) ? trimPhraseEdges(s) : s;
+    const key = normalizeKeyword(t);
+    if (!key || seenSecondary.has(key)) continue;
+    seenSecondary.add(key);
+    trimmedSecondaries.push(t);
+  }
+
+  return {
+    primary: trimmedPrimary,
+    secondaries: trimmedSecondaries,
+    candidates: scored,
+    ambiguous,
+    confidence: Number(confidence.toFixed(2)),
+  };
 }
 
 export type StoredKeywordVerdict = 'manual' | 'missing' | 'suspicious' | 'normal';

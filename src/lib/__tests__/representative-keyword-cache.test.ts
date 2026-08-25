@@ -7,11 +7,14 @@
  * 그대로 검색어가 되어 '미노출' 판정의 근거로 쓰였다.
  */
 import { describe, it, expect } from 'vitest';
-import { shouldReuseCachedKeyword, type CachedKeywordRow } from '../post-keyword-extractor';
+import { shouldReuseCachedKeyword, RULE_ENGINE_EPOCH_MS, type CachedKeywordRow } from '../post-keyword-extractor';
 
-// 규칙 엔진 에포크(2026-08-15T08:45:00Z) 이후이면서 TTL(30일) 안쪽인 기준 시각
-const NOW = Date.parse('2026-08-25T12:00:00Z');
 const HOUR = 60 * 60 * 1000;
+
+// 기준 시각은 에포크에 상대적으로 잡는다. 고정 날짜를 박아두면 규칙을 고쳐 에포크를 올릴 때마다
+// (메모리 규칙: "규칙 엔진을 고치면 RULE_ENGINE_EPOCH_MS도 올릴 것") 이 파일이 통째로 깨진다.
+// 에포크 + 10일 = 에포크 이후이면서 TTL(30일) 안쪽.
+const NOW = RULE_ENGINE_EPOCH_MS + 10 * 24 * HOUR;
 
 function row(over: Partial<CachedKeywordRow> = {}): CachedKeywordRow {
   return {
@@ -37,7 +40,7 @@ describe('shouldReuseCachedKeyword', () => {
   });
 
   it('추출 규칙이 바뀐 시점(RULE_ENGINE_EPOCH) 이전 저장값은 재사용하지 않는다', () => {
-    const beforeEpoch = new Date(Date.parse('2026-08-15T00:00:00Z')).toISOString();
+    const beforeEpoch = new Date(RULE_ENGINE_EPOCH_MS - HOUR).toISOString();
     expect(shouldReuseCachedKeyword(row({ extracted_at: beforeEpoch }), true, NOW)).toBe(false);
   });
 

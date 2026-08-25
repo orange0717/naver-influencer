@@ -235,7 +235,7 @@ const REP_KEYWORD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 // 추출 규칙(keyword-candidates)을 고칠 때마다 이 값을 올린다. 이 시각 이전에 저장된 행은
 // TTL이 남아 있어도 옛 규칙의 결과이므로 재추출한다 — 규칙을 고쳐도 화면이 30일간 그대로인 문제 방지.
-const RULE_ENGINE_EPOCH_MS = Date.parse('2026-08-15T08:45:00Z');
+export const RULE_ENGINE_EPOCH_MS = Date.parse('2026-08-25T04:40:00Z');
 
 // 저장된 대표 키워드가 "AI 보정을 거치지 않은 저신뢰 규칙 결과"일 때, AI 보정이 허용된 호출에서는
 // TTL이 남아 있어도 한 번 더 추출한다.
