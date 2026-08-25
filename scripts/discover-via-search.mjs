@@ -36,6 +36,23 @@ const CONFIG = {
   PROGRESS_FILE: resolve(__dirname, '.discover-via-search-progress.json'),
 };
 
+// search.naver.com 은 sec-ch-ua / Sec-Fetch-* 가 없으면 UA 가 브라우저여도 403 을 준다
+// (2026-08-25 실측: 해당 헤더 없이 403, 하나만 붙여도 200). 세트로 유지할 것.
+const BROWSER_HEADERS = {
+  'User-Agent': CONFIG.USER_AGENT,
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+  'Upgrade-Insecure-Requests': '1',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'same-origin',
+  'Sec-Fetch-User': '?1',
+  'sec-ch-ua': '"Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"macOS"',
+  Referer: 'https://search.naver.com/',
+};
+
 // 시스템 경로/일반 reserved 핸들 — 인플루언서가 아님
 const RESERVED = new Set([
   'home', 'categories', 'search', 'help', 'about', 'login', 'logout', 'signup',
@@ -77,11 +94,7 @@ async function fetchWithRetry(url, retries = CONFIG.MAX_RETRIES) {
     try {
       const res = await fetch(url, {
         signal: ctrl.signal,
-        headers: {
-          'User-Agent': CONFIG.USER_AGENT,
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          Referer: 'https://search.naver.com/',
-        },
+        headers: BROWSER_HEADERS,
       });
       clearTimeout(to);
       if (res.status === 429) {
