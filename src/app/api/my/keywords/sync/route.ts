@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { isRestricted } from '@/lib/admin';
+import { reconcileParticipation, recordFailedSync } from '@/lib/keyword/sync-reconcile';
 
 export const maxDuration = 120;
 
@@ -59,13 +60,20 @@ async function fetchOwnerId(naverId: string): Promise<string | null> {
   }
 }
 
-/** participated-keywords API로 전체 참여 키워드 가져오기 */
-async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null }> {
+/** participated-keywords API로 전체 참여 키워드 가져오기.
+ *  complete=false 는 "목록을 끝까지 받지 못했다"는 뜻이다. 이 값이 false 인 실행에서
+ *  사라진 키워드를 지우면(tombstone) 수집 실패를 이탈로 오인해 참여가 대량 증발한다.
+ */
+async function fetchAllParticipatedKeywords(
+  ownerId: string,
+): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null; complete: boolean }> {
   const results: ParticipatedKeyword[] = [];
   let cursor: string | undefined;
   let totalFromApi: number | null = null;
+  let complete = false;
 
-  for (let page = 0; page < 100; page++) {
+  const MAX_PAGES = 100;
+  for (let page = 0; page < MAX_PAGES; page++) {
     let url = `${PARTICIPATED_API}?ownerId=${ownerId}&limit=${PAGE_LIMIT}`;
     if (cursor) url += `&cursor=${cursor}`;
 
@@ -77,7 +85,7 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords
           'Accept-Language': 'ko-KR,ko;q=0.9',
         },
       });
-      if (!res.ok) break;
+      if (!res.ok) break; // complete=false 유지 — 목록이 불완전하다
 
       const json = await res.json();
       const items: ParticipatedKeyword[] = json?.data || [];
@@ -90,16 +98,19 @@ async function fetchAllParticipatedKeywords(ownerId: string): Promise<{ keywords
       results.push(...items);
 
       cursor = json?.paging?.nextCursor;
-      if (!cursor || items.length < PAGE_LIMIT) break;
+      if (!cursor || items.length < PAGE_LIMIT) {
+        complete = true; // 마지막 페이지까지 정상적으로 도달
+        break;
+      }
 
       await sleep(300);
     } catch (err) {
       console.error(`[keywords/sync] API error at page ${page}:`, err);
-      break;
+      break; // complete=false 유지
     }
   }
 
-  return { keywords: results, totalFromApi };
+  return { keywords: results, totalFromApi, complete };
 }
 
 /** keyword를 정규화 (keyword_clean 생성용) */
@@ -178,6 +189,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Influencer not found' }, { status: 404 });
   }
 
+  const startedAt = new Date().toISOString();
+
   try {
     // 1. ownerId 확보
     let ownerId = influencer.naver_owner_id;
@@ -194,8 +207,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 전체 참여 키워드 가져오기
-    const { keywords: apiKeywords, totalFromApi } = await fetchAllParticipatedKeywords(ownerId);
+    const { keywords: apiKeywords, totalFromApi, complete } = await fetchAllParticipatedKeywords(ownerId);
     if (apiKeywords.length === 0) {
+      // 0개는 "참여가 없다"일 수도, "호출이 실패했다"일 수도 있다. 구분해서 기록하고
+      // 어느 쪽이든 참여 목록은 건드리지 않는다(§ tombstone 은 확실할 때만).
+      await recordFailedSync(
+        supabase,
+        influencer.id,
+        'manual',
+        startedAt,
+        complete ? 'empty list from naver' : 'fetch incomplete',
+      );
       return NextResponse.json({
         matched: 0,
         scanned: 0,
@@ -307,6 +329,19 @@ export async function POST(request: NextRequest) {
         matched += batch.length;
       }
     }
+
+    // 5-1. 네이버 목록과 DB 일치시키기 — 사라진 참여는 tombstone, 재참여는 복구.
+    // 이 단계가 없으면 influencer_keywords 가 계속 부풀어 "참여 키워드" 총계만 커진다.
+    const reconciled = await reconcileParticipation({
+      supabase,
+      influencerId: influencer.id,
+      source: 'manual',
+      currentKeywordIds: [...new Set(linkRows.map(r => r.keyword_id))],
+      complete,
+      fetchedCount: apiKeywords.length,
+      reportedTotal: totalFromApi,
+      startedAt,
+    });
 
     // ─── 6. keyword_rankings 순위 데이터 업데이트 (핵심!) ───
     const snapshotDate = TODAY();
@@ -421,7 +456,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[keywords/sync] ${naverId}: ${apiKeywords.length} keywords, ${matched} linked, ${rankUpdated}/${rankRows.length} rankings updated`
+      `[keywords/sync] ${naverId}: ${apiKeywords.length} keywords, ${matched} linked, ` +
+      `${rankUpdated}/${rankRows.length} rankings updated, ` +
+      `tombstoned ${reconciled.tombstoned}, restored ${reconciled.restored} (${reconciled.status})`
     );
 
     return NextResponse.json({
@@ -430,6 +467,9 @@ export async function POST(request: NextRequest) {
       totalScanned: apiKeywords.length,
       totalKeywords: apiKeywords.length,
       rankUpdated,
+      tombstoned: reconciled.tombstoned,
+      restored: reconciled.restored,
+      syncStatus: reconciled.status,
       done: true,
     });
   } catch (err) {

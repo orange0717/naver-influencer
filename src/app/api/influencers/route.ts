@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
+import { runAliveParticipationQuery } from '@/lib/keyword/participation';
 
 export const dynamic = 'force-dynamic';
 
@@ -252,10 +253,17 @@ async function getInfluencersFromDB(
   const keywordMap = new Map<string, string[]>();
 
   if (influencerIds.length > 0) {
-    const { data: ikData } = await supabase
-      .from('influencer_keywords')
-      .select('influencer_id, keyword_id')
-      .in('influencer_id', influencerIds);
+    // tombstone 된 참여는 "발견된 키워드"에서 뺀다 (이미 떠난 챌린지를 보여주지 않는다).
+    const ikData = await runAliveParticipationQuery<{ influencer_id: string; keyword_id: string }>(
+      (useFilter) => {
+        const q = supabase
+          .from('influencer_keywords')
+          .select('influencer_id, keyword_id')
+          .in('influencer_id', influencerIds);
+        return useFilter ? q.is('deleted_at', null) : q;
+      },
+      'influencers foundInKeywords',
+    );
 
     if (ikData && ikData.length > 0) {
       const keywordIds = [...new Set(ikData.map(ik => ik.keyword_id))];

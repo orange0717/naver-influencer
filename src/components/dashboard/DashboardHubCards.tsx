@@ -3,11 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-interface ChallengeStats {
-  participated: number;
-  top3: number;
-  top10: number;
-}
+import type { KeywordStats } from '@/lib/keyword/aggregate';
 
 interface TopicState {
   count: number;
@@ -16,10 +12,30 @@ interface TopicState {
 }
 
 interface Props {
-  challenge: ChallengeStats;
+  /** lib/keyword/aggregate.ts 가 만든 집계 그대로. 카드가 다시 세지 않는다. */
+  challenge: KeywordStats;
   topic: TopicState;
   /** 연결된 네이버 인플루언서 홈이 있어 수동 동기화가 가능한지 */
   canSync: boolean;
+}
+
+/** 새로고침 아이콘 — 토픽 카드와 같은 컨트롤을 키워드 챌린지 카드에도 쓴다. */
+const RefreshIcon = ({ spinning }: { spinning: boolean }) => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={spinning ? 'animate-spin' : ''}><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
+);
+
+function SyncButton({ syncing, onClick, label }: { syncing: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={syncing}
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold text-dim hover:text-accent hover:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+    >
+      <RefreshIcon spinning={syncing} />
+      {syncing ? '동기화 중' : label}
+    </button>
+  );
 }
 
 function formatRelative(iso: string | null): string {
@@ -57,6 +73,41 @@ export default function DashboardHubCards({ challenge, topic, canSync }: Props) 
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [kwStats, setKwStats] = useState<KeywordStats>(challenge);
+  const [kwSyncing, setKwSyncing] = useState(false);
+  const [kwError, setKwError] = useState<string | null>(null);
+
+  /** 네이버에서 참여 키워드를 다시 받아온 뒤 집계를 새로 읽는다.
+   *  숫자는 서버가 만든 것만 쓴다 — 여기서 다시 세면 또 두 갈래가 된다. */
+  async function handleKeywordSync() {
+    if (kwSyncing) return;
+    setKwSyncing(true);
+    setKwError(null);
+    try {
+      const sync = await fetch('/api/my/keywords/sync', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offset: 0 }),
+      });
+      if (!sync.ok) {
+        const data = await sync.json().catch(() => ({}));
+        setKwError(data?.error || '네이버에서 키워드를 가져오지 못했습니다.');
+        return;
+      }
+      const res = await fetch('/api/keywords/stats?refresh=1', { credentials: 'include' });
+      if (!res.ok) {
+        setKwError('동기화는 됐지만 수치를 다시 읽지 못했습니다. 새로고침해 주세요.');
+        return;
+      }
+      setKwStats((await res.json()) as KeywordStats);
+    } catch {
+      setKwError('네트워크 오류로 동기화하지 못했습니다.');
+    } finally {
+      setKwSyncing(false);
+    }
+  }
+
   async function handleSync() {
     if (syncing) return;
     setSyncing(true);
@@ -84,16 +135,30 @@ export default function DashboardHubCards({ challenge, topic, canSync }: Props) 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* ── 키워드 챌린지 ── */}
       <CardShell>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="w-8 h-8 rounded-full bg-sunken text-accent flex items-center justify-center shrink-0">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
-          </span>
-          <h3 className="text-sm font-bold text-text">키워드 챌린지</h3>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-8 h-8 rounded-full bg-sunken text-accent flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+            </span>
+            <h3 className="text-sm font-bold text-text truncate">키워드 챌린지</h3>
+          </div>
+          {canSync && <SyncButton syncing={kwSyncing} onClick={handleKeywordSync} label="새로고침" />}
         </div>
         <div className="flex-1">
-          <StatRow label="참여 키워드" value={challenge.participated} accent />
-          <StatRow label="TOP 3" value={challenge.top3} />
-          <StatRow label="TOP 10" value={challenge.top10} />
+          <StatRow label="참여 키워드" value={kwStats.total} accent />
+          <StatRow label="TOP 3" value={kwStats.top3} />
+          <StatRow label="TOP 10" value={kwStats.top10} />
+          {/* 기준 시각이 없으면 정상적인 지연도 전부 버그 신고로 들어온다. */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-[12px] text-dim">기준 시각</span>
+            <span className={`text-[12px] ${kwStats.isStale ? 'text-text-stale font-semibold' : 'text-text'}`}>
+              {formatRelative(kwStats.syncedAt)}
+            </span>
+          </div>
+          {kwStats.isStale && (
+            <p className="text-[11px] text-text-stale mt-1 text-right">동기화가 오래됐어요</p>
+          )}
+          {kwError && <p className="text-[11px] text-down mt-1">{kwError}</p>}
         </div>
         <Link
           href="/keywords"
@@ -112,17 +177,7 @@ export default function DashboardHubCards({ challenge, topic, canSync }: Props) 
             </span>
             <h3 className="text-sm font-bold text-text truncate">토픽</h3>
           </div>
-          {canSync && (
-            <button
-              type="button"
-              onClick={handleSync}
-              disabled={syncing}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold text-dim hover:text-accent hover:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={syncing ? 'animate-spin' : ''}><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
-              {syncing ? '동기화 중' : '새로고침'}
-            </button>
-          )}
+          {canSync && <SyncButton syncing={syncing} onClick={handleSync} label="새로고침" />}
         </div>
 
         <div className="flex-1 flex flex-col gap-2">

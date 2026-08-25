@@ -4,6 +4,7 @@ import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-lim
 import { getAuthUser } from '@/lib/auth';
 import { isRestrictedByUserId } from '@/lib/admin';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
+import { loadParticipation, statsFromSnapshot } from '@/lib/keyword/participation';
 
 interface JoinedKeywordChallenge {
   keyword: string;
@@ -106,22 +107,35 @@ export async function GET(request: NextRequest) {
   const currentRankings = Array.from(latestByKeyword.values());
 
   // 통계 계산
-  const totalKeywords = currentRankings.length;
-  const avgRank = totalKeywords > 0
-    ? (currentRankings.reduce((s, r) => s + r.rank_position, 0) / totalKeywords)
+  // ⚠️ 총계·TOP3 는 여기서 세지 않는다. /my 화면과 다른 숫자가 나오면 안 되므로
+  //    lib/keyword 의 공용 집계(참여 = 버킷 합)를 그대로 쓴다.
+  //    currentRankings 는 "순위가 확인된 것"이라 총계가 아니다 — 평균 순위 등에만 쓴다.
+  const keywordStats = statsFromSnapshot(
+    await loadParticipation(supabase, influencer.id, {
+      categoryScope: (influencer.my_keyword_category || influencer.category || '').trim(),
+      fallbackLastCrawledAt: influencer.last_crawled_at ?? null,
+    }),
+  );
+  const totalKeywords = keywordStats.total;
+  const rankedCount = currentRankings.length;
+  const avgRank = rankedCount > 0
+    ? (currentRankings.reduce((s, r) => s + r.rank_position, 0) / rankedCount)
     : 0;
-  const top3Count = currentRankings.filter(r => r.rank_position <= 3).length;
   const integratedCount = currentRankings.filter(r => r.is_integrated_top3).length;
   const rankUpCount = currentRankings.filter(r => (r.rank_change ?? 0) > 0).length;
   const rankDownCount = currentRankings.filter(r => (r.rank_change ?? 0) < 0).length;
 
   const stats = {
     total_keywords: totalKeywords,
+    ranked_keywords: rankedCount,
     avg_rank: parseFloat(avgRank.toFixed(1)),
-    top3_count: top3Count,
+    top3_count: keywordStats.top3,
+    top10_count: keywordStats.top10,
     integrated_top3_count: integratedCount,
     rank_up_count: rankUpCount,
     rank_down_count: rankDownCount,
+    synced_at: keywordStats.syncedAt,
+    is_stale: keywordStats.isStale,
   };
 
   // 순위 이력 (최근 15일)

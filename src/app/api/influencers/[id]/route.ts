@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { refreshInfluencerProfile } from '@/lib/refresh-follower';
+import { runAliveParticipationQuery } from '@/lib/keyword/participation';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -135,14 +136,22 @@ export async function GET(
     let from = 0;
     let hasMore = true;
     while (hasMore) {
-      const { data: batch } = await supabase
-        .from('influencer_keywords')
-        .select(`
-          keyword_id,
-          keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)
-        `)
-        .eq('influencer_id', influencer.id)
-        .range(from, from + PAGE - 1);
+      // tombstone(deleted_at) 된 참여는 제외한다 — 챌린지가 끝났거나 이탈한 키워드를
+      // 계속 "참여 중"으로 보여주면 /my 대시보드 총계와 어긋난다.
+      const batch = await runAliveParticipationQuery<{ keyword_id: string; keyword_challenges: KwChallenge | KwChallenge[] | null }>(
+        (useFilter) => {
+          const q = supabase
+            .from('influencer_keywords')
+            .select(`
+              keyword_id,
+              keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)
+            `)
+            .eq('influencer_id', influencer.id)
+            .range(from, from + PAGE - 1);
+          return useFilter ? q.is('deleted_at', null) : q;
+        },
+        'influencers/[id] 참여 키워드',
+      );
       if (batch && batch.length > 0) {
         ikKeywords.push(...batch);
         from += PAGE;

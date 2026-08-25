@@ -9,6 +9,7 @@
   --color-surface-hover: #F5EDEA;
   --color-raise: #FFFFFF;       /* 순백 — 강조가 필요한 영역에만 제한적으로 */
   --color-sunken: #F5EDEA;      /* 입력창 등 살짝 눌린 면 */
+  --color-surface-neutral: #F1EFEE; /* 순위 없음 타일 — sunken 과 같은 계열에서 웜톤만 뺀 면 */
   --color-border: #EEE0DB;      /* 헤어라인 */
   --color-border-strong: #E0CCC5;
   /* 텍스트 위계 — 순검정 대신 딥그레이. 굵기가 아니라 색/크기/여백으로 계층을 만든다. */
@@ -16,6 +17,7 @@
   --color-text-2: #5A5852;      /* 보조 텍스트 */
   --color-desc: #83817A;        /* 설명 */
   --color-dim: #A9A7A0;         /* 비활성 */
+  --color-text-stale: #BF5449;  /* 오래된 동기화 시각 — 기존 경고 텍스트색(down) 재사용 */
 
   /* 브랜드 컬러 — 절제된 포인트. 화면 전체에 반복하지 않는다. */
   --color-accent: #B0796B;

@@ -10,6 +10,7 @@ import {
   verifyCronSecret,
 } from '@/lib/crawler';
 import { dailyCrawlQueueOrFilter } from '@/lib/crawl-queue';
+import { reconcileParticipation, recordFailedSync } from '@/lib/keyword/sync-reconcile';
 
 export const maxDuration = 300;
 
@@ -116,10 +117,15 @@ async function fetchOwnerId(naverId: string): Promise<string | null> {
  *  failed=true는 "0개 참여"가 아니라 "API 호출 자체가 실패해 확인 못함"을 뜻한다 —
  *  호출부가 이 둘을 구분해야 API 일시 장애로 total_keywords/top1-3_count가 0으로
  *  잘못 덮어써지는 사고를 막을 수 있다 (해당 인플루언서가 크롤 큐에서 영구 이탈할 위험).
+ *
+ *  complete=true는 그보다 엄격하다 — "목록을 마지막 페이지까지 받았다". 중간 페이지가
+ *  하나라도 실패했거나 2000개 상한/페이지 상한에 걸려 잘렸으면 false다. 사라진 참여를
+ *  지우는(tombstone) 판단은 이 값이 true일 때만 해야 한다. 부분 수집을 이탈로 오인하면
+ *  다음 화면에서 참여 키워드가 대량 증발한다.
  */
 async function fetchAllParticipatedKeywords(
   ownerId: string,
-): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null; failed: boolean }> {
+): Promise<{ keywords: ParticipatedKeyword[]; totalFromApi: number | null; failed: boolean; complete: boolean }> {
   const results: ParticipatedKeyword[] = [];
   let cursor: string | undefined;
   let totalFromApi: number | null = null;
@@ -144,11 +150,14 @@ async function fetchAllParticipatedKeywords(
 
       if (results.length >= 2000) {
         console.warn('[crawl-challenge-ranks] Reached max items limit (2000)');
-        break;
+        // 목록이 잘렸다 — 남은 키워드를 "사라졌다"로 보면 안 된다.
+        return { keywords: results, totalFromApi, failed: false, complete: false };
       }
 
       cursor = json?.paging?.nextCursor;
-      if (!cursor || items.length < PAGE_LIMIT) break;
+      if (!cursor || items.length < PAGE_LIMIT) {
+        return { keywords: results, totalFromApi, failed: false, complete: true };
+      }
 
       // (2026-07-30) 300ms→120ms: 활동 많은 인플루언서(최대 40페이지)가 페이지네이션만으로
       // 17~18초씩 걸려 concurrency=6 웨이브가 300초 함수 제한을 넘기는 주 원인이었음.
@@ -157,11 +166,12 @@ async function fetchAllParticipatedKeywords(
     } catch (err) {
       console.error(`[crawl-challenge-ranks] API error at page ${page}:`, err);
       // 0페이지부터 실패 = 결과를 전혀 확인 못함(진짜 0개와 구분 필요)
-      return { keywords: results, totalFromApi, failed: page === 0 };
+      return { keywords: results, totalFromApi, failed: page === 0, complete: false };
     }
   }
 
-  return { keywords: results, totalFromApi, failed: false };
+  // 페이지 상한(100)까지 돌았는데 끝을 못 봤다 = 목록 불완전.
+  return { keywords: results, totalFromApi, failed: false, complete: false };
 }
 
 /** DB에 없는 키워드를 keyword_challenges에 생성하고 매핑에 추가 */
@@ -420,17 +430,22 @@ export async function GET(request: NextRequest) {
       }
 
       // 2. 전체 참여 키워드+순위 가져오기
-      const { keywords, failed: fetchFailed } = await fetchAllParticipatedKeywords(ownerId);
+      const syncStartedAt = new Date().toISOString();
+      const { keywords, totalFromApi, failed: fetchFailed, complete } = await fetchAllParticipatedKeywords(ownerId);
       if (fetchFailed) {
         // API 호출 자체가 실패한 것 — "0개 참여"가 아니다. total_keywords/top1-3_count를
         // 0으로 덮어쓰지 않고 last_crawled_at도 건드리지 않아, 다음 순환 때 최우선으로
         // 재시도되도록 한다 (여기서 last_crawled_at을 갱신하면 실제로는 아무것도 확인
         // 못했는데 "방금 확인함"으로 큐에서 밀려나 통계가 영구히 굳어버릴 수 있음).
         console.warn(`[crawl-challenge-ranks] participated-keywords API 실패, 재시도 보류: ${inf.naver_id}`);
+        await recordFailedSync(supabase, inf.id, 'cron', syncStartedAt, 'participated-keywords fetch failed');
         return { ok: false, count: 0 };
       }
       if (keywords.length === 0) {
         console.log(`[crawl-challenge-ranks] No keywords for ${inf.naver_id}`);
+        // 집계 컬럼은 0으로 갱신하되 influencer_keywords 는 건드리지 않는다 —
+        // "정말 0개"와 "빈 응답"을 구분할 수 없어, 오판하면 참여 이력이 통째로 사라진다.
+        await recordFailedSync(supabase, inf.id, 'cron', syncStartedAt, 'empty list from naver');
         await supabase
           .from('influencers')
           .update({
@@ -474,6 +489,20 @@ export async function GET(request: NextRequest) {
       await Promise.all(linkChunks.map(batch =>
         supabase.from('influencer_keywords').upsert(batch, { onConflict: 'influencer_id,keyword_id', ignoreDuplicates: true }),
       ));
+
+      // 3-1. 네이버 목록과 일치시키기 — 사라진 참여는 tombstone, 재참여는 복구.
+      // 이걸 안 하면 influencer_keywords 가 단조 증가해서 화면의 "참여 키워드" 총계가
+      // 네이버 원본보다 계속 커진다(2026-08-26: 586 vs 572).
+      await reconcileParticipation({
+        supabase,
+        influencerId: inf.id,
+        source: 'cron',
+        currentKeywordIds: [...new Set(linkRows.map(r => r.keyword_id))],
+        complete,
+        fetchedCount: keywords.length,
+        reportedTotal: totalFromApi,
+        startedAt: syncStartedAt,
+      });
 
       // 4. 직전 스냅샷 순위 조회 (rank_change 계산용)
       // 기존: snapshot_date === "어제" 한 날만 조회 → 크롤이 하루 비거나 부분 적재되면

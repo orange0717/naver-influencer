@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
 import { looksLikeParsedNaverId } from '@/lib/blog-utils';
 import type { ParsedRanking } from '@/lib/types';
+import { runAliveParticipationQuery } from '@/lib/keyword/participation';
 
 export const dynamic = 'force-dynamic';
 /** 키워드당 sleep(2s) + HTML fetch·DB upsert — 기본 서버리스 타임아웃을 넘기기 쉬움 */
@@ -137,10 +138,17 @@ async function getKeywordsToCrawl(supabase: ReturnType<typeof createServiceClien
   let tier0: { id: string; keyword: string; category: string }[] = [];
   if (linkedIds.size > 0) {
     // 사용자의 참여 키워드 조회
-    const { data: ikData } = await supabase
-      .from('influencer_keywords')
-      .select('keyword_id')
-      .in('influencer_id', Array.from(linkedIds));
+    // 이탈한(tombstone) 키워드는 크롤 대상에서 뺀다 — 안 그러면 사라진 챌린지를 계속 긁는다.
+    const ikData = await runAliveParticipationQuery<{ keyword_id: string }>(
+      (useFilter) => {
+        const q = supabase
+          .from('influencer_keywords')
+          .select('keyword_id')
+          .in('influencer_id', Array.from(linkedIds));
+        return useFilter ? q.is('deleted_at', null) : q;
+      },
+      'crawl-rankings tier0',
+    );
 
     const kwIds = [...new Set((ikData || []).map(k => k.keyword_id))];
 

@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createServiceClient, createRouteHandlerClient, getUserWithTimeout, hasSupabaseAuthCookie } from '@/lib/supabase-server';
-import { cacheGet, cacheSet } from '@/lib/kv-cache';
 import SessionRecovering from '@/components/SessionRecovering';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
@@ -26,6 +25,8 @@ import { after } from 'next/server';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 
 import { classifyKeyword, GuestDashboard } from './page.helpers';
+import { sumBuckets } from '@/lib/keyword/aggregate';
+import { loadParticipation, statsFromSnapshot, type RankingRow } from '@/lib/keyword/participation';
 
 export const dynamic = 'force-dynamic';
 // DB 쿼리(특히 keyword_rankings 1.5억 행 스캔)가 10~24초까지 걸릴 수 있어,
@@ -266,116 +267,10 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     );
   }
 
-  // ─── 1. 최신 순위 데이터 (keyword_rankings) ───
-  // crawl-challenge-ranks가 부분 적재로 끊기면 오늘 snapshot_date에 일부만 들어가,
-  // 기존 "최신 snapshot 1일치만" 로직이 어제 풀 데이터를 통째로 가려버린다.
-  // 최근 7일을 가져와 keyword_id별 가장 최신 record만 남긴다.
-  type RankingRow = {
-    rank_position: number;
-    previous_rank: number | null;
-    rank_change: number;
-    is_integrated_top3: boolean;
-    keyword_id: string;
-    latest_post_title: string | null;
-    latest_post_url: string | null;
-    snapshot_date: string;
-    crawled_at: string | null;
-    blog_search_rank: number | null;
-    view_tab_rank: number | null;
-    keyword_challenges: unknown;
-  };
-
-  interface KeywordChallengeJoin {
-    keyword: string;
-    category: string;
-    participant_count: number;
-    search_volume_monthly: number;
-  }
-
-  const sinceDate = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 10);
-  })();
-
-  // recentRows 페이지네이션 루프와 myKeywords 조회는 둘 다 influencerId만 필요해
-  // 데이터 의존성이 없으므로 병렬로 실행한다 (myKeywords는 원래 아래쪽에서 쓰임).
-  const recentRowsPromise: Promise<RankingRow[]> = (async () => {
-    // [/my 캐싱] keyword_rankings 풀스캔을 사용자·기간별 공유 캐시(Redis, 로컬 인메모리 폴백)로 완화.
-    // 순위는 크론이 하루 단위로 갱신하므로 짧은 TTL(180s)이면 충분하고, 새로고침마다의 풀스캔이 사라진다.
-    // ⚠️ 빈 결과는 캐시하지 않는다 — transient timeout으로 0건이 나와도 "순위 0"이 3분간 고착되지 않도록.
-    const rankingsCacheKey = `my-rankings:${influencerId}:${sinceDate}`;
-    const cachedRows = await cacheGet<RankingRow[]>(rankingsCacheKey);
-    if (cachedRows && cachedRows.length > 0) return cachedRows;
-    // ⚠️ keyword_challenges 임베드 조인을 넣은 단일 쿼리는 대용량 keyword_rankings 스캔과
-    // 겹쳐 Postgres statement timeout이 나고, 그때 batch가 undefined가 되면서 루프가 즉시
-    // 끊겨 "순위 전체가 0"으로 렌더되는 버그(오렌지 리포트: 1·2·3위·TOP3·TOP10 미반영)가 있었다.
-    // → 순위 행은 조인 없이(influencer_id+snapshot_date 인덱스로 빠름) 가져오고,
-    //   챌린지 메타(키워드/카테고리/참가자수/검색량)는 keyword_id별로 별도 조회해 매핑한다.
-    type RawRankingRow = Omit<RankingRow, 'keyword_challenges'>;
-    const rawRows: RawRankingRow[] = [];
-    const PAGE = 1000;
-    let from = 0;
-    while (true) {
-      const { data: batch } = await supabase
-        .from('keyword_rankings')
-        .select(`
-          rank_position, previous_rank, rank_change, is_integrated_top3,
-          keyword_id, latest_post_title, latest_post_url, snapshot_date, crawled_at,
-          blog_search_rank, view_tab_rank
-        `)
-        .eq('influencer_id', influencerId)
-        .gte('snapshot_date', sinceDate)
-        .order('snapshot_date', { ascending: false })
-        .range(from, from + PAGE - 1);
-      if (!batch || batch.length === 0) break;
-      rawRows.push(...(batch as unknown as RawRankingRow[]));
-      if (batch.length < PAGE) break;
-      from += PAGE;
-    }
-
-    // 등장한 keyword_id들의 챌린지 메타를 청크로 나눠 조회(.in()은 URL 길이 한계가 있어 200개씩).
-    const uniqueKwIds = [...new Set(rawRows.map((r) => r.keyword_id))];
-    const kwMap = new Map<string, KeywordChallengeJoin>();
-    const CHUNK = 200;
-    for (let i = 0; i < uniqueKwIds.length; i += CHUNK) {
-      const chunk = uniqueKwIds.slice(i, i + CHUNK);
-      const { data: kcs } = await supabase
-        .from('keyword_challenges')
-        .select('id, keyword, category, participant_count, search_volume_monthly')
-        .in('id', chunk);
-      for (const kc of kcs || []) {
-        kwMap.set(kc.id as string, {
-          keyword: (kc.keyword as string) || '',
-          category: (kc.category as string) || '',
-          participant_count: (kc.participant_count as number) || 0,
-          search_volume_monthly: (kc.search_volume_monthly as number) || 0,
-        });
-      }
-    }
-
-    const mapped = rawRows.map((r) => ({
-      ...r,
-      keyword_challenges: kwMap.get(r.keyword_id) ?? null,
-    })) as RankingRow[];
-    // 비어있지 않을 때만 캐시(위 주석 참고).
-    if (mapped.length > 0) await cacheSet(rankingsCacheKey, mapped, 180);
-    return mapped;
-  })();
-
-  const myKeywordsPromise = supabase
-    .from('influencer_keywords')
-    .select(`keyword_id, keyword_challenges(id, keyword, category, participant_count, search_volume_monthly)`)
-    .eq('influencer_id', influencerId);
-
-  const [recentRows, { data: myKeywords }] = await Promise.all([recentRowsPromise, myKeywordsPromise]);
-
-  const seenKw = new Set<string>();
-  let latestRankings = recentRows.filter(r => {
-    if (seenKw.has(r.keyword_id)) return false;
-    seenKw.add(r.keyword_id);
-    return true;
-  });
+  // ─── 1. 참여 키워드 + 최신 순위 ───
+  // 조회·선택은 lib/keyword/participation, 집계는 lib/keyword/aggregate 한 곳에서만 한다.
+  // 예전엔 이 페이지가 참여 수(influencer_keywords)와 분포(keyword_rankings)를 각자 세서
+  // 「참여 586 / 분포 합 572」처럼 같은 화면 안에서 숫자가 어긋났다.
 
   /** 프로필 주력(도서/경제 등)이 있으면 순위·키워드·미참여 풀은 그 주제만 사용 */
   const myCategory =
@@ -384,39 +279,25 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     influencer.category ||
     '';
   const topicScope = myCategory.trim();
-  if (topicScope.length > 0) {
-    latestRankings = latestRankings.filter((r) => {
-      const kw = r.keyword_challenges as unknown as KeywordChallengeJoin;
-      return (kw?.category || '').trim() === topicScope;
-    });
-  }
 
-  const currentRankings = latestRankings;
+  const snapshot = await loadParticipation(supabase, influencerId, {
+    categoryScope: topicScope,
+    fallbackLastCrawledAt: influencer.last_crawled_at ?? null,
+  });
 
-  const rankings = currentRankings.map(r => {
-    const kw = r.keyword_challenges as unknown as KeywordChallengeJoin;
-    return {
-      keyword_id: r.keyword_id,
-      keyword: kw?.keyword || '',
-      category: kw?.category || '',
-      rank_position: r.rank_position,
-      rank_change: r.rank_change,
-      is_integrated_top3: r.is_integrated_top3,
-      participant_count: kw?.participant_count || 0,
-      search_volume: kw?.search_volume_monthly || 0,
-      latest_post_title: r.latest_post_title || '',
-      latest_post_url: r.latest_post_url || '',
-      snapshot_date: r.snapshot_date || '',
-      blog_search_rank: (r as Record<string, unknown>).blog_search_rank as number | null,
-      view_tab_rank: (r as Record<string, unknown>).view_tab_rank as number | null,
-    };
-  }).sort((a, b) => a.rank_position - b.rank_position);
+  const recentRows = snapshot.recentRows;
+  const latestRankings = snapshot.latestRows;
+  const rankings = snapshot.ranked;
 
-  // 통계 계산
+  // ─── 통계 ───
+  // total·top3·top10·분포는 전부 keywordStats(버킷 합)에서 파생된다.
+  // 여기서 rankings 를 다시 세면 그 순간 집계 경로가 둘이 되고 같은 버그가 재발한다.
+  const keywordStats = statsFromSnapshot(snapshot);
+  const top3Count = keywordStats.top3;
+  const top10Count = keywordStats.top10;
+  const rank1Count = sumBuckets(keywordStats.buckets, ['r1']);
+  /** 순위가 확인된 키워드 수 — 총계가 아니다(총계는 keywordStats.total). */
   const totalRankedKeywords = rankings.length;
-  const top3Count = rankings.filter(r => r.rank_position <= 3).length;
-  const rank1Count = rankings.filter(r => r.rank_position === 1).length;
-  const top10Count = rankings.filter(r => r.rank_position <= 10).length;
   const integratedCount = rankings.filter(r => r.is_integrated_top3).length;
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
@@ -445,11 +326,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // keyword_rankings.crawled_at 중 가장 최신 값을 KST 'YYYY.MM.DD HH:mm 기준'으로 표기해,
   // 사용자가 지금 보는 순위가 언제 수집된 데이터인지 즉시 알 수 있게 한다.
   // crawled_at이 없는(구) 데이터만 있으면 날짜만 있는 dataDateLabel로 폴백한다.
-  const latestCrawledAt = recentRows.reduce<string | null>((max, r) => {
-    const c = r.crawled_at;
-    if (!c) return max;
-    return !max || c > max ? c : max;
-  }, null);
+  const latestCrawledAt = snapshot.lastCrawledAt;
   const lastUpdatedLabel = (() => {
     if (latestCrawledAt) {
       // 'sv-SE' 로케일은 "YYYY-MM-DD HH:mm:ss" 형태를 주므로 KST 변환에 안정적.
@@ -493,57 +370,10 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     categoryTotal = totalCount || 0;
   }
 
-  // ─── 2. 내 키워드 전체 목록 (myKeywords는 위 recentRowsPromise와 병렬로 이미 조회됨) ───
-  const rankedMap = new Map(rankings.map(r => [r.keyword_id, r]));
-  const ikKeywordIds = new Set((myKeywords || []).map(ik => ik.keyword_id));
-
-  interface KeywordChallengeWithId extends KeywordChallengeJoin {
-    id: string;
-  }
-
-  // influencer_keywords 기반 키워드 (참여 키워드)
-  let participatedKeywords = (myKeywords || []).map(ik => {
-    const kw = ik.keyword_challenges as unknown as KeywordChallengeWithId;
-    const ranked = rankedMap.get(ik.keyword_id);
-    return {
-      keyword_id: kw?.id || ik.keyword_id,
-      keyword: kw?.keyword || '',
-      category: kw?.category || '기타',
-      participant_count: kw?.participant_count || 0,
-      search_volume: kw?.search_volume_monthly || 0,
-      rank_position: ranked?.rank_position ?? null,
-      rank_change: ranked?.rank_change ?? 0,
-      is_integrated_top3: ranked?.is_integrated_top3 ?? false,
-      blog_search_rank: ranked?.blog_search_rank ?? null,
-      view_tab_rank: ranked?.view_tab_rank ?? null,
-      is_participated: true,
-    };
-  });
-
-  // rankings에는 있지만 influencer_keywords에는 없는 키워드 추가
-  for (const r of rankings) {
-    if (!ikKeywordIds.has(r.keyword_id)) {
-      participatedKeywords.push({
-        keyword_id: r.keyword_id,
-        keyword: r.keyword,
-        category: r.category,
-        participant_count: r.participant_count,
-        search_volume: r.search_volume,
-        rank_position: r.rank_position,
-        rank_change: r.rank_change,
-        is_integrated_top3: r.is_integrated_top3,
-        blog_search_rank: r.blog_search_rank ?? null,
-        view_tab_rank: r.view_tab_rank ?? null,
-        is_participated: true,
-      });
-    }
-  }
-
-  if (topicScope.length > 0) {
-    participatedKeywords = participatedKeywords.filter(
-      (kw) => (kw.category || '').trim() === topicScope
-    );
-  }
+  // ─── 2. 내 키워드 전체 목록 ───
+  // 참여 목록은 loadParticipation 이 이미 만들어 뒀다(tombstone 제외·주제 스코프 적용·
+  // 순위만 있고 참여 행이 없는 키워드 보강까지). 여기서 다시 만들지 않는다.
+  const participatedKeywords = snapshot.participated;
 
   // 참여 키워드의 카테고리 목록 추출
   const participatedCategories = [...new Set(participatedKeywords.map(kw => kw.category).filter(Boolean))];
@@ -631,7 +461,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const categoryGroups = Array.from(grouped.entries())
     .sort((a, b) => b[1].length - a[1].length);
   const totalKeywords = allKeywords.length;
-  const participatedCount = participatedKeywords.length;
+  /** 참여 키워드 총계 — 언제나 버킷 합이다(별도 length 로 세지 않는다). */
+  const participatedCount = keywordStats.total;
 
   /** 추천·기본 뷰: 프로필 주력이 있으면 항상 그 주제 기준(미참여 풀도 동일 주제로만 채워짐) */
   const recommendationCategory =
@@ -666,7 +497,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     const ex = oldestByKw.get(row.keyword_id);
     if (!ex || row.snapshot_date < ex.snapshot_date) oldestByKw.set(row.keyword_id, row);
   }
-  const weeklyEventInputs = currentRankings.map(latest => {
+  const weeklyEventInputs = latestRankings.map(latest => {
     const oldest = oldestByKw.get(latest.keyword_id);
     const sameRecord = !oldest || oldest.snapshot_date === latest.snapshot_date;
     const baseline = sameRecord
@@ -677,7 +508,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     if (cumulativeChange === 0 && latest.rank_change !== 0) {
       cumulativeChange = latest.rank_change;
     }
-    const kw = latest.keyword_challenges as unknown as KeywordChallengeJoin;
+    const kw = latest.keyword_challenges;
     return {
       keyword_id: latest.keyword_id,
       keyword: kw?.keyword || '',
@@ -781,7 +612,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           </div>
           {participatedCount > totalRankedKeywords && (
             <p className="text-center text-[10px] text-dim mt-2 leading-snug">
-              순위 분포·1·TOP3·TOP10은 최근 수집된 순위가 있는 키워드만 집계합니다. 참여는 미수집·다른 주제 제외 전부입니다.
+              참여 {participatedCount}개 중 {totalRankedKeywords}개는 순위가 확인됐고, 나머지 {participatedCount - totalRankedKeywords}개는
+              아직 순위가 확인되지 않아 아래 분포에서 &lsquo;순위 없음&rsquo;으로 셉니다. 다른 주제 키워드는 양쪽 모두에서 제외됩니다.
             </p>
           )}
         </div>
@@ -789,7 +621,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 2. 대시보드 허브 ─── 키워드 챌린지 + 토픽(인플홈 동기화)을 전체 너비 2열로 요약 */}
       <DashboardHubCards
-        challenge={{ participated: participatedCount, top3: top3Count, top10: top10Count }}
+        challenge={keywordStats}
         topic={{ count: homeTopics.count, topTitles: homeTopics.topTitles, lastSyncedAt: homeTopics.lastSyncedAt }}
         canSync={!!naverId}
       />
@@ -801,12 +633,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       <DashboardCard title="활동 현황">
         {/* 순위별 키워드 분포 (클릭 시 키워드 목록 표시) */}
         <RankDistribution
-          rankings={rankings.map(r => ({
-            keyword_id: r.keyword_id,
-            keyword: r.keyword,
-            rank_position: r.rank_position,
-            rank_change: r.rank_change,
-            category: r.category,
+          buckets={keywordStats.buckets}
+          keywords={participatedKeywords.map(k => ({
+            keyword_id: k.keyword_id,
+            keyword: k.keyword,
+            rank_position: k.rank_position,
+            rank_change: k.rank_change,
+            category: k.category,
           }))}
         />
       </DashboardCard>
