@@ -16,6 +16,12 @@ interface TopicDetail {
   avgBlogRank: number | null;
   aiBriefingCount: number;
   aiTabCount: number;
+  /**
+   * 이 토픽의 글 중 AI 인용 여부를 실제로 확인한 글 수.
+   * 0/null 이면 위 두 카운트의 0 은 '인용 0건'이 아니라 '아직 확인 안 함'이다.
+   * (null 은 DB에 ai_checked_count 컬럼이 아직 없다는 뜻 — 미확인과 동일 취급)
+   */
+  aiCheckedCount: number | null;
   challengeTop3Count: number;
   newPosts30d: number;
   isRepresentative: boolean;
@@ -38,6 +44,17 @@ interface TopicPostItem {
 
 function formatRank(rank: number | null): string {
   return rank === null ? '-' : `${rank.toFixed(1)}위`;
+}
+
+const UNCHECKED_TITLE = '아직 이 토픽의 글에서 AI 인용 여부를 확인하지 않았습니다. AI 브리핑 메뉴에서 확인하면 건수가 표시됩니다.';
+
+/**
+ * AI 인용 건수 표기. 확인한 글이 한 건도 없으면 숫자 0 이 아니라 '-'(미확인)로 쓴다.
+ * "확인해봤더니 0건"과 "아직 확인 안 함"은 사용자에게 전혀 다른 정보인데,
+ * 예전에는 둘 다 0건으로 나가서 "내 글은 AI에 하나도 안 걸렸다"로 잘못 읽혔다.
+ */
+function formatAiCount(count: number, checked: number | null): string {
+  return checked ? `${count}건` : '-';
 }
 
 export default function TopicDetailSection({ topicId }: { topicId: string }) {
@@ -89,15 +106,31 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
       </div>
 
       {/* 성과 요약 */}
-      <div className="rounded-lg border border-border bg-surface shadow-xs p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatBox label="포스팅 수" value={`${topic.postCount}개`} />
-        <StatBox label="누적 조회수" value={topic.totalViewCount.toLocaleString()} />
-        <StatBox label="통합검색 평균" value={formatRank(topic.avgIntegratedRank)} />
-        <StatBox label="블로그탭 평균" value={formatRank(topic.avgBlogRank)} />
-        <StatBox label="AI 브리핑" value={`${topic.aiBriefingCount}건`} />
-        <StatBox label="AI 탭" value={`${topic.aiTabCount}건`} />
-        <StatBox label="키워드챌린지 TOP3" value={`${topic.challengeTop3Count}개`} />
-        <StatBox label="최근 30일 신규글" value={`${topic.newPosts30d}건`} />
+      <div className="rounded-lg border border-border bg-surface shadow-xs p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatBox label="포스팅 수" value={`${topic.postCount}개`} />
+          <StatBox label="누적 조회수" value={topic.totalViewCount.toLocaleString()} />
+          <StatBox label="통합검색 평균" value={formatRank(topic.avgIntegratedRank)} />
+          <StatBox label="블로그탭 평균" value={formatRank(topic.avgBlogRank)} />
+          <StatBox
+            label="AI 브리핑"
+            value={formatAiCount(topic.aiBriefingCount, topic.aiCheckedCount)}
+            hint={topic.aiCheckedCount ? undefined : UNCHECKED_TITLE}
+          />
+          <StatBox
+            label="AI 탭"
+            value={formatAiCount(topic.aiTabCount, topic.aiCheckedCount)}
+            hint={topic.aiCheckedCount ? undefined : UNCHECKED_TITLE}
+          />
+          <StatBox label="키워드챌린지 TOP3" value={`${topic.challengeTop3Count}개`} />
+          <StatBox label="최근 30일 신규글" value={`${topic.newPosts30d}건`} />
+        </div>
+        {/* 인용 0건과 미확인을 눈으로 구분할 수 있어야 한다 — 숫자만 보면 둘 다 '성과 없음'으로 읽힌다. */}
+        <p className="text-[11px] text-dim mt-3 leading-snug">
+          {topic.aiCheckedCount
+            ? `AI 브리핑 · AI 탭은 이 토픽의 글 ${topic.postCount}개 중 ${topic.aiCheckedCount}개를 확인한 결과입니다.`
+            : 'AI 브리핑 · AI 탭의 ‘-’는 인용 0건이 아니라 아직 확인하지 않았다는 뜻입니다. AI 브리핑 메뉴에서 확인할 수 있습니다.'}
+        </p>
       </div>
 
       {/* 관련 키워드챌린지 */}
@@ -141,11 +174,11 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
   );
 }
 
-function StatBox({ label, value }: { label: string; value: string }) {
+function StatBox({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-bg rounded-xl p-3">
+    <div className="bg-bg rounded-xl p-3" title={hint}>
       <p className="text-[11px] text-dim font-medium mb-1">{label}</p>
-      <p className="text-base font-bold font-rank">{value}</p>
+      <p className={`text-base font-bold font-rank${hint ? ' text-dim' : ''}`}>{value}</p>
     </div>
   );
 }

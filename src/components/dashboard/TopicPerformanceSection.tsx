@@ -12,6 +12,12 @@ export interface TopicPerformanceRow {
   avgBlogRank: number | null;
   aiBriefingCount: number;
   aiTabCount: number;
+  /**
+   * 이 토픽의 글 중 AI 인용 여부를 실제로 확인한 글 수.
+   * 0/null 이면 위 두 카운트의 0 은 '인용 0건'이 아니라 '아직 확인 안 함'이다.
+   * (null 은 DB에 ai_checked_count 컬럼이 아직 없다는 뜻 — 미확인과 동일 취급)
+   */
+  aiCheckedCount: number | null;
   challengeTop3Count: number;
   newPosts30d: number;
   isRepresentative: boolean;
@@ -31,6 +37,18 @@ function formatRank(rank: number | null): string {
   return rank === null ? '-' : `${rank.toFixed(1)}위`;
 }
 
+const UNCHECKED_TITLE = '아직 이 토픽의 글에서 AI 인용 여부를 확인하지 않았습니다. AI 브리핑 메뉴에서 확인하면 건수가 표시됩니다.';
+
+/**
+ * AI 인용 건수 표기. 확인한 글이 한 건도 없으면 숫자 0 이 아니라 '-'(미확인)로 쓴다.
+ * "확인해봤더니 0건"과 "아직 확인 안 함"은 사용자에게 전혀 다른 정보인데,
+ * 예전에는 둘 다 0 으로 나가서 "내 글은 AI에 하나도 안 걸렸다"로 잘못 읽혔다.
+ * 평균 순위를 '-'로 쓰는 것과 같은 규칙이다(formatRank).
+ */
+function formatAiCount(count: number, checked: number | null, suffix = ''): string {
+  return checked ? `${count}${suffix}` : '-';
+}
+
 export default function TopicPerformanceSection({ topics }: { topics: TopicPerformanceRow[] }) {
   return (
     <DashboardCard
@@ -47,6 +65,8 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
     >
       <p className="text-xs text-dim mb-3 leading-snug">
         게시글 분석으로 분류된 토픽의 성과입니다. 인플루언서 홈의 전체 토픽 수와 다를 수 있습니다.
+        <br />
+        <span className="text-dim">AI 브리핑 · AI 탭의 &lsquo;-&rsquo;는 인용 0건이 아니라 <b className="font-semibold">아직 확인하지 않음</b>을 뜻합니다.</span>
       </p>
       {topics.length === 0 ? (
         <p className="text-center text-sm text-dim py-8">
@@ -83,8 +103,18 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
                     <td className="py-3 px-3 text-right font-rank">{t.postCount}</td>
                     <td className="py-3 px-3 text-right font-rank text-dim">{formatRank(t.avgIntegratedRank)}</td>
                     <td className="py-3 px-3 text-right font-rank text-dim">{formatRank(t.avgBlogRank)}</td>
-                    <td className="py-3 px-3 text-right font-rank">{t.aiBriefingCount}</td>
-                    <td className="py-3 px-3 text-right font-rank">{t.aiTabCount}</td>
+                    <td
+                      className={`py-3 px-3 text-right font-rank${t.aiCheckedCount ? '' : ' text-dim'}`}
+                      title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}
+                    >
+                      {formatAiCount(t.aiBriefingCount, t.aiCheckedCount)}
+                    </td>
+                    <td
+                      className={`py-3 px-3 text-right font-rank${t.aiCheckedCount ? '' : ' text-dim'}`}
+                      title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}
+                    >
+                      {formatAiCount(t.aiTabCount, t.aiCheckedCount)}
+                    </td>
                     <td className="py-3 px-3 text-right font-rank">{t.challengeTop3Count}</td>
                     <td className="py-3 px-3 text-center text-xs text-dim">{formatRelativeTime(t.lastPostAt)}</td>
                     <td className="py-3 px-3 text-center">
@@ -117,8 +147,8 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-dim">
                   <span>통합검색 {formatRank(t.avgIntegratedRank)}</span>
                   <span>블로그탭 {formatRank(t.avgBlogRank)}</span>
-                  <span>AI브리핑 {t.aiBriefingCount}건</span>
-                  <span>AI탭 {t.aiTabCount}건</span>
+                  <span title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}>AI브리핑 {formatAiCount(t.aiBriefingCount, t.aiCheckedCount, '건')}</span>
+                  <span title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}>AI탭 {formatAiCount(t.aiTabCount, t.aiCheckedCount, '건')}</span>
                   <span>챌린지TOP3 {t.challengeTop3Count}개</span>
                   <span>최근 {formatRelativeTime(t.lastPostAt)}</span>
                 </div>

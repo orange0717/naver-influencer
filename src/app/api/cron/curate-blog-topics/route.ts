@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase-server';
 import { verifyCronSecret, createCrawlJob, updateCrawlJob, tryAcquireCronLock, releaseCronLock } from '@/lib/crawler';
 import { getAnthropicClient, CLAUDE_MODEL_HAIKU, parseJsonArrayFromClaudeText, UNTRUSTED_DATA_NOTICE, wrapUntrusted } from '@/lib/claude-client';
+import { scoreTopics } from '@/lib/topic-score';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -222,22 +223,6 @@ async function recomputeTopicAggregate(supabase: SupabaseClient, userId: string,
     .eq('id', topicId);
 }
 
-function minMax(arr: number[]): [number, number] {
-  if (arr.length === 0) return [0, 0];
-  return [Math.min(...arr), Math.max(...arr)];
-}
-
-function normalizeHigherIsBetter(value: number, min: number, max: number): number {
-  if (max <= min) return value > 0 ? 100 : 0;
-  return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
-}
-
-function normalizeLowerIsBetter(value: number | null, min: number, max: number): number {
-  if (value === null) return 0;
-  if (max <= min) return 100;
-  return Math.max(0, Math.min(100, ((max - value) / (max - min)) * 100));
-}
-
 /**
  * 토픽별 성과(통합검색·블로그탭 평균순위, AI 브리핑/탭, 키워드챌린지 TOP3, 최근 30일 신규글)를
  * 다시 집계하고, 사용자의 토픽들 중 가장 영향력 높은 1개를 대표 토픽으로 자동 선정한다.
@@ -326,8 +311,13 @@ async function computeTopicPerformance(supabase: SupabaseClient, target: Target)
     const blogRanks: number[] = [];
     let aiBriefingCount = 0;
     let aiTabCount = 0;
+    // ai_briefing_exposures 에 행이 있는 글 = 인용 여부를 실제로 확인한 글.
+    // 이걸 세어두지 않으면 아래 aiBriefingCount 의 0 이 '인용 0건'인지 '아직 확인 안 함'인지 알 수 없다.
+    let aiCheckedCount = 0;
     let newPosts30d = 0;
-    let daysSinceLastPost = 3650;
+    // 발행일을 아는 글이 하나도 없으면 null(미측정). 예전엔 3650(=10년 전)이라는 가짜 값을 넣었는데,
+    // 그러면 '최근 활동' 항목에서 최하점을 받아 측정 안 된 토픽이 부당하게 밀렸다.
+    let daysSinceLastPost: number | null = null;
     for (const postId of postIds) {
       const rank = rankByPost.get(postId);
       if (rank) {
@@ -335,40 +325,29 @@ async function computeTopicPerformance(supabase: SupabaseClient, target: Target)
         blogRanks.push(...rank.blog);
       }
       const briefing = briefingByPost.get(postId);
-      if (briefing?.exposed) aiBriefingCount++;
-      if (briefing?.tabExposed) aiTabCount++;
+      if (briefing) {
+        aiCheckedCount++;
+        if (briefing.exposed) aiBriefingCount++;
+        if (briefing.tabExposed) aiTabCount++;
+      }
       const publishedAt = publishedAtByPost.get(postId);
       if (publishedAt) {
         const ageMs = now - publishedAt.getTime();
         if (ageMs <= 30 * 24 * 60 * 60 * 1000) newPosts30d++;
-        daysSinceLastPost = Math.min(daysSinceLastPost, ageMs / (24 * 60 * 60 * 1000));
+        const days = ageMs / (24 * 60 * 60 * 1000);
+        daysSinceLastPost = daysSinceLastPost === null ? days : Math.min(daysSinceLastPost, days);
       }
     }
     const avgIntegratedRank = viewRanks.length > 0 ? viewRanks.reduce((a, b) => a + b, 0) / viewRanks.length : null;
     const avgBlogRank = blogRanks.length > 0 ? blogRanks.reduce((a, b) => a + b, 0) / blogRanks.length : null;
     const challengeTop3Count = (topic.representative_keywords || []).filter(k => top3KeywordCleanSet.has(cleanKeyword(k))).length;
-    return { id: topic.id, postCount: postIds.length, avgIntegratedRank, avgBlogRank, aiBriefingCount, aiTabCount, challengeTop3Count, newPosts30d, daysSinceLastPost };
+    return { id: topic.id, postCount: postIds.length, avgIntegratedRank, avgBlogRank, aiBriefingCount, aiTabCount, aiCheckedCount, challengeTop3Count, newPosts30d, daysSinceLastPost };
   });
 
-  const [postMin, postMax] = minMax(metrics.map(m => m.postCount));
-  const [dayMin, dayMax] = minMax(metrics.map(m => m.daysSinceLastPost));
-  const [intMin, intMax] = minMax(metrics.map(m => m.avgIntegratedRank).filter((v): v is number => v !== null));
-  const [blogMin, blogMax] = minMax(metrics.map(m => m.avgBlogRank).filter((v): v is number => v !== null));
-  const [briefMin, briefMax] = minMax(metrics.map(m => m.aiBriefingCount));
-  const [tabMin, tabMax] = minMax(metrics.map(m => m.aiTabCount));
-  const [top3Min, top3Max] = minMax(metrics.map(m => m.challengeTop3Count));
-
-  const scored = metrics.map(m => {
-    const score =
-      0.25 * normalizeHigherIsBetter(m.postCount, postMin, postMax) +
-      0.20 * normalizeLowerIsBetter(m.daysSinceLastPost, dayMin, dayMax) +
-      0.15 * normalizeLowerIsBetter(m.avgIntegratedRank, intMin, intMax) +
-      0.15 * normalizeLowerIsBetter(m.avgBlogRank, blogMin, blogMax) +
-      0.10 * normalizeHigherIsBetter(m.aiBriefingCount, briefMin, briefMax) +
-      0.05 * normalizeHigherIsBetter(m.aiTabCount, tabMin, tabMax) +
-      0.10 * normalizeHigherIsBetter(m.challengeTop3Count, top3Min, top3Max);
-    return { ...m, score: Math.round(score * 100) / 100 };
-  });
+  // 점수 계산은 src/lib/topic-score.ts 로 분리했다 — 미측정 항목을 0점이 아니라 가중치 제외로 다루는
+  // 규칙은 토픽 여러 개의 상대 정규화를 비교해야 검증되므로 테스트 가능한 순수 함수로 두었다.
+  const scores = scoreTopics(metrics);
+  const scored = metrics.map((m, i) => ({ ...m, score: scores[i] }));
   const representativeId = scored.length > 0 ? scored.reduce((best, cur) => (cur.score > best.score ? cur : best)).id : null;
 
   for (const m of scored) {
@@ -379,6 +358,7 @@ async function computeTopicPerformance(supabase: SupabaseClient, target: Target)
         avg_blog_rank: m.avgBlogRank,
         ai_briefing_count: m.aiBriefingCount,
         ai_tab_count: m.aiTabCount,
+        ai_checked_count: m.aiCheckedCount,
         challenge_top3_count: m.challengeTop3Count,
         new_posts_30d: m.newPosts30d,
         representative_score: m.score,

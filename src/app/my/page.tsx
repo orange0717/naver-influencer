@@ -161,14 +161,23 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   /** 대시보드 허브 — 토픽 카드 + 토픽 성과 테이블: curate-blog-topics 크론이 채우는 topics 재사용 */
   const topicSummaryPromise: Promise<{ count: number; topName: string | null; topics: TopicPerformanceRow[] }> = (internalUserId && naverId)
     ? (async () => {
-        const { data } = await supabase
-          .from('topics')
-          .select('id, topic_type, name, post_count, total_view_count, last_post_at, avg_integrated_rank, avg_blog_rank, ai_briefing_count, ai_tab_count, challenge_top3_count, new_posts_30d, is_representative')
-          .eq('user_id', internalUserId)
-          .eq('blog_id', naverId)
-          .order('is_representative', { ascending: false })
-          .order('post_count', { ascending: false })
-          .order('total_view_count', { ascending: false });
+        const baseColumns =
+          'id, topic_type, name, post_count, total_view_count, last_post_at, avg_integrated_rank, avg_blog_rank, ai_briefing_count, ai_tab_count, challenge_top3_count, new_posts_30d, is_representative';
+        const runQuery = async (columns: string) => {
+          const { data, error } = await supabase
+            .from('topics')
+            .select(columns)
+            .eq('user_id', internalUserId)
+            .eq('blog_id', naverId)
+            .order('is_representative', { ascending: false })
+            .order('post_count', { ascending: false })
+            .order('total_view_count', { ascending: false });
+          return { data: data as unknown as Record<string, unknown>[] | null, error };
+        };
+        // 마이그레이션 161(ai_checked_count) 미적용 상태에서도 대시보드가 통째로 비지 않게 한다.
+        // PostgREST 는 없는 컬럼을 select 하면 42703 으로 쿼리 전체를 실패시킨다.
+        let { data, error } = await runQuery(`${baseColumns}, ai_checked_count`);
+        if (error?.code === '42703') ({ data, error } = await runQuery(baseColumns));
         const rows = data || [];
         const topics: TopicPerformanceRow[] = rows.map(r => ({
           id: r.id as string,
@@ -180,6 +189,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           avgBlogRank: r.avg_blog_rank as number | null,
           aiBriefingCount: (r.ai_briefing_count as number | null) ?? 0,
           aiTabCount: (r.ai_tab_count as number | null) ?? 0,
+          // 0·null 이면 위 두 카운트의 0 은 '인용 0건'이 아니라 '아직 확인 안 함'이다.
+          aiCheckedCount: (r.ai_checked_count as number | null) ?? null,
           challengeTop3Count: (r.challenge_top3_count as number | null) ?? 0,
           newPosts30d: (r.new_posts_30d as number | null) ?? 0,
           isRepresentative: !!r.is_representative,
