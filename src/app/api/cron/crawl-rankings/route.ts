@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
+import { looksLikeParsedNaverId } from '@/lib/blog-utils';
 import type { ParsedRanking } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -265,7 +266,24 @@ export async function GET(request: NextRequest) {
           },
         });
         const html = await res.text();
-        const rankings = parseInfluencerTab(html);
+        const parsed = parseInfluencerTab(html);
+
+        // 누구의 순위인지 모르는 항목은 버린다.
+        // extractNaverId() 는 프로필 링크 파싱에 실패하면 '' 를 돌려주는데, 그 값이 그대로
+        // influencers.naver_id 로 upsert(onConflict: naver_id) 되면 파싱에 실패한 서로 다른
+        // 인플루언서가 naver_id='' 인 단 한 행으로 합쳐진다. 그 행의 avg_rank·keyword_score·
+        // ninfl_rank 는 여러 사람의 순위를 섞은 값이 되고, 그게 그대로 순위 화면에 나간다.
+        // 마크업이 바뀌어 파싱이 깨지면 조용히 오염되므로 건수를 로그로 남긴다.
+        //
+        // ⚠️ 허용목록(예: /^[a-zA-Z0-9_-]+$/)을 쓰지 않는다. 이 저장소는 네이버 ID의 `.`·`-` 를
+        //    거르는 검증 때문에 멀쩡한 인플루언서의 실적이 조용히 0으로 굳은 사고가 있었다(2026-08-25).
+        //    여기서 필요한 건 "ID를 못 읽었다"를 걸러내는 것뿐이므로, 명백히 ID가 아닌 것만 거른다.
+        const rankings = parsed.filter(r => looksLikeParsedNaverId(r.naverId));
+        if (rankings.length !== parsed.length) {
+          console.warn(
+            `[crawl-rankings] naverId 파싱 실패 ${parsed.length - rankings.length}/${parsed.length}건 제외 (keyword="${kw.keyword}") — 마크업 변경 의심`,
+          );
+        }
 
         if (rankings.length === 0) {
           console.log(`[crawl-rankings] No results for: ${kw.keyword}`);

@@ -47,3 +47,24 @@ export function isValidBlogId(blogId: string): boolean {
   // 네이버 블로그 ID: 영문, 숫자, _, - 조합
   return /^[a-zA-Z0-9_-]+$/.test(blogId);
 }
+
+/**
+ * 크롤링으로 뽑아낸 네이버 ID가 "읽어내는 데 성공한 값"인지 판정한다.
+ *
+ * 위 isValidBlogId 와 목적이 다르다. 저건 사용자가 입력한 블로그 ID의 형식 검증이고,
+ * 이건 HTML 파싱 결과가 ID인지 파싱 실패의 잔해인지를 가리는 용도다.
+ *
+ * ⚠️ 일부러 허용목록을 쓰지 않는다.
+ *   crawl-rankings 의 extractNaverId() 는 프로필 링크를 못 읽으면 '' 나 URL 조각을 돌려주는데,
+ *   그게 그대로 influencers.naver_id 로 upsert(onConflict: naver_id) 되면 서로 다른 인플루언서가
+ *   한 행으로 합쳐져 avg_rank·keyword_score·ninfl_rank 가 남의 순위로 오염된다.
+ *   그렇다고 /^[a-zA-Z0-9_-]+$/ 같은 허용목록을 쓰면, 이 저장소에서 실제로 났던 사고처럼
+ *   `.`·`-` 가 든 멀쩡한 ID까지 걸러서 실적이 조용히 0으로 굳는다(2026-08-25).
+ *   그래서 "명백히 ID가 아닌 것"만 거른다 — 빈 값, 경로/쿼리 구분자, 공백, URL.
+ */
+export function looksLikeParsedNaverId(raw: string | null | undefined): boolean {
+  const id = (raw ?? '').trim();
+  if (!id) return false;
+  if (/^https?:/i.test(id)) return false;
+  return !/[/?=&\s#]/.test(id);
+}
