@@ -92,7 +92,9 @@ export async function POST(request: NextRequest) {
       expiresAt: expiresAt.toISOString(),
       instruction:
         `네이버 인플루언서 홈(in.naver.com/${naverId})의 소개글 끝에 위 코드(${pageCode})를 임시로 붙여 넣어 주세요. ` +
-        `저장한 뒤 "본인 인증 확인" 버튼을 누르면 서버가 자동으로 검증합니다. 검증 완료 후 코드는 다시 지워도 됩니다.`,
+        // 버튼 이름은 화면(LinkInfluencerClient)의 실제 라벨과 반드시 같아야 한다 —
+        // 안내에 없는 버튼 이름을 쓰면 사용자가 화면에서 그 버튼을 찾지 못한다.
+        `저장한 뒤 아래 "인증 확인" 버튼을 누르면 서버가 자동으로 검증합니다. 검증 완료 후 코드는 다시 지워도 됩니다.`,
     });
   } catch (err) {
     console.error('[request-page-code] error:', err);

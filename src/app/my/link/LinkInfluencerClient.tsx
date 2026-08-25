@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { CONTACT_EMAIL } from '@/lib/site-contact';
 
 interface FoundInfluencer {
   naverId: string;
@@ -22,6 +23,17 @@ const extractNaverId = (input: string): string => {
   return trimmed;
 };
 
+/** 코드 만료 시각을 KST 로 표시. 값이 없거나 이상하면 아무것도 쓰지 않는다(추측해서 채우지 않음). */
+const formatDeadline = (iso: string): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+};
+
 export default function LinkInfluencerClient() {
   const searchParams = useSearchParams();
 
@@ -31,8 +43,12 @@ export default function LinkInfluencerClient() {
   const [error, setError] = useState('');
   const [searching, setSearching] = useState(false);
 
+  /** 검색 결과 0건 — '아직 검색 안 함'과 구분해야 안내 문구를 띄울 수 있다. */
+  const [searched, setSearched] = useState(false);
+
   const [selected, setSelected] = useState<FoundInfluencer | null>(null);
   const [pageCode, setPageCode] = useState('');
+  const [codeExpiresAt, setCodeExpiresAt] = useState('');
   const [instruction, setInstruction] = useState('');
   const [codeIssued, setCodeIssued] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
@@ -42,21 +58,35 @@ export default function LinkInfluencerClient() {
   const [linkedName, setLinkedName] = useState('');
 
   const runSearch = async (raw: string) => {
+    // 이미 검색 중이면 무시한다. 버튼은 disabled 로 막히지만 Enter 키는 그대로 들어와서
+    // 연타하면 같은 요청이 여러 번 나가고, 늦게 도착한 응답이 최신 결과를 덮어쓸 수 있었다.
+    if (searching) return;
+
     setError('');
     setResults([]);
     const q = extractNaverId(raw);
-    if (!q) return;
+    if (!q) {
+      // 예전에는 조용히 return 해서 검색 버튼이 고장난 것처럼 보였다.
+      setError('네이버 인플루언서 ID를 입력해 주세요. (예: orangelibrary)');
+      setSearched(false);
+      return;
+    }
 
     setSearching(true);
     try {
       const res = await fetch(`/api/influencers/search?search=${encodeURIComponent(q)}&limit=5`);
       const data = await res.json();
-      setResults(data.influencers || []);
-      if ((data.influencers || []).length === 0) {
-        setError('인플루언서를 찾을 수 없습니다. 아직 크롤링되지 않은 경우 ID를 정확히 입력해주세요.');
+      if (!res.ok) {
+        setError(data.error || '검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+        setSearched(false);
+        return;
       }
+      setResults(data.influencers || []);
+      setSearched(true);
     } catch {
-      setError('검색 중 오류가 발생했습니다.');
+      // 결과 0건과 통신 실패는 다르다 — searched 를 켜지 않아 '없음' 안내가 뜨지 않게 한다.
+      setError('검색 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.');
+      setSearched(false);
     } finally {
       setSearching(false);
     }
@@ -97,6 +127,7 @@ export default function LinkInfluencerClient() {
         return;
       }
       setPageCode(data.pageCode);
+      setCodeExpiresAt(data.expiresAt || '');
       setInstruction(data.instruction);
       setCodeIssued(true);
     } catch {
@@ -177,6 +208,11 @@ export default function LinkInfluencerClient() {
             <div className="rounded-xl border border-accent/25 bg-accent/5 p-4 text-sm text-text">
               <p className="mb-2 font-bold text-accent">{pageCode}</p>
               <p className="text-xs leading-relaxed text-dim">{instruction}</p>
+              {formatDeadline(codeExpiresAt) && (
+                <p className="text-xs leading-relaxed text-dim mt-2">
+                  이 코드는 {formatDeadline(codeExpiresAt)}까지 유효합니다. 그 뒤에는 코드를 다시 받으셔야 합니다.
+                </p>
+              )}
             </div>
             <button
               onClick={handleVerify}
@@ -215,7 +251,13 @@ export default function LinkInfluencerClient() {
       </p>
 
       <div className="flex gap-2">
-        <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+        <input type="text" value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            // 입력을 고치는 순간 이전 검색의 '없음' 안내를 치운다 — 새 ID에 대한 결과처럼 읽히면 안 된다.
+            if (searched) setSearched(false);
+            if (error) setError('');
+          }}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder="네이버 인플루언서 ID (예: orangelibrary)"
           className="flex-1 px-4 py-3 bg-surface border border-border rounded-lg text-sm text-text placeholder:text-dim focus:outline-none focus:border-accent" />
@@ -232,6 +274,31 @@ export default function LinkInfluencerClient() {
       {error && (
         <div className="bg-down/10 border border-down/30 rounded-xl p-4 text-sm text-down">
           <p className="text-down/80">{error}</p>
+        </div>
+      )}
+
+      {/*
+        검색은 됐는데 결과가 0건인 경우.
+        - 통신 실패(catch)와 구분한다. 예전에는 둘 다 같은 빨간 오류 상자로 나가서
+          "내 계정이 없다"와 "검색이 안 됐다"를 사용자가 구분할 수 없었다.
+        - 최근 선정자는 우리가 아직 수집하지 못했을 수 있다(실제로 발굴은 챌린지 참여·검색 상위
+          노출을 통해서만 이뤄진다). 그러니 "ID를 정확히 입력하라"고만 하면 막다른 길이 된다.
+      */}
+      {searched && results.length === 0 && !error && (
+        <div className="bg-surface border border-border rounded-xl p-4 text-sm space-y-2">
+          <p className="font-semibold">검색 결과가 없습니다.</p>
+          <ul className="text-xs text-dim leading-relaxed list-disc pl-4 space-y-1">
+            <li>네이버 인플루언서 홈 주소(in.naver.com/<span className="font-rank">아이디</span>)의 아이디 부분을 그대로 입력했는지 확인해 주세요. 주소 전체를 붙여 넣어도 됩니다.</li>
+            <li>최근 선정되신 경우 아직 저희가 수집하지 못했을 수 있습니다. 이때는 ID가 정확해도 검색되지 않습니다.</li>
+          </ul>
+          <p className="text-xs text-dim">
+            계속 찾을 수 없다면{' '}
+            <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('[N인플] 인플루언서 계정 연결 문의')}`}
+              className="text-accent underline">
+              {CONTACT_EMAIL}
+            </a>
+            {' '}로 인플루언서 홈 주소를 보내주시면 등록해 드리겠습니다.
+          </p>
         </div>
       )}
 
