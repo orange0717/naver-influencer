@@ -9,6 +9,9 @@ import {
   formatRgb,
   generateHarmony,
   nameColor,
+  normalizeHex,
+  paletteFromBase,
+  readableTextColor,
   rgbToHex,
   CATEGORY_PALETTES,
   HARMONY_LABELS,
@@ -40,9 +43,15 @@ export default function ColorPaletteClient() {
   const [error, setError] = useState<string | null>(null);
   const [format, setFormat] = useState<ColorFormat>('hex');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [hexInput, setHexInput] = useState('');
   const [thumbTitle, setThumbTitle] = useState('말의 품격을 읽고\n내가 다시 생각하게 된 것들');
   const [savedPalettes, setSavedPalettes] = useState<string[][]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // '#' 유무·대소문자와 무관하게 6자리 HEX면 통과. 아니면 null(=팔레트 생성 차단).
+  const hexColor = normalizeHex(hexInput);
+  const hexInvalid = hexInput.trim().length > 0 && !hexColor;
 
   // 본문은 브라우저 화면 정중앙(가로·세로 모두)에 놓는다.
   // 가로: 사이드바가 lg+에서 레이아웃 폭을 차지(펼침 224px / 접힘 56px)하므로 그 절반만큼 왼쪽으로 당긴다.
@@ -117,7 +126,9 @@ export default function ColorPaletteClient() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedKey(key);
+      setToast('복사되었습니다.');
       setTimeout(() => setCopiedKey((cur) => (cur === key ? null : cur)), 1500);
+      setTimeout(() => setToast(null), 1500);
     } catch {
       // ignore
     }
@@ -176,6 +187,12 @@ export default function ColorPaletteClient() {
     setPalette(generateHarmony(base, mode));
   };
 
+  const applyHexPalette = () => {
+    if (!hexColor) return;
+    setError(null);
+    setPalette(paletteFromBase(hexColor));
+  };
+
   const applyCategory = (name: string) => {
     setPalette(CATEGORY_PALETTES[name]);
   };
@@ -199,6 +216,7 @@ export default function ColorPaletteClient() {
     setError(null);
     setExtracting(false);
     setFormat('hex');
+    setHexInput('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -263,6 +281,67 @@ export default function ColorPaletteClient() {
 
       {error && (
         <div className="bg-down/10 border border-down/30 rounded-xl p-3 text-sm text-down text-center">{error}</div>
+      )}
+
+      {/* 색상 코드로 시작하기 — 시작 화면에서만 노출(팔레트가 뜨면 아래 조합·카테고리 도구로 이어진다) */}
+      {!palette && !extracting && (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-3">
+            <span className="flex-1 h-px bg-border" />
+            <span className="text-[11px] font-semibold text-dim/70">또는</span>
+            <span className="flex-1 h-px bg-border" />
+          </div>
+
+          <div className="space-y-1">
+            <h2 className="text-sm font-bold text-text">색상 코드로 시작하기</h2>
+            <p className="text-[11px] text-dim/70">HEX 색상 코드를 입력하면 색을 바로 확인하고, 그 색을 기준으로 팔레트를 만듭니다.</p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+            <div className="flex-1 min-w-0 space-y-1">
+              <div
+                className={`flex items-center gap-2 px-3 py-2 bg-surface border rounded-lg transition-colors ${
+                  hexInvalid ? 'border-down' : 'border-border focus-within:border-accent'
+                }`}
+              >
+                <span
+                  className="w-5 h-5 rounded-full border border-border shrink-0"
+                  style={{ backgroundColor: hexColor ?? 'transparent' }}
+                />
+                <input
+                  value={hexInput}
+                  onChange={(e) => setHexInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') applyHexPalette(); }}
+                  placeholder="#FF4885"
+                  maxLength={7}
+                  spellCheck={false}
+                  autoComplete="off"
+                  aria-label="HEX 색상 코드"
+                  className="flex-1 min-w-0 bg-transparent text-sm font-mono font-semibold text-text uppercase placeholder:normal-case placeholder:font-normal placeholder:text-dim focus:outline-none"
+                />
+              </div>
+              {hexInvalid && <p className="text-[11px] text-down">올바른 HEX 색상 코드를 입력해주세요.</p>}
+            </div>
+            <button
+              onClick={applyHexPalette}
+              disabled={!hexColor}
+              className="shrink-0 px-4 py-2 rounded-lg text-sm font-bold bg-accent border border-accent text-white hover:bg-accent-hover hover:border-accent-hover transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              이 색상으로 팔레트 만들기
+            </button>
+          </div>
+
+          {hexColor && (
+            <div
+              className="rounded-xl border border-border h-24 sm:h-28 flex items-center justify-center"
+              style={{ backgroundColor: hexColor }}
+            >
+              <span className="text-sm font-mono font-bold" style={{ color: readableTextColor(hexColor) }}>
+                {hexColor}
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       {palette && (
@@ -438,6 +517,12 @@ export default function ColorPaletteClient() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-accent/50 text-text px-5 py-3 rounded-xl shadow-lg text-sm font-semibold">
+          {toast}
         </div>
       )}
     </div>

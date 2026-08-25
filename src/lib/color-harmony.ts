@@ -80,6 +80,21 @@ export function hslToHex(h: number, s: number, l: number): string {
   return rgbToHex(r, g, b);
 }
 
+const HEX6 = /^#?[0-9a-fA-F]{6}$/;
+
+/** 사용자가 입력한 HEX 문자열을 `#RRGGBB` 대문자로 정규화한다. 6자리가 아니면 null. */
+export function normalizeHex(raw: string): string | null {
+  const value = raw.trim();
+  if (!HEX6.test(value)) return null;
+  return '#' + value.replace('#', '').toUpperCase();
+}
+
+/** 배경색 위에 올렸을 때 읽히는 글자색(검정/흰색)을 YIQ 밝기로 고른다. */
+export function readableTextColor(hex: string): string {
+  const { r, g, b } = hexToRgb(hex);
+  return (r * 299 + g * 587 + b * 114) / 1000 >= 140 ? '#1B1B1B' : '#FFFFFF';
+}
+
 export function formatRgb(hex: string): string {
   const { r, g, b } = hexToRgb(hex);
   return `rgb(${r}, ${g}, ${b})`;
@@ -181,6 +196,22 @@ export function generateHarmony(baseHex: string, mode: HarmonyMode): string[] {
       return generateHarmony(hslToHex(randomHue, 55 + Math.random() * 30, 50), randomMode);
     }
   }
+}
+
+/**
+ * 사용자가 지정한 색 자체를 첫 칸에 그대로 두고, 밝은 톤·어두운 톤·보색·분할보색을 붙여 5색을 만든다.
+ * (generateHarmony 는 기준색의 명도를 버리고 규칙 명도로 덮어써서, 입력한 색이 팔레트에 남지 않는다)
+ */
+export function paletteFromBase(baseHex: string): string[] {
+  const { h, s, l } = hexToHsl(baseHex);
+  const sat = Math.max(15, s);
+  return [
+    baseHex.toUpperCase(),
+    hslToHex(h, Math.min(100, sat * 0.5), Math.min(95, l + 30)),
+    hslToHex(h, sat, Math.max(14, l - 30)),
+    hslToHex(h + 180, sat, Math.min(75, Math.max(30, l))),
+    hslToHex(h + 210, Math.min(100, sat * 0.7), Math.min(90, l + 18)),
+  ];
 }
 
 /** 콘텐츠 카테고리별 참고 팔레트 (5색, 명도 내림차순 배치와 무관하게 큐레이션된 순서) */
