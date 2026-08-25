@@ -350,21 +350,29 @@ async function computeTopicPerformance(supabase: SupabaseClient, target: Target)
   const scored = metrics.map((m, i) => ({ ...m, score: scores[i] }));
   const representativeId = scored.length > 0 ? scored.reduce((best, cur) => (cur.score > best.score ? cur : best)).id : null;
 
+  // 마이그레이션 161(ai_checked_count) 미적용이면 update 가 PGRST204 로 실패한다.
+  // 그러면 이 컬럼 하나 때문에 토픽 집계 전체가 매일 조용히 안 되는 셈이라, 컬럼을 빼고 한 번 더 시도한다.
+  // (이 저장소는 "마이그레이션 파일은 커밋됐는데 DB 미적용"으로 끝난 이력이 반복된다.)
+  let aiCheckedColumnMissing = false;
   for (const m of scored) {
-    await supabase
-      .from('topics')
-      .update({
-        avg_integrated_rank: m.avgIntegratedRank,
-        avg_blog_rank: m.avgBlogRank,
-        ai_briefing_count: m.aiBriefingCount,
-        ai_tab_count: m.aiTabCount,
-        ai_checked_count: m.aiCheckedCount,
-        challenge_top3_count: m.challengeTop3Count,
-        new_posts_30d: m.newPosts30d,
-        representative_score: m.score,
-        is_representative: m.id === representativeId,
-      })
-      .eq('id', m.id);
+    const base = {
+      avg_integrated_rank: m.avgIntegratedRank,
+      avg_blog_rank: m.avgBlogRank,
+      ai_briefing_count: m.aiBriefingCount,
+      ai_tab_count: m.aiTabCount,
+      challenge_top3_count: m.challengeTop3Count,
+      new_posts_30d: m.newPosts30d,
+      representative_score: m.score,
+      is_representative: m.id === representativeId,
+    };
+    if (!aiCheckedColumnMissing) {
+      const { error } = await supabase.from('topics').update({ ...base, ai_checked_count: m.aiCheckedCount }).eq('id', m.id);
+      if (!error) continue;
+      if (error.code !== 'PGRST204' && error.code !== '42703') continue; // 다른 오류는 종전처럼 무시(다음 실행에서 재시도)
+      console.warn('[curate-blog-topics] topics.ai_checked_count 컬럼 없음 — 마이그레이션 161 미적용. 해당 컬럼 없이 저장합니다.');
+      aiCheckedColumnMissing = true;
+    }
+    await supabase.from('topics').update(base).eq('id', m.id);
   }
 }
 
