@@ -260,7 +260,7 @@ export default function AiConsultantClient() {
   // 질문을 하고 나면(결과가 생기면) 다시 일반적인 위→아래 흐름으로 전환한다.
   const isIdle = !result && !loading && !error;
 
-  // 대화 목록(최근 분석)이 있는 로그인 사용자에게만 ChatGPT식 좌측 전용 패널을 띄운다.
+  // 대화 목록(최근 분석)이 있는 로그인 사용자에게만 우측 전용 패널을 띄운다.
   // 게스트·신규(이력 없음)는 패널 없이 기존 중앙 정렬 레이아웃 그대로. 모바일에서는
   // 좁은 화면 눌림을 피하려 패널 대신 본문 하단의 최근 대화 목록을 유지한다(아래 lg:hidden).
   const hasConversationList = !!(recent && recent.length > 0);
@@ -368,86 +368,25 @@ export default function AiConsultantClient() {
     <div
       className={
         hasConversationList
-          ? // 패널이 실제로 보일 때만 (패널 + 간격 + 본문 960)을 한 덩어리로 묶어 가운데 정렬한다.
-            // 그래야 패널 왼쪽 여백과 본문 오른쪽 여백이 같아진다 — 예전엔 본문만 남은 폭 안에서
-            // 따로 중앙정렬돼 패널은 왼쪽에 붙고 그 사이에 빈 구멍이 생겼다.
+          ? // 패널이 실제로 보일 때만 (본문 960 + 간격 + 패널)을 한 덩어리로 묶어 가운데 정렬한다.
+            // 그래야 본문 왼쪽 여백과 패널 오른쪽 여백이 같아진다 — 따로 중앙정렬하면 본문만
+            // 남은 폭 안에서 정렬돼 패널과의 사이에 빈 구멍이 생긴다.
             `w-full lg:flex lg:items-start lg:gap-8 ${showPanel ? 'lg:max-w-[1232px] lg:mx-auto' : ''}`
           : ''
       }
     >
-      {/* ── 보조 사이드바: AI 대화목록 (데스크톱, 펼침 상태) ── */}
-      {showPanel && (
-        <aside className="hidden lg:flex lg:flex-col lg:w-[240px] lg:shrink-0 gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)]">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={startNew}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg text-xs font-bold text-accent border border-accent/40 hover:bg-accent/10 transition-colors cursor-pointer"
-            >
-              <span className="text-sm leading-none">+</span> 새 대화
-            </button>
-            <button
-              onClick={toggleCollapsed}
-              aria-label="대화목록 접기"
-              title="대화목록 접기"
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-border text-dim hover:text-accent hover:border-accent transition-colors cursor-pointer"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M15 6l-6 6 6 6" />
-              </svg>
-            </button>
-          </div>
-
-          {/* 대화 검색 */}
-          <div className="relative shrink-0">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-dim pointer-events-none">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M21 21l-4.3-4.3" />
-            </svg>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="대화 검색"
-              className="w-full pl-8 pr-3 py-2 bg-bg border border-border rounded-lg text-xs text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
-            />
-          </div>
-
-          {/* 목록 */}
-          <div className="space-y-3 overflow-y-auto pr-1 -mr-1">
-            {filtered.length === 0 && (
-              <p className="text-xs text-dim/70 px-1 py-2">
-                {q ? '검색 결과가 없습니다.' : '아직 대화가 없습니다.'}
-              </p>
-            )}
-
-            {pinnedItems.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-bold text-dim px-1">고정됨</p>
-                {pinnedItems.map(renderItem)}
-              </div>
-            )}
-
-            {buckets.map((bucket) => (
-              <div key={bucket.label} className="space-y-1.5">
-                <p className="text-[11px] font-bold text-dim px-1">{bucket.label}</p>
-                {bucket.items.map(renderItem)}
-              </div>
-            ))}
-          </div>
-        </aside>
-      )}
-
       {/* ── AI 메인 영역: 대화목록을 제외한 남은 너비 전체(flex-1) ── */}
       <div className={`${hasConversationList ? 'flex-1 min-w-0' : ''} ${isIdle && !hasConversationList ? 'min-h-[calc(100dvh-8rem)] flex flex-col justify-center' : ''}`}>
         {/* 메인 콘텐츠는 AI 메인 영역(flex-1) 기준으로 중앙 정렬 + 최대폭 제한 */}
         <div className="max-w-[960px] mx-auto w-full space-y-6">
           <div className="relative flex items-center justify-center gap-3 pt-2">
-            {/* 패널 접힘 상태일 때만 노출되는 펼치기 버튼 (중앙 정렬을 깨지 않도록 absolute) */}
+            {/* 패널 접힘 상태일 때만 노출되는 펼치기 버튼 — 패널이 붙는 우측에 둔다 (중앙 정렬을 깨지 않도록 absolute) */}
             {hasConversationList && collapsed && (
               <button
                 onClick={toggleCollapsed}
                 aria-label="대화목록 펼치기"
                 title="대화목록 펼치기"
-                className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-dim hover:text-accent hover:border-accent transition-colors cursor-pointer"
+                className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-dim hover:text-accent hover:border-accent transition-colors cursor-pointer"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -599,7 +538,7 @@ export default function AiConsultantClient() {
             </div>
           )}
 
-          {/* 데스크톱은 좌측 대화 목록 패널로 이동 — 여기서는 모바일 화면에서만 하단 목록 노출 */}
+          {/* 데스크톱은 우측 대화 목록 패널로 이동 — 여기서는 모바일 화면에서만 하단 목록 노출 */}
           {hasConversationList && (
             <div className="lg:hidden space-y-2 pt-2 border-t border-border">
               <p className="text-xs font-bold text-dim pt-3">최근 대화</p>
@@ -610,6 +549,67 @@ export default function AiConsultantClient() {
           )}
         </div>
       </div>
+
+      {/* ── 보조 사이드바: AI 대화목록 (데스크톱 우측, 펼침 상태) ── */}
+      {showPanel && (
+        <aside className="hidden lg:flex lg:flex-col lg:w-[240px] lg:shrink-0 gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)]">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleCollapsed}
+              aria-label="대화목록 접기"
+              title="대화목록 접기"
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-border text-dim hover:text-accent hover:border-accent transition-colors cursor-pointer"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+            <button
+              onClick={startNew}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg text-xs font-bold text-accent border border-accent/40 hover:bg-accent/10 transition-colors cursor-pointer"
+            >
+              <span className="text-sm leading-none">+</span> 새 대화
+            </button>
+          </div>
+
+          {/* 대화 검색 */}
+          <div className="relative shrink-0">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-dim pointer-events-none">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="대화 검색"
+              className="w-full pl-8 pr-3 py-2 bg-bg border border-border rounded-lg text-xs text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors"
+            />
+          </div>
+
+          {/* 목록 */}
+          <div className="space-y-3 overflow-y-auto pr-1 -mr-1">
+            {filtered.length === 0 && (
+              <p className="text-xs text-dim/70 px-1 py-2">
+                {q ? '검색 결과가 없습니다.' : '아직 대화가 없습니다.'}
+              </p>
+            )}
+
+            {pinnedItems.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-bold text-dim px-1">고정됨</p>
+                {pinnedItems.map(renderItem)}
+              </div>
+            )}
+
+            {buckets.map((bucket) => (
+              <div key={bucket.label} className="space-y-1.5">
+                <p className="text-[11px] font-bold text-dim px-1">{bucket.label}</p>
+                {bucket.items.map(renderItem)}
+              </div>
+            ))}
+          </div>
+        </aside>
+      )}
     </div>
   );
 }

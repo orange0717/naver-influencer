@@ -59,7 +59,7 @@ function NavHeading({ label, subgroup }: { label: string; subgroup?: boolean }) 
 function ItemLabel({ item }: { item: SidebarItem }) {
   return (
     <span className="truncate">
-      {item.bullet && <span className="text-[#A36B63] font-bold mr-1.5" aria-hidden="true">•</span>}
+      {item.bullet && <span className="text-[#c05e4e] font-bold mr-1.5" aria-hidden="true">•</span>}
       {item.label}
     </span>
   );
