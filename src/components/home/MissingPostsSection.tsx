@@ -732,7 +732,7 @@ export default function MissingPostsSection() {
         cards={[
           { key: 'total', label: '전체 포스팅', value: periodPosts.length, color: 'accent', description: postsLoading ? '불러오는 중...' : '선택 기간 발행 글' },
           { key: 'normal', label: '노출', value: normalCount, color: 'up', description: postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출` },
-          { key: 'missing', label: '미노출', value: missingCount, color: 'down', description: postsLoading ? '불러오는 중...' : `${pct(missingCount)}% · 전 영역 미노출` },
+          { key: 'missing', label: '미노출', value: missingCount, color: 'down', description: postsLoading ? '불러오는 중...' : `${pct(missingCount)}% · 확인한 전 영역 미노출` },
           { key: 'partial', label: '일부 노출', value: partialCount, color: 'accent', description: postsLoading ? '불러오는 중...' : `${pct(partialCount)}% · 일부 영역만` },
           { key: 'unknown', label: '미확인', value: unknownCount, color: 'dim', description: postsLoading ? '불러오는 중...' : '미검사·확인 중·확인 실패' },
         ]}

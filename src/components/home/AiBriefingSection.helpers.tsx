@@ -466,8 +466,23 @@ export async function fetchCitationHistory(blogId: string): Promise<Record<strin
   return (data.history || {}) as Record<string, HistoryEntry[]>;
 }
 
+/** 표면 하나의 상태 문구 — null(확인 못 함)을 미인용/미노출로 적지 않는다. */
+function surfaceLabel(v: boolean | null, yes: string, no: string): string {
+  return v === true ? yes : v === false ? no : '확인 못 함';
+}
+
 function citationLabel(exposed: boolean | null, tabExposed: boolean | null): string {
-  return `AI 브리핑 ${exposed ? '인용됨' : '미인용'} · AI 탭 ${tabExposed ? '노출' : '미노출'}`;
+  return `AI 브리핑 ${surfaceLabel(exposed, '인용됨', '미인용')} · AI 탭 ${surfaceLabel(tabExposed, '노출', '미노출')}`;
+}
+
+/**
+ * 스냅샷 한 건의 인용 상태 — true=어느 한쪽이라도 인용 / false=확인한 표면에 없음 / null=양쪽 다 확인 못 함.
+ * null 을 false 로 뭉개면 확인하지 못한 시점이 이력에 '미인용'으로 남는다(스펙 §5).
+ */
+export function citedState(e: HistoryEntry): boolean | null {
+  if (e.exposed === true || e.tabExposed === true) return true;
+  if (e.exposed === false || e.tabExposed === false) return false;
+  return null;
 }
 
 function shortDate(iso: string): string {
@@ -485,12 +500,13 @@ export function CitationTimeline({ entries }: { entries?: HistoryEntry[] }) {
   return (
     <span className="inline-flex items-center gap-1 flex-wrap text-[10px] text-dim">
       {last.map((e, i) => {
-        const cited = e.exposed || e.tabExposed;
+        const cited = citedState(e);
         return (
           <span key={e.checkedAt} className="inline-flex items-center gap-1">
             {i > 0 && <span className="text-dim/50">→</span>}
-            <span className={cited ? 'text-up font-semibold' : ''} title={citationLabel(e.exposed, e.tabExposed)}>
-              {shortDate(e.checkedAt)} {cited ? '인용' : '미인용'}
+            <span className={cited === true ? 'text-up font-semibold' : cited === null ? 'text-dim/60' : ''}
+              title={citationLabel(e.exposed, e.tabExposed)}>
+              {shortDate(e.checkedAt)} {cited === true ? '인용' : cited === false ? '미인용' : '미확인'}
             </span>
           </span>
         );
