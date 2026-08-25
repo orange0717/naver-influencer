@@ -43,7 +43,11 @@ jobs:
           TOP=${{ inputs.top || '5000' }}
           node scripts/discover-via-search.mjs --apply --top "$TOP"
 
+      # 선정일을 채우는 상시 경로는 이 스텝뿐이다. 발굴 스텝이 네이버 차단(403)으로
+      # 실패하면 함께 skip 되어, 챌린지 경로(discover-new-influencers)로 들어온 신규가
+      # 선정일 NULL 로 남고 선정일 정렬(NULLS LAST) 리스트 맨 끝으로 밀린다.
       - name: 신규 등록분 naver_created_at 채우기 (Phase 1)
+        if: ${{ !cancelled() }}
         run: node scripts/bulk-crawl-details.mjs --phase 1 --force
 
       - name: 정리

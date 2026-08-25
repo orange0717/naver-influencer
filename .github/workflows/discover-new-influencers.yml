@@ -46,6 +46,12 @@ jobs:
           TOP=${{ inputs.top || '3500' }}
           node scripts/discover-new-influencers.mjs --apply --top "$TOP"
 
+      # 이 스크립트는 선정일을 채우지 않는다. 리스트 기본 정렬이 선정일 내림차순(NULLS LAST)이라
+      # 선정일이 비면 신규가 명단 맨 끝으로 밀려 보이지 않는다.
+      - name: 신규 등록분 naver_created_at 채우기 (Phase 1)
+        if: ${{ !cancelled() }}
+        run: node scripts/bulk-crawl-details.mjs --phase 1 --force
+
       - name: 정리
         if: always()
         run: rm -f scripts/.discover-new-influencers-progress.json .env.local
