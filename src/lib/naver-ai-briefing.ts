@@ -201,7 +201,7 @@ function exposedFromStatus(s: SurfaceStatus): boolean | null {
 }
 
 /** 네이버 블로그 URL(경로형/쿼리형 모두)에서 {blogId, postId} 추출 */
-function extractBlogPost(url: string): { blogId: string; postId: string } | null {
+export function extractBlogPost(url: string): { blogId: string; postId: string } | null {
   try {
     const u = new URL(url);
     if (!/(^|\.)blog\.naver\.com$/i.test(u.hostname)) return null;
@@ -209,7 +209,9 @@ function extractBlogPost(url: string): { blogId: string; postId: string } | null
     const pathMatch = u.pathname.match(/^\/([a-zA-Z0-9_-]+)\/(\d+)\/?$/);
     if (pathMatch) return { blogId: pathMatch[1], postId: pathMatch[2] };
 
-    if (/PostView\.naver/i.test(u.pathname)) {
+    // 구형 .nhn 형식도 받는다 — 출처 URL을 못 읽으면 실제로 인용된 글이 '미인용'으로 판정된다.
+    // (naver-blog-url.ts::parseNaverBlogPostUrl 과 동일한 범위를 유지)
+    if (/PostView\.(naver|nhn)/i.test(u.pathname)) {
       const blogId = u.searchParams.get('blogId');
       const postId = u.searchParams.get('logNo');
       if (blogId && postId) return { blogId, postId };
@@ -225,7 +227,7 @@ function extractBlogPost(url: string): { blogId: string; postId: string } | null
  * 제목 부분 일치나 URL 문자열 포함으로 판정하지 않는다 — 같은 블로그의 다른 글,
  * 제목이 비슷한 남의 글이 인용된 경우를 인용으로 오판하지 않기 위함(스펙 #11).
  */
-function findMatch(sources: RawSource[], blogId: string, postId: string): { index: number; source: RawSource } | null {
+export function findMatch(sources: RawSource[], blogId: string, postId: string): { index: number; source: RawSource } | null {
   const blogIdLower = blogId.toLowerCase();
   const postIdStr = String(postId);
   for (let i = 0; i < sources.length; i++) {
