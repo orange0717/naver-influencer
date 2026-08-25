@@ -47,9 +47,10 @@ interface ParticipatedKeyword {
   thumbnailUrl?: string;
 }
 
-/** naverId 형식 검증 (영문/숫자/언더스코어만 허용) */
+/** naverId 형식 검증. 네이버 ID는 `.`과 `-`도 쓴다(hotcoffee-, dodo.nana).
+ *  URL에 그대로 이어붙이므로 첫 글자는 영숫자로, `..`는 금지한다. */
 function isValidNaverId(id: string): boolean {
-  return /^[a-zA-Z0-9_]{2,30}$/.test(id);
+  return /^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,29}$/.test(id) && !id.includes('..');
 }
 
 /** 쿼리/표시용 @ 접두사 제거 후 검증 */

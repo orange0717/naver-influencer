@@ -43,7 +43,7 @@ const LIMIT = limitArg >= 0 ? parseInt(args[limitArg + 1]) : Infinity;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 function isValidNaverId(id) {
-  return /^[a-zA-Z0-9_.]{2,30}$/.test(id);
+  return /^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,29}$/.test(id) && !id.includes('..');
 }
 
 async function fetchHtml(naverId) {
