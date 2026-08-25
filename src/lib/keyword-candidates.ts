@@ -192,6 +192,13 @@ function isEpisodeOrDate(token: string): boolean {
 /** 목적격 조사(을/를)로 끝나는 절 머리 — 명사가 아니므로 구 경계. */
 function isObjectClause(token: string): boolean {
   if (NOUN_ENDS_EUL.has(token)) return false;
+  // ⚠️ 2자 토큰(나를·너를·시를)은 일부러 절 머리로 보지 않는다. 대표 키워드로 "나를"(0.52)이 나오는
+  // 문제 때문에 2자 '를'까지 경계로 넓혀봤으나(2026-08-25), 실제 제목 936건 대조에서 9건이 바뀌고
+  // 그중 4건이 명백한 악화였다 — 명령문형 책 제목이 통째로 부서진다:
+  //   "너를 아끼며 살아라 …" → 대표가 "좋은글귀"(일반어!) · "나를 먹어줘" → "먹어줘"
+  //   "나를 지워줘" → "지워줘"  · "최영미 시를 읽는 오후 …" → "최영미"
+  // 게다가 '시를'처럼 1자 명사+를 도 2자라 같이 걸린다. 개선은 1건뿐이라 순손해였다.
+  // 이 3자 조건은 버그가 아니라 스펙 #3(복합 고유명사를 쪼개지 않는다)을 지키는 보호 장치다.
   return token.length >= 3 && (token.endsWith('를') || token.endsWith('을'));
 }
 
@@ -232,9 +239,18 @@ const INTERROGATIVES = new Set([
 // ('잡지'·'단지'처럼 '지'로 끝나는 명사를 건드리면 안 된다).
 const VERB_INFLECTION_RE = /(하지|되지|하며|하면|해서|하여|하고|하기로|되기로)$/;
 
-/** 용언 활용형(말하지·해서·살아남는다)인지 — 명사구의 끝일 수 없다. */
+/**
+ * 용언 연결형(말하지·해서·하며)인지 — 명사구의 끝일 수 없다.
+ *
+ * ⚠️ 종결형(…다/…니다)은 일부러 제외한다. endsIncomplete 의 원 주석이 경고한 그대로,
+ * 문장형 작품 제목("다정한 것이 살아남는다")과 단순 문장을 규칙으로는 못 가른다.
+ * 936건 대조에서 종결형을 떼어봤더니 책 제목이 통째로 부서졌다:
+ *   "인생은 실전이다"→"인생" · "금성으로 돌아오다"→"금성" · "이렇게 만듭니다"→"이렇게"
+ *   "어서오세요 휴남동서점입니다"→"어서오세요" · "죽은 새는 울지 않는다"→"죽은 새는 울지"
+ * 종결형으로 끝나는 구는 지금처럼 저신뢰로 남겨 두는 편이 낫다.
+ */
 function isVerbInflection(token: string): boolean {
-  return token.length >= 3 && (VERB_INFLECTION_RE.test(token) || VERB_FINAL_RE.test(token));
+  return token.length >= 3 && VERB_INFLECTION_RE.test(token);
 }
 
 // 조사로 끝나 보이는 마지막 글자. 다듬은 뒤에도 여기 걸리면 되돌린다(다정한 것이 → 그대로 둔다).
@@ -254,21 +270,21 @@ function stripTrailingJosa(token: string): string {
   return token;
 }
 
-/**
- * 구의 맨 앞에서 떼어낼 어절인지 — 한 글자 관형사(내·그·이)와 정도부사(너무도)뿐이다.
+/*
+ * 구의 "맨 앞"은 일부러 건드리지 않는다 — 다듬기는 꼬리 전용이다.
  *
- * ⚠️ 목적격 절(미움받을)·관형형 용언(운명을 바꾸는)은 일부러 떼지 않는다. 이것들은 이미
- * classifyToken 에서 구 경계로 처리됐는데도 대표에 남아 있다면, 앞쪽 "수식어 재결합" 로직이
- * 작품 제목일 가능성을 보고 일부러 도로 붙인 것이다("미움받을 용기", "운명을 바꾸는 부동산 투자").
- * 여기서 떼면 그 판단을 뒤집어 책 제목을 훼손한다 — 실측: "미움받을 용기 아들러 심리학" → "용기 아들러 심리학".
+ * 앞자리를 떼어보려는 시도를 두 번 했고 둘 다 실제 제목 936건 대조에서 순손해였다(2026-08-25):
+ *   1) 목적격 절(나를·미움받을) 제거 → 명령문형 책 제목이 부서짐
+ *      "나를 먹어줘"→"먹어줘" · "너를 아끼며 살아라 …"→"좋은글귀"(일반어!) · "최영미 시를 읽는 오후"→"최영미"
+ *   2) 한 글자·정도부사(더·빠르게) 제거 → 앞쪽 "수식어 재결합" 결과를 도로 부숨
+ *      "더 빠르게 실패하기"→"실패하기" · "꽃 동시 …"→"동시 …" · "두 번째 운명"→"번째 운명"
+ *
+ * 공통 원인: 대표 구의 앞자리에 남아 있는 수식어·절은 대개 앞단 로직이 "작품 제목일 수 있으니
+ * 도로 붙인" 결과다. 꼬리(조사·의문사·의존부사)와 달리 앞자리는 규칙만으로 제거해도 되는지
+ * 판단할 수 없다. 여기는 AI 보정이 돌아올 때까지 저신뢰로 남겨 두는 편이 낫다.
  */
-function isDroppableHead(token: string): boolean {
-  if (token.length === 1 && !BARE_NUMBER_RE.test(token)) return true;
-  if (isModifierWord(stripJosa(token))) return true;   // 너무도 → 너무
-  return false;
-}
 
-/** 구의 맨 뒤에서 떼어낼 어절인지 — 의문사(왜), 의존부사(대해), 용언(말하지·하는·만들기), 수식어. */
+/** 구의 맨 뒤에서 떼어낼 어절인지 — 의문사(왜), 의존부사(대해), 용언 연결형(말하지·하는), 수식어. */
 function isDroppableTail(token: string): boolean {
   if (INTERROGATIVES.has(lower(token))) return true;   // '왜'처럼 한 글자인 의문사가 있어 길이 판정보다 먼저 본다
   // 한 글자 꼬리는 한글이면 남긴다("혼자 있는 시간의 힘"의 '힘'). 한자·기호(中··)나 일반어(것)만 뗀다.
@@ -276,7 +292,9 @@ function isDroppableTail(token: string): boolean {
   if (DEPENDENT_ADVERBS.has(lower(token))) return true;
   if (isVerbInflection(token)) return true;
   if (isAdnominalVerb(token)) return true;
-  if (isVerbalNoun(token)) return true;
+  // ⚠️ 용언 명사형(글쓰기·책읽기)은 떼지 않는다. 원 엔진도 endsWithVerbalNoun 을 "신뢰도를 낮추는"
+  // 근거로만 썼지 제거하지는 않았다. 실제로 '글쓰기'는 그 자체로 검색량이 큰 키워드다 —
+  // 936건 대조에서 "AI 글쓰기"→"AI", "나민애의 책 읽고 글쓰기"→"나민애의 책 읽고" 로 망가졌다.
   if (isModifierWord(token)) return true;
   return false;
 }
@@ -289,13 +307,11 @@ export function trimPhraseEdges(phrase: string): string {
   const parts = phrase.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return phrase;
 
-  let lo = 0;
   let hi = parts.length - 1;
-  while (lo <= hi && isDroppableHead(parts[lo])) lo++;
-  while (hi >= lo && isDroppableTail(parts[hi])) hi--;
-  if (lo > hi) return phrase;                          // 전부 떨어져 나가면 다듬지 않은 것으로 본다
+  while (hi >= 0 && isDroppableTail(parts[hi])) hi--;
+  if (hi < 0) return phrase;                           // 전부 떨어져 나가면 다듬지 않은 것으로 본다
 
-  const kept = parts.slice(lo, hi + 1);
+  const kept = parts.slice(0, hi + 1);
   kept[kept.length - 1] = stripTrailingJosa(kept[kept.length - 1]);
   const out = kept.join(' ');
   if (out === phrase) return phrase;

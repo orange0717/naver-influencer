@@ -28,12 +28,34 @@ describe('trimPhraseEdges — 양 끝 다듬기 단위', () => {
     expect(trimPhraseEdges('이영초롱은 왜')).toBe('이영초롱');
   });
 
-  it('앞의 정도부사를 뗀다 (너무도 → 제거)', () => {
-    expect(trimPhraseEdges('너무도 황당한 지역')).toBe('황당한 지역');
+  it('앞자리는 건드리지 않는다 — 수식어 재결합 결과를 도로 부수면 안 된다', () => {
+    // 엔진은 용언 명사형이 단독으로 남지 않도록 앞 수식어를 일부러 도로 붙인다.
+    // 앞자리를 떼면 그 판단이 무효가 된다("더 빠르게 실패하기"는 실제 책 제목이다).
+    expect(trimPhraseEdges('더 빠르게 실패하기')).toBe('더 빠르게 실패하기');
+    expect(trimPhraseEdges('너무도 황당한 지역')).toBe('너무도 황당한 지역');
+    expect(trimPhraseEdges('그 사람의 이야기들')).toBe('그 사람의 이야기들');
+    // 의미 있는 한 글자가 앞에 오는 제목들
+    expect(trimPhraseEdges('꽃 동시 초등학교2학년동시')).toBe('꽃 동시 초등학교2학년동시');
+    expect(trimPhraseEdges('네 이웃의 식탁')).toBe('네 이웃의 식탁');
   });
 
-  it('앞의 한 글자 관형사를 뗀다', () => {
-    expect(trimPhraseEdges('그 사람의 이야기들')).toBe('사람의 이야기들');
+  it('용언 명사형(글쓰기)은 떼지 않는다 — 그 자체로 검색되는 키워드다', () => {
+    expect(trimPhraseEdges('AI 글쓰기')).toBe('AI 글쓰기');
+    expect(trimPhraseEdges('나민애의 책 읽고 글쓰기')).toBe('나민애의 책 읽고 글쓰기');
+  });
+
+  it('문장 종결형(…다/…니다)은 떼지 않는다 — 문장형 작품 제목과 못 가른다', () => {
+    expect(trimPhraseEdges('인생은 실전이다')).toBe('인생은 실전이다');
+    expect(trimPhraseEdges('금성으로 돌아오다')).toBe('금성으로 돌아오다');
+    expect(trimPhraseEdges('어서오세요 휴남동서점입니다')).toBe('어서오세요 휴남동서점입니다');
+    expect(trimPhraseEdges('죽은 새는 울지 않는다')).toBe('죽은 새는 울지 않는다');
+  });
+
+  it('실측 상위 패턴: 인명·기관 뒤의 속격 "…의"를 뗀다 (936건 중 45건)', () => {
+    expect(trimPhraseEdges('오렌지도서관의')).toBe('오렌지도서관');
+    expect(trimPhraseEdges('데일 카네기의')).toBe('데일 카네기');
+    expect(trimPhraseEdges('보도 섀퍼의')).toBe('보도 섀퍼');
+    expect(trimPhraseEdges('수용소에서')).toBe('수용소');
   });
 
   it('한자·기호 꼬리는 떼지만 한글 한 글자 명사는 남긴다', () => {
@@ -55,7 +77,8 @@ describe('trimPhraseEdges — 양 끝 다듬기 단위', () => {
 
   it('되돌림: 다듬으면 일반어만 남는 경우 원본을 유지한다', () => {
     // '블로그'는 STOPWORD 라 단독으로는 대표가 될 수 없다 → 원본 유지.
-    expect(trimPhraseEdges('내 블로그의')).toBe('내 블로그의');
+    expect(trimPhraseEdges('블로그의')).toBe('블로그의');
+    expect(trimPhraseEdges('후기와')).toBe('후기와');
   });
 
   it('되돌림: 다듬어도 여전히 조사로 끝나면 원본을 유지한다', () => {
@@ -80,7 +103,6 @@ describe('extractKeywordCandidates — 다듬기가 붙은 실제 제목', () =>
   const cases: Array<[title: string, expected: string]> = [
     ['책리뷰 노동에 대해 말하지 않는 것들', '책리뷰 노동'],
     ['이영초롱은 왜 그랬을까', '이영초롱'],
-    ['너무도 황당한 지역 블로그 오픈톡방', '황당한 지역'],
   ];
   for (const [title, expected] of cases) {
     it(`저신뢰 제목을 다듬는다: ${title}`, () => {
