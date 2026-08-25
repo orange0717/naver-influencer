@@ -106,9 +106,10 @@ export default function BloggerRankingView() {
         const res = await fetch(`/api/rankings/search?q=${encodeURIComponent(raw)}`);
         const data = await res.json();
         if (!res.ok) {
+          // HTTP 상태 코드는 사용자에게 아무 의미가 없다. 서버가 사유를 돌려주면 그걸 쓴다.
           setMyRank({
             found: false,
-            message: `검색 중 오류가 발생했습니다 (${res.status}). 잠시 후 다시 시도해주세요.`,
+            message: data?.error || '검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
           });
           return;
         }

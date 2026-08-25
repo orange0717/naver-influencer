@@ -965,6 +965,9 @@ export default function AiBriefingSection() {
     setBulkRunning(true);
     setBulkProgress({ done: 0, total: targets.length, current: '' });
     let halted = false;
+    // 중단 사유를 구분한다 — 'blocked'(네이버 제한)와 'auth'(로그인 끊김·권한 없음)는
+    // 사용자가 해야 할 일이 완전히 다르다.
+    let haltReason: 'blocked' | 'auth' = 'blocked';
     for (let i = 0; i < targets.length; i++) {
       if (bulkAbortRef.current) break;
       const post = targets[i];
@@ -975,13 +978,20 @@ export default function AiBriefingSection() {
       const res = await checkSingleKeyword(post, kw);
       setBulkProgress(p => ({ ...p, done: p.done + 1 }));
       if (!res.ok) {
+        // 로그인이 끊겼거나(401) 권한·플랜이 없으면(403) 남은 포스팅도 전부 같은 이유로 실패한다.
+        // 예전에는 이 두 경우를 멈춤 조건에서 빠뜨려서, 배치가 끝까지 돌며 포스팅마다 오류를
+        // 띄우고 마지막에 "이번 배치 확인을 완료했습니다"라고 알렸다 — 한 건도 확인하지 못했는데도.
+        // 상태 코드로 판정한다. 오류 문구를 정규식으로 읽는 방식은 문구가 바뀌면 조용히 깨진다.
+        if (res.status === 401 || res.status === 403) { halted = true; haltReason = 'auth'; break; }
         const blocked = res.status === 429 || (!!res.errorMsg && /(접근|제한|너무 많)/.test(res.errorMsg));
         if (blocked) { halted = true; break; }
       }
       if (i < targets.length - 1 && !bulkAbortRef.current) await sleep(BATCH_DELAY_MS);
     }
     setBulkRunning(false);
-    if (halted) {
+    if (halted && haltReason === 'auth') {
+      setBulkNotice('로그인이 만료되었거나 이 블로그를 확인할 권한이 없어 중단했습니다. 다시 로그인한 뒤 "전체 업데이트"를 눌러 주세요. 확인하지 못한 포스팅은 미확인 상태로 그대로 남습니다.');
+    } else if (halted) {
       setBulkNotice('네이버 접근이 일시적으로 제한되어 중단했습니다. 잠시 후 다시 "전체 업데이트"를 눌러 이어서 확인하세요. 미확인 포스팅은 그대로 유지됩니다.');
     } else if (!bulkAbortRef.current) {
       setBulkNotice('이번 배치 확인을 완료했습니다. 남은 포스팅이 있으면 다시 실행해 이어서 확인할 수 있습니다.');
@@ -1053,7 +1063,13 @@ export default function AiBriefingSection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blogId: profile.blogId, confirm: true }),
       });
-      if (!res.ok) { showError('재추출 중 오류가 발생했습니다.'); return; }
+      if (!res.ok) {
+        // 서버는 사유를 한국어로 돌려준다(로그인 필요·권한 없음 등). 그걸 버리고
+        // "오류가 발생했습니다"로 뭉개면 사용자는 다음에 뭘 해야 할지 알 수 없다.
+        const d = await res.json().catch(() => ({}));
+        showError(d.error || '재추출 중 오류가 발생했습니다.');
+        return;
+      }
       const data: { reextracted: number; changed: number; skippedManual: number } = await res.json();
       setAuditOpen(false);
       setAuditData(null);
