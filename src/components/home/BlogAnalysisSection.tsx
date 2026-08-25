@@ -46,6 +46,13 @@ export default function BlogAnalysisSection() {
   const [checkingMissing, setCheckingMissing] = useState<string>('');
   const [checkingAll, setCheckingAll] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0, failed: 0 });
+  // 재진입 차단은 state(checkingAll)가 아니라 ref 로 한다 — 노출 현황(MissingPostsSection.runBatch)과 같은 이유다.
+  // state 는 다음 렌더에서야 true 가 되므로, 같은 프레임에 두 번 들어오면(더블클릭 · '개수' 필터와 '전체 확인'을
+  // 연속 클릭) 두 루프가 동시에 돌아 같은 글을 두 번 조회하고 setCheckProgress 를 서로 덮어쓴다.
+  // (과금은 서버 referenceId 로 멱등이라 이중차감은 없지만, 네이버 호출이 2배가 되고 진행률이 뒤로 되돌아간다.)
+  const batchRunningRef = useRef(false);
+  // 시작하면 멈출 방법이 없던 문제 — 180개 순차 검사는 건당 2초라 6분이 걸린다.
+  const checkAbortRef = useRef(false);
   const [postFilter, setPostFilter] = useState<'all' | 'missing'>('all');
   const [scoreData, setScoreData] = useState<BlogScoreData | null>(null);
   const [category, setCategory] = useState('기타');
@@ -377,12 +384,16 @@ export default function BlogAnalysisSection() {
   const checkMissingForCount = async (count: number) => {
     const all = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
     if (!profile || all.length === 0) return;
+    if (batchRunningRef.current) return; // 진행 중 재진입 차단(위 batchRunningRef 주석 참고)
     const posts = count === 0 ? all : all.slice(0, count);
+    batchRunningRef.current = true;
+    checkAbortRef.current = false;
     setCheckingAll(true);
     setCheckProgress({ current: 0, total: posts.length, failed: 0 });
     const now = Date.now();
     let failedCount = 0;
     for (let i = 0; i < posts.length; i++) {
+      if (checkAbortRef.current) break; // '중단' — 여기까지 확인된 결과는 이미 서버에 저장돼 있으므로 그대로 둔다
       const post = posts[i];
       const existing = missingResults[post.id];
       const isFresh = existing?.status === 'ok' && !!existing.checkedAt
@@ -390,12 +401,13 @@ export default function BlogAnalysisSection() {
       if (!isFresh) {
         const result = await checkMissing(post);
         if (result === 'failed') failedCount++;
-        if (i < posts.length - 1) await new Promise(r => setTimeout(r, 2000));
+        if (i < posts.length - 1 && !checkAbortRef.current) await new Promise(r => setTimeout(r, 2000));
       }
       setCheckProgress({ current: i + 1, total: posts.length, failed: failedCount });
     }
     setCheckingAll(false);
     setCheckProgress({ current: 0, total: 0, failed: 0 });
+    batchRunningRef.current = false;
     saveScoreToServer();
   };
 
@@ -794,6 +806,15 @@ export default function BlogAnalysisSection() {
                     {checkProgress.failed > 0 ? ` (실패 ${checkProgress.failed})` : ''}
                   </span>
                 ) : '전체 누락율 확인'}
+              </button>
+            )}
+            {/* 노출 현황 화면과 동일한 '중단' — 순차 검사는 건당 2초라 180개면 6분이다.
+                시작한 뒤 되돌릴 방법이 없으면 사용자는 페이지를 떠나는 것 말고 선택지가 없다. */}
+            {checkingAll && (
+              <button onClick={() => { checkAbortRef.current = true; }}
+                title="진행 중인 누락율 검사를 중단합니다(이미 확인된 결과는 저장됩니다)."
+                className="px-3 py-2 border border-border text-dim font-semibold rounded-xl hover:bg-surface-hover transition cursor-pointer text-xs shrink-0">
+                중단
               </button>
             )}
             <button onClick={downloadPostsCsv}
