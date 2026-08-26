@@ -102,6 +102,8 @@ async function getInfluencersFromDB(
     top3_count: 'top3_count',
     keyword_score: 'keyword_score',
   };
+  /** 비율 정렬은 메모리에서 정렬하므로 상한이 있다. 상한에 걸리면 화면에 그 사실을 밝힌다. */
+  const RATIO_SORT_CAP = 5000;
   const isRatioSort = sortBy === 'top3_ratio';
   const sortColumn = isRatioSort ? 'integrated_top3_count' : (allowedSorts[sortBy] || 'naver_created_at');
   const ascending = order === 'asc';
@@ -130,6 +132,8 @@ async function getInfluencersFromDB(
   let influencers: Record<string, unknown>[] | null = null;
   let count: number | null = null;
   let error: { message: string } | null = null;
+  /** 비율 정렬에서 필터(참여>0)를 건 뒤의 실제 총계. 상한에 걸렸는지 판단하는 데 쓴다. */
+  let ratioMatchCount: number | null = null;
 
   if (isGroupSort) {
     // 배치 페치 (Supabase max-rows 1000 우회)
@@ -161,9 +165,11 @@ async function getInfluencersFromDB(
     influencers = res.data; count = res.count; error = res.error;
   } else {
     // 비율 정렬: 키워드 참여 인플루언서만 가져와서 서버에서 정렬 (최대 5000건)
-    query = query.not('total_keywords', 'is', null).gt('total_keywords', 0).limit(5000);
+    query = query.not('total_keywords', 'is', null).gt('total_keywords', 0).limit(RATIO_SORT_CAP);
     const res = await query;
     influencers = res.data; count = res.count; error = res.error;
+    // 필터를 건 뒤의 진짜 총계. 아래에서 count 를 '가져온 건수'로 덮어쓰기 전에 잡아둔다.
+    ratioMatchCount = res.count ?? null;
   }
 
   if (error) throw new Error(error.message);
@@ -378,6 +384,13 @@ async function getInfluencersFromDB(
       influencers: items,
       categories,
       total,
+      // ⚠️ '비율' 정렬은 챌린지 참여자만 대상으로 한다. 그래서 total 의 뜻이 정렬에 따라 달라진다.
+      //    같은 라벨로 다른 것을 세면 사용자는 인원이 갑자기 줄어든 줄로 읽는다 —
+      //    무엇을 센 숫자인지 화면이 말할 수 있게 범위를 함께 내려보낸다.
+      totalScope: isRatioSort ? 'challenge_participants' : 'all',
+      // 상한(5000)에 걸려 일부만 정렬했는지. 걸렸으면 "전부 본 것"이라고 말하면 안 된다.
+      totalTruncated: isRatioSort && ratioMatchCount !== null && ratioMatchCount > total,
+      totalMatched: isRatioSort ? ratioMatchCount : null,
       activeTotal,
       page,
       total_pages: totalPages,

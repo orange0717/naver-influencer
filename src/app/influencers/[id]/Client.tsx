@@ -196,6 +196,11 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                 const rel = formatRelativeTime(primary);
                 if (!rel) return null;
                 const isChallenge = Boolean(influencer.last_challenged_at);
+                // 깜빡이는 점은 "지금 살아 있다"는 신호로 읽힌다. 2년 전 기록 옆에서 깜빡이면
+                // 사실이 아닌 최신성을 알려주는 것이다 — 최근 것일 때만 깜빡인다.
+                const primaryMs = primary ? new Date(primary).getTime() : NaN;
+                const isRecent = Number.isFinite(primaryMs)
+                  && Date.now() - primaryMs < 7 * 24 * 60 * 60 * 1000;
                 return (
                   <span
                     className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
@@ -207,7 +212,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                         : `순위 수집 시각만 확인됨: ${influencer.last_crawled_at ? new Date(influencer.last_crawled_at).toLocaleString('ko-KR') : ''}`
                     }
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${isChallenge ? 'bg-accent animate-pulse' : 'bg-dim/50'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isChallenge ? 'bg-accent' : 'bg-dim/50'}${isRecent ? ' animate-pulse' : ''}`} />
                     {isChallenge ? '챌린지 ' : '수집 '}
                     {rel}
                   </span>

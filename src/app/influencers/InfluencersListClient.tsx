@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { formatCount } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
 import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
@@ -83,8 +83,19 @@ export default function InfluencersListClient() {
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>('first_seen_at');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  // total 이 무엇을 센 숫자인지. '비율' 정렬은 챌린지 참여자만 세므로 같은 라벨을 쓰면 안 된다.
+  const [totalScope, setTotalScope] = useState<'all' | 'challenge_participants'>('all');
+  const [totalTruncated, setTotalTruncated] = useState(false);
+  const inFlightRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async () => {
+    // 카테고리·정렬은 지연 없이 바로 나가기 때문에, 빨리 연속으로 누르면 요청이 겹친다.
+    // 먼저 보낸 요청이 늦게 도착하면 방금 고른 조건의 결과를 옛 결과가 덮어쓴다 —
+    // 사용자는 A 를 눌렀는데 B 목록을 보게 된다. 이전 요청을 취소하고, 취소된 응답은 버린다.
+    inFlightRef.current?.abort();
+    const controller = new AbortController();
+    inFlightRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -99,7 +110,7 @@ export default function InfluencersListClient() {
       // 프록시·브라우저가 GET을 캐시하는 경우까지 끊기 위한 캐시 무효(서버는 미사용 파라미터 무시)
       params.set('_ts', String(Date.now()));
 
-      const res = await fetch(`/api/influencers?${params}`, { cache: 'no-store' });
+      const res = await fetch(`/api/influencers?${params}`, { cache: 'no-store', signal: controller.signal });
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
@@ -120,13 +131,18 @@ export default function InfluencersListClient() {
       setInfluencers(data?.influencers || []);
       setCategories(data?.categories || ['전체']);
       setTotal(data?.total || 0);
+      setTotalScope(data?.totalScope === 'challenge_participants' ? 'challenge_participants' : 'all');
+      setTotalTruncated(Boolean(data?.totalTruncated));
       setActiveTotal(typeof data?.activeTotal === 'number' ? data.activeTotal : null);
       setTotalPages(data?.total_pages || 1);
     } catch (err) {
+      // 우리가 취소한 요청이다 — 사용자에게 실패라고 알릴 일이 아니다.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('인플루언서 로드 실패:', err);
       setError(err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.');
     } finally {
-      setLoading(false);
+      // 취소된 요청이 뒤늦게 로딩을 끄면, 새 요청이 도는 중인데도 화면은 다 끝난 것처럼 보인다.
+      if (inFlightRef.current === controller) setLoading(false);
     }
   }, [page, category, search, sortBy, order]);
 
@@ -186,15 +202,25 @@ export default function InfluencersListClient() {
         </div>
         <div className="text-right">
           <span className="text-xs text-dim font-rank">
-            {loading ? '불러오는 중...' : category === '전체'
-              ? (activeTotal !== null
-                ? (
-                  <span title="팬수가 1명 이상 확인된 인플루언서 / 전체 등록 인플루언서">
-                    팬수 확인 <span className="text-accent font-bold">{activeTotal.toLocaleString()}</span> / 전체 {total.toLocaleString()}명
-                  </span>
-                )
-                : `${total.toLocaleString()}명`)
-              : `${category} ${total.toLocaleString()}명`}
+            {loading ? '불러오는 중...' : totalScope === 'challenge_participants'
+              // '비율' 정렬은 챌린지 참여자만 대상이다. 정렬만 바꿨는데 인원이 줄어든 것처럼
+              // 보이지 않도록, 지금 세고 있는 대상이 무엇인지 라벨에 적는다.
+              ? (
+                <span title={totalTruncated
+                  ? '비율 정렬은 챌린지 참여 이력이 있는 인플루언서만 대상으로 하며, 한 번에 5,000명까지만 비교합니다. 그보다 많아 일부만 정렬했습니다.'
+                  : '비율 정렬은 챌린지 참여 이력이 있는 인플루언서만 대상으로 합니다.'}>
+                  챌린지 참여자 {total.toLocaleString()}명{totalTruncated ? ' 중 일부' : ''}
+                </span>
+              )
+              : category === '전체'
+                ? (activeTotal !== null
+                  ? (
+                    <span title="팬수가 1명 이상 확인된 인플루언서 / 전체 등록 인플루언서">
+                      팬수 확인 <span className="text-accent font-bold">{activeTotal.toLocaleString()}</span> / 전체 {total.toLocaleString()}명
+                    </span>
+                  )
+                  : `${total.toLocaleString()}명`)
+                : `${category} ${total.toLocaleString()}명`}
           </span>
           {/* 예전에는 여기 초록 'LIVE' 가 항상 켜져 있었다. 이 목록은 실시간이 아니라 크론이
               수집해 둔 것을 읽는 것이라, LIVE 는 사용자에게 사실이 아닌 신선도를 알려준다.
