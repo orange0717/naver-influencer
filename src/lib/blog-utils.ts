@@ -68,11 +68,25 @@ export function isValidBlogId(blogId: string): boolean {
  *   그 값은 공백 덕에 걸리지만, 공백 없는 '10:00'·'22:00'·'오후10:00' 은 그대로 통과했다.
  *   `:` 와 따옴표·꺾쇠는 네이버 핸들에 들어갈 수 없는 문자다(발굴 스크립트도 [a-zA-Z0-9_.-] 로만
  *   추출한다). 허용목록이 아니라 "불가능한 문자" 목록에 추가하는 것이라 과잉 차단 위험이 없다.
+ *
+ *   한글도 같은 이유로 거른다. 이 값의 출처는 네 갈래뿐인데 전부 라틴 문자만 낸다:
+ *     ① 사용자 입력 naverIdSchema  /^[a-zA-Z0-9._-]+$/
+ *     ② discover-via-search        in\.naver\.com\/([a-zA-Z0-9_.-]+)
+ *     ③ discover-new-influencers   피드 API 의 creator.urlId
+ *     ④ crawl-rankings extractNaverId — in.naver.com/blog.naver.com **URL 경로 조각**
+ *   즉 한글이 ID 자리에 오는 경우는 ④가 URL을 못 읽고 엉뚱한 텍스트를 주운 때뿐이다.
+ *   (실제로 '오후열시' 가 그렇게 들어왔다. 그런 이름의 인플루언서는 네이버에 존재하지 않는다 —
+ *    2026-08-26 네이버 인플루언서 검색·블로그 검색으로 실측 확인.)
+ *   ⚠️ 그래도 이건 "라틴만 허용"이 아니다. 특정 문자만 거부하는 denylist 라서
+ *      `.`·`-` 든 멀쩡한 ID가 걸리던 예전 방식과 다르다.
  */
+const HANGUL = /[ᄀ-ᇿ㄰-㆏ꥠ-꥿가-힣]/;
+
 export function looksLikeParsedNaverId(raw: string | null | undefined): boolean {
   const id = (raw ?? '').trim();
   if (!id) return false;
   if (/^https?:/i.test(id)) return false;
+  if (HANGUL.test(id)) return false;
   // 경로/쿼리 구분자·공백 + 핸들에 존재할 수 없는 문자(시각의 `:`, 마크업 잔해 <>"')
   return !/[/?=&\s#:<>"']/.test(id);
 }

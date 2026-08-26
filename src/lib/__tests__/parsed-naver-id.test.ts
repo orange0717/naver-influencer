@@ -55,6 +55,19 @@ describe('looksLikeParsedNaverId — 파싱 실패 잔해를 거른다', () => {
   ])('%s 은 ID가 아니다 — 이게 통과하면 껍데기 인플루언서 행이 생긴다', (_label, value) => {
     expect(looksLikeParsedNaverId(value)).toBe(false);
   });
+
+  /**
+   * 한글은 ID 자리에 올 수 없다 — 네 갈래 출처가 전부 라틴 문자만 낸다.
+   * '오후열시'는 실제로 등록됐던 값이고, 네이버에 그런 인플루언서는 없다(2026-08-26 실측).
+   */
+  it.each([
+    ['실제 사고값 — 시각을 이름으로 읽음', '오후열시'],
+    ['한글 닉네임', '초쵸춉'],
+    ['한글+라틴 혼합', 'orange오렌지'],
+    ['자모만', 'ㅇㅎㅇㅅ'],
+  ])('%s 은 ID가 아니다 — 한글은 URL 핸들이 될 수 없다', (_label, value) => {
+    expect(looksLikeParsedNaverId(value)).toBe(false);
+  });
 });
 
 describe('looksLikeParsedNaverId — 멀쩡한 ID는 절대 거르지 않는다', () => {
@@ -73,5 +86,22 @@ describe('looksLikeParsedNaverId — 멀쩡한 ID는 절대 거르지 않는다'
 
   it('앞뒤 공백은 잘라내고 판정한다 — 마크업 들여쓰기 때문에 멀쩡한 ID를 버리지 않도록', () => {
     expect(looksLikeParsedNaverId('  orangelibrary_  ')).toBe(true);
+  });
+
+  /**
+   * 과잉 차단 방지용 실물 표본.
+   * 2026-08-26 네이버 인플루언서 검색 결과에서 그대로 수집한 실제 핸들 19개다.
+   * denylist 를 넓힐 때 이 목록이 하나라도 false 가 되면 그 변경은 되돌려야 한다 —
+   * 이 저장소는 검증을 조였다가 멀쩡한 인플루언서 실적이 0으로 굳은 이력이 있다.
+   */
+  const REAL_HANDLES = [
+    'chochocho_o', 'jazzahj', 'nol_yuum', 'snustudy', 'heeddo',
+    'kongmistar', 'dnbn', 'polipoli37', 'hyerator', 'odisroom',
+    'wsy7777', '04shake', 'noma', 'hellodairy', 'lindole',
+    'dglds', 'ddiukim', 'tsutomu', 'love2hg',
+  ];
+
+  it.each(REAL_HANDLES)('실제 네이버 인플루언서 핸들 %s 는 반드시 통과한다', (handle) => {
+    expect(looksLikeParsedNaverId(handle)).toBe(true);
   });
 });
