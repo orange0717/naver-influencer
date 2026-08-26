@@ -83,6 +83,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 대표 키워드 → keyword_challenges → 본인 참여 여부(influencer_keywords) → 최신 순위
   const keywords = ((topic.representative_keywords as string[] | null) || []).filter(Boolean);
   const challenges: TopicChallengeLink[] = [];
+  /**
+   * 챌린지 순위를 '조회할 수 있었는지'.
+   * 인플루언서 연결이 없으면 순위를 찾아본 적조차 없다. 그때의 '순위 없음'은
+   * 순위가 없다는 뜻이 아니라 우리가 모른다는 뜻이다 — 화면이 둘을 구분해야 한다.
+   */
+  let challengeRankLookup: 'ok' | 'no_influencer' = 'ok';
   if (keywords.length > 0) {
     const cleanToOrig = new Map(keywords.map(k => [cleanKeyword(k), k]));
     const { data: matchedChallenges } = await supabase
@@ -99,6 +105,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       const rankByKeywordId = new Map<string, { rank: number; isTop3: boolean }>();
+      if (!influencerId) challengeRankLookup = 'no_influencer';
       if (influencerId) {
         const { data: rankRows } = await supabase
           .from('keyword_rankings')
@@ -142,6 +149,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       representativeScore: topic.representative_score,
     },
     challenges,
+    challengeRankLookup,
     posts,
   });
 }

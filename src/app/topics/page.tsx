@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { formatCountK } from '@/lib/format';
+import { formatCountK, formatDateTimeShort } from '@/lib/format';
 import { computeTopicFit } from '@/lib/topic-fit';
 
 /** 관련 글이 이 수 미만이면 "조금 더 작성하면 좋은 토픽"으로 분리한다(스펙 20항) */
@@ -105,10 +105,20 @@ function RecCard({
   const [posts, setPosts] = useState<MatchedPost[] | null>(null);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  /**
+   * 불러오기 실패를 posts=[] 로 삼키면 화면에 '매칭된 글을 찾지 못했습니다'가 뜬다 —
+   * 못 물어본 것과 물어봤더니 없는 것은 다르다. 실패는 실패로 남기고 다시 시도를 준다.
+   */
+  const [postsError, setPostsError] = useState<string | null>(null);
 
   const loadPosts = async () => {
-    if (posts || !authHeaders) return;
+    if (loadingPosts || posts) return; // 중복 요청 방지 (실패 후에는 postsError 라 재시도 가능)
+    if (!authHeaders) {
+      setPostsError('로그인 정보를 확인하지 못했습니다. 새로고침한 뒤 다시 시도해 주세요.');
+      return;
+    }
     setLoadingPosts(true);
+    setPostsError(null);
     try {
       const res = await fetch(`/api/blog/topics/${rec.id}`, { headers: authHeaders });
       if (res.ok) {
@@ -116,11 +126,15 @@ function RecCard({
         const loaded: MatchedPost[] = json.posts || [];
         setPosts(loaded);
         setSelectedIds(new Set(loaded.map((p) => p.post_id))); // 기본은 전체 선택
+      } else if (res.status === 401) {
+        setPostsError('로그인이 풀렸습니다. 다시 로그인하면 이어서 볼 수 있습니다.');
+      } else if (res.status === 429) {
+        setPostsError('요청이 많아 잠시 뒤에 다시 시도해 주세요.');
       } else {
-        setPosts([]);
+        setPostsError('글 목록을 불러오지 못했습니다. 글이 없다는 뜻은 아닙니다.');
       }
     } catch {
-      setPosts([]);
+      setPostsError('연결에 실패했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
     } finally {
       setLoadingPosts(false);
     }
@@ -207,6 +221,13 @@ function RecCard({
           {rec.reasoning && <p className="text-xs text-dim mb-2">{rec.reasoning}</p>}
           {loadingPosts ? (
             <p className="text-xs text-dim">글 목록 불러오는 중…</p>
+          ) : postsError ? (
+            <div className="flex items-center gap-3 flex-wrap">
+              <p className="text-xs text-down">{postsError}</p>
+              <button onClick={() => void loadPosts()} className="text-[11px] font-semibold text-accent hover:underline cursor-pointer">
+                다시 시도
+              </button>
+            </div>
           ) : posts && posts.length > 0 ? (
             <>
               <div className="flex items-center justify-between mb-2">
@@ -281,49 +302,59 @@ export default function TopicsPage() {
   const [error, setError] = useState<string | null>(null);
   const [authHeaders, setAuthHeaders] = useState<Record<string, string> | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const supabase = createSupabaseBrowserClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
-          return;
-        }
-        const headers = { authorization: `Bearer ${session.access_token}` };
-        setAuthHeaders(headers);
-        const [summaryRes, naverRes] = await Promise.all([
-          fetch('/api/blog/topics/summary', { headers }),
-          fetch('/api/naver-topics', { headers }),
-        ]);
-        if (summaryRes.status === 401 || naverRes.status === 401) {
-          router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
-          return;
-        }
-        if (!summaryRes.ok) {
-          const j = await summaryRes.json().catch(() => ({}));
-          throw new Error(j.error || `요약 정보를 불러오지 못했습니다. (HTTP ${summaryRes.status})`);
-        }
-        if (!naverRes.ok) {
-          const j = await naverRes.json().catch(() => ({}));
-          throw new Error(j.error || `발행 토픽을 불러오지 못했습니다. (HTTP ${naverRes.status})`);
-        }
-        setSummary(await summaryRes.json());
-        const naverJson = await naverRes.json();
-        setNaverTopics(naverJson.topics || []);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '데이터를 불러오지 못했습니다.');
-      } finally {
-        setLoading(false);
+  /**
+   * ⚠️ 서버 메시지(j.error)를 그대로 화면에 뿌리면 영문 원문·스택이 사용자에게 노출된다.
+   *    상태 코드가 1차 기준이다 — 문구로 상태를 판정하지 않는다.
+   */
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
+        return;
       }
-    };
-    load();
+      const headers = { authorization: `Bearer ${session.access_token}` };
+      setAuthHeaders(headers);
+      const [summaryRes, naverRes] = await Promise.all([
+        fetch('/api/blog/topics/summary', { headers }),
+        fetch('/api/naver-topics', { headers }),
+      ]);
+      if (summaryRes.status === 401 || naverRes.status === 401) {
+        router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
+        return;
+      }
+      const failed = !summaryRes.ok ? summaryRes : !naverRes.ok ? naverRes : null;
+      if (failed) {
+        if (failed.status === 403) throw new Error('이 기능을 이용할 권한이 없습니다. 구독 상태를 확인해 주세요.');
+        if (failed.status === 429) throw new Error('요청이 많아 잠시 뒤에 다시 시도해 주세요.');
+        throw new Error('토픽 정보를 불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+      }
+      setSummary(await summaryRes.json());
+      const naverJson = await naverRes.json();
+      setNaverTopics(naverJson.topics || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '연결에 실패했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
+
+  useEffect(() => { load(); }, [load]);
 
   const utilizationPercent = useMemo(() => {
     if (!summary) return 0;
     return Math.round(summary.utilizationRate * 100);
   }, [summary]);
+
+  /**
+   * 분석이 실제로 한 번이라도 돌았는지.
+   * 서버는 분석 행이 없을 때 모든 카운트를 0 으로 채워 내려보낸다 — generated_at 만이
+   * '쟀다'와 '아직 안 쟀다'를 구분할 수 있는 유일한 값이다.
+   */
+  const analyzed = summary?.generatedAt != null;
 
   // 관련 글 수 기준으로 추천 토픽 / 부족한 후보 분리 (스펙 20항)
   const goodRecs = useMemo(
@@ -346,35 +377,58 @@ export default function TopicsPage() {
         </div>
 
         {loading && <div className="p-12 text-center text-dim">불러오는 중…</div>}
+        {/* 빨간 글씨 한 줄만 띄우면 사용자가 빠져나갈 방법이 없다 — 할 수 있는 행동을 같이 준다. */}
         {error && !loading && (
-          <div className="p-6 rounded-xl bg-down/10 border border-down/30 text-down text-sm">{error}</div>
+          <div className="p-6 rounded-xl bg-down/10 border border-down/30 text-sm space-y-3">
+            <p className="text-down font-semibold">{error}</p>
+            <div className="flex items-center gap-3">
+              <button onClick={() => load()} className="text-xs font-semibold text-accent hover:underline cursor-pointer">
+                다시 시도
+              </button>
+              <Link href="/my" className="text-xs font-semibold text-dim hover:text-text">대시보드로 돌아가기</Link>
+            </div>
+          </div>
         )}
 
         {!loading && !error && summary && (
           <>
-            {/* 요약 섹션 */}
+            {/* 요약 섹션
+                ⚠️ 분석 결과 행이 없으면 서버는 모든 수치를 0 으로 채워 내려보낸다.
+                   그걸 그대로 찍으면 "분석 전"이 "토픽 0개 · 활용률 0%"라는 성적표가 된다.
+                   아직 재지 않은 것은 0 이 아니라 '-' 다 (평균 순위를 '-'로 쓰는 것과 같은 규칙). */}
+            {analyzed ? (
+              // 언제 잰 숫자인지 모르면 오늘 쓴 글이 왜 안 잡히는지 알 길이 없다.
+              <p className="mb-3 text-[12px] text-dim">
+                집계 기준 {formatDateTimeShort(summary.generatedAt)} · 매일 새벽 자동 분석으로 갱신됩니다.
+              </p>
+            ) : (
+              <p className="mb-3 rounded-lg border border-border bg-surface px-4 py-3 text-[12px] text-dim leading-snug">
+                아직 이 블로그의 토픽 분석이 실행되지 않았습니다. 아래 &lsquo;-&rsquo;는 0개라는 뜻이 아니라
+                <b className="font-semibold text-text"> 아직 집계하지 않았다</b>는 뜻입니다. 매일 새벽 자동 분석이 실행되면 채워집니다.
+              </p>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">전체 토픽</p>
-                <p className="text-xl font-bold text-text mt-1">{summary.publishedCount}</p>
+                <p className={`text-xl font-bold mt-1 ${analyzed ? 'text-text' : 'text-dim'}`}>{analyzed ? summary.publishedCount : '-'}</p>
               </div>
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">AI 토픽</p>
-                <p className="text-xl font-bold text-text mt-1">{summary.aiPossibleCount}</p>
+                <p className={`text-xl font-bold mt-1 ${analyzed ? 'text-text' : 'text-dim'}`}>{analyzed ? summary.aiPossibleCount : '-'}</p>
               </div>
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">토픽 활용률</p>
-                <p className="text-xl font-bold text-accent mt-1">{utilizationPercent}%</p>
+                <p className={`text-xl font-bold mt-1 ${analyzed ? 'text-accent' : 'text-dim'}`}>{analyzed ? `${utilizationPercent}%` : '-'}</p>
               </div>
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">AI 추천 토픽</p>
-                <p className="text-xl font-bold text-text mt-1">{summary.recommendations.length}</p>
+                <p className={`text-xl font-bold mt-1 ${analyzed ? 'text-text' : 'text-dim'}`}>{analyzed ? summary.recommendations.length : '-'}</p>
               </div>
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">경쟁 비교</p>
                 {summary.competitor.count > 0 ? (
                   <p className="text-sm font-semibold text-text mt-1">
-                    나 {summary.myTopicCount} · 평균 {summary.competitor.avg?.toFixed(1)} · 상위 {summary.competitor.top}
+                    나 {analyzed ? summary.myTopicCount : '-'} · 평균 {summary.competitor.avg?.toFixed(1)} · 상위 {summary.competitor.top}
                   </p>
                 ) : (
                   <p className="text-xs text-dim mt-1">등록된 경쟁자 없음</p>
