@@ -4,6 +4,7 @@ import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 import { runAliveParticipationQuery } from '@/lib/keyword/participation';
+import { effectiveTop3, type Top3Source } from '@/lib/influencer-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -229,7 +230,9 @@ async function getInfluencersFromDB(
 
   // 비율 정렬 시 서버에서 정렬 + 페이지네이션
   if (isRatioSort && influencers) {
-    const getTop3 = (inf: Record<string, unknown>) => (Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0);
+    // 화면이 찍는 분자와 반드시 같은 것을 써야 한다. 예전에는 여기만 top1+top2+top3 을 쓰고
+    // 화면은 integrated_top3_count 를 써서, 정렬을 눌러도 % 가 순서대로 보이지 않았다.
+    const getTop3 = (inf: Record<string, unknown>) => effectiveTop3(inf as Top3Source);
     influencers.sort((a, b) => {
       const top3A = getTop3(a);
       const top3B = getTop3(b);
@@ -325,11 +328,7 @@ async function getInfluencersFromDB(
     top1Count: Number(inf.top1_count) || 0,
     top2Count: Number(inf.top2_count) || 0,
     top3Count: Number(inf.top3_count) || 0,
-    integratedTop3Count: (() => {
-      const fromCol = Number(inf.integrated_top3_count) || 0;
-      const sum = (Number(inf.top1_count) || 0) + (Number(inf.top2_count) || 0) + (Number(inf.top3_count) || 0);
-      return fromCol > 0 ? fromCol : sum;
-    })(),
+    integratedTop3Count: effectiveTop3(inf as Top3Source),
     naverCreatedAt: inf.naver_created_at || null,
     firstSeenAt: inf.first_seen_at || inf.created_at,
     lastCrawledAt: inf.last_crawled_at || null,
@@ -354,7 +353,9 @@ async function getInfluencersFromDB(
   }));
 
   // 활성 인플루언서 수 (검색 없을 때만 조회, 카테고리 필터가 있으면 그 안에서)
-  let activeTotal = 0;
+  // ⚠️ 검색 중에는 이 값을 구하지 않는다. 그때 0 을 내려보내면 화면이 "활성 0명"으로 단정한다 —
+  //    세지 않은 것과 세어봤더니 0인 것은 다르다. 구하지 않았으면 null 을 내려 화면이 감추게 한다.
+  let activeTotal: number | null = null;
   if (!search?.trim()) {
     let activeQuery = supabase
       .from('influencers')

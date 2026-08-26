@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import RankBadge from '@/components/RankBadge';
 import { TOPIC_TYPE_LABEL } from '@/lib/topic-labels';
+import { CHALLENGE_TOP3_TOOLTIP } from '@/lib/keyword/aggregate';
 
 interface InfluencerKeyword {
   keyword_id: string;
@@ -243,7 +244,9 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-gold font-rank">{top3Count}</p>
-            <p className="text-xs text-dim">통합 TOP3</p>
+            {/* '통합 TOP3' 는 사실이 아니다 — is_integrated_top3 는 세 writer 전부 rank<=3 으로만
+                쓴다(통합검색과 무관). 통합검색 노출로 읽히면 없는 성과를 알려주는 것이 된다. */}
+            <p className="text-xs text-dim" title={CHALLENGE_TOP3_TOOLTIP}>챌린지 TOP3</p>
           </div>
           <div className="text-center">
             {(() => {
@@ -417,7 +420,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                     <th className="text-center p-3 font-semibold text-dim text-xs w-14">변동</th>
                     <th className="text-right p-3 font-semibold text-dim text-xs w-20">참여자</th>
                     <th className="text-right p-3 font-semibold text-dim text-xs w-24 hidden md:table-cell">검색량</th>
-                    <th className="text-center p-3 font-semibold text-dim text-xs w-14">통합</th>
+                    <th className="text-center p-3 font-semibold text-dim text-xs w-14" title={CHALLENGE_TOP3_TOOLTIP}>TOP3</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -437,7 +440,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                       <td className="text-right p-3 font-medium hidden md:table-cell font-rank">
                         {kw.search_volume_monthly ? kw.search_volume_monthly.toLocaleString() : '-'}
                       </td>
-                      <td className="text-center p-3">{kw.is_integrated_top3 && <span className="text-gold">T3</span>}</td>
+                      <td className="text-center p-3">{kw.is_integrated_top3 && <span className="text-gold" title={CHALLENGE_TOP3_TOOLTIP}>T3</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -454,7 +457,7 @@ export default function InfluencerProfile({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex items-center gap-2">
                         <RankChange change={kw.rank_change} />
-                        {kw.is_integrated_top3 && <span className="text-gold text-sm">T3</span>}
+                        {kw.is_integrated_top3 && <span className="text-gold text-sm" title={CHALLENGE_TOP3_TOOLTIP}>T3</span>}
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs text-center">

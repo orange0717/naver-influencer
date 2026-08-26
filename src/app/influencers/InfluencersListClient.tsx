@@ -4,6 +4,13 @@ import { formatCount } from '@/lib/format';
 import CategoryFilter from '@/components/CategoryFilter';
 import { LastChallengeParticipationCell } from '@/components/LastChallengeParticipationCell';
 import Pagination from '@/components/analytics/Pagination';
+import {
+  CHALLENGE_UNCOLLECTED_TITLE,
+  formatChallengeCount,
+  latestCrawledAt,
+  newBadge,
+  top3Ratio,
+} from '@/lib/influencer-list';
 
 interface InfluencerItem {
   name: string;
@@ -51,10 +58,15 @@ function formatNaverDate(d: string | null | undefined): string {
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
-function isNew(d: string | null | undefined): boolean {
-  if (!d) return false;
-  const diff = Date.now() - new Date(d).getTime();
-  return diff < 30 * 24 * 60 * 60 * 1000; // 30일 이내
+/** 목록의 기준 시각 표기. 실제 수집 시각이 있을 때만 쓴다 — 없으면 아무 말도 하지 않는다. */
+function formatCollectedAt(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '';
+  const diffMin = Math.floor(Math.max(0, Date.now() - t) / 60000);
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  return `${Math.floor(diffHour / 24)}일 전`;
 }
 
 export default function InfluencersListClient() {
@@ -63,7 +75,8 @@ export default function InfluencersListClient() {
   const [category, setCategory] = useState('전체');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
-  const [activeTotal, setActiveTotal] = useState(0);
+  // null = 서버가 세지 않았다(검색 중). 0 명이라는 뜻이 아니므로 숫자로 찍지 않는다.
+  const [activeTotal, setActiveTotal] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -107,7 +120,7 @@ export default function InfluencersListClient() {
       setInfluencers(data?.influencers || []);
       setCategories(data?.categories || ['전체']);
       setTotal(data?.total || 0);
-      setActiveTotal(data?.activeTotal || 0);
+      setActiveTotal(typeof data?.activeTotal === 'number' ? data.activeTotal : null);
       setTotalPages(data?.total_pages || 1);
     } catch (err) {
       console.error('인플루언서 로드 실패:', err);
@@ -142,6 +155,8 @@ export default function InfluencersListClient() {
     setPage(1);
   };
 
+  const collectedAt = latestCrawledAt(influencers);
+
   // 페이지네이션 번호 생성
   const sortArrow = (key: SortKey) => {
     if (sortBy !== key) return ' ↕';
@@ -171,14 +186,26 @@ export default function InfluencersListClient() {
         </div>
         <div className="text-right">
           <span className="text-xs text-dim font-rank">
-            {loading ? '수집 중...' : category === '전체'
-              ? <><span className="text-accent font-bold">{activeTotal.toLocaleString()}</span> / {total.toLocaleString()}명</>
+            {loading ? '불러오는 중...' : category === '전체'
+              ? (activeTotal !== null
+                ? (
+                  <span title="팬수가 1명 이상 확인된 인플루언서 / 전체 등록 인플루언서">
+                    팬수 확인 <span className="text-accent font-bold">{activeTotal.toLocaleString()}</span> / 전체 {total.toLocaleString()}명
+                  </span>
+                )
+                : `${total.toLocaleString()}명`)
               : `${category} ${total.toLocaleString()}명`}
           </span>
-          {!loading && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] text-green-600 font-bold">LIVE</span>
+          {/* 예전에는 여기 초록 'LIVE' 가 항상 켜져 있었다. 이 목록은 실시간이 아니라 크론이
+              수집해 둔 것을 읽는 것이라, LIVE 는 사용자에게 사실이 아닌 신선도를 알려준다.
+              실제 수집 시각이 있을 때만, 그게 무엇인지 밝혀서 쓴다. 없으면 아무 말도 안 한다. */}
+          {!loading && collectedAt && (
+            <div
+              className="flex items-center justify-end gap-1 mt-0.5"
+              title="이 목록에 실린 인플루언서 중 가장 최근에 순위를 수집한 시각입니다. 실시간이 아니며, 인플루언서마다 수집 시각이 다릅니다."
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-border" />
+              <span className="text-[10px] text-dim font-semibold">수집 {formatCollectedAt(collectedAt)}</span>
             </div>
           )}
         </div>
@@ -217,7 +244,7 @@ export default function InfluencersListClient() {
       </div>
 
       <p className="text-[11px] text-dim -mt-1 mb-2 px-0.5 leading-relaxed">
-        챌린지 수·TOP3·비율은 네이버 챌린지 순위를 수집한 뒤에 채워집니다. 팬수만 있고 앞 열이 0이면 순위 수집 대기이거나 참여 이력이 없을 수 있습니다. 마지막 열은 참여일이 없을 때 &quot;수집 + 날짜&quot;로 DB 갱신 시각만 표시됩니다.
+        챌린지 수·TOP3·비율은 네이버 챌린지 순위를 수집한 뒤에 채워집니다. 챌린지 열의 <b className="font-semibold">&lsquo;—&rsquo;는 참여 0회가 아니라 아직 수집하지 않았다는 뜻</b>이고, <b className="font-semibold">0</b>은 수집해 봤더니 참여 이력이 없다는 뜻입니다. 마지막 열은 참여일이 없을 때 &quot;수집 + 날짜&quot;로 DB 갱신 시각만 표시됩니다.
       </p>
 
       {error && (
@@ -294,9 +321,22 @@ export default function InfluencersListClient() {
                               className="font-bold hover:text-accent transition-colors truncate max-w-[180px]">
                               {inf.name}
                             </a>
-                            {isNew(inf.firstSeenAt) && (
-                              <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
-                            )}
+                            {(() => {
+                              const badge = newBadge(inf.naverCreatedAt, inf.firstSeenAt);
+                              if (!badge) return null;
+                              return (
+                                <span
+                                  title={badge.title}
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                    badge.basis === 'selected'
+                                      ? 'text-white bg-accent'
+                                      : 'text-accent bg-accent/15 border border-accent/30'
+                                  }`}
+                                >
+                                  {badge.basis === 'selected' ? 'NEW' : 'NEW?'}
+                                </span>
+                              );
+                            })()}
                             {inf.isInactive && (
                               <span className="text-[9px] font-medium text-desc bg-sunken border border-border px-1.5 py-0.5 rounded-sm shrink-0">1년이상 활동이력 없음</span>
                             )}
@@ -323,24 +363,34 @@ export default function InfluencersListClient() {
                       {formatCount(inf.subscriberCount || inf.totalFollowerCount)}
                     </td>
                     <td className="py-3 px-3 text-right text-xs font-rank tabular-nums">
-                      <span className={(inf.totalKeywords || 0) > 0 ? 'font-bold' : 'text-dim'}>{inf.totalKeywords || 0}</span>
+                      {(() => {
+                        // 수집한 적이 없으면 0 이라고 말할 근거가 없다 — '—' 로 둔다.
+                        const c = formatChallengeCount(inf.totalKeywords, inf.lastCrawledAt);
+                        return (
+                          <span
+                            className={c.uncollected || c.text === '0' ? 'text-dim' : 'font-bold'}
+                            title={c.uncollected ? CHALLENGE_UNCOLLECTED_TITLE : undefined}
+                          >
+                            {c.text}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-3 text-right text-xs font-rank tabular-nums">
                       <span className={(inf.integratedTop3Count || 0) > 0 ? 'font-bold text-gold' : 'text-dim'}>{inf.integratedTop3Count || 0}</span>
                     </td>
                     <td className="py-3 px-2 text-right text-xs font-rank tabular-nums">
                       {(() => {
-                        const t3 = inf.integratedTop3Count || 0;
-                        const total = inf.totalKeywords || 0;
-                        if (t3 > 0 && total > 0) {
-                          const ratio = t3 / total;
-                          return (
-                            <span className={`font-bold ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
-                              {(ratio * 100).toFixed(1)}%
-                            </span>
-                          );
+                        // 분자는 반드시 서버의 '비율' 정렬과 같은 값이어야 한다(lib/influencer-list).
+                        const ratio = top3Ratio(inf.integratedTop3Count || 0, inf.totalKeywords || 0);
+                        if (ratio === null) {
+                          return <span className="text-dim" title="챌린지 참여 수가 없어 비율을 계산할 수 없습니다.">—</span>;
                         }
-                        return <span className="text-dim">—</span>;
+                        return (
+                          <span className={`font-bold ${ratio >= 0.5 ? 'text-gold' : ratio >= 0.3 ? 'text-up' : 'text-dim'}`}>
+                            {(ratio * 100).toFixed(1)}%
+                          </span>
+                        );
                       })()}
                     </td>
                     <td className="py-3 px-2 text-right text-xs font-rank tabular-nums">
@@ -386,9 +436,22 @@ export default function InfluencersListClient() {
                         className="font-bold text-sm hover:text-accent transition-colors truncate">
                         {inf.name}
                       </a>
-                      {isNew(inf.firstSeenAt) && (
-                        <span className="text-[9px] font-bold text-white bg-accent px-1.5 py-0.5 rounded shrink-0">NEW</span>
-                      )}
+                      {(() => {
+                        const badge = newBadge(inf.naverCreatedAt, inf.firstSeenAt);
+                        if (!badge) return null;
+                        return (
+                          <span
+                            title={badge.title}
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                              badge.basis === 'selected'
+                                ? 'text-white bg-accent'
+                                : 'text-accent bg-accent/15 border border-accent/30'
+                            }`}
+                          >
+                            {badge.basis === 'selected' ? 'NEW' : 'NEW?'}
+                          </span>
+                        );
+                      })()}
                       {inf.isInactive && (
                         <span className="text-[9px] font-medium text-desc bg-sunken border border-border px-1.5 py-0.5 rounded-sm shrink-0">1년이상 활동이력 없음</span>
                       )}
@@ -409,7 +472,14 @@ export default function InfluencersListClient() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 text-[10px] text-dim">
-                  <span>챌린지 {inf.totalKeywords || 0}개</span>
+                  {(() => {
+                    const c = formatChallengeCount(inf.totalKeywords, inf.lastCrawledAt);
+                    return (
+                      <span title={c.uncollected ? CHALLENGE_UNCOLLECTED_TITLE : undefined}>
+                        챌린지 {c.uncollected ? '—' : `${c.text}개`}
+                      </span>
+                    );
+                  })()}
                   {(inf.integratedTop3Count || 0) > 0 && <span className="text-gold font-bold">TOP3 {inf.integratedTop3Count}개</span>}
                   {(inf.top1Count || 0) > 0 && <span className="text-red-500 font-bold">1위 {inf.top1Count}</span>}
                   {(inf.top2Count || 0) > 0 && <span className="text-blue-500 font-bold">2위 {inf.top2Count}</span>}
