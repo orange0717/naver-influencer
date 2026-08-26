@@ -61,10 +61,18 @@ export function isValidBlogId(blogId: string): boolean {
  *   그렇다고 /^[a-zA-Z0-9_-]+$/ 같은 허용목록을 쓰면, 이 저장소에서 실제로 났던 사고처럼
  *   `.`·`-` 가 든 멀쩡한 ID까지 걸러서 실적이 조용히 0으로 굳는다(2026-08-25).
  *   그래서 "명백히 ID가 아닌 것"만 거른다 — 빈 값, 경로/쿼리 구분자, 공백, URL.
+ *
+ * 2026-08-26 추가: 공백 규칙만으로는 부족했다.
+ *   실제로 프로덕션에 naver_id='오후 10:00' / display_name='오후열시' 인 껍데기 행이 생겼었다.
+ *   ID 자리에 **포스팅 시각 표기**가 들어간 것이다("오후 열시" = 오후 10시. 그런 블로거는 없다).
+ *   그 값은 공백 덕에 걸리지만, 공백 없는 '10:00'·'22:00'·'오후10:00' 은 그대로 통과했다.
+ *   `:` 와 따옴표·꺾쇠는 네이버 핸들에 들어갈 수 없는 문자다(발굴 스크립트도 [a-zA-Z0-9_.-] 로만
+ *   추출한다). 허용목록이 아니라 "불가능한 문자" 목록에 추가하는 것이라 과잉 차단 위험이 없다.
  */
 export function looksLikeParsedNaverId(raw: string | null | undefined): boolean {
   const id = (raw ?? '').trim();
   if (!id) return false;
   if (/^https?:/i.test(id)) return false;
-  return !/[/?=&\s#]/.test(id);
+  // 경로/쿼리 구분자·공백 + 핸들에 존재할 수 없는 문자(시각의 `:`, 마크업 잔해 <>"')
+  return !/[/?=&\s#:<>"']/.test(id);
 }

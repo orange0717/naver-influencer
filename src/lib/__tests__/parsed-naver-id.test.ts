@@ -38,6 +38,23 @@ describe('looksLikeParsedNaverId — 파싱 실패 잔해를 거른다', () => {
   ])('%s 은 ID가 아니다', (_label, value) => {
     expect(looksLikeParsedNaverId(value)).toBe(false);
   });
+
+  /**
+   * 실제로 프로덕션에 들어갔던 값과 그 변형들.
+   * naver_id='오후 10:00' / display_name='오후열시' 인 껍데기 인플루언서 행이 생겼었다 —
+   * ID 자리에 포스팅 시각 표기가 들어간 것이다. '오후열시'라는 블로거는 존재하지 않는다.
+   * 공백 규칙이 원본은 막았지만 공백 없는 변형은 전부 통과했다.
+   */
+  it.each([
+    ['실제 사고값 — 포스팅 시각', '오후 10:00'],
+    ['공백 없는 변형', '오후10:00'],
+    ['시각만', '10:00'],
+    ['24시간 표기', '22:00'],
+    ['태그 잔해', '<a'],
+    ['속성 따옴표 잔해', '"orangelibrary"'],
+  ])('%s 은 ID가 아니다 — 이게 통과하면 껍데기 인플루언서 행이 생긴다', (_label, value) => {
+    expect(looksLikeParsedNaverId(value)).toBe(false);
+  });
 });
 
 describe('looksLikeParsedNaverId — 멀쩡한 ID는 절대 거르지 않는다', () => {
