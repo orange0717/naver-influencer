@@ -57,6 +57,29 @@ export const UNRANKED_BUCKET: BucketDef = {
 
 export const UNRANKED_TOOLTIP = '아직 순위가 확인되지 않은 키워드입니다.';
 
+/**
+ * 참여 키워드인데 순위 행이 없는 상태의 화면 표기.
+ *
+ * ⚠️ 이걸 '미노출'로 단정하면 안 된다. 수집기는 네이버가 rank=0(=확인된 미노출)을 줘도
+ * 행을 아예 쓰지 않고 건너뛴다(api/my/keywords/sync/route.ts). 그래서 DB에서 되읽으면
+ *   ① 네이버가 미노출이라고 확인해 준 키워드
+ *   ② 아직 크롤이 안 돈 키워드
+ * 둘이 똑같이 rank_position=null 로 보인다. 우리는 이 둘을 구분할 수 없다.
+ *
+ * 구분할 수 없는 것을 단정하지 않는다 — 확인 불가 ≠ 미노출.
+ */
+export const UNRANKED_STATUS_LABEL = '순위 없음';
+export const UNRANKED_STATUS_TITLE =
+  '아직 순위가 확인되지 않았습니다. 순위가 낮다는 뜻이 아니라, 수집이 아직 안 됐거나 네이버에 노출되지 않은 상태입니다.';
+
+/**
+ * `keyword_rankings.is_integrated_top3` 의 실제 의미.
+ * 이름과 달리 통합검색과 무관하다 — 세 군데 writer 가 전부 `rank <= 3` 으로만 쓴다
+ * (cron/crawl-rankings · cron/crawl-challenge-ranks · api/my/keywords/sync).
+ * 화면에서 '통합검색 노출'이라고 설명하면 사용자에게 사실이 아닌 성과를 알려주는 것이 된다.
+ */
+export const CHALLENGE_TOP3_TOOLTIP = '키워드 챌린지 순위 3위 이내';
+
 /** TOP 3 / TOP 10 을 이루는 버킷. SQL 조건이 아니라 버킷 조합으로만 정의한다. */
 export const TOP3_BUCKETS: readonly BucketId[] = ['r1', 'r2', 'r3'];
 export const TOP10_BUCKETS: readonly BucketId[] = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6_10'];

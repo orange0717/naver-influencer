@@ -12,6 +12,11 @@ import StatusBadge from '@/components/analytics/StatusBadge';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 import Pagination from '@/components/analytics/Pagination';
 import { ANALYTICS_SCOPE } from '@/components/analytics/tokens';
+import {
+  CHALLENGE_TOP3_TOOLTIP,
+  UNRANKED_STATUS_LABEL,
+  UNRANKED_STATUS_TITLE,
+} from '@/lib/keyword/aggregate';
 import type { DataTableColumn, StatusTone } from '@/components/analytics/types';
 import '@/components/analytics/analytics-tokens.css';
 
@@ -682,11 +687,14 @@ export default function MyKeywordList({
                       <div className="flex items-center justify-center gap-1">
                         <StatusBadge tone="success" label="노출" />
                         {kw.is_integrated_top3 && (
-                          <span className="text-[10px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full" title="통합검색 TOP3 노출">TOP3</span>
+                          <span className="text-[10px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full" title={CHALLENGE_TOP3_TOOLTIP}>TOP3</span>
                         )}
                       </div>
                     ) : (
-                      <StatusBadge tone="danger" label="미노출" />
+                      // 순위 행이 없는 것을 '미노출'(빨강)로 단정하지 않는다.
+                      // 미수집과 확인된 미노출이 DB에서 똑같이 null 로 보이기 때문이다 —
+                      // 아래 순위 분포(RankDistribution)와 같은 중립 표기로 맞춘다.
+                      <StatusBadge tone="neutral" label={UNRANKED_STATUS_LABEL} title={UNRANKED_STATUS_TITLE} />
                     )}
                   </td>
 
@@ -802,10 +810,10 @@ export default function MyKeywordList({
                       ) : kw.rank_position !== null ? (
                         <StatusBadge tone="success" label="노출" />
                       ) : (
-                        <StatusBadge tone="danger" label="미노출" />
+                        <StatusBadge tone="neutral" label={UNRANKED_STATUS_LABEL} title={UNRANKED_STATUS_TITLE} />
                       )}
                       {kw.is_participated && kw.is_integrated_top3 && (
-                        <span className="text-[10px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full">TOP3</span>
+                        <span className="text-[10px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded-full" title={CHALLENGE_TOP3_TOOLTIP}>TOP3</span>
                       )}
                     </div>
                     <div className="mt-1 text-[11px] text-dim tabular-nums">

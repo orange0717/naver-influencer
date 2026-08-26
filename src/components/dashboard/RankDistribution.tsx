@@ -86,6 +86,17 @@ export default function RankDistribution({ buckets, keywords }: Props) {
         })}
       </div>
 
+      {/* "순위를 눌러 키워드를 확인하세요"라고 안내해 놓고, 0건 구간을 누르면 테두리만 생기고
+          아무것도 안 나왔다 — 사용자는 버튼이 고장난 것으로 읽는다. 눌렀으면 항상 답을 준다.
+          (타일 숫자는 있는데 목록이 비면 집계와 목록이 어긋난 것이므로 그것도 드러나야 한다.) */}
+      {selectedBucket && selectedKeywords.length === 0 && (
+        <p className="mt-3 rounded-lg border border-border bg-surface px-4 py-3 text-center text-[12px] text-dim">
+          {selectedBucket.count === 0
+            ? `${selectedBucket.label} 구간에 해당하는 키워드가 없습니다.`
+            : `${selectedBucket.label} 구간의 키워드 목록을 불러오지 못했습니다. 새로고침해 주세요.`}
+        </p>
+      )}
+
       {selectedBucket && selectedKeywords.length > 0 && (
         <div className="mt-3 rounded-lg border border-border bg-surface overflow-hidden">
           <div className="px-4 py-2 bg-bg/30 border-b border-border/50 flex items-center justify-between">

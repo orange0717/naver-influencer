@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { TOPIC_TYPE_LABEL } from '@/lib/topic-labels';
+import { aiCheckState, aiCheckTitle, formatAiCount } from '@/lib/topic-ai-check';
 import DashboardCard, { DashboardCardIcon } from './DashboardCard';
 
 export interface TopicPerformanceRow {
@@ -40,14 +41,13 @@ function formatRank(rank: number | null): string {
 const UNCHECKED_TITLE = '아직 이 토픽의 글에서 AI 인용 여부를 확인하지 않았습니다. AI 브리핑 메뉴에서 확인하면 건수가 표시됩니다.';
 
 /**
- * AI 인용 건수 표기. 확인한 글이 한 건도 없으면 숫자 0 이 아니라 '-'(미확인)로 쓴다.
- * "확인해봤더니 0건"과 "아직 확인 안 함"은 사용자에게 전혀 다른 정보인데,
- * 예전에는 둘 다 0 으로 나가서 "내 글은 AI에 하나도 안 걸렸다"로 잘못 읽혔다.
+ * 판정·표기 규칙은 src/lib/topic-ai-check.ts 한 곳에만 둔다.
+ * "확인해봤더니 0건"과 "아직 확인 안 함", 그리고 "일부만 확인한 중간값"은 사용자에게
+ * 전혀 다른 정보다 — 예전에는 셋 다 0 으로 나가서 "내 글은 AI에 하나도 안 걸렸다"로 읽혔다.
  * 평균 순위를 '-'로 쓰는 것과 같은 규칙이다(formatRank).
  */
-function formatAiCount(count: number, checked: number | null, suffix = ''): string {
-  return checked ? `${count}${suffix}` : '-';
-}
+const titleFor = (checked: number | null, postCount: number) =>
+  aiCheckTitle(checked, postCount, UNCHECKED_TITLE);
 
 export default function TopicPerformanceSection({ topics }: { topics: TopicPerformanceRow[] }) {
   return (
@@ -66,7 +66,10 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
       <p className="text-xs text-dim mb-3 leading-snug">
         게시글 분석으로 분류된 토픽의 성과입니다. 인플루언서 홈의 전체 토픽 수와 다를 수 있습니다.
         <br />
-        <span className="text-dim">AI 브리핑 · AI 탭의 &lsquo;-&rsquo;는 인용 0건이 아니라 <b className="font-semibold">아직 확인하지 않음</b>을 뜻합니다.</span>
+        <span className="text-dim">
+          AI 브리핑 · AI 탭의 &lsquo;-&rsquo;는 인용 0건이 아니라 <b className="font-semibold">아직 확인하지 않음</b>을 뜻합니다.
+          &lsquo;3/50 확인&rsquo;처럼 적힌 값은 <b className="font-semibold">글 일부만 확인</b>한 중간 결과입니다.
+        </span>
       </p>
       {topics.length === 0 ? (
         <p className="text-center text-sm text-dim py-8">
@@ -104,16 +107,16 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
                     <td className="py-3 px-3 text-right font-rank text-dim">{formatRank(t.avgIntegratedRank)}</td>
                     <td className="py-3 px-3 text-right font-rank text-dim">{formatRank(t.avgBlogRank)}</td>
                     <td
-                      className={`py-3 px-3 text-right font-rank${t.aiCheckedCount ? '' : ' text-dim'}`}
-                      title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}
+                      className={`py-3 px-3 text-right font-rank${aiCheckState(t.aiCheckedCount, t.postCount) === 'full' ? '' : ' text-dim'}`}
+                      title={titleFor(t.aiCheckedCount, t.postCount)}
                     >
-                      {formatAiCount(t.aiBriefingCount, t.aiCheckedCount)}
+                      {formatAiCount(t.aiBriefingCount, t.aiCheckedCount, t.postCount)}
                     </td>
                     <td
-                      className={`py-3 px-3 text-right font-rank${t.aiCheckedCount ? '' : ' text-dim'}`}
-                      title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}
+                      className={`py-3 px-3 text-right font-rank${aiCheckState(t.aiCheckedCount, t.postCount) === 'full' ? '' : ' text-dim'}`}
+                      title={titleFor(t.aiCheckedCount, t.postCount)}
                     >
-                      {formatAiCount(t.aiTabCount, t.aiCheckedCount)}
+                      {formatAiCount(t.aiTabCount, t.aiCheckedCount, t.postCount)}
                     </td>
                     <td className="py-3 px-3 text-right font-rank">{t.challengeTop3Count}</td>
                     <td className="py-3 px-3 text-center text-xs text-dim">{formatRelativeTime(t.lastPostAt)}</td>
@@ -147,8 +150,8 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-dim">
                   <span>통합검색 {formatRank(t.avgIntegratedRank)}</span>
                   <span>블로그탭 {formatRank(t.avgBlogRank)}</span>
-                  <span title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}>AI브리핑 {formatAiCount(t.aiBriefingCount, t.aiCheckedCount, '건')}</span>
-                  <span title={t.aiCheckedCount ? undefined : UNCHECKED_TITLE}>AI탭 {formatAiCount(t.aiTabCount, t.aiCheckedCount, '건')}</span>
+                  <span title={titleFor(t.aiCheckedCount, t.postCount)}>AI브리핑 {formatAiCount(t.aiBriefingCount, t.aiCheckedCount, t.postCount, '건')}</span>
+                  <span title={titleFor(t.aiCheckedCount, t.postCount)}>AI탭 {formatAiCount(t.aiTabCount, t.aiCheckedCount, t.postCount, '건')}</span>
                   <span>챌린지TOP3 {t.challengeTop3Count}개</span>
                   <span>최근 {formatRelativeTime(t.lastPostAt)}</span>
                 </div>
