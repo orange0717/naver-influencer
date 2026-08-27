@@ -49,13 +49,19 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const auth = await getAuthUser(request);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const body = await request.json();
   const v = validateBody(profileUpdateSchema, body);
   if (!v.success) return v.response;
+
+  if (!auth) {
+    // Auth 계정은 있는데 public.users 행이 없는 "반쪽 계정"이 있다. 가입이 중간에
+    // 끊기거나 관리자가 Auth 쪽에만 사용자를 만들면 이 상태가 된다. 이 계정은
+    // 로그인은 되지만 getAuthUser 가 프로필을 못 찾아 여기서 401 을 받고,
+    // 닉네임 입력 모달이 저장되지 않아 사용자가 영영 빠져나가지 못한다.
+    // 세션이 실재하고 닉네임을 정하려는 요청이면, 그 자리에서 프로필을 만들어 복구한다.
+    return await createMissingProfile(v.data.nickname);
+  }
 
   const supabase = createServiceClient();
   const userUpdates: Record<string, unknown> = {};
@@ -197,4 +203,73 @@ export async function DELETE(request: NextRequest) {
     logger.error('profile', 'delete error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: '회원 탈퇴 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
+}
+
+
+/**
+ * 프로필 행이 없는 Auth 계정을 위한 복구 — 닉네임을 받아 users 행을 만든다.
+ *
+ * 신원은 body 가 아니라 쿠키 세션의 Auth 사용자에서만 가져온다.
+ */
+async function createMissingProfile(nickname: string | undefined): Promise<NextResponse> {
+  const { createRouteHandlerClient } = await import('@/lib/supabase-server');
+
+  let authUser: { id: string; email?: string | null } | null = null;
+  try {
+    const supabaseAuth = await createRouteHandlerClient();
+    const { data } = await supabaseAuth.auth.getUser();
+    authUser = data.user;
+  } catch {
+    authUser = null;
+  }
+
+  if (!authUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const trimmed = (nickname ?? '').trim();
+  if (!trimmed) {
+    // 프로필이 없는 계정에는 닉네임 외의 항목을 적용할 대상이 없다.
+    return NextResponse.json({ error: '닉네임을 입력해주세요.' }, { status: 400 });
+  }
+
+  const supabase = createServiceClient();
+
+  // 경합/재시도로 그 사이에 행이 생겼을 수 있다.
+  const { data: existing } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_id', authUser.id)
+    .maybeSingle();
+  if (existing) {
+    await supabase.from('users').update({ nickname: trimmed }).eq('id', existing.id);
+    return NextResponse.json({ success: true, userId: existing.id, recovered: true });
+  }
+
+  // 닉네임 중복은 가입 경로와 동일하게 막는다(대소문자 무시).
+  const { data: dupNickname } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('nickname', trimmed)
+    .limit(1);
+  if (dupNickname && dupNickname.length > 0) {
+    return NextResponse.json({ error: '이미 사용 중인 닉네임입니다.' }, { status: 409 });
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('users')
+    .insert({
+      auth_id: authUser.id,
+      email: (authUser.email ?? '').toLowerCase(),
+      nickname: trimmed,
+    })
+    .select('id')
+    .single();
+
+  if (insertError || !inserted) {
+    logger.error('profile', '프로필 복구 실패', { error: insertError?.message, code: insertError?.code });
+    return NextResponse.json({ error: '프로필 생성에 실패했습니다.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true, userId: inserted.id, recovered: true });
 }

@@ -10,17 +10,18 @@ export default function BotInfoPage() {
     <div className="max-w-2xl mx-auto px-4 py-12 space-y-6">
       <h1 className="type-page-title">NinflBot 안내</h1>
       <p className="text-sm text-dim">
-        N인플은 블로거 순위 서비스를 운영하기 위해 네이버 공식 Open API 를 이용해 공개된 블로그 정보를 수집합니다.
-        본 페이지는 크롤러 동작 방식과 차단 방법을 투명하게 안내합니다.
+        N인플은 순위·키워드 분석 서비스를 운영하기 위해 네이버 공식 Open API 와 로그인 없이 접근 가능한 공개 웹페이지에서 데이터를 수집합니다.
+        본 페이지는 수집 경로별 동작 방식과 차단 방법을 투명하게 안내합니다.
       </p>
 
       <section className="bg-surface rounded-lg border border-border p-5 space-y-3">
         <h2 className="text-lg font-bold">크롤러 식별 정보</h2>
         <div className="text-sm space-y-1">
           <p><span className="text-dim">User-Agent</span>: <code className="font-mono bg-bg px-2 py-0.5 rounded">NinflBot/1.0 (+https://ninfle.kr/bot-info)</code></p>
-          <p><span className="text-dim">데이터 소스</span>: 네이버 공식 Open API (openapi.naver.com)</p>
+          <p><span className="text-dim">데이터 소스</span>: 네이버 공식 Open API (openapi.naver.com) · 검색광고 API · 데이터랩 API</p>
           <p><span className="text-dim">수집 항목</span>: 공개된 블로그 ID · 닉네임 · 최근 포스팅 날짜</p>
           <p><span className="text-dim">수집 목적</span>: 블로거 순위·카테고리 통계 서비스 제공</p>
+          <p className="pt-2 border-t border-border"><span className="text-dim">공개 페이지 수집</span>: 공식 API 로 제공되지 않는 인플루언서 순위·키워드 챌린지 참여 현황 등은 로그인 없이 접근 가능한 공개 페이지에서 수집합니다. 비공식 내부 API 나 인증이 필요한 영역은 이용하지 않습니다.</p>
         </div>
       </section>
 
@@ -52,7 +53,7 @@ export default function BotInfoPage() {
           <li>네이버 Open API 일일 할당량의 80% 이내 사용</li>
           <li>요청 간격 최소 250ms</li>
           <li>robots.txt 준수</li>
-          <li>HTML 대량 스크래핑 미실시 (공식 API 만 사용)</li>
+          <li>공식 API 로 제공되는 항목은 공식 API 우선 사용, 그 외에는 공개 페이지만 수집</li>
           <li>수집한 데이터 제3자 판매·재배포 금지</li>
         </ul>
       </section>

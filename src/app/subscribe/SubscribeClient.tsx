@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { STAT_TEXT } from '@/lib/site-stats';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import BillingButton from '@/components/BillingButton';
@@ -265,7 +266,7 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>맞춤법 검사 <span className="text-[10px] text-dim">(데모 제외)</span></span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (1회 500건)</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (1일 5회)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
           </ul>
         </div>
 
@@ -493,8 +494,8 @@ export default function SubscribeClient() {
               </tr>
               <tr>
                 <td className="py-2.5 px-2">경쟁자 분석</td>
-                <td className="text-center text-[11px] text-dim">1일 1회</td>
-                <td className="text-center text-[11px] text-accent font-semibold">1일 5회</td>
+                <td className="text-center text-[11px] text-dim">1일 3회</td>
+                <td className="text-center text-[11px] text-accent font-semibold">무제한</td>
                 <td className="text-center text-[11px] text-accent font-semibold">무제한</td>
               </tr>
               <tr>
@@ -523,7 +524,7 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">수집 인플루언서</p>
-              <p className="font-semibold">전체 19,980명 (활동 13,104명)</p>
+              <p className="font-semibold">전체 {STAT_TEXT.influencers} (활동 {STAT_TEXT.activeInfluencers})</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 방식</p>

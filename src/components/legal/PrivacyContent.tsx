@@ -141,7 +141,7 @@ export default function PrivacyContent() {
           <li><strong>이용 목적:</strong> 블로거 순위 산정·카테고리별 통계 제공 서비스 운영 (수집한 데이터의 제3자 판매·재배포 금지)</li>
           <li><strong>보유 기간:</strong> 서비스 제공 목적 달성 시까지. 블로그 소유자의 요청 시 즉시 삭제 + 재수집 차단 리스트에 추가.</li>
           <li><strong>제외 요청:</strong> 블로그 소유자는 <a href="/bot-info" className="text-accent underline">/bot-info</a> 페이지를 통해 본인 블로그의 수집 중단·삭제를 요청할 수 있으며, 48시간 이내 처리됩니다.</li>
-          <li><strong>봇 식별:</strong> User-Agent 에 <code className="text-[10px] font-mono bg-bg px-1 py-0.5 rounded">NinflBot/1.0 (+https://ninfle.kr/bot-info)</code> 명시하여 투명하게 운영합니다.</li>
+          <li><strong>봇 식별:</strong> 블로거 데이터 수집과 블로그 품질 분석 요청에는 User-Agent 에 <code className="text-[10px] font-mono bg-bg px-1 py-0.5 rounded">NinflBot/1.0 (+https://ninfle.kr/bot-info)</code> 을 명시합니다. 수집 경로별 상세와 제외 요청 방법은 <a href="/bot-info" className="text-accent underline">/bot-info</a> 에 공개합니다.</li>
         </ul>
       </section>
 
