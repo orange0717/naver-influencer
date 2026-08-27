@@ -257,13 +257,8 @@ function IssueModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    setError('');
-
-    const res = await fetch('/api/admin/judges', {
+  const post = async (adoptExisting: boolean) =>
+    fetch('/api/admin/judges', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -274,9 +269,39 @@ function IssueModal({
         blogId: blogId.trim(),
         influencerNaverId: influencerNaverId.trim(),
         password: password.trim(),
+        adoptExisting,
       }),
     });
-    const data = await res.json().catch(() => null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
+
+    let res = await post(false);
+    let data = await res.json().catch(() => null);
+
+    // 이미 가입된 이메일 — 그 계정을 심사 계정으로 전환할지 관리자에게 묻는다.
+    // 남의 계정을 말없이 덮어쓰지 않기 위해 확인을 한 번 받는다.
+    if (!res.ok && data?.error?.code === 'EXISTS_ADOPTABLE') {
+      const ok = confirm(
+        `${email.trim()} 은(는) 이미 가입된 계정입니다.\n\n` +
+          '이 계정을 심사 계정으로 전환합니다:\n' +
+          '· 비밀번호가 입력한 값으로 재설정됩니다\n' +
+          '· 인플루언서 플랜이 심사 종료일까지 부여됩니다\n' +
+          (blogId.trim() ? `· 블로그가 ${blogId.trim()} 로 설정됩니다\n` : '') +
+          '\n계속하시겠습니까?',
+      );
+      if (!ok) {
+        setSubmitting(false);
+        setError('전환이 취소되었습니다.');
+        return;
+      }
+      res = await post(true);
+      data = await res.json().catch(() => null);
+    }
+
     setSubmitting(false);
 
     if (!res.ok) {

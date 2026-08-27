@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/admin';
 import {
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
     blogId?: unknown;
     influencerNaverId?: unknown;
     password?: unknown;
+    adoptExisting?: unknown;
   };
   try {
     body = await req.json();
@@ -110,6 +112,8 @@ export async function POST(req: NextRequest) {
   // 경우를 위한 것으로, 값은 요청 본문으로 스쳐 지날 뿐 저장하지도 로그에 남기지도
   // 않는다(해시는 Supabase Auth 에만). 비우면 서버가 난수로 생성한다.
   const suppliedPassword = typeof body.password === 'string' ? body.password : '';
+  // 이미 회원인 이메일을 심사 계정으로 전환할지 — 관리자가 명시적으로 확인했을 때만 true.
+  const adoptExisting = body.adoptExisting === true;
 
   if (displayName.length < 1 || displayName.length > 50) {
     return judgeError('BAD_REQUEST', '표시명은 1~50자여야 합니다.', 400);
@@ -153,12 +157,35 @@ export async function POST(req: NextRequest) {
 
   const { data: dupUser } = await supabase
     .from('users')
-    .select('id')
+    .select('id, auth_id, is_admin')
     .eq('email', email)
     .maybeSingle();
+
   if (dupUser) {
-    // 일반 회원으로 이미 가입된 주소 — 그 계정을 심사용으로 덮어쓰지 않는다.
-    return judgeError('DUPLICATE', '이미 사용 중인 이메일입니다.', 409);
+    // 이미 회원인 주소. 임의로 덮어쓰지 않는다 — 관리자가 "전환"을 명시했을 때만
+    // 그 계정을 심사 계정으로 바꾼다(플랜·블로그 부여 + 비밀번호 재설정).
+    if (!adoptExisting) {
+      return judgeError(
+        'EXISTS_ADOPTABLE',
+        '이미 가입된 이메일입니다. 이 계정을 심사 계정으로 전환할 수 있습니다.',
+        409,
+      );
+    }
+    if (dupUser.is_admin === true) {
+      // 관리자 계정을 심사 계정으로 강등시키지 않는다.
+      return judgeError('FORBIDDEN_TARGET', '관리자 계정은 전환할 수 없습니다.', 409);
+    }
+    return await adoptExistingUser(supabase, {
+      userId: dupUser.id,
+      authId: dupUser.auth_id,
+      email,
+      displayName,
+      password: suppliedPassword || generateJudgePassword(),
+      expiresAt,
+      blogId,
+      influencerNaverId,
+      issuedBy: auth.userId,
+    });
   }
 
   const password = suppliedPassword || generateJudgePassword();
@@ -280,34 +307,11 @@ export async function POST(req: NextRequest) {
   // 인플루언서를 두 계정이 동시에 가질 수 없다. 이미 다른 계정(대개 운영자
   // 본인)이 연결 중이면 여기서 23505 로 튕기며, 그 계정에서 연결을 빼앗지
   // 않는다. 계정 발급 자체는 성공시키고 결과만 사실대로 실어 보낸다.
-  let influencerLinked = false;
-  let influencerNote: string | null = null;
-
-  if (influencerNaverId) {
-    const { data: inf } = await supabase
-      .from('influencers')
-      .select('id')
-      .eq('naver_id', influencerNaverId)
-      .maybeSingle();
-
-    if (!inf) {
-      influencerNote = '해당 인플루언서를 찾지 못했습니다.';
-    } else {
-      const { error: linkError } = await supabase
-        .from('users')
-        .update({ linked_influencer_id: inf.id })
-        .eq('id', userRow.id);
-
-      if (!linkError) {
-        influencerLinked = true;
-      } else if (linkError.code === '23505') {
-        influencerNote = '이미 다른 계정에 연결된 인플루언서라 연결하지 않았습니다.';
-      } else {
-        influencerNote = '인플루언서 연결에 실패했습니다.';
-        console.error('[admin/judges] influencer link failed:', linkError.message);
-      }
-    }
-  }
+  const { influencerLinked, influencerNote } = await linkInfluencer(
+    supabase,
+    userRow.id,
+    influencerNaverId,
+  );
 
   return NextResponse.json(
     {
@@ -320,6 +324,141 @@ export async function POST(req: NextRequest) {
       blogId: blogId || null,
       influencerLinked,
       influencerNote,
+    },
+    { status: 201 },
+  );
+}
+
+/**
+ * 인플루언서홈 연결 — 발급/전환 두 경로 공용.
+ *
+ * users.linked_influencer_id 에는 부분 UNIQUE 인덱스가 걸려 있어 하나의
+ * 인플루언서를 두 계정이 동시에 가질 수 없다. 이미 다른 계정(대개 운영자
+ * 본인)이 연결 중이면 23505 로 튕기며, 그 계정에서 연결을 빼앗지 않는다.
+ * 계정 발급 자체는 성공시키고 결과만 사실대로 실어 보낸다.
+ */
+async function linkInfluencer(
+  supabase: SupabaseClient,
+  userId: string,
+  influencerNaverId: string,
+): Promise<{ influencerLinked: boolean; influencerNote: string | null }> {
+  if (!influencerNaverId) return { influencerLinked: false, influencerNote: null };
+
+  const { data: inf } = await supabase
+    .from('influencers')
+    .select('id')
+    .eq('naver_id', influencerNaverId)
+    .maybeSingle();
+
+  if (!inf) {
+    return { influencerLinked: false, influencerNote: '해당 인플루언서를 찾지 못했습니다.' };
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update({ linked_influencer_id: inf.id })
+    .eq('id', userId);
+
+  if (!error) return { influencerLinked: true, influencerNote: null };
+  if (error.code === '23505') {
+    return {
+      influencerLinked: false,
+      influencerNote: '이미 다른 계정에 연결된 인플루언서라 연결하지 않았습니다.',
+    };
+  }
+  console.error('[admin/judges] influencer link failed:', error.message);
+  return { influencerLinked: false, influencerNote: '인플루언서 연결에 실패했습니다.' };
+}
+
+/**
+ * 이미 가입된 회원을 심사 계정으로 전환한다.
+ *
+ * 계정을 새로 만드는 대신 기존 행에 심사용 권한(인플루언서 플랜 + 심사 종료일)과
+ * 시연용 블로그를 얹고 비밀번호를 재설정한 뒤 judge_accounts 에 등록한다.
+ * 관리자가 전환을 명시했을 때만 호출된다 — 임의로 남의 계정을 덮어쓰지 않는다.
+ */
+async function adoptExistingUser(
+  supabase: SupabaseClient,
+  params: {
+    userId: string;
+    authId: string | null;
+    email: string;
+    displayName: string;
+    password: string;
+    expiresAt: string;
+    blogId: string;
+    influencerNaverId: string;
+    issuedBy: string;
+  },
+): Promise<NextResponse> {
+  if (!params.authId) {
+    return judgeError('CREATE_FAILED', '이 계정은 전환할 수 없습니다.', 409);
+  }
+
+  // 비밀번호 재설정 — 관리자가 안내할 값을 알고 있어야 하므로 여기서 덮어쓴다.
+  // 밴 상태였을 수 있으니 함께 푼다.
+  const { error: authError } = await supabase.auth.admin.updateUserById(params.authId, {
+    password: params.password,
+    email_confirm: true,
+    ban_duration: 'none',
+  });
+  if (authError) {
+    console.error('[admin/judges] adopt updateUser failed:', authError.message);
+    return judgeError('CREATE_FAILED', '계정 전환에 실패했습니다.', 500);
+  }
+
+  const updates: Record<string, unknown> = {
+    subscription_plan: JUDGE_PLAN,
+    subscription_expires_at: params.expiresAt,
+  };
+  if (params.blogId) updates.blog_id = params.blogId;
+
+  const { error: userError } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', params.userId);
+
+  if (userError) {
+    console.error('[admin/judges] adopt user update failed:', userError.message);
+    return judgeError('CREATE_FAILED', '계정 전환에 실패했습니다.', 500);
+  }
+
+  const { data: judgeRow, error: insertError } = await supabase
+    .from('judge_accounts')
+    .insert({
+      user_id: params.userId,
+      auth_id: params.authId,
+      display_name: params.displayName,
+      email: params.email,
+      expires_at: params.expiresAt,
+      issued_by: params.issuedBy,
+    })
+    .select('id')
+    .single();
+
+  if (insertError || !judgeRow) {
+    console.error('[admin/judges] adopt judge insert failed:', insertError?.message);
+    return judgeError('CREATE_FAILED', '심사위원 정보 생성에 실패했습니다.', 500);
+  }
+
+  const { influencerLinked, influencerNote } = await linkInfluencer(
+    supabase,
+    params.userId,
+    params.influencerNaverId,
+  );
+
+  return NextResponse.json(
+    {
+      id: judgeRow.id,
+      displayName: params.displayName,
+      email: params.email,
+      credential: params.password,
+      magicLinkUrl: null,
+      expiresAt: params.expiresAt,
+      blogId: params.blogId || null,
+      influencerLinked,
+      influencerNote,
+      adopted: true,
     },
     { status: 201 },
   );
