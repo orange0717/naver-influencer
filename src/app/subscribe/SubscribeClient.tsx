@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { STAT_TEXT } from '@/lib/site-stats';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import BillingButton from '@/components/BillingButton';
@@ -523,7 +524,7 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">수집 인플루언서</p>
-              <p className="font-semibold">전체 19,980명 (활동 13,104명)</p>
+              <p className="font-semibold">전체 {STAT_TEXT.influencers} (활동 {STAT_TEXT.activeInfluencers})</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 방식</p>

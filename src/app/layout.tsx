@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { STAT_TEXT } from '@/lib/site-stats';
 import { Suspense } from "react";
 import Script from "next/script";
 import "./globals.css";
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
     default: "N인플 — 네이버 인플루언서들을 위한 플랫폼",
     template: "%s | N인플",
   },
-  description: "수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다. 인플루언서 19,980명 + 블로거 83,933명+ 데이터.",
+  description: `수만 개 키워드의 검색량, 경쟁도, 순위를 분석하여 블루오션 키워드를 추천합니다. 인플루언서 ${STAT_TEXT.influencers} + 블로거 ${STAT_TEXT.bloggers} 데이터.`,
   keywords: ["네이버 인플루언서", "키워드 분석", "블로그 SEO", "키워드 경쟁도", "검색량 조회", "인플루언서 랭킹", "블로그 품질지수", "키워드챌린지"],
   alternates: {
     canonical: "https://ninfle.kr",
@@ -122,8 +123,8 @@ const SOFTWARE_JSONLD = {
   publisher: { '@id': 'https://ninfle.kr/#organization' },
   creator: { '@id': 'https://ninfle.kr/#organization' },
   featureList: [
-    '인플루언서 리스트 (19,980명, 활동/미활동 자동 판정)',
-    '블로거 리스트 (83,933명+ Naver Open API 기반)',
+    `인플루언서 리스트 (${STAT_TEXT.influencers}, 활동/미활동 자동 판정)`,
+    `블로거 리스트 (${STAT_TEXT.bloggers} Naver Open API 기반)`,
     '키워드 검색량·경쟁도 분석',
     '인플루언서 랭킹 (참여자수×본인 게시글 수 공식)',
     '블로그 품질지수',
@@ -172,7 +173,7 @@ const FAQ_JSONLD = {
       name: 'N인플은 무엇인가요?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'N인플(엔인플)은 네이버 인플루언서·블로거를 위한 키워드 분석·랭킹·커뮤니티 SaaS입니다. 19,980명의 인플루언서와 83,933명+의 블로거 데이터를 기반으로 키워드별 검색량·경쟁도·TOP3 점유율을 분석하여 블루오션 키워드를 추천합니다.',
+        text: `N인플(엔인플)은 네이버 인플루언서·블로거를 위한 키워드 분석·랭킹·커뮤니티 SaaS입니다. ${STAT_TEXT.influencers}의 인플루언서와 ${STAT_TEXT.bloggers}의 블로거 데이터를 기반으로 키워드별 검색량·경쟁도·TOP3 점유율을 분석하여 블루오션 키워드를 추천합니다.`,
       },
     },
     {

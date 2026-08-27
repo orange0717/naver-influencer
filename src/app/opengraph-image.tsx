@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { STAT_TEXT } from '@/lib/site-stats';
 
 export const runtime = 'edge';
 export const alt = 'N인플 — 네이버 인플루언서들을 위한 플랫폼';
@@ -105,7 +106,7 @@ export default async function Image() {
             display: 'flex',
           }}
         >
-          인플루언서 19,980명 · 블로거 83,933명+
+          {`인플루언서 ${STAT_TEXT.influencers} · 블로거 ${STAT_TEXT.bloggers}`}
         </div>
       </div>
     ),
