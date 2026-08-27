@@ -11,7 +11,7 @@ import { parseNaverPostDate } from '@/lib/naver-date';
 
 const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || process.env.NAVER_DATALAB_CLIENT_ID || '';
 const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || process.env.NAVER_DATALAB_CLIENT_SECRET || '';
-const USER_AGENT = 'Mozilla/5.0 (compatible; OrangerefineBot/1.0; +https://n-influencer.vercel.app/bot-info)';
+const USER_AGENT = 'Mozilla/5.0 (compatible; NinflBot/1.0; +https://ninfle.kr/bot-info)';
 const WORKER_PROXY = 'https://ninfl-proxy.orange-e65.workers.dev';
 
 const SAMPLE_POST_COUNT = 10;
