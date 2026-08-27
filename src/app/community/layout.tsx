@@ -33,9 +33,9 @@ export default async function CommunityLayout({
   const supabaseAuth = await createRouteHandlerClient();
   const authUser = await getUserWithTimeout(supabaseAuth);
 
-  // 비로그인 차단
+  // 비로그인 차단 — 목적지를 붙이지 않으면 로그인 후 홈에 남는다(keywords/layout.tsx 주석 참고).
   if (!authUser) {
-    redirect('/auth/login');
+    redirect(`/auth/login?redirect=${encodeURIComponent('/community')}`);
   }
 
   // 커뮤니티 = 예비 인플루언서+ 플랜 전용 (관리자 우회 허용)

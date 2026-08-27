@@ -31,10 +31,11 @@ export default function CommunityWritePage() {
         if (data.id) {
           setUser({ type: data.type, id: data.id, name: data.name });
         } else {
-          router.push('/auth/login');
+          // 목적지를 붙여야 로그인 후 글쓰기 화면으로 돌아온다(안 붙이면 홈에 남는다).
+          router.push(`/auth/login?redirect=${encodeURIComponent('/community/write')}`);
         }
       })
-      .catch(() => router.push('/auth/login'));
+      .catch(() => router.push(`/auth/login?redirect=${encodeURIComponent('/community/write')}`));
   }, [router]);
 
   const handleSubmit = async () => {

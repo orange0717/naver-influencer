@@ -75,7 +75,8 @@ export default function PostAnalysisPage() {
   // 프로필 로드
   useEffect(() => {
     getProfileFromApi().then(p => {
-      if (!p) { window.location.href = '/auth/login'; return; }
+      // 목적지를 붙여야 로그인 후 여기로 돌아온다(안 붙이면 홈에 남는다).
+      if (!p) { window.location.href = `/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`; return; }
       setProfile(p);
       setLoading(false);
     });

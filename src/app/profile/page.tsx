@@ -73,7 +73,8 @@ export default function ProfilePage() {
     const { data: { user: authUser } } = await supabase.auth.getUser();
 
     if (!authUser) {
-      router.push('/auth/login');
+      // 목적지를 붙여야 로그인 후 여기로 돌아온다(안 붙이면 홈에 남는다).
+      router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
 

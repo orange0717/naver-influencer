@@ -52,7 +52,8 @@ export default function CompetitorPage() {
     try {
       const res = await fetch('/api/auth/me');
       const data = await res.json();
-      if (!data.id) { window.location.href = '/auth/login'; return; }
+      // 목적지를 붙여야 로그인 후 여기로 돌아온다(안 붙이면 홈에 남는다).
+      if (!data.id) { window.location.href = `/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`; return; }
 
       const naverId = data.id;
       const blogId = data.blogId || data.id;

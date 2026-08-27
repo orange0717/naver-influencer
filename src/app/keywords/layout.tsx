@@ -33,8 +33,15 @@ export default async function KeywordsLayout({
   const authUser = await getUserWithTimeout(supabaseAuth);
 
   // 로그인 필수
+  // ⚠️ 파라미터 없는 redirect('/auth/login') 이면 안 된다. 그러면 목적지가 사라져서
+  // 로그인에 성공해도 홈에 남는다(실측: 홈에서 '키워드 챌린지' 칩 클릭 →
+  // /keywords → /auth/login → /?authModal=login → 로그인해도 /keywords 로 안 감).
+  // 하드 내비게이션일 땐 미들웨어(middleware.ts:379~384)가 ?memberOnly=1&redirect=... 로
+  // 보내 회원 전용 모달까지 띄우는데, 소프트 내비게이션은 acceptsHtml 조건 때문에
+  // 미들웨어 게이트를 통째로 건너뛰고 여기까지 온다. 그래서 같은 쿼리를 여기서도 맞춰준다.
+  // (레이아웃에서는 하위 경로를 알 수 없어 /keywords 로만 되돌린다 — 홈보다는 정확하다.)
   if (!authUser) {
-    redirect('/auth/login');
+    redirect(`/?memberOnly=1&redirect=${encodeURIComponent('/keywords')}`);
   }
 
   return <>{children}</>;
