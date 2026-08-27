@@ -267,60 +267,62 @@ export default function AuthModal() {
     }
   }
 
+  /**
+   * 가입 검증 실패를 알린다.
+   *
+   * 오류 상자는 폼 **맨 아래**(동의 체크박스 바로 위)에 뜨는데, 회원가입 폼은 길어서
+   * 문제의 칸이 스크롤 위로 사라져 있을 수 있다. 실제로 "이메일을 입력해주세요."가
+   * 떠 있는데 이메일 칸은 화면에 없는 상태가 나왔다 — 무엇을 고쳐야 하는지는 알려주지만
+   * 어디를 고쳐야 하는지는 안 알려준 셈이다. 그래서 해당 칸으로 스크롤 + 포커스한다.
+   */
+  function failSignup(message: string, fieldId?: string) {
+    setSignupError(message);
+    if (!fieldId) return;
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // scrollIntoView 의 부드러운 이동을 focus 가 끊지 않도록 preventScroll.
+    (el as HTMLElement).focus({ preventScroll: true });
+  }
+
   async function handleSignup() {
     // 로그인(handleLogin)에는 있는데 회원가입에만 없던 가드. 버튼 disabled 만으로는
     // Enter 키 경로를 못 막아서, 연타하면 signUp 요청이 두 번 나갈 수 있었다.
     if (signupLoading) return;
     setSignupError('');
 
-    if (!email.trim()) {
-      setSignupError('이메일을 입력해주세요.');
-      return;
-    }
-    if (!isValidEmail(email)) {
-      setSignupError(EMAIL_FORMAT_ERROR);
-      return;
-    }
-    if (!nickname.trim()) {
-      setSignupError('닉네임을 입력해주세요.');
-      return;
-    }
-    if (nickname.trim().length > 20) {
-      setSignupError('닉네임은 20자 이하로 입력해주세요.');
-      return;
-    }
+    // 검사 순서는 **화면에 보이는 칸 순서**와 같아야 한다.
+    // 예전엔 이메일을 닉네임보다 먼저 검사해서, 다 비운 채 누르면 맨 위 칸(닉네임)을
+    // 놔두고 "이메일을 입력해주세요."가 떴다. 채우고 누르면 이번엔 위로 되돌아가
+    // "닉네임을 입력해주세요." — 폼을 오르내리게 만든다. (2026-08-27 감사)
+    if (!nickname.trim()) return failSignup('닉네임을 입력해주세요.', 'signup-modal-nickname');
+    if (nickname.trim().length > 20) return failSignup('닉네임은 20자 이하로 입력해주세요.', 'signup-modal-nickname');
+
+    if (!email.trim()) return failSignup('이메일을 입력해주세요.', 'signup-modal-email');
+    if (!isValidEmail(email)) return failSignup(EMAIL_FORMAT_ERROR, 'signup-modal-email');
+
     const pwCheck = validatePassword(password);
-    if (!pwCheck.ok) {
-      setSignupError(pwCheck.error);
-      return;
-    }
+    if (!pwCheck.ok) return failSignup(pwCheck.error, 'signup-modal-password');
     if (password !== passwordConfirm) {
-      setSignupError('비밀번호가 일치하지 않습니다.');
-      return;
+      return failSignup('비밀번호가 일치하지 않습니다.', 'signup-modal-password-confirm');
+    }
+
+    if (!keywordCategory) {
+      return failSignup('활동 주제(키워드챌린지 분야)를 선택해주세요.', 'signup-modal-keyword-category');
     }
 
     const blogId = extractBlogId(blogInput);
     const naverId = extractNaverId(naverInput);
-    if (!blogId) {
-      setSignupError('네이버 블로그 주소를 입력해주세요.');
-      return;
-    }
+    if (!blogId) return failSignup('네이버 블로그 주소를 입력해주세요.', 'signup-modal-blog');
     if (!/^[a-zA-Z0-9_-]{2,30}$/.test(blogId)) {
-      setSignupError('네이버 블로그 주소를 다시 확인해주세요.');
-      return;
+      return failSignup('네이버 블로그 주소를 다시 확인해주세요.', 'signup-modal-blog');
     }
     if (naverId && !/^[a-zA-Z0-9._-]{2,30}$/.test(naverId)) {
-      setSignupError('네이버 인플루언서홈 주소를 다시 확인해주세요.');
-      return;
+      return failSignup('네이버 인플루언서홈 주소를 다시 확인해주세요.', 'signup-modal-naver');
     }
-    if (!keywordCategory) {
-      setSignupError('활동 주제(키워드챌린지 분야)를 선택해주세요.');
-      return;
-    }
-    if (!allAgreed) {
-      setSignupError('이용약관과 개인정보처리방침에 동의해주세요.');
-      return;
-    }
+
+    // 동의 체크박스는 오류 상자 바로 아래에 있고 버튼도 여기서 비활성화되므로 이동시키지 않는다.
+    if (!allAgreed) return failSignup('이용약관과 개인정보처리방침에 동의해주세요.');
 
     setSignupLoading(true);
     setSignupLoadingStep('계정 생성 중...');
@@ -555,6 +557,7 @@ export default function AuthModal() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-dim">닉네임<RequiredMark /></label>
                 <input
+                  id="signup-modal-nickname"
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
@@ -568,6 +571,7 @@ export default function AuthModal() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-dim">이메일<RequiredMark /></label>
                 <input
+                  id="signup-modal-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -580,6 +584,7 @@ export default function AuthModal() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-dim">비밀번호<RequiredMark /></label>
                 <input
+                  id="signup-modal-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -602,6 +607,7 @@ export default function AuthModal() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-dim">비밀번호 확인<RequiredMark /></label>
                 <input
+                  id="signup-modal-password-confirm"
                   type="password"
                   value={passwordConfirm}
                   onChange={(e) => setPasswordConfirm(e.target.value)}
@@ -641,6 +647,7 @@ export default function AuthModal() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-dim">네이버 블로그 주소<RequiredMark /></label>
                 <input
+                  id="signup-modal-blog"
                   type="text"
                   value={blogInput}
                   onChange={(e) => setBlogInput(e.target.value)}
@@ -654,6 +661,7 @@ export default function AuthModal() {
                   네이버 인플루언서홈 주소 <span className="font-normal text-dim/60">(선택)</span>
                 </label>
                 <input
+                  id="signup-modal-naver"
                   type="text"
                   value={naverInput}
                   onChange={(e) => setNaverInput(e.target.value)}
