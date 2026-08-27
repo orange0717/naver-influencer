@@ -298,6 +298,20 @@ export default function AuthModal() {
     (el as HTMLElement).focus({ preventScroll: true });
   }, [signupErrorField]);
 
+  /**
+   * 문제의 칸 바로 아래에 같은 메시지를 한 번 더 적는다.
+   *
+   * 위 effect 가 해당 칸으로 스크롤해주면 이번엔 **오류 상자 쪽이** 화면 밖으로 나간다
+   * (실측: 닉네임 칸으로 올라오니 맨 아래 "닉네임을 입력해주세요." 가 안 보였다).
+   * 폼이 한 화면에 다 안 들어오는 이상 둘 중 하나는 반드시 가려지므로, 칸과 메시지가
+   * 항상 같이 보이도록 칸 옆에도 적는다. 맨 아래 상자는 그대로 둔다 — 동의 체크박스처럼
+   * 가리킬 칸이 없는 오류는 거기서만 나오고, 스크롤 없이 누른 사람은 그쪽을 먼저 본다.
+   */
+  function signupFieldError(fieldId: string) {
+    if (signupErrorField?.id !== fieldId) return null;
+    return <p className="mt-1.5 text-[11px] text-down">{signupError}</p>;
+  }
+
   async function handleSignup() {
     // 로그인(handleLogin)에는 있는데 회원가입에만 없던 가드. 버튼 disabled 만으로는
     // Enter 키 경로를 못 막아서, 연타하면 signUp 요청이 두 번 나갈 수 있었다.
@@ -579,6 +593,7 @@ export default function AuthModal() {
                   maxLength={20}
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
+                {signupFieldError('signup-modal-nickname')}
               </div>
 
               <div>
@@ -592,6 +607,7 @@ export default function AuthModal() {
                   placeholder="example@email.com"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
+                {signupFieldError('signup-modal-email')}
               </div>
 
               <div>
@@ -608,7 +624,9 @@ export default function AuthModal() {
                 {/* 규칙이 placeholder 에만 있으면 한 글자 입력하는 순간 사라진다 →
                     다 채우고 "가입하기"를 누른 뒤에야 "숫자를 포함해주세요"를 보게 된다.
                     입력 중에도 무엇이 남았는지 보이도록 상시 표기한다. */}
-                <p className={`mt-1.5 text-[11px] ${password && !validatePassword(password).ok ? 'text-down' : 'text-dim'}`}>
+                {/* 이 줄이 이미 비밀번호 상태를 상시 안내하므로 signupFieldError 로 같은 말을
+                    한 줄 더 붙이지 않는다. 대신 이 칸이 지목되면 회색 → 빨강으로만 바꾼다. */}
+                <p className={`mt-1.5 text-[11px] ${(password && !validatePassword(password).ok) || signupErrorField?.id === 'signup-modal-password' ? 'text-down' : 'text-dim'}`}>
                   {password
                     ? (validatePassword(password).ok
                         ? '사용할 수 있는 비밀번호입니다.'
@@ -628,10 +646,11 @@ export default function AuthModal() {
                   placeholder="비밀번호를 다시 입력해주세요"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
-                {/* 불일치를 제출한 뒤에야 알려주면 처음부터 다시 입력해야 한다. */}
-                {passwordConfirm && password !== passwordConfirm && (
+                {/* 불일치를 제출한 뒤에야 알려주면 처음부터 다시 입력해야 한다.
+                    확인칸이 비어 있으면 이 줄은 안 나오므로 그때는 signupFieldError 가 맡는다. */}
+                {passwordConfirm && password !== passwordConfirm ? (
                   <p className="mt-1.5 text-[11px] text-down">비밀번호가 일치하지 않습니다.</p>
-                )}
+                ) : signupFieldError('signup-modal-password-confirm')}
               </div>
 
               <div className="space-y-2.5 rounded-xl border-2 border-accent/25 bg-accent/5 p-4">
@@ -655,6 +674,7 @@ export default function AuthModal() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+                {signupFieldError('signup-modal-keyword-category')}
               </div>
 
               <div>
@@ -667,6 +687,7 @@ export default function AuthModal() {
                   placeholder="blog.naver.com/blogid 또는 blogid"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
+                {signupFieldError('signup-modal-blog')}
               </div>
 
               <div>
@@ -681,6 +702,7 @@ export default function AuthModal() {
                   placeholder="in.naver.com/naverid 또는 naverid"
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
+                {signupFieldError('signup-modal-naver')}
                 <p className="mt-1 text-[11px] text-dim">가입 후 본인 인증 페이지로 이동합니다.</p>
               </div>
 
