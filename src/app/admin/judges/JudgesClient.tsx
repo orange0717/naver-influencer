@@ -23,6 +23,9 @@ interface IssuedCredential {
   credential: string | null;
   magicLinkUrl: string | null;
   expiresAt: string;
+  blogId: string | null;
+  influencerLinked: boolean;
+  influencerNote: string | null;
 }
 
 interface RouteResult {
@@ -248,6 +251,8 @@ function IssueModal({
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [blogId, setBlogId] = useState('');
+  const [influencerNaverId, setInfluencerNaverId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -265,6 +270,8 @@ function IssueModal({
         email: email.trim(),
         // datetime-local 은 타임존이 없는 로컬 시각 — ISO 로 변환해 보낸다
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : '',
+        blogId: blogId.trim(),
+        influencerNaverId: influencerNaverId.trim(),
       }),
     });
     const data = await res.json().catch(() => null);
@@ -312,6 +319,36 @@ function IssueModal({
           />
         </div>
 
+        <div>
+          <label className="block text-xs font-semibold text-dim mb-1.5">
+            블로그 주소 (선택) — 심사위원이 볼 시연용 블로그
+          </label>
+          <input
+            value={blogId}
+            onChange={e => setBlogId(e.target.value)}
+            placeholder="orangelibrary_"
+            className={controlBoxClass}
+          />
+          <p className="text-[11px] text-dim mt-1">
+            blog.naver.com/<b>여기</b> 부분. 비우면 심사위원 화면이 빈 상태로 보입니다.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-dim mb-1.5">
+            인플루언서홈 주소 (선택)
+          </label>
+          <input
+            value={influencerNaverId}
+            onChange={e => setInfluencerNaverId(e.target.value)}
+            placeholder="orangelibrary"
+            className={controlBoxClass}
+          />
+          <p className="text-[11px] text-dim mt-1">
+            in.naver.com/<b>여기</b> 부분. 이미 다른 계정에 연결된 인플루언서면 연결하지 않고
+            그 사실을 알려줍니다(기존 계정의 연결은 건드리지 않습니다).
+          </p>
+        </div>
+
         {error && <p className="text-xs text-red-500">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
@@ -357,6 +394,11 @@ function CredentialModal({ issued, onClose }: { issued: IssuedCredential; onClos
           {issued.credential && <Row label="비밀번호" value={issued.credential} mono />}
           {issued.magicLinkUrl && <Row label="접속 링크" value={issued.magicLinkUrl} mono />}
           <Row label="이용 기한" value={formatDateTimeShort(issued.expiresAt)} />
+          <Row label="연결된 블로그" value={issued.blogId || '없음'} />
+          <Row
+            label="인플루언서홈"
+            value={issued.influencerLinked ? '연결됨' : issued.influencerNote || '연결 안 함'}
+          />
         </div>
 
         <div className="flex items-center gap-3">

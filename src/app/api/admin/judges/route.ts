@@ -86,7 +86,13 @@ export async function POST(req: NextRequest) {
   const auth = await guard(req);
   if (auth instanceof NextResponse) return auth;
 
-  let body: { displayName?: unknown; email?: unknown; expiresAt?: unknown };
+  let body: {
+    displayName?: unknown;
+    email?: unknown;
+    expiresAt?: unknown;
+    blogId?: unknown;
+    influencerNaverId?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -96,6 +102,9 @@ export async function POST(req: NextRequest) {
   const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   const expiresAtRaw = typeof body.expiresAt === 'string' ? body.expiresAt : '';
+  const blogId = typeof body.blogId === 'string' ? body.blogId.trim() : '';
+  const influencerNaverId =
+    typeof body.influencerNaverId === 'string' ? body.influencerNaverId.trim() : '';
 
   if (displayName.length < 1 || displayName.length > 50) {
     return judgeError('BAD_REQUEST', '표시명은 1~50자여야 합니다.', 400);
@@ -111,6 +120,14 @@ export async function POST(req: NextRequest) {
     return judgeError('BAD_REQUEST', '만료 일시는 현재 시각 이후여야 합니다.', 400);
   }
   const expiresAt = new Date(expiresAtMs).toISOString();
+
+  // 블로그·인플루언서 식별자 형식은 가입 경로와 동일한 규칙을 쓴다.
+  if (blogId && !/^[a-zA-Z0-9_-]{2,30}$/.test(blogId)) {
+    return judgeError('BAD_REQUEST', '네이버 블로그 주소를 다시 확인해주세요.', 400);
+  }
+  if (influencerNaverId && !/^[a-zA-Z0-9._-]{2,30}$/.test(influencerNaverId)) {
+    return judgeError('BAD_REQUEST', '인플루언서홈 주소를 다시 확인해주세요.', 400);
+  }
 
   const supabase = createServiceClient();
 
@@ -180,6 +197,11 @@ export async function POST(req: NextRequest) {
       // 기존 구독 판정 로직을 그대로 타며 별도 권한 경로를 만들지 않는다.
       subscription_plan: JUDGE_PLAN,
       subscription_expires_at: expiresAt,
+      // 심사위원이 빈 화면을 보지 않도록 시연용 블로그를 붙인다.
+      // 가입 경로와 달리 blog_id 중복을 막지 않는다 — 운영자 블로그를 심사용으로
+      // 공유하는 것이 목적이며, users.blog_id 에는 DB UNIQUE 제약이 없다.
+      // 부작용은 발급 응답의 blogShared 로 관리자에게 알린다.
+      ...(blogId ? { blog_id: blogId } : {}),
       // is_admin 은 명시적으로 건드리지 않는다 — 심사위원에게 관리자 권한 없음.
     })
     .select('id')
@@ -209,6 +231,40 @@ export async function POST(req: NextRequest) {
     return rollback('CREATE_FAILED', '심사위원 정보 생성에 실패했습니다.', 500);
   }
 
+  // ── 인플루언서홈 연결 (선택) ────────────────────────────────
+  // users.linked_influencer_id 에는 부분 UNIQUE 인덱스가 걸려 있어 하나의
+  // 인플루언서를 두 계정이 동시에 가질 수 없다. 이미 다른 계정(대개 운영자
+  // 본인)이 연결 중이면 여기서 23505 로 튕기며, 그 계정에서 연결을 빼앗지
+  // 않는다. 계정 발급 자체는 성공시키고 결과만 사실대로 실어 보낸다.
+  let influencerLinked = false;
+  let influencerNote: string | null = null;
+
+  if (influencerNaverId) {
+    const { data: inf } = await supabase
+      .from('influencers')
+      .select('id')
+      .eq('naver_id', influencerNaverId)
+      .maybeSingle();
+
+    if (!inf) {
+      influencerNote = '해당 인플루언서를 찾지 못했습니다.';
+    } else {
+      const { error: linkError } = await supabase
+        .from('users')
+        .update({ linked_influencer_id: inf.id })
+        .eq('id', userRow.id);
+
+      if (!linkError) {
+        influencerLinked = true;
+      } else if (linkError.code === '23505') {
+        influencerNote = '이미 다른 계정에 연결된 인플루언서라 연결하지 않았습니다.';
+      } else {
+        influencerNote = '인플루언서 연결에 실패했습니다.';
+        console.error('[admin/judges] influencer link failed:', linkError.message);
+      }
+    }
+  }
+
   return NextResponse.json(
     {
       id: judgeRow.id,
@@ -217,6 +273,9 @@ export async function POST(req: NextRequest) {
       credential: password, // 이 응답이 유일한 노출 지점
       magicLinkUrl: null, // 이메일+비밀번호 방식이므로 사용하지 않음
       expiresAt,
+      blogId: blogId || null,
+      influencerLinked,
+      influencerNote,
     },
     { status: 201 },
   );

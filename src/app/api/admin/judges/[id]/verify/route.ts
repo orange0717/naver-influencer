@@ -21,6 +21,31 @@ type RouteResult = {
 const CONCURRENCY = 4;
 
 /**
+ * 미들웨어·페이지 게이트가 "막았다"는 뜻으로 보내는 리다이렉트 목적지.
+ * 3xx 를 전부 차단으로 세면 안 된다 — 예를 들어 인플루언서 미연결 계정의
+ * /my 는 /my/blogger 로 넘어가는데 이건 막힌 게 아니라 정상 라우팅이다.
+ */
+function isGateRedirect(location: string | null): boolean {
+  if (!location) return false;
+  let path: string;
+  let query: string;
+  try {
+    const url = new URL(location, 'https://ninfle.kr');
+    path = url.pathname;
+    query = url.search;
+  } catch {
+    return false;
+  }
+  // 로그인 필요 · 회원 전용 · 제한 사용자 → 홈으로
+  if (path === '/') {
+    return query.includes('authModal=login') || query.includes('memberOnly=1') || query === '';
+  }
+  // 유료 이용권 필요
+  if (path === '/subscribe') return true;
+  return false;
+}
+
+/**
  * POST /api/admin/judges/:id/verify
  *
  * 해당 계정의 세션을 서버에서 실제로 만들어, §2 전 경로를 그 세션으로 HTTP
@@ -152,16 +177,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       const location = res.headers.get('location');
 
       if (res.status >= 300 && res.status < 400) {
-        // 미들웨어의 게이트는 전부 리다이렉트로 드러난다:
+        // 게이트 리다이렉트는 전부 목적지로 드러난다:
         //   /?authModal=login  로그인 필요 · /?memberOnly=1 회원 전용
         //   /subscribe?needsPro=1 유료 이용권 필요 · / 제한 사용자
+        // 그 외 목적지(/my/blogger, /profile 등)는 화면이 열린 것이므로 차단이 아니다.
+        const gated = isGateRedirect(location);
         return {
           group: entry.group,
           path: entry.path,
           status: res.status,
-          result: 'deny',
+          result: gated ? 'deny' : 'allow',
           redirectedTo: location,
-          note: null,
+          note: gated ? null : '리다이렉트(게이트 아님)',
         };
       }
 
