@@ -1,6 +1,7 @@
 import { createClient, type User } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { hasSupabaseAuthCookieIn } from './auth-cookie';
 
 /**
  * 서버 컴포넌트/라우트에서 안전하게 현재 유저를 조회한다.
@@ -29,10 +30,13 @@ export async function getUserWithTimeout(
  * (Auth 서버 장애로) 판정 불능인지 구분하기 위한 힌트. Supabase 세션 쿠키
  * (sb-<project-ref>-auth-token, 대용량 토큰은 .0/.1 청크로 분할)가 남아있으면
  * 로그인 흔적이 있는 것으로 간주한다.
+ *
+ * 판정 규칙은 lib/auth-cookie.ts 에 있다(빈 값 쿠키·code-verifier 를 세션으로 오인하면
+ * 비로그인 사용자가 '세션 확인 중' 화면에 갇힌다 — 2026-08-27 사고).
  */
 export async function hasSupabaseAuthCookie(): Promise<boolean> {
   const cookieStore = await cookies();
-  return cookieStore.getAll().some((c) => /^sb-.*-auth-token/.test(c.name));
+  return hasSupabaseAuthCookieIn(cookieStore.getAll());
 }
 
 export function createServiceClient() {

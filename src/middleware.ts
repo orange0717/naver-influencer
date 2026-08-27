@@ -5,6 +5,7 @@ import { DEVICE_ID_COOKIE } from '@/lib/device-id';
 import { isRestricted, getPaywallContext } from '@/lib/admin';
 import { defaultApiLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getAllAuthOnlyHrefs } from '@/lib/sidebar-nav';
+import { hasSupabaseAuthCookieIn } from '@/lib/auth-cookie';
 
 /**
  * 점검 모드: 켜면 모든 HTML 페이지 요청을 점검 안내 화면으로 즉시 응답한다.
@@ -164,9 +165,13 @@ function matchesPathPrefix(pathname: string, prefix: string): boolean {
  * @supabase/ssr 세션 쿠키(sb-<ref>-auth-token, 청크 시 .0/.1 …) 존재 여부.
  * "한 번이라도 로그인해 세션 쿠키를 들고 있는 사용자"와 "세션 쿠키가 아예 없는
  * 순수 비회원"을 구분하는 신호로 쓴다. code-verifier(OAuth 진행 중)는 제외한다.
+ *
+ * 판정은 lib/auth-cookie.ts 와 공유한다 — 서버 컴포넌트(/my)와 미들웨어가 서로 다른
+ * 규칙을 쓰면 "미들웨어는 통과시켰는데 페이지는 세션 확인 중" 같은 엇갈림이 난다.
+ * 특히 **값이 빈 쿠키**를 세션으로 세면 로그아웃한 사용자가 로딩 화면에 갇힌다(2026-08-27).
  */
 function hasSupabaseAuthCookie(request: NextRequest): boolean {
-  return request.cookies.getAll().some((c) => /^sb-.+-auth-token(\.\d+)?$/.test(c.name));
+  return hasSupabaseAuthCookieIn(request.cookies.getAll());
 }
 
 /**
