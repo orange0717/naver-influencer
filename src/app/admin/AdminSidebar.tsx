@@ -17,6 +17,7 @@ const MENU_ITEMS = [
   { href: '/admin/community', label: '커뮤니티 관리', icon: '?' },
   { href: '/admin/stories', label: '성장후기 관리', icon: 'S' },
   { href: '/admin/bulk-grant', label: '플랜 일괄 부여', icon: '+' },
+  { href: '/admin/judges', label: '심사위원 계정', icon: 'J' },
   { href: '/admin/influencers', label: '인플루언서 관리', icon: 'I' },
   { href: '/admin/crawler', label: '크롤러 상태', icon: 'C' },
   { href: '/admin/google-indexing', label: '구글 색인등록', icon: 'G' },
