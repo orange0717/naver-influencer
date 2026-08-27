@@ -169,18 +169,51 @@ export async function POST(req: NextRequest) {
     // 심사위원이 메일함 확인을 거치지 않고 바로 로그인할 수 있게 확인 완료 처리
     email_confirm: true,
   });
-  if (createError || !created?.user) {
-    console.error('[admin/judges] createUser failed:', createError?.message);
-    return judgeError('CREATE_FAILED', '계정 생성에 실패했습니다.', 500);
-  }
-  const authId = created.user.id;
 
-  /** 실패 시 방금 만든 auth 계정을 고아로 남기지 않는다 */
+  let authId: string;
+  // 새로 만든 계정만 롤백 대상 — 아래에서 흡수한 기존 계정은 지우지 않는다.
+  let createdHere = false;
+
+  if (!createError && created?.user) {
+    authId = created.user.id;
+    createdHere = true;
+  } else {
+    // 이 지점의 실패는 대개 "이미 등록된 이메일"이다. 그런데 위에서 users 행 중복은
+    // 이미 걸러냈으므로, 남은 경우는 auth.users 에만 있고 public.users 행이 없는
+    // 고아 계정이다. 그 상태의 계정은 로그인은 되지만 getAuthUser 가 프로필을 찾지
+    // 못해 닉네임 모달에서 401 로 막히고 사용자가 빠져나갈 수 없다.
+    // 여기서 그 계정을 흡수해(비밀번호·확인 상태 재설정 + 프로필 생성) 복구한다.
+    const { data: link } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    });
+    const orphanId = link?.user?.id;
+
+    if (!orphanId) {
+      console.error('[admin/judges] createUser failed:', createError?.message);
+      return judgeError('CREATE_FAILED', '계정 생성에 실패했습니다.', 500);
+    }
+
+    const { error: resetError } = await supabase.auth.admin.updateUserById(orphanId, {
+      password,
+      email_confirm: true,
+      ban_duration: 'none',
+    });
+    if (resetError) {
+      console.error('[admin/judges] orphan adopt failed:', resetError.message);
+      return judgeError('CREATE_FAILED', '계정 생성에 실패했습니다.', 500);
+    }
+    authId = orphanId;
+  }
+
+  /** 실패 시 방금 만든 auth 계정을 고아로 남기지 않는다 (흡수한 기존 계정은 보존) */
   const rollback = async (code: string, message: string, status: number) => {
-    try {
-      await supabase.auth.admin.deleteUser(authId);
-    } catch (err) {
-      console.error('[admin/judges] rollback deleteUser failed:', err);
+    if (createdHere) {
+      try {
+        await supabase.auth.admin.deleteUser(authId);
+      } catch (err) {
+        console.error('[admin/judges] rollback deleteUser failed:', err);
+      }
     }
     return judgeError(code, message, status);
   };
