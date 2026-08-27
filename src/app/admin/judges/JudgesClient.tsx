@@ -358,11 +358,11 @@ function IssueModal({
           <input
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder="미리 정해 안내해야 할 때만 입력 (12자 이상)"
+            placeholder="미리 정해 안내해야 할 때만 입력 (6자 이상)"
             className={controlBoxClass}
           />
           <p className="text-[11px] text-dim mt-1">
-            입력한 값은 저장되지 않습니다. 이 계정은 전 메뉴가 열려 있으니 추측하기 쉬운 값은 피하세요.
+            입력한 값은 저장되지 않습니다. 짧은 값을 쓰면 심사 종료일을 짧게 잡으세요.
           </p>
         </div>
 

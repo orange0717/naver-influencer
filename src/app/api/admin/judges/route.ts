@@ -133,10 +133,11 @@ export async function POST(req: NextRequest) {
   if (influencerNaverId && !/^[a-zA-Z0-9._-]{2,30}$/.test(influencerNaverId)) {
     return judgeError('BAD_REQUEST', '인플루언서홈 주소를 다시 확인해주세요.', 400);
   }
-  // 이 계정은 전 메뉴와 인플루언서 플랜이 열려 있어 추측 가능한 값을 허용하지 않는다.
-  // 72바이트 상한은 bcrypt 제약.
-  if (suppliedPassword && (suppliedPassword.length < 12 || suppliedPassword.length > 72)) {
-    return judgeError('BAD_REQUEST', '비밀번호는 12~72자여야 합니다.', 400);
+  // 하한 6자는 Supabase Auth 자체 최소 길이 — 이보다 짧으면 계정 생성 단계에서
+  // 거부되므로 여기서 먼저 막아 원인이 분명한 에러를 준다. 72바이트 상한은 bcrypt 제약.
+  // 짧은 비밀번호의 위험은 심사 종료일 자동 차단과 즉시 비활성화 토글로 상쇄한다.
+  if (suppliedPassword && (suppliedPassword.length < 6 || suppliedPassword.length > 72)) {
+    return judgeError('BAD_REQUEST', '비밀번호는 6~72자여야 합니다.', 400);
   }
 
   const supabase = createServiceClient();
