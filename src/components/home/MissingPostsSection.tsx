@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import GlassCard from '@/components/dashboard/GlassCard';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/analytics/PageHeader';
-import SummaryCards from '@/components/analytics/SummaryCards';
+import SummaryCards, { type SummaryCard } from '@/components/analytics/SummaryCards';
 import PeriodFilter, { PERIOD_OPTIONS } from '@/components/analytics/PeriodFilter';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 import PostSearchBar, { selectClass } from '@/components/analytics/PostSearchBar';
@@ -611,6 +611,20 @@ export default function MissingPostsSection() {
 
   const pct = (n: number) => periodPosts.length === 0 ? 0 : Math.round((n / periodPosts.length) * 100);
 
+  /**
+   * §13 '아직 확인하지 않음' ≠ '0건'.
+   *
+   * 비회원이거나 블로그를 등록하지 않았으면 /api/blog/posts 조회가 아예 일어나지 않는다.
+   * 그런데 프로필이 없으면 postsLoading 이 곧바로 false 로 풀리기 때문에(무한 스피너를
+   * 막으려고 그렇게 해뒀다) 카드가 로딩도 아니고 실측도 아닌 상태로 **전부 0** 을 띄웠다.
+   * "미노출 0건"은 좋은 소식처럼 읽히는데, 실제로는 한 건도 확인하지 않은 것이다.
+   * 아래 포스팅 목록은 이 두 경우를 이미 갈라 안내하므로 카드도 같은 기준을 쓴다.
+   */
+  const notMeasured = !isMember || !profile?.blogId;
+  const notMeasuredReason = !isMember
+    ? '로그인하면 확인합니다'
+    : '블로그를 등록하면 확인합니다';
+
   // §1 기본 목록 = 전체 포스팅. 빠른 상태 필터(§3)·영역 필터·제목 검색·정렬을 차례로 적용한다.
   // (이전엔 미노출+재검사 글만 보여줬으나, 이제 전체 포스팅을 보여주고 필터로 좁힌다.)
   const displayList = useMemo(() => {
@@ -765,16 +779,24 @@ export default function MissingPostsSection() {
       </GlassCard>
 
       {/* 2. 전체 현황 카드 — 전체 포스팅 / 노출(정상) / 미노출 / 일부 노출 / 미확인.
-          네 상태 카드(노출·미노출·일부노출·미확인) 합 = 전체 포스팅. 로딩 전엔 0을 지어내지 않고 '—' 표시(§13). */}
+          네 상태 카드(노출·미노출·일부노출·미확인) 합 = 전체 포스팅. 로딩 전엔 0을 지어내지 않고 '—' 표시(§13).
+
+          ⚠️ '아직 확인 안 함'을 0으로 단정하지 않는다(§13). 비회원이거나 블로그를 등록하지
+          않았으면 조회 자체가 일어나지 않는데, 그때도 카드는 전부 0 을 띄우고 있었다 —
+          "미노출 0건"은 좋은 소식처럼 읽히지만 사실은 **아무것도 확인하지 않은 상태**다.
+          (postsLoading 은 프로필이 없으면 곧바로 false 가 되므로 loading 만으로는 못 거른다.
+           아래 포스팅 목록은 이미 두 경우를 갈라 안내하고 있었다 — 카드만 뒤처져 있었다.) */}
       <SummaryCards
         loading={postsLoading}
-        cards={[
+        cards={([
           { key: 'total', label: '전체 포스팅', value: periodPosts.length, color: 'accent', description: postsLoading ? '불러오는 중...' : '선택 기간 발행 글' },
           { key: 'normal', label: '노출', value: normalCount, color: 'up', description: postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출` },
           { key: 'missing', label: '미노출', value: missingCount, color: 'down', description: postsLoading ? '불러오는 중...' : `${pct(missingCount)}% · 확인한 전 영역 미노출` },
           { key: 'partial', label: '일부 노출', value: partialCount, color: 'accent', description: postsLoading ? '불러오는 중...' : `${pct(partialCount)}% · 일부 영역만` },
           { key: 'unknown', label: '미확인', value: unknownCount, color: 'dim', description: postsLoading ? '불러오는 중...' : '미검사·확인 중·확인 실패' },
-        ]}
+        ] as SummaryCard[]).map(c => notMeasured
+          ? { ...c, color: 'dim' as const, statusText: '확인 전', description: notMeasuredReason }
+          : c)}
       />
 
       {/* 3. 필터 · 검색 */}
