@@ -786,6 +786,15 @@ export default function MissingPostsSection() {
           "미노출 0건"은 좋은 소식처럼 읽히지만 사실은 **아무것도 확인하지 않은 상태**다.
           (postsLoading 은 프로필이 없으면 곧바로 false 가 되므로 loading 만으로는 못 거른다.
            아래 포스팅 목록은 이미 두 경우를 갈라 안내하고 있었다 — 카드만 뒤처져 있었다.) */}
+      {/* ⚠️ size="kpi" 카드는 description 을 아예 그리지 않는다(AnimatedStatCard 158~159행 —
+          아이콘·label·값만 그린다. 정사각형 variant 에만 stat-desc 줄이 있다). 그래서 카드 안에는
+          '확인 전' 다음에 무엇을 하면 되는지 적을 자리가 없다. 공용 카드의 고정 높이(h-[150px])와
+          구조를 건드리지 않기 위해, 카드 줄 바로 위에 한 줄로 안내한다. */}
+      {notMeasured && (
+        <p className="text-xs text-dim">
+          아직 한 건도 확인하지 않았습니다 — <b className="text-text font-semibold">{notMeasuredReason}</b>.
+        </p>
+      )}
       <SummaryCards
         loading={postsLoading}
         cards={([
