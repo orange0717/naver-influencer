@@ -1,5 +1,7 @@
 'use client';
 
+import { briefingEmptyReason } from '@/lib/keyword/briefing';
+
 interface BriefingProps {
   rankUpCount: number;
   rankDownCount: number;
@@ -8,6 +10,10 @@ interface BriefingProps {
   bestUp: { keyword: string; change: number } | null;
   worstDown: { keyword: string; change: number } | null;
   dataDateLabel: string;
+  /** 순위가 확인된 키워드 수. 0이면 "변동 없음"이 아니라 "아직 확인 안 함"이다. */
+  trackedCount: number;
+  /** 이전 순위가 있어 변동을 계산할 수 있었던 키워드 수. 0이면 첫 측정이라 비교 대상이 없다. */
+  comparableCount: number;
 }
 
 interface BriefingItem {
@@ -26,9 +32,20 @@ export default function DailyBriefing({
   bestUp,
   worstDown,
   dataDateLabel,
+  trackedCount,
+  comparableCount,
 }: BriefingProps) {
   const hasAnyChange = rankUpCount > 0 || rankDownCount > 0 || top3Entered > 0 || top3Exited > 0;
-  if (!hasAnyChange && !bestUp && !worstDown) return null;
+
+  // 변동이 없다고 섹션을 통째로 없애면 "변동이 없는 것"과 "고장/미확인"을 구분할 수 없다.
+  // 카드는 그대로 두고 왜 비어 있는지만 말해준다.
+  if (!hasAnyChange && !bestUp && !worstDown) {
+    return (
+      <BriefingShell dataDateLabel={dataDateLabel}>
+        <EmptyReason trackedCount={trackedCount} comparableCount={comparableCount} />
+      </BriefingShell>
+    );
+  }
 
   const items: BriefingItem[] = [
     {
@@ -62,18 +79,16 @@ export default function DailyBriefing({
   ];
 
   const visibleItems = items.filter(i => i.show);
-  if (visibleItems.length === 0 && !bestUp && !worstDown) return null;
+  if (visibleItems.length === 0 && !bestUp && !worstDown) {
+    return (
+      <BriefingShell dataDateLabel={dataDateLabel}>
+        <EmptyReason trackedCount={trackedCount} comparableCount={comparableCount} />
+      </BriefingShell>
+    );
+  }
 
   return (
-    <div className="bg-surface rounded-lg border border-accent/15 shadow-xs p-4">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[13px] font-bold text-text">오늘의 브리핑</h3>
-        {dataDateLabel && (
-          <span className="text-[10px] text-dim">{dataDateLabel}</span>
-        )}
-      </div>
-
+    <BriefingShell dataDateLabel={dataDateLabel}>
       {/* 변동 요약 그리드 */}
       {visibleItems.length > 0 && (
         <div className="flex flex-wrap gap-3 mb-3">
@@ -102,6 +117,52 @@ export default function DailyBriefing({
           )}
         </div>
       )}
+    </BriefingShell>
+  );
+}
+
+/** 카드 껍데기 — 변동이 있든 없든 같은 자리에 같은 모양으로 남는다. */
+function BriefingShell({
+  dataDateLabel,
+  children,
+}: {
+  dataDateLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-surface rounded-lg border border-accent/15 shadow-xs p-4">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[13px] font-bold text-text">오늘의 브리핑</h3>
+        {dataDateLabel && (
+          <span className="text-[10px] text-dim">{dataDateLabel}</span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 왜 브리핑이 비었는지 설명한다.
+ *
+ * "변동 없음"과 "아직 확인하지 않음"은 전혀 다른 상태인데, 예전엔 둘 다 섹션이
+ * 통째로 사라져서 사용자가 고장인지 원래 그런 건지 알 수 없었다.
+ * 추측하지 않고, 우리가 실제로 아는 것만 말한다.
+ */
+function EmptyReason({
+  trackedCount,
+  comparableCount,
+}: {
+  trackedCount: number;
+  comparableCount: number;
+}) {
+  const { title, detail } = briefingEmptyReason(trackedCount, comparableCount);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[13px] font-bold text-text">{title}</span>
+      <span className="text-[11px] text-dim leading-relaxed">{detail}</span>
     </div>
   );
 }

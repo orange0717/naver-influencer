@@ -2,13 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react';
 import DashboardCard, { DashboardCardIcon } from './DashboardCard';
+import { UNRANKED_STATUS_TITLE } from '@/lib/keyword/aggregate';
 
 interface ChallengeStatsProps {
   totalKeywords: number;
   rankedKeywords: number;
   rank1Count: number;
   top3Count: number;
-  integratedTop3Count: number;
+  /**
+   * 순위가 아직 확인되지 않은 참여 키워드 수.
+   *
+   * 예전엔 이 자리에 `is_integrated_top3` 개수를 넣은 '챌린지 TOP 3' 박스가 있었는데,
+   * 그 값은 세 writer 가 전부 `rank <= 3` 으로만 쓰므로 'TOP 3 달성률'의 분자와
+   * 똑같은 수였다(같은 걸 두 번 보여준 셈). 게다가 저장된 플래그를 읽어서
+   * 집계 SoT(aggregate.ts 버킷)와 어긋날 여지도 있었다.
+   * 중복 대신, 화면에 없던 '순위 없음'(≠ 순위가 낮음)을 드러낸다.
+   */
+  unrankedCount: number;
   avgParticipants: number;
 }
 
@@ -49,7 +59,7 @@ export default function ChallengeStatsSection({
   rankedKeywords,
   rank1Count,
   top3Count,
-  integratedTop3Count,
+  unrankedCount,
   avgParticipants,
 }: ChallengeStatsProps) {
   const top3Rate = totalKeywords > 0 ? Math.round((top3Count / totalKeywords) * 100) : 0;
@@ -107,12 +117,13 @@ export default function ChallengeStatsSection({
           }
         />
         <StatBox
-          label="챌린지 TOP 3"
-          value={integratedTop3Count}
+          label="순위 없음"
+          value={unrankedCount}
           suffix="개"
-          color="text-gold"
+          color="text-dim"
+          title={UNRANKED_STATUS_TITLE}
           icon={
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           }
         />
         <StatBox
@@ -136,6 +147,7 @@ function StatBox({
   color,
   sub,
   icon,
+  title,
 }: {
   label: string;
   value: number;
@@ -143,9 +155,14 @@ function StatBox({
   color: string;
   sub?: string;
   icon: React.ReactNode;
+  /** 마우스를 올리면 뜨는 설명. '순위 없음'처럼 오해하기 쉬운 상태에 붙인다. */
+  title?: string;
 }) {
   return (
-    <div className="h-[76px] rounded-xl bg-bg border border-border/50 p-4 flex flex-col justify-between">
+    <div
+      className="h-[76px] rounded-xl bg-bg border border-border/50 p-4 flex flex-col justify-between"
+      title={title}
+    >
       <div className="flex items-center gap-1.5 text-dim">
         {icon}
         <span className="text-[11px] font-semibold">{label}</span>

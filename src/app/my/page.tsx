@@ -296,9 +296,13 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const top3Count = keywordStats.top3;
   const top10Count = keywordStats.top10;
   const rank1Count = sumBuckets(keywordStats.buckets, ['r1']);
+  /**
+   * 참여했지만 순위가 아직 확인되지 않은 키워드 수.
+   * '순위가 낮다'가 아니라 '아직 모른다'이다 — 30위+ 에 합치지 않는다.
+   */
+  const unrankedCount = sumBuckets(keywordStats.buckets, ['unranked']);
   /** 순위가 확인된 키워드 수 — 총계가 아니다(총계는 keywordStats.total). */
   const totalRankedKeywords = rankings.length;
-  const integratedCount = rankings.filter(r => r.is_integrated_top3).length;
   const rankUpCount = rankings.filter(r => r.rank_change > 0).length;
   const rankDownCount = rankings.filter(r => r.rank_change < 0).length;
   // ─── TOP3 진입/이탈 + 최대 변동 (브리핑용) ───
@@ -308,6 +312,12 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   const top3Exited = (latestRankings || []).filter(r =>
     r.rank_position > 3 && r.previous_rank !== null && r.previous_rank <= 3
   ).length;
+
+  /**
+   * 이전 순위가 있어 "변동"을 계산할 수 있었던 키워드 수.
+   * 0이면 오늘이 첫 측정이라 비교 대상이 없는 것 — "변동 없음"과 구분해야 한다.
+   */
+  const comparableCount = (latestRankings || []).filter(r => r.previous_rank !== null).length;
 
   const bestUp = rankings.filter(r => r.rank_change > 0)
     .sort((a, b) => b.rank_change - a.rank_change)[0] || null;
@@ -577,6 +587,8 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         bestUp={bestUp ? { keyword: bestUp.keyword, change: bestUp.rank_change } : null}
         worstDown={worstDown ? { keyword: worstDown.keyword, change: worstDown.rank_change } : null}
         dataDateLabel={dataDateLabel}
+        trackedCount={totalRankedKeywords}
+        comparableCount={comparableCount}
       />
 
       {/* ─── 네이버 메이트 선정 뱃지 (선정된 경우만 노출) ─── */}
@@ -650,7 +662,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
         rankedKeywords={top10Count}
         rank1Count={rank1Count}
         top3Count={top3Count}
-        integratedTop3Count={integratedCount}
+        unrankedCount={unrankedCount}
         avgParticipants={avgParticipants}
       />
 
