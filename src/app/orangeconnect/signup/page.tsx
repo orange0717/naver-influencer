@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
+import { validatePassword, PASSWORD_PLACEHOLDER, isValidEmail, EMAIL_FORMAT_ERROR } from '@/lib/validations/auth';
+import { mapSupabaseAuthError } from '@/lib/auth-error-messages';
 
 const INDUSTRIES = [
   '음식/외식', '뷰티/화장품', '패션/의류', '여행/숙박', '건강/의료',
@@ -52,7 +53,7 @@ export default function AdSignupPage() {
 
     if (!contactName.trim()) return setError('담당자명을 입력해주세요.');
     if (!email.trim()) return setError('이메일을 입력해주세요.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('올바른 이메일 형식을 입력해주세요.');
+    if (!isValidEmail(email)) return setError(EMAIL_FORMAT_ERROR);
     {
       const pwCheck = validatePassword(password);
       if (!pwCheck.ok) return setError(pwCheck.error);
@@ -80,7 +81,9 @@ export default function AdSignupPage() {
         if (authError.message.includes('already registered')) {
           setError('이미 가입된 이메일입니다. 로그인해주세요.');
         } else {
-          setError(authError.message);
+          // Supabase 원문은 영문이라 그대로 띄우면 무엇을 해야 하는지 알 수 없다.
+          // 특히 재발송 쿨다운("...after N seconds")은 몇 초를 기다릴지조차 안 보인다.
+          setError(mapSupabaseAuthError(authError, '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'));
         }
         return;
       }
@@ -139,7 +142,12 @@ export default function AdSignupPage() {
             <p className="text-sm text-dim mt-1">인플루언서 마케팅을 시작하세요</p>
           </div>
 
-          <div className="space-y-4 animate-fade-in-up">
+          {/* <div> 이던 시절엔 Enter 키가 아무 일도 하지 않았다. 같은 광고주 화면인데
+              /orangeconnect/login 은 onKeyDown 으로 Enter 가 되므로, 로그인은 Enter 로
+              되는데 가입만 안 되는 상태였다 — 사용자는 "가입 버튼이 고장났다"고 느낀다.
+              noValidate: 브라우저 기본 말풍선이 submit 을 막으면 위 handleSignup 이
+              실행조차 안 돼 오류 상자에 직전 메시지가 그대로 남는다. */}
+          <form onSubmit={(e) => { e.preventDefault(); handleSignup(); }} noValidate className="space-y-4 animate-fade-in-up">
             <div>
               <label className="text-xs font-semibold text-dim block mb-1.5">담당자명</label>
               <input type="text" value={contactName} onChange={e => setContactName(e.target.value)} placeholder="홍길동" maxLength={50} autoFocus
@@ -217,7 +225,7 @@ export default function AdSignupPage() {
               </div>
             </div>
 
-            <button type="button" onClick={handleSignup} disabled={loading || !allAgreed}
+            <button type="submit" disabled={loading || !allAgreed}
               className="w-full py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -231,7 +239,7 @@ export default function AdSignupPage() {
               이미 계정이 있으신가요?{' '}
               <Link href="/orangeconnect/login" className="text-accent underline hover:text-accent-hover">로그인</Link>
             </p>
-          </div>
+          </form>
         </div>
       </div>
     </div>
