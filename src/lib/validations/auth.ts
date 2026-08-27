@@ -14,6 +14,24 @@ export function validatePassword(password: string): { ok: true } | { ok: false; 
 
 export const PASSWORD_PLACEHOLDER = '영문+숫자 포함 8자 이상';
 
+/**
+ * 이메일 형식 검사. 로그인·회원가입 공용.
+ *
+ * 브라우저의 `type="email"` 기본 검증에 맡기지 않는 이유가 두 가지 있다(2026-08-27 감사).
+ *  1) 기본 검증은 `a@b` 처럼 점 없는 주소를 통과시킨다 — 오타를 못 잡는다.
+ *  2) 기본 검증이 걸리면 submit 자체가 막혀 우리 핸들러가 아예 실행되지 않는다.
+ *     그러면 화면의 빨간 오류 상자는 **직전 실패 메시지 그대로** 남는다. 실제로
+ *     이메일에 '@'를 빠뜨렸는데 상자에는 "비밀번호를 입력해주세요."가 떠 있었다.
+ *     사용자는 엉뚱한 칸을 고치게 된다.
+ *
+ * 그래서 양쪽 form 에 noValidate 를 걸고 메시지는 항상 우리 오류 상자 한 곳으로만 낸다.
+ */
+export const EMAIL_FORMAT_ERROR = '올바른 이메일 형식을 입력해주세요.';
+
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
 /** POST /api/auth/signup
  *  보안: naverId/blogId 는 의도적으로 제외. 가입 시점에 임의 인플루언서/블로그
  *  점유를 막기 위함. 가입 후 /api/my/link (인플루언서, demo OTP 검증)

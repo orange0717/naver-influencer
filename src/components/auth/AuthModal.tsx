@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { withTimeout, TimeoutError } from '@/lib/with-timeout';
 import { login as gaLogin, signUp as gaSignUp } from '@/lib/gtag';
-import { validatePassword, PASSWORD_PLACEHOLDER } from '@/lib/validations/auth';
+import { validatePassword, PASSWORD_PLACEHOLDER, isValidEmail, EMAIL_FORMAT_ERROR } from '@/lib/validations/auth';
 import { mapSupabaseAuthError } from '@/lib/auth-error-messages';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 import LegalModal from '@/components/legal/LegalModal';
@@ -138,6 +138,12 @@ export default function AuthModal() {
 
     if (!loginEmail.trim()) {
       setLoginError('이메일을 입력해주세요.');
+      return;
+    }
+    // 형식 검사가 없으면 오타난 주소를 그대로 Supabase 로 보내고 "이메일과 비밀번호를
+    // 확인해주세요"라는 뭉뚱그린 실패만 돌려받는다. 어느 쪽이 틀렸는지 알 수 없다.
+    if (!isValidEmail(loginEmail)) {
+      setLoginError(EMAIL_FORMAT_ERROR);
       return;
     }
     if (!loginPassword) {
@@ -271,8 +277,8 @@ export default function AuthModal() {
       setSignupError('이메일을 입력해주세요.');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setSignupError('올바른 이메일 형식을 입력해주세요.');
+    if (!isValidEmail(email)) {
+      setSignupError(EMAIL_FORMAT_ERROR);
       return;
     }
     if (!nickname.trim()) {
@@ -467,7 +473,9 @@ export default function AuthModal() {
           </div>
 
           {mode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
+            // noValidate: 브라우저 기본 말풍선 대신 아래 오류 상자 한 곳으로만 안내한다.
+            // (이유는 lib/validations/auth.ts 의 isValidEmail 주석 참고)
+            <form onSubmit={handleLogin} noValidate className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-dim">이메일</label>
                 <input
@@ -541,6 +549,7 @@ export default function AuthModal() {
             // 회원가입만 안 되니 사용자는 "가입 버튼이 고장났다"고 느꼈다.
             <form
               onSubmit={(e) => { e.preventDefault(); handleSignup(); }}
+              noValidate
               className="space-y-4"
             >
               <div>

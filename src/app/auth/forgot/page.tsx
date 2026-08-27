@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { mapSupabaseAuthError } from '@/lib/auth-error-messages';
+import { isValidEmail, EMAIL_FORMAT_ERROR } from '@/lib/validations/auth';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -20,8 +21,8 @@ export default function ForgotPasswordPage() {
       setError('가입하신 이메일을 입력해주세요.');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('올바른 이메일 형식을 입력해주세요.');
+    if (!isValidEmail(trimmed)) {
+      setError(EMAIL_FORMAT_ERROR);
       return;
     }
 
@@ -67,7 +68,9 @@ export default function ForgotPasswordPage() {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            // noValidate: 브라우저 기본 말풍선이 submit 을 막아버리면 위 형식 검사가
+            // 실행조차 안 되고, 오류 상자에는 직전 메시지가 그대로 남는다.
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-dim block mb-1.5">이메일</label>
                 <input
