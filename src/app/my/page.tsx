@@ -4,7 +4,6 @@ import { createServiceClient, createRouteHandlerClient, getUserWithTimeout, hasS
 import SessionRecovering from '@/components/SessionRecovering';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
-import Top5Keywords from '@/components/dashboard/Top5Keywords';
 import RankDistribution from '@/components/dashboard/RankDistribution';
 import ProfileHeader from '@/components/dashboard/ProfileHeader';
 import RankTrendSection from '@/components/dashboard/RankTrendSection';
@@ -474,13 +473,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   /** 참여 키워드 총계 — 언제나 버킷 합이다(별도 length 로 세지 않는다). */
   const participatedCount = keywordStats.total;
 
-  /** 추천·기본 뷰: 프로필 주력이 있으면 항상 그 주제 기준(미참여 풀도 동일 주제로만 채워짐) */
-  const recommendationCategory =
-    topicScope.length > 0 ? topicScope : categoryGroups[0]?.[0] ?? '';
-  const notParticipatedForRecommendations = recommendationCategory
-    ? notParticipatedKeywords.filter((kw) => kw.category === recommendationCategory)
-    : notParticipatedKeywords;
-
   const catStatMap = new Map<string, { total: number; top10: number; sumRank: number }>();
   for (const kw of participatedKeywords) {
     const topic = classifyKeyword(kw.keyword, kw.category);
@@ -680,18 +672,6 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
 
       {/* ─── 4. 변동 피드 ─── */}
       <ActivityFeed events={activityEvents} />
-
-      {/* ─── 5. 오늘의 추천키워드 (미참여 중 경쟁도 낮고 검색량 높은 키워드) ─── */}
-      <Top5Keywords
-        recommendations={notParticipatedForRecommendations
-          .map(kw => ({
-            ...kw,
-            score: (kw.search_volume > 0 ? Math.log10(kw.search_volume) * 10 : 0) + Math.max(0, 50 - kw.participant_count),
-          }))
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 20)}
-        totalNotParticipated={notParticipatedForRecommendations.length}
-      />
 
       {/* ─── 7. 내 키워드 리스트 (주제별, 무료 공개) ─── */}
       <MyKeywordList
