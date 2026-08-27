@@ -253,6 +253,7 @@ function IssueModal({
   const [expiresAt, setExpiresAt] = useState('');
   const [blogId, setBlogId] = useState('');
   const [influencerNaverId, setInfluencerNaverId] = useState('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -272,6 +273,7 @@ function IssueModal({
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : '',
         blogId: blogId.trim(),
         influencerNaverId: influencerNaverId.trim(),
+        password: password.trim(),
       }),
     });
     const data = await res.json().catch(() => null);
@@ -346,6 +348,21 @@ function IssueModal({
           <p className="text-[11px] text-dim mt-1">
             in.naver.com/<b>여기</b> 부분. 이미 다른 계정에 연결된 인플루언서면 연결하지 않고
             그 사실을 알려줍니다(기존 계정의 연결은 건드리지 않습니다).
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-dim mb-1.5">
+            비밀번호 (선택) — 비우면 자동 생성
+          </label>
+          <input
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="미리 정해 안내해야 할 때만 입력 (12자 이상)"
+            className={controlBoxClass}
+          />
+          <p className="text-[11px] text-dim mt-1">
+            입력한 값은 저장되지 않습니다. 이 계정은 전 메뉴가 열려 있으니 추측하기 쉬운 값은 피하세요.
           </p>
         </div>
 

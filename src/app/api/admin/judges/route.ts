@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
     expiresAt?: unknown;
     blogId?: unknown;
     influencerNaverId?: unknown;
+    password?: unknown;
   };
   try {
     body = await req.json();
@@ -105,6 +106,10 @@ export async function POST(req: NextRequest) {
   const blogId = typeof body.blogId === 'string' ? body.blogId.trim() : '';
   const influencerNaverId =
     typeof body.influencerNaverId === 'string' ? body.influencerNaverId.trim() : '';
+  // 관리자가 비밀번호를 직접 정할 수 있다. 미리 정해 심사위원에게 안내해야 하는
+  // 경우를 위한 것으로, 값은 요청 본문으로 스쳐 지날 뿐 저장하지도 로그에 남기지도
+  // 않는다(해시는 Supabase Auth 에만). 비우면 서버가 난수로 생성한다.
+  const suppliedPassword = typeof body.password === 'string' ? body.password : '';
 
   if (displayName.length < 1 || displayName.length > 50) {
     return judgeError('BAD_REQUEST', '표시명은 1~50자여야 합니다.', 400);
@@ -128,6 +133,11 @@ export async function POST(req: NextRequest) {
   if (influencerNaverId && !/^[a-zA-Z0-9._-]{2,30}$/.test(influencerNaverId)) {
     return judgeError('BAD_REQUEST', '인플루언서홈 주소를 다시 확인해주세요.', 400);
   }
+  // 이 계정은 전 메뉴와 인플루언서 플랜이 열려 있어 추측 가능한 값을 허용하지 않는다.
+  // 72바이트 상한은 bcrypt 제약.
+  if (suppliedPassword && (suppliedPassword.length < 12 || suppliedPassword.length > 72)) {
+    return judgeError('BAD_REQUEST', '비밀번호는 12~72자여야 합니다.', 400);
+  }
 
   const supabase = createServiceClient();
 
@@ -150,7 +160,7 @@ export async function POST(req: NextRequest) {
     return judgeError('DUPLICATE', '이미 사용 중인 이메일입니다.', 409);
   }
 
-  const password = generateJudgePassword();
+  const password = suppliedPassword || generateJudgePassword();
 
   const { data: created, error: createError } = await supabase.auth.admin.createUser({
     email,
