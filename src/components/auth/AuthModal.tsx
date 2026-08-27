@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -72,6 +72,9 @@ export default function AuthModal() {
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupLoadingStep, setSignupLoadingStep] = useState('');
   const [signupError, setSignupError] = useState('');
+  /** 검증에 실패한 칸. 오류 상자가 그린 뒤 그 칸으로 스크롤·포커스하는 데 쓴다. */
+  const [signupErrorField, setSignupErrorField] = useState<{ id: string; seq: number } | null>(null);
+  const errorSeq = useRef(0);
 
   const allAgreed = agreeTerms && agreePrivacy;
 
@@ -101,6 +104,7 @@ export default function AuthModal() {
     setAgreeTerms(false);
     setAgreePrivacy(false);
     setSignupError('');
+    setSignupErrorField(null);
     setSignupLoading(false);
     setSignupLoadingStep('');
   }
@@ -274,16 +278,25 @@ export default function AuthModal() {
    * 문제의 칸이 스크롤 위로 사라져 있을 수 있다. 실제로 "이메일을 입력해주세요."가
    * 떠 있는데 이메일 칸은 화면에 없는 상태가 나왔다 — 무엇을 고쳐야 하는지는 알려주지만
    * 어디를 고쳐야 하는지는 안 알려준 셈이다. 그래서 해당 칸으로 스크롤 + 포커스한다.
+   *
+   * 스크롤을 여기서 바로 하면 안 된다. setSignupError 로 오류 상자가 DOM 에 끼어드는
+   * 리렌더가 **아직 커밋되기 전**이라, 곧이어 일어나는 레이아웃 변경이 이동을 취소시킨다
+   * (실측: scrollTop 이 420 그대로였다). 커밋 뒤에 움직이도록 effect 로 미룬다.
+   * seq 는 같은 칸이 연속으로 틀렸을 때도 effect 가 다시 돌게 하는 용도다.
    */
   function failSignup(message: string, fieldId?: string) {
     setSignupError(message);
-    if (!fieldId) return;
-    const el = document.getElementById(fieldId);
-    if (!el) return;
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    // scrollIntoView 의 부드러운 이동을 focus 가 끊지 않도록 preventScroll.
-    (el as HTMLElement).focus({ preventScroll: true });
+    setSignupErrorField(fieldId ? { id: fieldId, seq: ++errorSeq.current } : null);
   }
+
+  useEffect(() => {
+    if (!signupErrorField) return;
+    const el = document.getElementById(signupErrorField.id);
+    if (!el) return;
+    // behavior:'smooth' 는 리렌더 중 끊긴다. 즉시 이동시킨다.
+    el.scrollIntoView({ block: 'center' });
+    (el as HTMLElement).focus({ preventScroll: true });
+  }, [signupErrorField]);
 
   async function handleSignup() {
     // 로그인(handleLogin)에는 있는데 회원가입에만 없던 가드. 버튼 disabled 만으로는
