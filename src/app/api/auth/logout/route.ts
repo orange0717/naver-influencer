@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@/lib/supabase-server';
+import { IDENTITY_SIG_COOKIE } from '@/lib/identity-cookie';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,7 @@ export async function POST() {
   cookieStore.delete('user_type');
   cookieStore.delete('demo_mode');
   cookieStore.delete('trial_started');
+  cookieStore.delete(IDENTITY_SIG_COOKIE); // 신원 쿠키와 반드시 같이 지운다
 
   return NextResponse.json({ success: true });
 }

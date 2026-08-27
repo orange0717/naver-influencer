@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createServiceClient, getUserWithTimeout } from '@/lib/supabase-server';
 import Header from './Header';
+import { IDENTITY_SIG_COOKIE, verifyIdentity } from '@/lib/identity-cookie';
 
 /** 서버에서 인증 상태를 읽어 Header 클라이언트 컴포넌트에 전달 */
 export default async function HeaderWrapper() {
@@ -64,7 +65,13 @@ export default async function HeaderWrapper() {
       const userType = cookieStore.get('user_type')?.value;
       const naverId = cookieStore.get('naver_id')?.value;
 
-      if (userType === 'influencer' && naverId) {
+      // 서명 없는 평문 쿠키는 신원으로 인정하지 않는다 — 아무 naver_id 나 넣으면
+      // 헤더에 남의 이름이 뜨던 구멍(2026-08-27 감사).
+      const identityOk = verifyIdentity(cookieStore.get(IDENTITY_SIG_COOKIE)?.value, {
+        userType, naverId, blogId: cookieStore.get('blog_id')?.value,
+      });
+
+      if (identityOk && userType === 'influencer' && naverId) {
         const supabase = createServiceClient();
         const { data: inf } = await supabase
           .from('influencers')

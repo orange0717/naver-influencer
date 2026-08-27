@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient, createServiceClient } from '@/lib/supabase-server';
+import { IDENTITY_SIG_COOKIE, signIdentity } from '@/lib/identity-cookie';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,16 @@ export async function POST() {
 
     cookieStore.set('naver_id', inf.naver_id, cookieOptions);
     cookieStore.set('user_type', 'influencer', cookieOptions);
+
+    // 위조 방지 서명. 이 쿠키들은 평문이라 브라우저에서 아무 값이나 넣을 수 있는데,
+    // getCookieUser() 가 그 값을 그대로 신원으로 인정하기 때문에 발급 시점에 서명해 둔다.
+    // (여기는 위에서 Supabase 세션을 확인한 뒤이므로 서명해도 되는 자리다.)
+    const signature = signIdentity({
+      userType: 'influencer',
+      naverId: inf.naver_id,
+      blogId: cookieStore.get('blog_id')?.value,
+    });
+    if (signature) cookieStore.set(IDENTITY_SIG_COOKIE, signature, cookieOptions);
 
     return jsonAuthed({
       synced: true,

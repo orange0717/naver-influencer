@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
+import { getCookieUser } from '@/lib/auth';
 import { isRestricted } from '@/lib/admin';
 import { reconcileParticipation, recordFailedSync } from '@/lib/keyword/sync-reconcile';
 
@@ -148,9 +148,12 @@ export async function POST(request: NextRequest) {
   } catch { /* ignore */ }
 
   // 2. 기존 쿠키 기반 체크 (하위 호환)
+  // ⚠️ 쿠키를 직접 읽지 않는다. 평문 naver_id 를 그대로 믿으면 세션 없이도 아무 인플루언서
+  //    이름으로 이 동기화(크롤 + DB 쓰기)를 돌릴 수 있었다(2026-08-27 감사).
+  //    getCookieUser() 는 발급 서명을 검증한다.
   if (!naverId) {
-    const cookieStore = await cookies();
-    naverId = cookieStore.get('naver_id')?.value;
+    const cookieUser = await getCookieUser();
+    if (cookieUser?.type === 'influencer') naverId = cookieUser.id;
   }
 
   if (!naverId) {

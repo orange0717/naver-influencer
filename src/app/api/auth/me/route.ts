@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient, createServiceClient, createAnonClient } from '@/lib/supabase-server';
 import { isAdminFromProfile, isRestricted } from '@/lib/admin';
+import { IDENTITY_SIG_COOKIE, verifyIdentity } from '@/lib/identity-cookie';
 
 export const dynamic = 'force-dynamic';
 
@@ -141,6 +142,15 @@ export async function GET(request: NextRequest) {
     const naverId = cookieStore.get('naver_id')?.value;
     const blogId = cookieStore.get('blog_id')?.value;
     const blogName = cookieStore.get('blog_name')?.value;
+
+    // 위조 방지: 평문 쿠키를 그대로 신원으로 인정하면 아무 naver_id 나 넣어
+    // 남의 이름으로 헤더가 뜬다(2026-08-27 감사). 우리가 발급한 서명이 있어야만 인정.
+    const identityOk = verifyIdentity(cookieStore.get(IDENTITY_SIG_COOKIE)?.value, {
+      userType, naverId, blogId,
+    });
+    if (!identityOk) {
+      return NextResponse.json({ type: null, id: null, name: null });
+    }
 
     const safeDecode = (val: string | undefined): string | null => {
       if (!val) return null;

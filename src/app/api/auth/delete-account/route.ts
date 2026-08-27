@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase-server';
+import { IDENTITY_SIG_COOKIE } from '@/lib/identity-cookie';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export async function DELETE(req: NextRequest) {
 
     // 3. 쿠키 클리어
     const response = NextResponse.json({ success: true });
-    const cookieNames = ['user_type', 'naver_id', 'blog_id', 'blog_name', 'trial_started', 'demo_mode'];
+    const cookieNames = ['user_type', 'naver_id', 'blog_id', 'blog_name', 'trial_started', 'demo_mode', IDENTITY_SIG_COOKIE];
     for (const name of cookieNames) {
       response.cookies.delete(name);
     }

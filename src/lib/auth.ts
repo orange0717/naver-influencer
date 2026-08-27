@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createServiceClient, createAnonClient, createRouteHandlerClient } from './supabase-server';
+import { IDENTITY_SIG_COOKIE, verifyIdentity } from './identity-cookie';
 
 /**
  * API 라우트에서 인증된 유저 정보를 가져온다.
@@ -77,6 +78,43 @@ export async function getAuthUser(request: Request) {
 }
 
 /**
+ * 실제 Supabase 세션에서 신원을 유도한다. 쿠키가 뭐라고 주장하든 무시하고
+ * 세션이 가리키는 사람만 반환한다.
+ *
+ * 서명 없는 옛 쿠키를 들고 있지만 로그인은 멀쩡히 되어 있는 사용자를 위한 경로다.
+ * 이게 없으면 배포 순간 기존 로그인 사용자 전원이 재로그인 전까지
+ * 채팅·커뮤니티에서 튕긴다(기능을 죽이지 않는다는 원칙 위반).
+ */
+async function identityFromSession(): Promise<{ id: string; type: 'influencer' | 'blogger' } | null> {
+  try {
+    const supabaseAuth = await createRouteHandlerClient();
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+    if (!authUser) return null;
+
+    const supabase = createServiceClient();
+    const { data: profile } = await supabase
+      .from('users')
+      .select('blog_id, linked_influencer_id')
+      .eq('auth_id', authUser.id)
+      .maybeSingle();
+    if (!profile) return null;
+
+    if (profile.linked_influencer_id) {
+      const { data: inf } = await supabase
+        .from('influencers')
+        .select('naver_id')
+        .eq('id', profile.linked_influencer_id)
+        .maybeSingle();
+      if (inf?.naver_id) return { id: inf.naver_id, type: 'influencer' };
+    }
+    if (profile.blog_id) return { id: profile.blog_id, type: 'blogger' };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 쿠키 기반 인증 유저 정보를 가져온다.
  * (인플루언서: naver_id / 블로거: blog_id)
  *
@@ -87,6 +125,17 @@ export async function getCookieUser(): Promise<{ id: string; type: 'influencer' 
   const userType = cookieStore.get('user_type')?.value;
   const naverId = cookieStore.get('naver_id')?.value;
   const blogId = cookieStore.get('blog_id')?.value;
+
+  // 위조 방지: 우리가 발급한 쿠키인지 서명으로 확인한다.
+  // 이게 없으면 `user_type=influencer; naver_id=남의아이디` 두 줄로 남의 신원이 된다
+  // (채팅·커뮤니티 18개 엔드포인트가 이 함수 결과만 믿는다. 제재 회피도 가능했다).
+  //
+  // 서명이 없거나 안 맞으면 곧바로 차단하지 않고 **진짜 세션**으로 확인한다.
+  // 위조범은 세션이 없으니 그대로 막히고, 서명 이전에 로그인해 둔 사용자는 살아남는다.
+  const signature = cookieStore.get(IDENTITY_SIG_COOKIE)?.value;
+  if (!verifyIdentity(signature, { userType, naverId, blogId })) {
+    return await identityFromSession();
+  }
 
   // unified 타입 처리 (인플루언서 핸들 + 블로그 ID 동시 등록 데모 사용자)
   if (userType === 'unified' && naverId) {
