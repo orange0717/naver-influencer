@@ -313,7 +313,8 @@ export default function TopicsPage() {
       const supabase = createSupabaseBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
+        // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+        router.replace(`/?memberOnly=1&redirect=${encodeURIComponent('/topics')}`);
         return;
       }
       const headers = { authorization: `Bearer ${session.access_token}` };
@@ -323,7 +324,8 @@ export default function TopicsPage() {
         fetch('/api/naver-topics', { headers }),
       ]);
       if (summaryRes.status === 401 || naverRes.status === 401) {
-        router.replace(`/auth/login?redirect=${encodeURIComponent('/topics')}`);
+        // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+        router.replace(`/?memberOnly=1&redirect=${encodeURIComponent('/topics')}`);
         return;
       }
       const failed = !summaryRes.ok ? summaryRes : !naverRes.ok ? naverRes : null;

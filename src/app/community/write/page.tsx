@@ -20,23 +20,29 @@ export default function CommunityWritePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [user, setUser] = useState<{ type: string; id: string; name: string | null } | null>(null);
+  const [authFailed, setAuthFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [pollEnabled, setPollEnabled] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
 
   useEffect(() => {
+    // ⚠️ 예전엔 res.ok 검사가 없어서 500 의 {error} 바디도 "로그인 안 됨"으로 취급됐고,
+    // .catch(네트워크 끊김)까지 로그인 화면으로 튕겼다. **확인 못 한 것과 비로그인은 다르다.**
+    // 멀쩡히 로그인한 사람에게 "회원 전용입니다"라고 거짓말하면 안 되므로 실패는 실패로 보여준다.
     fetch('/api/auth/me')
-      .then(r => r.json())
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then(data => {
         if (data.id) {
           setUser({ type: data.type, id: data.id, name: data.name });
         } else {
-          // 목적지를 붙여야 로그인 후 글쓰기 화면으로 돌아온다(안 붙이면 홈에 남는다).
-          router.push(`/auth/login?redirect=${encodeURIComponent('/community/write')}`);
+          // 확실히 비로그인일 때만 튕긴다. 목적지를 붙여야 로그인 후 글쓰기 화면으로 돌아온다.
+          // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+          router.push(`/?memberOnly=1&redirect=${encodeURIComponent('/community/write')}`);
         }
       })
-      .catch(() => router.push(`/auth/login?redirect=${encodeURIComponent('/community/write')}`));
-  }, [router]);
+      .catch(() => setAuthFailed(true));
+  }, [router, reloadKey]);
 
   const handleSubmit = async () => {
     if (!title.trim()) { setError('제목을 입력해주세요.'); return; }
@@ -90,6 +96,22 @@ export default function CommunityWritePage() {
       setSubmitting(false);
     }
   };
+
+  if (authFailed) {
+    return (
+      <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
+        <p className="text-text text-sm font-semibold">로그인 상태를 확인하지 못했습니다.</p>
+        <p className="text-dim text-xs">일시적인 오류입니다. 로그아웃되었다는 뜻은 아닙니다.</p>
+        <button
+          type="button"
+          onClick={() => { setAuthFailed(false); setReloadKey(k => k + 1); }}
+          className="px-3 py-1.5 bg-surface border border-border text-text text-sm font-semibold rounded-lg hover:border-accent/30 transition cursor-pointer"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

@@ -76,7 +76,8 @@ export default function KeywordsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user.id) {
-      router.replace('/auth/login?redirect=/keywords');
+      // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+      router.replace(`/?memberOnly=1&redirect=${encodeURIComponent('/keywords')}`);
       return;
     }
   }, [authLoading, user.id, router]);

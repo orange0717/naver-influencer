@@ -365,7 +365,10 @@ export async function middleware(request: NextRequest) {
   if (needsLoginPage && !user && !authIndeterminate) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
-    url.search = `?authModal=login&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    // ⚠️ 예전엔 ?authModal=login 이라 곧장 로그인 폼만 떴다. 계정이 없는 첫 방문자에게는
+    // 가입 안내가 없어 막다른 길이었다. 회원 전용 모달(가입/로그인 둘 다 제시)로 통일한다
+    // (2026-08-28 오렌지 승인 — "C를 B로 합치기"). redirect 는 그대로 살려 보낸다.
+    url.search = `?memberOnly=1&redirect=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 

@@ -113,7 +113,8 @@ export default function MyFansPage() {
       try {
         const headers = await authHeaders();
         if (!headers) {
-          router.replace(`/auth/login?redirect=${encodeURIComponent('/my/fans')}`);
+          // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+          router.replace(`/?memberOnly=1&redirect=${encodeURIComponent('/my/fans')}`);
           return;
         }
         const [fansRes, crossRes] = await Promise.all([

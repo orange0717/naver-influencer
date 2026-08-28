@@ -60,7 +60,8 @@ export default function NaverTopicDetailPage() {
         const supabase = createSupabaseBrowserClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          router.replace(`/auth/login?redirect=${encodeURIComponent(`/topics/naver/${params.id}`)}`);
+          // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+          router.replace(`/?memberOnly=1&redirect=${encodeURIComponent(`/topics/naver/${params.id}`)}`);
           return;
         }
         const headers = { authorization: `Bearer ${session.access_token}` };

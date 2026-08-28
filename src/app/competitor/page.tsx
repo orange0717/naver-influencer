@@ -53,7 +53,8 @@ export default function CompetitorPage() {
       const res = await fetch('/api/auth/me');
       const data = await res.json();
       // 목적지를 붙여야 로그인 후 여기로 돌아온다(안 붙이면 홈에 남는다).
-      if (!data.id) { window.location.href = `/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`; return; }
+      // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+      if (!data.id) { window.location.href = `/?memberOnly=1&redirect=${encodeURIComponent(window.location.pathname)}`; return; }
 
       const naverId = data.id;
       const blogId = data.blogId || data.id;

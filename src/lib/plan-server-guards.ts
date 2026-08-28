@@ -7,7 +7,9 @@ export async function requireBloggerPlusPage(loginRedirectPath: string) {
   const supabaseAuth = await createRouteHandlerClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
   if (!user) {
-    redirect(`/auth/login?redirect=${encodeURIComponent(loginRedirectPath)}`);
+    // 회원 전용 모달(가입/로그인 둘 다 제시)로 통일 — 로그인 폼만 띄우면 계정이 없는
+    // 첫 방문자에게 막다른 길이 된다(2026-08-28 오렌지 승인 "C를 B로 합치기").
+    redirect(`/?memberOnly=1&redirect=${encodeURIComponent(loginRedirectPath)}`);
   }
   const ctx = await getPaywallContext(user.id, user.email);
   if (ctx.isAdminUser) return;
@@ -21,7 +23,9 @@ export async function requireLoginPage(loginRedirectPath: string) {
   const supabaseAuth = await createRouteHandlerClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
   if (!user) {
-    redirect(`/auth/login?redirect=${encodeURIComponent(loginRedirectPath)}`);
+    // 회원 전용 모달(가입/로그인 둘 다 제시)로 통일 — 로그인 폼만 띄우면 계정이 없는
+    // 첫 방문자에게 막다른 길이 된다(2026-08-28 오렌지 승인 "C를 B로 합치기").
+    redirect(`/?memberOnly=1&redirect=${encodeURIComponent(loginRedirectPath)}`);
   }
 }
 
@@ -30,7 +34,9 @@ export async function requireInfluencerPlusPage(loginRedirectPath: string) {
   const supabaseAuth = await createRouteHandlerClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
   if (!user) {
-    redirect(`/auth/login?redirect=${encodeURIComponent(loginRedirectPath)}`);
+    // 회원 전용 모달(가입/로그인 둘 다 제시)로 통일 — 로그인 폼만 띄우면 계정이 없는
+    // 첫 방문자에게 막다른 길이 된다(2026-08-28 오렌지 승인 "C를 B로 합치기").
+    redirect(`/?memberOnly=1&redirect=${encodeURIComponent(loginRedirectPath)}`);
   }
   const ctx = await getPaywallContext(user.id, user.email);
   if (ctx.isAdminUser) return;

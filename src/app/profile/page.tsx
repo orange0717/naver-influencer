@@ -74,7 +74,8 @@ export default function ProfilePage() {
 
     if (!authUser) {
       // 목적지를 붙여야 로그인 후 여기로 돌아온다(안 붙이면 홈에 남는다).
-      router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+      router.push(`/?memberOnly=1&redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
 

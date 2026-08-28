@@ -15,7 +15,8 @@ export default async function YoutubeSttPage() {
   const supabaseAuth = await createRouteHandlerClient();
   const authUser = await getUserWithTimeout(supabaseAuth);
 
-  if (!authUser) redirect('/auth/login?redirect=/dashboard/youtube-stt');
+  // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+  if (!authUser) redirect(`/?memberOnly=1&redirect=${encodeURIComponent('/dashboard/youtube-stt')}`);
 
   const ctx = await getPaywallContext(authUser.id, authUser.email);
   const allowed = ctx.isAdminUser || ctx.hasActivePaidPlan;
