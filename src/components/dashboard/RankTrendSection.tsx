@@ -60,7 +60,13 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
   const [avgHistory, setAvgHistory] = useState<AvgHistoryEntry[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
   const [showAvg, setShowAvg] = useState(true);
-  const [loading, setLoading] = useState(false);
+  // ⚠️ 초기값을 false 로 두면, 아래 useEffect 가 돌기 전 **첫 렌더**가
+  // loading=false · keywords=[] · failed=false 로 빈 상태 분기에 떨어져
+  // "키워드 리스트에서 키워드를 저장하세요" 를 번쩍 보여준다. 573개를 저장해둔
+  // 사용자에게 저장한 게 없다고 거짓말하는 셈이고, 느린 회선에선 이 거짓말이
+  // 응답이 올 때까지(1초+) 그대로 남는다(2026-08-28 실측). 페치할 게 확실하면
+  // 처음부터 로딩으로 시작한다.
+  const [loading, setLoading] = useState(mode === 'influencer' && !!naverId);
   // ⚠️ 실패와 '데이터 없음'을 반드시 구분한다. 아래 빈 상태 문구는 "저장한 키워드의 순위 데이터가
   // 쌓이면..." 인데, 로드가 실패했을 뿐인 사람에게 이걸 보여주면 **키워드를 저장하지 않았다고
   // 거짓말**하는 셈이고 무의미한 행동까지 시키게 된다. (세션 만료 401 도 여기로 떨어졌다.)
