@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
       totalUsers++;
 
       try {
-        const { data: postsData } = await supabase
+        const { data: postsData, error: postsError } = await supabase
           .from('blog_post_contents')
           .select('post_id, title, category, tags, content_excerpt')
           .eq('user_id', userId)
@@ -178,13 +178,28 @@ export async function GET(request: NextRequest) {
           .limit(MAX_POSTS_PER_USER);
         const posts = postsData || [];
 
-        const { data: publishedTopics } = await supabase
+        // ⚠️ blog_id 로 거르지 않는다. 인플루언서 홈 핸들과 블로그 아이디가 다른 계정에서는
+        //    (orangelibrary vs orangelibrary_ — 2026-08-28 실측) 이 필터 때문에 발행 토픽 20개가
+        //    0개로 집계됐고, 화면에는 "전체 토픽 0 · 활용률 0%"라는 **거짓 성적표**가 찍혔다.
+        //    바로 아래 목록을 그리는 /api/naver-topics 는 user_id + is_own_blog 로만 세므로 기준을 맞춘다.
+        const { data: publishedTopics, error: publishedError } = await supabase
           .from('naver_influencer_topics')
           .select('title, topic_subject, topic_subject_category')
           .eq('user_id', userId)
-          .eq('blog_id', blogId)
           .eq('is_own_blog', true);
         const myTopicCount = (publishedTopics || []).length;
+
+        // ⚠️ 조회가 실패했는데 그 자리에 0 을 적어 저장하면 "재지 못했다"가 "0개였다"로 굳는다.
+        //    확인 불가는 0 이 아니다 — 이번 차례는 통째로 건너뛰고 이전 집계를 그대로 남긴다.
+        if (postsError || publishedError) {
+          totalFailed++;
+          console.error({
+            cron: 'analyze-topic-insights', userId, blogId,
+            step: postsError ? 'blog_post_contents' : 'naver_influencer_topics',
+            error: postsError || publishedError,
+          });
+          continue;
+        }
 
         // 경쟁 집계 — Claude 호출과 무관, 순수 SQL 집계
         const { data: watches } = await supabase

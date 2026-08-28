@@ -40,8 +40,14 @@ async function resolveTargets(supabase: SupabaseClient): Promise<CrawlTarget[]> 
     u => u.subscription_expires_at && new Date(u.subscription_expires_at).getTime() > Date.now(),
   );
 
+  // ⚠️ 인플루언서 홈 핸들(in.naver.com/{handle})과 블로그 아이디(blog.naver.com/{blogId})는
+  //    같은 사람이라도 **다른 값일 수 있다**. 실제로 orangelibrary(인플루언서 핸들) /
+  //    orangelibrary_(블로그 아이디)처럼 갈린다(2026-08-28 실측). 이 크론은 in.naver 를 긁으므로
+  //    반드시 influencers.naver_id 를 우선한다. blog_id 를 우선하면 존재하지 않는 홈을 긁어
+  //    "토픽 0개"로 조용히 끝나고, 사용자 화면엔 그게 '수집된 토픽 없음'으로 보인다.
+  //    (예전엔 blog_id 가 없는 유저만 naver_id 를 조회해서 이 갈림을 아예 못 봤다.)
   const influencerIds = Array.from(
-    new Set(activeUsers.filter(u => !u.blog_id && u.linked_influencer_id).map(u => u.linked_influencer_id as string)),
+    new Set(activeUsers.filter(u => u.linked_influencer_id).map(u => u.linked_influencer_id as string)),
   );
   const naverIdByInfluencerId = new Map<string, string>();
   if (influencerIds.length > 0) {
@@ -56,7 +62,7 @@ async function resolveTargets(supabase: SupabaseClient): Promise<CrawlTarget[]> 
 
   const ownBlogByUserId = new Map<string, string>();
   for (const u of activeUsers) {
-    const naverId = (u.blog_id || naverIdByInfluencerId.get(u.linked_influencer_id || '') || '').trim();
+    const naverId = (naverIdByInfluencerId.get(u.linked_influencer_id || '') || u.blog_id || '').trim();
     if (naverId) {
       ownBlogByUserId.set(u.id as string, naverId);
       targets.push({ userId: u.id as string, blogId: naverId, isOwnBlog: true });
@@ -142,17 +148,33 @@ export async function GET(request: NextRequest) {
 
         const { data: existingRows } = await supabase
           .from('naver_influencer_topics')
-          .select('topic_id, naver_modified_at, naver_created_at')
+          .select('id, topic_id, naver_modified_at, naver_created_at')
           .eq('user_id', target.userId)
           .eq('blog_id', target.blogId);
         const existingByTopicId = new Map((existingRows || []).map(r => [r.topic_id, r]));
+
+        // ⚠️ 아래 "변경 없으면 건너뛰기"는 글 목록(naver_influencer_topic_posts) 수집이 **한 번이라도
+        //    실패하면 영구히 복구되지 않는** 함정이 있었다. 토픽 행만 저장되고 상세 요청이 실패하거나
+        //    시간 예산에 걸려 끊기면, 다음 날부터는 isChanged=false 라 상세를 다시 안 부른다.
+        //    그 결과 화면에는 "글 5개"인 토픽이 "연결된 글이 없습니다"로 남는다(2026-08-28 실측:
+        //    토픽 20개 전부 연결 글 0개). 글이 0개로 남아 있는 토픽은 변경 여부와 무관하게 다시 채운다.
+        const existingPkList = (existingRows || []).map(r => r.id as string);
+        const topicsWithPosts = new Set<string>();
+        if (existingPkList.length > 0) {
+          const { data: linkRows } = await supabase
+            .from('naver_influencer_topic_posts')
+            .select('topic_pk')
+            .in('topic_pk', existingPkList);
+          for (const l of linkRows || []) topicsWithPosts.add(l.topic_pk as string);
+        }
 
         for (const card of items) {
           const existing = existingByTopicId.get(card.topicId);
           const isNew = !existing;
           const isChanged =
             !!existing && (card.modifiedAt || card.createdAt) !== (existing.naver_modified_at || existing.naver_created_at);
-          if (!isNew && !isChanged) continue;
+          const isMissingPosts = !!existing && !topicsWithPosts.has(existing.id as string);
+          if (!isNew && !isChanged && !isMissingPosts) continue;
 
           const topicPk = await upsertTopic(supabase, target, card);
           if (!topicPk) { totalFailed++; continue; }

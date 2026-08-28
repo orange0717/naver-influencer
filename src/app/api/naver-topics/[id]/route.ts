@@ -51,9 +51,20 @@ export async function GET(
     return NextResponse.json({ error: '토픽 조회 중 오류가 발생했습니다.' }, { status: 500 });
   }
 
+  // ⚠️ topic.blog_id 는 **인플루언서 홈 핸들**(in.naver.com/{handle})이고, 글 링크가 필요한 건
+  //    **블로그 아이디**(blog.naver.com/{blogId})다. 둘은 다를 수 있다 — orangelibrary(핸들) vs
+  //    orangelibrary_(블로그). 예전엔 핸들로 blog.naver.com 링크를 만들어 전 글이 죽은 링크였다
+  //    (2026-08-28 실측: blog.naver.com/orangelibrary 는 목록 조회 실패, orangelibrary_ 만 정상).
+  const { data: profile } = await supabase
+    .from('users')
+    .select('blog_id')
+    .eq('id', userId)
+    .maybeSingle();
+  const linkBlogId = ((profile?.blog_id as string | null) || '').trim() || topic.blog_id;
+
   const enrichedPosts = (posts || []).map(p => ({
     ...p,
-    url: `https://blog.naver.com/${topic.blog_id}/${p.content_id}`,
+    url: `https://blog.naver.com/${linkBlogId}/${p.content_id}`,
   }));
 
   const stats = await buildTopicStats(supabase, userId, topic, enrichedPosts);
@@ -84,6 +95,10 @@ async function buildTopicStats(
     postCount,
     totalViewCount: 0,
     avgViewCount: 0,
+    /** 조회수를 실제로 한 건이라도 읽어냈는지. false 면 0회가 아니라 '아직 수집 전'이다. */
+    viewCountMeasured: false,
+    /** 조회수를 읽어낸 글 수 — "5개 중 2개만 확인"처럼 중간 상태를 그대로 보여주기 위한 값 */
+    measuredPostCount: 0,
     latestPublishedAt: null as string | null,
     topPost: null as { content_id: string; title: string | null; view_count: number; url: string } | null,
     relatedKeywords: Array.from(new Set([topic.topic_subject_category, ...posts.flatMap(p => p.tags || [])].filter((v): v is string => !!v))),
@@ -107,22 +122,29 @@ async function buildTopicStats(
   } else if (contents) {
     const contentByPostId = new Map(contents.map(c => [c.post_id, c]));
     let totalViewCount = 0;
+    let measured = 0;
     let latestMs: number | null = null;
     let topPost: { content_id: string; title: string | null; view_count: number; url: string } | null = null;
 
+    // ⚠️ 아직 본문/조회수를 수집하지 않은 글(c 가 없거나 view_count 가 null)을 0회로 세면
+    //    "재지 못했다"가 "0회였다"로 둔갑한다. 합계·평균·인기글 모두 **실제로 읽어낸 글만** 쓴다.
     for (const p of posts) {
       const c = contentByPostId.get(p.content_id);
-      const viewCount = c?.view_count || 0;
-      totalViewCount += viewCount;
-      if (!topPost || viewCount > topPost.view_count) {
-        topPost = { content_id: p.content_id, title: p.title, view_count: viewCount, url: p.url };
-      }
+      const raw = c?.view_count;
       const publishedAtMs = c?.published_at ? parseNaverPostDate(c.published_at) : null;
       if (publishedAtMs && (latestMs === null || publishedAtMs > latestMs)) latestMs = publishedAtMs;
+      if (raw === undefined || raw === null) continue;
+      measured++;
+      totalViewCount += raw;
+      if (!topPost || raw > topPost.view_count) {
+        topPost = { content_id: p.content_id, title: p.title, view_count: raw, url: p.url };
+      }
     }
 
     base.totalViewCount = totalViewCount;
-    base.avgViewCount = postCount > 0 ? Math.round(totalViewCount / postCount) : 0;
+    base.avgViewCount = measured > 0 ? Math.round(totalViewCount / measured) : 0;
+    base.viewCountMeasured = measured > 0;
+    base.measuredPostCount = measured;
     base.latestPublishedAt = latestMs !== null ? new Date(latestMs).toISOString() : null;
     base.topPost = topPost;
   }

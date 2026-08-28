@@ -19,6 +19,10 @@ interface NaverTopicItem {
   topic_subject: string | null;
   topic_subject_category: string | null;
   total_view_count: number;
+  /** 이 토픽의 조회수를 실제로 한 건이라도 읽어냈는지. false 면 0 이 아니라 '아직 확인 안 함'이다. */
+  view_count_measured?: boolean;
+  /** 이 토픽에 연결된 글을 몇 개나 수집했는지(네이버 기준 개수는 content_count) */
+  linked_post_count?: number;
 }
 
 interface Recommendation {
@@ -358,6 +362,14 @@ export default function TopicsPage() {
    */
   const analyzed = summary?.generatedAt != null;
 
+  /**
+   * 배치 집계가 센 발행 토픽 수와, 바로 아래에 실제로 그려지는 토픽 목록의 개수가 어긋난 상태.
+   * 인플루언서 홈 핸들과 블로그 아이디가 다른 계정에서 집계가 0으로 잡히는 사고가 있었다
+   * (orangelibrary vs orangelibrary_ — 2026-08-28 실측: 목록엔 20개인데 "전체 토픽 0 · 활용률 0%").
+   * 화면에 20개가 보이는데 0이라고 적는 건 명백한 거짓말이므로, 어긋나면 파생 수치를 '-'로 내린다.
+   */
+  const summaryMismatched = analyzed && !!summary && summary.publishedCount !== naverTopics.length;
+
   // 관련 글 수 기준으로 추천 토픽 / 부족한 후보 분리 (스펙 20항)
   const goodRecs = useMemo(
     () => (summary?.recommendations || []).filter((r) => r.estimated_post_count >= MIN_GOOD_POSTS),
@@ -409,18 +421,27 @@ export default function TopicsPage() {
                 <b className="font-semibold text-text"> 아직 집계하지 않았다</b>는 뜻입니다. 매일 새벽 자동 분석이 실행되면 채워집니다.
               </p>
             )}
+            {summaryMismatched && (
+              <p className="mb-3 rounded-lg border border-border bg-surface px-4 py-3 text-[12px] text-dim leading-snug">
+                자동 분석이 센 발행 토픽 수({summary.publishedCount}개)가 아래 목록({naverTopics.length}개)과 맞지 않습니다.
+                집계가 아직 이 목록을 반영하지 못한 상태라, <b className="font-semibold text-text">AI 토픽·토픽 활용률은
+                &lsquo;-&rsquo;로 둡니다</b>. 0이라는 뜻이 아닙니다. 다음 자동 분석에서 다시 채워집니다.
+              </p>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+              {/* 전체 토픽은 바로 아래 목록과 같은 응답에서 세므로 두 값이 어긋날 수 없다.
+                  예전엔 배치 집계값을 썼다가 목록 20개 옆에 "전체 토픽 0"이 찍혔다(2026-08-28 실측). */}
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">전체 토픽</p>
-                <p className={`text-xl font-bold mt-1 ${analyzed ? 'text-text' : 'text-dim'}`}>{analyzed ? summary.publishedCount : '-'}</p>
+                <p className="text-xl font-bold mt-1 text-text">{naverTopics.length}</p>
               </div>
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">AI 토픽</p>
-                <p className={`text-xl font-bold mt-1 ${analyzed ? 'text-text' : 'text-dim'}`}>{analyzed ? summary.aiPossibleCount : '-'}</p>
+                <p className={`text-xl font-bold mt-1 ${analyzed && !summaryMismatched ? 'text-text' : 'text-dim'}`}>{analyzed && !summaryMismatched ? summary.aiPossibleCount : '-'}</p>
               </div>
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">토픽 활용률</p>
-                <p className={`text-xl font-bold mt-1 ${analyzed ? 'text-accent' : 'text-dim'}`}>{analyzed ? `${utilizationPercent}%` : '-'}</p>
+                <p className={`text-xl font-bold mt-1 ${analyzed && !summaryMismatched ? 'text-accent' : 'text-dim'}`}>{analyzed && !summaryMismatched ? `${utilizationPercent}%` : '-'}</p>
               </div>
               <div className="p-4 rounded-lg bg-surface border border-border">
                 <p className="text-xs text-dim">AI 추천 토픽</p>
@@ -430,7 +451,7 @@ export default function TopicsPage() {
                 <p className="text-xs text-dim">경쟁 비교</p>
                 {summary.competitor.count > 0 ? (
                   <p className="text-sm font-semibold text-text mt-1">
-                    나 {analyzed ? summary.myTopicCount : '-'} · 평균 {summary.competitor.avg?.toFixed(1)} · 상위 {summary.competitor.top}
+                    나 {naverTopics.length} · 평균 {summary.competitor.avg?.toFixed(1)} · 상위 {summary.competitor.top}
                   </p>
                 ) : (
                   <p className="text-xs text-dim mt-1">등록된 경쟁자 없음</p>
@@ -469,10 +490,20 @@ export default function TopicsPage() {
                       {topic.topic_subject_category && (
                         <p className="text-xs text-dim mt-1">{topic.topic_subject_category}{topic.topic_subject ? ` · ${topic.topic_subject}` : ''}</p>
                       )}
+                      {/* ⚠️ 조회수는 "0회"와 "아직 안 쟀다"가 전혀 다른 말이다. 예전엔 둘 다 '조회 0'으로
+                          찍혀서, 글 수집이 안 끝난 토픽이 조회수 0인 실패작처럼 보였다(2026-08-28 실측:
+                          토픽 20개 전부 '조회 0'인데 실제로는 한 건도 측정된 적이 없었다). */}
                       <div className="flex items-center gap-3 mt-2 text-xs text-dim">
                         <span>글 {formatCountK(topic.content_count)}개</span>
-                        <span>조회 {formatCountK(topic.total_view_count)}</span>
+                        {topic.view_count_measured ? (
+                          <span>조회 {formatCountK(topic.total_view_count)}</span>
+                        ) : (
+                          <span title="조회수를 아직 수집하지 않았습니다. 0회라는 뜻이 아닙니다.">조회 —</span>
+                        )}
                       </div>
+                      {topic.view_count_measured === false && (
+                        <p className="mt-1 text-[11px] text-dim">조회수는 아직 수집 전입니다 (0회라는 뜻이 아닙니다).</p>
+                      )}
                     </div>
                   </Link>
                 ))}

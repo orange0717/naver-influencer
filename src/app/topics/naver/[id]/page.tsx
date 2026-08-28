@@ -32,6 +32,10 @@ interface TopicStats {
   postCount: number;
   totalViewCount: number;
   avgViewCount: number;
+  /** 조회수를 실제로 한 건이라도 읽어냈는지. false 면 0회가 아니라 '아직 수집 전'이다. */
+  viewCountMeasured?: boolean;
+  /** 조회수를 읽어낸 글 수 (postCount 중 몇 개를 확인했는지) */
+  measuredPostCount?: number;
   latestPublishedAt: string | null;
   topPost: { content_id: string; title: string | null; view_count: number; url: string } | null;
   relatedKeywords: string[];
@@ -129,23 +133,37 @@ export default function NaverTopicDetailPage() {
               </div>
             </div>
 
+            {/* ⚠️ 수집 전 값을 0 으로 찍으면 "조회수 0회짜리 토픽"이라는 거짓 성적표가 된다.
+                아직 안 잰 것은 0 이 아니라 '-' 다. 몇 개나 확인했는지도 같이 적어 중간 상태를 숨기지 않는다. */}
             {stats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">게시글 수</p>
                   <p className="text-xl font-bold text-text mt-1">{stats.postCount}</p>
+                  {stats.postCount < topic.content_count && (
+                    <p className="text-[11px] text-dim mt-1">네이버 기준 {topic.content_count}개 · 아직 {topic.content_count - stats.postCount}개는 수집 전</p>
+                  )}
                 </div>
                 <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">총 조회수</p>
-                  <p className="text-xl font-bold text-text mt-1">{formatCountK(stats.totalViewCount)}</p>
+                  <p className={`text-xl font-bold mt-1 ${stats.viewCountMeasured ? 'text-text' : 'text-dim'}`}>
+                    {stats.viewCountMeasured ? formatCountK(stats.totalViewCount) : '-'}
+                  </p>
+                  {!stats.viewCountMeasured && <p className="text-[11px] text-dim mt-1">아직 수집 전 (0회라는 뜻이 아닙니다)</p>}
                 </div>
                 <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">평균 조회수</p>
-                  <p className="text-xl font-bold text-text mt-1">{formatCountK(stats.avgViewCount)}</p>
+                  <p className={`text-xl font-bold mt-1 ${stats.viewCountMeasured ? 'text-text' : 'text-dim'}`}>
+                    {stats.viewCountMeasured ? formatCountK(stats.avgViewCount) : '-'}
+                  </p>
+                  {stats.viewCountMeasured && (stats.measuredPostCount ?? 0) < stats.postCount && (
+                    <p className="text-[11px] text-dim mt-1">{stats.postCount}개 중 {stats.measuredPostCount}개 확인 기준</p>
+                  )}
                 </div>
                 <div className="p-4 rounded-lg bg-surface border border-border">
                   <p className="text-xs text-dim">최근 발행일</p>
                   <p className="text-sm font-bold text-text mt-1">{stats.latestPublishedAt ? formatDate(stats.latestPublishedAt) : '-'}</p>
+                  {!stats.latestPublishedAt && <p className="text-[11px] text-dim mt-1">아직 수집 전</p>}
                 </div>
               </div>
             )}
@@ -169,7 +187,20 @@ export default function NaverTopicDetailPage() {
             )}
 
             {posts.length === 0 ? (
-              <div className="p-12 text-center text-dim text-sm">이 토픽에 연결된 글이 없습니다.</div>
+              /* ⚠️ "연결된 글이 없습니다"는 네이버에 글이 없다는 말로 읽힌다. 실제로는 토픽 카드가
+                 글 N개라고 알려주는데도 우리가 글 목록을 아직 못 가져온 경우가 대부분이다
+                 (2026-08-28 실측: 토픽 20개 전부 글 0개로 남아 있었다). 두 상황을 갈라서 말한다. */
+              <div className="p-12 text-center text-dim text-sm">
+                {topic.content_count > 0 ? (
+                  <>
+                    <p className="text-text font-semibold">이 토픽의 글 목록을 아직 수집하지 못했습니다.</p>
+                    <p className="mt-1">네이버 기준으로는 글 {formatCountK(topic.content_count)}개가 묶여 있습니다. 글이 없다는 뜻이 아닙니다.</p>
+                    <p className="mt-1 text-xs">매일 자동 수집이 다시 시도합니다.</p>
+                  </>
+                ) : (
+                  <p>이 토픽에 묶인 글이 없습니다.</p>
+                )}
+              </div>
             ) : (
               <ul className="space-y-2">
                 {posts.map(p => {

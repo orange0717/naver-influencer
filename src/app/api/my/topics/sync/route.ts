@@ -23,9 +23,12 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // 본인 소유 blogId를 서버에서 해석 (인플루언서 연결 우선, 없으면 blog_id)
-  let blogId = ((auth.user.blog_id as string | null) || '').trim();
-  if (!blogId && auth.user.linked_influencer_id) {
+  // 본인 소유 핸들을 서버에서 해석 (인플루언서 연결 우선, 없으면 blog_id).
+  // ⚠️ 주석은 "인플루언서 연결 우선"이라 적혀 있었지만 실제 코드는 blog_id 를 먼저 썼다.
+  //    여기서 긁는 곳은 in.naver.com/{핸들} 이고, 인플루언서 홈 핸들과 블로그 아이디는
+  //    다를 수 있다(orangelibrary vs orangelibrary_ — 2026-08-28 실측). 순서를 주석대로 바로잡는다.
+  let blogId = '';
+  if (auth.user.linked_influencer_id) {
     const { data: inf } = await supabase
       .from('influencers')
       .select('naver_id')
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     blogId = ((inf?.naver_id as string | null) || '').trim();
   }
+  if (!blogId) blogId = ((auth.user.blog_id as string | null) || '').trim();
   if (!blogId || !isValidBlogId(blogId)) {
     return NextResponse.json({ error: '연결된 네이버 인플루언서 홈이 없습니다.' }, { status: 400 });
   }

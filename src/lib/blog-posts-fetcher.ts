@@ -26,10 +26,25 @@ export interface BlogPostResult {
   title: string;
   url: string;
   commentCount: number;
-  viewCount: number;
+  /**
+   * 조회수. **네이버가 값을 안 줄 때가 있다** — PostTitleListAsync 는 readCount 를 빈 문자열("")로
+   * 내려보내고, HTML/RSS 폴백에는 조회수 자체가 없다. 예전엔 이걸 전부 0 으로 접어버려서
+   * "조회수 0회인 글"과 "조회수를 못 가져온 글"이 구분되지 않았고, 토픽 화면이 전부 '조회 0'으로
+   * 보이는 원인이 됐다(2026-08-28 실측). 모르는 값은 0 이 아니라 null 이다.
+   */
+  viewCount: number | null;
   date: string;
   isPublic: boolean;
   category?: string;
+}
+
+/** 네이버가 준 조회수 문자열 → 숫자. 값이 없거나 숫자가 아니면 0 이 아니라 null(=모름). */
+function parseViewCount(raw: unknown): number | null {
+  if (raw === undefined || raw === null) return null;
+  const digits = String(raw).replace(/[^\d]/g, '');
+  if (digits === '') return null;
+  const n = parseInt(digits, 10);
+  return Number.isFinite(n) ? n : null;
 }
 
 interface BlogPostsPage {
@@ -98,7 +113,7 @@ async function fetchFromPostListApi(blogId: string, page: number, count: number)
     title: decodeIfUrlEncoded(post.title || ''),
     url: `https://blog.naver.com/${blogId}/${post.logNo}`,
     commentCount: parseInt(post.commentCount || '0', 10),
-    viewCount: parseInt(post.readCount || '0', 10),
+    viewCount: parseViewCount(post.readCount),
     date: normalizePostDate(post.addDate || ''),
     isPublic: post.openType === '2',
   }));
@@ -159,7 +174,7 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
       title: title.replace(/\s+/g, ' '),
       url: `https://blog.naver.com/${blogId}/${postId}`,
       commentCount,
-      viewCount: 0,
+      viewCount: null, // HTML 목록에는 조회수가 없다 — 0회가 아니라 '모름'
       date: normalizePostDate(dateText),
       isPublic: true,
     });
@@ -176,7 +191,7 @@ async function fetchFromPostListPage(blogId: string, page: number, count: number
             title: decodeIfUrlEncoded(post.title || ''),
             url: `https://blog.naver.com/${blogId}/${post.logNo}`,
             commentCount: parseInt(post.commentCount || '0', 10),
-            viewCount: parseInt(post.readCount || '0', 10),
+            viewCount: parseViewCount(post.readCount),
             date: normalizePostDate(post.addDate || ''),
             isPublic: post.openType === '2',
           });
@@ -238,7 +253,7 @@ async function fetchFromRss(blogId: string) {
         title,
         url: link.replace('?fromRss=true&trackingCode=rss', ''),
         commentCount: 0,
-        viewCount: 0,
+        viewCount: null, // RSS 에는 조회수가 없다 — 0회가 아니라 '모름'
         date: dateStr,
         isPublic: true,
         category: category || undefined,
