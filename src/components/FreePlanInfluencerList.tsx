@@ -7,7 +7,10 @@ import Pagination from '@/components/analytics/Pagination';
 interface FreePlanItem {
   name: string;
   profileUrl: string;
+  /** 네이버 선정일. 아직 백필 안 된 사람은 null 이며, 그 경우 firstSeenAt 으로 대체 표기하지 않는다. */
   selectionDate: string | null;
+  /** 우리가 이 사람을 처음 발견한 날. 선정일이 아니라 '언제부터 우리가 알고 있었나'일 뿐이다. */
+  firstSeenAt?: string | null;
   subject: string;
 }
 
@@ -85,8 +88,10 @@ export default function FreePlanInfluencerList() {
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <CategoryFilter categories={categories} selected={category} onChange={handleCategoryChange} />
+        {/* 조회에 실패했으면 명수를 단언하지 않는다. 실패 시 total 은 0 인 채로 남아
+            "0명"이 찍혔는데, 그건 '명단이 비었다'는 뜻으로 읽힌다(실패는 모른다는 뜻이다). */}
         <span className="text-xs text-dim font-rank shrink-0">
-          {loading ? '수집 중...' : `${total.toLocaleString()}명`}
+          {loading ? '수집 중...' : error ? '—' : `${total.toLocaleString()}명`}
         </span>
       </div>
 
@@ -104,7 +109,7 @@ export default function FreePlanInfluencerList() {
             <p className="text-sm text-dim">명단을 불러오는 중...</p>
           </div>
         </div>
-      ) : (
+      ) : error ? null : (
         <>
           <div className="bg-surface rounded-lg border border-border overflow-hidden">
             <table className="w-full text-sm">
@@ -136,7 +141,18 @@ export default function FreePlanInfluencerList() {
                         </a>
                       ) : '-'}
                     </td>
-                    <td className="py-3 px-4 text-xs text-text">{formatNaverDate(it.selectionDate)}</td>
+                    {/* 선정일을 모르면 모른다고 적는다. 예전엔 우리가 처음 발견한 날짜를
+                        선정일 자리에 그대로 넣어서, 오래된 인플루언서가 최근 선정자로 보였다. */}
+                    <td className="py-3 px-4 text-xs text-text">
+                      {it.selectionDate ? formatNaverDate(it.selectionDate) : (
+                        <span
+                          className="text-dim"
+                          title={it.firstSeenAt ? `선정일은 아직 확인하지 못했습니다 (${formatNaverDate(it.firstSeenAt)}부터 명단에 있음)` : '선정일은 아직 확인하지 못했습니다'}
+                        >
+                          미확인
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-xs font-semibold text-text">{it.subject || '-'}</td>
                   </tr>
                 ))}

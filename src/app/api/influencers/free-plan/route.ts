@@ -40,7 +40,9 @@ export async function GET(request: NextRequest) {
   const ascending = order === 'asc';
   const offset = (page - 1) * limit;
 
-  const cacheKey = `influencers-free-plan:${category || '전체'}:${page}:${limit}:${order}`;
+  // v2: selectionDate 의미가 바뀌었다(아래 items 매핑 주석 참고). 이전 캐시가 남아 있으면
+  // 옛 모양(first_seen_at 이 선정일 자리에 채워진)이 그대로 나가므로 키를 갈랐다.
+  const cacheKey = `influencers-free-plan:v2:${category || '전체'}:${page}:${limit}:${order}`;
   const cached = await cacheGet<{ items: unknown[]; categories: string[]; total: number; total_pages: number }>(cacheKey);
   if (cached) {
     return NextResponse.json({ ...cached, page }, { headers: LIST_JSON_HEADERS });
@@ -78,10 +80,18 @@ export async function GET(request: NextRequest) {
     const total = count || 0;
     const totalPages = Math.ceil(total / limit);
 
+    // 선정일은 naver_created_at 하나뿐이다. 백필이 안 된 사람은 null 로 내보내고,
+    // 우리가 그 사람을 처음 발견한 날(first_seen_at)은 별도 필드로 구분해 보낸다.
+    //
+    // 예전에는 `naver_created_at || first_seen_at` 으로 합쳐 보냈다. 그러면 선정일을 모르는
+    // 사람에게도 "선정 일자" 칸에 우리가 크롤링을 시작한 날짜가 박혀서, 2021년 선정자가
+    // 2026년 선정자로 보였다. 모르는 값을 아는 값처럼 단언한 셈이고, 같은 데이터를 쓰는
+    // /stats 의 '선정일 미확인' 집계와도 서로 어긋났다(거긴 NULL 을 정직하게 뺀다).
     const items = (data || []).map(inf => ({
       name: inf.display_name || '',
       profileUrl: inf.profile_url || '',
-      selectionDate: inf.naver_created_at || inf.first_seen_at || null,
+      selectionDate: inf.naver_created_at || null,
+      firstSeenAt: inf.first_seen_at || null,
       subject: inf.my_keyword_category || inf.category || '',
     }));
 
