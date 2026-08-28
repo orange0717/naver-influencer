@@ -108,33 +108,42 @@ export default function MyFansPage() {
     return { authorization: `Bearer ${session.access_token}` };
   }, []);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const headers = await authHeaders();
-        if (!headers) {
-          // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
-          router.replace(`/?memberOnly=1&redirect=${encodeURIComponent('/my/fans')}`);
-          return;
-        }
-        const [fansRes, crossRes] = await Promise.all([
-          fetch('/api/my/fans', { headers }),
-          fetch('/api/my/fans/cross-match', { headers }),
-        ]);
-        if (!fansRes.ok) {
-          const j = await fansRes.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${fansRes.status}`);
-        }
-        setData(await fansRes.json());
-        if (crossRes.ok) setCrossMatch(await crossRes.json());
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '데이터를 불러오지 못했습니다.');
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const headers = await authHeaders();
+      if (!headers) {
+        // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
+        router.replace(`/?memberOnly=1&redirect=${encodeURIComponent('/my/fans')}`);
+        return;
       }
-    };
-    load();
+      const [fansRes, crossRes] = await Promise.all([
+        fetch('/api/my/fans', { headers }),
+        fetch('/api/my/fans/cross-match', { headers }),
+      ]);
+      if (!fansRes.ok) {
+        // 서버 문구를 그대로 뿌리면 "HTTP 500" 같은 게 사용자에게 나간다.
+        // 판정 기준은 상태 코드이고(문구 정규식 금지), 안내는 "그래서 뭘 하면 되는지"까지 적는다.
+        const j = await fansRes.json().catch(() => ({} as { error?: string }));
+        throw new Error(
+          fansRes.status === 401 || fansRes.status === 403
+            ? '로그인 정보가 만료됐습니다. 다시 로그인해 주세요.'
+            : fansRes.status === 429
+              ? '요청이 잠시 몰렸습니다. 1분 뒤에 다시 시도해 주세요.'
+              : (j.error || '팬 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+        );
+      }
+      setData(await fansRes.json());
+      if (crossRes.ok) setCrossMatch(await crossRes.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '팬 목록을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
+    } finally {
+      setLoading(false);
+    }
   }, [router, authHeaders]);
+
+  useEffect(() => { load(); }, [load]);
 
   // 상세 드로어 열릴 때 타임라인 로드
   useEffect(() => {
@@ -186,6 +195,12 @@ export default function MyFansPage() {
 
   const summary = data?.summary;
   const syncState = data?.syncState;
+  /**
+   * 한 번도 동기화한 적이 없는가.
+   * 이때의 총계 0 은 '맞팬이 0명'이 아니라 '아직 아무것도 확인하지 않음'이다.
+   * 안내 박스는 이미 "전체가 확인 중"이라고 말하고 있었는데 칩 숫자만 0 을 단언했다.
+   */
+  const neverSynced = !data?.lastSync;
 
   // 요약 바 칩 정의
   const chips: Array<{ key: StatusFilter; label: string; count: number; dot?: string }> = summary ? [
@@ -285,7 +300,11 @@ export default function MyFansPage() {
               >
                 {c.dot && <span className={`w-2 h-2 rounded-full ${c.dot}`} />}
                 <span className="text-xs font-semibold text-dim">{c.label}</span>
-                <span className="text-base font-bold text-text">{c.count.toLocaleString()}</span>
+                {/* 한 번도 동기화하지 않았으면 '맞팬 0명'이 아니라 아직 모르는 것이다.
+                    아래 안내문과 박스는 이미 '확인 중'이라고 말하는데 숫자만 0 을 단언하고 있었다. */}
+                <span className={`text-base font-bold ${neverSynced ? 'text-dim' : 'text-text'}`}>
+                  {neverSynced ? '-' : c.count.toLocaleString()}
+                </span>
               </button>
             ))}
           </div>
@@ -314,7 +333,13 @@ export default function MyFansPage() {
         {/* 리스트 */}
         {loading && <div className="p-12 text-center text-dim">불러오는 중…</div>}
         {error && !loading && (
-          <div className="p-6 rounded-xl bg-down/10 border border-down/30 text-down text-sm">{error}</div>
+          <div className="p-6 rounded-xl bg-down/10 border border-down/30 text-down text-sm">
+            {error}
+            {/* 오류가 막다른 길이 되면 안 된다 — 이 자리에서 다시 시도할 수단을 준다. */}
+            <button type="button" onClick={load} className="ml-2 underline font-semibold cursor-pointer">
+              다시 시도
+            </button>
+          </div>
         )}
         {!loading && !error && list.length === 0 && (
           <div className="p-12 text-center text-dim text-sm">
