@@ -18,13 +18,35 @@ function useNewInfluencerWeekRangeLabel() {
 }
 
 /* ── 실시간 DB 통계 ── */
+interface IntroStats {
+  influencer_count: number;
+  active_count: number;
+  inactive_count: number;
+  new_count: number;
+  category_count: number;
+  keyword_count: number;
+  total_users: number;
+}
+
 function useStats() {
-  const [stats, setStats] = useState({ influencer_count: 9000, active_count: 0, inactive_count: 0, new_count: 0, category_count: 20, keyword_count: 115000, total_users: 0 });
+  // ⚠️ 예전엔 초기값이 { influencer_count: 9000, ..., keyword_count: 115000 } 같은 하드코딩이었다.
+  // 확인하지 않은 값을 확인한 것처럼 보여주면 안 되므로 null 로 시작하고, 화면에서는 '—' 로 그린다.
+  const [stats, setStats] = useState<IntroStats | null>(null);
   useEffect(() => {
     const load = () => {
       fetch('/api/stats')
-        .then(r => r.json())
-        .then(setStats)
+        // ⚠️ res.ok 검사 없이 setStats 하면 500 의 {error} 바디가 그대로 stats 가 되어
+        // new_count 가 undefined → .toLocaleString() 에서 터지고, 에러 경계가 잡아서
+        // **소개 페이지 전체**가 "페이지를 불러오지 못했습니다" 로 바뀐다(2026-08-28 실측).
+        // 통계 위젯 하나 때문에 서비스 설명 전체가 사라지면 안 된다.
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((d) => {
+          if (d && typeof d.new_count === 'number' && typeof d.active_count === 'number') {
+            setStats(d as IntroStats);
+          } else {
+            throw new Error('unexpected stats shape');
+          }
+        })
         .catch(err => {
           console.warn('[intro] stats 로드 실패', err instanceof Error ? err.message : err);
         });
@@ -49,23 +71,28 @@ interface NewInfluencer {
 function useNewInfluencers() {
   const [list, setList] = useState<NewInfluencer[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // ⚠️ 실패해도 loaded 를 true 로 올려서 "이번 주 새로 선정된 인플루언서가 없습니다" 가 떴다.
+  // 못 불러온 것과 실제로 0명인 것은 다르다. 실패는 실패로 구분해서 알린다.
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     const load = () => {
+      setFailed(false);
       fetch('/api/influencers/recent')
-        .then(r => r.json())
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
         .then(d => {
-          setList(d.influencers || []);
+          setList(Array.isArray(d.influencers) ? d.influencers : []);
           setLoaded(true);
         })
         .catch(err => {
           console.warn('[intro] 신규 인플루언서 로드 실패', err instanceof Error ? err.message : err);
+          setFailed(true);
           setLoaded(true);
         });
     };
     load();
     return subscribeNewInfluencerWeekBoundaryRefresh(load);
   }, []);
-  return { list, loaded };
+  return { list, loaded, failed };
 }
 
 /* ── 성장 후기 (랜딩 하이라이트) ── */
@@ -102,7 +129,7 @@ function SectionDivider() {
 
 export default function IntroClient() {
   const stats = useStats();
-  const { list: newInfluencers, loaded: newInfluencersLoaded } = useNewInfluencers();
+  const { list: newInfluencers, loaded: newInfluencersLoaded, failed: newInfluencersFailed } = useNewInfluencers();
   const featuredStories = useFeaturedStories();
   const weekRange = useNewInfluencerWeekRangeLabel();
   const weekLabel = weekRange ? `${weekRange.start} ~ ${weekRange.end}` : '';
@@ -209,6 +236,11 @@ export default function IntroClient() {
                   </a>
                 ))}
               </div>
+            ) : newInfluencersFailed ? (
+              <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-surface">
+                <p className="text-sm text-text font-semibold mb-1">신규 인플루언서 정보를 불러오지 못했습니다</p>
+                <p className="text-xs text-dim">일시적인 오류입니다. 잠시 후 새로고침해주세요. (선정된 인플루언서가 없다는 뜻은 아닙니다)</p>
+              </div>
             ) : newInfluencersLoaded ? (
               <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-surface">
                 <p className="text-sm text-text font-semibold mb-1">
@@ -240,16 +272,16 @@ export default function IntroClient() {
 
         <div className="flex justify-center gap-12 md:gap-20">
           <div>
-            <p className="text-3xl md:text-4xl font-semibold text-accent">{stats.new_count.toLocaleString()}</p>
+            <p className="text-3xl md:text-4xl font-semibold text-accent">{stats ? stats.new_count.toLocaleString() : '—'}</p>
             <p className="text-xs text-dim mt-2">신규 인플루언서</p>
             <p className="text-[10px] text-dim/60">이번 주{weekLabel && ` (${weekLabel})`}</p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-semibold text-text">{stats.active_count.toLocaleString()}</p>
+            <p className="text-3xl md:text-4xl font-semibold text-text">{stats ? stats.active_count.toLocaleString() : '—'}</p>
             <p className="text-xs text-dim mt-2">활동 인플루언서</p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-semibold text-dim/60">{stats.inactive_count.toLocaleString()}</p>
+            <p className="text-3xl md:text-4xl font-semibold text-dim/60">{stats ? stats.inactive_count.toLocaleString() : '—'}</p>
             <p className="text-xs text-dim mt-2">미활동 인플루언서</p>
           </div>
         </div>
