@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { queryTopicsWithFallback } from '@/lib/topic-columns';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,24 +22,20 @@ export interface TopicSummary {
    * null 은 DB에 아직 ai_checked_count 컬럼이 없다는 뜻(마이그레이션 161 미적용) → 미확인과 동일하게 취급.
    */
   aiCheckedCount: number | null;
-  challengeTop3Count: number;
-  newPosts30d: number;
+  /** null = 아직 측정한 적 없음. 0 과 구분해야 한다. */
+  challengeTop3Count: number | null;
+  newPosts30d: number | null;
   isRepresentative: boolean;
-  representativeScore: number;
+  representativeScore: number | null;
 }
 
-const BASE_COLUMNS =
-  'id, topic_type, name, post_count, last_post_at, avg_integrated_rank, avg_blog_rank, ai_briefing_count, ai_tab_count, challenge_top3_count, new_posts_30d, is_representative, representative_score';
-
-/** PostgREST 는 없는 컬럼을 select 하면 42703 으로 쿼리 전체를 실패시킨다. */
-function isUndefinedColumn(error: { code?: string } | null): boolean {
-  return error?.code === '42703';
-}
+const CORE_COLUMNS = 'id, topic_type, name, post_count, last_post_at';
 
 /**
  * select() 에 리터럴이 아닌 변수를 넘기면 supabase-js 가 행 타입을 추론하지 못하고
  * GenericStringError 로 떨어진다. 컬럼 목록이 두 가지(마이그레이션 적용 전/후)라 변수일 수밖에 없으므로
- * 행 타입은 여기서 직접 선언한다. ai_checked_count 만 optional — 폴백 쿼리에는 없다.
+ * 행 타입은 여기서 직접 선언한다. 마이그레이션 적용 단계에 따라 컬럼 목록이 3가지라
+ * core 이외의 컬럼은 전부 optional 이다.
  */
 type TopicRow = {
   id: string;
@@ -46,15 +43,15 @@ type TopicRow = {
   name: string;
   post_count: number;
   last_post_at: string | null;
-  avg_integrated_rank: number | null;
-  avg_blog_rank: number | null;
-  ai_briefing_count: number;
-  ai_tab_count: number;
+  avg_integrated_rank?: number | null;
+  avg_blog_rank?: number | null;
+  ai_briefing_count?: number | null;
+  ai_tab_count?: number | null;
   ai_checked_count?: number | null;
-  challenge_top3_count: number;
-  new_posts_30d: number;
-  is_representative: boolean;
-  representative_score: number;
+  challenge_top3_count?: number | null;
+  new_posts_30d?: number | null;
+  is_representative?: boolean | null;
+  representative_score?: number | null;
 };
 
 /**
@@ -71,40 +68,39 @@ export async function GET(request: NextRequest) {
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
 
   const supabase = createServiceClient();
-  const query = async (columns: string) => {
-    const { data, error } = await supabase
-      .from('topics')
-      .select(columns)
-      .eq('user_id', auth.userId)
-      .eq('blog_id', blogId)
-      .order('is_representative', { ascending: false })
-      .order('post_count', { ascending: false });
-    return { data: data as unknown as TopicRow[] | null, error };
-  };
 
-  // 마이그레이션 161 이 아직 DB에 적용되지 않았어도 토픽 화면이 통째로 500 나지 않게 한다.
+  // 마이그레이션 132(성과 지표)·161(ai_checked_count) 중 무엇이 DB에 안 들어가 있어도
+  // 토픽 목록이 통째로 500 나지 않게 컬럼을 단계적으로 줄여 재시도한다.
   // 이 저장소는 "마이그레이션 파일은 커밋됐는데 DB 미적용"으로 끝난 이력이 반복된다.
-  let { data, error } = await query(`${BASE_COLUMNS}, ai_checked_count`);
-  if (isUndefinedColumn(error)) ({ data, error } = await query(BASE_COLUMNS));
+  const { data, error, tier } = await queryTopicsWithFallback<TopicRow[]>(CORE_COLUMNS, async (columns, t) => {
+    let q = supabase.from('topics').select(columns).eq('user_id', auth.userId).eq('blog_id', blogId);
+    // order 도 컬럼이 없으면 똑같이 42703 으로 죽는다.
+    if (t !== 'core_only') q = q.order('is_representative', { ascending: false });
+    const { data: rows, error: err } = await q.order('post_count', { ascending: false });
+    return { data: rows as unknown as TopicRow[] | null, error: err };
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // 성과 지표 컬럼이 없으면 0 이 아니라 null(=미측정)로 내보낸다.
+  const hasPerf = tier !== 'core_only';
   const topics: TopicSummary[] = (data || []).map(t => ({
     id: t.id,
     topicType: t.topic_type,
     name: t.name,
     postCount: t.post_count,
     lastPostAt: t.last_post_at,
-    avgIntegratedRank: t.avg_integrated_rank,
-    avgBlogRank: t.avg_blog_rank,
-    aiBriefingCount: t.ai_briefing_count,
-    aiTabCount: t.ai_tab_count,
+    avgIntegratedRank: hasPerf ? (t.avg_integrated_rank ?? null) : null,
+    avgBlogRank: hasPerf ? (t.avg_blog_rank ?? null) : null,
+    aiBriefingCount: t.ai_briefing_count ?? 0,
+    aiTabCount: t.ai_tab_count ?? 0,
     aiCheckedCount: t.ai_checked_count ?? null,
-    challengeTop3Count: t.challenge_top3_count,
-    newPosts30d: t.new_posts_30d,
-    isRepresentative: t.is_representative,
-    representativeScore: t.representative_score,
+    challengeTop3Count: hasPerf ? (t.challenge_top3_count ?? 0) : null,
+    newPosts30d: hasPerf ? (t.new_posts_30d ?? 0) : null,
+    isRepresentative: !!t.is_representative,
+    representativeScore: hasPerf ? (t.representative_score ?? 0) : null,
   }));
 
-  return NextResponse.json({ topics });
+  // 소비자(데스크톱 앱 등)가 '측정해서 0' 과 '아직 측정 못 함' 을 구분할 수 있어야 한다.
+  return NextResponse.json({ topics, metricsAvailable: hasPerf });
 }

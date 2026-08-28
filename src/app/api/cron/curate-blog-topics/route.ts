@@ -372,7 +372,15 @@ async function computeTopicPerformance(supabase: SupabaseClient, target: Target)
       console.warn('[curate-blog-topics] topics.ai_checked_count 컬럼 없음 — 마이그레이션 161 미적용. 해당 컬럼 없이 저장합니다.');
       aiCheckedColumnMissing = true;
     }
-    await supabase.from('topics').update(base).eq('id', m.id);
+    const { error: baseError } = await supabase.from('topics').update(base).eq('id', m.id);
+    // 여기서 조용히 넘어가면 성과 지표가 매일 전부 저장 안 되는데 아무도 모른다 —
+    // 실제로 migration-132 가 통째로 미적용인 채 화면엔 "분류된 토픽이 없습니다"로만 보였다.
+    if (baseError && (baseError.code === 'PGRST204' || baseError.code === '42703')) {
+      console.error(
+        `[curate-blog-topics] topics 성과 지표 컬럼 없음 — 마이그레이션 132(supabase/migration-132-topic-performance.sql) 미적용. 성과 집계가 저장되지 않습니다: ${baseError.message}`,
+      );
+      return; // 남은 토픽도 같은 이유로 전부 실패한다. 매 행마다 같은 오류를 반복하지 않는다.
+    }
   }
 }
 

@@ -24,10 +24,11 @@ interface TopicDetail {
    * (null 은 DB에 ai_checked_count 컬럼이 아직 없다는 뜻 — 미확인과 동일 취급)
    */
   aiCheckedCount: number | null;
-  challengeTop3Count: number;
-  newPosts30d: number;
+  /** null = 아직 측정한 적 없음(성과 집계 미실행). 0 과 구분해야 한다. */
+  challengeTop3Count: number | null;
+  newPosts30d: number | null;
   isRepresentative: boolean;
-  representativeScore: number;
+  representativeScore: number | null;
 }
 
 interface TopicChallengeLink {
@@ -48,6 +49,10 @@ function formatRank(rank: number | null): string {
   return rank === null ? '-' : `${rank.toFixed(1)}위`;
 }
 
+/** 미측정 지표는 0 이 아니라 '-'. 0 으로 적으면 "해봤는데 하나도 없다"로 읽힌다. */
+const NOT_MEASURED_TITLE = '아직 이 지표를 계산한 적이 없습니다. 0 이라는 뜻이 아닙니다.';
+const formatCount = (value: number | null, unit: string): string => (value === null ? '-' : `${value}${unit}`);
+
 const UNCHECKED_TITLE = '아직 이 토픽의 글에서 AI 인용 여부를 확인하지 않았습니다. AI 브리핑 메뉴에서 확인하면 건수가 표시됩니다.';
 
 /**
@@ -66,6 +71,8 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
   /** 오류 화면에서 사용자가 실제로 할 수 있는 행동. 무엇을 하라고 말해주지 않으면 막다른 길이다. */
   const [errorAction, setErrorAction] = useState<'retry' | 'login' | 'dashboard' | null>(null);
   const [challengeRankLookup, setChallengeRankLookup] = useState<'ok' | 'no_influencer'>('ok');
+  /** 성과 지표 컬럼을 읽을 수 있었는지. false 면 화면의 '-'는 0 이 아니라 미측정이다. */
+  const [metricsAvailable, setMetricsAvailable] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,6 +105,7 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
       setTopic(data.topic);
       setChallenges(data.challenges || []);
       setChallengeRankLookup(data.challengeRankLookup === 'no_influencer' ? 'no_influencer' : 'ok');
+      setMetricsAvailable(data.metricsAvailable !== false);
       setPosts(data.posts || []);
     } catch {
       setErrorMessage('연결에 실패했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
@@ -164,9 +172,23 @@ export default function TopicDetailSection({ topicId }: { topicId: string }) {
             value={formatAiCount(topic.aiTabCount, topic.aiCheckedCount, topic.postCount, '건')}
             hint={aiCheckTitle(topic.aiCheckedCount, topic.postCount, UNCHECKED_TITLE)}
           />
-          <StatBox label="키워드챌린지 TOP3" value={`${topic.challengeTop3Count}개`} />
-          <StatBox label="최근 30일 신규글" value={`${topic.newPosts30d}건`} />
+          <StatBox
+            label="키워드챌린지 TOP3"
+            value={formatCount(topic.challengeTop3Count, '개')}
+            hint={topic.challengeTop3Count === null ? NOT_MEASURED_TITLE : undefined}
+          />
+          <StatBox
+            label="최근 30일 신규글"
+            value={formatCount(topic.newPosts30d, '건')}
+            hint={topic.newPosts30d === null ? NOT_MEASURED_TITLE : undefined}
+          />
         </div>
+        {/* 성과 지표를 아예 읽지 못한 경우 — '-'가 0 으로 오해되지 않게 먼저 말해준다. */}
+        {!metricsAvailable && (
+          <p className="text-[11px] text-down mt-3 leading-snug">
+            평균 순위 · 챌린지 TOP3 · 신규글 등 성과 지표를 아직 집계하지 못해 ‘-’로 표시됩니다. 값이 0 이라는 뜻이 아닙니다.
+          </p>
+        )}
         {/* 인용 0건과 미확인을 눈으로 구분할 수 있어야 한다 — 숫자만 보면 둘 다 '성과 없음'으로 읽힌다. */}
         <p className="text-[11px] text-dim mt-3 leading-snug">
           {aiCheckState(topic.aiCheckedCount, topic.postCount) === 'none'

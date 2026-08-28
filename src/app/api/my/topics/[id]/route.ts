@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getAuthUser } from '@/lib/auth';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { queryTopicsWithFallback, TOPIC_CORE_COLUMNS } from '@/lib/topic-columns';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,14 +24,6 @@ export interface TopicPostItem {
   publishedAt: string | null;
 }
 
-const TOPIC_BASE_COLUMNS =
-  'id, user_id, blog_id, topic_type, name, description, representative_keywords, post_count, total_view_count, last_post_at, avg_integrated_rank, avg_blog_rank, ai_briefing_count, ai_tab_count, challenge_top3_count, new_posts_30d, is_representative, representative_score';
-
-/** PostgREST 는 없는 컬럼을 select 하면 42703 으로 쿼리 전체를 실패시킨다. */
-function isUndefinedColumn(error: { code?: string } | null): boolean {
-  return error?.code === '42703';
-}
-
 /**
  * GET /api/my/topics/[id]
  * 토픽 상세 — 크론이 채운 성과 지표 + 실시간 조인으로 계산하는 연관 키워드챌린지/포스팅 목록.
@@ -45,16 +38,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const supabase = createServiceClient();
 
-  // 마이그레이션 161(ai_checked_count) 이 DB에 아직 안 들어갔어도 토픽 상세가 404 로 죽지 않게 한다.
+  // 마이그레이션 132(성과 지표)·161(ai_checked_count) 이 DB에 아직 안 들어갔어도
+  // 토픽 상세가 404·500 으로 죽지 않게 컬럼을 단계적으로 줄여 재시도한다.
   // 이 저장소는 "마이그레이션 파일은 커밋됐는데 DB 미적용"으로 끝난 이력이 반복된다.
-  const selectTopic = async (columns: string) => {
-    const { data, error } = await supabase.from('topics').select(columns).eq('id', id).single();
-    return { data: data as unknown as Record<string, unknown> | null, error };
-  };
-  let { data: topic, error: topicError } = await selectTopic(`${TOPIC_BASE_COLUMNS}, ai_checked_count`);
-  if (isUndefinedColumn(topicError)) ({ data: topic, error: topicError } = await selectTopic(TOPIC_BASE_COLUMNS));
+  const { data: topic, error: topicError, tier } = await queryTopicsWithFallback<Record<string, unknown>>(
+    TOPIC_CORE_COLUMNS,
+    async columns => {
+      const { data, error } = await supabase.from('topics').select(columns).eq('id', id).single();
+      return { data: data as unknown as Record<string, unknown> | null, error };
+    },
+  );
+  /** 성과 지표 컬럼이 없으면 0 이 아니라 null(=미측정)로 내보낸다. */
+  const hasPerf = tier !== 'core_only';
 
-  if (topicError || !topic) return NextResponse.json({ error: '토픽을 찾을 수 없습니다.' }, { status: 404 });
+  // PGRST116 = 행 없음(진짜 404). 그 밖의 오류를 404 로 뭉개면
+  // "토픽을 찾을 수 없습니다"가 나가서 사용자는 삭제된 줄 안다.
+  if (!topic) {
+    if (topicError && topicError.code !== 'PGRST116') {
+      return NextResponse.json({ error: '토픽을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.' }, { status: 500 });
+    }
+    return NextResponse.json({ error: '토픽을 찾을 수 없습니다.' }, { status: 404 });
+  }
   if (topic.user_id !== auth.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { data: postLinks } = await supabase
@@ -137,17 +141,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       postCount: topic.post_count,
       totalViewCount: topic.total_view_count,
       lastPostAt: topic.last_post_at,
-      avgIntegratedRank: topic.avg_integrated_rank,
-      avgBlogRank: topic.avg_blog_rank,
-      aiBriefingCount: topic.ai_briefing_count,
-      aiTabCount: topic.ai_tab_count,
+      avgIntegratedRank: hasPerf ? ((topic.avg_integrated_rank as number | null | undefined) ?? null) : null,
+      avgBlogRank: hasPerf ? ((topic.avg_blog_rank as number | null | undefined) ?? null) : null,
+      aiBriefingCount: (topic.ai_briefing_count as number | null | undefined) ?? 0,
+      aiTabCount: (topic.ai_tab_count as number | null | undefined) ?? 0,
       // 0 또는 null 이면 위 두 카운트의 0 은 '인용 0건'이 아니라 '아직 확인 안 함'이다 — 화면에서 반드시 구분할 것.
       aiCheckedCount: (topic.ai_checked_count as number | undefined) ?? null,
-      challengeTop3Count: topic.challenge_top3_count,
-      newPosts30d: topic.new_posts_30d,
-      isRepresentative: topic.is_representative,
-      representativeScore: topic.representative_score,
+      challengeTop3Count: hasPerf ? ((topic.challenge_top3_count as number | null | undefined) ?? 0) : null,
+      newPosts30d: hasPerf ? ((topic.new_posts_30d as number | null | undefined) ?? 0) : null,
+      isRepresentative: !!topic.is_representative,
+      representativeScore: hasPerf ? ((topic.representative_score as number | null | undefined) ?? 0) : null,
     },
+    metricsAvailable: hasPerf,
     challenges,
     challengeRankLookup,
     posts,

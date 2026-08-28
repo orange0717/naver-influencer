@@ -19,8 +19,9 @@ export interface TopicPerformanceRow {
    * (null 은 DB에 ai_checked_count 컬럼이 아직 없다는 뜻 — 미확인과 동일 취급)
    */
   aiCheckedCount: number | null;
-  challengeTop3Count: number;
-  newPosts30d: number;
+  /** null = 아직 측정한 적 없음(성과 집계 미실행/미적용). 0 = 측정했더니 0개. */
+  challengeTop3Count: number | null;
+  newPosts30d: number | null;
   isRepresentative: boolean;
 }
 
@@ -49,7 +50,21 @@ const UNCHECKED_TITLE = '아직 이 토픽의 글에서 AI 인용 여부를 확�
 const titleFor = (checked: number | null, postCount: number) =>
   aiCheckTitle(checked, postCount, UNCHECKED_TITLE);
 
-export default function TopicPerformanceSection({ topics }: { topics: TopicPerformanceRow[] }) {
+/** 미측정 지표는 0 이 아니라 '-'. 0 으로 적으면 "해봤는데 하나도 없다"로 읽힌다. */
+const NOT_MEASURED_TITLE = '아직 이 지표를 계산한 적이 없습니다. 0 이라는 뜻이 아닙니다.';
+const formatCount = (value: number | null, unit = ''): string => (value === null ? '-' : `${value}${unit}`);
+
+export default function TopicPerformanceSection({
+  topics,
+  status = 'ok',
+}: {
+  topics: TopicPerformanceRow[];
+  /**
+   * 'error'    — 조회 자체가 실패. 빈 목록과 절대 같이 취급하면 안 된다.
+   * 'degraded' — 조회는 됐지만 성과 지표 컬럼이 없어 순위·챌린지 값이 전부 미측정.
+   */
+  status?: 'ok' | 'degraded' | 'error';
+}) {
   return (
     <DashboardCard
       id="topic-performance"
@@ -71,9 +86,24 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
           &lsquo;3/50 확인&rsquo;처럼 적힌 값은 <b className="font-semibold">글 일부만 확인</b>한 중간 결과입니다.
         </span>
       </p>
-      {topics.length === 0 ? (
+      {/* 성과 지표를 못 읽은 경우, 값이 0 으로 보이지 않도록 먼저 말해준다. */}
+      {status === 'degraded' && topics.length > 0 && (
+        <p className="text-xs text-down mb-3 leading-snug">
+          성과 지표(통합검색·블로그탭 평균, 챌린지 TOP3, 대표 토픽)를 아직 집계하지 못해 <b className="font-semibold">‘-’</b>로 표시됩니다.
+          토픽 이름과 포스팅 수는 정상입니다.
+        </p>
+      )}
+      {status === 'error' ? (
+        // 예전에는 조회 실패도 빈 배열이 되어 "아직 분류된 토픽이 없습니다"로 나갔다 —
+        // 오류를 '데이터 없음'으로 보여주면 사용자는 영영 문제를 모른다.
+        <p className="text-center text-sm text-down py-8">
+          토픽 성과를 불러오지 못했습니다. 토픽이 없다는 뜻이 아닙니다 — 잠시 후 새로고침해 주세요.
+        </p>
+      ) : topics.length === 0 ? (
         <p className="text-center text-sm text-dim py-8">
-          아직 분류된 토픽이 없습니다. 매일 새벽 자동 분류가 실행되면 여기에 표시됩니다.
+          {status === 'degraded'
+            ? '토픽 성과를 아직 집계할 수 없습니다. 분류된 토픽이 없는 것인지 확인 중입니다.'
+            : '아직 분류된 토픽이 없습니다. 매일 새벽 자동 분류가 실행되면 여기에 표시됩니다.'}
         </p>
       ) : (
         <>
@@ -118,7 +148,12 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
                     >
                       {formatAiCount(t.aiTabCount, t.aiCheckedCount, t.postCount)}
                     </td>
-                    <td className="py-3 px-3 text-right font-rank">{t.challengeTop3Count}</td>
+                    <td
+                      className={`py-3 px-3 text-right font-rank${t.challengeTop3Count === null ? ' text-dim' : ''}`}
+                      title={t.challengeTop3Count === null ? NOT_MEASURED_TITLE : undefined}
+                    >
+                      {formatCount(t.challengeTop3Count)}
+                    </td>
                     <td className="py-3 px-3 text-center text-xs text-dim">{formatRelativeTime(t.lastPostAt)}</td>
                     <td className="py-3 px-3 text-center">
                       <Link href={`/my/topics/${t.id}`} className="text-xs font-semibold text-accent hover:underline">
@@ -152,7 +187,9 @@ export default function TopicPerformanceSection({ topics }: { topics: TopicPerfo
                   <span>블로그탭 {formatRank(t.avgBlogRank)}</span>
                   <span title={titleFor(t.aiCheckedCount, t.postCount)}>AI브리핑 {formatAiCount(t.aiBriefingCount, t.aiCheckedCount, t.postCount, '건')}</span>
                   <span title={titleFor(t.aiCheckedCount, t.postCount)}>AI탭 {formatAiCount(t.aiTabCount, t.aiCheckedCount, t.postCount, '건')}</span>
-                  <span>챌린지TOP3 {t.challengeTop3Count}개</span>
+                  <span title={t.challengeTop3Count === null ? NOT_MEASURED_TITLE : undefined}>
+                    챌린지TOP3 {formatCount(t.challengeTop3Count, '개')}
+                  </span>
                   <span>최근 {formatRelativeTime(t.lastPostAt)}</span>
                 </div>
               </Link>

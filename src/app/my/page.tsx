@@ -14,6 +14,7 @@ import FanRelationSummaryCard from '@/components/dashboard/FanRelationSummaryCar
 import ChallengeStatsSection from '@/components/dashboard/ChallengeStatsSection';
 import CategoryStrengthSection from '@/components/dashboard/CategoryStrengthSection';
 import TopicPerformanceSection, { type TopicPerformanceRow } from '@/components/dashboard/TopicPerformanceSection';
+import { queryTopicsWithFallback, topicSectionStatus, type TopicSectionStatus } from '@/lib/topic-columns';
 import MyKeywordList from '@/components/dashboard/MyKeywordList';
 import { generateActivityEvents } from '@/lib/activity-events';
 import { analyzeRankAlerts } from '@/lib/rank-alerts';
@@ -159,25 +160,24 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
   // 데이터 의존성이 없는 것들을 여기서 미리 시작해, 아래 refreshFollowerCount(최대 13초)와
   // 겹쳐서 실행되게 한다. 실제 await은 각자 원래 쓰이던 위치에서 한다. ───
   /** 대시보드 허브 — 토픽 카드 + 토픽 성과 테이블: curate-blog-topics 크론이 채우는 topics 재사용 */
-  const topicSummaryPromise: Promise<{ count: number; topName: string | null; topics: TopicPerformanceRow[] }> = (internalUserId && naverId)
+  const topicSummaryPromise: Promise<{ count: number; topName: string | null; topics: TopicPerformanceRow[]; status: TopicSectionStatus }> = (internalUserId && naverId)
     ? (async () => {
-        const baseColumns =
-          'id, topic_type, name, post_count, total_view_count, last_post_at, avg_integrated_rank, avg_blog_rank, ai_briefing_count, ai_tab_count, challenge_top3_count, new_posts_30d, is_representative';
-        const runQuery = async (columns: string) => {
-          const { data, error } = await supabase
-            .from('topics')
-            .select(columns)
-            .eq('user_id', internalUserId)
-            .eq('blog_id', naverId)
-            .order('is_representative', { ascending: false })
-            .order('post_count', { ascending: false })
-            .order('total_view_count', { ascending: false });
-          return { data: data as unknown as Record<string, unknown>[] | null, error };
-        };
-        // 마이그레이션 161(ai_checked_count) 미적용 상태에서도 대시보드가 통째로 비지 않게 한다.
-        // PostgREST 는 없는 컬럼을 select 하면 42703 으로 쿼리 전체를 실패시킨다.
-        let { data, error } = await runQuery(`${baseColumns}, ai_checked_count`);
-        if (error?.code === '42703') ({ data, error } = await runQuery(baseColumns));
+        // 마이그레이션 132(성과 지표)·161(ai_checked_count) 중 무엇이 DB에 안 들어가 있어도
+        // 대시보드가 "토픽이 없다"고 거짓말하지 않게 한다 — 자세한 이유는 lib/topic-columns.ts.
+        const { data, error, tier } = await queryTopicsWithFallback<Record<string, unknown>[]>(
+          'id, topic_type, name, post_count, total_view_count, last_post_at',
+          async (columns, t) => {
+            let q = supabase.from('topics').select(columns).eq('user_id', internalUserId).eq('blog_id', naverId);
+            // order 도 컬럼이 없으면 똑같이 42703 으로 죽는다.
+            if (t !== 'core_only') q = q.order('is_representative', { ascending: false });
+            const { data: rows, error: err } = await q
+              .order('post_count', { ascending: false })
+              .order('total_view_count', { ascending: false });
+            return { data: rows as unknown as Record<string, unknown>[] | null, error: err };
+          },
+        );
+        // 성과 지표 컬럼이 없으면 0 이 아니라 null(=미측정)로 넘겨 화면에서 '-'로 나오게 한다.
+        const hasPerf = tier !== 'core_only';
         const rows = data || [];
         const topics: TopicPerformanceRow[] = rows.map(r => ({
           id: r.id as string,
@@ -185,20 +185,20 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
           name: r.name as string,
           postCount: r.post_count as number,
           lastPostAt: r.last_post_at as string | null,
-          avgIntegratedRank: r.avg_integrated_rank as number | null,
-          avgBlogRank: r.avg_blog_rank as number | null,
+          avgIntegratedRank: hasPerf ? ((r.avg_integrated_rank as number | null) ?? null) : null,
+          avgBlogRank: hasPerf ? ((r.avg_blog_rank as number | null) ?? null) : null,
           aiBriefingCount: (r.ai_briefing_count as number | null) ?? 0,
           aiTabCount: (r.ai_tab_count as number | null) ?? 0,
           // 0·null 이면 위 두 카운트의 0 은 '인용 0건'이 아니라 '아직 확인 안 함'이다.
           aiCheckedCount: (r.ai_checked_count as number | null) ?? null,
-          challengeTop3Count: (r.challenge_top3_count as number | null) ?? 0,
-          newPosts30d: (r.new_posts_30d as number | null) ?? 0,
+          challengeTop3Count: hasPerf ? ((r.challenge_top3_count as number | null) ?? 0) : null,
+          newPosts30d: hasPerf ? ((r.new_posts_30d as number | null) ?? 0) : null,
           isRepresentative: !!r.is_representative,
         }));
         const topName = topics.find(t => t.isRepresentative)?.name ?? topics[0]?.name ?? null;
-        return { count: topics.length, topName, topics };
+        return { count: topics.length, topName, topics, status: topicSectionStatus(error, tier) };
       })()
-    : Promise.resolve({ count: 0, topName: null, topics: [] });
+    : Promise.resolve({ count: 0, topName: null, topics: [], status: 'ok' as TopicSectionStatus });
 
   /** 대시보드 허브 — 토픽 카드: 인플홈에서 수집한 실제 토픽(crawl-naver-topics/수동 새로고침이 채우는 naver_influencer_topics) */
   const homeTopicsPromise: Promise<{ count: number; topTitles: string[]; lastSyncedAt: string | null }> = (internalUserId && naverId)
@@ -662,7 +662,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       <CategoryStrengthSection categoryStats={categoryStats} />
 
       {/* ─── 2-1-2. 토픽 현황 · 성과 ─── */}
-      <TopicPerformanceSection topics={topicSummary.topics} />
+      <TopicPerformanceSection topics={topicSummary.topics} status={topicSummary.status} />
 
       {/* ─── 2-2. 스마트 알림 (오늘의 액션 포인트) ─── */}
       <SmartAlerts alerts={rankAlerts} />
