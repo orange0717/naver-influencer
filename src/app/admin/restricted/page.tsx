@@ -19,13 +19,27 @@ export default function AdminRestrictedPage() {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  /** 조회 자체가 실패했는가. '제한 사용자가 없다'와 반드시 구분해야 하는 상태다. */
+  const [loadError, setLoadError] = useState('');
 
+  // 실패를 삼키면 users 가 [] 로 남아 "등록된 제한 사용자가 없습니다"가 뜬다. 차단 명단이
+  // 비어 보이는 것과 명단을 못 불러온 것은 정반대의 조치를 부르는 상태다.
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/admin/restricted');
-    const data = await res.json();
-    setUsers(data.users || []);
-    setLoading(false);
+    setLoadError('');
+    try {
+      const res = await fetch('/api/admin/restricted');
+      if (!res.ok) {
+        setLoadError(`제한 사용자 목록을 불러오지 못했습니다. (오류 ${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setUsers(data.users || []);
+    } catch {
+      setLoadError('제한 사용자 목록을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
@@ -118,12 +132,20 @@ export default function AdminRestrictedPage() {
       <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-bold">제한 사용자 목록</h2>
-          <span className="text-xs text-dim">{users.length}명</span>
+          {/* 조회 실패 시 인원수를 단언하지 않는다(0명은 '없다'로 읽힌다). */}
+          <span className="text-xs text-dim">{loadError ? '—' : `${users.length}명`}</span>
         </div>
 
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : loadError ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-down">{loadError}</p>
+            <button type="button" onClick={fetchUsers} className="text-sm text-accent hover:underline cursor-pointer">
+              다시 시도
+            </button>
           </div>
         ) : users.length === 0 ? (
           <div className="py-12 text-center text-dim text-sm">등록된 제한 사용자가 없습니다.</div>

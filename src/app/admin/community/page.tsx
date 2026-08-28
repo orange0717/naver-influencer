@@ -198,17 +198,31 @@ function PostsTab() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(true);
+  /** 조회 자체가 실패했는가. '결과 없음'과 반드시 구분해야 하는 상태다. */
+  const [loadError, setLoadError] = useState('');
 
+  // 실패를 삼키면 posts 가 [] 로 남아 "결과 없음"이 뜬다. 네트워크 예외 때는 loading 이
+  // true 로 굳어 스피너가 영원히 돌기까지 했다.
   const fetchPosts = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     const params = new URLSearchParams({ page: String(page), limit: '20' });
     if (search) params.set('search', search);
-    const res = await fetch(`/api/admin/community?${params}`);
-    const data = await res.json();
-    setPosts(data.posts || []);
-    setTotal(data.total || 0);
-    setTotalPages(data.totalPages || 1);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/admin/community?${params}`);
+      if (!res.ok) {
+        setLoadError(`게시글을 불러오지 못했습니다. (오류 ${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setPosts(data.posts || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
+    } catch {
+      setLoadError('게시글을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
+    } finally {
+      setLoading(false);
+    }
   }, [page, search]);
 
   useEffect(() => { fetchPosts(); }, [fetchPosts]);
@@ -247,6 +261,13 @@ function PostsTab() {
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : loadError ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-down">{loadError}</p>
+            <button type="button" onClick={fetchPosts} className="text-sm text-accent hover:underline cursor-pointer">
+              다시 시도
+            </button>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -310,16 +331,30 @@ function ReportsTab() {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('pending');
   const [loading, setLoading] = useState(true);
+  /** 조회 자체가 실패했는가. '신고 없음'과 반드시 구분해야 하는 상태다. */
+  const [loadError, setLoadError] = useState('');
 
+  // 실패를 삼키면 reports 가 [] 로 남아 "신고 없음"이 뜬다. 미처리 신고가 쌓여 있는데도
+  // 처리할 게 없다고 읽히는 안내라 특히 위험하다.
   const fetchReports = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     const params = new URLSearchParams({ page: String(page), limit: '20', status: statusFilter });
-    const res = await fetch(`/api/admin/reports?${params}`);
-    const data = await res.json();
-    setReports(data.reports || []);
-    setTotal(data.total || 0);
-    setTotalPages(data.totalPages || 1);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/admin/reports?${params}`);
+      if (!res.ok) {
+        setLoadError(`신고 목록을 불러오지 못했습니다. (오류 ${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setReports(data.reports || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
+    } catch {
+      setLoadError('신고 목록을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
+    } finally {
+      setLoading(false);
+    }
   }, [page, statusFilter]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
@@ -361,6 +396,13 @@ function ReportsTab() {
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : loadError ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-down">{loadError}</p>
+            <button type="button" onClick={fetchReports} className="text-sm text-accent hover:underline cursor-pointer">
+              다시 시도
+            </button>
           </div>
         ) : (
           <table className="w-full text-sm">

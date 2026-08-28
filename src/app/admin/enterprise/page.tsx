@@ -44,16 +44,27 @@ export default function AdminEnterprisePage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
+  /** 조회 자체가 실패했는가. '접수된 문의가 없다'와 반드시 구분해야 하는 상태다. */
+  const [loadError, setLoadError] = useState('');
 
+  // 실패를 삼키면 inquiries 가 [] 로 남아 "접수된 문의가 없습니다"가 뜬다. 들어온 문의를
+  // 못 본 채로 "문의가 없구나" 하고 창을 닫게 되는 안내라 반드시 갈라야 한다.
   const fetchInquiries = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const qs = statusFilter ? `?status=${statusFilter}` : '';
       const res = await fetch(`/api/admin/enterprise-inquiries${qs}`);
+      if (!res.ok) {
+        setLoadError(`문의 목록을 불러오지 못했습니다. (오류 ${res.status})`);
+        return;
+      }
       const data = await res.json();
       setInquiries(data.inquiries || []);
       setCounts(data.counts || {});
       setTotal(data.total || 0);
+    } catch {
+      setLoadError('문의 목록을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
     } finally {
       setLoading(false);
     }
@@ -121,12 +132,20 @@ export default function AdminEnterprisePage() {
       <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-bold">문의 목록</h2>
-          <span className="text-xs text-dim">{inquiries.length}건</span>
+          {/* 조회 실패 시 건수를 단언하지 않는다(0건은 '없다'로 읽힌다). */}
+          <span className="text-xs text-dim">{loadError ? '—' : `${inquiries.length}건`}</span>
         </div>
 
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : loadError ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-down">{loadError}</p>
+            <button type="button" onClick={fetchInquiries} className="text-sm text-accent hover:underline cursor-pointer">
+              다시 시도
+            </button>
           </div>
         ) : inquiries.length === 0 ? (
           <div className="py-12 text-center text-dim text-sm">접수된 문의가 없습니다.</div>

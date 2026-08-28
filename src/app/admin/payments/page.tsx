@@ -32,18 +32,34 @@ export default function AdminPaymentsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
+  /** 조회 자체가 실패했는가. '결제 내역 없음'과 반드시 구분해야 하는 상태다. */
+  const [loadError, setLoadError] = useState('');
 
+  // 예전에는 res.ok 도 안 보고 예외도 안 잡아서, 조회가 실패하면 payments 가 [] 로 남고
+  // 화면에는 "결제 내역 없음"이 떴다. 매출 화면에서 그건 '아무도 결제하지 않았다'로
+  // 읽힌다 — 실제로는 못 불러온 것이다. 네트워크 예외 때는 loading 이 true 로 굳어
+  // 스피너가 영원히 돌기까지 했다.
   const fetchPayments = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     const params = new URLSearchParams({ page: String(page), limit: '20' });
     if (search) params.set('search', search);
-    const res = await fetch(`/api/admin/payments?${params}`);
-    const data = await res.json();
-    setPayments(data.payments || []);
-    setTotal(data.total || 0);
-    setTotalPages(data.totalPages || 1);
-    setSummary(data.summary || null);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/admin/payments?${params}`);
+      if (!res.ok) {
+        setLoadError(`결제 내역을 불러오지 못했습니다. (오류 ${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setPayments(data.payments || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
+      setSummary(data.summary || null);
+    } catch {
+      setLoadError('결제 내역을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
+    } finally {
+      setLoading(false);
+    }
   }, [page, search]);
 
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
@@ -97,6 +113,17 @@ export default function AdminPaymentsPage() {
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : loadError ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-down">{loadError}</p>
+            <button
+              type="button"
+              onClick={fetchPayments}
+              className="text-sm text-accent hover:underline cursor-pointer"
+            >
+              다시 시도
+            </button>
           </div>
         ) : (
           <table className="w-full text-sm">

@@ -25,13 +25,26 @@ export default function AdminInfluencersPage() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string>('');
+  /** 목록 조회가 실패했는가. '중단자가 없다'와 반드시 구분해야 하는 상태다. */
+  const [listError, setListError] = useState('');
+  /** 검색 조회가 실패했는가. '검색 결과가 없다'와 반드시 구분해야 하는 상태다. */
+  const [searchError, setSearchError] = useState('');
 
+  // 실패를 삼키면 list 가 [] 로 남아 "등록된 활동중단 인플루언서가 없습니다"가 뜬다.
+  // 명단이 비었다는 뜻으로 읽히지만 실제로는 못 불러온 것이다.
   const fetchList = useCallback(async () => {
     setLoadingList(true);
+    setListError('');
     try {
       const res = await fetch('/api/admin/influencers/stopped?mode=list');
+      if (!res.ok) {
+        setListError(`목록을 불러오지 못했습니다. (오류 ${res.status})`);
+        return;
+      }
       const data = await res.json();
       setList(data.items || []);
+    } catch {
+      setListError('목록을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
     } finally {
       setLoadingList(false);
     }
@@ -42,14 +55,23 @@ export default function AdminInfluencersPage() {
   // 검색 (debounce)
   useEffect(() => {
     const q = search.trim();
-    if (!q) { setSearchResults([]); return; }
+    if (!q) { setSearchResults([]); setSearchError(''); return; }
 
+    // 검색이 실패해도 "검색 결과가 없습니다"가 떴다. 그러면 실재하는 인플루언서를
+    // DB에 없는 사람으로 오판하게 된다(이 감사에서 이미 한 번 겪은 오판이다).
     const timer = setTimeout(async () => {
       setLoadingSearch(true);
+      setSearchError('');
       try {
         const res = await fetch(`/api/admin/influencers/stopped?mode=search&q=${encodeURIComponent(q)}`);
+        if (!res.ok) {
+          setSearchError(`검색에 실패했습니다. (오류 ${res.status})`);
+          return;
+        }
         const data = await res.json();
         setSearchResults(data.items || []);
+      } catch {
+        setSearchError('검색에 실패했습니다. 네트워크 상태를 확인해 주세요.');
       } finally {
         setLoadingSearch(false);
       }
@@ -122,7 +144,11 @@ export default function AdminInfluencersPage() {
           </div>
         )}
 
-        {!loadingSearch && search.trim() && searchResults.length === 0 && (
+        {!loadingSearch && searchError && (
+          <div className="py-4 text-center text-sm text-down">{searchError}</div>
+        )}
+
+        {!loadingSearch && !searchError && search.trim() && searchResults.length === 0 && (
           <div className="py-4 text-center text-dim text-sm">검색 결과가 없습니다.</div>
         )}
 
@@ -187,12 +213,20 @@ export default function AdminInfluencersPage() {
       <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-bold">활동중단 인플루언서 목록</h2>
-          <span className="text-xs text-dim">{list.length}명</span>
+          {/* 조회 실패 시 인원수를 단언하지 않는다(0명은 '없다'로 읽힌다). */}
+          <span className="text-xs text-dim">{listError ? '—' : `${list.length}명`}</span>
         </div>
 
         {loadingList ? (
           <div className="py-12 text-center">
             <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : listError ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-down">{listError}</p>
+            <button type="button" onClick={fetchList} className="text-sm text-accent hover:underline cursor-pointer">
+              다시 시도
+            </button>
           </div>
         ) : list.length === 0 ? (
           <div className="py-12 text-center text-dim text-sm">
