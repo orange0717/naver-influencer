@@ -92,23 +92,32 @@ export default function AdminPaymentsPage() {
       {!loading && !loadError && !summary && (
         <p className="text-xs text-dim">구독 현황 요약을 불러오지 못했습니다. 아래 결제 내역은 정상입니다.</p>
       )}
+      {/* ⚠️ 세 수치는 모두 PortOne 결제(subscriptions·payment_transactions)만 센다. 쿠폰·플랜
+          일괄 부여로 열어 준 이용권은 여기에 안 잡힌다 — 라벨이 '유료 구독자'였을 때는
+          관리자 부여로 PRO 를 쓰는 계정이 있는데도 0명으로 보여, 이용권 보유자가 없다는
+          뜻으로 읽혔다. 무엇을 센 값인지 라벨과 주석에 적는다. */}
       {summary && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-surface rounded-lg border border-border p-4 text-center">
-            <p className="text-xs text-dim mb-1">유료 구독자</p>
-            <p className="text-2xl font-extrabold font-rank text-accent">{summary.subscribers}명</p>
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-surface rounded-lg border border-border p-4 text-center">
+              <p className="text-xs text-dim mb-1">정기구독 활성</p>
+              <p className="text-2xl font-extrabold font-rank text-accent">{summary.subscribers}명</p>
+            </div>
+            <div className="bg-surface rounded-lg border border-border p-4 text-center">
+              <p className="text-xs text-dim mb-1">7일 내 만료 예정</p>
+              <p className={`text-2xl font-extrabold font-rank ${summary.expiringSoon > 0 ? 'text-down' : 'text-text'}`}>
+                {summary.expiringSoon}명
+              </p>
+            </div>
+            <div className="bg-surface rounded-lg border border-border p-4 text-center">
+              <p className="text-xs text-dim mb-1">결제 누적액</p>
+              <p className="text-2xl font-extrabold font-rank">{summary.totalRevenue.toLocaleString()}원</p>
+            </div>
           </div>
-          <div className="bg-surface rounded-lg border border-border p-4 text-center">
-            <p className="text-xs text-dim mb-1">7일 내 만료 예정</p>
-            <p className={`text-2xl font-extrabold font-rank ${summary.expiringSoon > 0 ? 'text-down' : 'text-text'}`}>
-              {summary.expiringSoon}명
-            </p>
-          </div>
-          <div className="bg-surface rounded-lg border border-border p-4 text-center">
-            <p className="text-xs text-dim mb-1">총 매출</p>
-            <p className="text-2xl font-extrabold font-rank">{summary.totalRevenue.toLocaleString()}원</p>
-          </div>
-        </div>
+          <p className="text-[11px] text-dim -mt-3">
+            PortOne 결제 기준입니다. 쿠폰·플랜 일괄 부여로 지급한 이용권은 포함되지 않습니다.
+          </p>
+        </>
       )}
 
       {/* 검색 */}
@@ -117,7 +126,7 @@ export default function AdminPaymentsPage() {
           type="text"
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
-          placeholder="주문ID, 사용자ID 검색"
+          placeholder="결제ID, 사용자ID 검색"
           className={`${controlBoxClass} flex-1`}
         />
         <button type="submit" className={filterButtonClass}>
