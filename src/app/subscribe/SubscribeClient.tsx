@@ -94,8 +94,17 @@ export default function SubscribeClient() {
   const influencerMonthly = period === 'monthly' ? null : Math.round(price.influencer / price.months);
   const periodBadge = PERIOD_OPTIONS.find((o) => o.value === period)?.badge;
 
-  // PRO 전용 기능에 이용권 없이 접근 → /subscribe?needsPro=1 로 리다이렉트되었을 때 안내
-  const needsPro = searchParams.get('needsPro') === '1';
+  // 이용권 전용 기능에 접근했다가 여기로 리다이렉트되었을 때의 안내.
+  //
+  // ⚠️ 보내는 쪽이 쿼리 키를 제각각 쓰고 있었고, 이 배너는 그중 `needsPro=1` 하나만 읽었다.
+  //   - `?required=influencer`  … 8곳 (롱폼·릴스 분석, 글쓰기 4종, 순위, 대량 키워드 조회)
+  //   - `?highlight=influencer` / `?highlight=blogger` … plan-server-guards.ts (전체 리스트 등)
+  // 즉 안내 배너를 만들어 두고도 대부분의 경로에서 한 번도 뜬 적이 없다. 사용자는 메뉴를
+  // 눌렀더니 아무 설명 없이 요금제 페이지에 떨어졌고, 왜 튕겼는지도 뭘 하면 되는지도
+  // 알 수 없었다. 세 키를 모두 받는다.
+  const requiredPlan = searchParams.get('required') || searchParams.get('highlight');
+  const needsPro =
+    searchParams.get('needsPro') === '1' || requiredPlan === 'influencer' || requiredPlan === 'blogger';
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
@@ -108,9 +117,17 @@ export default function SubscribeClient() {
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <div className="flex-1">
-            <p className="text-sm font-bold text-accent">이 기능은 PRO 이용권 전용입니다.</p>
+            <p className="text-sm font-bold text-accent">
+              {requiredPlan === 'influencer'
+                ? '방금 누른 기능은 인플루언서 이용권 전용입니다.'
+                : requiredPlan === 'blogger'
+                  ? '방금 누른 기능은 이용권이 있어야 열립니다.'
+                  : '이 기능은 PRO 이용권 전용입니다.'}
+            </p>
             <p className="text-xs text-text/80 mt-1 leading-relaxed">
-              대량 데이터·AI 분석이 필요한 기능이라 이용권 구매 후 이용할 수 있습니다.
+              {requiredPlan === 'blogger'
+                ? '예비 인플루언서 이상 이용권을 구매하면 바로 이용할 수 있습니다.'
+                : '대량 데이터·AI 분석이 필요한 기능이라 이용권 구매 후 이용할 수 있습니다.'}
             </p>
             <div className="flex gap-2 mt-3">
               <a

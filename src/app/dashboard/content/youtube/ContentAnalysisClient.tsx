@@ -174,6 +174,15 @@ export default function ContentAnalysisClient() {
           {/* 콘텐츠 DNA */}
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <h2 className="text-sm font-bold text-text">콘텐츠 DNA</h2>
+            {/* 자막 없이 나온 점수는 '제목·설명만 보고 매긴 점수'다. 이 경고가 예전엔 페이지
+                맨 아래, 점수 네 개를 다 지나친 뒤에 있었다. 그러면 "정보성 7.3 / 10"을 먼저
+                측정값으로 읽고 나서야 근거가 빈약했다는 걸 알게 된다 — 순서를 뒤집는다. */}
+            {result.transcriptSource === 'none' && (
+              <p className="text-[11px] text-down/90 leading-relaxed bg-down/5 border border-down/20 rounded-lg p-2.5">
+                ⚠️ 자막을 가져오지 못해 <b>제목·설명만으로</b> 분석한 점수입니다. 정확도가 낮을 수 있습니다.
+                위 &ldquo;음성 인식(STT)&rdquo; 옵션을 켜고 다시 시도하면 더 정확해집니다.
+              </p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
               <div>
                 <p className="text-dim">주제</p>
@@ -248,12 +257,6 @@ export default function ContentAnalysisClient() {
             </div>
           )}
 
-          {result.transcriptSource === 'none' && (
-            <p className="text-[11px] text-dim/70 leading-relaxed">
-              자막을 가져오지 못해 제목·설명만으로 분석했습니다. 정확도가 낮을 수 있습니다. 위 &ldquo;음성 인식(STT)&rdquo;
-              옵션을 켜고 다시 시도하면 더 정확한 분석이 가능합니다.
-            </p>
-          )}
         </div>
       )}
     </div>

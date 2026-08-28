@@ -180,6 +180,13 @@ export default function ShortformAnalysisClient() {
           {/* 콘텐츠 DNA */}
           <div className="bg-surface border border-border rounded-lg p-5 space-y-4">
             <h2 className="text-sm font-bold text-text">콘텐츠 DNA</h2>
+            {/* 대본 없이 나온 점수라는 사실은 점수보다 먼저 보여야 한다. 예전엔 이 경고가
+                페이지 맨 아래에 있어서, 점수 네 개를 측정값으로 다 읽은 뒤에야 나왔다. */}
+            {!result.video.hasTranscript && (
+              <p className="text-[11px] text-down/90 leading-relaxed bg-down/5 border border-down/20 rounded-lg p-2.5">
+                ⚠️ 대본(음성)을 가져오지 못해 <b>화면 자막·캡션 위주로</b> 분석한 점수입니다. 정확도가 낮을 수 있습니다.
+              </p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
               <div>
                 <p className="text-dim">주제</p>
@@ -254,11 +261,6 @@ export default function ShortformAnalysisClient() {
           {result.video.accessNote && (
             <p className="text-[11px] text-dim/70 leading-relaxed">
               열람 참고: {result.video.accessNote}
-            </p>
-          )}
-          {!result.video.hasTranscript && (
-            <p className="text-[11px] text-dim/70 leading-relaxed">
-              대본(음성)을 가져오지 못해 화면 자막·캡션 위주로 분석했습니다. 정확도가 낮을 수 있습니다.
             </p>
           )}
         </div>
