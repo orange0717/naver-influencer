@@ -1098,7 +1098,8 @@ export default function KeywordRankingSection() {
       if (s === 'top10' || s === 'top30') top30++;
       if (s === 'unknown' || s === 'error') unknown++;
     }
-    return { total: periodPosts.length, repDone, top10, top30, unknown };
+    // checked = 순위를 실제로 확인한 글 수. TOP10/TOP30 은 이 부분집합 위에서만 의미가 있다.
+    return { total: periodPosts.length, repDone, top10, top30, unknown, checked: periodPosts.length - unknown };
   }, [periodPosts, repKeywords, postTier]);
 
   const basisLabel = rankBasis === 'blog' ? '블로그' : rankBasis === 'influencer' ? '인플루언서' : '통합검색';
@@ -1762,8 +1763,27 @@ export default function KeywordRankingSection() {
           tone: summary.total > 0 && summary.repDone === summary.total ? 'success' : 'warning',
           description: summary.total ? `${Math.round((summary.repDone / summary.total) * 100)}%` : undefined,
         },
-        { key: 'top10', label: 'TOP 10', value: summary.top10, tone: 'success', description: `${basisLabel} 기준` },
-        { key: 'top30', label: 'TOP 30', value: summary.top30, tone: 'success', description: `${basisLabel} 기준` },
+        // ⚠️ TOP10/TOP30 은 '순위를 확인한 글' 중에서만 셀 수 있는 값이다. 그런데 한 번도
+        //    확인하지 않은 글까지 분모에 넣고 0 을 찍고 있었다 — 43개가 전부 미확인인
+        //    화면에서 "TOP 10 · 0", "미확인 · 43" 이 나란히 떴다. 앞 두 장은 "당신은 상위
+        //    노출된 글이 하나도 없다"로 읽히지만 사실은 아무것도 확인하지 않았다는 뜻이다.
+        //    확인한 글이 0개면 숫자를 만들지 않고, 있으면 무엇을 분모로 센 건지 밝힌다.
+        {
+          key: 'top10',
+          label: 'TOP 10',
+          value: summary.top10,
+          tone: 'success',
+          statusText: summary.checked === 0 ? '미확인' : undefined,
+          description: summary.checked === 0 ? '순위 확인 전' : `${basisLabel} 기준 · 확인한 ${summary.checked}개 중`,
+        },
+        {
+          key: 'top30',
+          label: 'TOP 30',
+          value: summary.top30,
+          tone: 'success',
+          statusText: summary.checked === 0 ? '미확인' : undefined,
+          description: summary.checked === 0 ? '순위 확인 전' : `${basisLabel} 기준 · 확인한 ${summary.checked}개 중`,
+        },
         { key: 'unknown', label: '미확인', value: summary.unknown, tone: 'neutral' },
       ]}
       filters={filters}
