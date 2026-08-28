@@ -47,6 +47,8 @@ export default function ProfilePage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponResult, setCouponResult] = useState<{ success: boolean; plan?: string; expiresAt?: string; error?: string } | null>(null);
   const [availableCoupons, setAvailableCoupons] = useState<{ code: string; name: string; plan: string; duration_days: number }[]>([]);
+  // 기업 대표 계정에게만 200 이 온다(멤버는 403) — 그래서 응답이 곧 노출 조건이다.
+  const [ownedOrg, setOwnedOrg] = useState<{ companyName: string; usedSeats: number; seatCount: number } | null>(null);
 
   // 블로그 주소
   const [blogIdInput, setBlogIdInput] = useState('');
@@ -120,6 +122,18 @@ export default function ProfilePage() {
     if (txRes.ok) {
       const txData = await txRes.json();
       setCreditTx(txData.transactions || []);
+    }
+
+    const orgRes = await fetch('/api/org/subscription', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (orgRes.ok) {
+      const orgData = await orgRes.json();
+      setOwnedOrg({
+        companyName: orgData.companyName,
+        usedSeats: orgData.usedSeats,
+        seatCount: orgData.seatCount,
+      });
     }
 
     setLoading(false);
@@ -559,6 +573,27 @@ export default function ProfilePage() {
           </Link>
         </div>
       </div>
+
+      {/* 기업 계정 (대표만) */}
+      {ownedOrg && (
+        <div className="bg-surface rounded-lg border border-border p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm mb-1">기업 계정</h3>
+              <p className="text-sm text-text truncate">{ownedOrg.companyName}</p>
+              <p className="text-xs text-dim mt-0.5 tabular-nums">
+                {ownedOrg.usedSeats} / {ownedOrg.seatCount}좌석 사용 중
+              </p>
+            </div>
+            <Link
+              href="/enterprise/manage"
+              className="shrink-0 text-xs text-accent font-semibold hover:underline"
+            >
+              구독·멤버 관리
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* 인플루언서 연결 */}
       <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
