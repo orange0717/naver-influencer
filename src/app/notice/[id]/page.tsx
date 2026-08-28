@@ -82,6 +82,8 @@ function formatFullDate(dateStr: string) {
 export default function NoticeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [noticeId, setNoticeId] = useState('');
   const [notice, setNotice] = useState<Notice | null>(null);
+  /** 조회 자체가 실패했는가. notice===null 은 '없는 공지'와 '못 불러온 공지' 둘 다라서 갈라야 한다. */
+  const [loadFailed, setLoadFailed] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
@@ -133,9 +135,12 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       const fp = getVoterFingerprint();
       if (fp) headers['X-Voter-Fp'] = fp;
 
+      // 404(글이 없음)와 그 밖의 실패(서버 오류·네트워크)를 갈라 둔다. 예전엔 모든 실패가
+      // setNotice(null) 로 뭉개져 "공지를 찾을 수 없습니다"로 나왔다 — 서버가 잠깐 죽은 걸
+      // 공지가 삭제된 것으로 단정하는 안내였고, 다시 시도할 방법도 없었다.
       fetch(`/api/notices/${noticeId}`, { headers })
         .then(r => {
-          if (!r.ok) throw new Error();
+          if (!r.ok) { if (r.status !== 404) setLoadFailed(true); throw new Error(); }
           if (isFirstView) sessionStorage.setItem(viewedKey, '1');
           return r.json();
         })
@@ -299,8 +304,17 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
   if (!notice) {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
-        <p className="text-dim text-sm">공지를 찾을 수 없습니다.</p>
-        <Link href="/notice" className="text-accent text-sm mt-4 inline-block">목록으로 돌아가기</Link>
+        <p className="text-dim text-sm">
+          {loadFailed ? '공지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.' : '공지를 찾을 수 없습니다.'}
+        </p>
+        <div className="flex items-center justify-center gap-4 mt-4">
+          {loadFailed && (
+            <button onClick={() => window.location.reload()} className="text-accent text-sm cursor-pointer hover:underline">
+              다시 시도
+            </button>
+          )}
+          <Link href="/notice" className="text-accent text-sm inline-block">목록으로 돌아가기</Link>
+        </div>
       </div>
     );
   }

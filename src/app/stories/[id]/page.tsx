@@ -49,6 +49,8 @@ export default function StoryDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  /** 이 오류가 다시 시도해서 풀릴 수 있는 종류인가(=글이 없는 게 아니라 못 불러온 것인가). */
+  const [retryable, setRetryable] = useState(false);
 
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -57,17 +59,27 @@ export default function StoryDetailPage() {
 
   const fetchStory = useCallback(() => {
     if (!params?.id) return;
+    setLoading(true);
+    setError('');
+    // '글이 없다'(404)와 '지금 못 불러왔다'(500·네트워크)를 갈라 둔다. 예전엔 둘 다
+    // 똑같이 "목록으로" 링크 하나만 주는 화면으로 끝나서, 서버가 잠깐 죽은 것도
+    // 글이 삭제된 것처럼 읽혔다. 없는 것과 확인 못 한 것은 다르다.
     fetch(`/api/stories/${params.id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) setError(data.error);
-        else {
-          setStory(data.story);
-          setComments(data.comments || []);
-          setLiked(!!data.liked);
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok || data?.error) {
+          setRetryable(r.status !== 404);
+          setError(data?.error || (r.status === 404 ? '후기를 찾을 수 없습니다.' : '후기를 불러올 수 없습니다.'));
+          return;
         }
+        setStory(data.story);
+        setComments(data.comments || []);
+        setLiked(!!data.liked);
       })
-      .catch(() => setError('후기를 불러올 수 없습니다.'))
+      .catch(() => {
+        setRetryable(true);
+        setError('후기를 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
+      })
       .finally(() => setLoading(false));
   }, [params?.id]);
 
@@ -156,9 +168,16 @@ export default function StoryDetailPage() {
     return (
       <div className="max-w-2xl mx-auto text-center py-20">
         <p className="text-dim mb-4">{error || '후기를 찾을 수 없습니다.'}</p>
-        <Link href="/stories" className="text-accent hover:underline">
-          목록으로
-        </Link>
+        <div className="flex items-center justify-center gap-4">
+          {retryable && (
+            <button onClick={fetchStory} className="text-accent hover:underline cursor-pointer">
+              다시 시도
+            </button>
+          )}
+          <Link href="/stories" className="text-accent hover:underline">
+            목록으로
+          </Link>
+        </div>
       </div>
     );
   }
