@@ -61,13 +61,20 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
   const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
   const [showAvg, setShowAvg] = useState(true);
   const [loading, setLoading] = useState(false);
+  // ⚠️ 실패와 '데이터 없음'을 반드시 구분한다. 아래 빈 상태 문구는 "저장한 키워드의 순위 데이터가
+  // 쌓이면..." 인데, 로드가 실패했을 뿐인 사람에게 이걸 보여주면 **키워드를 저장하지 않았다고
+  // 거짓말**하는 셈이고 무의미한 행동까지 시키게 된다. (세션 만료 401 도 여기로 떨어졌다.)
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // 인플루언서: API에서 데이터 페치
   useEffect(() => {
     if (mode !== 'influencer' || !naverId) return;
     setLoading(true);
+    setFailed(false);
     fetch(`/api/my/rankings/history?days=${period}`)
-      .then(res => res.json())
+      // res.ok 를 안 보면 401/500 의 에러 바디가 data 가 되어 keywords 가 [] 로 떨어진다.
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then(data => {
         const kws = (data.keywords || []).slice(0, 10);
         setKeywords(kws);
@@ -75,9 +82,9 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
         // 기본 선택: 상위 5개
         setSelectedKeywords(new Set(kws.slice(0, 5).map((k: KeywordHistory) => k.keyword)));
       })
-      .catch(() => { setKeywords([]); setAvgHistory([]); })
+      .catch(() => { setKeywords([]); setAvgHistory([]); setFailed(true); })
       .finally(() => setLoading(false));
-  }, [mode, naverId, period]);
+  }, [mode, naverId, period, reloadKey]);
 
   // 블로거: props에서 데이터 받기
   useEffect(() => {
@@ -271,6 +278,21 @@ export default function RankTrendSection({ mode, naverId, bloggerData }: RankTre
             ))}
           </LineChart>
         </ResponsiveContainer>
+      ) : failed ? (
+        <div className="h-[260px] flex items-center justify-center text-dim text-sm">
+          <div className="text-center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-dim/40 mx-auto mb-2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+            <p>순위 추이를 불러오지 못했습니다.</p>
+            <p className="text-[11px] mt-1 text-dim/70">저장한 키워드가 없다는 뜻은 아닙니다.</p>
+            <button
+              type="button"
+              onClick={() => setReloadKey(k => k + 1)}
+              className="mt-3 px-3 py-1.5 bg-surface border border-border text-text text-xs font-semibold rounded-lg hover:border-accent/30 transition cursor-pointer"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="h-[260px] flex items-center justify-center text-dim text-sm">
           <div className="text-center">
