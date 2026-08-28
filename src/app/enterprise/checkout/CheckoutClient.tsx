@@ -275,11 +275,16 @@ export default function CheckoutClient() {
           </p>
 
           <Link
-            href="/my"
+            href="/enterprise/manage"
             className="mt-6 inline-block rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white transition hover:bg-accent-hover"
           >
-            대시보드로 이동
+            기업 계정 관리로 이동
           </Link>
+          <div className="mt-4">
+            <Link href="/my" className="text-sm text-text-2 underline transition hover:text-text">
+              대시보드로 이동
+            </Link>
+          </div>
         </div>
       </Shell>
     );
