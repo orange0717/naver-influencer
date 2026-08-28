@@ -1745,7 +1745,16 @@ export default function KeywordRankingSection() {
       actions={headerActions}
       cardsLoading={postsLoading}
       metrics={[
-        { key: 'total', label: '전체 포스팅', value: summary.total, tone: 'accent' },
+        // ⚠️ summary.total 은 기간 필터가 적용된 수(periodPosts)다. 그런데 라벨이 '전체
+        //    포스팅'이라, 기본값 30일이 켜진 첫 화면에서 940글 블로그가 "전체 포스팅 43"으로
+        //    보였다 — 바로 위 설명줄의 "전체 940개"와 정면으로 어긋나는 두 개의 '전체'였다.
+        //    지금 세고 있는 범위를 라벨에 적는다.
+        {
+          key: 'total',
+          label: usingCustomRange ? '선택 기간 포스팅' : period === 0 ? '전체 포스팅' : `최근 ${period}일 포스팅`,
+          value: summary.total,
+          tone: 'accent',
+        },
         {
           key: 'repDone',
           label: '대표키워드 완료',
