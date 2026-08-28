@@ -18,6 +18,21 @@
 -- 적용 방법: Supabase Dashboard → SQL Editor → 이 파일 전체 실행.
 -- ─────────────────────────────────────────────────────────────────────────
 
+-- ── 0. update_updated_at() 보증 ──────────────────────────────────────────
+-- 아래 5절 트리거 4개가 이 함수에 의존한다. SQL Editor 는 붙여넣은 스크립트 전체를
+-- 한 트랜잭션으로 돌리므로, 이 함수가 DB에 없으면 테이블 4개까지 통째로 롤백된다
+-- ("성공했다고 생각했는데 아무것도 안 생김"의 전형). schema.sql §12 와 본문이 동일하므로
+-- 이미 있으면 사실상 아무 일도 일어나지 않는다.
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
 -- ── 1. enterprise_orgs : 기업 조직 ───────────────────────────────────────
 CREATE TABLE IF NOT EXISTS enterprise_orgs (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
