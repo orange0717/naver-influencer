@@ -197,6 +197,10 @@ const VERDICT_STYLE: Record<ExposureVerdict, string> = {
 
 export default function MissingPostsSection() {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
+  // 프로필 조회가 끝났는가. profile===null 은 '없음'과 '아직 안 옴' 둘 다라서,
+  // 이걸 구분 못 하면 로딩 중에 "블로그를 등록하면 확인합니다"라고 단정해버린다
+  // (블로그가 멀쩡히 등록된 사용자에게 미등록이라고 말하는 셈).
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   // 이 화면 mount 당 조회 토큰 1개 (미노출 분석 데이터 요청에 공통 사용)
   const [viewToken] = useState(() => newViewToken());
@@ -263,6 +267,7 @@ export default function MissingPostsSection() {
     (async () => {
       const p = await getProfileFromApi();
       setProfile(p);
+      setProfileLoaded(true);
       // 프로필을 못 받으면 fetchPosts 가 아예 호출되지 않아 초기값 true 인 postsLoading 이
       // 영원히 풀리지 않는다 → 스피너 무한 회전. 여기서 로딩을 직접 종료한다.
       if (!p) setPostsLoading(false);
@@ -653,7 +658,9 @@ export default function MissingPostsSection() {
    * 그러면 다섯 카드가 전부 실측된 것처럼 0 을 단언한다. 실제로 화면 아래 목록은
    * "게시물을 수집하지 못했습니다"라고 정직하게 말하는데 카드만 0 이라 서로 모순됐다.
    */
-  const notMeasured = !isMember || !profile?.blogId || postsFailed;
+  // 프로필이 아직 안 왔으면 아무 판정도 하지 않는다 — 카드는 로딩 상태로 둔다.
+  const profilePending = isMember && !profileLoaded;
+  const notMeasured = !profilePending && (!isMember || !profile?.blogId || postsFailed);
   const notMeasuredReason = !isMember
     ? '로그인하면 확인합니다'
     : !profile?.blogId
@@ -839,7 +846,7 @@ export default function MissingPostsSection() {
         )
       )}
       <SummaryCards
-        loading={postsLoading}
+        loading={postsLoading || profilePending}
         cards={([
           { key: 'total', label: '전체 포스팅', value: periodPosts.length, color: 'accent', description: postsLoading ? '불러오는 중...' : '선택 기간 발행 글' },
           { key: 'normal', label: '노출', value: normalCount, color: 'up', description: postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출` },
