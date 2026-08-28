@@ -242,7 +242,7 @@ export default function MissingPostsSection() {
   const singleCheckRef = useRef(false);
 
   // 회원/권한 (§3·§12·§13) + 크레딧 정책 모달 (§2·§6·§8)
-  const { user, isError: authError } = useAuth();
+  const { user, isError: authError, isLoading: authLoading } = useAuth();
   const isMember = !!user.id;
   const { openGate } = useMemberOnlyGate();
   const router = useRouter();
@@ -658,9 +658,15 @@ export default function MissingPostsSection() {
    * 그러면 다섯 카드가 전부 실측된 것처럼 0 을 단언한다. 실제로 화면 아래 목록은
    * "게시물을 수집하지 못했습니다"라고 정직하게 말하는데 카드만 0 이라 서로 모순됐다.
    */
-  // 프로필이 아직 안 왔으면 아무 판정도 하지 않는다 — 카드는 로딩 상태로 둔다.
-  const profilePending = isMember && !profileLoaded;
-  const notMeasured = !profilePending && (!isMember || !profile?.blogId || postsFailed);
+  /**
+   * 신원·프로필이 아직 안 왔으면 아무 판정도 하지 않는다 — 카드는 로딩 상태로 둔다.
+   *
+   * authLoading 중에는 isMember 가 false 라서, 로그인한 사용자에게도 진입 직후
+   * "로그인하면 확인합니다"가 떴다(실화면 확인). profile 도 같은 이유로 함께 기다린다.
+   * 둘 다 '없음'이 아니라 '아직 모름'이며, 모르는 상태에서 안내를 단정하면 안 된다.
+   */
+  const identityPending = authLoading || (isMember && !profileLoaded);
+  const notMeasured = !identityPending && (!isMember || !profile?.blogId || postsFailed);
   const notMeasuredReason = !isMember
     ? '로그인하면 확인합니다'
     : !profile?.blogId
@@ -846,7 +852,7 @@ export default function MissingPostsSection() {
         )
       )}
       <SummaryCards
-        loading={postsLoading || profilePending}
+        loading={postsLoading || identityPending}
         cards={([
           { key: 'total', label: '전체 포스팅', value: periodPosts.length, color: 'accent', description: postsLoading ? '불러오는 중...' : '선택 기간 발행 글' },
           { key: 'normal', label: '노출', value: normalCount, color: 'up', description: postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출` },
