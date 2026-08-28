@@ -293,6 +293,13 @@ async function main() {
   const endIdx = Math.min(total, startIdx + limitCount);
 
   let updated = 0, noChange = 0, skipped = 0, failed = 0;
+  /**
+   * 프로필 페이지는 정상 파싱됐는데 팬수 필드만 없던 횟수 / 정상 파싱된 총 횟수.
+   * 네이버가 JSON 경로를 또 옮기면(2026-04 에 data.subscriberCount → data.stats.subscriberCount 로
+   * 옮긴 전례가 있다) 모든 사람의 팬수가 한꺼번에 null 로 보이고, 그대로 저장하면
+   * 멀쩡한 19,840명의 팬수를 통째로 지운다. 그래서 "다 같이 사라졌다"면 저장하지 않는다.
+   */
+  let parsedCount = 0, missingFanCount = 0;
   let cancelled = false;
   process.on('SIGINT', () => { console.log('\n중단 요청 수신. 진행 저장 후 종료합니다...'); cancelled = true; });
 
@@ -318,8 +325,21 @@ async function main() {
       if (profile.totalFollowerCount !== null && profile.totalFollowerCount > 0 && profile.totalFollowerCount !== inf.total_follower_count) {
         updateData.total_follower_count = profile.totalFollowerCount;
       }
-      if (profile.subscriberCount !== null && profile.subscriberCount > 0 && profile.subscriberCount !== inf.subscriber_count) {
-        updateData.subscriber_count = profile.subscriberCount;
+      // ⚠️ 예전 조건은 `> 0` 이었다. 그래서 두 가지 사실이 영영 저장되지 못했다 —
+      //    ① 팬이 정말 0명인 사람 ② 네이버가 팬수를 안 주는 사람.
+      //    발굴 스크립트가 수집 실패를 0 으로 적어 넣은 탓에 "팬 0명"과 "아직 못 잼"이
+      //    DB에서 이미 합쳐져 있는데(2026-08-28 실측: 팬수 하위 200명 전부 NULL 0건·0 200건),
+      //    이 조건이 그 가짜 0 을 영구히 굳혀 왔다. 파싱에 성공했으면 0 도 null 도 사실대로 적는다.
+      //    단, 마크업 변경으로 **다 같이** null 이 된 경우는 아래 mass-null 방어로 거른다.
+      parsedCount++;
+      if (profile.subscriberCount === null) missingFanCount++;
+      if (profile.subscriberCount !== inf.subscriber_count) {
+        if (profile.subscriberCount !== null) {
+          updateData.subscriber_count = profile.subscriberCount;
+        } else if (parsedCount >= 20 && missingFanCount / parsedCount < 0.5) {
+          // 이번 회차에서 팬수를 못 읽은 게 소수일 때만 "이 사람은 정말 없다"로 본다.
+          updateData.subscriber_count = null;
+        }
       }
       if (!inf.naver_owner_id && profile.ownerId) {
         updateData.naver_owner_id = profile.ownerId;
@@ -380,6 +400,16 @@ async function main() {
   console.log(`  변화 없음: ${noChange}명`);
   console.log(`  스킵(프로필 없음): ${skipped}명`);
   console.log(`  실패: ${failed}명`);
+  // 마크업 변경 조기 감지 — 이 비율이 갑자기 치솟으면 네이버가 팬수 필드를 또 옮긴 것이다.
+  if (parsedCount > 0) {
+    const missRate = missingFanCount / parsedCount;
+    console.log(`  팬수 미제공: ${missingFanCount}/${parsedCount}명 (${(missRate * 100).toFixed(1)}%)`);
+    if (parsedCount >= 20 && missRate >= 0.5) {
+      console.warn('  ⚠️ 절반 이상이 팬수를 안 줍니다. 네이버 JSON 경로가 바뀌었을 가능성이 큽니다.');
+      console.warn('     이번 회차는 팬수를 null 로 지우지 않았습니다(멀쩡한 값 대량 삭제 방지).');
+      console.warn('     fetchProfile() 의 subscriberCount 파싱 경로를 확인하세요.');
+    }
+  }
   if (!isApply) console.log('\n*** dry-run 결과입니다. 실제 반영하려면 --apply 를 추가해 다시 실행하세요. ***');
 }
 
