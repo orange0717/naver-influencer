@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -32,18 +32,28 @@ export default function StoriesPage() {
   const [stories, setStories] = useState<Story[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const { user } = useAuth();
 
-  useEffect(() => {
+  // ⚠️ 예전엔 res.ok 검사도 catch 처리도 없어서, 서버가 500 을 주거나 네트워크가 끊겨도
+  // `data.stories || []` 가 빈 배열이 되어 "총 0건 / 아직 등록된 후기가 없습니다" 로 그려졌다.
+  // **불러오지 못한 것과 실제로 없는 것은 다르다.** 실패는 실패로 보여주고 다시 시도할 길을 준다.
+  const load = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
     fetch('/api/stories?limit=50')
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((data) => {
-        setStories(data.stories || []);
-        setTotal(data.total || 0);
+        setStories(Array.isArray(data.stories) ? data.stories : []);
+        setTotal(typeof data.total === 'number' ? data.total : 0);
       })
-      .catch(() => {})
+      .catch(() => setFailed(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -53,7 +63,8 @@ export default function StoriesPage() {
           <p className="text-sm text-dim mt-1">N인플을 사용하며 성장한 실사용자들의 이야기</p>
         </div>
         <div className="flex items-center gap-3">
-          <p className="text-sm text-dim">총 {total}건</p>
+          {/* 못 불러왔을 땐 "총 0건" 이라고 단정하지 않는다 */}
+          <p className="text-sm text-dim">{failed ? '총 —건' : `총 ${total}건`}</p>
           {user.id && (
             <Link
               href="/stories/write"
@@ -68,6 +79,17 @@ export default function StoriesPage() {
       {loading ? (
         <div className="text-center py-20">
           <span className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block" />
+        </div>
+      ) : failed ? (
+        <div className="text-center py-20 space-y-3">
+          <p className="text-dim text-sm">후기 목록을 불러오지 못했습니다.</p>
+          <button
+            type="button"
+            onClick={load}
+            className="px-3 py-1.5 bg-surface border border-border text-text text-sm font-semibold rounded-lg hover:border-accent/30 transition cursor-pointer"
+          >
+            다시 시도
+          </button>
         </div>
       ) : stories.length === 0 ? (
         <div className="text-center py-20 text-dim text-sm">
