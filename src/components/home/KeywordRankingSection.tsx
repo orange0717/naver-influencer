@@ -90,6 +90,8 @@ export default function KeywordRankingSection() {
   const [blogPostsTotal, setBlogPostsTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
+  /** 포스팅 조회가 실패했는가. '수집된 글 0개'와 반드시 구분해야 하는 상태다. */
+  const [postsFailed, setPostsFailed] = useState(false);
 
   // postId → 이 포스팅에 등록된 전체 키워드 배열 (대표·보조·추가 모두 — keyword_rank_lookups 의 사본)
   // ⚠️ 저장(PUT)은 "이 목록에 없는 키워드는 삭제"이므로, 부분 목록을 저장하면 자동추출분이 지워진다.
@@ -277,17 +279,19 @@ export default function KeywordRankingSection() {
   }, [profile, showError, queryClient]);
 
   // 노출 현황과 동일하게 전체 포스팅을 한 번에 로드하고 클라이언트에서 기간/상태/검색으로 필터한다(스펙 #2/#24).
+  // 조회 실패를 조용히 삼키면 blogPosts 가 [] 로 남고, 그게 '글이 0개'와 구별되지 않는다.
+  // 실패 여부를 들고 있어야 빈 표에 "못 불러왔다(다시 시도)"와 "수집된 글이 없다"를 갈라 쓸 수 있다.
   const fetchBlogPosts = useCallback(async (blogId: string) => {
     setPostsLoading(true);
     try {
       const res = await fetch(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&all=true`);
-      if (res.ok) {
-        const data = await res.json();
-        const posts: BlogPost[] = data.posts || [];
-        setBlogPosts(posts);
-        setBlogPostsTotal(data.totalCount || posts.length);
-      }
-    } catch { /* ignore */ }
+      if (!res.ok) { setPostsFailed(true); return; }
+      const data = await res.json();
+      const posts: BlogPost[] = data.posts || [];
+      setPostsFailed(false);
+      setBlogPosts(posts);
+      setBlogPostsTotal(data.totalCount || posts.length);
+    } catch { setPostsFailed(true); }
     finally { setPostsLoading(false); }
   }, []);
 
@@ -1160,6 +1164,11 @@ export default function KeywordRankingSection() {
     return (
       <div className="space-y-6">
         <div className="h-8 w-32 bg-border/30 rounded animate-pulse" />
+        {/* 전체 포스팅 크롤은 900글 기준 12~25초가 걸린다. 아무 말 없이 스켈레톤만 돌면
+            사용자는 몇 초 만에 고장 났다고 판단한다 — 얼마나 기다리면 되는지 알려준다. */}
+        <p className="text-xs text-dim">
+          블로그 글을 불러오는 중입니다. 글이 많으면 최대 1분까지 걸릴 수 있습니다.
+        </p>
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-16 bg-border/20 rounded-xl animate-pulse" />
@@ -1761,9 +1770,24 @@ export default function KeywordRankingSection() {
         loading={postsLoading}
         minWidth="1200px"
         maxHeight="72vh"
-        empty={blogPosts.length === 0
-          ? { title: '게시물을 수집하지 못했습니다.', description: '블로그 연결 상태를 확인한 뒤 다시 시도해주세요.' }
-          : {
+        empty={postsFailed
+          ? {
+            // 조회가 실패한 것과 블로그에 글이 없는 것은 다르다. 예전엔 둘 다
+            // "게시물을 수집하지 못했습니다"로 나왔고, 다시 시도할 방법도 없었다.
+            title: '게시물을 불러오지 못했습니다.',
+            description: '네트워크 상태를 확인한 뒤 다시 시도해주세요. 글이 많은 블로그는 첫 조회가 오래 걸릴 수 있습니다.',
+            action: (
+              <button
+                onClick={() => { if (profile?.blogId) fetchBlogPosts(profile.blogId); }}
+                className={actionButtonSecondaryClass}
+              >
+                다시 시도
+              </button>
+            ),
+          }
+          : blogPosts.length === 0
+            ? { title: '수집된 게시물이 없습니다.', description: '블로그에 글을 발행하면 여기에 표시됩니다.' }
+            : {
             title: '해당 조건의 포스팅이 없습니다.',
             description: '기간 또는 순위 필터를 변경해보세요.',
             action: (
