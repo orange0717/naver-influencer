@@ -6,10 +6,12 @@
 -- 이 테이블들은 상담 없이 바로 결제하는 자가가입 경로(/enterprise/signup)를 담당한다.
 --
 -- 확정된 정책 (2026-08-27):
+--   · 요금제 2종. BASIC 좌석당 5,500원 / PRO 좌석당 9,900원, 금액 = 좌석당 단가 × 좌석 수(VAT 포함).
+--     기능 차등은 새로 만들지 않고 기존 개인 티어를 그대로 쓴다 — BASIC=blogger, PRO=influencer.
 --   · 좌석은 대표(OWNER) 포함. 최소 1명, 상한 없음.
 --   · 역할은 OWNER / MEMBER 2단계.
---   · 월 선불 1회성 결제. 현재 PG 채널이 빌링키를 미지원해 자동청구가 불가능하므로
---     구독(subscriptions)이 아니라 만료일(current_period_end) 기반으로 관리한다.
+--   · 월 선불 1회성 결제, 가입일 기준 매월(일할 없음). 현재 PG 채널이 빌링키를 미지원해
+--     자동청구가 불가능하므로 구독(subscriptions)이 아니라 만료일 기반으로 관리한다.
 --   · 증원은 즉시 차액 결제, 감원은 다음 주기부터 반영(환불 없음) → pending_seat_limit.
 --   · 초대는 7일 만료, 초대받은 이메일 본인만 수락.
 --
@@ -36,6 +38,8 @@ CREATE TABLE IF NOT EXISTS enterprise_orgs (
 
   owner_user_id        UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
 
+  -- BASIC → 개인 요금제의 blogger 티어, PRO → influencer 티어 권한을 좌석에 부여한다.
+  plan_id              TEXT NOT NULL CHECK (plan_id IN ('BASIC', 'PRO')),
   -- 결제한 좌석 수 (OWNER 포함)
   seat_limit           INTEGER NOT NULL CHECK (seat_limit >= 1),
   -- 감원 예약분. 다음 갱신 때 seat_limit 으로 내려앉는다. NULL = 예약 없음.
@@ -123,8 +127,11 @@ CREATE TABLE IF NOT EXISTS enterprise_orders (
   org_id        UUID NOT NULL REFERENCES enterprise_orgs(id) ON DELETE CASCADE,
 
   kind          TEXT NOT NULL CHECK (kind IN ('initial', 'renewal', 'seat_add')),
+  plan_id       TEXT NOT NULL CHECK (plan_id IN ('BASIC', 'PRO')),
   -- 이 주문이 확정하는 좌석 수 (seat_add 는 증원 후 총 좌석)
   seat_count    INTEGER NOT NULL CHECK (seat_count >= 1),
+  -- 청구 시점의 좌석당 단가. 나중에 단가를 올려도 과거 주문의 근거가 남아야 한다.
+  seat_price    INTEGER NOT NULL CHECK (seat_price >= 0),
   -- 서버에서 재계산한 금액(원, VAT 포함). 클라이언트가 보낸 값은 저장하지 않는다.
   amount        INTEGER NOT NULL CHECK (amount >= 0),
   currency      TEXT NOT NULL DEFAULT 'KRW' CHECK (currency = 'KRW'),

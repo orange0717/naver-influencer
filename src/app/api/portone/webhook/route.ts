@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/portone';
 import { createServiceClient } from '@/lib/supabase-server';
 import { PAYMENT_ID_REGEX, completeBillingKeyIssue } from '@/lib/billing';
+import { activateOrgOrder } from '@/lib/enterprise-billing';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +103,20 @@ export async function POST(req: NextRequest) {
         const pid = payload.data?.paymentId;
         console.log('[PortOne webhook] Paid:', pid);
         if (pid && PAYMENT_ID_REGEX.test(pid)) {
+          // 기업 주문과 개인 구독은 paymentId 형식이 같아 구분이 안 된다. 주문 테이블에
+          // 걸리면 기업 건이므로 여기서 끝낸다(activateOrgOrder 는 멱등).
+          const { data: orgOrder } = await supa
+            .from('enterprise_orders')
+            .select('id')
+            .eq('payment_id', pid)
+            .maybeSingle();
+          if (orgOrder) {
+            const r = await activateOrgOrder(pid);
+            if (!r.ok) console.error('[PortOne webhook] org activation failed:', pid, r.error);
+            else console.log('[PortOne webhook] org activated:', pid);
+            break;
+          }
+
           const { data: existingTx } = await supa
             .from('payment_transactions')
             .select('id')

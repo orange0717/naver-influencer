@@ -757,14 +757,14 @@ export default function AuthModal() {
               <div className="rounded-xl border border-border bg-bg p-4 text-center">
                 <p className="text-xs font-bold text-text">기업/기관으로 이용하시나요?</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-dim">
-                  기업 고객은 기업용 문의를 통해 이용 환경과 필요한 기능을 상담받으실 수 있습니다.
+                  이용하실 인원 수만큼 좌석을 결제하고 멤버를 초대하실 수 있습니다.
                 </p>
                 <Link
-                  href="/enterprise"
+                  href="/enterprise/signup"
                   onClick={handleClose}
                   className="mt-3 inline-block rounded-lg border border-border bg-surface px-4 py-2 text-xs font-semibold text-text-2 transition hover:border-accent/40 hover:text-accent"
                 >
-                  기업용 문의하기
+                  기업으로 시작하기
                 </Link>
               </div>
             </form>

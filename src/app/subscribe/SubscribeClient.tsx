@@ -6,8 +6,13 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import BillingButton from '@/components/BillingButton';
 import { useAuth } from '@/hooks/useAuth';
-import { CONTACT_EMAIL } from '@/lib/site-contact';
 import { CREDIT_PACKAGES } from '@/lib/credit-config';
+import {
+  PLANS as ORG_PLANS,
+  PLAN_IDS as ORG_PLAN_IDS,
+  PLAN_FEATURES,
+  PLAN_LABEL,
+} from '@/lib/pricing';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 const CHECK = (
@@ -199,7 +204,7 @@ export default function SubscribeClient() {
       </div>
 
       {/* 플랜 카드 */}
-      <div id="pricing" className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div id="pricing" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* 무료 */}
         <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
           <div>
@@ -315,29 +320,42 @@ export default function SubscribeClient() {
           </ul>
         </div>
 
-        {/* 기업 */}
-        <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
-          <div>
-            <p className="text-xs text-dim font-semibold">기업</p>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-2xl font-black">Customizing</span>
+      </div>
+
+      {/* 기업용 플랜 — 좌석당 월 과금이라 위의 결제 주기 토글이 적용되지 않는다. 그래서 별도 섹션으로 뗀다. */}
+      <div className="space-y-5">
+        <div className="text-center space-y-1">
+          <h2 className="text-base font-bold">기업용</h2>
+          <p className="text-xs text-dim">좀 더 많은 인원이 함께 쓰신다면, 좌석 수만큼 결제하고 멤버를 초대하실 수 있습니다.</p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-5">
+          {ORG_PLAN_IDS.map((planId) => (
+            <div key={planId} className="bg-surface rounded-lg border border-border p-6 space-y-5">
+              <div>
+                <p className="text-xs text-accent font-semibold">{PLAN_LABEL[planId]}</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl font-black tabular-nums">{formatKRW(ORG_PLANS[planId].seatPrice)}</span>
+                  <span className="text-sm text-dim">원</span>
+                </div>
+                <p className="text-[11px] text-accent font-semibold">좌석당 월 요금 · VAT 포함</p>
+              </div>
+              <p className="text-sm text-dim leading-relaxed">
+                이용하실 인원 수만큼 좌석을 결제하시면 됩니다. 대표 계정도 좌석 하나를 사용합니다.
+              </p>
+              <Link
+                href="/enterprise/signup"
+                className="block text-center py-3 bg-bg border border-border text-text font-bold text-sm rounded-xl hover:border-accent/40 transition"
+              >
+                기업으로 시작하기
+              </Link>
+              <ul className="space-y-2.5 text-sm">
+                {PLAN_FEATURES[planId].map((feature) => (
+                  <li key={feature} className="flex items-center gap-2.5">{CHECK}<span>{feature}</span></li>
+                ))}
+              </ul>
             </div>
-            <p className="text-[11px] text-accent font-semibold">별도협의</p>
-          </div>
-          <p className="text-sm text-dim leading-relaxed">
-            대량 계정, 맞춤 리포트 등 기업 맞춤 이용은 별도 협의해 드립니다.
-          </p>
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="block text-center py-3 bg-bg border border-border text-text font-bold text-sm rounded-xl hover:border-accent/40 transition"
-          >
-            문의하기
-          </a>
-          <ul className="space-y-2.5 text-sm">
-            <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 플랜 전체 포함</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>맞춤 Customizing</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>별도협의</span></li>
-          </ul>
+          ))}
         </div>
       </div>
 

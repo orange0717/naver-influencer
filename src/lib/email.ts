@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { INVITE_TTL_DAYS } from '@/lib/enterprise-invite';
 
 let _resend: Resend | null = null;
 function getResend() {
@@ -310,6 +311,47 @@ export async function sendPrivacyPolicyUpdateEmail(
   });
   if (error) {
     console.error('[email] 개인정보처리방침 개정 안내 발송 실패:', error);
+    throw new Error(error.message || '이메일 발송 실패');
+  }
+}
+
+/** 기업 좌석 초대 — 토큰 원문은 이 메일이 유일한 전달 경로다(DB에는 해시만 있다). */
+export async function sendOrgInviteEmail(to: string, companyName: string, token: string) {
+  const safeCompany = escapeHtml(companyName);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ninfle.kr';
+  const acceptUrl = `${baseUrl}/enterprise/invite?token=${encodeURIComponent(token)}`;
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `[N인플] ${companyName}에서 좌석에 초대했습니다`,
+    html: `
+      <div style="max-width:520px;margin:0 auto;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#333">
+        <div style="background:#c8816b;padding:24px 20px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="color:#fff;font-size:20px;margin:0">N인플</h1>
+        </div>
+        <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
+          <p style="font-size:16px;font-weight:bold;margin:0 0 16px">${safeCompany}에서 N인플 좌석에 초대했습니다.</p>
+          <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
+            아래 버튼으로 초대를 수락하면 기업 요금제의 기능을 바로 이용할 수 있습니다.<br>
+            초대는 <strong>${INVITE_TTL_DAYS}일</strong> 후 만료되며, 이 메일을 받은 주소로만 수락할 수 있습니다.
+          </p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="${acceptUrl}"
+               style="display:inline-block;padding:14px 32px;background:#c8816b;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
+              초대 수락하기
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+          <p style="font-size:11px;color:#999;text-align:center;margin:0">
+            본인이 요청하지 않은 초대라면 이 메일을 무시하셔도 됩니다.<br>
+            링크를 다른 사람에게 전달하지 마세요.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('[email] 기업 초대 발송 실패:', error);
     throw new Error(error.message || '이메일 발송 실패');
   }
 }
