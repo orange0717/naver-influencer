@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { withTimeout } from '@/lib/with-timeout';
 import { clearUserScopedLocalStorage } from '@/lib/clear-user-storage';
 
 type UserInfo = {
@@ -32,7 +33,11 @@ async function fetchUser(): Promise<UserInfo> {
   // Supabase 세션에서 토큰을 가져와 Bearer 헤더로 전달
   try {
     const supabase = createSupabaseBrowserClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    // getSession()은 navigator LockManager 락을 기다린다. 락을 쥔 쪽이 끝나지 않으면
+    // 이 await가 영원히 안 끝나고 isLoading이 true로 굳어 화면이 "불러오는 중…"에서 멈춘다.
+    // 비회원은 락 경합이 없어 멀쩡하고 **로그인한 사람만** 전 화면이 멈추는 형태로 나타난다.
+    // 시간을 넘기면 아래 쿠키 기반 폴백으로 내려가야 하므로 던진다.
+    const { data: { session } } = await withTimeout(supabase.auth.getSession(), 5000, '세션 확인');
 
     if (session?.access_token) {
       const res = await fetch('/api/auth/me', {
