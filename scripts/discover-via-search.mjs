@@ -163,7 +163,10 @@ async function fetchProfile(naverId) {
     profile_url: `${CONFIG.PROFILE_URL}/${naverId}`,
     image_url: profile.profileImageUrl || '',
     introduction: profile.introduction || '',
-    subscriber_count: stats.subscriberCount || 0,
+    // ⚠️ `|| 0` 이면 네이버가 팬수를 안 줬을 때(수집 실패) 0 을 지어내서 저장한다.
+    //    그리고 refresh-influencer-profiles 는 `> 0` 일 때만 덮어쓰므로 그 0 이 영구히 굳는다 —
+    //    "팬 0명"과 "아직 못 잼"이 DB 단계에서 합쳐져 되돌릴 수 없게 된다. 모르면 null 로 둔다.
+    subscriber_count: typeof stats.subscriberCount === 'number' ? stats.subscriberCount : null,
     total_follower_count: space.totalFollowerCount || profile.followerCount || 0,
     my_keyword: myKw.keyword || '',
     my_keyword_category: myKw.category || '',

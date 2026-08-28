@@ -12,6 +12,8 @@ import { AI_THRESHOLD, getAiBadgeStyle, sentenceTypeLabel, extractPostInfo, Stat
 export default function CompetitorPage() {
   const [tab, setTab] = useState<AnalysisTab>('challenge');
   const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
+  /** 내 정보를 **확인하지 못한** 상태. 비로그인(=확인했고 없음)과 구분해야 한다. */
+  const [authFailed, setAuthFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
 
@@ -51,6 +53,11 @@ export default function CompetitorPage() {
   async function loadAuth() {
     try {
       const res = await fetch('/api/auth/me');
+      // ⚠️ res.ok 를 안 보면 503(auth_backend_unavailable) 응답의 { error } 가 그대로 data 가 되고,
+      //    data.id 가 없으니 **로그인해 둔 사람을 회원 전용 모달로 쫓아낸다**. 서버가 잠깐 흔들린
+      //    것을 "당신은 회원이 아니다"로 단정하는 셈이다. 확인 실패는 비로그인이 아니다.
+      //    (/api/auth/me 는 비로그인일 때 200 { id: null } 을, 장애일 때만 503 을 준다.)
+      if (!res.ok) throw new Error(`auth_check_failed_${res.status}`);
       const data = await res.json();
       // 목적지를 붙여야 로그인 후 여기로 돌아온다(안 붙이면 홈에 남는다).
       // 회원 전용 모달(가입/로그인 둘 다)로 통일(2026-08-28 오렌지 승인 "C를 B로 합치기").
@@ -82,8 +89,11 @@ export default function CompetitorPage() {
         top3Count: stats.top3Count,
         avgRank: stats.avgRank,
       });
-    } catch {
-      console.error('[competitor] loadAuth failed');
+    } catch (e) {
+      // 실패를 삼키면 아래 `!authInfo` 분기가 "로그인이 필요합니다"로 둔갑한다 —
+      // 로그인해 둔 사람에게 로그인하라고 하는 거짓 안내다. 실패는 실패로 남긴다.
+      console.error('[competitor] loadAuth failed', e);
+      setAuthFailed(true);
     }
     finally { setLoading(false); }
   }
@@ -294,11 +304,27 @@ export default function CompetitorPage() {
     return <div className="max-w-4xl mx-auto py-20 text-center text-dim">로딩 중...</div>;
   }
 
+  if (!authInfo && authFailed) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center space-y-2">
+        <p className="text-text font-semibold">내 정보를 불러오지 못했습니다.</p>
+        <p className="text-dim text-sm">로그아웃되었다는 뜻이 아닙니다. 잠시 후 다시 시도해 주세요.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-5 py-2.5 bg-accent text-white rounded-xl font-bold hover:bg-accent-hover transition"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
+
   if (!authInfo) {
     return (
       <div className="max-w-4xl mx-auto py-20 text-center">
         <p className="text-dim mb-4">로그인이 필요합니다.</p>
-        <a href="/auth/login" className="text-accent font-semibold">로그인하기</a>
+        {/* 목적지를 붙여야 로그인 후 이 화면으로 돌아온다. */}
+        <a href={`/?memberOnly=1&redirect=${encodeURIComponent('/competitor')}`} className="text-accent font-semibold">로그인하기</a>
       </div>
     );
   }

@@ -41,7 +41,11 @@ export default function BloggerKeywordsPage() {
   useEffect(() => {
     (async () => {
       try {
+        // ⚠️ res.ok 를 안 보면 503(auth_backend_unavailable) 의 { error } 가 data 가 되어
+        //    로그인해 둔 사람도 '비로그인'으로 굳는다. /api/auth/me 는 비로그인일 때
+        //    200 { id: null } 을, 장애일 때만 503 을 주므로 그 구분을 버리지 않는다.
         const res = await fetch('/api/auth/me');
+        if (!res.ok) throw new Error(`auth_check_failed_${res.status}`);
         const data = await res.json();
         if (data.type && data.id) {
           setIsLoggedIn(true);
@@ -50,7 +54,8 @@ export default function BloggerKeywordsPage() {
           setIsLoggedIn(false);
         }
       } catch {
-        setIsLoggedIn(false);
+        // 확인 실패는 '비로그인'이 아니다 — 모르는 상태(null)로 남긴다.
+        setIsLoggedIn(null);
       }
     })();
   }, []);
@@ -67,6 +72,11 @@ export default function BloggerKeywordsPage() {
   };
 
   const toggleSave = async (kw: KeywordResult) => {
+    if (isLoggedIn === null) {
+      // 아직/영영 확인을 못 한 상태. "로그인이 필요합니다"라고 하면 로그인해 둔 사람에게 거짓말이다.
+      alert('로그인 상태를 확인하지 못했습니다. 로그아웃되었다는 뜻은 아니며, 잠시 후 다시 시도해 주세요.');
+      return;
+    }
     if (!isLoggedIn) {
       alert('로그인이 필요합니다.');
       return;

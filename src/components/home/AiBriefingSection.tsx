@@ -198,6 +198,12 @@ export default function AiBriefingSection() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string }>({ done: 0, total: 0, current: '' });
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const bulkAbortRef = useRef(false);
+  /**
+   * 배치 재진입 차단. state(bulkRunning)만으로 막으면 리렌더 이전에 들어온 두 번째 호출이
+   * 그대로 통과해 같은 포스팅을 두 번 조회하고 진행률이 서로를 덮어쓴다.
+   * ref 는 즉시 반영되므로 미노출 화면의 runBatch 와 같은 방식으로 맞춘다.
+   */
+  const bulkRunningRef = useRef(false);
   // 단건 AI 확인('다시 검사' / '분석') 중복 실행 방지 — 헤드리스 브라우저로 네이버를 실제 조회하므로
   // 이중 실행은 비용도 두 배지만 네이버 차단 위험이 더 크다(요청 간격 제한을 스스로 깨는 셈).
   // disabled 는 state 라 같은 프레임의 빠른 연속 클릭을 못 막으므로 동기적으로 읽히는 ref 로 막는다.
@@ -952,7 +958,7 @@ export default function AiBriefingSection() {
 
   // 실제 배치 실행: 신규 확인 대상 중 최신순 최대 BULK_RUN_CAP건을, 건당 지연을 두고 순차 확인(재개형).
   const runBulk = async () => {
-    if (!profile || bulkRunning) return;
+    if (!profile || bulkRunning || bulkRunningRef.current) return;
     setBulkModalOpen(false);
     setBulkNotice(null);
     bulkAbortRef.current = false;
@@ -962,6 +968,7 @@ export default function AiBriefingSection() {
       showError('새로 확인할 포스팅이 없습니다. (모두 최근 확인됨)', 4000);
       return;
     }
+    bulkRunningRef.current = true;
     setBulkRunning(true);
     setBulkProgress({ done: 0, total: targets.length, current: '' });
     let halted = false;
@@ -988,6 +995,7 @@ export default function AiBriefingSection() {
       }
       if (i < targets.length - 1 && !bulkAbortRef.current) await sleep(BATCH_DELAY_MS);
     }
+    bulkRunningRef.current = false;
     setBulkRunning(false);
     if (halted && haltReason === 'auth') {
       setBulkNotice('로그인이 만료되었거나 이 블로그를 확인할 권한이 없어 중단했습니다. 다시 로그인한 뒤 "전체 업데이트"를 눌러 주세요. 확인하지 못한 포스팅은 미확인 상태로 그대로 남습니다.');

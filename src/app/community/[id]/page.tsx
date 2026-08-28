@@ -67,14 +67,23 @@ export default function CommunityPostPage() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const [authChecked, setAuthChecked] = useState(false);
+  /** 로그인 여부를 **확인하지 못한** 상태. 비로그인(=확인했고 없음)과 절대 같은 화면을 보여주면 안 된다. */
+  const [authFailed, setAuthFailed] = useState(false);
+  const [loadError, setLoadError] = useState<{ title: string; detail: string; retryable: boolean } | null>(null);
 
   useEffect(() => {
+    // ⚠️ 예전엔 res.ok 를 안 보고 바로 .json() 했고, 실패하면 catch 가 조용히 삼켰다.
+    //    그러면 로그인해 둔 사람에게도 "로그인이 필요합니다"가 뜬다 — 확인 실패를 로그아웃으로
+    //    단정하는 거짓말이다. 확인 못 한 것은 '없음'이 아니다.
     fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(data => {
-        if (data.id) setUser({ type: data.type, id: data.id, name: data.name });
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
       })
-      .catch(() => {})
+      .then(data => {
+        if (data?.id) setUser({ type: data.type, id: data.id, name: data.name });
+      })
+      .catch(() => setAuthFailed(true))
       .finally(() => setAuthChecked(true));
   }, []);
 
@@ -82,6 +91,7 @@ export default function CommunityPostPage() {
     if (!authChecked) return;
     if (!user) return; // 비로그인이면 게시글 로드하지 않음
     setLoading(true);
+    setLoadError(null);
     try {
       // sessionStorage로 세션당 1회만 조회수 증가
       const viewedKey = `post_viewed_${postId}`;
@@ -93,7 +103,19 @@ export default function CommunityPostPage() {
 
       const res = await fetch(`/api/community/${postId}`, { headers });
       if (!res.ok) {
-        router.push('/community');
+        // ⚠️ 예전엔 여기서 말없이 /community 로 튕겼다. 글이 지워진 건지, 내가 볼 권한이 없는 건지,
+        //    서버가 잠깐 죽은 건지 사용자는 알 방법이 없었고 "왜 목록으로 돌아왔지?"만 남았다.
+        //    상태 코드로 갈라서 이유를 말하고, 다시 시도할 수 있는 것만 다시 시도를 준다.
+        //    (문구 정규식이 아니라 상태 코드가 1차 기준이다.)
+        setLoadError(
+          res.status === 404
+            ? { title: '이 글을 찾을 수 없습니다.', detail: '작성자가 삭제했거나 주소가 잘못된 글입니다.', retryable: false }
+            : res.status === 403
+              ? { title: '이 글을 볼 권한이 없습니다.', detail: '비공개 글이거나 접근이 제한된 글입니다.', retryable: false }
+              : res.status === 401
+                ? { title: '로그인 정보가 만료되었습니다.', detail: '다시 로그인하면 이어서 볼 수 있습니다.', retryable: false }
+                : { title: '글을 불러오지 못했습니다.', detail: `서버가 응답하지 않았습니다 (오류 코드 ${res.status}). 글이 삭제된 것은 아닙니다.`, retryable: true },
+        );
         return;
       }
       if (isFirstView) sessionStorage.setItem(viewedKey, '1');
@@ -104,7 +126,8 @@ export default function CommunityPostPage() {
       // 좋아요 여부는 서버가 로그인 계정 기준으로 판단 (계정별 정확성 보장, 클라이언트 캐시 미사용)
       setLiked(!!data.liked);
     } catch {
-      router.push('/community');
+      // 네트워크가 끊긴 것도 예전엔 "목록으로 튕김"이라 글이 사라진 것처럼 보였다.
+      setLoadError({ title: '글을 불러오지 못했습니다.', detail: '네트워크 연결을 확인해 주세요. 글이 삭제된 것은 아닙니다.', retryable: true });
     } finally {
       setLoading(false);
     }
@@ -217,6 +240,32 @@ export default function CommunityPostPage() {
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
+  // 로그인 여부 **확인 실패**. 비로그인이라고 단정하지 않는다 — 로그인해 둔 사람에게
+  // "로그인이 필요합니다"라고 말하면 그건 우리가 못 잰 것을 사용자 탓으로 돌리는 것이다.
+  if (authChecked && !user && authFailed) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 text-center">
+        <div className="bg-surface rounded-lg border border-border p-8 space-y-4">
+          <h2 className="text-lg font-bold">로그인 상태를 확인하지 못했습니다.</h2>
+          <p className="text-sm text-dim">
+            로그아웃되었다는 뜻이 아닙니다. 잠시 후 다시 시도해 주세요.
+          </p>
+          <div className="flex justify-center gap-3 pt-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 bg-accent text-white rounded-lg text-sm font-bold hover:bg-accent-hover transition"
+            >
+              다시 시도
+            </button>
+            <Link href="/community" className="px-6 py-2.5 bg-surface border border-border text-dim rounded-lg text-sm font-semibold hover:border-accent/40 transition">
+              목록으로
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 비로그인 시 로그인 유도
   if (authChecked && !user) {
     return (
@@ -249,7 +298,53 @@ export default function CommunityPostPage() {
     );
   }
 
-  if (!post) return null;
+  // 불러오기 실패는 이유를 밝히고, 다시 시도할 수 있는 것만 다시 시도를 준다.
+  if (loadError) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 text-center">
+        <div className="bg-surface rounded-lg border border-border p-8 space-y-4">
+          <h2 className="text-lg font-bold">{loadError.title}</h2>
+          <p className="text-sm text-dim">{loadError.detail}</p>
+          <div className="flex justify-center gap-3 pt-2">
+            {loadError.retryable && (
+              <button
+                onClick={() => fetchPost()}
+                className="px-6 py-2.5 bg-accent text-white rounded-lg text-sm font-bold hover:bg-accent-hover transition"
+              >
+                다시 시도
+              </button>
+            )}
+            <Link href="/community" className="px-6 py-2.5 bg-surface border border-border text-dim rounded-lg text-sm font-semibold hover:border-accent/40 transition">
+              목록으로
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ⚠️ 예전엔 `return null` 이라 하얀 빈 화면만 남았다. 빈 화면은 아무것도 설명하지 않는다.
+  if (!post) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 text-center">
+        <div className="bg-surface rounded-lg border border-border p-8 space-y-4">
+          <h2 className="text-lg font-bold">글 내용을 받지 못했습니다.</h2>
+          <p className="text-sm text-dim">서버가 빈 응답을 보냈습니다. 글이 삭제된 것은 아닙니다.</p>
+          <div className="flex justify-center gap-3 pt-2">
+            <button
+              onClick={() => fetchPost()}
+              className="px-6 py-2.5 bg-accent text-white rounded-lg text-sm font-bold hover:bg-accent-hover transition"
+            >
+              다시 시도
+            </button>
+            <Link href="/community" className="px-6 py-2.5 bg-surface border border-border text-dim rounded-lg text-sm font-semibold hover:border-accent/40 transition">
+              목록으로
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const isAuthor = user?.id === post.author_id;
 

@@ -18,8 +18,9 @@ interface InfluencerItem {
   profileUrl: string;
   imageUrl: string;
   introduction: string;
-  subscriberCount: number;
-  totalFollowerCount: number;
+  /** null = 팬수를 아직 수집하지 못했다. 0명이라는 뜻이 **아니다**. */
+  subscriberCount: number | null;
+  totalFollowerCount: number | null;
   myKeywordCategory: string;
   myKeyword: string;
   categoryMyType: string;
@@ -56,6 +57,20 @@ function formatNaverDate(d: string | null | undefined): string {
   const isDateOnly = typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
   const date = isDateOnly ? new Date(`${d}T12:00:00Z`) : new Date(d);
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+const FAN_UNCOLLECTED_TITLE = '팬수를 아직 수집하지 못했습니다. 팬이 0명이라는 뜻이 아닙니다.';
+
+/**
+ * 표시할 팬수. 팬수도 팔로워수도 없으면 null(=모름)이다.
+ * 예전엔 `subscriberCount || totalFollowerCount` 라 둘 다 없을 때 0 이 찍혔고,
+ * 그게 "팬 0명"으로 읽혔다 — 목록 머리말이 스스로 "팬수 확인 N / 전체 M"이라며
+ * 못 잰 사람이 있다고 말하는데도 그랬다.
+ */
+function fanCount(inf: { subscriberCount: number | null; totalFollowerCount: number | null }): number | null {
+  if (inf.subscriberCount !== null && inf.subscriberCount !== undefined) return inf.subscriberCount;
+  if (inf.totalFollowerCount !== null && inf.totalFollowerCount !== undefined) return inf.totalFollowerCount;
+  return null;
 }
 
 /** 목록의 기준 시각 표기. 실제 수집 시각이 있을 때만 쓴다 — 없으면 아무 말도 하지 않는다. */
@@ -386,7 +401,12 @@ export default function InfluencersListClient() {
                       )}
                     </td>
                     <td className="py-3 px-3 text-right text-xs font-bold font-rank tabular-nums text-accent">
-                      {formatCount(inf.subscriberCount || inf.totalFollowerCount)}
+                      {/* 팬수를 못 잰 사람에게 '0'을 찍으면 팬이 0명이라고 단정하는 것이다. 모르면 '—'. */}
+                      {fanCount(inf) === null ? (
+                        <span className="text-dim font-normal" title={FAN_UNCOLLECTED_TITLE}>—</span>
+                      ) : (
+                        formatCount(fanCount(inf) as number)
+                      )}
                     </td>
                     <td className="py-3 px-3 text-right text-xs font-rank tabular-nums">
                       {(() => {
@@ -488,7 +508,11 @@ export default function InfluencersListClient() {
                     <span className="text-xs text-dim">@{inf.naverId}</span>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-xs font-bold text-accent font-rank">{formatCount(inf.subscriberCount || inf.totalFollowerCount)}</div>
+                    <div className="text-xs font-bold text-accent font-rank">
+                      {fanCount(inf) === null
+                        ? <span className="text-dim font-normal" title={FAN_UNCOLLECTED_TITLE}>—</span>
+                        : formatCount(fanCount(inf) as number)}
+                    </div>
                     <div className="text-[10px] text-dim">팬수</div>
                   </div>
                 </div>

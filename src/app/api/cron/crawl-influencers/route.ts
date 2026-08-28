@@ -242,11 +242,14 @@ export async function GET(request: NextRequest) {
             profile_url: `https://in.naver.com/${c.urlId}`,
             image_url: fix(c.imageUrl || ''),
             introduction: c.introduction || '',
-            subscriber_count: c.subscriberCount || 0,
-            total_follower_count: c.totalFollowerCount || 0,
+            // ⚠️ `|| 0` 이면 네이버가 팬수를 안 줬을 때(수집 실패) 0 을 지어내 저장한다. 게다가
+            //    refresh-influencer-profiles 는 `> 0` 일 때만 덮어쓰므로 그 0 이 영구히 굳어
+            //    "팬 0명"과 "아직 못 잼"이 DB 단계에서 합쳐진다. 모르면 null 로 둔다.
+            subscriber_count: typeof c.subscriberCount === 'number' ? c.subscriberCount : null,
+            total_follower_count: typeof c.totalFollowerCount === 'number' ? c.totalFollowerCount : null,
             // fan_count는 팬수(subscriberCount)와 항상 동일 — totalFollowerCount로 폴백하면
             // 팔로워가 팬수로 잘못 표시된다(팬≠팔로워).
-            fan_count: c.subscriberCount || 0,
+            fan_count: typeof c.subscriberCount === 'number' ? c.subscriberCount : null,
             my_keyword_category: fix(mk),
             my_keyword: c.myKeyword || '',
             category_my_type: fix(cmt),

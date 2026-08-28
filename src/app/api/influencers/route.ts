@@ -324,8 +324,11 @@ async function getInfluencersFromDB(
     profileUrl: inf.profile_url || `https://in.naver.com/${inf.naver_id}`,
     imageUrl: inf.image_url || '',
     introduction: inf.introduction || '',
-    subscriberCount: inf.subscriber_count || inf.total_follower_count || 0,
-    totalFollowerCount: inf.total_follower_count || 0,
+    // ⚠️ `|| 0` 로 접으면 "팬 0명"과 "팬수를 아직 못 잰 사람"이 화면에서 똑같이 '0'이 된다.
+    //    이 목록은 스스로 "팬수 확인 19,840 / 전체 20,380명"이라고 적으면서, 정작 확인 못 한
+    //    나머지를 0명이라고 단정해 왔다. 둘 다 없을 때만 null(=모름)로 내려보낸다.
+    subscriberCount: inf.subscriber_count ?? inf.total_follower_count ?? null,
+    totalFollowerCount: inf.total_follower_count ?? null,
     myKeywordCategory: inf.my_keyword_category || inf.category || '',
     myKeyword: inf.my_keyword || '',
     categoryMyType: inf.category_my_type || '',
