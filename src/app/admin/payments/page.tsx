@@ -4,14 +4,27 @@ import { useState, useEffect, useCallback } from 'react';
 import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
 import Pagination from '@/components/analytics/Pagination';
 
+/**
+ * ⚠️ 이 인터페이스는 2026-05-03 PortOne 재구성 이전 스키마(order_id·plan_name·duration_days)를
+ *    그대로 들고 있었다. 라우트가 삭제된 채였으니 어긋난 것도 드러나지 않았다.
+ *    2026-08-28 라우트 복구와 함께 현재 payment_transactions 스키마에 맞춘다.
+ */
 interface Payment {
   id: string;
   user_id: string;
-  order_id: string;
-  amount: number;
+  /** PortOne paymentId (옛 order_id 자리) */
+  payment_id: string;
+  plan_key: string;
+  /** 플랜 표시명. 정의가 없는 옛 키면 서버가 plan_key 를 그대로 넣어 보낸다. */
   plan_name: string;
-  duration_days: number;
+  /** 플랜 기간(개월). 정의를 못 찾으면 null — 이때 기간을 지어내지 않는다. */
+  months: number | null;
+  amount: number;
   status: string;
+  /** 'CARD' | 'BILLING_KEY' 등. 기록이 없으면 null. */
+  pay_method: string | null;
+  /** 'initial' | 'recurring' | 'manual' */
+  charge_type: string;
   user_nickname: string | null;
   user_email: string | null;
   created_at: string;
@@ -74,7 +87,11 @@ export default function AdminPaymentsPage() {
     <div className="space-y-6">
       <h1 className="type-page-title">결제 관리</h1>
 
-      {/* 구독 현황 요약 */}
+      {/* 구독 현황 요약. 서버가 요약 집계에 실패하면 summary=null 로 온다 — 그때 0명·0원을
+          그리면 '구독자가 없다'는 거짓이 되므로, 못 구했다고 말하고 카드는 비운다. */}
+      {!loading && !loadError && !summary && (
+        <p className="text-xs text-dim">구독 현황 요약을 불러오지 못했습니다. 아래 결제 내역은 정상입니다.</p>
+      )}
       {summary && (
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-surface rounded-lg border border-border p-4 text-center">
@@ -130,10 +147,11 @@ export default function AdminPaymentsPage() {
             <thead>
               <tr className="border-b border-border text-[11px] text-dim">
                 <th className="text-left px-3 py-2.5 font-semibold">사용자</th>
-                <th className="text-left px-3 py-2.5 font-semibold">주문ID</th>
+                <th className="text-left px-3 py-2.5 font-semibold">결제ID</th>
                 <th className="text-center px-3 py-2.5 font-semibold">플랜</th>
                 <th className="text-right px-3 py-2.5 font-semibold">금액</th>
                 <th className="text-center px-3 py-2.5 font-semibold">기간</th>
+                <th className="text-center px-3 py-2.5 font-semibold">청구</th>
                 <th className="text-center px-3 py-2.5 font-semibold">상태</th>
                 <th className="text-right px-3 py-2.5 font-semibold">결제일</th>
               </tr>
@@ -145,21 +163,35 @@ export default function AdminPaymentsPage() {
                     <p className="text-xs font-semibold">{p.user_nickname || '-'}</p>
                     <p className="text-[10px] text-dim">{p.user_email || p.user_id}</p>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-dim font-mono">{p.order_id}</td>
+                  <td className="px-3 py-2.5 text-xs text-dim font-mono">{p.payment_id}</td>
                   <td className="px-3 py-2.5 text-center">
-                    <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                    <span
+                      className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full"
+                      title={p.plan_key}
+                    >
                       {p.plan_name}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-right font-rank font-semibold">{p.amount.toLocaleString()}원</td>
-                  <td className="px-3 py-2.5 text-center text-xs text-dim">{p.duration_days}일</td>
+                  {/* 플랜 정의를 못 찾으면 기간을 지어내지 않는다. */}
+                  <td className="px-3 py-2.5 text-center text-xs text-dim">
+                    {p.months != null ? `${p.months}개월` : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-center text-xs text-dim">
+                    {p.charge_type === 'initial' ? '최초' : p.charge_type === 'recurring' ? '자동' : '수동'}
+                    {p.pay_method === 'BILLING_KEY' && <span className="ml-1 text-[10px]">(빌링키)</span>}
+                  </td>
                   <td className="px-3 py-2.5 text-center">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       p.status === 'PAID' ? 'text-up bg-up/10' :
-                      p.status === 'CANCELED' ? 'text-down bg-down/10' :
+                      p.status === 'CANCELLED' || p.status === 'CANCELED' ? 'text-down bg-down/10' :
+                      p.status === 'FAILED' ? 'text-down bg-down/10' :
                       'text-dim bg-bg'
                     }`}>
-                      {p.status === 'PAID' ? '결제완료' : p.status === 'CANCELED' ? '취소' : p.status}
+                      {p.status === 'PAID' ? '결제완료'
+                        : p.status === 'CANCELLED' || p.status === 'CANCELED' ? '취소'
+                        : p.status === 'FAILED' ? '실패'
+                        : p.status}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-right text-xs text-dim">
@@ -168,7 +200,7 @@ export default function AdminPaymentsPage() {
                 </tr>
               ))}
               {payments.length === 0 && (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-dim">결제 내역 없음</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-dim">결제 내역 없음</td></tr>
               )}
             </tbody>
           </table>
