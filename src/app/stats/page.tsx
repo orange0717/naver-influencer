@@ -50,6 +50,10 @@ export default function StatsPage() {
     );
   }
 
+  // 연도 열은 선정일이 확인된 사람만 세므로, 전체와의 차이 = 선정일 미확인 인원.
+  const yearSum = data.yearTotals.reduce((a, b) => a + b, 0);
+  const unknownYearTotal = Math.max(0, data.grandTotal - yearSum);
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -100,8 +104,19 @@ export default function StatsPage() {
         </div>
       </div>
 
+      {/* '전체' 열은 모든 인플루언서를 세지만 연도 열은 선정일(naver_created_at)이 확인된 사람만 센다.
+          즉 선정일 미확인이 생기면 연도 합계와 전체가 어긋나는데, 그동안 표에는 아무 설명이 없어
+          사용자 눈엔 그냥 "숫자가 안 맞는 표"로 보였다. 어긋난 만큼을 명시한다.
+          (기존 안내문의 "선정일 미확인 포함"은 연도 열에도 포함된다는 뜻으로 읽혀 사실과 반대였다.) */}
+      {unknownYearTotal > 0 && (
+        <p className="text-xs text-down text-center">
+          이 중 <b>{unknownYearTotal.toLocaleString()}명</b>은 선정일을 아직 확인하지 못해 연도 열에는 집계되지 않았습니다.
+          (연도 합계 {yearSum.toLocaleString()}명 + 미확인 {unknownYearTotal.toLocaleString()}명 = 전체 {data.grandTotal.toLocaleString()}명)
+        </p>
+      )}
+
       <p className="text-xs text-dim text-center">
-        네이버 인플루언서 선정일 기준 연도별 집계 (선정일 미확인 포함) / 키챌 미참여 = 키워드챌린지 참여 기록 없음
+        네이버 인플루언서 선정일 기준 연도별 집계 / 연도 열은 <b>선정일이 확인된 사람만</b> 집계 (전체 열은 전원) / 키챌 미참여 = 키워드챌린지 참여 기록 없음
       </p>
     </div>
   );
