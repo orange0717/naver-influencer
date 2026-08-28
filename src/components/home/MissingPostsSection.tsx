@@ -28,6 +28,15 @@ const FREE_DAYS = 30;
 function isExtendedPeriod(n: Period): boolean { return n === 0 || n > FREE_DAYS; }
 
 type Period = typeof PERIOD_OPTIONS[number]; // 0 = 전체(일수 기준 아님)
+/**
+ * 전체 포스팅 목록 조회의 클라이언트 타임아웃.
+ *
+ * fetchWithTimeout 의 기본값은 10초인데, /api/blog/posts?all=true 는 네이버를 여러 페이지
+ * 순차 크롤링하므로 서버가 스스로 `maxDuration = 60` 을 잡아둔다. 즉 캐시가 비어 있으면
+ * 서버가 정상 동작하는 중에도 클라이언트가 10초에 먼저 포기했고, 그 결과 화면 전체가
+ * "전부 0"으로 그려졌다(940글 블로그에서 첫 진입마다 재현). 서버 예산에 맞춘다.
+ */
+const ALL_POSTS_TIMEOUT_MS = 60_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 // 페이지 진입 시 최근 발행글을 자동 검사하는 개수 — 최신 상태를 자동 갱신하되 대량 호출은 피한다.
 // 이미 최근(CHECK_FRESH_MS 내) 검사된 글은 runBatch가 건너뛰므로 실제 호출은 이보다 적다.
@@ -208,6 +217,9 @@ export default function MissingPostsSection() {
   // 대량 분석 확인 다이얼로그 대상 (§9~13) — 실제 네이버 검색이 발생할 글 수(toCheck)가 임계 이상일 때만 표시
   const [confirmBatch, setConfirmBatch] = useState<{ targets: BlogPost[]; toCheck: number; force: boolean } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  // 포스팅 목록 조회 자체가 실패했는가. '수집된 글 0개'와 구분해야 한다 —
+  // 실패했는데 카드가 0 을 띄우면 '미노출 0건'이 성과처럼 읽힌다.
+  const [postsFailed, setPostsFailed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all'); // §3 기본값 '전체'
   const [areaFilter, setAreaFilter] = useState<AreaFilter>('all');
@@ -272,13 +284,28 @@ export default function MissingPostsSection() {
   // 이렇게 전체를 확보해야 30일 이전 개수·후보를 정확히 계산할 수 있다. 기간 필터는 클라이언트 표시용이다.
   const fetchPosts = useCallback(async (blogId: string) => {
     setPostsLoading(true);
+    setErrorMessage('');
     try {
-      const res = await fetchWithTimeout(`/api/blog/posts?blogId=${encodeURIComponent(blogId)}&all=true`);
-      if (!res.ok) { setErrorMessage('포스트 목록을 불러오지 못했습니다.'); setPosts([]); return; }
+      const res = await fetchWithTimeout(
+        `/api/blog/posts?blogId=${encodeURIComponent(blogId)}&all=true`,
+        undefined,
+        ALL_POSTS_TIMEOUT_MS,
+      );
+      // 조회 실패는 '포스팅 0개'가 아니다. postsFailed 를 세워 상단 카드가 0 대신
+      // '확인 실패'를 띄우게 한다 — 목록만 실패를 알리고 카드는 0 을 단언하면
+      // 사용자는 "미노출 0건"을 좋은 소식으로 읽는다.
+      if (!res.ok) { setErrorMessage('포스트 목록을 불러오지 못했습니다.'); setPostsFailed(true); setPosts([]); return; }
       const data = await res.json();
+      setPostsFailed(false);
       setPosts(Array.isArray(data.posts) ? data.posts : []);
-    } catch {
-      setErrorMessage('포스트 목록을 불러오지 못했습니다.');
+    } catch (e) {
+      // AbortError = 우리가 건 타임아웃. 네트워크 오류와 안내가 달라야 한다
+      // ("다시 시도"가 소용 있는지 없는지가 다르다).
+      const timedOut = (e as Error | null)?.name === 'AbortError';
+      setErrorMessage(timedOut
+        ? '포스팅 목록을 불러오는 데 시간이 너무 오래 걸립니다. 글이 많은 블로그는 첫 조회가 오래 걸릴 수 있습니다.'
+        : '포스트 목록을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
+      setPostsFailed(true);
     } finally {
       setPostsLoading(false);
     }
@@ -620,10 +647,20 @@ export default function MissingPostsSection() {
    * "미노출 0건"은 좋은 소식처럼 읽히는데, 실제로는 한 건도 확인하지 않은 것이다.
    * 아래 포스팅 목록은 이 두 경우를 이미 갈라 안내하므로 카드도 같은 기준을 쓴다.
    */
-  const notMeasured = !isMember || !profile?.blogId;
+  /**
+   * 여기에 조회 실패(postsFailed)도 포함한다.
+   * 로그인·블로그 연결이 다 돼 있어도 /api/blog/posts 가 실패하면 posts 는 [] 가 되고,
+   * 그러면 다섯 카드가 전부 실측된 것처럼 0 을 단언한다. 실제로 화면 아래 목록은
+   * "게시물을 수집하지 못했습니다"라고 정직하게 말하는데 카드만 0 이라 서로 모순됐다.
+   */
+  const notMeasured = !isMember || !profile?.blogId || postsFailed;
   const notMeasuredReason = !isMember
     ? '로그인하면 확인합니다'
-    : '블로그를 등록하면 확인합니다';
+    : !profile?.blogId
+      ? '블로그를 등록하면 확인합니다'
+      : '포스팅 목록을 불러오지 못했습니다';
+  /** 조회 실패는 '아직 안 함'이 아니라 '해봤는데 실패'다 — 카드 문구를 갈라 쓴다. */
+  const notMeasuredStatus = postsFailed && isMember && profile?.blogId ? '확인 실패' : '확인 전';
 
   // §1 기본 목록 = 전체 포스팅. 빠른 상태 필터(§3)·영역 필터·제목 검색·정렬을 차례로 적용한다.
   // (이전엔 미노출+재검사 글만 보여줬으나, 이제 전체 포스팅을 보여주고 필터로 좁힌다.)
@@ -791,9 +828,15 @@ export default function MissingPostsSection() {
           '확인 전' 다음에 무엇을 하면 되는지 적을 자리가 없다. 공용 카드의 고정 높이(h-[150px])와
           구조를 건드리지 않기 위해, 카드 줄 바로 위에 한 줄로 안내한다. */}
       {notMeasured && (
-        <p className="text-xs text-dim">
-          아직 한 건도 확인하지 않았습니다 — <b className="text-text font-semibold">{notMeasuredReason}</b>.
-        </p>
+        notMeasuredStatus === '확인 실패' ? (
+          <p className="text-xs text-down">
+            포스팅 목록을 불러오지 못해 <b className="font-semibold">노출 현황을 집계하지 못했습니다</b> — 아래 숫자가 0 이 아니라 <b className="font-semibold">‘확인 실패’</b>인 이유입니다. 잠시 후 새로고침해 주세요.
+          </p>
+        ) : (
+          <p className="text-xs text-dim">
+            아직 한 건도 확인하지 않았습니다 — <b className="text-text font-semibold">{notMeasuredReason}</b>.
+          </p>
+        )
       )}
       <SummaryCards
         loading={postsLoading}
@@ -804,7 +847,7 @@ export default function MissingPostsSection() {
           { key: 'partial', label: '일부 노출', value: partialCount, color: 'accent', description: postsLoading ? '불러오는 중...' : `${pct(partialCount)}% · 일부 영역만` },
           { key: 'unknown', label: '미확인', value: unknownCount, color: 'dim', description: postsLoading ? '불러오는 중...' : '미검사·확인 중·확인 실패' },
         ] as SummaryCard[]).map(c => notMeasured
-          ? { ...c, color: 'dim' as const, statusText: '확인 전', description: notMeasuredReason }
+          ? { ...c, color: 'dim' as const, statusText: notMeasuredStatus, description: notMeasuredReason }
           : c)}
       />
 
@@ -856,14 +899,33 @@ export default function MissingPostsSection() {
         </PostSearchBar>
       </div>
 
-      {errorMessage && <p className="text-xs text-down">{errorMessage}</p>}
+      {errorMessage && (
+        <p className="text-xs text-down">
+          {errorMessage}
+          {/* 실패가 막다른 길이 되면 안 된다 — 새로고침 말고 이 자리에서 다시 시도할 수단을 준다. */}
+          {postsFailed && profile?.blogId && (
+            <button
+              type="button"
+              onClick={() => fetchPosts(profile.blogId!)}
+              className="ml-2 text-accent underline cursor-pointer"
+            >
+              다시 시도
+            </button>
+          )}
+        </p>
+      )}
 
       <AnalyticsTableShell title="포스팅 목록" loading={postsLoading} count={`${displayList.length}개`}>
 
         {postsLoading ? (
-          <div className="flex items-center justify-center py-10 text-dim text-sm">
-            <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
-            포스트를 불러오는 중...
+          <div className="flex flex-col items-center justify-center py-10 text-dim text-sm gap-1">
+            <span className="flex items-center">
+              <span className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
+              포스트를 불러오는 중...
+            </span>
+            {/* 첫 조회는 네이버를 여러 페이지 크롤링해 수십 초 걸릴 수 있다.
+                얼마나 기다려야 하는지 모르면 사용자는 고장으로 읽고 나가버린다. */}
+            <span className="text-xs">글이 많은 블로그는 첫 조회에 1분까지 걸릴 수 있습니다.</span>
           </div>
         ) : authError ? (
           // 백엔드 장애 — "블로그 미연결"이나 "비회원"으로 오인 안내하면 안 된다
@@ -884,8 +946,14 @@ export default function MissingPostsSection() {
           </div>
         ) : !profile?.blogId ? (
           <div className="text-center py-10 text-dim text-sm">블로그가 연결되지 않았습니다. 프로필에서 블로그를 연결하면 노출 상태 검사가 시작됩니다.</div>
+        ) : postsFailed ? (
+          // 조회 요청 자체가 실패 — 재시도하면 될 일이다. '수집 결과 0건'과 섞어 말하지 않는다.
+          <div className="text-center py-10 text-dim text-sm">
+            포스팅 목록을 불러오지 못했습니다.<br />
+            <span className="text-xs">일시적인 오류일 수 있습니다. 잠시 후 새로고침해 주세요. (글이 없다는 뜻이 아닙니다)</span>
+          </div>
         ) : posts.length === 0 ? (
-          // 게시물 원본 수집 자체가 0건 — 기간 문제가 아니라 수집 실패(블로그 ID·네이버 응답 등). "발행 없음"과 명확히 구분한다.
+          // 요청은 성공했는데 결과가 0건 — 블로그 ID 불일치나 네이버 응답 문제일 수 있다. "발행 없음"과 명확히 구분한다.
           <div className="text-center py-10 text-dim text-sm">
             게시물을 수집하지 못했습니다.<br />
             <span className="text-xs">블로그 연결 상태를 확인하거나 잠시 후 다시 시도해주세요. (수집된 게시물이 없어 노출 상태를 판정할 수 없습니다)</span>
