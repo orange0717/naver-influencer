@@ -142,7 +142,7 @@ export default function InviteClient() {
     return (
       <Notice
         title="초대를 확인할 수 없습니다"
-        body={loadError || '초대 정보를 찾을 수 없습니다.'}
+        body={`${loadError || '초대 정보를 찾을 수 없습니다.'} 메일의 링크를 복사해서 여셨다면 주소가 잘려 있을 수 있으니, 메일에서 링크를 직접 눌러 다시 들어와 주세요.`}
         action={
           <Link
             href="/"

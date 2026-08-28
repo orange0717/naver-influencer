@@ -246,7 +246,7 @@ export default function CheckoutClient() {
     return (
       <Notice
         title="주문을 찾을 수 없습니다"
-        body={loadError || '주문 정보를 찾을 수 없습니다. 주소가 잘못되었거나 이미 처리된 주문일 수 있습니다.'}
+        body={`${loadError || '주문 정보를 찾을 수 없습니다.'} 주소가 잘못되었거나 이미 처리된 주문일 수 있습니다. 결제하려던 주문이 맞다면 결제 안내 메일의 링크로 다시 들어와 주세요.`}
         action={
           <Link
             href="/enterprise/signup"
