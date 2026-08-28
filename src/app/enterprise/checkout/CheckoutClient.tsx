@@ -60,6 +60,8 @@ export default function CheckoutClient() {
 
   const [order, setOrder] = useState<OrderSummary | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // 서버가 가른 '주문 없음'(404)과 '못 읽음'(500)을 화면에서 다시 합치지 않기 위한 값.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payMessage, setPayMessage] = useState<{ type: 'error' | 'info'; text: string } | null>(null);
@@ -67,7 +69,10 @@ export default function CheckoutClient() {
   const inFlight = useRef(false);
 
   const loadOrder = useCallback(async () => {
+    setLoadError(null);
+    setErrorCode(null);
     if (!orderId) {
+      setErrorCode('NOT_FOUND');
       setLoadError('주문 정보가 없습니다. 기업용 가입을 처음부터 진행해주세요.');
       setLoaded(true);
       return;
@@ -78,6 +83,7 @@ export default function CheckoutClient() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setErrorCode(body?.error?.code || 'INTERNAL_ERROR');
         setLoadError(body?.error?.message || '주문을 불러오지 못했습니다.');
         return;
       }
@@ -86,6 +92,7 @@ export default function CheckoutClient() {
       // 확정은 웹훅이 하므로, 돌아왔을 때 이미 paid 면 그대로 완료 화면을 보여준다.
       if (body?.status === 'paid') setDone(true);
     } catch {
+      setErrorCode('NETWORK_ERROR');
       setLoadError('네트워크 오류로 주문을 불러오지 못했습니다.');
     } finally {
       setLoaded(true);
@@ -215,11 +222,31 @@ export default function CheckoutClient() {
     return <div className="bg-bg px-4 py-24 text-center text-sm text-dim md:py-32">불러오는 중…</div>;
   }
 
+  // 결제 직전 화면이다. '못 읽은' 것을 '주문이 없다'로 보여주면 방금 만든 주문이
+  // 사라졌다고 믿고 처음부터 다시 신청한다 — 같은 주문이 두 개 생긴다.
+  if (loadError && errorCode !== 'NOT_FOUND' && errorCode !== 'FORBIDDEN') {
+    return (
+      <Notice
+        title="주문 정보를 불러오지 못했습니다"
+        body={`${loadError} 주문이 취소된 것은 아닙니다. 다시 시도해도 같으면 처음부터 신청하지 마시고 고객센터로 문의해주세요.`}
+        action={
+          <button
+            type="button"
+            onClick={() => { setLoaded(false); void loadOrder(); }}
+            className="inline-block rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white transition hover:bg-accent-hover"
+          >
+            다시 시도
+          </button>
+        }
+      />
+    );
+  }
+
   if (loadError || !order) {
     return (
       <Notice
-        title="주문을 불러오지 못했습니다"
-        body={loadError || '주문 정보를 찾을 수 없습니다.'}
+        title="주문을 찾을 수 없습니다"
+        body={loadError || '주문 정보를 찾을 수 없습니다. 주소가 잘못되었거나 이미 처리된 주문일 수 있습니다.'}
         action={
           <Link
             href="/enterprise/signup"

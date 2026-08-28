@@ -68,18 +68,25 @@ export default function ManageClient() {
 
   const [data, setData] = useState<Subscription | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // 서버는 '소속이 없음'(404)과 '못 읽음'(500)을 이미 갈라서 준다. 코드를 버리고 문구만
+  // 받으면 화면에서 다시 하나로 뭉개진다 — 실제로 그랬다.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
+    setLoadError(null);
+    setErrorCode(null);
     try {
       const res = await fetch('/api/org/subscription', { headers: await authHeaders() });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setErrorCode(body?.error?.code || 'INTERNAL_ERROR');
         setLoadError(body?.error?.message || '기업 계정 정보를 불러오지 못했습니다.');
         return;
       }
       setData(body as Subscription);
     } catch {
+      setErrorCode('NETWORK_ERROR');
       setLoadError('네트워크 오류로 기업 계정 정보를 불러오지 못했습니다.');
     } finally {
       setLoaded(true);
@@ -127,18 +134,57 @@ export default function ManageClient() {
     return <div className="bg-bg px-4 py-24 text-center text-sm text-dim md:py-32">불러오는 중…</div>;
   }
 
+  // 아직 기업 계정이 없는 상태. 장애가 아니므로 '불러오지 못했습니다'라고 하면 안 된다 —
+  // 가입하면 되는 사람에게 서비스가 고장 난 것처럼 보인다.
+  if (errorCode === 'NOT_FOUND') {
+    return (
+      <Notice
+        title="아직 기업 계정이 없습니다"
+        body="이 계정은 어느 기업 계정에도 속해 있지 않습니다. 회사 좌석을 새로 만들려면 기업용 가입에서 시작하시고, 이미 초대를 받으셨다면 메일의 초대 링크로 들어와 주세요."
+        action={
+          <Link
+            href="/enterprise/signup"
+            className="inline-block rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white transition hover:bg-accent-hover"
+          >
+            기업용 가입 안내
+          </Link>
+        }
+      />
+    );
+  }
+
+  // 멤버(비대표)에게 가입 링크를 주면 회사 좌석이 이미 있는데도 두 번째 조직을 만들러 간다.
+  if (errorCode === 'FORBIDDEN') {
+    return (
+      <Notice
+        title="대표 계정만 볼 수 있는 화면입니다"
+        body={loadError || '기업 계정의 결제·좌석 정보는 대표 계정만 확인하실 수 있습니다.'}
+        action={
+          <Link
+            href="/my"
+            className="inline-block rounded-xl border border-border px-5 py-3 text-sm font-bold text-text transition hover:border-accent/40"
+          >
+            내 대시보드로 가기
+          </Link>
+        }
+      />
+    );
+  }
+
+  // 여기부터가 진짜 '못 읽은' 경우다. 가입을 권하지 않고 다시 시도할 방법을 준다.
   if (loadError || !data) {
     return (
       <Notice
         title="기업 계정 정보를 불러오지 못했습니다"
-        body={loadError || '기업 계정 정보를 찾을 수 없습니다.'}
+        body={`${loadError || '기업 계정 정보를 찾을 수 없습니다.'} 기업 계정이 사라진 것은 아니니 잠시 후 다시 시도해주세요.`}
         action={
-          <Link
-            href="/enterprise/signup"
-            className="inline-block rounded-xl border border-border px-5 py-3 text-sm font-bold text-text transition hover:border-accent/40"
+          <button
+            type="button"
+            onClick={() => { setLoaded(false); void load(); }}
+            className="inline-block rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white transition hover:bg-accent-hover"
           >
-            기업용 가입 안내
-          </Link>
+            다시 시도
+          </button>
         }
       />
     );

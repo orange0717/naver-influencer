@@ -47,6 +47,9 @@ export default function InviteClient() {
 
   const [invite, setInvite] = useState<InviteInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // '초대가 잘못됨'과 '서버가 초대를 못 읽음'은 받는 사람의 다음 행동이 다르다.
+  // 전자는 담당자에게 재발송 요청, 후자는 잠시 후 재시도다.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -54,7 +57,10 @@ export default function InviteClient() {
   const inFlight = useRef(false);
 
   const loadInvite = useCallback(async () => {
+    setLoadError(null);
+    setErrorCode(null);
     if (!token) {
+      setErrorCode('NOT_FOUND');
       setLoadError('초대 링크가 올바르지 않습니다. 받으신 메일의 링크를 다시 눌러주세요.');
       setLoaded(true);
       return;
@@ -63,11 +69,13 @@ export default function InviteClient() {
       const res = await fetch(`/api/org/invite?token=${encodeURIComponent(token)}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setErrorCode(body?.error?.code || 'INTERNAL_ERROR');
         setLoadError(body?.error?.message || '초대 정보를 불러오지 못했습니다.');
         return;
       }
       setInvite(body as InviteInfo);
     } catch {
+      setErrorCode('NETWORK_ERROR');
       setLoadError('네트워크 오류로 초대 정보를 불러오지 못했습니다.');
     } finally {
       setLoaded(true);
@@ -108,6 +116,26 @@ export default function InviteClient() {
 
   if (isLoading || !loaded) {
     return <div className="bg-bg px-4 py-24 text-center text-sm text-dim md:py-32">불러오는 중…</div>;
+  }
+
+  // 서버 장애를 '초대가 잘못됐다'로 보여주면, 정상 초대를 받은 사람이 링크를 의심하고
+  // 담당자에게 재발송을 요청한다. 재발송해도 결과는 같으니 양쪽이 헛수고를 한다.
+  if (loadError && (errorCode === 'INTERNAL_ERROR' || errorCode === 'NETWORK_ERROR')) {
+    return (
+      <Notice
+        title="초대 정보를 불러오지 못했습니다"
+        body={`${loadError} 초대 링크가 잘못된 것은 아니니 재발송을 요청하지 마시고 잠시 후 다시 시도해주세요.`}
+        action={
+          <button
+            type="button"
+            onClick={() => { setLoaded(false); void loadInvite(); }}
+            className="inline-block rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white transition hover:bg-accent-hover"
+          >
+            다시 시도
+          </button>
+        }
+      />
+    );
   }
 
   if (loadError || !invite) {
