@@ -50,7 +50,10 @@ const formatKRW = (v: number) => v.toLocaleString('ko-KR');
 export default function SubscribeClient() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const isLoggedIn = !!user;
+  // ⚠️ useAuth 는 비회원일 때도 null 이 아니라 defaultUser **객체**({ id: null, ... })를 준다.
+  // 그래서 `!!user` 로 판정하면 항상 true → 비회원에게 '무료로 시작하기' 대신 결제 버튼이 뜬다.
+  // Header.tsx 와 같은 관용구(`!!user.id`)로 맞춘다.
+  const isLoggedIn = !!user.id;
   const [callbackStatus, setCallbackStatus] = useState<'processing' | 'success' | 'error' | null>(null);
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
