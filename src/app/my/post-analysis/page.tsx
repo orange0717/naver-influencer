@@ -5,7 +5,7 @@ import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import { useAuth } from '@/hooks/useAuth';
-import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
+import { todayStamp } from '@/lib/csv';
 import type { BloggerProfile, BlogPost, PostAnalysis, AiResult, PlagiarismResult, TextAnalysisResult } from './page.helpers';
 import { getAiBadge, sentenceTypeLabel, getProfileFromApi } from './page.helpers';
 import { newViewToken, viewHeaders, readQuotaExceeded, type QuotaInfo } from '@/lib/analysis-view';
@@ -33,41 +33,39 @@ export default function PostAnalysisPage() {
   const [viewToken] = useState(() => newViewToken());
 
   const { user } = useAuth();
+  // 화면에 버튼을 보일지 정할 뿐이다. 실제 차단은 /api/downloads/post-analysis 의 서버 가드가 한다
+  // (2026-09-01 이전에는 이 boolean 이 유일한 장치라 개발자도구로 그대로 우회됐다).
   const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+  const [downloading, setDownloading] = useState(false);
 
-  const handleDownload = () => {
-    if (!canDownload) return;
-    if (posts.length === 0) {
-      alert('다운로드할 포스팅이 없습니다.');
-      return;
+  const handleDownload = async () => {
+    if (!profile || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/downloads/post-analysis?blogId=${encodeURIComponent(profile.blogId)}`);
+      if (!res.ok) {
+        let message = '내려받기에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+        try {
+          const data = await res.json();
+          if (typeof data?.error === 'string' && data.error) message = data.error;
+        } catch { /* 본문이 JSON 이 아니면 기본 문구를 쓴다 */ }
+        alert(message);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `post_analysis_${todayStamp()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      alert('내려받기에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setDownloading(false);
     }
-    const headers = ['제목', 'URL', '작성일', '댓글수', '글자수', '단어수', '단락수', '이미지수', '원본이미지수', '동영상수', '링크수', '헤딩수', '지도수', '리스트수', '인용구수', '표수', '평균이미지(KB)'];
-    const rows: unknown[][] = [];
-    for (const post of posts) {
-      if (rows.length >= DOWNLOAD_ROW_LIMIT) break;
-      const a = analyses.get(post.id);
-      rows.push([
-        post.title,
-        post.url,
-        post.date,
-        post.commentCount,
-        a?.charCount ?? '',
-        a?.wordCount ?? '',
-        a?.paragraphCount ?? '',
-        a?.imageCount ?? '',
-        a?.originalImageCount ?? '',
-        a?.videoCount ?? '',
-        a?.linkCount ?? '',
-        a?.headingCount ?? '',
-        a?.mapCount ?? '',
-        a?.listItemCount ?? '',
-        a?.quotationCount ?? '',
-        a?.tableCount ?? '',
-        a?.avgImageSizeKB ?? '',
-      ]);
-    }
-    const csv = rowsToCsv(headers, rows);
-    downloadCsvInBrowser(`post_analysis_${todayStamp()}.csv`, csv);
   };
   const [page, setPage] = useState(1);
   const abortRef = useRef<AbortController | null>(null);
@@ -337,11 +335,11 @@ export default function PostAnalysisPage() {
         {canDownload && (
           <button
             onClick={handleDownload}
-            disabled={posts.length === 0}
+            disabled={posts.length === 0 || downloading}
             className="px-3 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
             title="포스팅 + 분석 결과 CSV 다운로드 (최대 500건)"
           >
-            CSV 다운로드
+            {downloading ? '준비 중…' : 'CSV 다운로드'}
           </button>
         )}
       </div>

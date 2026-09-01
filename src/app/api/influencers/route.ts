@@ -20,9 +20,12 @@ export async function GET(request: NextRequest) {
   if (await searchLimiter.check(ip)) return rateLimitResponse();
 
   // 미들웨어의 pathname 정확일치에 의존하던 게이트를 라우트 안으로 옮긴다.
-  // BLOGGER 인 이유: 전체 리스트 화면(인플루언서 전용)과 경쟁자 분석(블로거 전용)이
-  // 같은 엔드포인트를 쓴다. 공유 엔드포인트는 둘 중 낮은 등급에 맞춘다.
-  const gate = await requireFeature(request, 'competitor.analysis');
+  // 이 엔드포인트는 「인플루언서 순위」 전체 명단 화면(인플루언서 이용권) 전용이다.
+  // 2026-09-01 이전에는 경쟁자 분석(예비 인플루언서)이 같은 엔드포인트로 검색을 해서
+  // 낮은 쪽 등급(competitor.analysis = BLOGGER)에 맞춰져 있었고, 그 결과 예비 인플루언서
+  // 이용권만으로 limit=2000 까지 전체 명단을 받아 갈 수 있었다.
+  // 경쟁자 분석은 검색 전용 /api/influencers/search 로 옮겼으므로 여기는 원래 등급으로 되돌린다.
+  const gate = await requireFeature(request, 'influencers.list');
   if (gate.error) return gate.error;
 
   const { searchParams } = request.nextUrl;

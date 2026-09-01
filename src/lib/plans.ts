@@ -94,6 +94,10 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
     consumesQuota: 'free-daily',
   },
   'my.naver-mate': { key: 'my.naver-mate', label: 'AI 브리핑', minPlan: 'INFLUENCER' },
+  // 「포스팅 데이터 내려받기」 — 2026-09-01 이전에는 화면의 boolean 하나로만 막혀 있었고
+  // 서버 라우트가 아예 없어 브라우저에서 CSV 를 직접 만들었다(개발자도구로 우회 가능).
+  // /api/downloads/post-analysis 가 이 선언을 서버에서 강제한다.
+  'downloads.post-analysis': { key: 'downloads.post-analysis', label: '포스팅 데이터 내려받기', minPlan: 'INFLUENCER' },
 
   /* ── 대시보드 — 인플루언서 ───────────────────────────────── */
   'my.dashboard': { key: 'my.dashboard', label: '인플루언서 대시보드', minPlan: 'INFLUENCER' },
@@ -102,7 +106,14 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   'my.fans': { key: 'my.fans', label: '맞팬 관리', minPlan: 'INFLUENCER' },
 
   /* ── 대시보드 — 포스팅 ───────────────────────────────────── */
-  'writing.spellcheck': { key: 'writing.spellcheck', label: '맞춤법 검사', minPlan: 'BLOGGER' },
+  // 2026-09-01 무료 전환(오렌지 결정). 로그인도 요구하지 않는다 — 유입 목적의 공개 기능이다.
+  // Claude 를 호출하므로 남용 방어는 등급이 아니라 라우트의 IP 레이트리밋이 맡는다.
+  'writing.spellcheck': {
+    key: 'writing.spellcheck',
+    label: '맞춤법 검사',
+    minPlan: 'FREE',
+    allowAnonymous: true,
+  },
   'blog.quality-evaluate': { key: 'blog.quality-evaluate', label: '글 심층피드백', minPlan: 'INFLUENCER' },
 
   /* ── 네이버 데이터 — 랭킹 ───────────────────────────────── */
@@ -134,6 +145,8 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   'influencers.detail': { key: 'influencers.detail', label: '인플루언서 상세', minPlan: 'INFLUENCER' },
   // 경쟁자 분석은 인플루언서 상세 API 를 함께 쓴다. 그래서 /api/influencers/[id] 의
   // 서버 가드는 둘 중 낮은 쪽인 BLOGGER 이고, 상세 "화면"만 INFLUENCER 로 막는다.
+  // 다만 전체 명단 API(/api/influencers)는 더 이상 공유하지 않는다 — 경쟁자 분석의 검색은
+  // 검색 전용 /api/influencers/search 로 옮겼고, 전체 명단은 influencers.list(INFLUENCER)다.
   'competitor.analysis': {
     key: 'competitor.analysis',
     label: '경쟁자 분석',

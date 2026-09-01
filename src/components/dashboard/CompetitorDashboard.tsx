@@ -88,7 +88,10 @@ export default function CompetitorDashboard({
     searchTimerRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/influencers?search=${encodeURIComponent(searchTerm)}&limit=8`);
+        // 전체 명단 API(/api/influencers)가 아니라 검색 전용 API 를 쓴다.
+        // 전체 명단은 「인플루언서 순위」(인플루언서 이용권) 화면의 데이터라,
+        // 경쟁자 분석(예비 인플루언서)이 그걸 쓰면 상위 이용권 데이터가 통째로 새어 나간다.
+        const res = await fetch(`/api/influencers/search?search=${encodeURIComponent(searchTerm)}&limit=8`);
         if (res.ok) {
           const data = await res.json();
           // 자기 자신 + 이미 추가된 경쟁자 제외

@@ -140,6 +140,12 @@ const PAID_PLAN_GATE_API_EXEMPT = [
   '/api/my/link-blog',
   '/api/my/post-missing-state',
   '/api/my/post-missing-history',
+  // 「MY 블로그」(/dashboard)는 무료로 안내·판매하는 화면인데, 그 KPI 요약과 프로필이
+  // /api/my 접두사에 걸려 402 를 받고 있었다(2026-09-01 매핑 OVERLOCK). 안내대로 연다.
+  // 이 두 API 는 "사용자 본인이 이미 만들어 둔 결과"를 다시 집계해 보여줄 뿐이라,
+  // 유료 기능(키워드순위·AI 브리핑)을 쓴 적 없는 무료 회원에게는 빈 값이 내려간다.
+  '/api/my/blog-dashboard-summary',
+  '/api/my/blog-custom-profile',
 ];
 
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
@@ -168,7 +174,7 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
 const GATE_HANDLED_ELSEWHERE = new Set([
   '/my', // 비로그인 시 리다이렉트 대신 GuestDashboard 빈 상태를 의도적으로 렌더 (src/app/my/page.tsx)
   // 아래는 전부 page/layout 의 checkFeaturePage(lib/plan-server-guards.ts)가 등급까지 판정한다.
-  '/dashboard/writing/spellcheck',
+  // (맞춤법 검사는 2026-09-01 무료·비로그인 공개로 바뀌어 authOnly 가 아니므로 여기 없다.)
   '/dashboard/writing/content-angles',
   '/dashboard/writing/titles',
   '/dashboard/youtube-stt',
@@ -427,7 +433,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
-  // /api/influencers 의 등급은 라우트의 requireFeature('competitor.analysis') 가 판정한다
+  // /api/influencers 의 등급은 라우트의 requireFeature('influencers.list') 가 판정한다
   // (2026-09-01). 미들웨어에도 같은 판정을 두면 등급이 두 곳에서 갈린다.
 
   // 네이버메이트 랭킹 API: 로그인만 필요(회원 전용).
