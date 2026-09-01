@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { consumeFreeDailyQuota, refundFreeDailyQuota } from './free-quota';
 
 /**
- * "무료 5회 / PRO 무제한" 기능 게이트 — API 라우트 진입부에서 한 줄로 쓰는 용도.
+ * "무료 하루 3회 / PRO 무제한" 기능 게이트 — API 라우트 진입부에서 한 줄로 쓰는 용도.
+ * 한도값의 정본은 관리자 설정(app_settings.free_daily_limit_*, 기본 3)이다.
  *
  * 사용 예:
  *   const gate = await requireFeatureAccess(request, {

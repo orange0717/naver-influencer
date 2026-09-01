@@ -19,7 +19,7 @@ export async function GET() {
   }
 
   const plan = await getPlanTierByCookieUser(cookieUser);
-  const limit = getCompetitorDailyLimit(plan);
+  const limit = await getCompetitorDailyLimit(plan);
   const unlimited = !isFinite(limit);
   const { count } = unlimited
     ? { count: 0 }

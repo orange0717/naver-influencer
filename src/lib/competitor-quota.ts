@@ -1,19 +1,21 @@
 import { createServiceClient } from './supabase-server';
-import { consumeFreeDailyQuota, getFreeDailyUsage, MEMBER_DAILY_FREE_LIMIT } from './free-quota';
+import { consumeFreeDailyQuota, getFreeDailyUsage } from './free-quota';
+import { getFreeDailyLimit } from './settings';
 
 export type PlanTier = 'free' | 'blogger' | 'influencer';
 
 /**
  * 2026-08-08 프리미엄 모델 전환: 경쟁자 분석 전용 쿼터(플랜별 1/5/무제한 + 리소스 단위 중복방지)를
- * 폐지하고, 공용 "하루 5회(비회원)/10회(회원) 무료 풀"(free-quota.ts)로 통합했다.
+ * 폐지하고, 공용 "하루 3회 무료 풀"(free-quota.ts)로 통합했다. 한도값의 정본은 관리자 설정
+ * (app_settings.free_daily_limit_*, 기본 3)이며 비회원·회원 값이 같다 — 이 주석에 숫자를 다시 박지 말 것.
  * PRO 이용권(blogger/influencer) 보유자는 무제한, 그 외에는 다른 무료 기능들과 합산된 전역 한도를 쓴다.
  * (이전에는 같은 경쟁자를 재조회하면 카운트하지 않았으나, 전역 합산 방식으로 바뀌며 그 구분은 없앴다.)
  * 이 모듈은 기존 호출부(경쟁자 API 2곳)의 시그니처를 유지하기 위한 얇은 래퍼다.
  */
 
-/** 플랜별 1일 무료 한도 — PRO(blogger/influencer)는 무제한, free는 회원 공용 풀(MEMBER_DAILY_FREE_LIMIT) */
-export function getCompetitorDailyLimit(plan: PlanTier): number {
-  if (plan === 'free') return MEMBER_DAILY_FREE_LIMIT;
+/** 플랜별 1일 무료 한도 — PRO(blogger/influencer)는 무제한, free는 회원 공용 풀(관리자 설정값) */
+export async function getCompetitorDailyLimit(plan: PlanTier): Promise<number> {
+  if (plan === 'free') return getFreeDailyLimit(true);
   return Infinity;
 }
 

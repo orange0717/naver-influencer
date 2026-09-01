@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { getAuthUser } from './auth';
 import { hasActivePaidPlanByUserId } from './admin';
 import { createServiceClient } from './supabase-server';
-import { MEMBER_DAILY_FREE_LIMIT } from './free-quota';
+import { getFreeDailyLimit } from './settings';
 
 /**
  * 무료회원 "하루 3회" 유료 분석 화면 조회 제한 — API 라우트 핸들러를 감싸는 고차 래퍼.
@@ -116,7 +116,9 @@ export function withAnalysisView<Ctx = unknown>(
 
     const subjectKey = `user:${userId}`;
     const token = headerToken || randomUUID();
-    const limit = MEMBER_DAILY_FREE_LIMIT;
+    // 한도의 정본은 관리자 설정 — free-quota.ts 와 같은 free_daily_usage 풀을 쓰므로 여기서 상수를
+    // 따로 들고 있으면 관리자가 한도를 올렸을 때 AI 는 늘고 분석 화면만 옛 값에서 막힌다.
+    const limit = await getFreeDailyLimit(true);
 
     // 1) 원자적 예약 (같은 토큰 재요청은 무소모 통과, 새 조회 & 한도 초과면 차단)
     let allowed = true;
