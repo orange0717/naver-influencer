@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { requireLoginPage } from '@/lib/plan-server-guards';
 
 export const metadata: Metadata = {
   title: '성장 후기 작성',
@@ -6,6 +7,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function StoriesWriteLayout({ children }: { children: React.ReactNode }) {
+// 제출 시점에만 막으면 비로그인이 후기를 다 쓰고 나서 작성 내용을 잃는다.
+export default async function StoriesWriteLayout({ children }: { children: React.ReactNode }) {
+  await requireLoginPage('/stories/write');
   return <>{children}</>;
 }

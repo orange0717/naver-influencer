@@ -143,7 +143,7 @@
 | `/notice/write` | (사이드바 없음) | 없음 | 없음 | `useAuth` → 비로그인이면 `router.push('/notice')` (`notice/write/page.tsx:33-37`) | 🚨 **서버 가드 전무** — 클라이언트 로그인 확인만. 관리자 확인도 화면단엔 없음(작성 API가 검사) |
 | `/notice/[id]/edit` | (사이드바 없음) | 없음 | 없음 | `useAuth` → 비로그인이면 `router.push('/notice')` (`notice/[id]/edit/page.tsx:31-35`) | 🚨 **서버 가드 전무**, 위와 동일 |
 | `/stories/[id]` | (사이드바 없음) | 없음 | 없음 | `useAuth` (표시 분기용) | 공개 |
-| `/stories/write` | (사이드바 없음) | 없음 | 없음 (`stories/write/layout.tsx` 메타데이터만) | 제출 시점에만 `alert('로그인이 필요합니다')` + `router.push('/login?redirect=…')` (`stories/write/page.tsx:64-65`) | 🚨 서버 가드 없음 + **`/login` 라우트가 존재하지 않아 404로 빠지는 막다른 길** |
+| `/stories/write` | (사이드바 없음) | 없음 | `requireLoginPage('/stories/write')` (`stories/write/layout.tsx`) | `useAuth` → 비로그인이면 `?memberOnly=1&redirect=…` (`stories/write/page.tsx:62-67`) | ✅ 해결 (2026-09-01) — 서버 가드 추가 + 죽은 `/login` 목적지 제거 |
 | `/enterprise/signup` | (사이드바 없음) | 없음 | 없음 | 클라이언트 폼 (`robots: noindex`) | 공개 (셀프서비스 가입, 의도적) |
 | `/enterprise/checkout` | (사이드바 없음) | 없음 | 없음 | 클라이언트에서 세션 확인 | 서버 가드 없음 — 결제는 서버 검증에 의존 |
 | `/enterprise/invite` | (사이드바 없음) | 없음 | 없음 | 클라이언트에서 토큰 확인 | 공개 (초대 토큰 링크, 의도적) |
@@ -213,7 +213,7 @@
 - **`/my/topics/[id]` — 동일 구조.** `my/topics/[id]/page.tsx:1-9` 전체가 클라이언트 래퍼, 서버 가드 0.
 - **`/my/link` — 미들웨어·페이지 모두 게이트 없음.** `PAID_PLAN_GATE_EXEMPT`(`middleware.ts:134`)로 유료 면제이면서 `MEMBER_ONLY_GATE_PREFIXES`에도 없다. `my/link/page.tsx:1-10`에 가드 없음. (계정 연결은 원래 무료 개방이 의도이나, **비로그인 개방까지 의도인지는 불명**)
 - **`/notice/write`, `/notice/[id]/edit` — 서버 가드 전무.** 클라이언트 `useEffect` 로그인 확인만 있다(`notice/write/page.tsx:33-37`, `notice/[id]/edit/page.tsx:31-35`). JS를 끄거나 리다이렉트 전에 폼이 렌더된다. 공지 작성은 관리자 기능인데 **화면단에는 관리자 확인 자체가 없다**(작성 API가 검사하는 것으로 보이나 화면 감사 범위 밖).
-- **`/stories/write` — 서버 가드 없음 + 막다른 길.** 제출 시점에만 확인하고 `router.push('/login?redirect=/stories/write')`(`stories/write/page.tsx:64-65`)로 보내는데 **`src/app/login` 라우트가 존재하지 않는다**(전체 `page.tsx` 목록에 없음). 비로그인이 글을 다 쓰고 제출하면 404로 떨어지며 작성 내용을 잃는다.
+- **`/stories/write` — 서버 가드 없음 + 막다른 길.** ✅ **2026-09-01 해결.** 제출 시점에만 확인하고 `router.push('/login?redirect=/stories/write')`로 보냈는데 `src/app/login` 라우트가 존재하지 않아 비로그인이 글을 다 쓰고 제출하면 404로 떨어지며 작성 내용을 잃었다. `stories/write/layout.tsx`에 `requireLoginPage('/stories/write')`를 추가해 진입 자체를 막고(307 → `/?memberOnly=1&redirect=%2Fstories%2Fwrite`), 클라이언트 폴백도 회원 전용 모달로 맞췄다.
 - **`/enterprise/manage` — 서버 가드 없음.** 기업 계정 관리 화면인데 `enterprise/manage/page.tsx:11`은 `<ManageClient />` 렌더뿐이고, 차단은 클라이언트 카드 분기(`ManageClient.tsx:105-132`)에만 있다.
 - **`/orangeconnect/*` 6개 화면(dashboard·search·campaign 계열) — 서버 가드 없음.** 전부 `useAdAuth` 클라이언트 훅 결과로 "로그인이 필요합니다" 카드를 그릴 뿐이다(`orangeconnect/dashboard/page.tsx:47,80-81`). 광고주 포털은 Supabase Auth와 별도 체계라 미들웨어가 전혀 관여하지 않는다.
 

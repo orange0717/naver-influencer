@@ -61,8 +61,8 @@ export default function StoryWritePage() {
 
   useEffect(() => {
     if (!loading && !user.id) {
-      alert('로그인이 필요합니다.');
-      router.push('/login?redirect=/stories/write');
+      // `/login` 은 존재하지 않는 경로였다(404 막다른 길). 회원 전용 모달로 보낸다.
+      router.replace(`/?memberOnly=1&redirect=${encodeURIComponent('/stories/write')}`);
     }
   }, [loading, user.id, router]);
 
