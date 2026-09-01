@@ -449,3 +449,100 @@ consumePaidDailyCap({ ... })                // 쿼터 → 실패 시 402
 `quotaFor()` 의 첫 소비처로 AI 상담 화면을 연결했습니다. 이전에는 **이용권 보유자에게도** "무료 이용 횟수는 … 차감됩니다" 안내가 떴는데, 그분들은 이 풀에서 차감되지 않습니다. 이제 `consumesFreeQuota` 가 false 면 문장이 사라집니다.
 
 무료·비로그인 상태에서 문장이 그대로 나오는 것은 로컬 프리뷰에서 확인했습니다. **이용권 보유 상태에서 사라지는 것은 계정이 필요해 미검증입니다** — §1의 "로그인 상태 검증 미완"과 같은 제약입니다.
+
+---
+
+# 11. 이용권 페이지 스펙 대조 — 지시서 v1.2 Phase 0·1
+
+원문은 `docs/plan-spec-source.md`. 여기는 그 스펙과 `src/lib/plans.ts`·실제 가드의 **대조 결과**입니다.
+지시서 v1.2 §3은 "이용권 페이지가 정본이고, 코드가 다르면 코드가 틀린 것"이라고 했습니다.
+그 전제를 그대로 적용하면 아래 결과가 나옵니다. **판정만 했고 코드는 고치지 않았습니다.**
+
+## 11-1. 대조표
+
+| 이용권 안내 기능 | 안내 등급 | 매핑된 FeatureKey / 라우트 | 코드 등급 | 판정 |
+|---|---|---|---|---|
+| MY 블로그 | FREE | `dashboard.blog` (`/dashboard`) | FREE | MATCH |
+| MY 키워드순위 | BLOGGER | `my.keyword-ranking` | BLOGGER | MATCH |
+| MY 포스팅 분석 | BLOGGER | `/my/post-analysis` — **plans.ts 미등록** | 로그인만 (`requireLoginPage`) | **LEAK** |
+| 포스팅 데이터 다운로드 (500건/무제한) | BLOGGER/INF | `/api/downloads/my-keyword-ranking` | INFLUENCER (`requireInfluencerPlan`) | **OVERLOCK** + 명칭 불일치 |
+| MY 키워드 챌린지 | INFLUENCER | **대응 라우트 없음** | — | ⚠ 매핑 불가 |
+| 인플루언서 리스트 | FREE | `influencers.free-plan` / `influencers.list` 둘 중 어느 쪽? | FREE / INFLUENCER | ⚠ 매핑 불가 |
+| 연도별 인플루언서 선정 현황 | FREE | `/stats` — plans.ts 미등록 | 게이트 없음(비로그인 200) | MATCH(관대) |
+| 키워드 검색 (검색량 포함) | FREE | `keywords.blogger-search` (`/keywords/blogger`) | FREE + allowAnonymous | MATCH(관대) |
+| 키워드 검색순위 | BLOGGER | `/keywords/blog-ranking` — **plans.ts 미등록** | 화면 게이트 없음(비로그인 200) | **LEAK** (단, 데이터 API는 401 → 빈 화면) |
+| 키워드 챌린지 | INFLUENCER | `keywords.challenge` | INFLUENCER | MATCH |
+| 키워드 추천 (AI) | INFLUENCER | `keywords.recommend` | INFLUENCER | MATCH |
+| 키워드 데이터 다운로드 (500건) | INFLUENCER | `/api/downloads/keywords` | INFLUENCER | MATCH |
+| 제목 생성 (AI) | **BLOGGER** | `writing.titles` | **INFLUENCER** | **OVERLOCK** |
+| 맞춤법 검사 | BLOGGER | `writing.spellcheck` | BLOGGER | MATCH |
+| 글감 찾기 (AI) | INFLUENCER | `writing.content-angles` | INFLUENCER | MATCH |
+| 블로그 글 피드백 (Claude AI) | INFLUENCER | `blog.quality-evaluate` | INFLUENCER | MATCH |
+| 경쟁자 분석 (무료 1일 3회) | **FREE(횟수제)** | `competitor.analysis` | **BLOGGER** | **OVERLOCK** + 화면/API 불일치 |
+| 릴스·쇼츠 분석 (AI) | INFLUENCER | `content.shortform` | INFLUENCER | MATCH |
+| 커뮤니티 | **BLOGGER** | `community.read` | **FREE** | **LEAK** (단 §5 오렌지 승인분) |
+| 동시 로그인 기기 1대 | 전 등급 | `src/lib/device-id.ts` | 구현됨 | 등급 축 아님 |
+
+집계: MATCH 10 · LEAK 3 · OVERLOCK 3 · 매핑 불가 2 · 등급 축 밖 1
+
+## 11-2. 🚨 스펙에 아예 없는 기능이 20개다 (UNSPECIFIED)
+
+`plans.ts` 에 등록됐지만 이용권 페이지 비교표에 한 줄도 없는 기능:
+
+`my.missing-posts`(노출 현황) · `my.naver-mate`(AI 브리핑) · `my.dashboard`(인플루언서 대시보드) ·
+`topics.browse` · `topics.mine` · `my.fans`(맞팬 관리) · `rankings.naver-mate`(네이버 메이트) ·
+`keywords.bulk`(대량 키워드 조회) · `influencers.detail` · `content.youtube`(롱폼 분석) ·
+`content.youtube-stt`(유튜브 음원 추출) · `tools.image-editor` · `google.indexing` ·
+`ai.consultant`(N인플 AI 대화) · `ai.deep-chat` · `notice.read` · `my.link` ·
+그리고 사이드바에만 있는 `컬러 팔레트` · `미노출 분석` · `성장후기`.
+
+**이 중 8개가 유료 등급(BLOGGER/INFLUENCER)으로 막혀 있는데 이용권 페이지에는 팔고 있지 않습니다.**
+지시서 §7은 "UNSPECIFIED 는 현행 동작을 그대로 둔다"이므로 손대지 않았습니다. 다만
+`my.naver-mate`·`topics.*`·`my.fans`·`keywords.bulk`·`content.youtube` 같은 인플루언서 전용 기능이
+판매 페이지에 없는 것은 **게이팅 결함이 아니라 판매 문구 누락**으로 보입니다 → §11-4.
+
+## 11-3. 이용권 페이지 내부 모순
+
+- 카드는 경쟁자 분석을 **1일 1회**(`SubscribeClient.tsx:248`), 비교표는 **1일 3회**(`:535`)로 적습니다.
+  실제 코드는 **3회**(`app_settings.free_daily_limit_member`, 기본 3). 카드 쪽이 틀렸습니다.
+- 카드와 비교표가 **같은 정보를 두 벌 하드코딩**하고 있어 한쪽만 고치면 또 어긋납니다.
+  지시서 §5.1의 "이용권 페이지도 `plans.ts` 를 참조해 렌더링" 이 이 문제를 없애는 방향입니다.
+
+## 11-4. §11-2(지시서) — 쿼터 제거의 안전성: **제거하면 안 됩니다**
+
+지시서 §2.1은 하루 3회 카운터 제거를 지시하면서, 결제·정산과 연결돼 있으면 정지하라고 했습니다.
+확인 결과는 이렇습니다.
+
+- **결제·정산과는 연결돼 있지 않습니다.** `free_daily_usage` 를 읽고 쓰는 곳은 `free-quota.ts` ·
+  `analysis-quota.ts` · `competitor-quota.ts` · `feature-gate.ts` 4개 모듈뿐이고, `payment_intents` ·
+  `payment_transactions` · 크레딧 어디와도 엮이지 않습니다. (크레딧 차감은 `CREDITS_ENABLED` 미설정으로
+  전 구간 no-op이라는 §4-1 결론도 그대로입니다.)
+- **그러나 이용권 페이지가 「무료 이용: 하루 3회 (회원가입 시 매일)」 를 명시 안내하고 있습니다**
+  (`SubscribeClient.tsx:573`). 지시서 §3이 이 페이지를 정본으로 삼으라고 했으므로,
+  §2.1(쿼터 폐지)과 §3(페이지가 정본)은 **지시서 안에서 서로 모순**입니다.
+- 제거 시 실제로 벌어지는 일: 무료 회원이 **경쟁자 분석 · N인플 AI 대화 · 노출 현황 · 네이버 메이트 ·
+  키워드 순위**를 무제한으로 쓰게 됩니다(`consumesQuota: 'free-daily'` 5종). 등급만으로는 이 5종이
+  이미 FREE 로 열려 있어 대체 차단 수단이 없습니다.
+
+→ **정지하고 오렌지 확인을 요청합니다.** 두 가지 중 하나를 골라야 합니다.
+  (가) 쿼터 유지 — 이용권 페이지 안내대로. 지시서 §2.1 철회.
+  (나) 쿼터 폐지 — 그러면 FREE 5종을 유료로 올리거나 무료 개방을 감수해야 하고, 이용권 페이지의
+      「하루 3회」 · 「경쟁자 분석 1일 3회」 문구를 함께 내려야 합니다.
+
+## 11-5. §11(지시서) 미해결 항목 갱신
+
+1. ⚠ **배지 표기 단위** — 미정 그대로. `PLAN_LABEL` 이 이미 3종(무료/예비 인플루언서/인플루언서)이라
+   3종 표기가 자연스럽지만, "예비 인플루언서" 는 배지로 쓰기에 깁니다. §6 구현 보류.
+2. ✅ **쿼터 제거의 안전성** — 결제 연결은 없으나 판매 문구와 충돌 → §11-4. **결정 필요**.
+3. ✅ **등급 명칭 불일치 해소** — 지시서의 「블로거」는 코드·페이지 어디에도 없습니다. 정본은
+   **「예비 인플루언서」**(`PLAN_LABEL`, 이용권 페이지 양쪽 일치). "PRO" 는 §4-1대로 등급이 아니라
+   "유효한 유료 플랜 보유" 표시 라벨입니다.
+4. ✅ **크레딧의 위치** — 등급 축 밖이고 현재 no-op. 크레딧으로만 막히는 기능은 없습니다(§4-1).
+5. ⚠ **비로그인 취급** — 미정 그대로. `allowAnonymous` 는 2개(`keywords.blogger-search`,
+   `ai.consultant`)뿐인데 실제로는 `/stats` · `/keywords/blog-ranking` 도 비로그인 200 입니다.
+6. ⚠ **기업 좌석 매핑** — §4-1대로 BASIC→BLOGGER / PRO→INFLUENCER 로 이미 합류. 별도 축 아님.
+7. ⚠ **안내 문구의 기능 매핑 불가 2건** — 「MY 키워드 챌린지」(대응 라우트 없음),
+   「인플루언서 리스트」(기본 명단인지 전체 리스트인지). 추측 매핑하지 않았습니다.
+8. ⚠ **UNSPECIFIED 20개** — §11-2. 그중 유료로 막힌 8개는 "판매하지 않는데 막는" 상태입니다.
+9. ⚠ **이용권 페이지 자체 모순** — 경쟁자 분석 1회 vs 3회(§11-3). 문구 수정 승인 필요.
+10. ⚠ **지시서 §2.1 vs §3 모순** — §11-4.
