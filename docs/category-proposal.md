@@ -116,11 +116,22 @@
 
 | 새 통일명 | 소속 화면 | 이용권 표기 | API |
 |---|---|---|---|
-| **포스팅 데이터 내려받기** | 분석 > 내 블로그 > MY 포스팅 분석 | 포스팅 데이터 다운로드 (1회 500건) | `/api/downloads/my-keyword-ranking` |
+| **포스팅 데이터 내려받기** | 분석 > 내 블로그 > MY 포스팅 분석 | 포스팅 데이터 다운로드 (1회 500건) | **없음 — 브라우저에서 생성** |
 | **키워드 데이터 내려받기** | 분석 > 키워드 > 키워드 챌린지 | 키워드 데이터 다운로드 (1회 500건) | `/api/downloads/keywords` |
+| *(이용권 안내에 없음)* | 분석 > 내 블로그 > MY 키워드순위 | — | `/api/downloads/my-keyword-ranking` |
 
-둘 다 등급·한도가 이미 판매 문구와 일치한다(`feature-inventory.md` §6-2).
-v2.2 §6 규칙대로 **사이드바에 올리지 않고 버튼 옆에 등급 배지만** 붙인다(구현 변경 없음).
+🚨 **2026-09-01 Phase 2 실측으로 정정.** 이 절은 원래 포스팅 데이터 내려받기의 API 를
+`/api/downloads/my-keyword-ranking` 이라 적고 「둘 다 등급·한도가 이미 판매 문구와 일치한다」고
+단정했다. **둘 다 틀렸다.**
+
+- `/api/downloads/my-keyword-ranking` 은 **MY 키워드순위 전체 리포트**다(별개 기능, 안내에 없음).
+- 포스팅 데이터 내려받기에는 **서버 API 가 없다.** 화면이 이미 받아 둔 행으로 브라우저에서 CSV 를
+  만들고(`my/post-analysis/page.tsx:47`), 등급은 `canDownload`(같은 파일 `:36`) 한 줄로만 갈린다
+  → **CLIENT_ONLY**. 500건 상한도 클라 루프라 서버가 강제하지 않는다.
+- 따라서 「판매 문구와 일치」는 **키워드 쪽만** 맞다.
+
+상세는 `docs/plan-mapping.md` §2-B. v2.2 §6 규칙대로 **사이드바에 올리지 않고 버튼 옆에 등급
+배지만** 붙이는 방침은 유지하되, 포스팅 쪽은 서버 차단 신설이 함께 필요하다(승인 대기).
 
 ### 2-E. 이 축에 넣지 않은 것
 
@@ -129,7 +140,7 @@ v2.2 §6 규칙대로 **사이드바에 올리지 않고 버튼 옆에 등급 �
 | `/` (N인플 AI) | ✅ **v2.2 확정** — 진입점이라 최상단 단독. 대분류에 넣지 않는다 |
 | `/notice` `/community` `/stories` `/subscribe` `/intro` `/enterprise` | 서비스 안내·결제. 기능이 아니다. 현행 `SIDEBAR_FOOTER_LINKS` 유지 |
 | `/campaigns` `/my/campaigns` `/my/settlements` `/messages` `/orangeconnect/**` | 광고주 매칭·정산 계열. **별개 제품**이라 억지로 넣지 않는다 → §4-1 |
-| `/rankings` `/rankings/blogger` `/rankings/influencer` | `/rankings` 는 「제공하지 않습니다」 안내만 있는 껍데기 → §4-3 |
+| `/rankings` `/rankings/blogger` `/rankings/influencer` | `/rankings` 는 「제공하지 않습니다」 안내만 있는 껍데기 → §4-3. 🚨 **단, `/rankings/blogger` 는 이용권 무료 카드·FAQ·구조화 데이터 3곳에서 「블로거 순위」로 판매되고 있다.** 화면에는 「개발 중」 배지가 붙어 있다 → `plan-mapping.md` §2-C |
 | `/search-volume` | `/keywords/blogger` 로의 redirect (외부링크 호환, 의도된 것) |
 | `/guide` `/download` `/bot-info` `/trial` `/decoder` `/discover/influencers` `/my/blogger` `/influencers/list` `/dashboard/ai-consultant` | 마케팅·중복·미확인 → §4-2 / §4-4 |
 
