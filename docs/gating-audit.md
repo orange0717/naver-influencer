@@ -261,10 +261,25 @@
 ### 7-4. Phase 3에서 새로 드러난, 아직 손대지 않은 것
 
 1. **`/keywords/blog-ranking` 이 반쪽입니다.** 화면은 비로그인에 공개(`PUBLIC_KEYWORDS_PATHS`)인데 데이터 호출 `/api/keywords/blog-top` 은 미들웨어의 `isKeywordsApi` 규칙으로 비로그인에 401입니다. 즉 **빈 화면이 열립니다.** 오렌지 결정("화면을 열어준다")은 `/keywords/blogger` 만 명시했고 이쪽은 범위 밖이라 그대로 뒀습니다. (`/keywords/blogger` 는 `/api/search-volume` 을 쓰므로 정상입니다.)
-2. **`/influencers/list`(무료 명단)가 감사표에 없었습니다.** 서버 가드 없는 클라이언트 페이지이고 `/api/influencers/list` 는 미들웨어에서 명시 면제됩니다. 무료 공개가 의도로 보이나 `plans.ts` 에 키가 없어 **UNMAPPED 12번째 항목**으로 올립니다.
+2. **`/influencers/list`(무료 명단)가 감사표에 없었습니다.** 페이지에 서버 가드가 없고 `/api/influencers/list` 는 미들웨어의 **유료** 게이트에서 면제됩니다. 다만 실측 결과 화면·API 모두 **로그인은 요구합니다**(307 / 401) — `MEMBER_ONLY_GATE_PREFIXES` 의 `/influencers` 가 하위를 덮기 때문입니다. 즉 "비구독 회원에게 열린 명단"이지 비로그인 공개가 아닙니다. 누출은 아니나 `plans.ts` 에 키가 없어 **UNMAPPED 12번째 항목**으로 올립니다.
 
 ### 7-5. 여전히 오렌지 결정이 필요한 것
 
 §4-2 중 **3·4·5·7·8·9번이 그대로 남아 있습니다** (한도 리셋 주기 DB 실측 / 크레딧을 게이팅 축에 넣을지 / 비로그인 취급 통일 / LEAK 7건이 의도인지 / UNMAPPED가 공개 의도인지 / INFLUENCER 판정 2종 일치 검증). 여기에 7-4의 2건이 추가됩니다.
 
-배포(`vercel deploy --prod`)는 오렌지가 직접 실행하셔야 합니다.
+### 7-6. 배포·라이브 검증 (2026-09-01 완료)
+
+`vercel deploy --prod` → `dpl_AJ47CNUuU71ZFcZGYvTpEQcx49S3`, `ninfle.kr` 별칭 반영 완료.
+
+비로그인 기준 실측:
+
+| 경로 | 결과 | 확인한 것 |
+| --- | --- | --- |
+| `/keywords/blogger` | 200 | 역방향 CONFLICT 해소 — 이전엔 부모 레이아웃이 비로그인을 튕겼습니다 |
+| `/competitor` | 307 → `?memberOnly=1` | **미들웨어에서 뺐는데도 여전히 차단됩니다** — 레이아웃 가드가 받아냈고 누출이 없습니다 |
+| `/keywords`, `/keywords/recommend`, `/influencers`, `/community` | 307 → `?memberOnly=1` | 비로그인 처리 정상 |
+| `/api/influencers`, `/api/my/dashboard`, `/api/keywords/blog-top` | 401 | API 가드 정상 |
+| `/api/search-volume` | 200 | `/keywords/blogger` 가 쓰는 공개 API — 의도대로 열려 있습니다 |
+| `/my` | 200 | 비로그인은 마케팅 랜딩. 기존 동작이며 회귀가 아닙니다 |
+
+⚠️ **로그인 상태 검증은 계정이 필요해 남아 있습니다.** curl로는 확인할 수 없는 항목입니다 — ①블로거 계정으로 인플루언서 전용 화면에 들어갔을 때 `FeatureLocked` 카드가 실제로 뜨는지, ②403이 된 API가 클라이언트에서 올바른 문구로 표시되는지. 특히 "메뉴 선언이 정답" 결정으로 권한이 줄어드는 블로거 구독자 경로를 한 번 눈으로 보시는 것을 권합니다.
