@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import MarketingSchoolCard from '@/components/MarketingSchoolCard';
 import { AI_CONSULTANT_CATALOG } from '@/lib/ai-consultant-catalog';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { useTrialEndedGate } from '@/contexts/TrialEndedGateContext';
 
@@ -73,6 +74,8 @@ export default function AiConsultantClient() {
   // 게스트는 회원가입 모달, 로그인 무료회원은 이용권 구매 모달로 분기 (needsSignup 플래그 기준).
   const { openGate: openMemberGate } = useMemberOnlyGate();
   const { openGate: openUpgradeGate } = useTrialEndedGate();
+  // 이용권 보유자는 이 풀에서 차감되지 않으므로 무료 횟수 안내를 보여주지 않는다.
+  const { consumesFreeQuota } = useFeatureAccess('ai.consultant');
 
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
@@ -429,7 +432,8 @@ export default function AiConsultantClient() {
               </button>
             </div>
             <p className="text-[11px] text-dim/70 leading-relaxed">
-              마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 바로 답변해드리고, 관련된 N인플 기능도 함께 추천해드립니다. 무료 이용 횟수는 다른 AI·분석 기능과 합산해 차감됩니다.
+              마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 바로 답변해드리고, 관련된 N인플 기능도 함께 추천해드립니다.
+              {consumesFreeQuota && ' 무료 이용 횟수는 다른 AI·분석 기능과 합산해 차감됩니다.'}
             </p>
           </div>
 

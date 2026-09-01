@@ -5,7 +5,7 @@ import {
   FEATURES,
   planAtLeast,
   toPlanKey,
-  limitFor,
+  quotaFor,
   type FeatureKey,
   type PlanKey,
 } from '@/lib/plans';
@@ -17,8 +17,12 @@ export interface FeatureAccess {
   plan: PlanKey;
   /** 이 기능이 요구하는 최소 등급. 미등록 기능이면 null. */
   requiredPlan: PlanKey | null;
-  /** 이 기능 전용 잔여 횟수. 기능 전용 한도가 없으면 null. */
-  remaining: number | null;
+  /**
+   * 이 사용자가 이 기능을 쓸 때 무료 공용 횟수가 차감되는가.
+   * 이용권 보유자에게 "무료 횟수 차감" 안내를 띄우지 않으려고 쓴다.
+   * 잔여 횟수는 여기서 알 수 없다 — 계정 전체 합산이라 /api/usage/today 가 정본이다.
+   */
+  consumesFreeQuota: boolean;
   /** 로그인 여부 — "이용권이 필요합니다"와 "로그인이 필요합니다"를 갈라 안내할 때 쓴다. */
   isLoggedIn: boolean;
   /** 인증 확인 중. 이 동안 잠금 화면을 띄우면 로그인 사용자에게 잠깐 잘못 보인다. */
@@ -60,7 +64,7 @@ export function useFeatureAccess(feature: FeatureKey): FeatureAccess {
     allowed,
     plan,
     requiredPlan,
-    remaining: limitFor(plan, feature),
+    consumesFreeQuota: quotaFor(plan, feature) === 'free-daily',
     isLoggedIn,
     isLoading,
   };

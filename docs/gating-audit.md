@@ -389,3 +389,63 @@ v1.1에서 "무료 3회는 AI 전용 한도가 아니라 서비스 전체 공용
 4. **(나) 비로그인 취급** — 분석 화면도 비로그인에 3회를 물릴지, 현행(무제한 통과)을 유지할지.
 5. **(라) 유료 AI 4종 환불 추가 여부.**
 6. **리셋 시각은 여전히 DB 실측이 필요합니다.** 세 RPC 모두 `current_date` 를 타임존 없이 씁니다(`migration-138:36`, `-148:46`, `-086:36`). 같은 저장소의 다른 마이그레이션 5개 이상은 `AT TIME ZONE 'Asia/Seoul'` 을 명시하는데 **쿼터 3종만 빠져 있습니다.** DB 세션 타임존이 UTC(Supabase 기본)라면 리셋은 **자정이 아니라 KST 오전 9시**입니다. §5.1의 "내일 다시 이용" 문구가 사실과 다를 수 있어, 문구 확정 전에 확인이 필요합니다.
+
+---
+
+# 10. Phase 2 — 쿼터 축을 `lib/plans.ts` 로 끌어올림 (v1.1 §4)
+
+## 10-1. 무엇을 바꿨나
+
+지시서 §4.1이 요구한 구조를 넣되, **한도 숫자는 넣지 않았습니다.**
+
+| 항목 | 이전 | 이후 |
+| --- | --- | --- |
+| `FeatureDefinition.limits` | `Partial<Record<PlanKey, number>>` (한 번도 채워진 적 없음) | **삭제** |
+| `limitFor()` | 항상 `null` 반환 | **삭제** |
+| `useFeatureAccess().remaining` | 항상 `null` (소비처 없음) | **삭제** → `consumesFreeQuota: boolean` |
+| — | — | `QuotaCounter` 타입 신설 |
+| — | — | `FeatureDefinition.consumesQuota` 신설 |
+| — | — | `PLAN_QUOTA` · `quotaFor(plan, feature)` 신설 |
+
+`limits` 는 선언만 있고 값이 없었으며, 하필 **"여기에 숫자를 적어라"고 유도하는 모양**이었습니다. §8-3(다)에서 죽은 주석의 숫자가 공개 FAQ까지 새어나간 것이 같은 종류의 사고라, 숫자를 담을 수 있는 자리 자체를 없앴습니다.
+
+## 10-2. `consumesQuota` 값의 출처
+
+**새로 판단하지 않았습니다.** §8-2 표에 있는 현행 동작을 그대로 옮겨 적었습니다.
+
+| 기능 키 | 카운터 | 근거 라우트 |
+| --- | --- | --- |
+| `ai.consultant` | `free-daily` | `/api/ai-consultant` (+ conversations messages) |
+| `competitor.analysis` | `free-daily` | `/api/competitors` |
+| `my.missing-posts` | `free-daily` | `/api/my/post-missing-state` |
+| `my.keyword-ranking` | `free-daily` | `/api/my/keyword-ranking-state` |
+| `rankings.naver-mate` | `free-daily` | `/api/rankings/naver-mate` |
+| `writing.titles` | `paid-daily-cap` | `/api/keywords/titles` |
+| `writing.content-angles` | `paid-daily-cap` | `/api/keywords/content-angles` |
+| `content.shortform` | `paid-daily-cap` | `/api/content/shortform/analyze` |
+
+🚨 **차감하는데 선언이 없는 라우트가 4개 남습니다.** 대응하는 FeatureKey 자체가 없기 때문이고, 키를 새로 만들면 그 순간 `minPlan` 을 정해야 해서 §8("임의 매핑 금지")에 걸립니다. 그래서 **비워 두었습니다.**
+
+- `/api/blog/analyze` (유입 분석) — `/my/post-analysis` 는 등급 게이트 없이 로그인만 요구합니다
+- `/api/rankings/top` — `/rankings/blogger` 화면에 FeatureKey 없음
+- `/api/keywords/body` (본문 생성) — 제목·글감과 달리 키가 없음
+- `/api/search-volume`, `/api/shopping/keywords` — 카운터 ③(도구별 30회), 등급 축 밖
+
+즉 **`consumesQuota` 는 "차감 대상 전체"가 아니라 "등급 축에 등록된 기능 중 차감 대상"입니다.** 전수 목록은 여전히 §8-2 표가 정본입니다.
+
+## 10-3. §4.2(권한 → 쿼터 순서, 성공 시 차감)는 **이미 그렇게 돼 있습니다**
+
+지시서는 `requireFeature` 안에서 권한을 본 뒤 쿼터를 차감하라고 했지만, **라우트 층에서 이미 그 순서로 조합돼 있습니다.**
+
+```
+requireFeature(request, 'writing.titles')   // 권한 → 실패 시 403
+consumePaidDailyCap({ ... })                // 쿼터 → 실패 시 402
+```
+
+`requireFeature` 안으로 차감을 옮기면 **이미 `feature-gate` / `analysis-quota` / `consumePaidDailyCap` 로 차감 중인 라우트가 이중으로 깎입니다.** 게다가 라우트마다 다른 인자(쇼츠의 `max: 3`, view token dedup, refund 시점)를 잃습니다. §8이 "결제·크레딧 차감 로직을 수정하지 말라"고 한 범위에 해당한다고 보고 **옮기지 않았습니다.** 사유 코드 분리(403/402)는 §8-4대로 이미 충족입니다.
+
+## 10-4. 구조가 실제로 고친 것 하나
+
+`quotaFor()` 의 첫 소비처로 AI 상담 화면을 연결했습니다. 이전에는 **이용권 보유자에게도** "무료 이용 횟수는 … 차감됩니다" 안내가 떴는데, 그분들은 이 풀에서 차감되지 않습니다. 이제 `consumesFreeQuota` 가 false 면 문장이 사라집니다.
+
+무료·비로그인 상태에서 문장이 그대로 나오는 것은 로컬 프리뷰에서 확인했습니다. **이용권 보유 상태에서 사라지는 것은 계정이 필요해 미검증입니다** — §1의 "로그인 상태 검증 미완"과 같은 제약입니다.
