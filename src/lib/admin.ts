@@ -1,6 +1,7 @@
 import { getAuthUser } from './auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from './supabase-server';
+import { toPlanKey, type PlanKey } from './plans';
 
 const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 const RESTRICTED_EMAILS = (process.env.RESTRICTED_USER_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -237,6 +238,33 @@ export async function hasActivePaidPlanByUserId(
   } catch (err) {
     console.error('[hasActivePaidPlanByUserId] unexpected error:', err);
     return false; // fail-secure
+  }
+}
+
+/**
+ * 사용자의 등급을 단일 축(FREE/BLOGGER/INFLUENCER)으로 확정한다.
+ *
+ * hasActivePaidPlanByUserId 는 "유료인가"만 답하므로 블로거와 인플루언서를
+ * 구분해야 하는 게이팅에서는 쓸 수 없다. requireFeature 가 이 함수를 쓴다.
+ * 판정 규칙(관리자 우회, 만료 확인, 실패 시 fail-secure)은 위 함수와 동일하게 맞춘다.
+ */
+export async function getPlanKeyByUserId(userId: string): Promise<PlanKey> {
+  if (isAdmin(userId)) return 'INFLUENCER'; // 부트스트랩 폴백
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('users')
+      .select('subscription_plan, subscription_expires_at, is_admin')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!data) return 'FREE';
+    if (isAdminFromProfile({ id: userId, is_admin: data.is_admin })) return 'INFLUENCER';
+    if (!hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) return 'FREE';
+    return toPlanKey(data.subscription_plan);
+  } catch (err) {
+    console.error('[getPlanKeyByUserId] unexpected error:', err);
+    return 'FREE'; // fail-secure
   }
 }
 
