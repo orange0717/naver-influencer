@@ -118,7 +118,8 @@ const SOFTWARE_JSONLD = {
   operatingSystem: 'Web',
   inLanguage: 'ko',
   description:
-    '네이버 인플루언서를 준비하는 블로거와 현재 인플루언서를 위한 키워드 분석·랭킹·커뮤니티 SaaS. 키워드별 검색량·참여자수·TOP3 점유율 + 인플루언서/블로거 순위 + 블로그 품질지수 + 비회원 투표 가능 커뮤니티.',
+    // 「블로거 순위」는 화면이 「개발 중」이라 서비스 설명에서도 뺐다(2026-09-01). 열리면 되살릴 것.
+    '네이버 인플루언서를 준비하는 블로거와 현재 인플루언서를 위한 키워드 분석·랭킹·커뮤니티 SaaS. 키워드별 검색량·참여자수·TOP3 점유율 + 인플루언서 순위 + 블로그 품질지수 + 비회원 투표 가능 커뮤니티.',
   image: 'https://ninfle.kr/icon-512.png',
   publisher: { '@id': 'https://ninfle.kr/#organization' },
   creator: { '@id': 'https://ninfle.kr/#organization' },
