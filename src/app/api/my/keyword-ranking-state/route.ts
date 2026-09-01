@@ -4,7 +4,6 @@ import { getAuthUser } from '@/lib/auth';
 import { isRestrictedByUserId } from '@/lib/admin';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { normalizeKeyword } from '@/lib/keyword-normalize';
-import { withAnalysisView } from '@/lib/analysis-quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,10 +48,10 @@ async function guard(request: NextRequest): Promise<{ res: NextResponse } | { us
 
 /**
  * GET: 마운트 시 DB에서 (블로그 단위) 전체 상태 복원 (내 키워드 순위 분석의 진입 데이터)
- * 무료회원 하루 3회 조회 제한. 전용 화면(/my/keyword-ranking)만 X-View-Token 을 실어 보내므로,
- * 대시보드 요약(BlogAnalysisSection)의 무토큰 호출은 카운트되지 않는다(requireToken).
+ * 키워드 순위는 예비 인플루언서 이용권 기능이다. 예전엔 X-View-Token 우회로 무료 회원에게
+ * 하루 3회 열려 있었으나, 무료와 유료를 가르기로 해 미들웨어의 /api/my 유료 게이트에 맡긴다.
  */
-export const GET = withAnalysisView('rank_analysis', async (request: NextRequest) => {
+export async function GET(request: NextRequest) {
   const g = await guard(request);
   if ('res' in g) return g.res;
 
@@ -126,7 +125,7 @@ export const GET = withAnalysisView('rank_analysis', async (request: NextRequest
   }
 
   return NextResponse.json({ postKeywords, rankingResults, rankDeltas, keywordMeta });
-}, { requireToken: true });
+}
 
 /** PUT: 한 포스트의 키워드 할당을 저장 (신규 upsert + 제거된 키워드 삭제). 기존 순위는 보존.
  *  keywords 항목은 문자열(사용자 수동 키워드) 또는 메타 객체({keyword, keywordType, isPrimary, baseKeyword, postUrl})를 받는다(스펙 #6/#11). */

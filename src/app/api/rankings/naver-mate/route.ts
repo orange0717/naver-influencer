@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { sortByMateOrder, MATE_CATEGORIES } from '@/lib/naver-mate-categories';
-import { withAnalysisView } from '@/lib/analysis-quota';
 
 export const dynamic = 'force-dynamic';
 
-// 무료회원 하루 3회 조회 제한(메이트 랭킹 분석). PRO·관리자·비회원 통과.
-export const GET = withAnalysisView('rank_analysis', async (request: NextRequest) => {
+// 네이버 메이트 랭킹 — 무료 기능이라 회원에게 횟수 제한이 없다(미들웨어가 로그인만 확인).
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const category = url.searchParams.get('category')?.trim() || null;
   const platformParam = url.searchParams.get('platform')?.trim() || '';
@@ -127,4 +126,4 @@ export const GET = withAnalysisView('rank_analysis', async (request: NextRequest
   });
 
   return NextResponse.json({ year, month, categories, platformCounts, items });
-});
+}

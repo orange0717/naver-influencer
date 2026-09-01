@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
-import { withAnalysisView } from '@/lib/analysis-quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,10 +27,10 @@ type StoredRow = {
 
 /**
  * GET: 마운트 시 DB에서 (블로그 단위) 포스트별 누락 검사 상태 복원
- * 무료회원 하루 3회 조회 제한(미노출 분석). 전용 화면(/my/missing-posts)만 X-View-Token 을 실어
- * 보내므로 대시보드 요약(BlogAnalysisSection)의 무토큰 호출은 카운트되지 않는다(requireToken).
+ * 노출 현황은 무료 기능이라 회원에게 횟수 제한을 두지 않는다. 저장된 상태를 읽기만 하므로
+ * 외부 호출이 없다 — 실제 네이버 조회는 별도 실행(check-missing)에서 과금·집계된다.
  */
-export const GET = withAnalysisView('missing_analysis', async (request: NextRequest) => {
+export async function GET(request: NextRequest) {
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
 
@@ -83,7 +82,7 @@ export const GET = withAnalysisView('missing_analysis', async (request: NextRequ
   }
 
   return NextResponse.json({ results });
-}, { requireToken: true });
+}
 
 /** POST: 재시도 소진 후 "검사 실패" 상태 저장 (전체 검사 흐름 중단 없이 다음 포스트로 진행) */
 export async function POST(request: NextRequest) {

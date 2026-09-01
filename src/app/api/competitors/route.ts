@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
-import { getPlanTierByCookieUser, tryConsumeCompetitor } from '@/lib/competitor-quota';
+import { getPlanTierByCookieUser, competitorAllowed } from '@/lib/competitor-quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,25 +29,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'naverId가 필요합니다.' }, { status: 400 });
     }
 
-    // ─── 1일 횟수 제한 (free=1, blogger=5, influencer=무제한) ───
-    // 본인 ID는 자기분석이므로 카운트하지 않음
+    // ─── 이용권 확인 ─── 본인 ID는 자기분석이므로 이용권 없이도 열어 둔다.
     if (competitorId !== cookieUser.id) {
       const plan = await getPlanTierByCookieUser(cookieUser);
-      const { allowed, count, limit } = await tryConsumeCompetitor(
-        cookieUser.id,
-        competitorId,
-        plan,
-      );
-      if (!allowed) {
+      if (!competitorAllowed(plan)) {
         return NextResponse.json(
           {
-            error: `오늘의 경쟁자 분석 횟수(${limit}회)를 모두 사용했습니다. 내일 다시 시도하거나 상위 플랜으로 업그레이드해주세요.`,
-            limitExceeded: true,
-            plan,
-            used: count,
-            limit,
+            error: '경쟁자 분석은 예비 인플루언서 이용권부터 이용할 수 있습니다.',
+            requiresPlan: true,
           },
-          { status: 429 },
+          { status: 403 },
         );
       }
     }

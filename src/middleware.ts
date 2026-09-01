@@ -133,25 +133,13 @@ const PAID_PLAN_GATE_EXEMPT: string[] = [];
 const PAID_PLAN_GATE_API_PREFIXES = ['/api/my'];
 // /api/my 하위이지만 유료 게이트에서 예외인 경로:
 //  - 계정 연결(link)은 결제 무관하게 열어둠
-//  - 대표키워드 일괄 추출은 무료 화면(/my/keyword-ranking, PAID_PLAN_GATE_EXEMPT)의 주 버튼이다.
-//    포스팅당 1회씩 부르던 무료 경로(/api/blog/representative-keywords)를 묶기만 한 것이라
-//    (제목 규칙 전용·네이버/AI 무호출) 유료 게이트를 걸면 무료 회원의 기존 동작이 402로 깨진다.
-//    본인 블로그 여부는 라우트의 assertBlogResourceAccess 가 그대로 강제한다.
+//  - 노출 현황은 이용권 페이지가 무료 기능으로 안내한다. 예전엔 X-View-Token 우회 + 하루 3회로
+//    열어 뒀지만, 무료 기능은 회원에게 제한 없이 연다는 정책이라 헤더에 기대지 않고 명시한다.
 const PAID_PLAN_GATE_API_EXEMPT = [
   '/api/my/link',
   '/api/my/link-blog',
-  '/api/my/representative-keywords/extract',
-];
-
-// 2026-08-13 무료 하루 3회 정책: 전용 분석 화면(/my/missing-posts, /my/keyword-ranking)이
-// 마운트 시 조회하는 /api/my 데이터. GET + X-View-Token 헤더가 있으면 유료 하드 게이트를 건너뛰고,
-// 라우트의 withAnalysisView(requireToken)가 "무료 3회"를 서버 강제한다. (토큰 없는 대시보드/북마크
-// 호출과 GET 외 메서드(저장 등)는 기존대로 유료 게이트 유지 — 토큰 스푸핑으로 결제 우회 불가.)
-const VIEW_TOKEN_GATED_API_PREFIXES = [
   '/api/my/post-missing-state',
   '/api/my/post-missing-history',
-  '/api/my/keyword-ranking-state',
-  '/api/my/representative-keywords-state',
 ];
 
 function matchesPathPrefix(pathname: string, prefix: string): boolean {
@@ -442,23 +430,17 @@ export async function middleware(request: NextRequest) {
   // /api/influencers 의 등급은 라우트의 requireFeature('competitor.analysis') 가 판정한다
   // (2026-09-01). 미들웨어에도 같은 판정을 두면 등급이 두 곳에서 갈린다.
 
-  // 네이버메이트 랭킹 API: 로그인만 필요(회원 전용). 무료회원 하루 3회 제한은
-  // 라우트(/api/rankings/naver-mate)의 withAnalysisView 가 서버에서 강제한다(2026-08-13 무료 3회 정책).
+  // 네이버메이트 랭킹 API: 로그인만 필요(회원 전용).
+  // 무료 기능이라 회원에게는 횟수 제한을 두지 않는다(2026-09-01).
   const isNaverMateRankingApi = pathname.startsWith('/api/rankings/naver-mate');
   if (isNaverMateRankingApi && !user) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
-  // /my API 전반: 계정 연결(/api/my/link, /api/my/link-blog)은 결제 여부와 무관하게 열어둔다
-  // 무료 3회 정책 대상 조회(GET + X-View-Token)는 유료 하드 게이트를 건너뛰고 라우트가 3회를 강제한다.
-  const isViewTokenDeferredApi =
-    request.method === 'GET' &&
-    !!request.headers.get('x-view-token') &&
-    VIEW_TOKEN_GATED_API_PREFIXES.some(p => matchesPathPrefix(pathname, p));
+  // /my API 전반: 무료 기능(계정 연결·노출 현황)만 PAID_PLAN_GATE_API_EXEMPT 로 열어둔다.
   const isPaidPlanGateApi =
     PAID_PLAN_GATE_API_PREFIXES.some(p => matchesPathPrefix(pathname, p)) &&
-    !PAID_PLAN_GATE_API_EXEMPT.some(p => matchesPathPrefix(pathname, p)) &&
-    !isViewTokenDeferredApi;
+    !PAID_PLAN_GATE_API_EXEMPT.some(p => matchesPathPrefix(pathname, p));
   if (isPaidPlanGateApi && user) {
     const ctx = await withTimeout(
       getPaywallContext(user.id, user.email),

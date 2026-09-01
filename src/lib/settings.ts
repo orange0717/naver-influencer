@@ -24,7 +24,8 @@ import {
 } from './credit-config';
 
 // ── 코드 기본값 (app_settings 미설정 시 폴백). free-quota.ts 상수와 동일 값 유지. ──
-export const DEFAULT_FREE_DAILY_LIMIT_MEMBER = 3;
+// 회원이 비회원보다 커야 "가입하면 더 많이 쓸 수 있다"는 안내가 사실이 된다.
+export const DEFAULT_FREE_DAILY_LIMIT_MEMBER = 10;
 export const DEFAULT_FREE_DAILY_LIMIT_ANON = 3;
 export const DEFAULT_NCASH_ACCRUAL_RATE = 0.1; // 결제금액의 10%
 

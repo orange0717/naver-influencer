@@ -5,7 +5,11 @@ import { getClientIp } from './rate-limit';
 import { getFreeDailyLimit } from './settings';
 
 /**
- * "하루 3회 무료" 전역 사용량 카운터 (2026-08-08 프리미엄 모델 전환).
+ * 무료 이용 일일 카운터 (2026-08-08 프리미엄 모델 전환).
+ *
+ * 2026-09-01부터 "무료 표기 기능은 회원에게 제한 없이" 정책이라, 이 카운터가 남은 곳은
+ * 호출당 실제 비용이 나가는 둘뿐이다 — N인플 AI 대화(OpenAI)와 블로그 기본 분석(네이버 크롤링).
+ * 비회원 3회 / 회원 10회로 갈라 "가입하면 더 많이"라는 안내가 사실이 되게 한다.
  *
  * - PRO 이용권 보유자는 이 카운터를 아예 타지 않는다 (무제한).
  * - 로그인 회원은 user_id 단위로, 비회원은 IP+UA 해시 단위로 카운트한다.
@@ -17,7 +21,7 @@ import { getFreeDailyLimit } from './settings';
  */
 
 export const ANON_DAILY_FREE_LIMIT = 3;
-export const MEMBER_DAILY_FREE_LIMIT = 3;
+export const MEMBER_DAILY_FREE_LIMIT = 10;
 
 export interface FreeQuotaResult {
   allowed: boolean;
@@ -95,7 +99,7 @@ export async function consumeFreeDailyQuota(opts: {
  */
 /**
  * 소모한 무료 1회를 되돌린다 — 차감은 됐는데 정작 결과를 주지 못한 경우(AI 미설정·모델 오류 등) 전용.
- * 하루 3회뿐이라 실패 한 번에 1/3이 사라지는 건 사용자에겐 과금 오류로 보인다.
+ * 한도가 몇 회뿐이라 실패 한 번에 한 회가 사라지는 건 사용자에겐 과금 오류로 보인다.
  *
  * day 값 대신 "가장 최근 행"을 되돌린다 — 차감 직후에 부르는 함수이므로 그 행이 방금 올린 행이고,
  * DB의 current_date 와 서버 로컬 날짜가 어긋나는 문제를 아예 만들지 않는다.

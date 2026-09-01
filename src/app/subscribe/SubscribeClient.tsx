@@ -246,7 +246,8 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>연도별 인플루언서 선정 현황</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색 (검색량 포함)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>AI·분석 기능 (하루 3회)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>노출 현황 · 네이버 메이트 · 블로거 순위</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>N인플 AI 대화 · 블로그 기본 분석 (하루 10회)</span></li>
           </ul>
         </div>
 
@@ -569,7 +570,7 @@ export default function SubscribeClient() {
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">무료 이용</p>
-              <p className="font-semibold">AI·분석 기능 하루 3회 (회원가입 시 매일)</p>
+              <p className="font-semibold">무료 기능은 회원이면 제한 없이 · AI 대화와 블로그 기본 분석은 비회원 3회 / 회원 10회 (매일)</p>
             </div>
             <div className="bg-bg rounded-xl p-3 space-y-1">
               <p className="text-dim">결제 주기</p>

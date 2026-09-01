@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getCookieUser } from '@/lib/auth';
-import {
-  getCompetitorDailyLimit,
-  getCompetitorUsage,
-  getPlanTierByCookieUser,
-} from '@/lib/competitor-quota';
+import { competitorAllowed, getPlanTierByCookieUser } from '@/lib/competitor-quota';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/competitor/quota — 오늘 경쟁자 분석 사용 현황
- * { plan, limit, used, remaining, unlimited }
+ * GET /api/competitor/quota — 경쟁자 분석 이용 가능 여부
+ * 이용권 보유자는 무제한, 무료 회원은 이용 불가라 셀 횟수가 없다.
  */
 export async function GET() {
   const cookieUser = await getCookieUser();
@@ -19,17 +15,13 @@ export async function GET() {
   }
 
   const plan = await getPlanTierByCookieUser(cookieUser);
-  const limit = await getCompetitorDailyLimit(plan);
-  const unlimited = !isFinite(limit);
-  const { count } = unlimited
-    ? { count: 0 }
-    : await getCompetitorUsage(cookieUser.id);
+  const unlimited = competitorAllowed(plan);
 
   return NextResponse.json({
     plan,
-    limit: unlimited ? null : limit,
-    used: count,
-    remaining: unlimited ? null : Math.max(0, limit - count),
+    limit: unlimited ? null : 0,
+    used: 0,
+    remaining: unlimited ? null : 0,
     unlimited,
   });
 }
