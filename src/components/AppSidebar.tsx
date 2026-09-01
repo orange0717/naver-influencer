@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { canAccess, planHighlight } from '@/lib/plan-access';
+import PlanBadge from '@/components/gate/PlanBadge';
 import { isDesktop } from '@/lib/desktop';
 import {
   SIDEBAR_GROUPS,
@@ -114,7 +115,7 @@ function NavLink({
         className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
         <ItemLabel item={item} />
-        <span className="ml-auto text-dim/60"><LockIcon /></span>
+        <span className="ml-auto"><PlanBadge tier={item.requiredPlan} /></span>
       </button>
     );
   }
@@ -133,7 +134,10 @@ function NavLink({
         className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
         <ItemLabel item={item} />
-        <span className="ml-auto text-accent"><LockIcon /></span>
+        <span className="ml-auto flex items-center gap-1 text-accent">
+          <LockIcon />
+          <PlanBadge tier={item.requiredPlan} />
+        </span>
       </button>
     );
   }
@@ -149,6 +153,7 @@ function NavLink({
       }`}
     >
       <ItemLabel item={item} />
+      <span className="ml-auto"><PlanBadge tier={item.requiredPlan} /></span>
     </Link>
   );
 }

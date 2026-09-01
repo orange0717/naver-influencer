@@ -118,6 +118,8 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   'keywords.challenge': { key: 'keywords.challenge', label: '키워드 챌린지', minPlan: 'INFLUENCER' },
   'keywords.recommend': { key: 'keywords.recommend', label: '키워드 추천', minPlan: 'INFLUENCER' },
   'keywords.bulk': { key: 'keywords.bulk', label: '대량 키워드 조회', minPlan: 'INFLUENCER' },
+  // 화면·데이터 API 가 로그인만 확인해 무료 회원이 그대로 받아 가던 자리다(외부 유료 API 비용도 샜다).
+  'keywords.blog-ranking': { key: 'keywords.blog-ranking', label: '키워드 검색순위', minPlan: 'BLOGGER' },
   // 유입 목적의 공개 검색. 부모 레이아웃이 비로그인을 튕기던 것을 되돌린다.
   'keywords.blogger-search': {
     key: 'keywords.blogger-search',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { blogAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -202,6 +203,10 @@ async function crawlInfluencerTab(query: string, count: number): Promise<BlogRes
 
 export async function GET(request: NextRequest) {
   try {
+    // 미들웨어는 로그인만 확인해서 무료 회원이 그대로 받아 갔다(외부 검색 API 비용도 함께 샜다).
+    const guard = await requireFeature(request, 'keywords.blog-ranking');
+    if (guard.error) return guard.error;
+
     const ip = getClientIp(request);
     if (await blogAnalyzeLimiter.check(ip)) return rateLimitResponse();
 

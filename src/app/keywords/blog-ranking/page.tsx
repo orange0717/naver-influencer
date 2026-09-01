@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
-import { getPaywallContext } from '@/lib/admin';
+import { checkFeaturePage } from '@/lib/plan-server-guards';
+import FeatureLocked from '@/components/gate/FeatureLocked';
 import BlogRankingClient from './BlogRankingClient';
 
 export const dynamic = 'force-dynamic';
@@ -12,14 +11,8 @@ export const metadata = {
 };
 
 export default async function BlogRankingPage() {
-  const supabaseAuth = await createRouteHandlerClient();
-  const authUser = await getUserWithTimeout(supabaseAuth);
-
-  if (authUser) {
-    const ctx = await getPaywallContext(authUser.id, authUser.email);
-    const allowed = ctx.isAdminUser || ctx.hasActivePaidPlan;
-    if (!allowed) redirect('/subscribe?highlight=blogger');
-  }
+  const gate = await checkFeaturePage('keywords.blog-ranking', '/keywords/blog-ranking');
+  if (!gate.allowed) return <FeatureLocked required={gate.required} />;
 
   return (
     <div className="max-w-4xl mx-auto px-4 pt-6 space-y-4">

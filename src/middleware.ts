@@ -111,7 +111,10 @@ const MEMBER_ONLY_GATE_PREFIXES = [
  * 키워드 챌린지 리스트/추천/대량조회는 완전 공개 마케팅/SEO 페이지 2개(블로그 검색·블로그 순위)만 예외.
  * 모듈 스코프로 둬서 isAuthOnlyHrefAccounted(감사 로직)와 middleware() 본문이 같은 상수를 공유한다.
  */
-const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger', '/keywords/blog-ranking'];
+// 2026-09-01: /keywords/blog-ranking 은 이용권 페이지가 예비 인플루언서 기능으로 안내하는데
+// 이 공개 선언 때문에 비로그인까지 화면이 열렸다(데이터 API 는 막혀 빈 화면). 등급 판정은
+// keywords.blog-ranking 이 한다.
+const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger'];
 
 /**
  * PRO 이용권 없이는 접근 불가한 페이지(대량 조회·헤비 AI 등 비용이 큰 기능) — 로그인은 되어 있으나
