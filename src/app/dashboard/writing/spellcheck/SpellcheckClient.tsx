@@ -53,9 +53,12 @@ export default function SpellcheckClient() {
         });
         if (res.ok) {
           const data = await res.json();
-          const s1 = claudeResponseToMatches(trimmed, data?.stage1?.corrections ?? [], 1);
-          const s2 = claudeResponseToMatches(trimmed, data?.stage2?.corrections ?? [], 2);
+          const s1 = claudeResponseToMatches(trimmed, data?.stage1, 1);
+          const s2 = claudeResponseToMatches(trimmed, data?.stage2, 2);
           aiMatches = [...s1, ...s2];
+          if (data?.stage1?.error && data?.stage2?.error) {
+            setInfo('AI 검사에 실패해 규칙 기반 결과만 표시됩니다.');
+          }
         } else if (res.status === 429) {
           setInfo('AI 요청 한도에 도달해 규칙 기반 결과만 표시됩니다. 5분 뒤 다시 시도해주세요.');
         } else if (res.status === 402 || res.status === 403) {

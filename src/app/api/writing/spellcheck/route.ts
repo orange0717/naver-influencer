@@ -59,11 +59,11 @@ export async function POST(request: NextRequest) {
       stage1:
         stage1.status === 'fulfilled'
           ? stage1.value
-          : { corrections: [], error: String(stage1.reason).slice(0, 200) },
+          : { paragraphs: [], error: String(stage1.reason).slice(0, 200) },
       stage2:
         stage2.status === 'fulfilled'
           ? stage2.value
-          : { corrections: [], error: String(stage2.reason).slice(0, 200) },
+          : { paragraphs: [], error: String(stage2.reason).slice(0, 200) },
     });
   } catch (err) {
     console.error('[writing/spellcheck] worker call failed:', err);
