@@ -87,10 +87,15 @@ user.isAdmin || user.subscriptionPlan === 'INFLUENCER'` 한 줄, 500건 상한�
 
 🔴 **LEAK 상세.** 화면 `/influencers` 는 `influencers.list`(INFLUENCER)로 잠겨 있지만, 그 화면이 부르는
 데이터 API `/api/influencers` 는 `competitor.analysis`(**BLOGGER**)로 잠겨 있다.
-**예비 인플루언서 계정이 `/api/influencers?limit=200` 을 직접 부르면 전체 리스트가 그대로 나온다.**
+**예비 인플루언서 계정이 `/api/influencers?limit=2000` 을 직접 부르면 전체 리스트가 그대로 나온다.**
+(상한은 `route.ts:32` 의 `Math.min(2000, …)` 이다. 초안에 200 으로 적었던 것은 과소 기술이었다.)
 `plans.ts:135~136` 에 「경쟁자 분석이 같은 API 를 쓰므로 서버 가드는 둘 중 낮은 BLOGGER 로 두고 상세
 화면만 INFLUENCER 로 막는다」고 의도가 적혀 있다. 의도는 기록돼 있으나 **이용권 페이지가 인플루언서
 전용이라고 파는 것과는 어긋난다.** 봉합하려면 경쟁자 분석용 API 를 분리해야 한다.
+
+✅ **2026-09-01 해소**(`e71829f1`). 검색 전용 `/api/influencers/search` 가 이미 있었는데 경쟁자 분석이
+옮겨 타지 않고 있었다. `CompetitorDashboard.tsx:91` 을 그쪽으로 돌리고 `/api/influencers` 는
+`influencers.list`(INFLUENCER)로 되돌렸다.
 
 🔴 **고지 초과 상세 — v2.1 판정 분류에 없던 형태다.**
 「블로거 순위」는 무료 카드(`SubscribeClient.tsx:249`)·FAQ(`faq-data.ts:28`)·구조화 데이터
@@ -254,3 +259,37 @@ Phase 1 §4-2 에서 편입 여부를 보류한 것들이다. **현행 유지**�
    **안내에서 내릴지, 제품을 열지** 결정 바랍니다.
 
 **Phase 3 코드 변경은 위 승인 전까지 착수하지 않습니다.**
+
+---
+
+## 7. 승인 후 처리 결과 (2026-09-01)
+
+오렌지 승인: **「승인 6건 진행합니다」**. 6건 모두 반영했다. 커밋은 두 개로 나뉜다 —
+코드 3건 `e71829f1`, 판매 문구 3건은 그 다음 커밋.
+
+| # | 판정 | 처리 | 근거 위치 |
+|---|---|---|---|
+| ① | LEAK | 경쟁자 분석을 `/api/influencers/search` 로 옮기고 `/api/influencers` 를 `influencers.list`(INFLUENCER)로 되돌림 | `CompetitorDashboard.tsx:91` · `api/influencers/route.ts:25` |
+| ② | CLIENT_ONLY | `/api/downloads/post-analysis` 신설 — 등급(`downloads.post-analysis`, INFLUENCER)과 500건 상한을 서버에서 강제 | 새 라우트 · `plans.ts` · `my/post-analysis/page.tsx` |
+| ③ | OVERLOCK | `/api/my/blog-dashboard-summary`·`/api/my/blog-custom-profile` 을 유료 게이트 예외로 추가 | `middleware.ts` `PAID_PLAN_GATE_API_EXEMPT` |
+| ④ | LIMIT_MISMATCH | 이용권 문구 1대 → **3대**. `SESSION_LIMIT` 은 손대지 않음 | `SubscribeClient.tsx` 비교표 · `plan-spec-source.md` §B |
+| ⑤ | 무고지 11건 | 카드·비교표 양쪽에 추가(예비 2건 / 인플루언서 9건) | `SubscribeClient.tsx` · `plan-spec-source.md` §A·§B |
+| ⑥ | 고지 초과 | 「블로거 순위」를 무료 카드·FAQ·JSON-LD 3곳에서 삭제 | `SubscribeClient.tsx` · `faq-data.ts:28` · `layout.tsx:184` |
+
+### 처리하면서 갈린 판단 3가지 (기록)
+
+1. **③ 에서 `/api/my/keyword-ranking-state` 는 예외에 넣지 않았다.** 라우트 주석(`:50~53`)에
+   「키워드 순위는 예비 인플루언서 이용권 기능이다 … 미들웨어의 유료 게이트에 맡긴다」고 명시돼
+   있다. 넣었으면 **BLOGGER 유료 기능이 무료로 열리는** 새 LEAK 이 됐다. `ai-briefing-state` 도 같다.
+   두 API 를 못 받아도 `/dashboard` 는 깨지지 않는다(호출부가 `if (!res.ok) return` 으로 넘긴다).
+2. **② 는 「데이터를 막는 것」이 아니라 「기능을 서버로 옮기는 것」이다.** 원본 데이터
+   (`/api/blog/posts`·`/api/blog/analyze`)는 무료 화면이 이미 쓰는 것이라 그대로 뒀다. 서버 라우트는
+   목록을 다시 받아 최근 15건까지 구조 분석을 채우고 500행에서 자른다 — 화면과 같은 17열이다.
+3. **⑤ 에서 「비교표에만 있는 유료 3건」(키워드 추천 · 글감 찾기 · 릴스·쇼츠 분석)은 카드에 넣지
+   않았다.** 승인 범위가 §3-A 의 11건이라 손대지 않았다. 카드↔비교표 불일치는 이만큼 남아 있다.
+
+### 남은 것
+
+- **HTTP 실측은 여전히 못 했다.** §1 의 한계가 그대로다 — 3개 등급 실계정이 없다.
+  ①②③ 은 **코드 경로상** 막혔/열렸다는 뜻이지 「실제로 403/200 이 떨어지는 것을 봤다」가 아니다.
+- 배포는 오렌지가 직접 하신다(`vercel deploy --prod`).
