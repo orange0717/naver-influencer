@@ -429,7 +429,7 @@ export default function AiConsultantClient() {
               </button>
             </div>
             <p className="text-[11px] text-dim/70 leading-relaxed">
-              마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 바로 답변해드리고, 관련된 N인플 기능도 함께 추천해드립니다. (무료 하루 3회)
+              마케팅, 콘텐츠, 블로그, 검색 노출에 대한 고민을 입력하면 AI가 바로 답변해드리고, 관련된 N인플 기능도 함께 추천해드립니다. 무료 이용 횟수는 다른 AI·분석 기능과 합산해 차감됩니다.
             </p>
           </div>
 

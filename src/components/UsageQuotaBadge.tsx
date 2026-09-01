@@ -48,12 +48,16 @@ export default function UsageQuotaBadge() {
 
   return (
     <span
-      title={exhausted ? '오늘 무료 AI 질문을 모두 사용했습니다' : `오늘 무료 AI 질문 ${remaining}회 남음(하루 ${usage.limit}회)`}
+      title={
+        exhausted
+          ? '오늘 무료 이용을 모두 사용했습니다 (AI·분석 기능 합산)'
+          : `오늘 무료 이용 ${remaining}회 남음 (하루 ${usage.limit}회 · AI·분석 기능 합산)`
+      }
       className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-normal leading-none shrink-0 ${
         exhausted ? 'bg-down/10 text-down' : 'bg-sunken text-text-2'
       }`}
     >
-      {exhausted ? 'AI 질문 무료 소진' : `AI 질문 ${remaining}회 남음`}
+      {exhausted ? '무료 이용 소진' : `무료 ${remaining}회 남음`}
     </span>
   );
 }

@@ -64,7 +64,7 @@ function quotaExceededResponse(used: number, limit: number): NextResponse {
   return NextResponse.json(
     {
       error:
-        `오늘 무료 조회 ${limit}회를 모두 사용했습니다. 내일 다시 ${limit}회 이용할 수 있어요. ` +
+        `오늘 무료 이용 ${limit}회를 모두 사용했습니다. 무료 횟수는 AI·분석 기능을 합산해 차감됩니다. ` +
         `더 많은 분석이 필요하면 이용권을 구매해 주세요.`,
       quotaExceeded: true,
       used,
