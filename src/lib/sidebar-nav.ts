@@ -56,7 +56,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '맞팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '포스팅', href: '#posting', heading: true, subgroup: true },
-      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'blogger', authOnly: true, indent: true },
+      // 2026-09-01 무료·비로그인 공개 전환. 등급 정본은 plans.ts 의 writing.spellcheck 다.
+      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'free', indent: true },
       // 글 심층피드백 = 기존 블로그 심층피드백 + AI글 적합도 + 인플루언서 글 적합도를 한 번의
       // 분석으로 합친 개인화 기능(스펙 4·5). 구조적 정밀 진단 엔진(quality-evaluate)이 본체다.
       { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true, indent: true },

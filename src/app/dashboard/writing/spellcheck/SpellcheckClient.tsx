@@ -122,7 +122,7 @@ export default function SpellcheckClient() {
       <header className="mb-6">
         <h1 className="type-page-title text-text">맞춤법 검사</h1>
         <p className="text-sm text-dim mt-1">
-          국립국어원 기준 1,600+개 규칙 + Claude AI 하이브리드 검사. 블로거+·인플루언서 플랜 무제한 이용.
+          국립국어원 기준 1,600+개 규칙 + Claude AI 하이브리드 검사. 회원가입 없이 무료로 이용하실 수 있습니다.
         </p>
       </header>
 

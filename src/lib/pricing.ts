@@ -42,7 +42,7 @@ export const PLAN_LABEL: Record<PlanId, string> = {
 export const PLAN_FEATURES: Record<PlanId, readonly string[]> = {
   BASIC: [
     '키워드 순위 추적',
-    '맞춤법 검사 · 글 다듬기',
+    '글 다듬기',
     'Google 색인 관리',
     '유튜브 음원 추출',
   ],

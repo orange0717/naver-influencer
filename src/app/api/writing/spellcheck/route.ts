@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireFeature } from '@/lib/guards/requireFeature';
+import { checkFeatureRequest } from '@/lib/guards/requireFeature';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requireFeature(request, 'writing.spellcheck');
+  // 무료·비로그인 공개 기능이라 통과 시 authUser 가 null 일 수 있다. 여기서는 쓰지 않는다.
+  const auth = await checkFeatureRequest(request, 'writing.spellcheck');
   if (auth.error) return auth.error;
 
   let body: { text?: string };

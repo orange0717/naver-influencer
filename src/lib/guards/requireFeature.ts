@@ -9,6 +9,8 @@ import {
   type PlanKey,
 } from '../plans';
 
+type AuthUser = NonNullable<Awaited<ReturnType<typeof getAuthUser>>>;
+
 /**
  * 기능 접근 권한을 확인하는 서버 가드 — 게이팅의 정본.
  *
@@ -16,13 +18,39 @@ import {
  * 여기서만 일어난다. 새 기능을 잠글 때 화면 분기만 추가하고 이 가드를 빠뜨리면
  * API 를 직접 호출해 그대로 우회할 수 있다.
  *
+ * allowAnonymous 기능까지 다루려면 checkFeatureRequest 를 쓴다. 이쪽은 로그인을
+ * 반드시 요구하므로 authUser 가 null 이 될 일이 없고, 그래서 호출부가 곧바로
+ * authUser 를 쓸 수 있다.
+ *
  * @returns 통과 시 { authUser, plan }, 차단 시 { error } — 라우트는 error 를 그대로 반환한다.
  */
 export async function requireFeature(
   request: Request,
   feature: FeatureKey,
 ): Promise<
-  | { authUser: NonNullable<Awaited<ReturnType<typeof getAuthUser>>>; plan: PlanKey; error?: never }
+  | { authUser: AuthUser; plan: PlanKey; error?: never }
+  | { error: NextResponse; authUser?: never; plan?: never }
+> {
+  const gate = await checkFeatureRequest(request, feature);
+  if (gate.error) return { error: gate.error };
+  if (!gate.authUser) {
+    return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
+  }
+  return { authUser: gate.authUser, plan: gate.plan };
+}
+
+/**
+ * requireFeature 와 같은 판정을 하되, allowAnonymous 로 선언된 기능은 비로그인도 통과시킨다.
+ * 통과했는데 authUser 가 null 이면 "비로그인 사용자가 정상적으로 쓰는 중"이라는 뜻이다.
+ *
+ * 비로그인을 열어주는 것은 등급 축과 무관한 판단이므로 plans.ts 의 선언만 보고 정한다 —
+ * 라우트에서 따로 로그인 여부를 재검사하면 정본이 둘로 갈라진다.
+ */
+export async function checkFeatureRequest(
+  request: Request,
+  feature: FeatureKey,
+): Promise<
+  | { authUser: AuthUser | null; plan: PlanKey; error?: never }
   | { error: NextResponse; authUser?: never; plan?: never }
 > {
   const def = FEATURES[feature];
@@ -32,14 +60,20 @@ export async function requireFeature(
     console.error(`[requireFeature] 등록되지 않은 기능 키: ${feature}`);
   }
 
+  const requiredPlan: PlanKey = def?.minPlan ?? 'FREE';
+
   const authUser = await getAuthUser(request);
   if (!authUser) {
+    // 등급을 요구하는 기능은 비로그인 허용 선언이 있어도 열지 않는다.
+    // 두 선언이 엇갈리면 더 좁은 쪽을 따른다.
+    if (def?.allowAnonymous && requiredPlan === 'FREE') {
+      return { authUser: null, plan: 'FREE' };
+    }
     return {
       error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }),
     };
   }
 
-  const requiredPlan: PlanKey = def?.minPlan ?? 'FREE';
   if (requiredPlan === 'FREE') {
     return { authUser, plan: await getPlanKeyByUserId(authUser.userId) };
   }

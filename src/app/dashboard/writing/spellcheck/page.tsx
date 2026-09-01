@@ -9,7 +9,9 @@ export const metadata = {
   description: '국립국어원 기준 규칙 1,600+개 + Claude AI 하이브리드 맞춤법 검사',
 };
 
-// Claude AI 호출 비용 발생 기능 — 데모 체험 제외, 가입 회원 전용
+// 2026-09-01 무료·비로그인 공개. checkFeaturePage 가 plans.ts 의 allowAnonymous 를 보고
+// 비로그인을 통과시키므로 gate.allowed 는 사실상 항상 true 지만, 등급 판정을 화면에서
+// 되풀이하지 않으려고 가드는 그대로 둔다.
 export default async function SpellcheckPage() {
   const gate = await checkFeaturePage('writing.spellcheck', '/dashboard/writing/spellcheck');
   if (!gate.allowed) return <FeatureLocked required={gate.required} />;
