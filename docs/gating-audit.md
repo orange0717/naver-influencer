@@ -141,20 +141,23 @@
 | **UNMAPPED** | 11건 | 등급 규칙이 코드 어디에도 없음 |
 | **LEAK** | 7건 | 비로그인이 화면에 그대로 도달 (사이드바 미등록이라 기존 자동감사가 못 잡음) |
 
-### 3-1. 가장 급한 것 — 지금 데이터가 새고 있습니다
+### 3-1. 가장 급한 것 — ✅ 2026-09-01 조치 완료
 
-이 세 건은 **등급 결정을 기다릴 필요가 없는 명백한 결함**입니다.
+이 세 건은 **등급 결정을 기다릴 필요가 없는 명백한 결함**이라 오렌지 승인 후 선조치했습니다.
 
-1. **`/api/ad/search` — 인증이 아예 없습니다.** (`src/app/api/ad/search/route.ts:12`)
-   `influencers` 테이블을 `select('*')` 로 통째 반환합니다 (팬수·구독자수·TOP3 집계·카테고리·소개·활동상태). `/api/influencers` 가 402로 막는 바로 그 데이터셋입니다. 대응하는 화면(`src/app/ad/`)이 존재하지 않아, **화면 없이 API만 노출된 상태**입니다. IP 레이트리밋만 걸려 있어 페이지 순회로 전량 수집이 가능합니다.
+1. **`/api/ad/search` — 인증이 아예 없었습니다.**
+   `influencers` 테이블을 `select('*')` 로 통째 반환했습니다 (팬수·구독자수·TOP3 집계·카테고리·소개·활동상태). `/api/influencers` 가 402로 막는 바로 그 데이터셋입니다. IP 레이트리밋만 걸려 있어 페이지 순회로 전량 수집이 가능했습니다.
+   → **`/api/ad/*` 그룹의 표준 가드인 `getAdvertiserUser` 를 적용했습니다.** 호출부가 코드 전체에 하나도 없어(화면 없는 API 표면) 회귀 위험이 없습니다.
 
-2. **`/api/ad/auth/signup` — 세션 검증 없이 신원을 만듭니다.** (`route.ts:9~35`)
-   `authId` 를 요청 본문에서 받아 검증 없이 `advertisers` 에 insert 하고, 이후 `getAdvertiserUser`(`ad-auth.ts:37~42`)가 그 행을 신원으로 신뢰합니다.
+2. **`/api/ad/auth/signup` — 세션 검증 없이 신원을 만들었습니다.**
+   `authId` 를 요청 본문에서 받아 검증 없이 `advertisers` 에 insert 하고, 이후 `getAdvertiserUser` 가 그 행을 신원으로 신뢰했습니다.
+   → **`auth_id` 를 본문이 아니라 서버가 확인한 세션에서 가져오도록 바꿨습니다.** `ad-auth.ts` 에 `resolveAdAuthUser()` 를 분리하고(advertisers 행이 아직 없는 가입 시점용), 스키마와 클라이언트에서 `authId` 필드를 제거했습니다. 가입 직후 쿠키 타이밍에 기대지 않도록 클라이언트가 Bearer 토큰을 명시로 넘깁니다.
 
-3. **`/api/influencers/[id]` — 로그인만 하면 상세를 전량 수집할 수 있습니다.**
-   화면은 `requireInfluencerPlusPage` 로 막혀 있는데(`influencers/[id]/page.tsx:80`), 미들웨어의 402는 `pathname === '/api/influencers'` **정확 일치**라 상세가 빠집니다(`middleware.ts:449`). 무료 회원이 ID를 바꿔가며 프로필 + 참여 키워드/순위를 긁을 수 있습니다.
+3. **`/api/influencers/[id]` — 로그인만 하면 상세를 전량 수집할 수 있었습니다.**
+   화면은 `requireInfluencerPlusPage` 로 막혀 있는데(`influencers/[id]/page.tsx:80`), 미들웨어의 402는 `pathname === '/api/influencers'` **정확 일치**라 상세가 빠졌습니다(`middleware.ts:449`).
+   → **`requirePaidPlan`(블로거급)을 적용했습니다.** ⚠️ 화면과 같은 인플루언서급으로 올리지 **않은** 이유: 이 엔드포인트를 상세 화면 외에 **경쟁자 분석(`/competitor`)도 함께 씁니다**(`competitor/page.tsx:70`). 인플루언서급으로 올리면 블로거 구독자의 경쟁자 분석이 깨집니다. 무료 회원 차단이라는 목적은 달성했고, 두 기능의 등급 정리는 Phase 2에서 `/competitor` 등급 결정과 함께 다룹니다.
 
-부수적으로 `/api/keywords/*` 상세 7종은 무료 3회 캡을 우회시키며, 그중 `naver-trend`·`blog-top` 은 외부 유료 API를 태워 **비용까지 함께 샙니다.**
+**남은 것:** `/api/keywords/*` 상세 7종은 여전히 무료 3회 캡을 우회시키며, 그중 `naver-trend`·`blog-top` 은 외부 유료 API를 태워 **비용까지 함께 샙니다.** 이건 `/keywords` 등급 결정(CONFLICT)과 묶여 있어 Phase 3에서 처리합니다.
 
 ### 3-2. 감사 중 드러난 구조적 사항 4가지
 

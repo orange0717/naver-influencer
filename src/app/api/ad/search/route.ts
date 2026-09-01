@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchCategories } from '@/lib/naver-api';
 import { searchLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { getAdvertiserUser } from '@/lib/ad-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,12 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
   if (await searchLimiter.check(ip)) return rateLimitResponse();
+
+  // /api/ad/* 의 나머지 라우트와 동일하게 광고주 인증을 요구한다. 이 엔드포인트는
+  // influencers 를 select('*') 로 반환하는데, 같은 데이터셋을 /api/influencers 는 402 로 막는다.
+  if (!(await getAdvertiserUser(request))) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
 
   const { searchParams } = request.nextUrl;
   const category = searchParams.get('category') || '';

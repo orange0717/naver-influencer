@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /** POST /api/ad/auth/signup */
 export const advertiserSignupSchema = z.object({
-  authId: z.string().min(1, 'authId는 필수입니다.'),
+  // auth_id 는 본문으로 받지 않는다 — 라우트가 세션에서 직접 확인한다(신원 위조 차단).
   email: z.string().email('이메일 형식이 올바르지 않습니다.'),
   companyName: z.string().min(1, '회사명을 입력해주세요.').max(100).transform(v => v.trim()),
   businessNumber: z.string()

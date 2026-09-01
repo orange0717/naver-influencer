@@ -97,9 +97,13 @@ export default function AdSignupPage() {
 
       const res = await fetch('/api/ad/auth/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // 서버가 auth_id 를 세션에서 직접 확인한다. 방금 발급된 토큰을 명시로 넘겨
+          // 가입 직후 쿠키가 아직 안 실렸을 때도 신원 확인이 실패하지 않게 한다.
+          Authorization: `Bearer ${authData.session.access_token}`,
+        },
         body: JSON.stringify({
-          authId: authData.user.id,
           email: email.trim(),
           companyName: companyName.trim(),
           businessNumber: businessNumber ? businessNumber.replace(/[^0-9]/g, '') : undefined,

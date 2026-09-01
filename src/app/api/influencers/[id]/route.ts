@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { refreshInfluencerProfile } from '@/lib/refresh-follower';
 import { runAliveParticipationQuery } from '@/lib/keyword/participation';
+import { requirePaidPlan } from '@/lib/admin';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -97,6 +98,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  // 미들웨어는 로그인(401)만 확인하고, 402 유료 게이트는 pathname === '/api/influencers' 정확일치라
+  // 상세가 빠져 있었다. 무료 회원이 id 를 바꿔가며 프로필·참여 키워드·순위를 전량 수집할 수 있었다.
+  // ⚠️ 인플루언서급으로 올리지 않은 이유: 이 엔드포인트는 상세 화면(인플루언서 전용) 외에
+  //    경쟁자 분석(/competitor, 유료 전용)도 함께 쓴다. 인플루언서급으로 올리면 블로거 구독자의
+  //    경쟁자 분석이 깨진다. 두 기능의 등급 정리는 게이팅 단일 소스 작업에서 함께 다룬다.
+  const gate = await requirePaidPlan(request);
+  if (gate.error) return gate.error;
 
   const supabase = createServiceClient();
 
