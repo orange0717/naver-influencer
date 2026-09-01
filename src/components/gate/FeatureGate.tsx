@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
-import { FEATURES, PLAN_LABEL, SUBSCRIBE_PATH, type FeatureKey } from '@/lib/plans';
+import { FEATURES, type FeatureKey } from '@/lib/plans';
+import FeatureLocked from './FeatureLocked';
 
 interface FeatureGateProps {
   feature: FeatureKey;
@@ -49,24 +50,5 @@ export default function FeatureGate({ feature, children, fallback }: FeatureGate
     );
   }
 
-  const required = requiredPlan ?? 'BLOGGER';
-
-  return (
-    <div className="max-w-md mx-auto my-10 rounded-2xl border border-border bg-surface px-7 py-9 text-center shadow-sm">
-      <h2 className="text-lg font-extrabold text-text mb-2">
-        {PLAN_LABEL[required]} 이용권 기능입니다
-      </h2>
-      <p className="text-sm text-dim leading-relaxed">
-        이 기능은 {PLAN_LABEL[required]} 이용권에서 이용하실 수 있습니다.
-      </p>
-      <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
-        <Link
-          href={`${SUBSCRIBE_PATH}?required=${required.toLowerCase()}`}
-          className="inline-flex items-center justify-center rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-accent-hover transition-colors"
-        >
-          이용권 보기
-        </Link>
-      </div>
-    </div>
-  );
+  return <FeatureLocked required={requiredPlan ?? 'BLOGGER'} />;
 }

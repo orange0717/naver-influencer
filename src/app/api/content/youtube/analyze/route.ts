@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { contentAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await contentAnalysisLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requireInfluencerPlan(request);
+  const auth = await requireFeature(request, 'content.youtube');
   if (auth.error) return auth.error;
 
   let body: { url?: unknown; useSttFallback?: unknown };

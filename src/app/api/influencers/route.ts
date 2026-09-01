@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger';
 import { KEYWORD_CHALLENGE_CATEGORIES } from '@/lib/keyword-challenge-categories';
 import { runAliveParticipationQuery } from '@/lib/keyword/participation';
 import { effectiveTop3, type Top3Source } from '@/lib/influencer-list';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,12 @@ const LIST_JSON_HEADERS = {
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
   if (await searchLimiter.check(ip)) return rateLimitResponse();
+
+  // 미들웨어의 pathname 정확일치에 의존하던 게이트를 라우트 안으로 옮긴다.
+  // BLOGGER 인 이유: 전체 리스트 화면(인플루언서 전용)과 경쟁자 분석(블로거 전용)이
+  // 같은 엔드포인트를 쓴다. 공유 엔드포인트는 둘 중 낮은 등급에 맞춘다.
+  const gate = await requireFeature(request, 'competitor.analysis');
+  if (gate.error) return gate.error;
 
   const { searchParams } = request.nextUrl;
   const category = searchParams.get('category') || undefined;

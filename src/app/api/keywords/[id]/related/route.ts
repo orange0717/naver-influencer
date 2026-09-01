@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,9 +9,12 @@ export const dynamic = 'force-dynamic';
  * 같은 카테고리 내에서 키워드명에 공통 단어가 포함된 관련 키워드 반환
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireFeature(request, 'keywords.challenge');
+  if (gate.error) return gate.error;
+
   const { id } = await params;
   const supabase = createServiceClient();
 

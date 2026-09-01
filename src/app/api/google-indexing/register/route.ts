@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { parseNaverBlogPostUrl } from '@/lib/naver-blog-url';
 import { submitSitemapForUser } from '@/lib/sitemap-builder';
@@ -12,7 +12,7 @@ const FIRST_CHECK_DELAY_MS = 30 * 60 * 1000;
 
 /** POST /api/google-indexing/register — 네이버 블로그 URL 1건 등록 */
 export async function POST(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await googleIndexingRegisterLimiter.check(getClientIp(request))) return rateLimitResponse();

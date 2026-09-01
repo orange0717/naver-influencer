@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findKeywordById } from '@/lib/naver-api';
 import { getCompetitionLevel } from '@/lib/constants';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireFeature(request, 'keywords.challenge');
+  if (gate.error) return gate.error;
+
   const { id } = await params;
 
   if (!id || !/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
-import { getAuthUser } from '@/lib/auth';
-import { isRestrictedByUserId } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { refreshFollowerCount } from '@/lib/refresh-follower';
 import { loadParticipation, statsFromSnapshot } from '@/lib/keyword/participation';
 
@@ -25,15 +24,13 @@ export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
   if (await dashboardLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await getAuthUser(request);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  if (await isRestrictedByUserId(auth.userId)) return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
+  const gate = await requireFeature(request, 'my.dashboard');
+  if (gate.error) return gate.error;
+  const auth = gate.authUser;
 
   const supabase = createServiceClient();
 
-  // users 테이블에서 프로필 조회 (getAuthUser에서 이미 확인되었으므로 존재 보장)
+  // users 테이블에서 프로필 조회 (requireFeature에서 이미 확인되었으므로 존재 보장)
   const { data: userProfile } = await supabase
     .from('users')
     .select('id, nickname, linked_influencer_id, subscription_status, subscription_expires_at')

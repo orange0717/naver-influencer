@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { qualityEvaluateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { AI_DISABLED, aiDisabledResponse } from '@/lib/ai-disabled';
 import { analyzePost } from '@/lib/post-structure-analyzer';
@@ -21,8 +21,8 @@ const CACHE_TTL_SEC = 10 * 60;
 export async function POST(request: NextRequest) {
   if (AI_DISABLED) return aiDisabledResponse();
 
-  const paid = await requirePaidPlan(request);
-  if ('error' in paid) return paid.error;
+  const paid = await requireFeature(request, 'blog.quality-evaluate');
+  if (paid.error) return paid.error;
 
   const ip = getClientIp(request);
   if (await qualityEvaluateLimiter.check(ip)) return rateLimitResponse();

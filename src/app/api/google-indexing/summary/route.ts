@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -15,7 +15,7 @@ function kstDayStartIso(atMs: number): string {
 
 /** GET /api/google-indexing/summary — 대시보드 카드 집계 */
 export async function GET(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();

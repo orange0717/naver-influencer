@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { parseNaverPostDate } from '@/lib/naver-date';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,7 @@ export async function GET(
     return NextResponse.json({ error: '잘못된 토픽 ID입니다.' }, { status: 400 });
   }
 
-  const gate = await requireInfluencerPlan(request);
+  const gate = await requireFeature(request, 'topics.browse');
   if ('error' in gate) return gate.error;
   const { userId } = gate.authUser;
 

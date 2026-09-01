@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * 이 실제 발행 토픽을 기본으로 보여준다.
  */
 export async function GET(request: NextRequest) {
-  const gate = await requireInfluencerPlan(request);
+  const gate = await requireFeature(request, 'topics.browse');
   if ('error' in gate) return gate.error;
   const { userId } = gate.authUser;
 

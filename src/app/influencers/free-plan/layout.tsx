@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { requireLoginPage } from '@/lib/plan-server-guards';
+import { requireFeaturePage } from '@/lib/plan-server-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,8 +28,7 @@ export default async function FreePlanLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 로그인 회원 누구나 무료 열람 가능 — 구독 플랜 무관 (키챌 데이터는 미포함)
-  await requireLoginPage('/influencers/free-plan');
+  await requireFeaturePage('influencers.free-plan', '/influencers/free-plan');
 
   return <>{children}</>;
 }

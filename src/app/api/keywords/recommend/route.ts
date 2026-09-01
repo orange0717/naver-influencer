@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { keywordRecommendLimiter, getClientIp } from '@/lib/rate-limit';
 import { fetchNaverKeywordTool } from '@/lib/naver-searchad';
 import {
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 const MAX_RELATED = 10;
 
 export async function GET(request: NextRequest) {
-  const auth = await requireInfluencerPlan(request);
+  const auth = await requireFeature(request, 'keywords.recommend');
   if (auth.error) return auth.error;
 
   const ip = getClientIp(request);

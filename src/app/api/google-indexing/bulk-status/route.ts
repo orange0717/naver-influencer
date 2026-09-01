@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
 /** GET /api/google-indexing/bulk-status — "전체 포스트 등록" 백그라운드 잡 진행 상황 */
 export async function GET(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   const supabase = createServiceClient();

@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
-import { getPaywallContext } from '@/lib/admin';
+import { requireFeaturePage } from '@/lib/plan-server-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,21 +28,8 @@ export default async function CommunityLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabaseAuth = await createRouteHandlerClient();
-  const authUser = await getUserWithTimeout(supabaseAuth);
-
-  // 비로그인 차단 — 목적지를 붙이지 않으면 로그인 후 홈에 남는다(keywords/layout.tsx 주석 참고).
-  // 회원 전용 모달(가입/로그인 둘 다 제시)로 통일한다. 로그인 폼만 띄우면 계정이 없는
-  // 첫 방문자에게 막다른 길이 된다(2026-08-28 오렌지 승인 "C를 B로 합치기").
-  if (!authUser) {
-    redirect(`/?memberOnly=1&redirect=${encodeURIComponent('/community')}`);
-  }
-
-  // 커뮤니티 = 예비 인플루언서+ 플랜 전용 (관리자 우회 허용)
-  const ctx = await getPaywallContext(authUser.id, authUser.email);
-  if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
-    redirect('/subscribe?highlight=blogger');
-  }
-
+  // 로그인만 요구한다. 사이드바가 커뮤니티를 무료로 선언하는데 여기서만 유료를 요구하던
+  // 역방향 불일치를 2026-09-01 오렌지 결정("화면을 열어줍니다")으로 화면 쪽에 맞췄다.
+  await requireFeaturePage('community.read', '/community');
   return <>{children}</>;
 }

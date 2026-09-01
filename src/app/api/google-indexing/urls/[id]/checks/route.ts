@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/google-indexing/urls/[id]/checks — 해당 URL의 상태확인 이력(Raw Response 포함) */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();

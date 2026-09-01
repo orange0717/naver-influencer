@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
+import { checkFeaturePage } from '@/lib/plan-server-guards';
+import FeatureLocked from '@/components/gate/FeatureLocked';
 import Client from './Client';
 
 export async function generateMetadata({
@@ -78,6 +80,9 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const gate = await checkFeaturePage('keywords.challenge', `/keywords/${id}`);
+  if (!gate.allowed) return <FeatureLocked required={gate.required} />;
+
   const supabase = createServiceClient();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id);
   const { data } = await supabase

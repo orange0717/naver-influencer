@@ -1,8 +1,4 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { createRouteHandlerClient, getUserWithTimeout } from '@/lib/supabase-server';
-
-export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: '키워드 분석 — 네이버 블로그 SEO 키워드 도구',
@@ -24,25 +20,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function KeywordsLayout({
+/**
+ * 여기서는 게이팅하지 않는다.
+ * 이 레이아웃은 /keywords/blogger(무료·비로그인 공개)까지 덮기 때문에, 로그인을 일괄로 요구하면
+ * lib/plans.ts 가 무료로 선언한 기능이 화면에서만 막히는 역방향 불일치가 생긴다.
+ * 등급은 각 page.tsx 가 checkFeaturePage 로 선언한다.
+ */
+export default function KeywordsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabaseAuth = await createRouteHandlerClient();
-  const authUser = await getUserWithTimeout(supabaseAuth);
-
-  // 로그인 필수
-  // ⚠️ 파라미터 없는 redirect('/auth/login') 이면 안 된다. 그러면 목적지가 사라져서
-  // 로그인에 성공해도 홈에 남는다(실측: 홈에서 '키워드 챌린지' 칩 클릭 →
-  // /keywords → /auth/login → /?authModal=login → 로그인해도 /keywords 로 안 감).
-  // 하드 내비게이션일 땐 미들웨어(middleware.ts:379~384)가 ?memberOnly=1&redirect=... 로
-  // 보내 회원 전용 모달까지 띄우는데, 소프트 내비게이션은 acceptsHtml 조건 때문에
-  // 미들웨어 게이트를 통째로 건너뛰고 여기까지 온다. 그래서 같은 쿼리를 여기서도 맞춰준다.
-  // (레이아웃에서는 하위 경로를 알 수 없어 /keywords 로만 되돌린다 — 홈보다는 정확하다.)
-  if (!authUser) {
-    redirect(`/?memberOnly=1&redirect=${encodeURIComponent('/keywords')}`);
-  }
-
   return <>{children}</>;
 }

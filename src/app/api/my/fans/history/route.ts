@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 //   GET /api/my/fans/history?urlId=orangelibrary
 //   → [{ relationshipStatus, observedAt, source }, ...] (오래된 → 최신 순)
 export async function GET(request: NextRequest) {
-  const gate = await requireInfluencerPlan(request);
+  const gate = await requireFeature(request, 'my.fans');
   if ('error' in gate) return gate.error;
   const auth = gate.authUser;
 

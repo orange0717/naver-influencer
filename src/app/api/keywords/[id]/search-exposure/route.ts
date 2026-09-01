@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getCookieUser } from '@/lib/auth';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { crawlSearchExposure } from '@/lib/search-exposure';
 
 export const dynamic = 'force-dynamic';
@@ -14,10 +14,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const cookieUser = await getCookieUser();
-  if (!cookieUser) {
-    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-  }
+  const gate = await requireFeature(request, 'keywords.challenge');
+  if (gate.error) return gate.error;
 
   const { id: keywordId } = await params;
   const supabase = createServiceClient();

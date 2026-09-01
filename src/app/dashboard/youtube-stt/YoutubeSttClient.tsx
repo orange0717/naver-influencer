@@ -83,7 +83,7 @@ export default function YoutubeSttClient() {
 
       if (!res.ok) {
         if (res.status === 401) setError(data.error || '로그인이 필요합니다.');
-        else if (res.status === 402) setError(data.error || '구독 플랜이 필요합니다.');
+        else if (res.status === 402 || res.status === 403) setError(data.error || '구독 플랜이 필요합니다.');
         else if (res.status === 429) setError(data.error || '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
         else if (res.status === 503) setError(data.error || 'STT 서비스가 아직 설정되지 않았습니다. 관리자에게 문의해주세요.');
         else if (res.status === 504) setError(data.error || '시간이 초과됐습니다. 영상이 너무 길거나 외부 서비스가 지연 중입니다.');

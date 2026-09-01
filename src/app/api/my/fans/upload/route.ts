@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +53,7 @@ function sanitize(item: NaverFanItem): NaverFanItem | null {
 }
 
 export async function POST(request: NextRequest) {
-  const gate = await requireInfluencerPlan(request);
+  const gate = await requireFeature(request, 'my.fans');
   if ('error' in gate) {
     return withCors(gate.error as NextResponse);
   }

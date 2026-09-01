@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
@@ -17,7 +17,7 @@ const FIRST_CHECK_BASE_MS = 30 * 60 * 1000;
 
 /** POST /api/google-indexing/bulk-register — body: { mode: 'recent50' | 'all' } */
 export async function POST(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await googleIndexingRegisterLimiter.check(getClientIp(request))) return rateLimitResponse();

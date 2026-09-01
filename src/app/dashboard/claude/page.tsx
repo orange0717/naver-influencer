@@ -1,4 +1,5 @@
-import { requireInfluencerPlusPage } from '@/lib/plan-server-guards';
+import { checkFeaturePage } from '@/lib/plan-server-guards';
+import FeatureLocked from '@/components/gate/FeatureLocked';
 import ClaudeChatClient from './ClaudeChatClient';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,7 @@ export const metadata = {
 
 // 인플루언서 플랜 전용 — 데모 체험 제외, 가입 회원 전용
 export default async function ClaudeFeaturePage() {
-  await requireInfluencerPlusPage('/dashboard/claude');
+  const gate = await checkFeaturePage('ai.deep-chat', '/dashboard/claude');
+  if (!gate.allowed) return <FeatureLocked required={gate.required} />;
   return <ClaudeChatClient />;
 }

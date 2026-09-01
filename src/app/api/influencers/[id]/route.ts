@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { refreshInfluencerProfile } from '@/lib/refresh-follower';
 import { runAliveParticipationQuery } from '@/lib/keyword/participation';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -104,7 +104,7 @@ export async function GET(
   // ⚠️ 인플루언서급으로 올리지 않은 이유: 이 엔드포인트는 상세 화면(인플루언서 전용) 외에
   //    경쟁자 분석(/competitor, 유료 전용)도 함께 쓴다. 인플루언서급으로 올리면 블로거 구독자의
   //    경쟁자 분석이 깨진다. 두 기능의 등급 정리는 게이팅 단일 소스 작업에서 함께 다룬다.
-  const gate = await requirePaidPlan(request);
+  const gate = await requireFeature(request, 'competitor.analysis');
   if (gate.error) return gate.error;
 
   const supabase = createServiceClient();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getAuthUser } from '@/lib/auth';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { emptyKeywordStats } from '@/lib/keyword/aggregate';
 import { loadParticipation, statsFromSnapshot } from '@/lib/keyword/participation';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -23,8 +23,9 @@ const SYNC_IN_FLIGHT_MS = 10 * 60 * 1000;
 export async function GET(request: NextRequest) {
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();
 
-  const auth = await getAuthUser(request);
-  if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const gate = await requireFeature(request, 'my.dashboard');
+  if (gate.error) return gate.error;
+  const auth = gate.authUser;
 
   const refresh = request.nextUrl.searchParams.get('refresh') === '1';
   const supabase = createServiceClient();

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireFeature(request, 'keywords.challenge');
+  if (gate.error) return gate.error;
+
   const { id } = await params;
 
   const supabase = createServiceClient();

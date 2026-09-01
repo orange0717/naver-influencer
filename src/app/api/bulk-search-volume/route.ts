@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { fetchNaverKeywordTool, mapNaverKeywordToResult, type NaverKeyword, type KeywordResult } from '@/lib/naver-searchad';
 import { bulkKeywordLimiter } from '@/lib/rate-limit';
@@ -47,7 +47,7 @@ async function fetchBatch(
 
 export async function POST(request: NextRequest) {
   // 인플루언서 플랜 이상 필수
-  const auth = await requireInfluencerPlan(request);
+  const auth = await requireFeature(request, 'keywords.bulk');
   if (auth.error) return auth.error;
 
   // 1회 호출당 최대 100키워드 × 다중 배치. 유료 회원의 자동화 남용으로 네이버

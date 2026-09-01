@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchRankings } from '@/lib/naver-api';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,10 @@ export const dynamic = 'force-dynamic';
  * fetchRankings 내부 캐시 활용 (중복 요청 방지)
  */
 export async function GET(request: NextRequest) {
+  // 호출부는 /keywords 목록과 /my 대시보드 둘뿐이고 양쪽 다 인플루언서 전용이다.
+  const gate = await requireFeature(request, 'keywords.challenge');
+  if (gate.error) return gate.error;
+
   const keywordsParam = request.nextUrl.searchParams.get('keywords');
   if (!keywordsParam) {
     return NextResponse.json({ error: 'keywords parameter required' }, { status: 400 });

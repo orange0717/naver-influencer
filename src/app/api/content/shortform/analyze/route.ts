@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { consumePaidDailyCap } from '@/lib/free-quota';
 import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { contentAnalysisLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await contentAnalysisLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requireInfluencerPlan(request);
+  const auth = await requireFeature(request, 'content.shortform');
   if (auth.error) return auth.error;
 
   // 릴스·쇼츠 분석은 외부 에이전트(Manus)로 실제 영상을 열람해 콜당 원가가 매우 높다(~2,000원).

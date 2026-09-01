@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { checkFeaturePage } from '@/lib/plan-server-guards';
+import FeatureLocked from '@/components/gate/FeatureLocked';
 import Client from './Client';
 
 const url = 'https://ninfle.kr/keywords/recommend';
@@ -24,6 +26,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+export default async function Page() {
+  const gate = await checkFeaturePage('keywords.recommend', '/keywords/recommend');
+  if (!gate.allowed) return <FeatureLocked required={gate.required} />;
   return <Client />;
 }

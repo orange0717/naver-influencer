@@ -1,4 +1,4 @@
-# N인플 등급별 기능 게이팅 감사 (Phase 1)
+# N인플 등급별 기능 게이팅 감사·구조화·적용
 
 작성일: 2026-09-01 · 대상: `/Users/orange/개발/ninfle` (main, `78d0c883`)
 범위: 감사만 수행. **코드는 한 줄도 수정하지 않았습니다.**
@@ -195,8 +195,76 @@
 
 ---
 
-## 5. Phase 2 착수 조건
+## 5. Phase 2 착수 조건 — ✅ 충족
 
-지시서 §7에 따라 여기서 멈춥니다. Phase 2(`lib/plans.ts` + 가드 3종 구현)는 위 **4-2의 1·2번(CONFLICT 14건의 정답 방향)** 이 정해져야 시작할 수 있습니다. 나머지 항목은 Phase 2와 병행 확인이 가능합니다.
+지시서 §7에 따라 Phase 1은 여기서 멈췄고, **4-2의 1·2번(CONFLICT)에 대한 오렌지 결정 3건**이 아래와 같이 내려져 Phase 2·3을 진행했습니다.
 
-단, **3-1의 세 건(`/api/ad/search`, `/api/ad/auth/signup`, `/api/influencers/[id]`)은 등급 결정과 무관한 결함**이므로, 원하시면 Phase 2를 기다리지 않고 먼저 막을 수 있습니다.
+| 질문 | 오렌지 결정 (2026-09-01) | 결과 |
+| --- | --- | --- |
+| CONFLICT 12건 — 메뉴와 서버 중 어느 쪽이 정답인가 | **메뉴 선언이 정답** | 서버 강제를 메뉴가 표시하던 등급으로 올렸습니다. 블로거 구독자가 쓰던 일부 기능의 권한이 실제로 줄어듭니다(결정 시 고지됨). |
+| 역방향 CONFLICT 2건 — 무료로 보이는데 막혀 있다 | **화면을 열어준다** | `/community` 는 로그인만 요구(구독 불필요), `/keywords/blogger` 는 비로그인도 열립니다. |
+| `/competitor` 등급 | **블로거부터 (현행 유지)** | `/api/influencers`·`/api/influencers/[id]` 도 블로거로 유지됩니다. |
+| 접근 불가 시 표현 방식 | **화면 안에서 안내** | 페이지를 열고 잠긴 자리만 안내 카드로 덮습니다. |
+
+---
+
+## 6. Phase 2 — 구조 (커밋 `ae5a4ee7`)
+
+**`src/lib/plans.ts` 하나가 정본입니다.** 등급 축은 `FREE` / `BLOGGER` / `INFLUENCER` 누적이며, 화면·API·사이드바가 전부 이 파일의 `FEATURES` 를 참조합니다.
+
+가드 3종:
+
+| 층 | 함수 | 동작 |
+| --- | --- | --- |
+| 서버 컴포넌트 | `checkFeaturePage(feature, path)` | 판정만 돌려줍니다. 비로그인은 회원 전용 모달로 보내고, **등급 부족은 리다이렉트하지 않아** 호출한 페이지가 `FeatureLocked` 를 화면 안에 띄웁니다. |
+| 서버 컴포넌트(자리 없음) | `requireFeaturePage(feature, path)` | 위를 감싼 강제 버전. 안내를 그릴 자리가 없는 레이아웃 전용. |
+| API | `requireFeature(feature)` | 부족하면 **403**. |
+| 클라이언트 | `FeatureGate` / `useFeatureAccess` | 잠기면 `FeatureLocked` 카드로 대체. |
+
+`FeatureLocked` 는 서버·클라이언트가 함께 쓰는 단일 안내 카드입니다(§6 문구 규칙 준수 — 상태코드·`plan`·`tier` 를 노출하지 않고 `/subscribe` 로만 안내).
+
+**`limits` 는 의도적으로 비어 있습니다.** §8("한도 숫자를 새로 만들지 않습니다")에 따라 무료 3회는 기존 `free-quota.ts` 가 그대로 강제합니다.
+
+---
+
+## 7. Phase 3 — 적용
+
+### 7-1. 화면 (20개 라우트)
+
+`checkFeaturePage` + `FeatureLocked` 로 이관했습니다. 각 페이지에 흩어져 있던 `subscription_plan === 'INFLUENCER'` + 만료일 비교 인라인 로직(페이지당 30~35줄)이 2줄로 줄었습니다.
+
+주요 변경:
+- `/keywords` 는 클라이언트 전용이라 게이팅할 서버 자리가 없었습니다. `page.tsx` → `Client.tsx` 로 분리하고 서버 `page.tsx` 를 새로 만들었습니다.
+- `/keywords/layout.tsx` 의 일괄 로그인 요구를 제거했습니다 — 이 레이아웃이 무료 공개인 `/keywords/blogger` 까지 덮고 있었습니다(역방향 CONFLICT의 실제 원인).
+- `/my/keyword-ranking` 은 무료 → **블로거**로 올라갑니다("메뉴 선언이 정답"). 무료 회원 하루 3회는 `withAnalysisView` 가 그대로 유지합니다.
+- `/competitor/layout.tsx` 에 블로거 가드를 **먼저 넣고 나서** 미들웨어에서 뺐습니다(순서를 바꿨으면 누출).
+- **`/my` 만 예외로 `checkFeaturePage` 를 쓰지 않습니다.** 이 페이지의 `getUserWithTimeout` + 쿠키 재시도를 우회하면 알려진 supabase auth 락 교착이 되살아납니다. 등급 임계값은 여전히 `FEATURES['my.dashboard']` 에서 읽으므로 정본은 하나입니다.
+
+### 7-2. API (46개 라우트)
+
+`requirePaidPlan` / `requireInfluencerPlan` → `requireFeature(<key>)` 로 교체했습니다.
+
+⚠️ **상태코드가 402 → 403 으로 바뀝니다.** 402를 보고 분기하던 클라이언트를 전수 확인해 `YoutubeSttClient.tsx`, `SpellcheckClient.tsx` 두 곳을 403도 받도록 고쳤습니다. 나머지(`KeywordRankingSection`, `MissingPostsSection`, `AiConsultantClient`)의 402는 미들웨어·쿼터에서 오는 것이라 영향이 없습니다.
+
+**§8에 따라 손대지 않은 API:** `plans.ts` 에 키가 없거나(=UNMAPPED), 이관하면 등급이 바뀌는 것들입니다 — `api/community`, `api/blog/ai-analyze`, `api/blog/plagiarism-check`, `api/blog/text-analyze`, `api/writing/rewrite`, `api/blog/topics/*`, `api/my/influencer-center*`, `api/related-keywords`, `api/iblog-rank`, `api/discover/influencers`, `api/keywords/body`, `api/downloads/my-keyword-ranking`(현재 인플루언서인데 `my.keyword-ranking` 은 블로거라 이관하면 **느슨해집니다**).
+
+### 7-3. 미들웨어
+
+페이지 유료 게이트를 `['/my', '/rankings/influencer', '/keywords/bulk', '/keywords/recommend', '/competitor']` → **`['/rankings/influencer']`** 로 줄였습니다.
+
+이유는 순서입니다. 미들웨어가 먼저 `/subscribe` 로 튕기면 오렌지가 결정한 "화면 안에서 안내"가 **영원히 렌더되지 않습니다.** 남은 한 건은 `plans.ts` 에 등급이 없어 기존 동작을 유지해야 하는 경로입니다.
+
+`/api/influencers` 정확일치 402 블록도 제거했습니다 — 이제 라우트의 `requireFeature('competitor.analysis')` 가 단독으로 판정합니다.
+
+**그대로 둔 것:** `PUBLIC_KEYWORDS_PATHS`, `MEMBER_ONLY_GATE_PREFIXES`, `/api/my` 유료 프리픽스(아직 이관 안 된 라우트가 많아 하한선으로 유용), `VIEW_TOKEN_GATED_API_PREFIXES`.
+
+### 7-4. Phase 3에서 새로 드러난, 아직 손대지 않은 것
+
+1. **`/keywords/blog-ranking` 이 반쪽입니다.** 화면은 비로그인에 공개(`PUBLIC_KEYWORDS_PATHS`)인데 데이터 호출 `/api/keywords/blog-top` 은 미들웨어의 `isKeywordsApi` 규칙으로 비로그인에 401입니다. 즉 **빈 화면이 열립니다.** 오렌지 결정("화면을 열어준다")은 `/keywords/blogger` 만 명시했고 이쪽은 범위 밖이라 그대로 뒀습니다. (`/keywords/blogger` 는 `/api/search-volume` 을 쓰므로 정상입니다.)
+2. **`/influencers/list`(무료 명단)가 감사표에 없었습니다.** 서버 가드 없는 클라이언트 페이지이고 `/api/influencers/list` 는 미들웨어에서 명시 면제됩니다. 무료 공개가 의도로 보이나 `plans.ts` 에 키가 없어 **UNMAPPED 12번째 항목**으로 올립니다.
+
+### 7-5. 여전히 오렌지 결정이 필요한 것
+
+§4-2 중 **3·4·5·7·8·9번이 그대로 남아 있습니다** (한도 리셋 주기 DB 실측 / 크레딧을 게이팅 축에 넣을지 / 비로그인 취급 통일 / LEAK 7건이 의도인지 / UNMAPPED가 공개 의도인지 / INFLUENCER 판정 2종 일치 검증). 여기에 7-4의 2건이 추가됩니다.
+
+배포(`vercel deploy --prod`)는 오렌지가 직접 실행하셔야 합니다.

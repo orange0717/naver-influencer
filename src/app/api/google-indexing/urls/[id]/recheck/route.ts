@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { inspectAndUpdate } from '@/lib/google-indexing-poll';
 import { googleIndexingRecheckLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -9,7 +9,7 @@ export const maxDuration = 30;
 
 /** POST /api/google-indexing/urls/[id]/recheck — 수동 재확인/재등록 (GSC 쿼터 보호를 위해 강하게 제한) */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   const { id } = await params;

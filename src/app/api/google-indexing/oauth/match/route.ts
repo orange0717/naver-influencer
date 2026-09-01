@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { autoMatchAndSaveSiteUrl } from '@/lib/google-oauth';
 import { GoogleApiError } from '@/lib/google-search-console';
 import { googleOAuthLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 /** POST /api/google-indexing/oauth/match — GSC 속성 자동매칭 재시도 ("다시 찾기" 버튼) */
 export async function POST(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await googleOAuthLimiter.check(getClientIp(request))) return rateLimitResponse();

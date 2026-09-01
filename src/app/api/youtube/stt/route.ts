@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requirePaidPlan(request);
+  const auth = await requireFeature(request, 'content.youtube-stt');
   if (auth.error) return auth.error;
 
   let body: { url?: string };

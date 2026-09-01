@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -9,7 +9,7 @@ export const maxDuration = 30;
 
 /** GET /api/google-indexing/auto-watch — 자동 색인 요청 토글 상태 조회 */
 export async function GET(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   const supabase = createServiceClient();
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
 /** POST /api/google-indexing/auto-watch — body: { enabled } — 새 글 자동 색인 요청 켜기/끄기 */
 export async function POST(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();

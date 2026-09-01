@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getAuthUser } from '@/lib/auth';
-import { isRestrictedByUserId } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { isVerifiedStatus, type SurfaceOutcome, type SurfaceStatus } from '@/lib/naver-ai-briefing';
 
@@ -58,12 +57,9 @@ function normalizeStatus(v: unknown): SurfaceStatus {
 
 async function guard(request: NextRequest): Promise<{ res: NextResponse } | { userId: string }> {
   if (await dashboardLimiter.check(getClientIp(request))) return { res: rateLimitResponse() };
-  const auth = await getAuthUser(request);
-  if (!auth) return { res: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  if (await isRestrictedByUserId(auth.userId)) {
-    return { res: NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 }) };
-  }
-  return { userId: auth.userId };
+  const gate = await requireFeature(request, 'my.naver-mate');
+  if (gate.error) return { res: gate.error };
+  return { userId: gate.authUser.userId };
 }
 
 /** GET: 마운트 시 DB에서 (블로그 단위) 전체 상태 복원 */

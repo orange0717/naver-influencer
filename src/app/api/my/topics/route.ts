@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getAuthUser } from '@/lib/auth';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { queryTopicsWithFallback } from '@/lib/topic-columns';
 
@@ -61,8 +61,8 @@ type TopicRow = {
 export async function GET(request: NextRequest) {
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();
 
-  const auth = await getAuthUser(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const gate = await requireFeature(request, 'topics.mine');
+  if (gate.error) return gate.error;
 
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   // 토픽 목록이 통째로 500 나지 않게 컬럼을 단계적으로 줄여 재시도한다.
   // 이 저장소는 "마이그레이션 파일은 커밋됐는데 DB 미적용"으로 끝난 이력이 반복된다.
   const { data, error, tier } = await queryTopicsWithFallback<TopicRow[]>(CORE_COLUMNS, async (columns, t) => {
-    let q = supabase.from('topics').select(columns).eq('user_id', auth.userId).eq('blog_id', blogId);
+    let q = supabase.from('topics').select(columns).eq('user_id', gate.authUser.userId).eq('blog_id', blogId);
     // order 도 컬럼이 없으면 똑같이 42703 으로 죽는다.
     if (t !== 'core_only') q = q.order('is_representative', { ascending: false });
     const { data: rows, error: err } = await q.order('post_count', { ascending: false });

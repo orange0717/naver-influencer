@@ -118,20 +118,14 @@ const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger', '/keywords/blog-ranking'];
  * 활성 PRO 이용권이 없는 회원을 /subscribe?needsPro=1 로 보낸다.
  * 로그인 자체가 안 된 사용자는 MEMBER_ONLY_GATE_PREFIXES 등 기존 게이트가 먼저 처리한다.
  */
-// 2026-08-13: 무료 하루 3회 정책 적용 화면(키워드/순위/유입 분석)은 이 하드 유료 게이트에서 제외하고,
-// 각 화면의 주요 데이터 API에서 withAnalysisView 로 "무료 3회" 를 서버 강제한다.
-// (/rankings/blogger, /naver-mate-ranking 은 제거, /my/post-analysis 는 아래 EXEMPT 로 예외)
+// 2026-09-01: 등급이 lib/plans.ts 에 등록된 화면은 각 page/layout 의 checkFeaturePage 가 판정하고
+// 화면 안에 안내를 띄운다(오렌지 결정 "화면 안에서 안내"). 미들웨어가 먼저 /subscribe 로 튕기면
+// 그 안내가 영원히 보이지 않으므로, 여기 남는 건 plans.ts 에 등록되지 않아 기존 동작을
+// 그대로 유지해야 하는 경로뿐이다.
 const PAID_PLAN_GATE_PREFIXES = [
-  '/my',
   '/rankings/influencer',
-  '/keywords/bulk',
-  '/keywords/recommend',
-  '/competitor',
 ];
-// /my 하위이지만 유료 게이트에서 예외인 경로:
-//  - 계정 연결(link)은 결제 무관하게 열어둠
-//  - /my/post-analysis(유입 분석)는 무료 하루 3회 정책 대상 → 페이지 접근 허용(데이터는 서버가 3회로 캡)
-const PAID_PLAN_GATE_EXEMPT = ['/my/link', '/my/link-blog', '/my/post-analysis', '/my/missing-posts', '/my/keyword-ranking'];
+const PAID_PLAN_GATE_EXEMPT: string[] = [];
 
 const PAID_PLAN_GATE_API_PREFIXES = ['/api/my'];
 // /api/my 하위이지만 유료 게이트에서 예외인 경로:
@@ -182,18 +176,19 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
  */
 const GATE_HANDLED_ELSEWHERE = new Set([
   '/my', // 비로그인 시 리다이렉트 대신 GuestDashboard 빈 상태를 의도적으로 렌더 (src/app/my/page.tsx)
-  // AI 호출 비용 발생 기능 — 데모 세션도 명시적으로 제외해야 해서 페이지 자체 서버 체크로 처리
+  // 아래는 전부 page/layout 의 checkFeaturePage(lib/plan-server-guards.ts)가 등급까지 판정한다.
   '/dashboard/writing/spellcheck',
-  '/dashboard/writing/rewrite',
   '/dashboard/writing/content-angles',
   '/dashboard/writing/titles',
-  '/dashboard/writing/body',
   '/dashboard/youtube-stt',
-  '/dashboard/claude', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts)
-  '/topics', // requireInfluencerPlusPage (src/lib/plan-server-guards.ts) — AI 토픽 큐레이션, dashboard/claude와 동일 패턴
-  '/dashboard/google-indexing', // page.tsx 자체에서 getPaywallContext로 미인증/미결제 redirect 처리
-  '/dashboard/content/youtube', // page.tsx 자체 서버 체크(getUserWithTimeout + INFLUENCER 플랜) — AI 호출 비용 발생 기능
-  '/dashboard/content/shortform', // page.tsx 자체 서버 체크(getUserWithTimeout + INFLUENCER 플랜) — Manus+AI 호출 비용 발생 기능
+  '/dashboard/claude',
+  '/topics',
+  '/dashboard/google-indexing',
+  '/dashboard/content/youtube',
+  '/dashboard/content/shortform',
+  // 아직 lib/plans.ts 에 등급이 없는(UNMAPPED) 기능 — 기존 페이지 자체 서버 체크 유지
+  '/dashboard/writing/rewrite',
+  '/dashboard/writing/body',
   '/dashboard', // page.tsx 자체에서 getUserWithTimeout + 데모쿠키 체크 후 비로그인은 /로 redirect (구 홈 KPI 대시보드가 이동해온 자리)
 ]);
 
@@ -441,21 +436,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
-  // 유료 리스트 API(/api/influencers, 팬수·챌린지·TOP3·순위 전체)는 유료 인플루언서 플랜 전용.
-  // 페이지(/influencers)는 requireInfluencerPlusPage로 이미 막지만, 원본 데이터 API가 로그인만
-  // 하면 열려 있어 무료 회원이 직접 호출해 전체 유료 데이터를 긁어갈 수 있었다(2026-08-13 차단).
-  // - 계정 연결 검색은 별도 경량 엔드포인트(/api/influencers/search)로 분리돼 영향 없음.
-  // - 상세(/api/influencers/[id] 등)는 공개 OG 페이지용이라 exact match로만 스코프한다.
-  if (pathname === '/api/influencers' && user) {
-    const ctx = await withTimeout(
-      getPaywallContext(user.id, user.email),
-      4000,
-      { isAdminUser: false, hasActivePaidPlan: true, plan: null, expiresAt: null, userId: null },
-    );
-    if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
-      return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'influencer' }, { status: 402 });
-    }
-  }
+  // /api/influencers 의 등급은 라우트의 requireFeature('competitor.analysis') 가 판정한다
+  // (2026-09-01). 미들웨어에도 같은 판정을 두면 등급이 두 곳에서 갈린다.
 
   // 네이버메이트 랭킹 API: 로그인만 필요(회원 전용). 무료회원 하루 3회 제한은
   // 라우트(/api/rankings/naver-mate)의 withAnalysisView 가 서버에서 강제한다(2026-08-13 무료 3회 정책).

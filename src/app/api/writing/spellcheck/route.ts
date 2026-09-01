@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { aiAnalyzeLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   if (await aiAnalyzeLimiter.check(ip)) return rateLimitResponse();
 
-  const auth = await requirePaidPlan(request);
+  const auth = await requireFeature(request, 'writing.spellcheck');
   if (auth.error) return auth.error;
 
   let body: { text?: string };

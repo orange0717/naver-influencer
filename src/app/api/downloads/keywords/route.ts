@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
-import { requireInfluencerPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { rowsToCsv, csvResponse, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const guard = await requireInfluencerPlan(request);
+  const guard = await requireFeature(request, 'keywords.challenge');
   if (guard.error) return guard.error;
 
   const { searchParams } = request.nextUrl;

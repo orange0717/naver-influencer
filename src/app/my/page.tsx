@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createServiceClient, createRouteHandlerClient, getUserWithTimeout, hasSupabaseAuthCookie } from '@/lib/supabase-server';
 import SessionRecovering from '@/components/SessionRecovering';
+import FeatureLocked from '@/components/gate/FeatureLocked';
+import { FEATURES, planAtLeast, toPlanKey } from '@/lib/plans';
 import { formatCount } from '@/lib/format';
 import { cookies } from 'next/headers';
 import RankDistribution from '@/components/dashboard/RankDistribution';
@@ -69,6 +71,15 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
       if (await isRestricted(authUser.email)) {
         redirect('/subscribe');
       }
+    }
+
+    // 등급 판정은 lib/plans.ts 의 'my.dashboard' 하나만 본다.
+    // 여기서는 checkFeaturePage 를 쓰지 않는다 — 위의 getUserWithTimeout 재시도를 우회해
+    // auth 지연 시 로그인 사용자를 비로그인으로 오인하게 되기 때문이다.
+    const required = FEATURES['my.dashboard'].minPlan;
+    const currentPlan = ctx.hasActivePaidPlan ? toPlanKey(ctx.plan) : 'FREE';
+    if (!ctx.isAdminUser && !planAtLeast(currentPlan, required)) {
+      return <FeatureLocked required={required} />;
     }
 
     const { data: profile } = await supabase

@@ -58,7 +58,7 @@ export default function SpellcheckClient() {
           aiMatches = [...s1, ...s2];
         } else if (res.status === 429) {
           setInfo('AI 요청 한도에 도달해 규칙 기반 결과만 표시됩니다. 5분 뒤 다시 시도해주세요.');
-        } else if (res.status === 402) {
+        } else if (res.status === 402 || res.status === 403) {
           setError('구독 플랜이 필요합니다.');
           return;
         } else {

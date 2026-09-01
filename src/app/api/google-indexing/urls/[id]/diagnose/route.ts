@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { assertCreditFor, chargeCreditIfEnabled } from '@/lib/credit-gate';
 import { createServiceClient } from '@/lib/supabase-server';
 import { analyzePost } from '@/lib/post-structure-analyzer';
@@ -33,7 +33,7 @@ function buildRuleBasedSuggestions(subScores: SubScores | null): string[] {
 
 /** POST /api/google-indexing/urls/[id]/diagnose — 미색인 URL의 SEO 점수 + 실패원인 진단 */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   const { id } = await params;

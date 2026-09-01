@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireInfluencerPlusPage } from '@/lib/plan-server-guards';
+import { checkFeaturePage } from '@/lib/plan-server-guards';
+import FeatureLocked from '@/components/gate/FeatureLocked';
 import Client from './Client';
 
 export async function generateMetadata({
@@ -76,8 +77,8 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // 인플루언서 구독자(또는 관리자)만 열람 가능 — 상세 포트폴리오도 키챌 데이터 포함
-  await requireInfluencerPlusPage(`/influencers/${id}`);
+  const gate = await checkFeaturePage('influencers.detail', `/influencers/${id}`);
+  if (!gate.allowed) return <FeatureLocked required={gate.required} />;
 
   const supabase = createServiceClient();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getAuthUser } from '@/lib/auth';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { isValidBlogId } from '@/lib/blog-utils';
 import { fetchInfluencerTopicCards } from '@/lib/naver-topic-crawler';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
@@ -18,8 +18,9 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();
 
-  const auth = await getAuthUser(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const gate = await requireFeature(request, 'topics.mine');
+  if (gate.error) return gate.error;
+  const auth = gate.authUser;
 
   const supabase = createServiceClient();
 

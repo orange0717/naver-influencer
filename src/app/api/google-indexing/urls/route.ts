@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePaidPlan } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -9,7 +9,7 @@ const PAGE_SIZE = 50;
 
 /** GET /api/google-indexing/urls?page=0 — 내 등록 URL 목록 (최신순) */
 export async function GET(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 /** DELETE /api/google-indexing/urls — body: { id } */
 export async function DELETE(request: NextRequest) {
-  const paid = await requirePaidPlan(request);
+  const paid = await requireFeature(request, 'google.indexing');
   if ('error' in paid) return paid.error;
 
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();

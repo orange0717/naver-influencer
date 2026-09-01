@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findKeywordById, fetchRankings } from '@/lib/naver-api';
 import { createServiceClient } from '@/lib/supabase-server';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 // 네이버 search.naver.com HTML 스크래핑 시 해외 데이터센터 IP 차단 회피 — 서울 리전 고정
@@ -10,6 +11,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireFeature(request, 'keywords.challenge');
+  if (gate.error) return gate.error;
+
   const { id } = await params;
 
   try {

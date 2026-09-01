@@ -1,11 +1,16 @@
 import NaverMateQualityEvaluateView from '@/components/NaverMateQualityEvaluateView';
+import { checkFeaturePage } from '@/lib/plan-server-guards';
+import FeatureLocked from '@/components/gate/FeatureLocked';
 
 export const metadata = {
   title: '글 심층피드백 — N인플',
   description: '한 번의 분석으로 종합 완성도·AI 글 적합도·인플루언서 글 적합도·검색 친화성·정보 구조·가독성·전문성까지 진단합니다.',
 };
 
-export default function QualityEvaluatePage() {
+export default async function QualityEvaluatePage() {
+  const gate = await checkFeaturePage('blog.quality-evaluate', '/my/naver-mate/quality-evaluate');
+  if (!gate.allowed) return <FeatureLocked required={gate.required} />;
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="mb-6">
