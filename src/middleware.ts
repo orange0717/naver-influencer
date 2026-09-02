@@ -368,8 +368,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // 키워드 분석 UI·데이터: 정식 로그인 필요 (완전 비회원 공개 아님)
-  // 단, /keywords/blogger·/keywords/blog-ranking은 완전 공개 마케팅/SEO 페이지라 예외
-  // (각자 generateMetadata까지 갖춰져 있었는데 이 게이트에 막혀 크롤러가 도달 못 하고 있었음)
+  // 예외는 PUBLIC_KEYWORDS_PATHS 하나뿐 — /keywords/blogger 다.
+  // /keywords/blog-ranking 은 lib/plans.ts 가 minPlan: 'BLOGGER'(유료)로 선언한 기능이라
+  // 2026-09-01에 예외에서 빠졌는데 이 주석만 "완전 공개"로 남아 robots·sitemap 이 계속
+  // 공개로 광고했다(네이버 "리다이렉션된 페이지" 판정의 원인, 2026-09-02 조사).
   const needsKeywordsLogin =
     acceptsHtml &&
     matchesPathPrefix(pathname, '/keywords') &&
