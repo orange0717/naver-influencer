@@ -106,9 +106,6 @@ export default function NoticePage() {
             <Link key={notice.id} href={`/notice/${notice.id}`}
               className="block bg-surface rounded-lg border border-border p-5 hover:border-accent/30 transition">
               <div className="flex items-center gap-2 mb-2">
-                {notice.is_pinned && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent">고정</span>
-                )}
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TAG_COLOR[notice.tag] || ''}`}>
                   {TAG_LABEL[notice.tag] || notice.tag}
                 </span>

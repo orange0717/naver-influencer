@@ -329,9 +329,6 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       {/* 공지 본문 */}
       <div className="bg-surface rounded-lg border border-border p-6">
         <div className="flex items-center gap-2 mb-3">
-          {notice.is_pinned && (
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent">고정</span>
-          )}
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TAG_COLOR[notice.tag] || ''}`}>
             {TAG_LABEL[notice.tag] || notice.tag}
           </span>
