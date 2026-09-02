@@ -66,9 +66,13 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-/** 인플루언서 연결 */
+/**
+ * 인플루언서 연결 — 주소는 lib/influencer-url.ts 의 파서를 통해 아이디로 바뀐다.
+ * 형태 규칙을 여기에 다시 쓰지 말 것(화면과 어긋난다).
+ */
 export const linkInfluencerSchema = z.object({
-  naverId: naverIdSchema,
+  url: z.string().min(1, '인플루언서 홈 주소를 입력해 주세요.').max(200),
+  nickname: z.string().trim().min(1, '닉네임을 입력해 주세요.').max(30),
 });
 
 /** 프로필 업데이트 — 인플루언서 연결은 /my/link, 해제만 여기서 허용 */

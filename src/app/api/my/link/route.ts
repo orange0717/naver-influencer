@@ -1,10 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as cheerio from 'cheerio';
 import { createServiceClient, createRouteHandlerClient } from '@/lib/supabase-server';
 import { validateBody, linkInfluencerSchema } from '@/lib/validations';
 import { isRestricted } from '@/lib/admin';
 import { ensureInfluencerBlogId } from '@/lib/influencer-blog';
+import { parseInfluencerId, influencerHomeUrl } from '@/lib/influencer-url';
+import { isAllowedUrl } from '@/lib/crawler';
+import { CONTACT_EMAIL } from '@/lib/site-contact';
 
 export const dynamic = 'force-dynamic';
+
+const FETCH_TIMEOUT_MS = 10_000;
+const CRAWL_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  'Accept-Language': 'ko-KR,ko;q=0.9',
+  'Referer': 'https://in.naver.com/',
+};
+
+type AccountLookup =
+  | { status: 'found'; displayName: string; introduction: string; imageUrl: string }
+  | { status: 'notFound' }
+  | { status: 'unreachable' };
+
+/**
+ * in.naver.com 홈을 한 번만 불러 계정이 실재하는지 확인하고, 겸사겸사 표시 정보를 챙긴다.
+ *
+ * fetchWithRetry 를 쓰지 않는 이유: 그쪽은 404 도 재시도한 뒤 Error 로 뭉뚱그려 던져서
+ * "그런 계정이 없다"와 "네이버에 닿지 못했다"를 구분할 수 없다. 둘은 사용자가 해야 할
+ * 행동이 다르므로(주소 고치기 / 잠시 후 재시도) 여기서는 상태 코드를 직접 본다.
+ */
+async function lookupInfluencerAccount(naverId: string): Promise<AccountLookup> {
+  const url = influencerHomeUrl(naverId);
+  if (!isAllowedUrl(url)) return { status: 'unreachable' };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { headers: CRAWL_HEADERS, signal: controller.signal });
+    if (res.status === 404) return { status: 'notFound' };
+    if (!res.ok) return { status: 'unreachable' };
+
+    const $ = cheerio.load(await res.text());
+    const ogTitle = ($('meta[property="og:title"]').attr('content') || '').trim();
+
+    return {
+      status: 'found',
+      // og:title 은 "[네이버 인플루언서] 오렌지도서관" 형태로 온다.
+      displayName: ogTitle.replace(/^\[[^\]]*\]\s*/, '').trim(),
+      introduction: ($('meta[property="og:description"]').attr('content') || '').trim(),
+      imageUrl: ($('meta[property="og:image"]').attr('content') || '').trim(),
+    };
+  } catch (err) {
+    console.error('[my/link] 계정 확인 실패:', err instanceof Error ? err.message : err);
+    return { status: 'unreachable' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export async function POST(request: NextRequest) {
   // 쿠키 기반 인증
@@ -25,7 +77,14 @@ export async function POST(request: NextRequest) {
   const v = validateBody(linkInfluencerSchema, body);
   if (!v.success) return v.response;
 
-  const { naverId } = v.data;
+  const naverId = parseInfluencerId(v.data.url);
+  if (!naverId) {
+    return NextResponse.json(
+      { error: '인플루언서 홈 주소를 확인해 주세요. (예: https://in.naver.com/orangelibrary)' },
+      { status: 400 },
+    );
+  }
+  const nickname = v.data.nickname.trim();
 
   const supabase = createServiceClient();
 
@@ -47,45 +106,71 @@ export async function POST(request: NextRequest) {
     .insert({ auth_id: authUser.id })
     .then(() => {}, () => {});
 
-  // 본인 인증 검증 — 임의 naverId 점유를 차단한다.
-  //   demo_sessions 에 (email = auth user 이메일, naver_id = 요청 naverId,
-  //   page_verified_at IS NOT NULL) 인 행이 있어야 한다.
-  //   page_verified_at 은 /api/auth/demo/verify-page 가 in.naver.com/{naverId}
-  //   소개글에서 발급된 page_code 를 직접 크롤로 확인한 뒤에만 채워진다 →
-  //   진정한 페이지 소유권 증명. 이메일 OTP(verified_at) 만으로는 통과 불가.
-  const authEmail = authUser.email?.toLowerCase();
-  if (!authEmail) {
-    return NextResponse.json({ error: '이메일이 등록되지 않은 계정입니다.' }, { status: 403 });
-  }
-  const { data: verifiedSession } = await supabase
-    .from('demo_sessions')
-    .select('id')
-    .eq('email', authEmail)
-    .eq('naver_id', naverId)
-    .not('page_verified_at', 'is', null)
-    .order('page_verified_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!verifiedSession) {
+  // 실재하는 계정인지 먼저 확인한다. 확인되지 않으면 저장하지 않는다.
+  const account = await lookupInfluencerAccount(naverId);
+  if (account.status === 'notFound') {
     return NextResponse.json(
-      {
-        error: '본인 인증이 필요합니다. /auth/demo/request-page-code 로 발급된 코드를 네이버 인플루언서 소개글에 붙여 넣은 뒤 /auth/demo/verify-page 로 검증을 완료해 주세요.',
-        code: 'PAGE_VERIFICATION_REQUIRED',
-      },
-      { status: 403 },
+      { error: '입력하신 주소에서 인플루언서 홈을 찾지 못했습니다. 주소를 다시 확인해 주세요.' },
+      { status: 400 },
+    );
+  }
+  if (account.status === 'unreachable') {
+    return NextResponse.json(
+      { error: '지금은 네이버에서 계정을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.' },
+      { status: 502 },
     );
   }
 
-  // 인플루언서 조회
-  const { data: influencer } = await supabase
+  // 우리가 아직 수집하지 못한 계정이면 이 자리에서 만들어 준다.
+  // 방금 불러온 홈 정보로 이름·소개·이미지를 채우고, 팬수처럼 여기서 알 수 없는 값은
+  // 0 을 지어내지 않고 비워 둔다(0 과 "아직 못 잼"이 합쳐지면 되돌릴 수 없다).
+  let { data: influencer } = await supabase
     .from('influencers')
     .select('id')
     .eq('naver_id', naverId)
-    .single();
+    .maybeSingle();
 
   if (!influencer) {
-    return NextResponse.json({ error: 'Influencer not found' }, { status: 404 });
+    const { data: created, error: createError } = await supabase
+      .from('influencers')
+      .upsert(
+        {
+          naver_id: naverId,
+          display_name: account.displayName || nickname,
+          profile_url: influencerHomeUrl(naverId),
+          introduction: account.introduction,
+          image_url: account.imageUrl,
+        },
+        { onConflict: 'naver_id' },
+      )
+      .select('id')
+      .single();
+
+    if (createError || !created) {
+      console.error('[my/link] 인플루언서 생성 실패:', createError?.message);
+      return NextResponse.json({ error: '연결에 실패했습니다.' }, { status: 500 });
+    }
+    influencer = created;
+  }
+
+  // 선점 확인 — 먼저 등록한 사용자가 소유한다.
+  // DB 의 유니크 인덱스가 최종 방어선이지만, 그것만 믿으면 사용자에게는 그냥 500 이 보인다.
+  const { data: owner } = await supabase
+    .from('users')
+    .select('auth_id')
+    .eq('linked_influencer_id', influencer.id)
+    .neq('auth_id', authUser.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (owner) {
+    return NextResponse.json(
+      {
+        error: `이미 다른 회원이 연결한 계정입니다. 본인 계정이 맞다면 ${CONTACT_EMAIL} 으로 인플루언서 홈 주소를 보내주세요.`,
+        code: 'ALREADY_LINKED',
+      },
+      { status: 409 },
+    );
   }
 
   // users 테이블 업데이트 (service role로 RLS 우회)
@@ -95,6 +180,16 @@ export async function POST(request: NextRequest) {
     .eq('auth_id', authUser.id);
 
   if (updateError) {
+    // 위 조회와 이 갱신 사이에 다른 사용자가 먼저 가져간 경우 유니크 인덱스가 막는다.
+    if (updateError.code === '23505') {
+      return NextResponse.json(
+        {
+          error: `이미 다른 회원이 연결한 계정입니다. 본인 계정이 맞다면 ${CONTACT_EMAIL} 으로 인플루언서 홈 주소를 보내주세요.`,
+          code: 'ALREADY_LINKED',
+        },
+        { status: 409 },
+      );
+    }
     console.error('[my/link] Update error:', updateError.message);
     return NextResponse.json({ error: '연결에 실패했습니다.' }, { status: 500 });
   }
@@ -141,5 +236,9 @@ export async function POST(request: NextRequest) {
     headers,
   }).catch(err => console.error('[link] background crawl error:', err));
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    naverId,
+    displayName: account.displayName || nickname,
+  });
 }
