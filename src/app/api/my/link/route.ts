@@ -84,9 +84,15 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const nickname = v.data.nickname.trim();
-
   const supabase = createServiceClient();
+
+  // 표시 이름은 가입할 때 등록한 닉네임을 그대로 쓴다. 연결 화면에서 따로 받지 않는다.
+  const { data: userRow } = await supabase
+    .from('users')
+    .select('nickname, blog_id, signup_keyword_category')
+    .eq('auth_id', authUser.id)
+    .maybeSingle();
+  const memberNickname = (userRow?.nickname ?? '').trim();
 
   // 연결 횟수 제한: 하루 5회까지
   const today = new Date().toISOString().slice(0, 10);
@@ -136,7 +142,7 @@ export async function POST(request: NextRequest) {
       .upsert(
         {
           naver_id: naverId,
-          display_name: account.displayName || nickname,
+          display_name: account.displayName || memberNickname,
           profile_url: influencerHomeUrl(naverId),
           introduction: account.introduction,
           image_url: account.imageUrl,
@@ -198,21 +204,10 @@ export async function POST(request: NextRequest) {
   // naver_id와 실제 blog_id가 다른 경우(예: orangelibrary → orangelibrary_) 대시보드가 엉뚱한
   // 블로그를 매칭하는 것을 방지한다. blog_id가 비었거나 naver_id로 잘못 저장된 경우만 교정한다.
   try {
-    const { data: cur } = await supabase
-      .from('users')
-      .select('blog_id')
-      .eq('auth_id', authUser.id)
-      .maybeSingle();
-    await ensureInfluencerBlogId(supabase, authUser.id, cur?.blog_id ?? null, naverId);
+    await ensureInfluencerBlogId(supabase, authUser.id, userRow?.blog_id ?? null, naverId);
   } catch (e) {
     console.error('[my/link] blog_id 자동 해석 실패:', e);
   }
-
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('signup_keyword_category')
-    .eq('auth_id', authUser.id)
-    .maybeSingle();
 
   const topicFromSignup = userRow?.signup_keyword_category?.trim();
   if (topicFromSignup) {
@@ -239,6 +234,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     naverId,
-    displayName: account.displayName || nickname,
+    displayName: account.displayName || memberNickname,
   });
 }

@@ -72,7 +72,6 @@ export const paginationSchema = z.object({
  */
 export const linkInfluencerSchema = z.object({
   url: z.string().min(1, '인플루언서 홈 주소를 입력해 주세요.').max(200),
-  nickname: z.string().trim().min(1, '닉네임을 입력해 주세요.').max(30),
 });
 
 /** 프로필 업데이트 — 인플루언서 연결은 /my/link, 해제만 여기서 허용 */
