@@ -66,22 +66,6 @@ export const ROUTES: readonly RouteDef[] = [
   { path: '/guide', visibility: 'public' },
   { path: '/download', visibility: 'public' },
 
-  /* ── 공개 선언이지만 익명에게 307 ────────────────────────── */
-  // robots 는 열려 있는데 미들웨어·레이아웃이 비로그인을 튕긴다. 크롤 예산만 쓰고
-  // "리다이렉션된 페이지"로 잡힐 자리다. 다만 비공개 전환은 2026-09-02 승인 범위 밖이라
-  // 현행 동작을 그대로 유지한다 (§11-1 재승인 대상).
-  { path: '/campaigns', visibility: 'public' },
-  { path: '/competitor', visibility: 'public' },
-  { path: '/decoder', visibility: 'public' },
-  { path: '/discover', visibility: 'public' },
-  { path: '/image-converter', visibility: 'public' },
-  { path: '/image-editor', visibility: 'public' },
-  { path: '/messages', visibility: 'public' },
-  { path: '/naver-mate-ranking', visibility: 'public' },
-  { path: '/search-volume', visibility: 'public' },
-  { path: '/topics', visibility: 'public' },
-  { path: '/trial', visibility: 'public' },
-
   /* ── 비공개 ──────────────────────────────────────────────── */
   { path: '/api', visibility: 'private', reason: '데이터 API — 문서가 아니다' },
   { path: '/admin', visibility: 'private', reason: '관리자 전용' },
@@ -99,6 +83,22 @@ export const ROUTES: readonly RouteDef[] = [
   { path: '/orangeconnect/dashboard', visibility: 'private', reason: '광고주 작업 화면' },
   { path: '/orangeconnect/search', visibility: 'private', reason: '광고주 작업 화면' },
   { path: '/orangeconnect/campaign', visibility: 'private', reason: '광고주 캠페인 관리' },
+
+  /* ── 비공개 (2026-09-02 오렌지 승인: 익명 307 라우트 11건 전환) ──── */
+  // robots 는 열려 있는데 미들웨어·레이아웃이 비로그인을 튕기던 자리. 크롤 예산만 쓰고
+  // 서치어드바이저에는 "리다이렉션된 페이지"로 잡힌다.
+  { path: '/campaigns', visibility: 'private', reason: '개발 중 — layout 이 누구에게나 / 로 redirect' },
+  { path: '/competitor', visibility: 'private', reason: '회원 전용 (middleware MEMBER_ONLY_GATE_PREFIXES)' },
+  { path: '/decoder', visibility: 'private', reason: '회원 전용 (middleware MEMBER_ONLY_GATE_PREFIXES)' },
+  { path: '/discover', visibility: 'private', reason: '별칭 — /influencers?tab=topic 로 무조건 redirect' },
+  { path: '/image-converter', visibility: 'private', reason: '회원 전용 (middleware MEMBER_ONLY_GATE_PREFIXES)' },
+  { path: '/image-editor', visibility: 'private', reason: '회원 전용 (middleware MEMBER_ONLY_GATE_PREFIXES)' },
+  { path: '/messages', visibility: 'private', reason: '로그인 전용 (layout.tsx getUserWithTimeout 후 redirect)' },
+  { path: '/naver-mate-ranking', visibility: 'private', reason: '회원 전용 (middleware MEMBER_ONLY_GATE_PREFIXES)' },
+  // 최종 도착지 /keywords/blogger 는 이미 sitemap 에 있으므로 별칭만 뺀다.
+  { path: '/search-volume', visibility: 'private', reason: '별칭 — /keywords/blogger 로 무조건 redirect' },
+  { path: '/topics', visibility: 'private', reason: 'lib/plans.ts topics.browse — minPlan INFLUENCER' },
+  { path: '/trial', visibility: 'private', reason: '무료체험 종료 — / 로 무조건 redirect' },
 ];
 
 export const publicRoutes = (): RouteDef[] => ROUTES.filter(r => r.visibility === 'public');
