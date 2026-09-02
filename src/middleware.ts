@@ -187,6 +187,9 @@ const GATE_HANDLED_ELSEWHERE = new Set([
   '/dashboard/writing/rewrite',
   '/dashboard/writing/body',
   '/dashboard', // page.tsx 자체에서 getUserWithTimeout + 데모쿠키 체크 후 비로그인은 /로 redirect (구 홈 KPI 대시보드가 이동해온 자리)
+  // 화면 자체는 로그인만 필요하고(layout.tsx의 requireLoginPage), 유료 경계는
+  // AI 분석·데이터 내려받기(downloads.post-analysis)에 있어 등급 게이트를 여기서 걸지 않는다.
+  '/my/post-analysis',
 ]);
 
 function isAuthOnlyHrefAccounted(href: string): boolean {
