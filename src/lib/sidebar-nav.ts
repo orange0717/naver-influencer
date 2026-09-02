@@ -40,7 +40,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     // ── 개인화 영역 ─────────────────────────────────────────────
     // 로그인한 user_id의 실제 데이터에 기반해 동작하는 기능만 이 그룹에 둔다(스펙 1·2·21).
-    // 블로그(4) + 인플루언서(2) + 포스팅(2). 기존 페이지/URL은 유지하고 IA만 재구성한다.
+    // 블로그(4) + 인플루언서(3) + 대분류 직속(1). 기존 페이지/URL은 유지하고 IA만 재구성한다.
     // heading = 클릭 불가 하위그룹 제목, subgroup = 하위그룹 첫 항목(상단 간격 강조, 스펙 24),
     // indent = 하위그룹 소속 항목 들여쓰기. requiredPlan/authOnly는 이관 전 값을 그대로 유지.
     label: '대시보드',
@@ -55,12 +55,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '대시보드', href: '/my', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '맞팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '포스팅', href: '#posting', heading: true, subgroup: true },
-      // 2026-09-01 무료·비로그인 공개 전환. 등급 정본은 plans.ts 의 writing.spellcheck 다.
-      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'free', indent: true },
       // 글 심층피드백 = 기존 블로그 심층피드백 + AI글 적합도 + 인플루언서 글 적합도를 한 번의
       // 분석으로 합친 개인화 기능(스펙 4·5). 구조적 정밀 진단 엔진(quality-evaluate)이 본체다.
-      { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true, bullet: true },
     ],
   },
   {
@@ -91,6 +88,10 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     icon: '도',
     items: [
       { label: '글쓰기', href: '#writing', heading: true, subgroup: true },
+      // 2026-09-01 무료·비로그인 공개 전환. 등급 정본은 plans.ts 의 writing.spellcheck 다.
+      // 비로그인 공개(allowAnonymous) 기능이라 개인화 전용인 '대시보드' 그룹 조건을 만족하지 못해
+      // 나머지 /dashboard/writing/* 형제들과 같은 '글쓰기'로 이관(2026-09-02 내비 감사 §5-A).
+      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'free', indent: true },
       { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '이미지', href: '#image', heading: true, subgroup: true },

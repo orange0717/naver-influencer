@@ -84,7 +84,8 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
     toolDescription: '이미 쓴 글의 맞춤법·띄어쓰기를 교정한다.',
     reasonHint: '맞춤법과 띄어쓰기를 교정합니다',
     href: '/dashboard/writing/spellcheck',
-    authOnly: true,
+    // plans.ts writing.spellcheck 가 allowAnonymous: true 라 비로그인도 쓸 수 있다(2026-09-02 감사 §5-A).
+    authOnly: false,
   },
   {
     // 교정·교열·윤문(rewrite)·블로그 글 심층피드백(claude 채팅)·AI글 적합도를 하나로 합친
@@ -118,7 +119,8 @@ export const AI_CONSULTANT_CATALOG: AiConsultantFeature[] = [
     toolDescription: '카테고리별 네이버 인플루언서 순위와 프로필을 탐색한다. 경쟁자·벤치마킹 분석에 적합.',
     reasonHint: '경쟁 인플루언서의 순위와 프로필을 보여줍니다',
     href: '/influencers',
-    authOnly: false,
+    // plans.ts influencers.list = INFLUENCER 전용이고 미들웨어도 막는다(2026-09-02 감사 §5-A).
+    authOnly: true,
   },
   {
     id: 'topics',
