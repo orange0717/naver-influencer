@@ -703,7 +703,7 @@ export default function AuthModal() {
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text transition placeholder:text-dim/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
                 {signupFieldError('signup-modal-naver')}
-                <p className="mt-1 text-[11px] text-dim">가입 후 본인 인증 페이지로 이동합니다.</p>
+                <p className="mt-1 text-[11px] text-dim">가입 후 계정 연결 페이지로 이동합니다.</p>
               </div>
 
               {signupError && (

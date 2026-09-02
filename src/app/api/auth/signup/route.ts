@@ -41,8 +41,9 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
 
   // 보안: 가입 시 linked_influencer_id 자동 설정 금지.
-  //   naverId 는 검증 없이 점유될 수 있어 /api/my/link 의 본인 인증(demo OTP)
-  //   을 통과해야만 연결한다. blog_id 는 점유 위험이 없어 입력값을 그대로 저장.
+  //   naverId 는 검증 없이 점유될 수 있어 /api/my/link 를 거쳐야만 연결한다
+  //   (그쪽에서 계정 실재 여부를 확인하고, 유니크 인덱스로 선점을 강제한다).
+  //   blog_id 는 점유 위험이 없어 입력값을 그대로 저장.
 
   // 이미 존재하는지 확인 (멱등성: signUp 재시도 등)
   const { data: existing } = await supabase
