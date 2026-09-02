@@ -21,7 +21,8 @@
 -- 안전성:
 --   CREATE TABLE / INDEX IF NOT EXISTS + 신규 테이블 RLS 뿐이라 재실행해도
 --   안전하고 기존 데이터를 건드리지 않는다. 한 트랜잭션으로 실행해도 된다.
---   uuid_generate_v4() 는 이미 적용된 085 가 쓰고 있으므로 확장이 존재한다.
+--   ID 기본값은 uuid-ossp 확장이 필요한 uuid_generate_v4() 대신 PG13+ 내장
+--   gen_random_uuid() 를 쓴다 — 확장 유무에 실행이 좌우되지 않게.
 --
 --   과거 이력은 복구 불가다. 이 테이블은 동기화 시점에만 쌓이므로
 --   적용 후 북마클릿 동기화를 한 번 돌려야 첫 줄이 생긴다.
@@ -37,7 +38,7 @@
 --   only_follows_me  = 상대만 팬 (FOLLOWS_ME 만 존재)
 --   none             = 관계 소멸 (직전엔 관계가 있었으나 이번 동기화에서 사라짐)
 CREATE TABLE IF NOT EXISTS public.follow_relation_history (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   target_url_id       TEXT NOT NULL,                 -- 상대 네이버 URL ID
   target_nickname     TEXT,                          -- 관측 시점 닉네임(표시용)
