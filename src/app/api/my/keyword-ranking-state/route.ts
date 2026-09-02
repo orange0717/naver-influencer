@@ -68,7 +68,11 @@ export async function GET(request: NextRequest) {
     supabase.rpc('get_keyword_rank_deltas', { p_user_id: g.userId, p_blog_id: blogId }),
   ]);
 
-  if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
+  // 실패 원인을 남긴다 — 원래 error를 통째로 버려서 500이 나도 컬럼 누락인지 타임아웃인지 알 수 없었다(2026-09-02).
+  if (error) {
+    console.error('[keyword-ranking-state] keyword_rank_lookups 조회 실패:', error.code, error.message, error.details);
+    return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
+  }
   // 이력 RPC는 부가 정보(전일/7일대비)이므로 실패해도 나머지 응답은 그대로 반환
   if (deltaError) console.error('[keyword-ranking-state] get_keyword_rank_deltas 실패:', deltaError);
 
