@@ -11,6 +11,7 @@ import ChatBot from "@/components/ChatBot";
 import FeedbackButton from "@/components/FeedbackButton";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import Providers from "@/components/Providers";
+import UpdateBanner from "@/components/UpdateBanner";
 import SubscriptionExpiryStrip from "@/components/SubscriptionExpiryStrip";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
 import FirstVisitModal from "@/components/FirstVisitModal";
@@ -268,6 +269,7 @@ export default function RootLayout({
           <SentryUserIdentity />
           <HeaderWrapper />
           <SubscriptionExpiryStrip />
+          <UpdateBanner />
           <Suspense fallback={null}><VisitTracker /></Suspense>
           <div className="flex flex-1 w-full min-w-0">
             <AppSidebar />

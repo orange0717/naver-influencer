@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getLatestUpdate, type UpdateItem } from '@/lib/update-data';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
- * 업데이트 공지 배너
- * - 우선순위 1: 공지사항 중 show_on_banner = true 인 최신 1건 (/api/notices/banner)
- * - 우선순위 2: src/lib/update-data.ts 하드코딩 데이터
- * - localStorage 기반 dismiss (버전/ID 별, 브라우저 종료 후에도 유지)
+ * 상단 공지 배너
+ * - 작성 후 3일 이내인 공지 1건을 /api/notices/banner 에서 받아 노출한다.
+ * - localStorage 기반 dismiss (공지 ID 별, 브라우저 종료 후에도 유지)
+ *
+ * ⚠️ 예전엔 배너로 띄울 공지가 없으면 src/lib/update-data.ts 하드코딩 데이터로 폴백했다.
+ *    그러면 공지가 3일이 지나 내려가는 순간 몇 달 전 배너가 대신 올라와서, 내려간 게 아니라
+ *    더 오래된 것이 올라오는 꼴이 된다. 띄울 게 없으면 아무것도 띄우지 않는다.
  */
 export default function UpdateBanner() {
   const { user } = useAuth();
@@ -40,20 +42,7 @@ export default function UpdateBanner() {
           }
         }
       } catch {
-        /* DB 조회 실패 시 아래 fallback 사용 */
-      }
-
-      if (!resolved) {
-        const fallback: UpdateItem | null = getLatestUpdate();
-        if (fallback) {
-          resolved = {
-            version: fallback.version,
-            title: fallback.title,
-            date: fallback.date,
-            href: fallback.href,
-            changes: fallback.changes,
-          };
-        }
+        /* 조회 실패는 "띄울 공지 없음"으로 둔다 — 엉뚱한 옛 공지를 대신 띄우지 않는다 */
       }
 
       if (cancelled || !resolved) return;
