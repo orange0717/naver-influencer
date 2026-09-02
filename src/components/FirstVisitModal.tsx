@@ -70,8 +70,8 @@ function FirstVisitModalInner() {
             N인플에 처음 방문하셨습니까?
           </h2>
           <p className="text-sm text-dim text-center mb-3 leading-relaxed">
-            홈 화면의 <span className="text-accent font-semibold">N인플 AI 질문은 회원가입 없이 하루 3회</span><br />
-            바로 체험해보실 수 있습니다.
+            홈 화면의 <span className="text-accent font-semibold">N인플 AI 질문은 회원가입 없이 하루 3회</span>,
+            맞춤법 검사와 키워드 검색도 바로 체험해보실 수 있습니다.
           </p>
           <p className="text-[11px] text-dim/80 text-center mb-8 leading-relaxed">
             키워드 순위·미노출 분석 등 나머지 기능은 회원 전용입니다.
