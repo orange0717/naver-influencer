@@ -281,7 +281,6 @@ export async function POST(request: NextRequest) {
           featureId: feature.id,
           label: feature.label,
           href: feature.href,
-          authOnly: feature.authOnly,
           external: feature.external ?? false,
           score: Math.min(5, Math.max(1, Math.round(r.score ?? 3))),
           reason: (r.reason || feature.reasonHint).slice(0, 200),

@@ -11,7 +11,6 @@ interface Recommendation {
   featureId: string;
   label: string;
   href: string;
-  authOnly: boolean;
   /** 네이버 비즈니스 스쿨처럼 N인플 밖 공식 사이트로 연결되는 항목 — 새 탭으로 열어야 한다.
    *  optional인 이유: 이 필드 추가 이전에 저장된 "최근 분석" 이력에는 값이 없을 수 있음. */
   external?: boolean;
