@@ -219,7 +219,10 @@ export default function ProfilePage() {
         setTimeout(() => router.push(`/my/blogger?blogId=${blogId}`), 500);
       }
     } else {
-      showToast('블로그 주소 저장에 실패했습니다.');
+      // 서버가 이미 사용자용 한국어 안내를 만들어 보낸다(중복 등록 409 등). 여기서 버리면
+      // 사용자는 무엇을 고쳐야 하는지 알 수 없다. 기술 정보는 error 가 아닌 details 에만 담긴다.
+      const body = await res.json().catch(() => null);
+      showToast(body?.error || '블로그 주소 저장에 실패했습니다.');
     }
     setBlogIdSaving(false);
   };
