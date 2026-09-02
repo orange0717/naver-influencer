@@ -338,15 +338,20 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (1회 500건)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 데이터 다운로드 (1회 500건)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
-            {/* 아래 8건은 2026-09-01 이전까지 실제로는 열려 있는데 이용권 페이지에 한 줄도 없었다. */}
+            {/* 아래 11건은 인플루언서 이용권으로 실제 열리는데 이 카드에 한 줄도 없던 것들이다.
+                8건은 비교표에도 없어 완전히 무고지였고(2026-09-01 채움), 3건(키워드 추천·글감 찾기·
+                릴스·쇼츠 분석)은 비교표에만 있고 카드에서만 빠져 있었다(2026-09-02 채움). */}
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 대시보드</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 상세</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>AI 브리핑 · AI 탭 인용</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>토픽 · 내 토픽</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>맞팬 관리</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>대량 키워드 조회</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>키워드 추천 (AI)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>글감 찾기 (AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>글 심층피드백 (AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>롱폼 분석 (AI)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>릴스·쇼츠 분석 (AI)</span></li>
           </ul>
         </div>
 
