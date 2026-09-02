@@ -138,10 +138,6 @@
     {
       "path": "/api/cron/crawl-post-exposure",
       "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/expire-judges",
-      "schedule": "10 0 * * *"
     }
   ]
 }
