@@ -20,6 +20,8 @@ import { estimateEta } from '@/components/analytics/CheckProgress';
 import { useAuth } from '@/hooks/useAuth';
 import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { MISSING_POSTS_TEASER, SUBSCRIBE_PATH, planLabel, type PlanKey } from '@/lib/plans';
 
 // §1·§12·§19 최근 N일까지는 기본(무료) 조회, 초과는 회원 전용. 서버(exposure-policy.ts)가 과금·권한을 최종 강제하며
 // 여기 값은 UI 게이팅용(동일 기본값 30). 서버와 어긋나도 서버가 최종 판단하므로 안전.
@@ -195,7 +197,16 @@ const VERDICT_STYLE: Record<ExposureVerdict, string> = {
   unanalyzable: 'text-dim bg-border/40',
 };
 
-export default function MissingPostsSection() {
+/**
+ * @param teaser 등급이 모자란 회원. 화면을 막지 않고 최근 N일·상위 M건까지만 열어 보여준다.
+ *   판정은 반드시 서버(page.tsx의 checkFeaturePage)가 내려준 값이어야 한다 — 클라이언트에서
+ *   등급을 다시 계산하면 개발자도구로 뒤집을 수 있다. 어차피 서버 API 도 403 을 내지만,
+ *   화면이 먼저 정직해야 "되는 줄 알고 눌렀는데 실패"하는 경험이 안 생긴다.
+ */
+export default function MissingPostsSection({
+  teaser = false,
+  requiredPlan = 'max',
+}: { teaser?: boolean; requiredPlan?: PlanKey } = {}) {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   // 프로필 조회가 끝났는가. profile===null 은 '없음'과 '아직 안 옴' 둘 다라서,
   // 이걸 구분 못 하면 로딩 중에 "블로그를 등록하면 확인합니다"라고 단정해버린다
@@ -334,6 +345,7 @@ export default function MissingPostsSection() {
 
   // §7 특정 포스트의 노출↔미노출 전환 이력 로드 (상세 모달용)
   const fetchDetailHistory = useCallback(async (blogId: string, postId: string) => {
+    if (teaser) return; // 어차피 403 — 부르지 않고 화면에서 잠금 안내를 낸다
     setHistoryLoading(true);
     try {
       const res = await fetchWithTimeout(
@@ -345,7 +357,7 @@ export default function MissingPostsSection() {
       setDetailHistory(Array.isArray(data.history) ? data.history : []);
     } catch { setDetailHistory([]); }
     finally { setHistoryLoading(false); }
-  }, [viewToken]);
+  }, [viewToken, teaser]);
 
   useEffect(() => {
     if (!profile) return;
@@ -357,7 +369,7 @@ export default function MissingPostsSection() {
   // reason 이 있으면 '검사가 실패한 것'이 아니라 '검사를 시작할 수 없는 것'이다(로그인 끊김·크레딧 부족).
   // 그 두 경우엔 이미 로그인 게이트/부족 모달이 떠 있으므로, 그 위에 "잠시 후 다시 시도" 같은
   // 엉뚱한 안내를 겹쳐 띄우지 않는다 — 기다린다고 해결되는 상황이 아니다.
-  type CheckOutcome = { status: 'ok' | 'failed'; verdict: ExposureVerdict | null; reason?: 'auth' | 'credit' };
+  type CheckOutcome = { status: 'ok' | 'failed'; verdict: ExposureVerdict | null; reason?: 'auth' | 'credit' | 'plan' };
   const checkOne = useCallback(async (post: BlogPost, opts?: { force?: boolean }): Promise<CheckOutcome> => {
     if (!profile) return { status: 'failed', verdict: null };
     // 비공개 글은 검색 노출 대상이 아니므로 네이버를 치지 않고 '분석불가'로 표시 (호출량·비용 절약)
@@ -380,6 +392,13 @@ export default function MissingPostsSection() {
         });
         // §20 30일 이전 글 과금 게이트 — 재시도·후속 배치 모두 같은 결과이므로 배치를 멈추고(abort) 한 번만 안내한다.
         if (res.status === 401) { abortRef.current = true; openGate('/my/missing-posts'); return { status: 'failed', verdict: null, reason: 'auth' }; }
+        // 등급 부족(403). 재시도해도 결과가 같으므로 배치를 멈춘다. 티저에선 버튼을 이미 감춰
+        // 여기까지 오지 않는 게 정상이지만, 검사 도중 이용권이 만료되면 도달할 수 있다 —
+        // 그때 "검사 실패"로 남기면 원인이 등급이라는 걸 알 방법이 없다.
+        if (res.status === 403) {
+          abortRef.current = true;
+          return { status: 'failed', verdict: null, reason: 'plan' };
+        }
         if (res.status === 402) {
           abortRef.current = true;
           const d = await res.json().catch(() => ({}));
@@ -497,6 +516,9 @@ export default function MissingPostsSection() {
   useEffect(() => {
     if (!profile || postsLoading || posts.length === 0 || autoCheckedRef.current) return;
     autoCheckedRef.current = true;
+    // 티저는 자동검사를 돌리지 않는다 — 서버가 403 을 낼 호출을 30건 쏘아 놓고
+    // 화면엔 '검사 실패'만 남기게 된다. 저장된 판정(post-missing-state)은 그대로 보인다.
+    if (teaser) { setAutoCheckDone(true); return; }
     const freeCutoff = thirtyDaysAgo.getTime();
     const recent = [...posts]
       .filter(p => (parsePostDate(p.date)?.getTime() ?? 0) >= freeCutoff) // 무료 구간(최근 30일)만
@@ -505,7 +527,7 @@ export default function MissingPostsSection() {
     const now = Date.now();
     if (recent.some(p => willHitNaver(p, now))) runBatch(recent);
     setAutoCheckDone(true);
-  }, [profile, postsLoading, posts, thirtyDaysAgo, willHitNaver, runBatch]);
+  }, [profile, postsLoading, posts, thirtyDaysAgo, willHitNaver, runBatch, teaser]);
 
   // 30일 이전 공개 글 수(§2·§4 "추가 확인 가능") — 회원 확장 조회 후보의 최대 규모.
   const olderCount = useMemo(() => {
@@ -577,6 +599,9 @@ export default function MissingPostsSection() {
   const beginExtended = useCallback(async (scopeDays: Period, opts?: { fromPrompt?: boolean }) => {
     if (!profile) return;
     if (!isMember) { openGate('/my/missing-posts'); return; } // §3 비회원 → 로그인/회원가입 (API 호출 안 함)
+    // 티저는 확장 조회 자체가 등급 밖이다(exposure-extend 가 403). 기간만 넓혀 두고
+    // API 는 부르지 않는다 — 잠금 안내는 목록 아래 CTA 가 이미 하고 있다.
+    if (teaser) { setPeriod(scopeDays); setShowMorePrompt(false); return; }
     setPeriod(scopeDays); setCustomFrom(''); setCustomTo(''); // 목록에 30일 이전 글 노출(미확인 상태)
     const candidates = olderCandidatesFor(scopeDays);
     if (candidates.length === 0) { setShowMorePrompt(false); return; }
@@ -603,15 +628,16 @@ export default function MissingPostsSection() {
       else setExtendModal({ phase: 'confirm', scopeDays, candidates, plan });
     } catch { setErrorMessage('조회 대상 계산 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.'); }
     finally { setExtendBusy(false); }
-  }, [profile, isMember, openGate, olderCandidatesFor, runExtended]);
+  }, [profile, isMember, openGate, olderCandidatesFor, runExtended, teaser]);
 
   // §2 최근 30일 자동검사 완료 후, 30일 이전 글이 있으면 "이전 포스팅도 확인하시겠습니까?" 프롬프트 노출(1회).
   useEffect(() => {
+    if (teaser) return; // 티저에겐 권할 수 없는 동작이다
     if (!autoCheckDone || checkingAll || postsLoading) return;
     if (morePromptDismissedRef.current) return;
     if (isExtendedPeriod(period)) return; // 이미 확장 조회로 진입함
     if (olderCount > 0) setShowMorePrompt(true);
-  }, [autoCheckDone, checkingAll, postsLoading, period, olderCount]);
+  }, [autoCheckDone, checkingAll, postsLoading, period, olderCount, teaser]);
 
   // 선택한 기간(직접 선택 포함)으로 정확히 트리밍 — fetchPosts는 안전을 위해 30일치를 항상 더 넉넉히 불러오므로 여기서 최종 필터링
   const periodPosts = useMemo(() => posts.filter(p => {
@@ -710,6 +736,18 @@ export default function MissingPostsSection() {
     return arr;
   }, [periodPostsDated, missingResults, statusFilter, areaFilter, searchQuery, sortBy]);
 
+  // 티저 — 등급이 모자라면 최근 N일 안에서 상위 M건까지만 실제 판정을 보여준다.
+  // 자르는 기준을 '상위 M건'만으로 하지 않는 이유: 정렬을 오래된순으로 바꾸면 몇 번의 클릭으로
+  // 전체를 훑을 수 있어 잠금이 사실상 사라진다. 기간으로 먼저 자르고 그 안에서 개수를 자른다.
+  const teaserList = useMemo(() => {
+    if (!teaser) return displayList;
+    const cutoff = Date.now() - MISSING_POSTS_TEASER.days * DAY_MS;
+    return displayList
+      .filter(p => (p.publishedAt?.getTime() ?? 0) >= cutoff)
+      .slice(0, MISSING_POSTS_TEASER.rows);
+  }, [teaser, displayList]);
+  const lockedCount = displayList.length - teaserList.length;
+
   // §9 '미확인 n개 검사' 대상 = 실제 상태가 '미확인'(검사 기록 없음)인 글만. 단, 무료 구간(최근 30일)만 —
   // 30일 이전 미확인 글은 회원 전용 확장 조회(크레딧 정책)로만 검사되므로 이 무료 버튼 대상에서 제외한다.
   const uncheckedPosts = useMemo(() => {
@@ -725,9 +763,9 @@ export default function MissingPostsSection() {
   const toggleOne = useCallback((id: string) => {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }, []);
-  const allVisibleSelected = displayList.length > 0 && displayList.every(p => selectedIds.has(p.id));
+  const allVisibleSelected = teaserList.length > 0 && teaserList.every(p => selectedIds.has(p.id));
   const toggleAll = useCallback(() => {
-    const visibleIds = displayList.map(p => p.id);
+    const visibleIds = teaserList.map(p => p.id);
     setSelectedIds(prev => {
       const everySelected = visibleIds.length > 0 && visibleIds.every(id => prev.has(id));
       const n = new Set(prev);
@@ -735,7 +773,7 @@ export default function MissingPostsSection() {
       else visibleIds.forEach(id => n.add(id));
       return n;
     });
-  }, [displayList]);
+  }, [teaserList]);
 
   const detailPost = useMemo(() => posts.find(p => p.id === detailPostId) || null, [posts, detailPostId]);
   const detailMr = detailPostId ? missingResults[detailPostId] : undefined;
@@ -782,6 +820,15 @@ export default function MissingPostsSection() {
                 중단
               </button>
             </>
+          ) : teaser ? (
+            // 티저는 새 검사를 시작할 수 없다(서버가 403). 눌리는 버튼을 남겨두면
+            // "눌렀는데 아무 일도 안 일어난다"가 되므로 아예 업그레이드 동선으로 바꾼다.
+            <Link
+              href={`${SUBSCRIBE_PATH}?required=${requiredPlan}`}
+              className="px-4 py-2 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-xs"
+            >
+              {planLabel(requiredPlan)} 이용권으로 전체 검사
+            </Link>
           ) : (
             <>
               {selectedIds.size > 0 && (
@@ -928,7 +975,11 @@ export default function MissingPostsSection() {
         </p>
       )}
 
-      <AnalyticsTableShell title="포스팅 목록" loading={postsLoading} count={`${displayList.length}개`}>
+      <AnalyticsTableShell
+        title="포스팅 목록"
+        loading={postsLoading}
+        count={teaser && lockedCount > 0 ? `${teaserList.length} / ${displayList.length}개` : `${displayList.length}개`}
+      >
 
         {postsLoading ? (
           <div className="flex flex-col items-center justify-center py-10 text-dim text-sm gap-1">
@@ -973,13 +1024,17 @@ export default function MissingPostsSection() {
           </div>
         ) : periodPosts.length === 0 ? (
           <div className="text-center py-10 text-dim text-sm">선택한 기간에 발행된 포스트가 없습니다. (전체 {posts.length}개 수집됨 — 기간 필터를 넓혀보세요)</div>
-        ) : displayList.length === 0 ? (
+        ) : teaserList.length === 0 ? (
           <div className="text-center py-10 text-dim text-sm">
-            {statusFilter !== 'all'
-              ? '선택한 상태 필터에 해당하는 포스팅이 없습니다. 필터를 "전체"로 바꿔보세요.'
-              : searchQuery.trim()
-                ? '검색어와 일치하는 포스팅이 없습니다.'
-                : '표시할 포스팅이 없습니다.'}
+            {/* 티저에선 "없다"가 아니라 "이 범위 밖이라 잠겨 있다"가 맞다.
+                조건에 맞는 글이 실제로 있는데 없다고 말하면 사용자가 필터만 계속 만지게 된다. */}
+            {teaser && displayList.length > 0
+              ? `조건에 맞는 포스팅 ${displayList.length}개가 있지만, 최근 ${MISSING_POSTS_TEASER.days}일 이내 글이 없어 표시할 항목이 없습니다.`
+              : statusFilter !== 'all'
+                ? '선택한 상태 필터에 해당하는 포스팅이 없습니다. 필터를 "전체"로 바꿔보세요.'
+                : searchQuery.trim()
+                  ? '검색어와 일치하는 포스팅이 없습니다.'
+                  : '표시할 포스팅이 없습니다.'}
           </div>
         ) : (
           <>
@@ -1006,7 +1061,7 @@ export default function MissingPostsSection() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {displayList.map((post, idx) => {
+                  {teaserList.map((post, idx) => {
                     const mr = missingResults[post.id];
                     const isChecking = checkingPostId === post.id;
                     const now = Date.now();
@@ -1038,7 +1093,7 @@ export default function MissingPostsSection() {
                             </button>
                             <button
                               onClick={() => recheckSingle(post)}
-                              disabled={checkingAll || isChecking}
+                              disabled={teaser || checkingAll || isChecking}
                               className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               {isChecking ? '검사 중' : '다시 검사'}
@@ -1055,7 +1110,7 @@ export default function MissingPostsSection() {
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {displayList.map((post, idx) => {
+              {teaserList.map((post, idx) => {
                 const mr = missingResults[post.id];
                 const isChecking = checkingPostId === post.id;
                 const now = Date.now();
@@ -1088,7 +1143,7 @@ export default function MissingPostsSection() {
                         </button>
                         <button
                           onClick={() => recheckSingle(post)}
-                          disabled={checkingAll || isChecking}
+                          disabled={teaser || checkingAll || isChecking}
                           className="text-dim hover:text-accent hover:underline text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {isChecking ? '검사 중' : '다시 검사'}
@@ -1103,6 +1158,31 @@ export default function MissingPostsSection() {
           </>
         )}
       </AnalyticsTableShell>
+
+      {/* 티저 잠금 안내 — 표 바로 아래에 둔다. 잠긴 건수를 실제 숫자로 말해야
+          "몇 개가 더 있는지"가 전달되고, 그게 업그레이드를 판단할 근거가 된다. */}
+      {teaser && !postsLoading && lockedCount > 0 && (
+        <GlassCard padding="sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-text">
+                포스팅 {lockedCount}개가 더 있습니다
+              </p>
+              <p className="text-xs text-dim leading-relaxed">
+                최근 {MISSING_POSTS_TEASER.days}일 · {MISSING_POSTS_TEASER.rows}건까지 무료로 확인할 수 있습니다.
+                {planLabel(requiredPlan)} 이용권을 시작하면 전체 포스팅의 3탭 교차검증 판정과
+                노출↔미노출 전환 이력, 30일 이전 글 조회까지 이용할 수 있습니다.
+              </p>
+            </div>
+            <Link
+              href={`${SUBSCRIBE_PATH}?required=${requiredPlan}`}
+              className="shrink-0 px-4 py-2.5 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition text-xs text-center"
+            >
+              {planLabel(requiredPlan)} 이용권 보기
+            </Link>
+          </div>
+        </GlassCard>
+      )}
 
       {/* 4. 상세뷰(원인분석) 패널 */}
       <Modal open={!!detailPost} onClose={closeDetail} overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
@@ -1203,7 +1283,17 @@ export default function MissingPostsSection() {
             {/* 노출/미노출 전환 이력 (§7) */}
             <div className="mb-4">
               <p className="font-bold text-xs mb-2">노출 변화 이력</p>
-              {historyLoading ? (
+              {teaser ? (
+                // 티저에서는 이력 API 가 403 이라 응답이 늘 빈 배열이다. 그대로 두면
+                // "전환이 없습니다"라는 사실과 다른 문장이 나가므로 잠금 안내로 갈라준다.
+                <p className="text-xs text-dim leading-relaxed">
+                  노출↔미노출 전환 이력은{' '}
+                  <Link href={`${SUBSCRIBE_PATH}?required=${requiredPlan}`} className="text-accent font-semibold underline underline-offset-2">
+                    {planLabel(requiredPlan)} 이용권
+                  </Link>
+                  부터 확인할 수 있습니다.
+                </p>
+              ) : historyLoading ? (
                 <p className="text-xs text-dim">이력을 불러오는 중...</p>
               ) : detailHistory.length === 0 ? (
                 <p className="text-xs text-dim">아직 기록된 노출↔미노출 전환이 없습니다. 재검사로 상태가 바뀌면 여기에 기록됩니다.</p>

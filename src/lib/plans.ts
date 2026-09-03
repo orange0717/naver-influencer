@@ -112,13 +112,28 @@ export const PLAN_QUOTA: Record<PlanKey, QuotaCounter | null> = {
   max: null,
 };
 
+/**
+ * 노출 현황 티저 — 등급이 모자란 회원에게 열어 보여주는 범위.
+ * 전면 차단 대신 최근 N일·상위 M건까지 실제 판정을 보여주고 나머지를 잠근다.
+ *
+ * 파일 헤더의 "한도 숫자 금지"는 관리자 설정으로 런타임에 바뀌는 쿼터를 뜻한다.
+ * 이쪽은 런타임 설정이 없는 고정 노출 정책이고, 화면과 서버가 같은 값을 봐야
+ * 티저 경계가 어긋나지 않으므로 게이팅 정본인 여기에 둔다.
+ */
+export const MISSING_POSTS_TEASER = { days: 7, rows: 5 } as const;
+
 export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* ── 대시보드 — 블로그 ───────────────────────────────────── */
   'dashboard.blog': { key: 'dashboard.blog', label: '대시보드', minPlan: 'free' },
+  // 2026-09-03 Free → Max. 잠그는 축은 "미노출 숫자를 보느냐"가 아니라 노출 현황 화면
+  // 고유 기능(3탭 교차검증 확정 판정 · 전환 이력 · 30일 이전 확장 조회 · 내려받기)이다.
+  // 무료 대시보드(BlogAnalysisSection)의 2탭 미노출 검사와 저장된 판정 조회
+  // (/api/my/post-missing-state GET)는 그대로 무료다 — 같은 엔드포인트를 네 화면이
+  // 공유하므로 라우트를 통째로 잠그면 무료 대시보드와 Pro 키워드순위·경쟁사가 함께 죽는다.
   'my.missing-posts': {
     key: 'my.missing-posts',
     label: '노출 현황',
-    minPlan: 'free',
+    minPlan: 'max',
     consumesQuota: 'free-daily',
   },
   'my.keyword-ranking': {

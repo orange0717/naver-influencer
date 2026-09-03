@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getCreditBalance } from '@/lib/credits';
@@ -30,6 +31,10 @@ export async function POST(request: NextRequest) {
   const blogId = typeof body.blogId === 'string' ? body.blogId.trim() : '';
   const candidatePostIds = Array.isArray(body.candidatePostIds) ? body.candidatePostIds.filter((x): x is string => typeof x === 'string') : [];
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
+
+  // 30일 이전 확장 조회는 노출 현황 전용이다(다른 화면에서 호출하지 않는다).
+  const gate = await requireFeature(request, 'my.missing-posts');
+  if (gate.error) return gate.error;
 
   const denied = await assertBlogResourceAccess(request, blogId);
   if (denied) return denied;

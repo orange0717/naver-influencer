@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { createServiceClient } from '@/lib/supabase-server';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { getCreditBalance } from '@/lib/credits';
@@ -32,6 +33,12 @@ export async function POST(request: NextRequest) {
   const clientJobId = typeof body.clientJobId === 'string' ? body.clientJobId.trim() : '';
   const candidatePostIds = Array.isArray(body.candidatePostIds) ? body.candidatePostIds.filter((x): x is string => typeof x === 'string') : [];
   if (!blogId || !clientJobId) return NextResponse.json({ error: 'blogId, clientJobId 필수' }, { status: 400 });
+
+  // 30일 이전 확장 조회는 노출 현황 전용이다(다른 화면에서 호출하지 않는다).
+  // settle 은 일부러 열어둔다 — 등급이 내려간 사용자의 진행 중 작업이 정산되지 못한 채 남으면
+  // 환불 경로까지 같이 막히기 때문이다(정산은 소유자 검사만으로 충분하고 새 조회를 시작하지 않는다).
+  const gate = await requireFeature(request, 'my.missing-posts');
+  if (gate.error) return gate.error;
 
   const denied = await assertBlogResourceAccess(request, blogId);
   if (denied) return denied;

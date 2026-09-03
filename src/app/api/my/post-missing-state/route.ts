@@ -27,8 +27,10 @@ type StoredRow = {
 
 /**
  * GET: 마운트 시 DB에서 (블로그 단위) 포스트별 누락 검사 상태 복원
- * 노출 현황은 무료 기능이라 회원에게 횟수 제한을 두지 않는다. 저장된 상태를 읽기만 하므로
- * 외부 호출이 없다 — 실제 네이버 조회는 별도 실행(check-missing)에서 과금·집계된다.
+ * 저장된 판정을 읽기만 하는 라우트라 회원에게 횟수 제한을 두지 않는다 — 외부 호출이 없다.
+ * 노출 현황 화면이 2026-09-03 Max 로 올라간 뒤에도 여기는 무료로 남는다. 무료로 파는
+ * 「MY 블로그」(/dashboard)가 같은 데이터로 미노출 KPI 를 그리기 때문이다. 등급으로 막히는 것은
+ * 새 수집(check-missing 의 3탭 교차검증)·전환 이력·30일 이전 확장 조회 쪽이다.
  */
 export async function GET(request: NextRequest) {
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();

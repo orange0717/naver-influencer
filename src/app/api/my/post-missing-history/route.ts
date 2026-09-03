@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { requireFeature } from '@/lib/guards/requireFeature';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,12 @@ export async function GET(request: NextRequest) {
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();
   const postId = request.nextUrl.searchParams.get('postId')?.trim();
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
+
+  // 전환 이력은 노출 현황 화면 전용이라 라우트째 등급으로 막는다(공유 호출부가 없다).
+  // 소유 검증보다 먼저 둔다 — 등급이 모자라면 본인 블로그든 아니든 답이 같아야 하고,
+  // 순서가 뒤집히면 성격이 다른 403 두 종류가 섞여 원인을 가리기 어려워진다.
+  const gate = await requireFeature(request, 'my.missing-posts');
+  if (gate.error) return gate.error;
 
   const denied = await assertBlogResourceAccess(request, blogId);
   if (denied) return denied;

@@ -133,8 +133,11 @@ const PAID_PLAN_GATE_EXEMPT: string[] = [];
 const PAID_PLAN_GATE_API_PREFIXES = ['/api/my'];
 // /api/my 하위이지만 유료 게이트에서 예외인 경로:
 //  - 계정 연결(link)은 결제 무관하게 열어둠
-//  - 노출 현황은 이용권 페이지가 무료 기능으로 안내한다. 예전엔 X-View-Token 우회 + 하루 3회로
-//    열어 뒀지만, 무료 기능은 회원에게 제한 없이 연다는 정책이라 헤더에 기대지 않고 명시한다.
+//  - post-missing-state 는 저장된 판정을 읽기만 하고, 무료로 파는 「MY 블로그」(/dashboard)가
+//    같은 데이터를 쓴다. 노출 현황이 2026-09-03 Max 로 올라간 뒤에도 이 읽기는 무료로 남는다
+//    (오렌지 결정 "대시보드 KPI는 무료 유지"). 새 수집·확장 조회 쪽이 등급으로 막힌다.
+//  - post-missing-history 는 노출 현황 전용이라 라우트 안에서 requireFeature 로 403 을 낸다.
+//    여기서 빼면 미들웨어의 402 가 먼저 떠 등급 안내가 아니라 결제 안내가 나가므로 면제로 둔다.
 const PAID_PLAN_GATE_API_EXEMPT = [
   '/api/my/link',
   '/api/my/link-blog',
