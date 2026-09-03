@@ -31,10 +31,18 @@ export async function GET(request: NextRequest) {
       const cached = await cacheGet<{ posts: BlogPostResult[]; totalCount: number; blogId: string; source: string }>(cacheKey);
       if (cached) return NextResponse.json(cached);
 
-      const posts = await fetchAllBlogPosts(blogId);
+      const { posts, failure } = await fetchAllBlogPosts(blogId);
       const result = { posts, totalCount: posts.length, blogId, source: 'all' as const };
-      if (posts.length > 0) await cacheSet(cacheKey, result, ALL_POSTS_TTL_SEC);
-      return NextResponse.json(result);
+      if (posts.length > 0) {
+        await cacheSet(cacheKey, result, ALL_POSTS_TTL_SEC);
+        return NextResponse.json(result);
+      }
+      // 빈 목록은 이유에 따라 성격이 다르다. 정말 글이 없는 것(NO_POSTS)은 정상 응답이고,
+      // 네이버에서 못 받아온 것은 실패다 — 200 으로 내려보내면 화면이 "미노출 0건"으로 읽는다.
+      if (failure && failure !== 'NO_POSTS') {
+        return NextResponse.json({ error: '포스팅 목록을 가져오지 못했습니다.', code: failure }, { status: failure === 'RATE_LIMITED' ? 429 : 502 });
+      }
+      return NextResponse.json({ ...result, code: 'NO_POSTS' as const });
     }
 
     const result = await fetchBlogPostList(blogId, page, count);

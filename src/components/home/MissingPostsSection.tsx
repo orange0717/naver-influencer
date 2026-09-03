@@ -56,6 +56,50 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'unchecked', label: '미확인' },
 ];
 
+/**
+ * 포스팅 수집이 빈손으로 끝난 이유.
+ * 앞의 셋은 서버(/api/blog/posts)가 code 로 내려주고, 뒤의 둘은 브라우저에서만 알 수 있다.
+ * BLOG_NOT_LINKED 는 여기 없다 — 수집을 시도조차 안 한 상태라 별도 화면 분기가 이미 있다.
+ */
+type CollectCode = 'NO_POSTS' | 'RATE_LIMITED' | 'UPSTREAM_ERROR' | 'TIMEOUT' | 'NETWORK';
+
+/**
+ * 이유별 안내. 사용자가 "그래서 내가 뭘 하면 되나"에 답할 수 있어야 한다.
+ * retry=true 면 다시 시도 버튼을 붙인다(기다려서 될 일인 경우에만).
+ * 🚨 UPSTREAM_ERROR 에서 "비공개 블로그입니다"라고 단정하지 않는다 — 네이버는 비공개·삭제·
+ * 일시 장애를 구분해 주지 않으므로 단정하면 멀쩡한 블로그 주인에게 거짓말이 된다.
+ */
+const COLLECT_FAIL_COPY: Record<CollectCode, { title: string; detail: string; retry: boolean }> = {
+  NO_POSTS: {
+    title: '수집된 공개 글이 없습니다.',
+    detail: '네이버는 정상 응답했지만 목록이 비어 있습니다. 발행한 글이 모두 비공개거나, 연결된 블로그 주소가 실제 사용 중인 블로그와 다를 수 있습니다.',
+    retry: true,
+  },
+  RATE_LIMITED: {
+    title: '네이버가 일시적으로 요청을 제한했습니다.',
+    detail: '짧은 시간에 조회가 몰리면 네이버가 응답을 막습니다. 잠시 뒤 다시 시도하면 정상적으로 수집됩니다.',
+    retry: true,
+  },
+  UPSTREAM_ERROR: {
+    title: '네이버에서 포스팅 목록을 가져오지 못했습니다.',
+    detail: '블로그가 비공개로 바뀌었거나, 네이버가 일시적으로 응답하지 않을 때 발생합니다. 블로그가 정상이라면 잠시 뒤 다시 시도해 주세요.',
+    retry: true,
+  },
+  TIMEOUT: {
+    title: '포스팅 목록을 불러오는 데 시간이 너무 오래 걸립니다.',
+    detail: '글이 많은 블로그는 첫 조회에 1분 가까이 걸릴 수 있습니다. 한 번 수집되면 이후에는 빠릅니다.',
+    retry: true,
+  },
+  NETWORK: {
+    title: '포스팅 목록을 불러오지 못했습니다.',
+    detail: '네트워크 연결 상태를 확인한 뒤 다시 시도해 주세요.',
+    retry: true,
+  },
+};
+
+/** 자동 재수집 크론(crawl-post-exposure) 시각 — vercel.json "0 1 * * *" UTC = KST 10:00. */
+const AUTO_RECHECK_KST_HOUR = 10;
+
 type PostMissingEntry = MissingState;
 
 // /api/blog/exposure-extend/plan 응답 (§4·§5·§6)
@@ -226,15 +270,23 @@ export default function MissingPostsSection({
   // 배치 시작 시각 — 실제 경과 속도로 남은 시간을 추정해 진행률 옆에 보여준다
   const [batchStartedAt, setBatchStartedAt] = useState<number | null>(null);
   // §12 배치 검사 완료 요약 — "N개 확인 완료 · 노출 X · 미노출 Y". 다음 배치 시작 시 초기화.
-  const [batchSummary, setBatchSummary] = useState<{ checked: number; exposed: number; missing: number; other: number } | null>(null);
+  // failed 는 확인에 실패한 건수다. 예전엔 세지 않아서 30개 중 12개가 실패해도 "18개 확인 완료"만
+  // 보였고, 사용자는 나머지가 왜 사라졌는지도 크레딧이 어떻게 됐는지도 알 수 없었다.
+  const [batchSummary, setBatchSummary] = useState<{ checked: number; exposed: number; missing: number; other: number; failedIds: string[] } | null>(null);
   const [checkingPostId, setCheckingPostId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // 대량 분석 확인 다이얼로그 대상 (§9~13) — 실제 네이버 검색이 발생할 글 수(toCheck)가 임계 이상일 때만 표시
   const [confirmBatch, setConfirmBatch] = useState<{ targets: BlogPost[]; toCheck: number; force: boolean } | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  // 포스팅 목록 조회 자체가 실패했는가. '수집된 글 0개'와 구분해야 한다 —
-  // 실패했는데 카드가 0 을 띄우면 '미노출 0건'이 성과처럼 읽힌다.
-  const [postsFailed, setPostsFailed] = useState(false);
+  // 30일 이전 확장 조회(plan/authorize) 실패 안내. 수집 실패와 성격이 달라 자리를 나눈다 —
+  // 하나로 합치면 "목록은 멀쩡한데 확장 조회만 실패한" 상황에 수집 실패 안내가 뜬다.
+  const [extendError, setExtendError] = useState('');
+  // 포스팅 수집이 비어서 끝난 이유. 예전엔 boolean 하나(postsFailed)였는데, 그러면
+  // "네이버가 요청을 제한했다"와 "정말 글이 없다"에 같은 안내가 나가 사용자가 할 수 있는
+  // 행동을 알 수 없었다. 이유별로 문구와 버튼이 갈라져야 막다른 길이 아니게 된다.
+  const [collectCode, setCollectCode] = useState<CollectCode | null>(null);
+  // NO_POSTS 는 실패가 아니라 사실이다(정상 응답 + 글 0개). 상단 카드가 '확인 실패'로 바뀌는 건
+  // 진짜 수집이 안 된 경우뿐이어야 한다.
+  const postsFailed = collectCode !== null && collectCode !== 'NO_POSTS';
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all'); // §3 기본값 '전체'
   const [areaFilter, setAreaFilter] = useState<AreaFilter>('all');
@@ -300,28 +352,32 @@ export default function MissingPostsSection({
   // 이렇게 전체를 확보해야 30일 이전 개수·후보를 정확히 계산할 수 있다. 기간 필터는 클라이언트 표시용이다.
   const fetchPosts = useCallback(async (blogId: string) => {
     setPostsLoading(true);
-    setErrorMessage('');
+    setCollectCode(null);
     try {
       const res = await fetchWithTimeout(
         `/api/blog/posts?blogId=${encodeURIComponent(blogId)}&all=true`,
         undefined,
         ALL_POSTS_TIMEOUT_MS,
       );
-      // 조회 실패는 '포스팅 0개'가 아니다. postsFailed 를 세워 상단 카드가 0 대신
-      // '확인 실패'를 띄우게 한다 — 목록만 실패를 알리고 카드는 0 을 단언하면
-      // 사용자는 "미노출 0건"을 좋은 소식으로 읽는다.
-      if (!res.ok) { setErrorMessage('포스트 목록을 불러오지 못했습니다.'); setPostsFailed(true); setPosts([]); return; }
-      const data = await res.json();
-      setPostsFailed(false);
-      setPosts(Array.isArray(data.posts) ? data.posts : []);
+      const data = await res.json().catch(() => ({}));
+      // 조회 실패는 '포스팅 0개'가 아니다. 이유를 세워 상단 카드가 0 대신 '확인 실패'를
+      // 띄우게 한다 — 목록만 실패를 알리고 카드는 0 을 단언하면 사용자는 "미노출 0건"을
+      // 좋은 소식으로 읽는다. 서버가 준 code 를 그대로 쓰되, 모르는 값은 일반 오류로 접는다.
+      if (!res.ok) {
+        const code = data?.code;
+        setCollectCode(code === 'RATE_LIMITED' || code === 'NO_POSTS' ? code : 'UPSTREAM_ERROR');
+        setPosts([]);
+        return;
+      }
+      const list: BlogPost[] = Array.isArray(data.posts) ? data.posts : [];
+      setPosts(list);
+      // 200 인데 목록이 비었다면 서버가 "정말 글이 없다"(NO_POSTS)고 판단한 것이다.
+      if (list.length === 0) setCollectCode('NO_POSTS');
     } catch (e) {
       // AbortError = 우리가 건 타임아웃. 네트워크 오류와 안내가 달라야 한다
       // ("다시 시도"가 소용 있는지 없는지가 다르다).
-      const timedOut = (e as Error | null)?.name === 'AbortError';
-      setErrorMessage(timedOut
-        ? '포스팅 목록을 불러오는 데 시간이 너무 오래 걸립니다. 글이 많은 블로그는 첫 조회가 오래 걸릴 수 있습니다.'
-        : '포스트 목록을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.');
-      setPostsFailed(true);
+      setCollectCode((e as Error | null)?.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK');
+      setPosts([]);
     } finally {
       setPostsLoading(false);
     }
@@ -472,7 +528,7 @@ export default function MissingPostsSection({
     setBatchStartedAt(Date.now());
     const now = Date.now();
     // §12 완료 요약용 집계 — 실제로 이번 배치에서 확인(checkOne 호출)된 글만 센다(캐시로 건너뛴 글 제외).
-    const tally = { checked: 0, exposed: 0, missing: 0, other: 0 };
+    const tally = { checked: 0, exposed: 0, missing: 0, other: 0, failedIds: [] as string[] };
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
       const post = targets[i];
@@ -481,13 +537,16 @@ export default function MissingPostsSection({
       if (hits || post.isPublic === false) {
         // 비공개 글은 checkOne이 네이버 호출 없이 '분석불가'로 표시하고 즉시 반환
         setCheckingPostId(post.id);
-        const { status, verdict } = await checkOne(post, { force: opts?.force });
-        // 노출/미노출만 개별 집계, 그 외(재검사·확인중·분석불가·실패)는 '기타'. 미확인을 미노출로 세지 않는다(§10).
+        const { status, verdict, reason } = await checkOne(post, { force: opts?.force });
+        // 노출/미노출만 개별 집계, 그 외(재검사·확인중·분석불가)는 '기타'. 미확인을 미노출로 세지 않는다(§10).
         if (status === 'ok') {
           tally.checked++;
           if (verdict === 'exposed') tally.exposed++;
           else if (verdict === 'missing') tally.missing++;
           else tally.other++;
+        } else if (!reason) {
+          // reason 이 있으면 로그인·크레딧·등급 문제라 별도 모달이 이미 떴다 — 검사 실패로 세지 않는다.
+          tally.failedIds.push(post.id);
         }
         // 실제 네이버 호출이 있었던 경우에만 요청 간격을 둔다 (캐시/분석불가는 지연 불필요)
         if (hits && i < targets.length - 1) await new Promise(r => setTimeout(r, 2000));
@@ -498,7 +557,8 @@ export default function MissingPostsSection({
     setCheckingAll(false);
     setBatchStartedAt(null);
     batchRunningRef.current = false;
-    if (tally.checked > 0) setBatchSummary(tally);
+    // 전부 실패해도 요약은 띄운다 — 아무것도 안 뜨면 사용자는 검사가 돌긴 했는지조차 모른다.
+    if (tally.checked > 0 || tally.failedIds.length > 0) setBatchSummary(tally);
   }, [profile, willHitNaver, checkOne]);
 
   // 대량 분석 게이트 (§9~13): 실제 검색이 발생할 글이 10개 이하면 즉시, 그 이상이면 비용 안내 확인 후 실행
@@ -571,7 +631,7 @@ export default function MissingPostsSection({
         // 다시 로그인하면 된다는 것도 모른 채 같은 버튼을 계속 눌러야 했다.
         if (res.status === 401) { openGate('/my/missing-posts'); return; }
         const d = await res.json().catch(() => ({}));
-        setErrorMessage(d.error || '확장 조회 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        setExtendError(d.error || '확장 조회 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
         return;
       }
       const auth = await res.json();
@@ -591,7 +651,7 @@ export default function MissingPostsSection({
           body: JSON.stringify({ jobId: jr.jobId, blogId: profile.blogId, newCheckIds: jr.newCheckIds, status: abortRef.current ? 'cancelled' : 'completed' }),
         }).catch(() => {});
       }
-    } catch { setErrorMessage('확장 조회 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.'); }
+    } catch { setExtendError('확장 조회 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.'); }
     finally { setExtendBusy(false); runningExtendedRef.current = false; }
   }, [profile, runBatch, openGate]);
 
@@ -605,6 +665,7 @@ export default function MissingPostsSection({
     setPeriod(scopeDays); setCustomFrom(''); setCustomTo(''); // 목록에 30일 이전 글 노출(미확인 상태)
     const candidates = olderCandidatesFor(scopeDays);
     if (candidates.length === 0) { setShowMorePrompt(false); return; }
+    setExtendError(''); // 새 시도가 시작되면 이전 실패 문구는 사실이 아니다
     setExtendBusy(true);
     try {
       const res = await fetch('/api/blog/exposure-extend/plan', {
@@ -614,7 +675,7 @@ export default function MissingPostsSection({
       if (!res.ok) {
         if (res.status === 401) { openGate('/my/missing-posts'); return; }
         const d = await res.json().catch(() => ({}));
-        setErrorMessage(d.error || '조회 대상 계산에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        setExtendError(d.error || '조회 대상 계산에 실패했습니다. 잠시 후 다시 시도해 주세요.');
         return;
       }
       const plan: ExtendPlan = await res.json();
@@ -626,7 +687,7 @@ export default function MissingPostsSection({
       // 무료(≤90 또는 크레딧 비활성): §2 프롬프트 경유면 이미 동의 → 바로 실행. 기간버튼 경유면 대량 안내 확인.
       if (opts?.fromPrompt) await runExtended(candidates);
       else setExtendModal({ phase: 'confirm', scopeDays, candidates, plan });
-    } catch { setErrorMessage('조회 대상 계산 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.'); }
+    } catch { setExtendError('조회 대상 계산 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.'); }
     finally { setExtendBusy(false); }
   }, [profile, isMember, openGate, olderCandidatesFor, runExtended, teaser]);
 
@@ -700,6 +761,28 @@ export default function MissingPostsSection({
       : '포스팅 목록을 불러오지 못했습니다';
   /** 조회 실패는 '아직 안 함'이 아니라 '해봤는데 실패'다 — 카드 문구를 갈라 쓴다. */
   const notMeasuredStatus = postsFailed && isMember && profile?.blogId ? '확인 실패' : '확인 전';
+
+  /**
+   * 마지막으로 성공한 검사 시각. 지금 수집이 실패해도 저장된 판정은 남아 있으므로,
+   * "언제 것까지는 믿어도 되는지"를 알려줘야 실패 안내가 막다른 길이 되지 않는다.
+   */
+  const lastSuccessAt = useMemo(() => {
+    let latest = 0;
+    for (const r of Object.values(missingResults)) {
+      const t = r?.checkedAt ? new Date(r.checkedAt).getTime() : 0;
+      if (t > latest) latest = t;
+    }
+    return latest > 0 ? new Date(latest) : null;
+  }, [missingResults]);
+
+  /** 다음 자동 재수집(크론) 시각 — 오늘 KST 10시가 지났으면 내일 10시. */
+  const nextAutoRecheck = useMemo(() => {
+    const now = new Date();
+    const kstHour = Number(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', hour12: false }));
+    const d = new Date(now);
+    d.setDate(d.getDate() + (kstHour >= AUTO_RECHECK_KST_HOUR ? 1 : 0));
+    return `${d.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric' })} 오전 ${AUTO_RECHECK_KST_HOUR}시`;
+  }, []);
 
   // §1 기본 목록 = 전체 포스팅. 빠른 상태 필터(§3)·영역 필터·제목 검색·정렬을 차례로 적용한다.
   // (이전엔 미노출+재검사 글만 보여줬으나, 이제 전체 포스팅을 보여주고 필터로 좁힌다.)
@@ -850,15 +933,33 @@ export default function MissingPostsSection({
 
       {/* §12 배치 검사 완료 요약 — "N개 확인 완료 · 노출 X · 미노출 Y" */}
       {!checkingAll && batchSummary && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-xs">
-          <span className="text-text">
+        <div className="flex items-start justify-between gap-3 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-xs">
+          <div className="text-text">
             <b className="font-bold">{batchSummary.checked}개 확인 완료</b>
             <span className="text-up font-semibold ml-2">🟢 노출 {batchSummary.exposed}</span>
             <span className="text-down font-semibold ml-2">🔴 미노출 {batchSummary.missing}</span>
             {batchSummary.other > 0 && (
               <span className="text-dim ml-2">그 외 {batchSummary.other}(재검사·확인 중·분석 불가)</span>
             )}
-          </span>
+            {/* 실패 건을 감추면 "확인 완료 N개"가 전체인 것처럼 읽히고, 차감된 크레딧이
+                돌아왔는지도 알 수 없다. 실패 수·환불·재시도를 같이 준다. */}
+            {batchSummary.failedIds.length > 0 && (
+              <p className="mt-1 text-dim leading-relaxed">
+                <span className="text-down font-semibold">{batchSummary.failedIds.length}개는 확인하지 못했습니다.</span>{' '}
+                네이버가 일시적으로 응답하지 않았을 수 있습니다. 실패한 건의 크레딧은 자동으로 환불되며, 다음 자동 재검사는 {nextAutoRecheck}입니다.
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ids = new Set(batchSummary.failedIds);
+                    requestBatch(posts.filter(p => ids.has(p.id)), { force: true });
+                  }}
+                  className="ml-1.5 text-accent underline cursor-pointer"
+                >
+                  실패한 건만 다시 검사
+                </button>
+              </p>
+            )}
+          </div>
           <button onClick={() => setBatchSummary(null)}
             className="text-dim hover:text-text transition cursor-pointer shrink-0" aria-label="요약 닫기">&times;</button>
         </div>
@@ -959,20 +1060,52 @@ export default function MissingPostsSection({
         </PostSearchBar>
       </div>
 
-      {errorMessage && (
-        <p className="text-xs text-down">
-          {errorMessage}
-          {/* 실패가 막다른 길이 되면 안 된다 — 새로고침 말고 이 자리에서 다시 시도할 수단을 준다. */}
-          {postsFailed && profile?.blogId && (
-            <button
-              type="button"
-              onClick={() => fetchPosts(profile.blogId!)}
-              className="ml-2 text-accent underline cursor-pointer"
+      {extendError && <p className="text-xs text-down">{extendError}</p>}
+
+      {/* 수집 실패 안내 — 이유·현재 믿을 수 있는 데이터·다음 자동 재시도·할 수 있는 행동을 한자리에 모은다.
+          예전엔 한 줄짜리 빨간 문장 하나뿐이라 "그래서 뭘 하면 되나"에 답하지 못했다. */}
+      {collectCode && !postsLoading && profile?.blogId && (
+        <GlassCard className="p-4 border-l-2 border-l-down">
+          <p className="text-sm font-semibold text-text">{COLLECT_FAIL_COPY[collectCode].title}</p>
+          <p className="text-xs text-dim leading-relaxed mt-1">{COLLECT_FAIL_COPY[collectCode].detail}</p>
+
+          <div className="mt-2.5 space-y-0.5 text-[11px] text-dim">
+            <p>
+              마지막 성공 검사:{' '}
+              <span className="text-text">{lastSuccessAt ? formatCheckedAt(lastSuccessAt.toISOString()) : '없음'}</span>
+              {lastSuccessAt && ' (아래 목록은 이때 저장된 판정입니다)'}
+            </p>
+            <p>다음 자동 재검사: <span className="text-text">{nextAutoRecheck}</span></p>
+            {/* 실패한 검사의 크레딧은 서버(check-missing)가 이미 자동 환불한다.
+                화면이 말해주지 않으면 사용자는 차감된 채로 실패했다고 믿는다. */}
+            <p>검사가 실패한 건은 차감된 크레딧이 자동으로 환불됩니다.</p>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {COLLECT_FAIL_COPY[collectCode].retry && (
+              <button
+                type="button"
+                onClick={() => fetchPosts(profile.blogId!)}
+                className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold cursor-pointer"
+              >
+                다시 시도
+              </button>
+            )}
+            <Link
+              href={`https://blog.naver.com/${profile.blogId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg border border-border text-xs text-dim"
             >
-              다시 시도
-            </button>
-          )}
-        </p>
+              내 블로그 열어보기
+            </Link>
+            {(collectCode === 'NO_POSTS' || collectCode === 'UPSTREAM_ERROR') && (
+              <Link href="/my/link" className="px-3 py-1.5 rounded-lg border border-border text-xs text-dim">
+                연결된 블로그 확인
+              </Link>
+            )}
+          </div>
+        </GlassCard>
       )}
 
       <AnalyticsTableShell
@@ -1010,17 +1143,12 @@ export default function MissingPostsSection({
           </div>
         ) : !profile?.blogId ? (
           <div className="text-center py-10 text-dim text-sm">블로그가 연결되지 않았습니다. 프로필에서 블로그를 연결하면 노출 상태 검사가 시작됩니다.</div>
-        ) : postsFailed ? (
-          // 조회 요청 자체가 실패 — 재시도하면 될 일이다. '수집 결과 0건'과 섞어 말하지 않는다.
-          <div className="text-center py-10 text-dim text-sm">
-            포스팅 목록을 불러오지 못했습니다.<br />
-            <span className="text-xs">일시적인 오류일 수 있습니다. 잠시 후 새로고침해 주세요. (글이 없다는 뜻이 아닙니다)</span>
-          </div>
         ) : posts.length === 0 ? (
-          // 요청은 성공했는데 결과가 0건 — 블로그 ID 불일치나 네이버 응답 문제일 수 있다. "발행 없음"과 명확히 구분한다.
+          // 이유와 행동은 바로 위 수집 실패 안내가 이미 말한다 — 여기서 또 다르게 설명하면
+          // 같은 화면 안에서 두 가지 진단이 충돌한다. 목록 자리는 판정 불가만 짚는다.
           <div className="text-center py-10 text-dim text-sm">
-            게시물을 수집하지 못했습니다.<br />
-            <span className="text-xs">블로그 연결 상태를 확인하거나 잠시 후 다시 시도해주세요. (수집된 게시물이 없어 노출 상태를 판정할 수 없습니다)</span>
+            수집된 게시물이 없어 노출 상태를 판정할 수 없습니다.<br />
+            <span className="text-xs">자세한 원인과 조치는 위 안내를 확인해 주세요.</span>
           </div>
         ) : periodPosts.length === 0 ? (
           <div className="text-center py-10 text-dim text-sm">선택한 기간에 발행된 포스트가 없습니다. (전체 {posts.length}개 수집됨 — 기간 필터를 넓혀보세요)</div>

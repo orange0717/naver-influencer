@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       totalUsers++;
 
       try {
-        const posts = await fetchAllBlogPosts(blogId);
+        const { posts } = await fetchAllBlogPosts(blogId);
         if (posts.length === 0) continue;
 
         const { data: existingContents } = await supabase

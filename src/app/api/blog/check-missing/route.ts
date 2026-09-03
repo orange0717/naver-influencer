@@ -25,7 +25,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 async function getPostPublishedAt(blogId: string, postId: string): Promise<Date | null> {
   try {
-    const posts = await fetchAllBlogPosts(blogId);
+    const { posts } = await fetchAllBlogPosts(blogId);
     const found = posts.find(p => String(p.id) === String(postId));
     if (!found) return null;
     const t = parseNaverPostDate(found.date);

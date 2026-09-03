@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   let posts;
   try {
-    posts = await fetchAllBlogPosts(blogId);
+    posts = (await fetchAllBlogPosts(blogId)).posts;
   } catch {
     return NextResponse.json({ error: '포스팅 목록을 가져오지 못했습니다.' }, { status: 502 });
   }
