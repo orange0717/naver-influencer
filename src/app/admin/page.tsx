@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { CARD_BASE_CLASS } from '@/components/dashboard/card-base';
 
 interface DashboardData {
@@ -21,8 +20,6 @@ interface DashboardData {
     created_at: string;
     matched_user: { id: string; nickname: string } | null;
   }[];
-  newEnterpriseInquiries: number;
-  totalEnterpriseInquiries: number;
 }
 
 export default function AdminDashboardPage() {
@@ -46,17 +43,11 @@ export default function AdminDashboardPage() {
 
   if (!data) return <div className="py-20 text-center text-dim">데이터를 불러올 수 없습니다.</div>;
 
-  const cards: { label: string; value: string; sub: string; href?: string }[] = [
+  const cards: { label: string; value: string; sub: string }[] = [
     { label: '총 회원', value: data.totalUsers.toLocaleString(), sub: `오늘 ${data.todaySignups}명` },
     { label: '이번 달 가입', value: data.monthSignups.toLocaleString(), sub: `오늘 ${data.todaySignups}명` },
     { label: '유료 구독', value: data.subscribers.toLocaleString(), sub: `월 ${data.totalRevenue.toLocaleString()}원` },
     { label: '신고 대기', value: data.pendingReports.toLocaleString(), sub: `전체 ${data.totalReports}건` },
-    {
-      label: '신규 기업문의',
-      value: (data.newEnterpriseInquiries ?? 0).toLocaleString(),
-      sub: `전체 ${data.totalEnterpriseInquiries ?? 0}건`,
-      href: '/admin/enterprise',
-    },
   ];
 
   const maxCount = Math.max(...data.dailySignups.map(d => d.count), 1);
@@ -66,23 +57,14 @@ export default function AdminDashboardPage() {
       <h1 className="type-page-title">대시보드</h1>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {cards.map(card => {
-          const body = (
-            <>
-              <p className="stat-title mb-2">{card.label}</p>
-              <p className="stat-value stat-value-kpi text-accent">{card.value}</p>
-              <p className="stat-desc mt-1">{card.sub}</p>
-            </>
-          );
-          return card.href ? (
-            <Link key={card.label} href={card.href} className={`${CARD_BASE_CLASS} p-4 hover:border-accent/40 transition`}>
-              {body}
-            </Link>
-          ) : (
-            <div key={card.label} className={`${CARD_BASE_CLASS} p-4`}>{body}</div>
-          );
-        })}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map(card => (
+          <div key={card.label} className={`${CARD_BASE_CLASS} p-4`}>
+            <p className="stat-title mb-2">{card.label}</p>
+            <p className="stat-value stat-value-kpi text-accent">{card.value}</p>
+            <p className="stat-desc mt-1">{card.sub}</p>
+          </div>
+        ))}
       </div>
 
       {/* 최근 가입 회원 */}

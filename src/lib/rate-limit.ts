@@ -130,9 +130,6 @@ export const notificationLimiter = createRateLimiter({ limit: 30, windowMs: 60 *
 /** 쪽지 발송: 10분에 5회 */
 export const messageLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 1000 });
 
-/** 기업용 문의 접수(비로그인 공개 POST): 스팸 방지, IP당 10분에 3회 */
-export const enterpriseInquiryLimiter = createRateLimiter({ limit: 3, windowMs: 10 * 60 * 1000 });
-
 /** AI 포스팅 분석: 5분에 5회 */
 export const aiAnalyzeLimiter = createRateLimiter({ limit: 5, windowMs: 5 * 60 * 1000 });
 

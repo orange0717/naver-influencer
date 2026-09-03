@@ -34,7 +34,6 @@ export const ROUTES: readonly RouteDef[] = [
   /* ── 공개 + sitemap 등재 ─────────────────────────────────── */
   { path: '/', visibility: 'public', sitemap: { changeFrequency: 'daily', priority: 1.0 } },
   { path: '/intro', visibility: 'public', sitemap: { changeFrequency: 'weekly', priority: 0.9 } },
-  { path: '/enterprise', visibility: 'public', sitemap: { changeFrequency: 'monthly', priority: 0.8 } },
   // 익명에게 서버렌더 가격표 전문이 나가는 판매 페이지인데 Disallow: /subscribe 로 통째로
   // 막혀 검색에서 빠져 있었다 (2026-09-02 오렌지 승인으로 해제).
   { path: '/subscribe', visibility: 'public', sitemap: { changeFrequency: 'monthly', priority: 0.8 } },

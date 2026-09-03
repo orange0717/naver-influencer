@@ -13,7 +13,6 @@ const MENU_ITEMS = [
   { href: '/admin/members', label: '회원 관리', icon: 'U' },
   { href: '/admin/trials', label: '데모 체험', icon: 'T' },
   { href: '/admin/coupons', label: '쿠폰 관리', icon: '%' },
-  { href: '/admin/enterprise', label: '기업용 문의', icon: 'B' },
   { href: '/admin/community', label: '커뮤니티 관리', icon: '?' },
   { href: '/admin/stories', label: '성장후기 관리', icon: 'S' },
   { href: '/admin/bulk-grant', label: '플랜 일괄 부여', icon: '+' },

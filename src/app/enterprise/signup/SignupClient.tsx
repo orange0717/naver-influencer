@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { COMPANY_TYPES, type CompanyType } from '@/lib/enterprise-inquiry';
+import { COMPANY_TYPES, buildInquiryMailto, type CompanyType } from '@/lib/enterprise-inquiry';
+import { CONTACT_EMAIL } from '@/lib/site-contact';
 import {
   MIN_SEATS,
   PLANS,
@@ -681,10 +682,10 @@ export default function SignupClient() {
 
         <p className="mt-6 text-center text-xs text-dim">
           기업 맞춤 기능이나 견적이 필요하시면{' '}
-          <Link href="/enterprise" className="underline underline-offset-2 hover:text-accent">
-            기업용 문의
-          </Link>
-          로 상담해주세요.
+          <a href={buildInquiryMailto(CONTACT_EMAIL)} className="underline underline-offset-2 hover:text-accent">
+            {CONTACT_EMAIL}
+          </a>
+          으로 문의해주세요.
         </p>
       </div>
     </div>
