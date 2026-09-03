@@ -124,7 +124,6 @@ export const SIDEBAR_FOOTER_LINKS: SidebarItem[] = [
   { label: '성장후기', href: '/stories' },
   { label: '이용권', href: '/subscribe' },
   { label: '서비스소개', href: '/intro' },
-  { label: '기업용 문의', href: '/enterprise' },
 ];
 
 /** 이 프리픽스로 시작하는 라우트에서는 사이드바를 숨김(마케팅/인증 전용 풀폭 페이지) */
