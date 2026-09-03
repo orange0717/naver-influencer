@@ -26,6 +26,24 @@ interface AnimatedStatCardProps {
    * 데이터가 없거나 확인 전인 KPI에서 0을 지어내지 않기 위한 값(정확도 원칙 #5).
    */
   statusText?: string;
+  /**
+   * statusText 의 성격. '확인 전'(아직 안 함)과 '확인 실패'(해봤는데 실패)는 사용자가 할 행동이
+   * 다른데 둘 다 회색 문구라 구분되지 않았다. error 는 경고색으로 갈라 준다.
+   */
+  statusTone?: 'neutral' | 'error';
+  /** 아직 값을 모르는 동안 숫자 자리에 스켈레톤을 띄운다 — 0을 잠깐이라도 보여주지 않기 위함. */
+  loading?: boolean;
+  /**
+   * trend 화살표의 색 기준. 기본은 '증가 = 좋음'이지만 미노출처럼 늘어나는 게 나쁜 지표가 있어,
+   * 방향만으로 색을 정하면 "미노출 3건 증가"가 초록으로 나온다.
+   */
+  trendTone?: 'higher-better' | 'lower-better' | 'neutral';
+  /** 지정 시 카드가 버튼이 된다(목록 필터 토글 등). href 와 함께 쓰지 않는다. */
+  onClick?: () => void;
+  /** onClick 카드가 현재 선택된 상태인지 */
+  active?: boolean;
+  /** 카드 전체 hover 툴팁 — 숫자의 기준(비교 구간 등)을 좁은 칸에 욱여넣지 않기 위해 */
+  title?: string;
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -71,6 +89,12 @@ export default function AnimatedStatCard({
   size = 'kpi',
   href,
   statusText,
+  statusTone = 'neutral',
+  loading,
+  trendTone = 'higher-better',
+  onClick,
+  active,
+  title,
 }: AnimatedStatCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -102,7 +126,7 @@ export default function AnimatedStatCard({
   const decimals = Number.isInteger(value) ? 0 : (value.toString().split('.')[1]?.length ?? 1);
 
   useEffect(() => {
-    if (!isVisible || value === 0 || statusText) return;
+    if (!isVisible || value === 0 || statusText || loading) return;
     const duration = 800;
     const startTime = performance.now();
     const animate = (now: number) => {
@@ -113,19 +137,26 @@ export default function AnimatedStatCard({
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  }, [isVisible, value, decimals, statusText]);
+  }, [isVisible, value, decimals, statusText, loading]);
+
+  // 증가가 좋은 지표인지 나쁜 지표인지는 카드마다 다르다(발행량↑ 좋음 / 미노출↑ 나쁨).
+  const trendClass = !trend ? ''
+    : trendTone === 'neutral' ? 'text-dim'
+      : (trend.direction === 'up') === (trendTone === 'higher-better') ? 'text-up' : 'text-down';
 
   const valueRow = (
     <div className={`flex items-baseline gap-1.5 shrink-0 ${isKpi ? '' : 'justify-center'}`}>
-      {statusText ? (
-        <span className={`${isKpi ? 'text-sm' : 'text-base'} font-bold text-dim truncate`}>{statusText}</span>
+      {loading ? (
+        <span className="inline-block h-5 w-14 rounded bg-border/60 animate-pulse" aria-label="불러오는 중" />
+      ) : statusText ? (
+        <span className={`${isKpi ? 'text-sm' : 'text-base'} font-bold truncate ${statusTone === 'error' ? 'text-down' : 'text-dim'}`}>{statusText}</span>
       ) : (
         <span className={`stat-value ${valueSizeClass} ${c.text} truncate`}>
           {value === 0 ? (placeholder || '—') : `${prefix}${displayValue}${suffix}`}
         </span>
       )}
-      {trend && trend.value !== 0 && (
-        <span className={`text-xs font-bold shrink-0 ${trend.direction === 'up' ? 'text-up' : 'text-down'}`}>
+      {!loading && !statusText && trend && trend.value !== 0 && (
+        <span className={`text-xs font-bold shrink-0 ${trendClass}`}>
           {trend.direction === 'up' ? '▲' : '▼'}{Math.abs(trend.value)}
         </span>
       )}
@@ -135,12 +166,14 @@ export default function AnimatedStatCard({
   const card = (
     <div
       ref={ref}
+      title={title}
       className={`
         ${sizeClass} flex flex-col min-w-0
         ${CARD_BASE_CLASS} ${isKpi ? 'p-4' : 'p-3 sm:p-4'}
         transition-all duration-500 ease-out
         ${c.hoverBorder}
-        ${href ? 'cursor-pointer' : ''}
+        ${href || onClick ? 'cursor-pointer' : ''}
+        ${active ? 'border-accent ring-1 ring-accent/40' : ''}
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
         ${className}
       `}
@@ -177,6 +210,9 @@ export default function AnimatedStatCard({
 
   if (href) {
     return <Link href={href} className="block">{card}</Link>;
+  }
+  if (onClick) {
+    return <button type="button" onClick={onClick} aria-pressed={active} className="block w-full text-left">{card}</button>;
   }
   return card;
 }

@@ -57,6 +57,17 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 
 /**
+ * 상단 요약 카드 ↔ 상태 필터 대응. 카드 키와 필터 키가 두 군데(전체/미확인)에서 어긋나 있어
+ * 표로 고정해 둔다 — 한쪽 이름만 고치면 클릭이 조용히 엉뚱한 필터를 걸게 된다.
+ */
+const FILTER_BY_CARD: Record<string, StatusFilter> = {
+  total: 'all', normal: 'normal', missing: 'missing', partial: 'partial', unknown: 'unchecked',
+};
+const CARD_TO_FILTER_KEY: Record<StatusFilter, string> = {
+  all: 'total', normal: 'normal', missing: 'missing', partial: 'partial', unchecked: 'unknown',
+};
+
+/**
  * 포스팅 수집이 빈손으로 끝난 이유.
  * 앞의 셋은 서버(/api/blog/posts)가 code 로 내려주고, 뒤의 둘은 브라우저에서만 알 수 있다.
  * BLOG_NOT_LINKED 는 여기 없다 — 수집을 시도조차 안 한 상태라 별도 화면 분기가 이미 있다.
@@ -733,6 +744,36 @@ export default function MissingPostsSection({
   const pct = (n: number) => periodPosts.length === 0 ? 0 : Math.round((n / periodPosts.length) * 100);
 
   /**
+   * 직전 동일 길이 기간의 집계 — "최근 30일 미노출 8건"이 나아지는 중인지 나빠지는 중인지
+   * 숫자 하나로는 알 수 없어서 붙인다. 기준 구간의 길이를 모르면(「전체」기간) 비교하지 않는다.
+   *
+   * confirmed 를 따로 세는 이유: 직전 기간은 검사를 안 돌린 글이 많을 수 있고, 그러면 노출/미노출이
+   * 실제로 0인지 안 세어 본 건지 구분되지 않는다. 확정 판정이 한 건도 없는 기간과는 비교하지 않는다.
+   */
+  const prevPeriod = useMemo(() => {
+    if (!rangeFrom) return null;
+    const span = (rangeTo ?? new Date()).getTime() - rangeFrom.getTime();
+    if (span <= 0) return null;
+    const prevFrom = new Date(rangeFrom.getTime() - span);
+    const list = posts
+      .map(p => ({ ...p, publishedAt: parsePostDate(p.date) }))
+      .filter(p => p.publishedAt !== null && p.publishedAt >= prevFrom && p.publishedAt < rangeFrom);
+    const c = countByExposureClass(list, missingResults);
+    return { total: list.length, normal: c.normal, partial: c.partial, missing: c.missing, confirmed: c.normal + c.partial + c.missing };
+  }, [posts, rangeFrom, rangeTo, missingResults]);
+
+  /** 직전 기간 대비 증감. 비교 대상이 없거나(=null) 변화가 없으면 화살표를 띄우지 않는다. */
+  const deltaOf = (curr: number, prev: number | undefined) => {
+    if (prev === undefined) return undefined;
+    const diff = curr - prev;
+    if (diff === 0) return undefined;
+    return { direction: diff > 0 ? 'up' as const : 'down' as const, value: Math.abs(diff) };
+  };
+  /** 검사가 돌지 않은 직전 기간과 노출 지표를 비교하면 "미노출이 줄었다"는 거짓말이 된다. */
+  const comparableExposure = prevPeriod !== null && prevPeriod.confirmed > 0;
+  const periodSpanLabel = usingCustomRange ? '직전 같은 길이 기간' : `직전 ${period}일`;
+
+  /**
    * §13 '아직 확인하지 않음' ≠ '0건'.
    *
    * 비회원이거나 블로그를 등록하지 않았으면 /api/blog/posts 조회가 아예 일어나지 않는다.
@@ -1014,16 +1055,34 @@ export default function MissingPostsSection({
           </p>
         )
       )}
+      {/* 카드를 누르면 아래 목록이 그 상태로 걸러진다 — 숫자를 보고 "그게 어떤 글인지" 보려고
+          필터를 다시 찾아 누르던 동선을 없앤다. 같은 카드를 다시 누르면 전체로 돌아온다.
+          ▲▼ 는 직전 동일 길이 기간 대비 증감이며, 직전 기간에 확정 판정이 없으면 띄우지 않는다. */}
       <SummaryCards
         loading={postsLoading || identityPending}
+        activeKey={notMeasured ? undefined : CARD_TO_FILTER_KEY[statusFilter]}
+        onSelect={notMeasured ? undefined : key => setStatusFilter(prev => {
+          const next = FILTER_BY_CARD[key];
+          return prev === next ? 'all' : next;
+        })}
         cards={([
-          { key: 'total', label: '전체 포스팅', value: periodPosts.length, color: 'accent', description: postsLoading ? '불러오는 중...' : '선택 기간 발행 글' },
-          { key: 'normal', label: '노출', value: normalCount, color: 'up', description: postsLoading ? '불러오는 중...' : `${pct(normalCount)}% · 전 영역 노출` },
-          { key: 'missing', label: '미노출', value: missingCount, color: 'down', description: postsLoading ? '불러오는 중...' : `${pct(missingCount)}% · 확인한 전 영역 미노출` },
-          { key: 'partial', label: '일부 노출', value: partialCount, color: 'accent', description: postsLoading ? '불러오는 중...' : `${pct(partialCount)}% · 일부 영역만` },
-          { key: 'unknown', label: '미확인', value: unknownCount, color: 'dim', description: postsLoading ? '불러오는 중...' : '미검사·확인 중·확인 실패' },
+          { key: 'total', label: '전체 포스팅', value: periodPosts.length, color: 'accent', description: '선택 기간 발행 글',
+            trend: deltaOf(periodPosts.length, prevPeriod?.total), trendTone: 'higher-better',
+            title: prevPeriod ? `${periodSpanLabel} ${prevPeriod.total}개 → 이번 기간 ${periodPosts.length}개` : '선택 기간에 발행한 글' },
+          { key: 'normal', label: '노출', value: normalCount, color: 'up', description: `${pct(normalCount)}% · 전 영역 노출`,
+            trend: comparableExposure ? deltaOf(normalCount, prevPeriod!.normal) : undefined, trendTone: 'higher-better',
+            title: `검사한 전 영역에서 노출 확인 (전체의 ${pct(normalCount)}%)${comparableExposure ? ` · ${periodSpanLabel} ${prevPeriod!.normal}개` : ''}` },
+          { key: 'missing', label: '미노출', value: missingCount, color: 'down', description: `${pct(missingCount)}% · 확인한 전 영역 미노출`,
+            trend: comparableExposure ? deltaOf(missingCount, prevPeriod!.missing) : undefined, trendTone: 'lower-better',
+            title: `확인에 성공한 전 영역에서 찾지 못함 (전체의 ${pct(missingCount)}%)${comparableExposure ? ` · ${periodSpanLabel} ${prevPeriod!.missing}개` : ''}` },
+          { key: 'partial', label: '일부 노출', value: partialCount, color: 'accent', description: `${pct(partialCount)}% · 일부 영역만`,
+            trend: comparableExposure ? deltaOf(partialCount, prevPeriod!.partial) : undefined, trendTone: 'lower-better',
+            title: `일부 영역에서만 노출 (전체의 ${pct(partialCount)}%)${comparableExposure ? ` · ${periodSpanLabel} ${prevPeriod!.partial}개` : ''}` },
+          // 미확인은 검사를 얼마나 돌렸느냐에 따라 오르내리는 진행 지표라 기간 비교가 뜻을 갖지 않는다.
+          { key: 'unknown', label: '미확인', value: unknownCount, color: 'dim', description: '미검사·확인 중·확인 실패',
+            title: '아직 검사하지 않았거나, 색인 대기·확인 실패로 판정이 확정되지 않은 글' },
         ] as SummaryCard[]).map(c => notMeasured
-          ? { ...c, color: 'dim' as const, statusText: notMeasuredStatus, description: notMeasuredReason }
+          ? { ...c, color: 'dim' as const, statusText: notMeasuredStatus, statusTone: notMeasuredStatus === '확인 실패' ? ('error' as const) : ('neutral' as const), description: notMeasuredReason, trend: undefined, title: notMeasuredReason }
           : c)}
       />
 

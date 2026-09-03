@@ -12,9 +12,22 @@ export interface SummaryCard {
   description?: string;
   href?: string;
   statusText?: string;
+  statusTone?: 'neutral' | 'error';
+  trend?: { direction: 'up' | 'down' | 'stable'; value: number };
+  trendTone?: 'higher-better' | 'lower-better' | 'neutral';
+  title?: string;
 }
 
-export default function SummaryCards({ cards, loading }: { cards: SummaryCard[]; loading?: boolean }) {
+/**
+ * onSelect 를 주면 카드가 목록 필터 토글이 된다. 카드에 숫자를 띄워 놓고 "그 숫자에 해당하는 글이
+ * 뭔지"를 보려면 아래 필터를 다시 찾아 눌러야 했던 동선을 없앤다. activeKey 는 현재 선택된 카드.
+ */
+export default function SummaryCards({ cards, loading, activeKey, onSelect }: {
+  cards: SummaryCard[];
+  loading?: boolean;
+  activeKey?: string;
+  onSelect?: (key: string) => void;
+}) {
   // 노출 현황과 동일: 2열(모바일) → 5열(md). 카드가 4개면 4열, 6개면 md 3열·lg 6열, 7개면 md 4열·lg 7열.
   const mdCols =
     cards.length <= 4 ? 'md:grid-cols-4'
@@ -34,7 +47,14 @@ export default function SummaryCards({ cards, loading }: { cards: SummaryCard[];
           placeholder="0"
           size="kpi"
           delay={i * 60}
-          statusText={loading ? '—' : c.statusText}
+          loading={loading}
+          statusText={loading ? undefined : c.statusText}
+          statusTone={c.statusTone}
+          trend={c.trend}
+          trendTone={c.trendTone}
+          title={c.title}
+          onClick={onSelect ? () => onSelect(c.key) : undefined}
+          active={activeKey === c.key}
         />
       ))}
     </div>
