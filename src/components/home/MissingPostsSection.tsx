@@ -195,14 +195,14 @@ function buildCauseAnalysis(mr?: PostMissingEntry): string[] {
 // §4 게시글별 채널 노출 상태 배지 — 노출/미노출 + null 은 종합 상태(class)에 따라 확인중/확인실패/분석불가/미확인으로 구분.
 // null 을 무조건 '미노출'로 표기하지 않는다(§4·§5).
 function ExposureBadge({ exposed, post, mr, now = 0, area }: { exposed: boolean | null | undefined; post?: PostLike; mr?: PostMissingEntry; now?: number; area?: 'view' | 'blog' | 'influencer' }) {
-  if (exposed === true) return <span className="text-[11px] font-bold text-up bg-up/10 px-2 py-0.5 rounded-full whitespace-nowrap">🟢 노출</span>;
-  if (exposed === false) return <span className="text-[11px] font-bold text-down bg-down/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔴 미노출</span>;
+  if (exposed === true) return <span title="이 영역 검색 결과에서 내 포스팅 URL을 찾았습니다." className="text-[11px] font-bold text-up bg-up/10 px-2 py-0.5 rounded-full whitespace-nowrap cursor-help">🟢 노출</span>;
+  if (exposed === false) return <span title="이 영역 검색 결과를 정상적으로 읽었지만 내 포스팅이 없었습니다." className="text-[11px] font-bold text-down bg-down/10 px-2 py-0.5 rounded-full whitespace-nowrap cursor-help">🔴 미노출</span>;
   // exposed == null — 이 게시글의 종합 상태로 null 셀의 의미를 구분(확인중/확인실패/분석불가/확인불가/미확인).
   // post 가 있을 땐 호출측이 now 도 함께 넘긴다(목록 행). post 없는 상세 모달 셀은 'unchecked'로 처리.
   const c = post ? classifyExposure(post, mr, now) : 'unchecked';
-  if (c === 'error') return <span className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap">⚫ 확인실패</span>;
-  if (c === 'checking') return <span className="text-[11px] font-semibold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">⚪ 확인중</span>;
-  if (c === 'unanalyzable') return <span className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap">⚫ 분석불가</span>;
+  if (c === 'error') return <span title={CLASS_META.error.desc} className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap cursor-help">⚫ 확인실패</span>;
+  if (c === 'checking') return <span title={CLASS_META.checking.desc} className="text-[11px] font-semibold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap cursor-help">⚪ 확인중</span>;
+  if (c === 'unanalyzable') return <span title={CLASS_META.unanalyzable.desc} className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap cursor-help">⚫ 분석불가</span>;
   // 이 글은 검사를 마쳤는데(mr 존재) 이 영역만 결과가 없다 = 조회는 했지만 한 건도 읽지 못함 → '확인 불가'.
   // 아직 검사하지 않아서 비어 있는 '미확인'과 구분한다(§4 상태 구분). 미노출과는 무관하며 집계에도 들어가지 않는다.
   // 인플루언서탭은 등록 키워드가 없으면 애초에 조회 대상이 아니라 null 이므로 '확인 불가'라고 말하지 않는다.
@@ -210,25 +210,27 @@ function ExposureBadge({ exposed, post, mr, now = 0, area }: { exposed: boolean 
     return <span title="네이버 검색 결과를 한 건도 읽지 못해 이 영역은 판정에서 제외했습니다(미노출 아님)."
       className="text-[11px] font-semibold text-dim bg-border/40 px-2 py-0.5 rounded-full whitespace-nowrap cursor-help">◐ 확인 불가</span>;
   }
-  return <span className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap">미확인</span>;
+  return <span title={CLASS_META.unchecked.desc} className="text-[11px] font-semibold text-dim bg-border/30 px-2 py-0.5 rounded-full whitespace-nowrap cursor-help">미확인</span>;
 }
 
 // §5 종합 상태(class) 표기 메타 — 정상/일부 노출/미노출/확인 중/확인 실패/분석 불가/미확인.
 // 확인 실패·분석 불가·확인 중·미확인은 절대 미노출로 표기하지 않는다(§5). 'missing' 은 isPostMissing 과 동일 기준(§12).
-const CLASS_META: Record<ExposureClass, { emoji: string; text: string; cls: string }> = {
-  normal:       { emoji: '🟢', text: '정상',      cls: 'text-up bg-up/10' },
-  partial:      { emoji: '🟡', text: '일부 노출', cls: 'text-amber-600 bg-amber-500/15' },
-  missing:      { emoji: '🔴', text: '미노출',    cls: 'text-down bg-down/10' },
-  checking:     { emoji: '⚪', text: '확인 중',   cls: 'text-blue bg-blue/10' },
-  error:        { emoji: '⚫', text: '확인 실패', cls: 'text-dim bg-border/40' },
-  unanalyzable: { emoji: '⚫', text: '분석 불가', cls: 'text-dim bg-border/40' },
-  unchecked:    { emoji: '⚪', text: '미확인',    cls: 'text-dim bg-border/30' },
+// desc 는 뱃지 툴팁. 판정 기준 설명이 접혀 있어도 뱃지 위에서 바로 뜻을 알 수 있어야 한다 —
+// 특히 '확인 실패'·'분석 불가'·'미확인'은 겉보기가 비슷해 미노출로 오해하기 쉽다.
+const CLASS_META: Record<ExposureClass, { emoji: string; text: string; cls: string; desc: string }> = {
+  normal:       { emoji: '🟢', text: '정상',      cls: 'text-up bg-up/10',            desc: '검사한 영역에서 모두 노출이 확인됐습니다.' },
+  partial:      { emoji: '🟡', text: '일부 노출', cls: 'text-amber-600 bg-amber-500/15', desc: '일부 영역에서만 노출됩니다. 노출되지 않은 영역은 상세에서 확인할 수 있습니다.' },
+  missing:      { emoji: '🔴', text: '미노출',    cls: 'text-down bg-down/10',        desc: '확인에 성공한 영역 전부에서 찾지 못했고, 2차 재검증까지 통과한 확정 판정입니다.' },
+  checking:     { emoji: '⚪', text: '확인 중',   cls: 'text-blue bg-blue/10',        desc: `발행 후 ${INDEXING_GRACE_HOURS}시간 이내라 네이버 색인을 기다리는 중입니다. 미노출 집계에서 제외됩니다.` },
+  error:        { emoji: '⚫', text: '확인 실패', cls: 'text-dim bg-border/40',       desc: '검사 요청이 실패했습니다. 미노출이라는 뜻이 아니며, 다시 검사하면 판정됩니다.' },
+  unanalyzable: { emoji: '⚫', text: '분석 불가', cls: 'text-dim bg-border/40',       desc: '비공개 글이라 검색 노출 대상이 아닙니다.' },
+  unchecked:    { emoji: '⚪', text: '미확인',    cls: 'text-dim bg-border/30',       desc: '아직 검사하지 않았습니다. 미노출이라는 뜻이 아닙니다.' },
 };
 
 function StatusBadge({ post, mr, isChecking, now }: { post: PostLike; mr?: PostMissingEntry; isChecking: boolean; now: number }) {
   if (isChecking) return <span className="text-[11px] font-bold text-blue bg-blue/10 px-2 py-0.5 rounded-full whitespace-nowrap">🔵 분석중</span>;
   const meta = CLASS_META[classifyExposure(post, mr, now)];
-  return <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${meta.cls}`}>{meta.emoji} {meta.text}</span>;
+  return <span title={meta.desc} className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap cursor-help ${meta.cls}`}>{meta.emoji} {meta.text}</span>;
 }
 
 // 상세 모달 '최종 판정'용 서버 상태머신 판정(§19) 색상 — 종합 상태와 별개로 세부 verdict 를 그대로 보여준다.
@@ -965,15 +967,28 @@ export default function MissingPostsSection({
         </div>
       )}
 
-      {/* 1. 노출 현황 판정 안내 */}
+      {/* 1. 노출 현황 판정 안내.
+          예전엔 굵은 글씨가 스무 군데 넘게 박힌 네 문단이 화면 맨 위를 차지해, 강조가 너무 많아
+          아무것도 강조되지 않았고 정작 매일 봐야 할 숫자는 그 아래로 밀렸다. 한 줄 요약만 남기고
+          자세한 규칙은 접어 둔다. 지금 조치가 필요한 대기 건수는 접힌 안쪽에 숨기지 않는다. */}
       <GlassCard padding="sm" className="text-xs text-dim leading-relaxed">
-        <p className="font-bold text-text mb-1">노출 상태 판정 기준 (교차검증)</p>
-        <p><b className="text-text">정상</b>=검사한 영역이 모두 노출 · <b className="text-text">일부 노출</b>=일부만 노출 · <b className="text-text">미노출</b>=<b className="text-text">확인에 성공한 영역</b>(통합검색 · 블로그 · 인플루언서 중) <b className="text-text">전부</b>에서 확인 안 됨(<b className="text-text">2차 재검증</b>까지 통과한 글만 확정). 한 곳이라도 노출되면 미노출이 아닙니다.</p>
-        <p className="mt-1">※ 검색 기준은 항상 <b className="text-text">포스팅 제목(또는 등록한 키워드)</b>이며, 검색 결과의 <b className="text-text">포스팅 URL·블로그 ID</b>가 내 것과 일치하는지까지 확인합니다. 검색 오류·요청 실패·네이버 화면 구조 변경으로 <b className="text-text">결과를 한 건도 읽지 못한 영역</b>은 <b className="text-text">&apos;확인 불가&apos;</b>로 두고 판정에서 제외하며, 절대 미노출로 집계하지 않습니다. 모든 영역이 확인 불가면 그 글은 미노출로 세지 않습니다.</p>
-        <p className="mt-1">※ 발행 후 {INDEXING_GRACE_HOURS}시간 이내 게시글은 네이버 색인 지연으로 인한 오탐을 막기 위해 &apos;확인 중&apos;으로 두고 미노출 집계에서 제외합니다.
-          {indexingWaitCount > 0 && <span className="text-accent font-semibold"> (색인 대기 중 {indexingWaitCount}개)</span>}
+        <p>
+          통합검색 · 블로그 · 인플루언서 <span className="text-text font-semibold">세 영역을 교차검증</span>해,
+          확인에 성공한 영역 전부에서 안 보이는 글만 미노출로 판정합니다.
+          {indexingWaitCount > 0 && <span className="text-accent font-semibold"> 색인 대기 {indexingWaitCount}개</span>}
           {recheckCount > 0 && <span className="text-amber-600 font-semibold"> · 재검증 대기 {recheckCount}개</span>}
         </p>
+        <details className="mt-1.5 group">
+          <summary className="cursor-pointer text-accent list-none select-none">
+            판정 기준 자세히 <span className="group-open:hidden">＋</span><span className="hidden group-open:inline">－</span>
+          </summary>
+          <div className="mt-1.5 space-y-1">
+            <p>정상 = 검사한 영역이 모두 노출 · 일부 노출 = 일부만 노출 · 미노출 = 확인에 성공한 영역 전부에서 확인 안 됨. 한 곳이라도 노출되면 미노출이 아니며, 2차 재검증까지 통과한 글만 확정 판정합니다.</p>
+            <p>검색 기준은 항상 포스팅 제목(또는 등록한 키워드)이며, 검색 결과의 포스팅 URL·블로그 ID가 내 것과 일치하는지까지 확인합니다.</p>
+            <p>검색 오류·요청 실패·네이버 화면 구조 변경으로 결과를 한 건도 읽지 못한 영역은 <span className="text-text">확인 불가</span>로 두고 판정에서 제외하며, 미노출로 집계하지 않습니다. 모든 영역이 확인 불가면 그 글은 미노출로 세지 않습니다.</p>
+            <p>발행 후 {INDEXING_GRACE_HOURS}시간 이내 게시글은 네이버 색인 지연으로 인한 오탐을 막기 위해 <span className="text-text">확인 중</span>으로 두고 미노출 집계에서 제외합니다.</p>
+          </div>
+        </details>
       </GlassCard>
 
       {/* 2. 전체 현황 카드 — 전체 포스팅 / 노출(정상) / 미노출 / 일부 노출 / 미확인.
