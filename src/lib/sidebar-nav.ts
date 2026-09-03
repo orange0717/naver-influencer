@@ -2,6 +2,11 @@
  * N인플 좌측 사이드바 정보구조
  * - dashboard-catalog.ts(DASHBOARD_APPS)의 href/requiredPlan/authOnly를 그대로 반영
  * - 홈(/)은 별도 그룹 없이 최상단 단일 링크로 고정 노출
+ *
+ * ⛔ SIDEBAR_GROUPS 는 고정값이다(2026-09-03 확정). 다른 작업을 하다가 곁다리로
+ * 항목을 추가·삭제·이동하거나 라벨·그룹 구성을 바꾸지 말 것. 새 페이지를 만들어도
+ * 여기에 자동 등록하지 않는다 — 메뉴 노출은 그때마다 별도 지시를 받는다.
+ * 2026-09-02 v2.3 트리(분석/작성/관리)로 재편했다가 다음 날 되돌린 이력이 있다(`343ba2ec`).
  */
 
 import type { PlanTier } from './dashboard-catalog';
