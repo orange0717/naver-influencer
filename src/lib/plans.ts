@@ -81,6 +81,12 @@ export interface FeatureDefinition {
    * 이 선언만 바꿔도 실제 차감은 일어나지 않는다.
    */
   consumesQuota?: QuotaCounter;
+  /**
+   * 등급이 모자라도 화면 자체는 열고 일부만 보여주는 기능(티저).
+   * 🚨 이 표시가 없으면 사이드바가 링크를 잠그고 /subscribe 로 돌려보내므로
+   * 티저 화면에 애초에 도달할 수 없다 — 배지 등급과 잠금 여부는 다른 질문이다.
+   */
+  teaser?: boolean;
 }
 
 /** 낮은 등급부터. PLANS 의 rank 순서를 그대로 따른다. */
@@ -135,6 +141,7 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
     label: '노출 현황',
     minPlan: 'max',
     consumesQuota: 'free-daily',
+    teaser: true,
   },
   'my.keyword-ranking': {
     key: 'my.keyword-ranking',

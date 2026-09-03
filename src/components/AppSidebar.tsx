@@ -14,6 +14,8 @@ import {
   SIDEBAR_FOOTER_LINKS,
   SIDEBAR_HIDDEN_PREFIXES,
   getActiveHref,
+  itemRequiredPlan,
+  itemLocksNavigation,
   type SidebarItem,
 } from '@/lib/sidebar-nav';
 import { toPlanKey, type PlanKey } from '@/lib/plans';
@@ -89,6 +91,8 @@ function NavLink({
   const sizeClass = item.indent ? 'text-[13px]' : 'text-[14px]';
   const padY = item.indent ? 'py-1.5' : 'py-2';
   const inactiveColor = item.indent ? 'text-desc' : 'text-text-2';
+  // 등급 정본은 plans.ts 다. 메뉴가 적어둔 값을 그대로 그리지 않는다.
+  const required = itemRequiredPlan(item);
 
   if (item.heading) {
     return <NavHeading label={item.label} subgroup={item.subgroup} />;
@@ -115,13 +119,14 @@ function NavLink({
         className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
         <ItemLabel item={item} />
-        <span className="ml-auto"><PlanBadge tier={item.requiredPlan} /></span>
+        <span className="ml-auto"><PlanBadge tier={required} /></span>
       </button>
     );
   }
 
   // 권한을 아직 모르는 동안 잠금으로 그리면 구독자에게 자물쇠가 번쩍인다 → 평범한 링크로 두고 페이지 자체 게이트에 맡긴다
-  const locked = !authPending && !canAccess(item.requiredPlan, currentPlan);
+  // 티저 기능은 등급이 모자라도 배지만 달고 링크는 살린다 — 잠그면 티저 화면에 못 간다.
+  const locked = !authPending && !canAccess(required, currentPlan) && itemLocksNavigation(item);
 
   if (locked) {
     return (
@@ -129,14 +134,14 @@ function NavLink({
         type="button"
         onClick={() => {
           onNavigate();
-          router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
+          router.push(`/subscribe?highlight=${planHighlight(required!)}`);
         }}
         className={`w-full flex items-center gap-2 ${padding} pr-3 ${padY} rounded-lg ${sizeClass} font-normal text-dim border-l-2 border-transparent hover:bg-surface-hover hover:text-text transition-colors text-left cursor-pointer`}
       >
         <ItemLabel item={item} />
         <span className="ml-auto flex items-center gap-1 text-accent">
           <LockIcon />
-          <PlanBadge tier={item.requiredPlan} />
+          <PlanBadge tier={required} />
         </span>
       </button>
     );
@@ -153,7 +158,7 @@ function NavLink({
       }`}
     >
       <ItemLabel item={item} />
-      <span className="ml-auto"><PlanBadge tier={item.requiredPlan} /></span>
+      <span className="ml-auto"><PlanBadge tier={required} /></span>
     </Link>
   );
 }

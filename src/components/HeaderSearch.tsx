@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { canAccess, planHighlight } from '@/lib/plan-access';
-import { SIDEBAR_GROUPS, type SidebarItem } from '@/lib/sidebar-nav';
+import { SIDEBAR_GROUPS, itemRequiredPlan, itemLocksNavigation, type SidebarItem } from '@/lib/sidebar-nav';
 import { toPlanKey, type PlanKey } from '@/lib/plans';
 
 interface SearchableItem extends SidebarItem {
@@ -64,8 +64,9 @@ export default function HeaderSearch() {
 
   const handleSelect = (item: SearchableItem) => {
     setOpen(false);
-    if (!canAccess(item.requiredPlan, currentPlan)) {
-      router.push(`/subscribe?highlight=${planHighlight(item.requiredPlan!)}`);
+    // 티저 기능은 등급이 모자라도 화면을 열어야 하므로 구독 페이지로 돌리지 않는다.
+    if (!canAccess(itemRequiredPlan(item), currentPlan) && itemLocksNavigation(item)) {
+      router.push(`/subscribe?highlight=${planHighlight(itemRequiredPlan(item)!)}`);
       return;
     }
     router.push(item.href);
@@ -108,7 +109,7 @@ export default function HeaderSearch() {
                       <span className="mx-1 text-dim/50">›</span>
                       <span className="font-semibold text-text">{item.label}</span>
                     </span>
-                    {!canAccess(item.requiredPlan, currentPlan) && (
+                    {!canAccess(itemRequiredPlan(item), currentPlan) && itemLocksNavigation(item) && (
                       <span className="shrink-0 text-[10px] font-bold text-dim/60 bg-bg px-1.5 py-0.5 rounded">잠김</span>
                     )}
                   </button>

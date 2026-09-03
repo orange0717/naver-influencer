@@ -9,11 +9,18 @@
  * 2026-09-02 v2.3 트리(분석/작성/관리)로 재편했다가 다음 날 되돌린 이력이 있다(`343ba2ec`).
  */
 
-import type { PlanKey } from './plans';
+import { FEATURES, type FeatureKey, type PlanKey } from './plans';
 
 export interface SidebarItem {
   label: string;
   href: string;
+  /**
+   * plans.ts 의 기능 키. 배지에 표시할 등급은 여기서 파생하고 메뉴에 직접 적지 않는다.
+   * 🚨 2026-09-03 노출 현황을 Max 로 올릴 때 plans.ts 만 고치고 여기를 빠뜨려
+   * 서버는 Max 로 막는데 배지는 Free 로 나왔다. 등급을 두 곳에 적으면 반드시 갈라진다.
+   */
+  feature?: FeatureKey;
+  /** @deprecated feature 로 이관 중. 손으로 적은 등급이라 plans.ts 와 갈라질 수 있다. */
   requiredPlan?: PlanKey;
   authOnly?: boolean;
   /** 아직 구현되지 않은 기능 — 클릭 불가, "준비중" 뱃지만 표시 */
@@ -29,6 +36,24 @@ export interface SidebarItem {
   indent?: boolean;
   /** 하위그룹 소제목이 없는 단독 항목에도 소제목과 같은 점(•)을 붙여 시각적 계층을 맞춘다 */
   bullet?: boolean;
+}
+
+/**
+ * 메뉴 배지에 표시할 최소 등급. 선언이 없거나 모르는 키면 배지를 달지 않는다.
+ * 등급 정본은 plans.ts 의 FEATURES 이고 이 함수는 읽기만 한다.
+ */
+export function itemRequiredPlan(item: SidebarItem): PlanKey | undefined {
+  if (item.feature) return FEATURES[item.feature]?.minPlan;
+  return item.requiredPlan;
+}
+
+/**
+ * 등급이 모자랄 때 메뉴 링크를 잠글 것인가.
+ * 티저 기능은 등급이 모자라도 화면을 열어야 하므로 배지만 달고 링크는 살려 둔다 —
+ * 잠그면 /subscribe 로 튕겨 티저를 볼 방법이 없어진다.
+ */
+export function itemLocksNavigation(item: SidebarItem): boolean {
+  return !(item.feature && FEATURES[item.feature]?.teaser);
 }
 
 export interface SidebarGroup {
@@ -53,7 +78,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { label: '블로그', href: '#blog', heading: true, subgroup: true },
       { label: '대시보드', href: '/dashboard', authOnly: true, indent: true },
-      { label: '노출 현황', href: '/my/missing-posts', authOnly: true, indent: true },
+      { label: '노출 현황', href: '/my/missing-posts', feature: 'my.missing-posts', authOnly: true, indent: true },
       { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'pro', authOnly: true, indent: true },
       { label: 'AI 브리핑 · AI 탭 인용', href: '/my/naver-mate', requiredPlan: 'max', authOnly: true, indent: true },
       { label: '인플루언서', href: '#influencer', heading: true, subgroup: true },
