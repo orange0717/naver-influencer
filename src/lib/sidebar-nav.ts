@@ -36,91 +36,78 @@ export interface SidebarGroup {
 /** 홈(/) = N인플 AI (2026-08-08부터). KPI/블로그 분석은 /dashboard로 이동. */
 export const SIDEBAR_HOME: SidebarItem = { href: '/', label: 'N인플 AI' };
 
-/**
- * 2026-09-02 v2.3 트리 전면 적용 (docs/category-proposal.md §6).
- * 대분류를 «무엇을 하려는가»로 재편했다 — 분석(본다) / 작성(만든다) / 관리(유지한다).
- * 이전 체계(대시보드·네이버 데이터·콘텐츠 도구·구글)는 «데이터가 개인화냐 아니냐»로 갈랐는데,
- * 같은 목적의 기능이 그룹을 넘나들어(예: 내 키워드순위 ↔ 키워드 검색순위) 찾기 어려웠다.
- *
- * heading = 클릭 불가 소분류 제목, subgroup = 소분류 첫 항목(상단 간격 강조),
- * indent = 소분류 소속 항목 들여쓰기, bullet = 소분류 없이 대분류에 직속인 항목.
- * 소분류에 항목이 하나뿐이면 만들지 않고 대분류 직속으로 올린다(v2.2 §1 흡수 규칙).
- *
- * 🆕 표시 항목은 «이미 있는데 메뉴가 없어 도달 불가»였던 유료 기능이다(신규 개발 아님).
- * requiredPlan 은 lib/plans.ts 의 minPlan 을 그대로 옮긴 값이다.
- */
 export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
-    // ── 분석: 이미 있는 데이터를 «본다» ────────────────────────
-    label: '분석',
-    icon: '분',
+    // ── 개인화 영역 ─────────────────────────────────────────────
+    // 로그인한 user_id의 실제 데이터에 기반해 동작하는 기능만 이 그룹에 둔다(스펙 1·2·21).
+    // 블로그(4) + 인플루언서(3) + 대분류 직속(1). 기존 페이지/URL은 유지하고 IA만 재구성한다.
+    // heading = 클릭 불가 하위그룹 제목, subgroup = 하위그룹 첫 항목(상단 간격 강조, 스펙 24),
+    // indent = 하위그룹 소속 항목 들여쓰기. requiredPlan/authOnly는 이관 전 값을 그대로 유지.
+    label: '대시보드',
+    icon: '대',
     items: [
-      { label: '내 블로그', href: '#my-blog', heading: true, subgroup: true },
-      { label: 'MY 블로그', href: '/dashboard', authOnly: true, indent: true },
-      // 🆕 이용권이 「MY 포스팅 분석 (AI)」로 파는데 메뉴가 없었다. 화면 자체는 로그인만 필요하고
-      // 유료 경계는 AI 분석·데이터 내려받기(downloads.post-analysis)에 있다.
-      { label: 'MY 포스팅 분석', href: '/my/post-analysis', authOnly: true, indent: true },
-      // MY 를 떼면 아래 「키워드 검색순위」와 이름이 충돌한다 — 접두어 유지(v2.2 확정).
-      { label: 'MY 키워드순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true, indent: true },
-      { label: 'AI 브리핑', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '내 활동', href: '#my-activity', heading: true, subgroup: true },
-      { label: 'MY 인플루언서', href: '/my', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '블로그', href: '#blog', heading: true, subgroup: true },
+      { label: '대시보드', href: '/dashboard', authOnly: true, indent: true },
+      { label: '노출 현황', href: '/my/missing-posts', authOnly: true, indent: true },
+      { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'blogger', authOnly: true, indent: true },
+      { label: 'AI 브리핑 · AI 탭 인용', href: '/my/naver-mate', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '인플루언서', href: '#influencer', heading: true, subgroup: true },
-      { label: '인플루언서 순위', href: '/influencers', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '인플루언서 명단', href: '/influencers/free-plan', authOnly: true, indent: true },
-      { label: '선정 현황', href: '/stats', indent: true },
-      { label: '네이버 메이트', href: '/naver-mate-ranking', authOnly: true, indent: true },
-      { label: '키워드', href: '#keyword', heading: true, subgroup: true },
-      { label: '키워드 검색', href: '/keywords/blogger', indent: true },
-      // 🆕 이용권이 「키워드 검색순위」로 파는데 메뉴가 없었다.
-      { label: '키워드 검색순위', href: '/keywords/blog-ranking', requiredPlan: 'blogger', authOnly: true, indent: true },
-      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '대량 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true, indent: true },
-      // 🆕 이용권이 「경쟁자 분석 (무제한)」으로 파는데 메뉴가 없었다.
-      // 소분류 「경쟁·시장」에 이것 하나만 남아 해체하고 대분류 직속으로 올렸다(v2.3).
-      { label: '경쟁자 분석', href: '/competitor', requiredPlan: 'blogger', authOnly: true, bullet: true },
+      { label: '대시보드', href: '/my', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '토픽', href: '/topics', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '맞팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true, indent: true },
+      // 글 심층피드백 = 기존 블로그 심층피드백 + AI글 적합도 + 인플루언서 글 적합도를 한 번의
+      // 분석으로 합친 개인화 기능(스펙 4·5). 구조적 정밀 진단 엔진(quality-evaluate)이 본체다.
+      { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true, bullet: true },
     ],
   },
   {
-    // ── 작성: 새 콘텐츠를 «만든다» ─────────────────────────────
-    // 경계선(v2.3): 경쟁자 분석은 «분석», 롱폼·릴스 분석은 «작성».
-    // 전자는 내 성과를 남과 견주는 일이고, 후자는 만들 콘텐츠의 참고자료를 찾는 일이다.
-    label: '작성',
-    icon: '작',
+    // ── 공통(비개인화) 데이터 도구 ─────────────────────────────
+    // 특정 사용자의 블로그 데이터와 무관하게 누구나 조회하는 네이버 데이터(스펙 2·21).
+    label: '네이버 데이터',
+    icon: '데',
     items: [
-      { label: '글', href: '#writing', heading: true, subgroup: true },
-      { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '랭킹', href: '#ranking', heading: true, subgroup: true },
+      { label: '네이버 메이트', href: '/naver-mate-ranking', authOnly: true, indent: true },
+      { label: '연도별 선정 현황', href: '/stats', indent: true },
+      { label: '키워드', href: '#keyword', heading: true, subgroup: true },
+      // '키워드 챌린지'(/keywords)는 순위가 아니라 키워드 전체 목록 성격 → 키워드 그룹으로 이동(사용자 요청 2026-08-12)
+      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '검토', href: '#review', heading: true, subgroup: true },
-      // 등급 정본은 plans.ts 의 writing.spellcheck (allowAnonymous — 비로그인도 쓴다).
+      { label: '키워드 검색', href: '/keywords/blogger', indent: true },
+      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '인플루언서 리스트', href: '#list', heading: true, subgroup: true },
+      // 라벨은 요금제가 아니라 "무엇이 들어있는 목록인지"로 적는다 — 유료 항목엔 이미 자물쇠가 붙는다.
+      { label: '기본 명단', href: '/influencers/free-plan', authOnly: true, indent: true },
+      { label: '전체 리스트', href: '/influencers', requiredPlan: 'influencer', authOnly: true, indent: true },
+    ],
+  },
+  {
+    // ── 공통 콘텐츠 제작 도구 ──────────────────────────────────
+    // 글쓰기(2) / 이미지(2) / 유튜브(3). 이미지·유튜브를 글쓰기에서 분리(스펙 9·11·12).
+    label: '콘텐츠 도구',
+    icon: '도',
+    items: [
+      { label: '글쓰기', href: '#writing', heading: true, subgroup: true },
+      // 2026-09-01 무료·비로그인 공개 전환. 등급 정본은 plans.ts 의 writing.spellcheck 다.
+      // 비로그인 공개(allowAnonymous) 기능이라 개인화 전용인 '대시보드' 그룹 조건을 만족하지 못해
+      // 나머지 /dashboard/writing/* 형제들과 같은 '글쓰기'로 이관(2026-09-02 내비 감사 §5-A).
       { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'free', indent: true },
-      // 글 심층피드백 = 블로그 심층피드백 + AI글 적합도 + 인플루언서 글 적합도를 한 번의
-      // 분석으로 합친 기능. 구조적 정밀 진단 엔진(quality-evaluate)이 본체다.
-      { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'influencer', authOnly: true, indent: true },
-      // 🆕 이용권이 「블로그 글 피드백 (Claude AI)」로 파는데 메뉴가 없었다.
-      // 「Claude」는 내부 벤더명이라 메뉴 라벨에서 뺀다(v2.3).
-      { label: '글 피드백 (AI)', href: '/dashboard/claude', requiredPlan: 'influencer', authOnly: true, indent: true },
-      { label: '이미지·영상', href: '#media', heading: true, subgroup: true },
+      { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '이미지', href: '#image', heading: true, subgroup: true },
       { label: '컬러 팔레트', href: '/dashboard/writing/color-palette', indent: true },
       { label: '이미지 편집', href: '/image-editor', authOnly: true, indent: true },
-      { label: '음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true, indent: true },
+      { label: '유튜브·인스타그램', href: '#youtube', heading: true, subgroup: true },
       { label: '롱폼 분석', href: '/dashboard/content/youtube', requiredPlan: 'influencer', authOnly: true, indent: true },
       { label: '릴스·쇼츠 분석', href: '/dashboard/content/shortform', requiredPlan: 'influencer', authOnly: true, indent: true },
+      { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'blogger', authOnly: true, indent: true },
     ],
   },
   {
-    // ── 관리: 이미 올린 글·관계를 «유지한다» ───────────────────
-    // 네이버 노출(노출 현황)과 구글 색인을 한 소분류로 묶었다 — 둘 다 "내 글이 검색에 잡히나"다.
-    // 구 「구글」 대분류는 여기로 흡수됐다(v2.3).
-    label: '관리',
-    icon: '관',
+    label: '구글',
+    icon: 'G',
     items: [
-      { label: '검색 노출', href: '#exposure', heading: true, subgroup: true },
-      { label: '노출 현황', href: '/my/missing-posts', authOnly: true, indent: true },
-      { label: '색인 관리', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true, indent: true },
-      { label: '맞팬 관리', href: '/my/fans', requiredPlan: 'influencer', authOnly: true, bullet: true },
+      { label: 'Google 색인 관리', href: '/dashboard/google-indexing', requiredPlan: 'blogger', authOnly: true, bullet: true },
     ],
   },
 ];
