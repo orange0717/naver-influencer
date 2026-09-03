@@ -22,6 +22,7 @@ import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MISSING_POSTS_TEASER, SUBSCRIBE_PATH, planLabel, type PlanKey } from '@/lib/plans';
+import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 
 // §1·§12·§19 최근 N일까지는 기본(무료) 조회, 초과는 회원 전용. 서버(exposure-policy.ts)가 과금·권한을 최종 강제하며
 // 여기 값은 UI 게이팅용(동일 기본값 30). 서버와 어긋나도 서버가 최종 판단하므로 안전.
@@ -66,6 +67,24 @@ const FILTER_BY_CARD: Record<string, StatusFilter> = {
 const CARD_TO_FILTER_KEY: Record<StatusFilter, string> = {
   all: 'total', normal: 'normal', missing: 'missing', partial: 'partial', unchecked: 'unknown',
 };
+
+// 영역·정렬 선택지를 표로 빼 둔다 — 드롭다운과 아래 '적용된 필터' 칩이 같은 라벨을 써야
+// 고른 것과 표시되는 것이 어긋나지 않는다.
+const AREA_FILTERS: { key: AreaFilter; label: string; chip: string }[] = [
+  { key: 'all', label: '노출 영역: 전체', chip: '' },
+  { key: 'view', label: '통합검색 미노출만', chip: '통합검색 미노출만' },
+  { key: 'blog', label: '블로그 미노출만', chip: '블로그 미노출만' },
+  { key: 'influencer', label: '인플루언서 미노출만', chip: '인플루언서 미노출만' },
+];
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'latest', label: '최신순' },
+  { key: 'oldest', label: '오래된순' },
+  { key: 'title', label: '제목순' },
+  { key: 'missingRate', label: '미노출률순' },
+];
+
+/** 필터 기본값 — 주소창에는 기본값과 다른 것만 남긴다(공유한 링크가 읽히게). */
+const DEFAULT_PERIOD = 30;
 
 /**
  * 포스팅 수집이 빈손으로 끝난 이유.
@@ -272,7 +291,7 @@ export default function MissingPostsSection({
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   // 이 화면 mount 당 조회 토큰 1개 (미노출 분석 데이터 요청에 공통 사용)
   const [viewToken] = useState(() => newViewToken());
-  const [period, setPeriod] = useState<Period>(30);
+  const [period, setPeriod] = useState<Period>(DEFAULT_PERIOD);
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -351,6 +370,48 @@ export default function MissingPostsSection({
   }, []);
 
   const usingCustomRange = Boolean(customFrom || customTo);
+
+  /**
+   * 필터 상태 ↔ 주소창 동기화. 조건을 걸어 둔 화면을 그대로 북마크하거나 팀에 공유할 수 있어야 한다.
+   *
+   * next/navigation 의 router 대신 history.replaceState 를 쓰는 이유: 필터 변경은 네비게이션이
+   * 아니다. 라우터를 태우면 글자를 한 자 칠 때마다 서버 컴포넌트가 다시 돌고 뒤로가기 기록이
+   * 검색어 수만큼 쌓인다.
+   *
+   * 기간은 30일 이하만 복원한다 — 90일·전체는 크레딧이 붙는 확장 조회(beginExtended)를 거쳐야
+   * 하는데, 주소창 값으로 곧바로 setPeriod 하면 그 승인 절차를 건너뛰게 된다.
+   */
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const status = q.get('status');
+    if (status && STATUS_FILTERS.some(f => f.key === status)) setStatusFilter(status as StatusFilter);
+    const area = q.get('area');
+    if (area && AREA_FILTERS.some(f => f.key === area)) setAreaFilter(area as AreaFilter);
+    const sort = q.get('sort');
+    if (sort && SORT_OPTIONS.some(o => o.key === sort)) setSortBy(sort as SortKey);
+    const search = q.get('q');
+    if (search) setSearchQuery(search);
+    const p = Number(q.get('period'));
+    if (PERIOD_OPTIONS.includes(p as Period) && !isExtendedPeriod(p as Period)) setPeriod(p as Period);
+  }, []);
+
+  // 첫 실행은 건너뛴다 — 위 복원 effect 가 세팅한 state 가 아직 반영되기 전이라, 여기서 바로 쓰면
+  // 주소창에 있던 조건을 기본값으로 되덮어 지워 버린다.
+  const urlSyncArmed = useRef(false);
+  useEffect(() => {
+    if (!urlSyncArmed.current) { urlSyncArmed.current = true; return; }
+    const q = new URLSearchParams(window.location.search);
+    const put = (key: string, value: string, fallback: string) => {
+      if (value === fallback) q.delete(key); else q.set(key, value);
+    };
+    put('status', statusFilter, 'all');
+    put('area', areaFilter, 'all');
+    put('sort', sortBy, 'latest');
+    put('q', searchQuery, '');
+    put('period', String(period), String(DEFAULT_PERIOD));
+    const qs = q.toString();
+    window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [statusFilter, areaFilter, sortBy, searchQuery, period]);
 
   // 선택 기간의 시작일 (직접 선택 우선) — 최근 30일 통계 카드를 위해 최소 30일치는 항상 로드
   const rangeFrom = useMemo(() => {
@@ -874,6 +935,57 @@ export default function MissingPostsSection({
   }, [teaser, displayList]);
   const lockedCount = displayList.length - teaserList.length;
 
+  /**
+   * 지금 걸려 있는 조건들. 정렬은 넣지 않는다 — 순서를 바꿀 뿐 목록에서 글을 빼지 않으므로,
+   * "왜 이 글이 안 보이지"의 답이 될 수 없는 항목까지 칩으로 두면 해제할 것을 찾기 어려워진다.
+   */
+  const activeChips: { key: string; label: string; clear: () => void }[] = [];
+  if (usingCustomRange) {
+    activeChips.push({ key: 'range', label: `기간 ${customFrom || '처음'} ~ ${customTo || '오늘'}`, clear: () => { setCustomFrom(''); setCustomTo(''); } });
+  } else if (period !== DEFAULT_PERIOD) {
+    // 확장 기간은 크레딧을 써서 연 것이라 칩으로 되돌릴 때도 기본값으로만 내린다(재승인 없이 다시 못 연다).
+    activeChips.push({ key: 'period', label: `기간 ${period === 0 ? '전체' : `${period}일`}`, clear: () => setPeriod(DEFAULT_PERIOD) });
+  }
+  if (statusFilter !== 'all') {
+    activeChips.push({ key: 'status', label: `상태 ${STATUS_FILTERS.find(f => f.key === statusFilter)!.label}`, clear: () => setStatusFilter('all') });
+  }
+  if (areaFilter !== 'all') {
+    activeChips.push({ key: 'area', label: AREA_FILTERS.find(f => f.key === areaFilter)!.chip, clear: () => setAreaFilter('all') });
+  }
+  if (searchQuery.trim()) {
+    activeChips.push({ key: 'q', label: `검색 “${searchQuery.trim()}”`, clear: () => setSearchQuery('') });
+  }
+  const clearAllFilters = () => {
+    setStatusFilter('all'); setAreaFilter('all'); setSearchQuery('');
+    setCustomFrom(''); setCustomTo(''); setPeriod(DEFAULT_PERIOD);
+  };
+
+  /**
+   * 화면에 보이는 목록을 그대로 CSV 로 내보낸다(필터·정렬 적용 상태 그대로).
+   * 서버 라우트를 새로 두지 않는 이유: 이 표의 판정은 이미 전부 클라이언트에 와 있어 서버를 다시
+   * 태워도 같은 값이고, 라우트를 늘리면 권한 검사 지점만 하나 더 생긴다.
+   * 티저 사용자에게는 버튼 자체를 잠가 둔다(위 렌더 참고).
+   */
+  const downloadCsv = () => {
+    const rows = displayList.map((p, i) => {
+      const mr = missingResults[p.id];
+      const cls = classifyExposure(p, mr, Date.now());
+      const area = (v: boolean | null | undefined) => v === true ? '노출' : v === false ? '미노출' : '확인 불가';
+      return [
+        i + 1, p.title, p.category || '', p.date,
+        area(mr?.viewTab.exposed), area(mr?.blogTab.exposed), area(mr?.influencerTab?.exposed),
+        mr?.searchVolume ?? '', CLASS_META[cls].text,
+        mr?.checkedAt ? formatCheckedAt(mr.checkedAt) : '',
+        `https://blog.naver.com/${profile?.blogId ?? ''}/${p.id}`,
+      ];
+    });
+    const csv = rowsToCsv(
+      ['순번', '제목', '카테고리', '발행일', '통합검색', '블로그', '인플루언서', '검색량', '종합 상태', '마지막 확인', '주소'],
+      rows,
+    );
+    downloadCsvInBrowser(`노출현황_${profile?.blogId ?? 'blog'}_${todayStamp()}.csv`, csv);
+  };
+
   // §9 '미확인 n개 검사' 대상 = 실제 상태가 '미확인'(검사 기록 없음)인 글만. 단, 무료 구간(최근 30일)만 —
   // 30일 이전 미확인 글은 회원 전용 확장 조회(크레딧 정책)로만 검사되므로 이 무료 버튼 대상에서 제외한다.
   const uncheckedPosts = useMemo(() => {
@@ -1112,26 +1224,54 @@ export default function MissingPostsSection({
         <p className="text-[11px] text-dim">
           최근 {FREE_DAYS}일 기본 조회 · 30일 이전은 <b className="text-text">회원 전용</b> · 대량 조회 시 크레딧이 사용될 수 있습니다.
         </p>
-        {/* §3 빠른 상태 필터 — 전체/노출/미노출/일부 노출/미확인 (기본값 전체) */}
-        <SegmentedFilter
-          options={STATUS_FILTERS.map(f => ({ value: f.key, label: f.label }))}
-          value={statusFilter}
-          onChange={setStatusFilter}
-        />
-        <PostSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="게시글 제목 검색">
-          <select value={areaFilter} onChange={e => setAreaFilter(e.target.value as AreaFilter)} className={selectClass}>
-            <option value="all">노출 영역: 전체</option>
-            <option value="view">통합검색 미노출만</option>
-            <option value="blog">블로그 미노출만</option>
-            <option value="influencer">인플루언서 미노출만</option>
-          </select>
-          <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)} className={selectClass}>
-            <option value="latest">최신순</option>
-            <option value="oldest">오래된순</option>
-            <option value="title">제목순</option>
-            <option value="missingRate">미노출률순</option>
-          </select>
-        </PostSearchBar>
+        {/* §3 상태·영역·정렬·검색을 한 줄에 모은다(좁은 화면에서만 접힘) — 예전엔 세 줄로 흩어져 있어
+            무엇이 켜져 있는지 보려면 화면 위쪽을 훑어야 했다. 내려받기도 같은 줄에 둔다. */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <SegmentedFilter
+            options={STATUS_FILTERS.map(f => ({ value: f.key, label: f.label }))}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          />
+          <PostSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="게시글 제목 검색">
+            <select value={areaFilter} onChange={e => setAreaFilter(e.target.value as AreaFilter)} className={selectClass}>
+              {AREA_FILTERS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+            </select>
+            <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)} className={selectClass}>
+              {SORT_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+            {teaser ? (
+              <Link href={`${SUBSCRIBE_PATH}?required=${requiredPlan}`} className={`${selectClass} flex items-center no-underline`}>
+                🔒 CSV 내려받기
+              </Link>
+            ) : (
+              <button type="button" onClick={downloadCsv} disabled={displayList.length === 0} className={`${selectClass} disabled:opacity-40 disabled:cursor-not-allowed`}>
+                CSV 내려받기
+              </button>
+            )}
+          </PostSearchBar>
+        </div>
+
+        {/* 적용된 필터 칩 — 어떤 조건이 걸려 있는지 한자리에서 보이고, 하나씩 눌러 뺄 수 있다.
+            "미노출 0건"처럼 보이는 화면의 진짜 이유가 좁혀 둔 필터인 경우가 많다. */}
+        {activeChips.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] text-dim">적용된 필터</span>
+            {activeChips.map(chip => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={chip.clear}
+                className="h-7 pl-2.5 pr-2 rounded-full bg-accent/10 text-accent text-[11px] font-semibold flex items-center gap-1 hover:bg-accent/20 transition cursor-pointer"
+              >
+                {chip.label}
+                <span aria-label="이 필터 해제" className="text-sm leading-none">×</span>
+              </button>
+            ))}
+            <button type="button" onClick={clearAllFilters} className="h-7 px-2 text-[11px] text-dim hover:text-accent transition cursor-pointer">
+              모두 해제
+            </button>
+          </div>
+        )}
       </div>
 
       {extendError && <p className="text-xs text-down">{extendError}</p>}
