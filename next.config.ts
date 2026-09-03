@@ -42,6 +42,14 @@ const nextConfig: NextConfig = {
         destination: '/dashboard/writing/spellcheck',
         permanent: false,
       },
+      {
+        // 기업용 온라인 상담 폼 폐지(2026-09-03) → 이용권의 기업용 섹션으로 보낸다.
+        // 색인돼 있던 공개 페이지라 위 두 건과 달리 영구(308)로 넘겨 검색 신호를 이전한다.
+        // 하위 /enterprise/signup 등 결제 경로는 정확 일치가 아니라 영향받지 않는다.
+        source: '/enterprise',
+        destination: '/subscribe#enterprise',
+        permanent: true,
+      },
     ];
   },
 };

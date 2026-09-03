@@ -363,7 +363,8 @@ export default function SubscribeClient() {
       </div>
 
       {/* 기업용 플랜 — 좌석당 월 과금이라 위의 결제 주기 토글이 적용되지 않는다. 그래서 별도 섹션으로 뗀다. */}
-      <div className="space-y-5">
+      {/* id 는 폐지된 /enterprise 의 리다이렉트 착지점이다(next.config.ts). */}
+      <div id="enterprise" className="scroll-mt-20 space-y-5">
         <div className="text-center space-y-1">
           <h2 className="text-base font-bold">기업용</h2>
           <p className="text-xs text-dim">좀 더 많은 인원이 함께 쓰신다면, 좌석 수만큼 결제하고 멤버를 초대하실 수 있습니다.</p>

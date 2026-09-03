@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { CONTACT_BLOG_URL, CONTACT_EMAIL, contactBlogLabel } from '@/lib/site-contact';
+import { buildInquiryMailto } from '@/lib/enterprise-inquiry';
 
 const FOOTER_LINKS = [
   { href: '/terms', label: '이용약관' },
@@ -25,6 +26,13 @@ export default function Footer() {
                 {link.label}
               </Link>
             ))}
+            {/* 기업용 상담 창구. 온라인 폼(/enterprise)을 폐지해 메일이 유일한 접수 경로다. */}
+            <a
+              href={buildInquiryMailto(CONTACT_EMAIL)}
+              className="text-xs text-footer-dim hover:text-footer-text transition-colors"
+            >
+              기업용 문의
+            </a>
           </nav>
         </div>
 
