@@ -9,7 +9,7 @@
 import { createServiceClient } from './supabase-server';
 import { getAuthUser } from './auth';
 import { isAdmin, isRestrictedByUserId } from './admin';
-import { toPlanKey } from './plans';
+import { planAtLeast, toPlanKey } from './plans';
 
 const CLAUDE_FEEDBACK_MAX_CONTEXT = 30;
 export const CLAUDE_FEEDBACK_MESSAGE_LIMIT = 8000;
@@ -107,7 +107,8 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
   const expires = profile?.subscription_expires_at
     ? new Date(profile.subscription_expires_at).getTime()
     : 0;
-  const isMax = toPlanKey(plan) === 'max' && expires > Date.now();
+  // 등급 비교는 문자열 일치가 아니라 rank 로 한다 — 상위 등급이 생기면 === 는 조용히 막는다.
+  const isMax = planAtLeast(toPlanKey(plan), 'max') && expires > Date.now();
 
   if (!isMax) {
     return null;

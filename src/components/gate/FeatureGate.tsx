@@ -50,5 +50,7 @@ export default function FeatureGate({ feature, children, fallback }: FeatureGate
     );
   }
 
-  return <FeatureLocked required={requiredPlan ?? 'pro'} />;
+  // 등급을 여기서 짓지 않는다 — 'pro' 로 폴백하면 Max 기능에 "Pro 이용권" 이라는
+  // 틀린 안내가 나간다. 조회가 비면 선언을 직접 읽고, 그것도 없어야 최저 등급이다.
+  return <FeatureLocked required={requiredPlan ?? def?.minPlan ?? 'free'} />;
 }

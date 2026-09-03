@@ -20,8 +20,6 @@ export interface SidebarItem {
    * 서버는 Max 로 막는데 배지는 Free 로 나왔다. 등급을 두 곳에 적으면 반드시 갈라진다.
    */
   feature?: FeatureKey;
-  /** @deprecated feature 로 이관 중. 손으로 적은 등급이라 plans.ts 와 갈라질 수 있다. */
-  requiredPlan?: PlanKey;
   authOnly?: boolean;
   /** 아직 구현되지 않은 기능 — 클릭 불가, "준비중" 뱃지만 표시 */
   disabled?: boolean;
@@ -43,8 +41,7 @@ export interface SidebarItem {
  * 등급 정본은 plans.ts 의 FEATURES 이고 이 함수는 읽기만 한다.
  */
 export function itemRequiredPlan(item: SidebarItem): PlanKey | undefined {
-  if (item.feature) return FEATURES[item.feature]?.minPlan;
-  return item.requiredPlan;
+  return item.feature ? FEATURES[item.feature]?.minPlan : undefined;
 }
 
 /**
@@ -79,15 +76,15 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '블로그', href: '#blog', heading: true, subgroup: true },
       { label: '대시보드', href: '/dashboard', authOnly: true, indent: true },
       { label: '노출 현황', href: '/my/missing-posts', feature: 'my.missing-posts', authOnly: true, indent: true },
-      { label: '키워드 순위', href: '/my/keyword-ranking', requiredPlan: 'pro', authOnly: true, indent: true },
-      { label: 'AI 브리핑 · AI 탭 인용', href: '/my/naver-mate', requiredPlan: 'max', authOnly: true, indent: true },
+      { label: '키워드 순위', href: '/my/keyword-ranking', feature: 'my.keyword-ranking', authOnly: true, indent: true },
+      { label: 'AI 브리핑 · AI 탭 인용', href: '/my/naver-mate', feature: 'my.naver-mate', authOnly: true, indent: true },
       { label: '인플루언서', href: '#influencer', heading: true, subgroup: true },
-      { label: '대시보드', href: '/my', requiredPlan: 'max', authOnly: true, indent: true },
-      { label: '토픽', href: '/topics', requiredPlan: 'max', authOnly: true, indent: true },
-      { label: '맞팬 관리', href: '/my/fans', requiredPlan: 'max', authOnly: true, indent: true },
+      { label: '대시보드', href: '/my', feature: 'my.dashboard', authOnly: true, indent: true },
+      { label: '토픽', href: '/topics', feature: 'topics.browse', authOnly: true, indent: true },
+      { label: '맞팬 관리', href: '/my/fans', feature: 'my.fans', authOnly: true, indent: true },
       // 글 심층피드백 = 기존 블로그 심층피드백 + AI글 적합도 + 인플루언서 글 적합도를 한 번의
       // 분석으로 합친 개인화 기능(스펙 4·5). 구조적 정밀 진단 엔진(quality-evaluate)이 본체다.
-      { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', requiredPlan: 'max', authOnly: true, bullet: true },
+      { label: '글 심층피드백', href: '/my/naver-mate/quality-evaluate', feature: 'blog.quality-evaluate', authOnly: true, bullet: true },
     ],
   },
   {
@@ -101,14 +98,14 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { label: '연도별 선정 현황', href: '/stats', indent: true },
       { label: '키워드', href: '#keyword', heading: true, subgroup: true },
       // '키워드 챌린지'(/keywords)는 순위가 아니라 키워드 전체 목록 성격 → 키워드 그룹으로 이동(사용자 요청 2026-08-12)
-      { label: '키워드 챌린지', href: '/keywords', requiredPlan: 'max', authOnly: true, indent: true },
-      { label: '키워드 추천', href: '/keywords/recommend', requiredPlan: 'max', authOnly: true, indent: true },
+      { label: '키워드 챌린지', href: '/keywords', feature: 'keywords.challenge', authOnly: true, indent: true },
+      { label: '키워드 추천', href: '/keywords/recommend', feature: 'keywords.recommend', authOnly: true, indent: true },
       { label: '키워드 검색', href: '/keywords/blogger', indent: true },
-      { label: '대량 키워드 조회', href: '/keywords/bulk', requiredPlan: 'max', authOnly: true, indent: true },
+      { label: '대량 키워드 조회', href: '/keywords/bulk', feature: 'keywords.bulk', authOnly: true, indent: true },
       { label: '인플루언서 리스트', href: '#list', heading: true, subgroup: true },
       // 라벨은 요금제가 아니라 "무엇이 들어있는 목록인지"로 적는다 — 유료 항목엔 이미 자물쇠가 붙는다.
       { label: '기본 명단', href: '/influencers/free-plan', authOnly: true, indent: true },
-      { label: '전체 리스트', href: '/influencers', requiredPlan: 'max', authOnly: true, indent: true },
+      { label: '전체 리스트', href: '/influencers', feature: 'influencers.list', authOnly: true, indent: true },
     ],
   },
   {
@@ -121,23 +118,23 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       // 2026-09-01 무료·비로그인 공개 전환. 등급 정본은 plans.ts 의 writing.spellcheck 다.
       // 비로그인 공개(allowAnonymous) 기능이라 개인화 전용인 '대시보드' 그룹 조건을 만족하지 못해
       // 나머지 /dashboard/writing/* 형제들과 같은 '글쓰기'로 이관(2026-09-02 내비 감사 §5-A).
-      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', requiredPlan: 'free', indent: true },
-      { label: '글감 찾기', href: '/dashboard/writing/content-angles', requiredPlan: 'max', authOnly: true, indent: true },
-      { label: '제목 생성', href: '/dashboard/writing/titles', requiredPlan: 'max', authOnly: true, indent: true },
+      { label: '맞춤법 검사', href: '/dashboard/writing/spellcheck', feature: 'writing.spellcheck', indent: true },
+      { label: '글감 찾기', href: '/dashboard/writing/content-angles', feature: 'writing.content-angles', authOnly: true, indent: true },
+      { label: '제목 생성', href: '/dashboard/writing/titles', feature: 'writing.titles', authOnly: true, indent: true },
       { label: '이미지', href: '#image', heading: true, subgroup: true },
       { label: '컬러 팔레트', href: '/dashboard/writing/color-palette', indent: true },
       { label: '이미지 편집', href: '/image-editor', authOnly: true, indent: true },
       { label: '유튜브·인스타그램', href: '#youtube', heading: true, subgroup: true },
-      { label: '롱폼 분석', href: '/dashboard/content/youtube', requiredPlan: 'max', authOnly: true, indent: true },
-      { label: '릴스·쇼츠 분석', href: '/dashboard/content/shortform', requiredPlan: 'max', authOnly: true, indent: true },
-      { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', requiredPlan: 'pro', authOnly: true, indent: true },
+      { label: '롱폼 분석', href: '/dashboard/content/youtube', feature: 'content.youtube', authOnly: true, indent: true },
+      { label: '릴스·쇼츠 분석', href: '/dashboard/content/shortform', feature: 'content.shortform', authOnly: true, indent: true },
+      { label: '유튜브 음원 추출', href: '/dashboard/youtube-stt', feature: 'content.youtube-stt', authOnly: true, indent: true },
     ],
   },
   {
     label: '구글',
     icon: 'G',
     items: [
-      { label: 'Google 색인 관리', href: '/dashboard/google-indexing', requiredPlan: 'pro', authOnly: true, bullet: true },
+      { label: 'Google 색인 관리', href: '/dashboard/google-indexing', feature: 'google.indexing', authOnly: true, bullet: true },
     ],
   },
 ];
