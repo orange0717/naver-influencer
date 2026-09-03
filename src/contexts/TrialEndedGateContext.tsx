@@ -3,9 +3,9 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 /**
- * PRO 전용 페이지에 PRO 이용권 없이 접근했을 때 뜨는 게이트 모달의 상태.
+ * 유료 전용 페이지에 유료 이용권 없이 접근했을 때 뜨는 게이트 모달의 상태.
  * (2026-08-08 이전에는 "7일 체험 종료/미개시" 두 가지 사유가 있었으나, 자가발급 체험이
- *  폐지되면서 "PRO 이용권이 필요합니다" 단일 안내로 단순화됨 — reason 구분 없음.)
+ *  폐지되면서 "유료 이용권이 필요합니다" 단일 안내로 단순화됨 — reason 구분 없음.)
  */
 interface TrialEndedGateState {
   open: boolean;

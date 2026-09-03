@@ -7,7 +7,7 @@ export default function PrivacyContent() {
         <ul className="list-disc list-inside pl-2 space-y-1">
           <li>회원 가입 및 관리: 회원 식별, 서비스 제공, 고객 상담</li>
           <li>서비스 제공: 인플루언서 대시보드, 키워드 분석 등 서비스 이용</li>
-          <li>결제 처리: 유료 서비스(PRO 이용권) 결제 및 환불 처리</li>
+          <li>결제 처리: 유료 서비스(Pro·Max 이용권) 결제 및 환불 처리</li>
           <li>서비스 개선: 이용 통계 분석, 서비스 품질 향상</li>
         </ul>
       </section>

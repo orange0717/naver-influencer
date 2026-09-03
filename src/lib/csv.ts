@@ -42,7 +42,7 @@ export function todayStamp(): string {
   return `${y}${m}${day}`;
 }
 
-/** 한 번 다운로드 최대 행수 (인플루언서 플랜 정책) */
+/** 한 번 다운로드 최대 행수 (Max 플랜 정책) */
 export const DOWNLOAD_ROW_LIMIT = 500;
 
 /** 브라우저에서 CSV 파일 다운로드 (Blob → a[download] 트리거) */

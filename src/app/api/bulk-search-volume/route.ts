@@ -46,7 +46,7 @@ async function fetchBatch(
 }
 
 export async function POST(request: NextRequest) {
-  // 인플루언서 플랜 이상 필수
+  // Max 플랜 이상 필수
   const auth = await requireFeature(request, 'keywords.bulk');
   if (auth.error) return auth.error;
 

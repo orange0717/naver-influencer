@@ -1,7 +1,7 @@
 /**
  * claude-feedback.ts — 클로드기능 (블로그 글 피드백 채팅) 공용 유틸
  *
- * - 사용자 식별 + INFLUENCER 플랜 게이팅
+ * - 사용자 식별 + Max 플랜 게이팅
  * - 시스템 프롬프트 (블로그 글 피드백·방향 제시 전용)
  * - 컨텍스트 트리머
  */
@@ -9,6 +9,7 @@
 import { createServiceClient } from './supabase-server';
 import { getAuthUser } from './auth';
 import { isAdmin, isRestrictedByUserId } from './admin';
+import { toPlanKey } from './plans';
 
 const CLAUDE_FEEDBACK_MAX_CONTEXT = 30;
 export const CLAUDE_FEEDBACK_MESSAGE_LIMIT = 8000;
@@ -48,14 +49,14 @@ export const CLAUDE_FEEDBACK_SYSTEM_PROMPT = `당신은 네이버 블로그 글�
 /** 무료 체험 메시지 한도 (회원가입한 회원 한정) */
 const CLAUDE_FREE_TRIAL_LIMIT = 3;
 
-type ClaudeFeedbackPlan = 'admin' | 'influencer';
+type ClaudeFeedbackPlan = 'admin' | 'max';
 
 export type ClaudeFeedbackUser = {
   id: string;          // 'auth:' + userId (Supabase Auth 회원만 허용)
   userId: string;      // users.id
   displayLabel: string;
   plan: ClaudeFeedbackPlan;
-  /** 무료 체험(비결제 INFLUENCER) 사용자만 실제 값, 결제자/관리자는 집행 대상 아님 */
+  /** 무료 체험(비결제 Max) 사용자만 실제 값, 결제자/관리자는 집행 대상 아님 */
   freeTrialUsed: number;
   freeTrialLimit: number;
   /** PortOne 결제 이력 보유 여부. true → 모델 분기에서 Opus 사용 가능. admin 수동 부여 INFLUENCER 는 false. */
@@ -63,7 +64,7 @@ export type ClaudeFeedbackUser = {
 };
 
 /**
- * 인플루언서 플랜(또는 관리자)만 반환한다. 비회원·무료·블로거·제한 사용자는 null.
+ * Max 플랜(또는 관리자)만 반환한다. 비회원·무료·Pro·제한 사용자는 null.
  */
 export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFeedbackUser | null> {
   let authUser;
@@ -101,14 +102,14 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
     };
   }
 
-  // INFLUENCER 플랜 + 만료일
+  // Max 플랜 + 만료일
   const plan = profile?.subscription_plan;
   const expires = profile?.subscription_expires_at
     ? new Date(profile.subscription_expires_at).getTime()
     : 0;
-  const isInfluencer = plan === 'INFLUENCER' && expires > Date.now();
+  const isMax = toPlanKey(plan) === 'max' && expires > Date.now();
 
-  if (!isInfluencer) {
+  if (!isMax) {
     return null;
   }
 
@@ -116,7 +117,7 @@ export async function getClaudeFeedbackUser(request: Request): Promise<ClaudeFee
     id: 'auth:' + authUser.userId,
     userId: authUser.userId,
     displayLabel,
-    plan: 'influencer',
+    plan: 'max',
     freeTrialUsed,
     freeTrialLimit: CLAUDE_FREE_TRIAL_LIMIT,
     isPaid,

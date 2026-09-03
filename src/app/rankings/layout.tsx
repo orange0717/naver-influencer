@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createRouteHandlerClient, getUserWithTimeout, createServiceClient } from '@/lib/supabase-server';
+import { planAtLeast, toPlanKey } from '@/lib/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,13 +29,13 @@ export default async function RankingsLayout({
 
   const isAdmin = data?.is_admin === true;
   const expires = data?.subscription_expires_at;
-  const isInfluencer =
-    data?.subscription_plan === 'INFLUENCER' &&
+  const active =
+    planAtLeast(toPlanKey(data?.subscription_plan), 'max') &&
     !!expires &&
     new Date(expires).getTime() > Date.now();
 
-  if (!isAdmin && !isInfluencer) {
-    redirect('/subscribe?required=influencer');
+  if (!isAdmin && !active) {
+    redirect('/subscribe?required=max');
   }
 
   return <>{children}</>;

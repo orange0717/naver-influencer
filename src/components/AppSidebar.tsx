@@ -16,7 +16,7 @@ import {
   getActiveHref,
   type SidebarItem,
 } from '@/lib/sidebar-nav';
-import type { PlanTier } from '@/lib/dashboard-catalog';
+import { toPlanKey, type PlanKey } from '@/lib/plans';
 import { useEffect, useState } from 'react';
 
 const DESKTOP_HIDDEN_HREFS = new Set<string>(['/community', '/subscribe']);
@@ -76,7 +76,7 @@ function NavLink({
 }: {
   item: SidebarItem;
   active: boolean;
-  currentPlan: PlanTier;
+  currentPlan: PlanKey;
   isGuest: boolean;
   /** 인증 조회가 아직 안 끝났거나 백엔드 장애 — 권한을 모르는 상태 */
   authPending: boolean;
@@ -191,7 +191,7 @@ function SidebarContent({
   showFooterLinks = true,
 }: {
   pathname: string;
-  currentPlan: PlanTier;
+  currentPlan: PlanKey;
   isGuest: boolean;
   authPending: boolean;
   isInDesktopApp: boolean;
@@ -327,12 +327,9 @@ export default function AppSidebar() {
   // 비회원 — 메뉴는 보이되 회원 전용 항목은 클릭 시 모달로 유도
   const isGuest = !user.id;
 
-  const currentPlan: PlanTier = (() => {
-    if (!user.subscriptionActive) return 'free';
-    if (user.subscriptionPlan === 'INFLUENCER') return 'influencer';
-    if (user.subscriptionPlan === 'BLOGGER') return 'blogger';
-    return 'free';
-  })();
+  const currentPlan: PlanKey = user.subscriptionActive
+    ? toPlanKey(user.subscriptionPlan)
+    : 'free';
 
   return (
     <>

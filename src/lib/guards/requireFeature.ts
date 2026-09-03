@@ -60,26 +60,26 @@ export async function checkFeatureRequest(
     console.error(`[requireFeature] 등록되지 않은 기능 키: ${feature}`);
   }
 
-  const requiredPlan: PlanKey = def?.minPlan ?? 'FREE';
+  const requiredPlan: PlanKey = def?.minPlan ?? 'free';
 
   const authUser = await getAuthUser(request);
   if (!authUser) {
     // 등급을 요구하는 기능은 비로그인 허용 선언이 있어도 열지 않는다.
     // 두 선언이 엇갈리면 더 좁은 쪽을 따른다.
-    if (def?.allowAnonymous && requiredPlan === 'FREE') {
-      return { authUser: null, plan: 'FREE' };
+    if (def?.allowAnonymous && requiredPlan === 'free') {
+      return { authUser: null, plan: 'free' };
     }
     return {
       error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }),
     };
   }
 
-  if (requiredPlan === 'FREE') {
+  if (requiredPlan === 'free') {
     return { authUser, plan: await getPlanKeyByUserId(authUser.userId) };
   }
 
   if (authUser.user.is_admin === true) {
-    return { authUser, plan: 'INFLUENCER' };
+    return { authUser, plan: 'max' };
   }
 
   if (await isRestrictedByUserId(authUser.userId)) {
@@ -98,7 +98,7 @@ export async function checkFeatureRequest(
         {
           error: lockedMessage(requiredPlan),
           // 화면이 어느 이용권을 안내할지 고르는 데만 쓴다. 문구에 그대로 노출하지 않는다.
-          requiresPlan: requiredPlan.toLowerCase(),
+          requiresPlan: requiredPlan,
           featureLocked: true,
         },
         { status: 403 },

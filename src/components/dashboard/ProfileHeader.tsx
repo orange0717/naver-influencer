@@ -3,6 +3,7 @@ import Modal from '@/components/ui/Modal';
 
 import { ReactNode, useRef, useState } from 'react';
 import { formatCount, formatDate } from '@/lib/format';
+import { planLabel, toPlanKey } from '@/lib/plans';
 
 interface ProfileHeaderProps {
   displayName: string;
@@ -191,9 +192,11 @@ export default function ProfileHeader({
             {subscribed && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-accent bg-accent/10 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent animate-soft-pulse" />
-                {subscriptionPlan === 'INFLUENCER' ? '인플루언서 PRO 이용 중'
-                  : subscriptionPlan === 'BLOGGER' ? '블로거 PRO 이용 중'
-                  : 'PRO 이용 중'}
+                {/* 저장값이 알 수 없는 값이면 등급을 단정하지 않는다 — 구독 중인 사람에게
+                    'Free 이용 중'이라고 적히는 쪽이 더 나쁘다. */}
+                {toPlanKey(subscriptionPlan) === 'free'
+                  ? '유료 이용 중'
+                  : `${planLabel(toPlanKey(subscriptionPlan))} 이용 중`}
                 {subscriptionExpiresAt && (
                   <span className="text-accent/70 font-normal ml-0.5">
                     · ~{formatDate(subscriptionExpiresAt)}

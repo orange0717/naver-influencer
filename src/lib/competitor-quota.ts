@@ -1,25 +1,28 @@
 import { createServiceClient } from './supabase-server';
-
-export type PlanTier = 'free' | 'blogger' | 'influencer';
+import { toPlanKey, type PlanKey } from './plans';
 
 /**
- * 경쟁자 분석은 예비 인플루언서 이용권부터 열리는 기능이다(plans.ts: competitor.analysis).
+ * 경쟁자 분석은 Pro 플랜부터 열리는 기능이다(plans.ts: competitor.analysis).
  * 2026-09-01 이전에는 무료 회원에게도 공용 무료 풀에서 하루 몇 회를 내줬는데, 이용권 페이지는
  * 무료 칸을 비워 두고 있어 서로 어긋났다. 이제 무료는 0회 · 이용권 보유자는 무제한이라
  * 셀 것이 없어 카운터를 두지 않는다.
  */
-export function competitorAllowed(plan: PlanTier): boolean {
+export function competitorAllowed(plan: PlanKey): boolean {
   return plan !== 'free';
 }
 
 /**
- * 쿠키 유저(naver_id/blog_id) 기반 플랜 티어 조회
- * users.subscription_plan + subscription_expires_at 기반
+ * 쿠키 유저(naver_id/blog_id) 기반 등급 조회.
+ * users.subscription_plan + subscription_expires_at 기반.
+ *
+ * 🚨 cookieUser.type 의 'blogger' | 'influencer' 는 결제 등급이 아니라 **네이버 인플루언서
+ * 선정 여부**(도메인 정체성, auth.ts)다. 반환값 PlanKey 와 글자가 비슷하지만 다른 축이므로
+ * 둘을 섞지 말 것.
  */
 export async function getPlanTierByCookieUser(cookieUser: {
   id: string;
   type: 'blogger' | 'influencer';
-}): Promise<PlanTier> {
+}): Promise<PlanKey> {
   const supabase = createServiceClient();
   let userRow: {
     subscription_plan: string | null;
@@ -70,8 +73,11 @@ export async function getPlanTierByCookieUser(cookieUser: {
   ) {
     return 'free';
   }
+  // 🚨 부분일치(includes)는 의도적으로 유지한다. toPlanKey 의 완전일치와 달리
+  // 'INFLUENCER_3M' 같은 값도 받아 주는데, 여기만 그렇게 관대했다. 등급 명칭 변경
+  // 작업에서 완전일치로 좁히면 그런 행이 있을 경우 권한이 조용히 사라지므로 손대지 않았다.
   const plan = userRow.subscription_plan.toUpperCase();
-  if (plan.includes('INFLUENCER')) return 'influencer';
-  if (plan.includes('BLOGGER')) return 'blogger';
+  if (plan.includes('INFLUENCER')) return 'max';
+  if (plan.includes('BLOGGER')) return 'pro';
   return 'free';
 }

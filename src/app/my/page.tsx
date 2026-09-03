@@ -77,7 +77,7 @@ export default async function MyDashboard({ searchParams }: { searchParams: Prom
     // 여기서는 checkFeaturePage 를 쓰지 않는다 — 위의 getUserWithTimeout 재시도를 우회해
     // auth 지연 시 로그인 사용자를 비로그인으로 오인하게 되기 때문이다.
     const required = FEATURES['my.dashboard'].minPlan;
-    const currentPlan = ctx.hasActivePaidPlan ? toPlanKey(ctx.plan) : 'FREE';
+    const currentPlan = ctx.hasActivePaidPlan ? toPlanKey(ctx.plan) : 'free';
     if (!ctx.isAdminUser && !planAtLeast(currentPlan, required)) {
       return <FeatureLocked required={required} />;
     }

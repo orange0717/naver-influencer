@@ -7,6 +7,7 @@ import CategoryFilter from '@/components/CategoryFilter';
 import BookmarkButton from '@/components/keywords/BookmarkButton';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { useAuth } from '@/hooks/useAuth';
+import { planAtLeast, toPlanKey } from '@/lib/plans';
 import { controlBoxClass } from '@/components/analytics/controls';
 import StatusBadge from '@/components/analytics/StatusBadge';
 import { ANALYTICS_SCOPE } from '@/components/analytics/tokens';
@@ -62,7 +63,7 @@ interface RelatedKeyword {
 export default function Client() {
   const { user } = useAuth();
   // 진입 자체는 서버(checkFeaturePage 'keywords.challenge')가 막는다. 여기서는 화면 안 분기만 본다.
-  const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+  const canDownload = user.isAdmin || planAtLeast(toPlanKey(user.subscriptionPlan), 'max');
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {

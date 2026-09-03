@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useTrialEndedGate } from '@/contexts/TrialEndedGateContext';
 import Modal from '@/components/ui/Modal';
+import { planLabel } from '@/lib/plans';
 
 const FEATURE_LINES = (
   <>
@@ -12,7 +13,7 @@ const FEATURE_LINES = (
 );
 
 /**
- * PRO 전용 페이지 게이트 모달 — "PRO 이용권이 필요합니다" 안내 + 구매 유도.
+ * 유료 전용 페이지 게이트 모달 — "유료 이용권이 필요합니다" 안내 + 구매 유도.
  * 2026-08-08 프리미엄 모델 전환: 7일 자가발급 체험 폐지에 따라 offer/ended 두 분기를 없애고
  * 단일 안내로 통합. 가벼운 기능은 이 모달 대신 하루 5회 무료 풀(free-quota.ts)로 체험 가능하다.
  */
@@ -49,10 +50,10 @@ export default function TrialEndedModal() {
         </button>
 
         <h2 id="pro-required-title" className="text-lg font-bold text-text text-center mb-3">
-          PRO 이용권이 필요합니다
+          유료 이용권이 필요합니다
         </h2>
         <p className="text-sm text-dim text-center mb-4 leading-relaxed">
-          이 기능은 대량 데이터·AI 분석이 필요해 PRO 이용권 전용입니다.
+          이 기능은 대량 데이터·AI 분석이 필요해 {planLabel('pro')} 이상 이용권 전용입니다.
           <br /><br />
           이용권을 구매하시면 N인플의 모든 기능을 계속 이용하실 수 있습니다.
           <br /><br />

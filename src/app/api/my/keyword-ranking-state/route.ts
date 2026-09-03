@@ -48,7 +48,7 @@ async function guard(request: NextRequest): Promise<{ res: NextResponse } | { us
 
 /**
  * GET: 마운트 시 DB에서 (블로그 단위) 전체 상태 복원 (내 키워드 순위 분석의 진입 데이터)
- * 키워드 순위는 예비 인플루언서 이용권 기능이다. 예전엔 X-View-Token 우회로 무료 회원에게
+ * 키워드 순위는 Pro 이용권 기능이다. 예전엔 X-View-Token 우회로 무료 회원에게
  * 하루 3회 열려 있었으나, 무료와 유료를 가르기로 해 미들웨어의 /api/my 유료 게이트에 맡긴다.
  */
 export async function GET(request: NextRequest) {

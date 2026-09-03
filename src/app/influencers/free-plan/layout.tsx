@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: '리스트(무료) — N인플',
-  description: '이름·프로필 링크·선정일자·주제를 담은 무료 플랜 인플루언서 명단 — 팬수·챌린지 데이터는 포함되지 않습니다.',
+  description: '이름·프로필 링크·선정일자·주제를 담은 Free 플랜 인플루언서 명단 — 팬수·챌린지 데이터는 포함되지 않습니다.',
+  // keywords 는 등급 표시명이 아니라 사람들이 실제로 검색하는 말이라 한글을 그대로 둔다.
   keywords: ['네이버 인플루언서', '무료 플랜', '인플루언서 명단'],
   alternates: { canonical: 'https://ninfle.kr/influencers/free-plan' },
   openGraph: {

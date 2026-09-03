@@ -301,8 +301,8 @@ export default function ClaudeChatClient() {
   };
 
   const remaining = useMemo(() => INPUT_LIMIT - input.length, [input.length]);
-  const planLabel =
-    plan === 'admin' ? '관리자' : '인플루언서 플랜';
+  const planText =
+    plan === 'admin' ? '관리자' : 'Max 플랜';
   const modelLabel = isPaid
     ? 'Claude Opus 4.6 · 정밀 피드백 모드'
     : 'Claude Haiku 4.5 · 빠른 피드백 모드';
@@ -421,7 +421,7 @@ export default function ClaudeChatClient() {
 
         <div className="px-4 py-3 border-t border-border space-y-2">
           <div className="rounded-lg bg-up/10 border border-up/30 px-3 py-2">
-            <p className="text-[11px] font-bold text-up">{planLabel} · 무제한 이용 가능</p>
+            <p className="text-[11px] font-bold text-up">{planText} · 무제한 이용 가능</p>
           </div>
           <p className="text-[11px] text-dim leading-relaxed">
             맞춤법은{' '}

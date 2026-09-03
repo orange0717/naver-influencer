@@ -1,12 +1,10 @@
-import type { PlanTier } from './dashboard-catalog';
+import { planAtLeast, type PlanKey } from './plans';
 
-const PLAN_RANK: Record<PlanTier, number> = { free: 0, blogger: 1, influencer: 2 };
-
-export function canAccess(required: PlanTier | undefined, current: PlanTier): boolean {
-  if (!required || required === 'free') return true;
-  return PLAN_RANK[current] >= PLAN_RANK[required];
+export function canAccess(required: PlanKey | undefined, current: PlanKey): boolean {
+  if (!required) return true;
+  return planAtLeast(current, required);
 }
 
-export function planHighlight(plan: PlanTier): string {
-  return plan === 'influencer' ? 'influencer' : 'blogger';
+export function planHighlight(plan: PlanKey): string {
+  return plan === 'max' ? 'max' : 'pro';
 }

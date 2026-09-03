@@ -42,7 +42,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** analyze-topic-insights와 동일한 조건(INFLUENCER 플랜 활성) → 본인 blog_id만 대상
+/** analyze-topic-insights와 동일한 조건(Max 플랜 활성) → 본인 blog_id만 대상
  *  influencerId도 함께 해석한다(aggregate-ninfl-member-ranks와 동일 패턴) — 토픽 성과의
  *  키워드챌린지 TOP3 집계는 influencer_id 기준인 keyword_rankings를 조회해야 하기 때문. */
 async function resolveTargets(supabase: SupabaseClient): Promise<Target[]> {

@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     const ip = getClientIp(req);
     if (await communityLimiter.check(ip)) return rateLimitResponse();
 
-    // 커뮤니티 = 예비 인플루언서+ 플랜 전용 (관리자 우회). 데모 세션은 정식 회원이 아니라 자동 401.
+    // 커뮤니티 = Pro 이상 플랜 전용 (관리자 우회). 데모 세션은 정식 회원이 아니라 자동 401.
     const paid = await requirePaidPlan(req);
     if (paid.error) return paid.error;
 

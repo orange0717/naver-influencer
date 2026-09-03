@@ -212,7 +212,7 @@ export const contentAnalysisLimiter = createRateLimiter({ limit: 5, windowMs: 5 
  *  임의 blog_id 를 반복 대입해 유료 네이버 API 쿼터/비용을 소진하는 남용 차단. */
 export const blogQualityCheckLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60 * 1000 });
 
-/** 대량/연관 키워드 조회(인플루언서 플랜): 1건당 네이버 검색광고 API 다중 호출 — 사용자당 5분에 20회.
+/** 대량/연관 키워드 조회(Max 플랜): 1건당 네이버 검색광고 API 다중 호출 — 사용자당 5분에 20회.
  *  유료 회원이라도 자동화로 네이버 API 쿼터를 소진하지 못하도록 사용자 단위 상한 적용. */
 export const bulkKeywordLimiter = createRateLimiter({ limit: 20, windowMs: 5 * 60 * 1000 });
 

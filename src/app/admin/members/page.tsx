@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { controlBoxClass, filterButtonClass } from '@/components/analytics/controls';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 import Pagination from '@/components/analytics/Pagination';
+import { planLabel, toPlanKey } from '@/lib/plans';
 
 interface Member {
   id: string;
@@ -127,8 +128,8 @@ export default function AdminMembersPage() {
 
     const label =
       planChoice === 'FREE'
-        ? '무료(구독 해제)'
-        : `${planChoice === 'INFLUENCER' ? '인플루언서' : '블로거'} · ${planDuration}일`;
+        ? `${planLabel('free')}(구독 해제)`
+        : `${planLabel(toPlanKey(planChoice))} · ${planDuration}일`;
     if (!window.confirm(`"${detail.user.nickname || detail.user.email}" 님을 ${label}로 변경하시겠습니까?`)) return;
 
     setPlanSaving(true);
@@ -164,7 +165,7 @@ export default function AdminMembersPage() {
   const grantTrial = async () => {
     if (!detail || grantingTrial) return;
     const label = detail.user.nickname || detail.user.email;
-    if (!window.confirm(`"${label}" 님에게 7일 무료 이용권을 지급하시겠습니까?`)) return;
+    if (!window.confirm(`"${label}" 님에게 ${planLabel('max')} 7일 체험을 지급하시겠습니까?`)) return;
 
     setGrantingTrial(true);
     try {
@@ -187,7 +188,7 @@ export default function AdminMembersPage() {
         },
       });
       fetchMembers();
-      alert(`7일 무료 이용권이 지급되었습니다. (만료: ${new Date(data.expiresAt).toLocaleString('ko-KR')})`);
+      alert(`${planLabel('max')} 7일 체험이 지급되었습니다. (만료: ${new Date(data.expiresAt).toLocaleString('ko-KR')})`);
     } catch {
       alert('네트워크 오류');
     } finally {
@@ -550,7 +551,7 @@ export default function AdminMembersPage() {
                       disabled={grantingTrial}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold bg-accent/10 text-accent hover:bg-accent/20 transition cursor-pointer disabled:opacity-50"
                     >
-                      {grantingTrial ? '지급 중...' : '7일 무료 이용권 지급'}
+                      {grantingTrial ? '지급 중...' : `${planLabel('max')} 7일 체험 지급`}
                     </button>
                   </div>
                   <div>
@@ -581,9 +582,9 @@ export default function AdminMembersPage() {
                     <div className="flex gap-1.5">
                       <SegmentedFilter
                         options={[
-                          { value: 'INFLUENCER' as const, label: '인플루언서' },
-                          { value: 'BLOGGER' as const, label: '블로거' },
-                          { value: 'FREE' as const, label: '무료(해제)' },
+                          { value: 'INFLUENCER' as const, label: planLabel('max') },
+                          { value: 'BLOGGER' as const, label: planLabel('pro') },
+                          { value: 'FREE' as const, label: `${planLabel('free')}(해제)` },
                         ]}
                         value={planChoice}
                         onChange={setPlanChoice}

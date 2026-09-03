@@ -14,7 +14,7 @@ export default function TermsContent() {
         <ol className="list-decimal list-inside space-y-1 pl-2">
           <li>&quot;서비스&quot;란 N인플이 제공하는 네이버 인플루언서 키워드 챌린지 분석, 순위 추적, 대시보드 등 일체의 서비스를 말합니다.</li>
           <li>&quot;회원&quot;이란 서비스에 가입하여 이용계약을 체결한 자를 말합니다.</li>
-          <li>&quot;유료 서비스&quot;란 PRO 이용권 구매를 통해 이용할 수 있는 대시보드 기능을 말합니다.</li>
+          <li>&quot;유료 서비스&quot;란 Pro 또는 Max 이용권 구매를 통해 이용할 수 있는 대시보드 기능을 말합니다.</li>
         </ol>
       </section>
 
@@ -54,7 +54,7 @@ export default function TermsContent() {
       <section className="space-y-2">
         <h2 className="text-base font-bold text-text">제6조 (유료 서비스)</h2>
         <ol className="list-decimal list-inside space-y-1 pl-2">
-          <li>예비 인플루언서 이용권(1/3/6/9/12개월) 또는 인플루언서 이용권(1/3/6/9/12개월) 구매 시 해당 플랜의 기능을 이용할 수 있습니다.</li>
+          <li>Pro 이용권(1/3/6/9/12개월) 또는 Max 이용권(1/3/6/9/12개월) 구매 시 해당 플랜의 기능을 이용할 수 있습니다.</li>
           <li>이용권 가격 및 기간은 이용권 페이지에 표시된 바에 따릅니다.</li>
           <li>무료로 제공되는 기능은 회원이면 횟수 제한 없이 이용할 수 있습니다. 다만 N인플 AI 대화와 블로그 기본 분석은 비회원 하루 3회, 회원 하루 10회로 제한되며, 이 한도는 회사가 이용권 페이지에 고지한 바에 따라 변경될 수 있습니다.</li>
         </ol>

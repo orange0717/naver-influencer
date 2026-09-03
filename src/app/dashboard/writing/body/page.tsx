@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createRouteHandlerClient, getUserWithTimeout, createServiceClient } from '@/lib/supabase-server';
 import { isAdmin } from '@/lib/admin';
+import { planAtLeast, toPlanKey } from '@/lib/plans';
 import BodyClient from './BodyClient';
 
 export const dynamic = 'force-dynamic';
@@ -39,11 +40,11 @@ export default async function BodyPage() {
       .eq('auth_id', authUser.id)
       .single();
     const expires = data?.subscription_expires_at;
-    const isInfluencer =
-      data?.subscription_plan === 'INFLUENCER' &&
+    const active =
+      planAtLeast(toPlanKey(data?.subscription_plan), 'max') &&
       !!expires &&
       new Date(expires).getTime() > Date.now();
-    if (!isInfluencer) redirect('/subscribe?required=influencer');
+    if (!active) redirect('/subscribe?required=max');
   }
 
   return <BodyClient />;

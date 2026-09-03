@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { canAccess, planHighlight } from '@/lib/plan-access';
 import { SIDEBAR_GROUPS, type SidebarItem } from '@/lib/sidebar-nav';
-import type { PlanTier } from '@/lib/dashboard-catalog';
+import { toPlanKey, type PlanKey } from '@/lib/plans';
 
 interface SearchableItem extends SidebarItem {
   groupLabel: string;
@@ -50,12 +50,9 @@ export default function HeaderSearch() {
     else setQuery('');
   }, [open]);
 
-  const currentPlan: PlanTier = (() => {
-    if (!user.subscriptionActive) return 'free';
-    if (user.subscriptionPlan === 'INFLUENCER') return 'influencer';
-    if (user.subscriptionPlan === 'BLOGGER') return 'blogger';
-    return 'free';
-  })();
+  const currentPlan: PlanKey = user.subscriptionActive
+    ? toPlanKey(user.subscriptionPlan)
+    : 'free';
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

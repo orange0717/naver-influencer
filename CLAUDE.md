@@ -74,21 +74,27 @@ src/
     ├── supabase.ts       # Supabase 클라이언트 (anon)
     ├── supabase-server.ts # Supabase 서버 클라이언트 (service_role)
     ├── subscription.ts   # 구독 확인/활성화 로직
-    ├── payment-config.ts # 플랜 & 기간 상수 (BLOGGER/INFLUENCER 티어, getPlan/calculateNextChargeAt)
+    ├── plans.ts          # 등급 단일 출처 (PLANS/planLabel/planAtLeast/toPlanKey/toDbPlan)
+    ├── payment-config.ts # 플랜 & 기간 상수 (plan_key 는 결제 이력이라 BLOGGER_*/INFLUENCER_* 유지)
     ├── crawler.ts        # 크롤러 공통 유틸 (fetchWithRetry, verifyCronSecret, crawlJob)
     └── chart-colors.ts   # Recharts 차트 색상 상수
 ```
 
 ## 구독 모델 (프리미엄 모델, 2026-08 전환 · 상세는 src/lib/payment-config.ts)
-> ⚠️ 과거 "PERSONAL/INFLUENCER/AGENCY 3플랜 + 7일 체험 + src/lib/plans.ts"는 stale. 현재는 아래 2티어 + 하루 무료다.
-- **예비 인플루언서 (tier: blogger)**: ₩5,500(1개월)~₩55,000(12개월), 기간 1/3/6/9/12개월
-- **인플루언서 (tier: influencer)**: ₩9,900(1개월)~, 기간 1/3/6/9/12개월 — 인플루언서 순위·챌린지·AI 생성
-- **무료(비구독/회원)**: 하루 3회(MEMBER/ANON_DAILY_FREE_LIMIT). PRO 이용권 보유자는 무제한
+> ⚠️ 과거 "PERSONAL/INFLUENCER/AGENCY 3플랜 + 7일 체험"은 stale. 현재는 아래 2티어(유료) + Free 다.
+등급 정의의 단일 출처는 `src/lib/plans.ts` 의 `PLANS` 다(code·label·rank·색상·DB 저장값).
+등급 비교는 문자열이 아니라 `planAtLeast(current, required)` 의 rank 숫자로만 한다.
+- **Pro (code: pro, rank 1)**: ₩5,500(1개월)~₩55,000(12개월), 기간 1/3/6/9/12개월
+- **Max (code: max, rank 2)**: ₩9,900(1개월)~, 기간 1/3/6/9/12개월 — 인플루언서 순위·챌린지·AI 생성
+- **Free (code: free, rank 0)**: 하루 3회(MEMBER/ANON_DAILY_FREE_LIMIT). 유료 이용권 보유자는 무제한
+- 🚨 **DB `users.subscription_plan` 저장값은 여전히 `BLOGGER`/`INFLUENCER`/NULL 이다.**
+  표시명만 바뀌었고 저장값은 결제 이력·웹훅과 묶여 있어 마이그레이션하지 않았다.
+  경계 변환은 `toPlanKey()`(읽기) / `toDbPlan()`(쓰기) 로만 할 것 — `toUpperCase()` 로 만들지 말 것
 - **유료 AI 생성 남용 상한**: 사용자당 하루 PAID_AI_DAILY_CAP회(기본 50, free-quota.ts)
 - **결제**: PortOne V2 + 한국결제네트웍스(KPN) — 카드 단건 결제, prepare/complete/webhook 3단계 검증.
   플랜은 서버 저장값 payment_intents.plan_key 로만 결정(클라 planKey 불신) + 3중 금액검증, users 페이월 동기화
 - **환불**: 7일 이내 미이용 시 전액 환불
-- **상세**: src/lib/plans.ts (PlanInfo, PeriodOption, calculatePrice)
+- **금액·기간 상세**: src/lib/payment-config.ts (PeriodOption, calculatePrice)
 
 ## 크론잡 스케줄 (vercel.json)
 | UTC | KST | 작업 | 설명 |

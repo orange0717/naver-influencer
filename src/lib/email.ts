@@ -246,7 +246,7 @@ export async function sendSubscriptionExpiredEmail(to: string, displayName: stri
         <div style="padding:32px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px">
           <p style="font-size:16px;font-weight:bold;margin:0 0 16px">${safeName}님, 안녕하세요.</p>
           <p style="font-size:14px;line-height:1.7;color:#555;margin:0 0 24px">
-            구독 기간이 만료되어 무료 플랜으로 전환되었습니다.<br>
+            구독 기간이 만료되어 Free 플랜으로 전환되었습니다.<br>
             계속해서 키워드 챌린지 순위·경쟁자 분석·실시간 알림을 이용하시려면 갱신해주세요.
           </p>
           <div style="text-align:center;margin:24px 0">

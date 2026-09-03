@@ -11,7 +11,7 @@ import { getFreeDailyLimit } from './settings';
  * 호출당 실제 비용이 나가는 둘뿐이다 — N인플 AI 대화(OpenAI)와 블로그 기본 분석(네이버 크롤링).
  * 비회원 3회 / 회원 10회로 갈라 "가입하면 더 많이"라는 안내가 사실이 되게 한다.
  *
- * - PRO 이용권 보유자는 이 카운터를 아예 타지 않는다 (무제한).
+ * - 유료 이용권(Pro 이상) 보유자는 이 카운터를 아예 타지 않는다 (무제한).
  * - 로그인 회원은 user_id 단위로, 비회원은 IP+UA 해시 단위로 카운트한다.
  * - 카운트는 "기능별"이 아니라 subject 전체 합산 — 여러 기능을 오가며 써도 하루 총 한도만 소모한다.
  * - Supabase RPC(`consume_free_daily_quota`, migration-138) 기반. anon-quota.ts와 동일하게
@@ -45,7 +45,7 @@ function memberSubjectKey(userId: string): string {
 /**
  * 무료 일일 한도를 1회 소모한다.
  *
- * @param opts.isPro true면 즉시 통과(카운트 안 함) — PRO 이용권 보유자
+ * @param opts.isPro true면 즉시 통과(카운트 안 함) — 유료 이용권(Pro 이상) 보유자
  * @param opts.userId 로그인/쿠키 사용자면 전달 (회원 풀). 이 경우 request는 안 써도 되므로 생략 가능.
  * @param opts.request 비회원 풀(IP+UA)일 때만 필요 — userId가 없으면 필수.
  */

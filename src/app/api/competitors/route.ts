@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCookieUser } from '@/lib/auth';
 import { getPlanTierByCookieUser, competitorAllowed } from '@/lib/competitor-quota';
+import { planLabel } from '@/lib/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       if (!competitorAllowed(plan)) {
         return NextResponse.json(
           {
-            error: '경쟁자 분석은 예비 인플루언서 이용권부터 이용할 수 있습니다.',
+            error: `경쟁자 분석은 ${planLabel('pro')} 이용권부터 이용할 수 있습니다.`,
             requiresPlan: true,
           },
           { status: 403 },

@@ -12,7 +12,7 @@ import { cacheGet, cacheSet } from '@/lib/kv-cache';
 // 아니다(캐시가 비어있는 최초 요청은 여전히 타임아웃 위험 있음).
 const CACHE_TTL_SECONDS = 300;
 
-/** 무료 플랜 명단 전용 — 이름·프로필 링크·선정일자·주제만 조회/응답한다 (팬수·챌린지 데이터는 미포함) */
+/** Free 플랜 명단 전용 — 이름·프로필 링크·선정일자·주제만 조회/응답한다 (팬수·챌린지 데이터는 미포함) */
 const LIST_JSON_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
   Pragma: 'no-cache',
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     logger.error('influencers-free-plan', 'data fetch error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
-      { error: '무료 플랜 인플루언서 명단을 불러오는 중 오류가 발생했습니다.' },
+      { error: 'Free 플랜 인플루언서 명단을 불러오는 중 오류가 발생했습니다.' },
       { status: 500, headers: LIST_JSON_HEADERS },
     );
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/admin';
 import { generateCouponCode } from '@/lib/coupons';
+import { planLabel, toPlanKey } from '@/lib/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       .from('coupons')
       .insert({
         code,
-        name: `${durationDays}일 무료 이용권 (즉시지급)`,
+        name: `${planLabel(toPlanKey(plan))} ${durationDays}일 체험 (즉시지급)`,
         target_email: targetEmail,
         plan,
         duration_days: durationDays,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatDateTimeShort as formatDate } from '@/lib/format';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import { planLabel, toPlanKey } from '@/lib/plans';
 
 type Plan = 'INFLUENCER' | 'BLOGGER';
 
@@ -109,8 +110,8 @@ export default function AdminCouponsPage() {
           <p className="text-xs font-bold text-dim mb-2">플랜</p>
           <SegmentedFilter
             options={[
-              { value: 'INFLUENCER' as Plan, label: '인플루언서' },
-              { value: 'BLOGGER' as Plan, label: '블로거' },
+              { value: 'INFLUENCER' as Plan, label: planLabel('max') },
+              { value: 'BLOGGER' as Plan, label: planLabel('pro') },
             ]}
             value={plan}
             onChange={setPlan}
@@ -193,7 +194,7 @@ export default function AdminCouponsPage() {
                   <td className="px-4 py-2.5 font-mono font-semibold">{c.code}</td>
                   <td className="px-3 py-2.5">{c.name}</td>
                   <td className="px-3 py-2.5 text-dim">{c.target_email}</td>
-                  <td className="px-3 py-2.5 text-dim">{c.plan === 'INFLUENCER' ? '인플루언서' : '블로거'}</td>
+                  <td className="px-3 py-2.5 text-dim">{planLabel(toPlanKey(c.plan))}</td>
                   <td className="px-3 py-2.5 text-center font-rank">{c.duration_days}일</td>
                   <td className="px-3 py-2.5 text-center">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.className}`}>{status.label}</span>

@@ -10,7 +10,7 @@ interface FansResponse { summary: Summary; syncState: 'never' | 'ok' | 'failed' 
 
 /**
  * /my 대시보드용 팬 관계 요약 카드(스펙 15).
- * - 인플루언서 등급이 아니거나 오류면 렌더하지 않음(대시보드를 어지럽히지 않음).
+ * - Max 등급이 아니거나 오류면 렌더하지 않음(대시보드를 어지럽히지 않음).
  * - '확인 중/확인 실패'는 데이터셋 수준 상태로 정직하게 표시.
  */
 export default function FanRelationSummaryCard() {

@@ -8,7 +8,7 @@
  *   이쪽은 좌석당 과금(기업), 저쪽은 기간별 정액(개인)이다.
  */
 
-import type { PlanTier } from './dashboard-catalog';
+import { planLabel, type PlanKey } from './plans';
 
 export const CURRENCY = 'KRW';
 export const BILLING_CYCLE = 'MONTHLY';
@@ -28,14 +28,19 @@ export const PLAN_IDS: readonly PlanId[] = ['BASIC', 'PRO'];
  * 기업 전용 기능표를 새로 만들지 않고 개인 요금제의 티어 게이팅(sidebar-nav requiredPlan)을
  * 그대로 재사용한다 — 단가도 개인 요금제와 동일하다(5,500 / 9,900).
  */
-export const PLAN_TIER: Record<PlanId, PlanTier> = {
-  BASIC: 'blogger',
-  PRO: 'influencer',
+export const PLAN_TIER: Record<PlanId, PlanKey> = {
+  BASIC: 'pro',
+  PRO: 'max',
 };
 
+/**
+ * 기업 플랜 표시명.
+ * 🚨 PlanId('BASIC'/'PRO')는 orgs.plan_id 저장값(CHECK 제약)이라 바꾸지 않는다.
+ * 화면에는 그 좌석이 실제로 여는 등급 이름을 보여준다 — 기업 'PRO'는 개인 Pro 가 아니라 Max 다.
+ */
 export const PLAN_LABEL: Record<PlanId, string> = {
-  BASIC: 'BASIC',
-  PRO: 'PRO',
+  BASIC: planLabel(PLAN_TIER.BASIC),
+  PRO: planLabel(PLAN_TIER.PRO),
 };
 
 /** 화면 설명 문구. 실제 차단은 sidebar-nav 의 requiredPlan(PLAN_TIER)이 하므로 여기와 어긋나지 않게 할 것. */

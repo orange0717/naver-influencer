@@ -6,6 +6,7 @@ import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import KeywordDetailDrawer from './KeywordDetailDrawer';
 import { useAuth } from '@/hooks/useAuth';
+import { planAtLeast, toPlanKey } from '@/lib/plans';
 import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import BlogRankingClient from '@/app/keywords/blog-ranking/BlogRankingClient';
@@ -211,7 +212,7 @@ export default function KeywordRankingSection() {
   // 미노출 화면(MissingPostsSection)은 같은 상황에서 이미 로그인 게이트를 띄우고 있어서 동작을 맞춘다.
   const { openGate } = useMemberOnlyGate();
   const isLoggedIn = !!(user.id || user.authId);
-  const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+  const canDownload = user.isAdmin || planAtLeast(toPlanKey(user.subscriptionPlan), 'max');
 
   // CSV도 화면과 동일하게 (포스팅 제목, 키워드)를 각각 독립 컬럼으로 내보낸다.
   const handleDownload = () => {

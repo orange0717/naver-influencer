@@ -255,7 +255,7 @@ const FAQS = [
   },
   {
     q: '모든 기능이 무료인가요?',
-    a: '인플루언서 리스트·검색량 조회·URL 분석·맞춤법 검사 등 핵심 도구는 누구나 무료로 이용할 수 있습니다. 내 키워드 순위 추적·경쟁자 분석·제목 생성 같은 기능은 블로거 플랜(월 5,500원)부터, 키워드 챌린지·블로그 글 피드백 같은 심층 기능은 인플루언서 플랜(월 9,900원)에서 이용할 수 있습니다.',
+    a: '인플루언서 리스트·검색량 조회·URL 분석·맞춤법 검사 등 핵심 도구는 누구나 무료로 이용할 수 있습니다. 내 키워드 순위 추적·경쟁자 분석·제목 생성 같은 기능은 Pro 플랜(월 5,500원)부터, 키워드 챌린지·블로그 글 피드백 같은 심층 기능은 Max 플랜(월 9,900원)에서 이용할 수 있습니다.',
   },
   {
     q: '데이터는 어떻게 수집되나요?',
@@ -321,7 +321,7 @@ export default function GuidePage() {
       {/* ─── 하단 CTA ─── */}
       <div className="text-center space-y-4">
         <h2 className="font-title text-xl">지금 시작하세요</h2>
-        <p className="text-sm text-dim">무료 도구는 가입 후 자유롭게, 심층 기능은 블로거 5,500원·인플루언서 9,900원 플랜에서 이용 가능합니다.</p>
+        <p className="text-sm text-dim">무료 도구는 가입 후 자유롭게, 심층 기능은 Pro 5,500원·Max 9,900원 플랜에서 이용 가능합니다.</p>
         <Link href="/auth/signup" className="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition text-sm">
           무료 회원가입
         </Link>

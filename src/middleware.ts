@@ -111,14 +111,14 @@ const MEMBER_ONLY_GATE_PREFIXES = [
  * 키워드 챌린지 리스트/추천/대량조회는 완전 공개 마케팅/SEO 페이지 2개(블로그 검색·블로그 순위)만 예외.
  * 모듈 스코프로 둬서 isAuthOnlyHrefAccounted(감사 로직)와 middleware() 본문이 같은 상수를 공유한다.
  */
-// 2026-09-01: /keywords/blog-ranking 은 이용권 페이지가 예비 인플루언서 기능으로 안내하는데
+// 2026-09-01: /keywords/blog-ranking 은 이용권 페이지가 Pro 기능으로 안내하는데
 // 이 공개 선언 때문에 비로그인까지 화면이 열렸다(데이터 API 는 막혀 빈 화면). 등급 판정은
 // keywords.blog-ranking 이 한다.
 const PUBLIC_KEYWORDS_PATHS = ['/keywords/blogger'];
 
 /**
- * PRO 이용권 없이는 접근 불가한 페이지(대량 조회·헤비 AI 등 비용이 큰 기능) — 로그인은 되어 있으나
- * 활성 PRO 이용권이 없는 회원을 /subscribe?needsPro=1 로 보낸다.
+ * 유료 이용권 없이는 접근 불가한 페이지(대량 조회·헤비 AI 등 비용이 큰 기능) — 로그인은 되어 있으나
+ * 활성 유료 이용권이 없는 회원을 /subscribe?needsPro=1 로 보낸다.
  * 로그인 자체가 안 된 사용자는 MEMBER_ONLY_GATE_PREFIXES 등 기존 게이트가 먼저 처리한다.
  */
 // 2026-09-01: 등급이 lib/plans.ts 에 등록된 화면은 각 page/layout 의 checkFeaturePage 가 판정하고
@@ -396,7 +396,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // PRO 이용권 없음 → /subscribe 로 안내 (로그인은 되어 있는 경우만 대상).
+  // 유료 이용권 없음 → /subscribe 로 안내 (로그인은 되어 있는 경우만 대상).
   // 2026-08-08 프리미엄 모델 전환: 자가발급 7일 체험 폐지 — 이 경로는 원래부터
   // "비싸서 무료 없음" 기능(대량 조회·헤비 AI 등)만 모아둔 것이므로 이용권 구매 안내만 한다.
   const needsPaidPlanGate =
@@ -459,7 +459,7 @@ export async function middleware(request: NextRequest) {
       { isAdminUser: false, hasActivePaidPlan: true, plan: null, expiresAt: null, userId: null },
     );
     if (!ctx.isAdminUser && !ctx.hasActivePaidPlan) {
-      return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 });
+      return NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'pro' }, { status: 402 });
     }
   }
 

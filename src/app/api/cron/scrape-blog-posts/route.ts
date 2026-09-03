@@ -28,7 +28,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * 매일 자동 실행 — INFLUENCER 플랜 활성 사용자의 블로그 신규 글을 증분 스크래핑해
+ * 매일 자동 실행 — Max 플랜 활성 사용자의 블로그 신규 글을 증분 스크래핑해
  * blog_post_contents에 저장한다(제목/본문 발췌/카테고리/썸네일/조회수/발행일). AI 분류는 하지 않음 —
  * analyze-topic-insights 크론이 이 데이터를 읽어 아직 토픽으로 묶이지 않은 글 클러스터를 찾는다.
  * GET /api/cron/scrape-blog-posts

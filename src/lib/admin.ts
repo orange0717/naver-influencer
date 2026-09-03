@@ -1,7 +1,7 @@
 import { getAuthUser } from './auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from './supabase-server';
-import { toPlanKey, type PlanKey } from './plans';
+import { planAtLeast, planLabel, toPlanKey, type PlanKey } from './plans';
 
 const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 const RESTRICTED_EMAILS = (process.env.RESTRICTED_USER_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -205,7 +205,7 @@ export async function requirePaidAccess(request: NextRequest): Promise<
 }
 
 /**
- * userId 기준 활성 유료 플랜(BLOGGER 이상) 보유 여부의 단일 판정 함수.
+ * userId 기준 활성 유료 플랜(Pro 이상) 보유 여부의 단일 판정 함수.
  *
  * 결제(구독 활성화)와 관리자 지급(PATCH /api/admin/members/[id],
  * /api/admin/coupons/grant-now, /api/admin/bulk-grant-plan) 모두
@@ -215,11 +215,11 @@ export async function requirePaidAccess(request: NextRequest): Promise<
  * requirePaidPlan/requireInfluencerPlan)만 사용할 것 — 개별 라우트에서
  * subscription_plan 을 직접 재조회/재판정하지 않는다.
  *
- * @param requiredPlan 'INFLUENCER' 지정 시 인플루언서 플랜만 통과, 기본은 BLOGGER 이상 전부 통과
+ * @param requiredPlan 이 등급 이상만 통과. 기본은 pro 이상(=유료 전부).
  */
 export async function hasActivePaidPlanByUserId(
   userId: string,
-  requiredPlan: 'BLOGGER' | 'INFLUENCER' = 'BLOGGER'
+  requiredPlan: PlanKey = 'pro'
 ): Promise<boolean> {
   if (isAdmin(userId)) return true; // 부트스트랩 폴백
   try {
@@ -233,8 +233,7 @@ export async function hasActivePaidPlanByUserId(
     if (!data) return false;
     if (isAdminFromProfile({ id: userId, is_admin: data.is_admin })) return true;
     if (!hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) return false;
-    if (requiredPlan === 'INFLUENCER') return data.subscription_plan === 'INFLUENCER';
-    return data.subscription_plan === 'INFLUENCER' || data.subscription_plan === 'BLOGGER';
+    return planAtLeast(toPlanKey(data.subscription_plan), requiredPlan);
   } catch (err) {
     console.error('[hasActivePaidPlanByUserId] unexpected error:', err);
     return false; // fail-secure
@@ -249,7 +248,7 @@ export async function hasActivePaidPlanByUserId(
  * 판정 규칙(관리자 우회, 만료 확인, 실패 시 fail-secure)은 위 함수와 동일하게 맞춘다.
  */
 export async function getPlanKeyByUserId(userId: string): Promise<PlanKey> {
-  if (isAdmin(userId)) return 'INFLUENCER'; // 부트스트랩 폴백
+  if (isAdmin(userId)) return 'max'; // 부트스트랩 폴백
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
@@ -258,13 +257,13 @@ export async function getPlanKeyByUserId(userId: string): Promise<PlanKey> {
       .eq('id', userId)
       .maybeSingle();
 
-    if (!data) return 'FREE';
-    if (isAdminFromProfile({ id: userId, is_admin: data.is_admin })) return 'INFLUENCER';
-    if (!hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) return 'FREE';
+    if (!data) return 'free';
+    if (isAdminFromProfile({ id: userId, is_admin: data.is_admin })) return 'max';
+    if (!hasActiveSubscription(data.subscription_plan, data.subscription_expires_at)) return 'free';
     return toPlanKey(data.subscription_plan);
   } catch (err) {
     console.error('[getPlanKeyByUserId] unexpected error:', err);
-    return 'FREE'; // fail-secure
+    return 'free'; // fail-secure
   }
 }
 
@@ -287,7 +286,7 @@ export async function requirePaidPlan(request: NextRequest): Promise<
     return { error: NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 }) };
   }
   if (!(await hasActivePaidPlanByUserId(authUser.userId))) {
-    return { error: NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'blogger' }, { status: 402 }) };
+    return { error: NextResponse.json({ error: '유료 플랜이 필요합니다.', requiresPlan: 'pro' }, { status: 402 }) };
   }
   return { authUser };
 }
@@ -351,9 +350,9 @@ export async function getPaywallContext(
 }
 
 /**
- * 인플루언서 플랜 이상 접근 권한 확인 (블로거 플랜 차단)
+ * Max 플랜 접근 권한 확인 (Pro 플랜 차단)
  * - 비로그인 → 401
- * - 활성 INFLUENCER 플랜이 아니면 → 403 (블로거 플랜 또는 무료/만료 모두 차단)
+ * - 활성 Max 플랜이 아니면 → 403 (Pro 플랜 또는 무료/만료 모두 차단)
  * - 관리자(users.is_admin 또는 ADMIN_USER_IDS 폴백)는 항상 통과
  */
 export async function requireInfluencerPlan(request: NextRequest): Promise<
@@ -368,10 +367,10 @@ export async function requireInfluencerPlan(request: NextRequest): Promise<
   if (authUser.user.is_admin === true || isAdmin(authUser.userId)) {
     return { authUser };
   }
-  if (await hasActivePaidPlanByUserId(authUser.userId, 'INFLUENCER')) {
+  if (await hasActivePaidPlanByUserId(authUser.userId, 'max')) {
     return { authUser };
   }
-  // 실패 사유(플랜 없음 vs 블로거 플랜 보유) 안내를 위한 현재 플랜 조회
+  // 실패 사유(플랜 없음 vs 하위 플랜 보유) 안내를 위한 현재 플랜 조회
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
@@ -381,7 +380,7 @@ export async function requireInfluencerPlan(request: NextRequest): Promise<
       .maybeSingle();
     return {
       error: NextResponse.json(
-        { error: '인플루언서 플랜 이상에서 이용 가능합니다.', code: 'PLAN_REQUIRED', requiredPlan: 'INFLUENCER', currentPlan: data?.subscription_plan ?? null },
+        { error: `${planLabel('max')} 플랜부터 이용하실 수 있습니다.`, code: 'PLAN_REQUIRED', requiredPlan: 'max', currentPlan: data?.subscription_plan ?? null },
         { status: 403 }
       ),
     };

@@ -174,7 +174,7 @@ export default function InfluencersListPage() {
 
       <p className="text-[11px] text-dim -mt-1 mb-2 px-0.5 leading-relaxed">
         이름·프로필·팬수·활동 분야·선정일만 담은 순수 명단입니다. 챌린지 참여 수·TOP3 실적·N인플 순위는{' '}
-        <a href="/subscribe?highlight=influencer" className="text-accent font-semibold hover:underline">인플루언서 플랜</a>에서 확인할 수 있어요.
+        <a href="/subscribe?highlight=max" className="text-accent font-semibold hover:underline">Max 플랜</a>에서 확인할 수 있어요.
       </p>
 
       {error && (

@@ -50,5 +50,5 @@ export default function FeatureGate({ feature, children, fallback }: FeatureGate
     );
   }
 
-  return <FeatureLocked required={requiredPlan ?? 'BLOGGER'} />;
+  return <FeatureLocked required={requiredPlan ?? 'pro'} />;
 }

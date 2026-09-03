@@ -7,6 +7,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getPlan, calculateNextChargeAt, type PlanKey } from '@/lib/payment-config';
+import { toDbPlan } from '@/lib/plans';
 import {
   preRegisterPayment,
   chargeWithBillingKey,
@@ -179,7 +180,9 @@ export async function completeBillingKeyIssue(opts: {
   //    admin.ts 의 hasActivePaidPlanByUserId / getPaywallContext / requireInfluencerPlan 가
   //    users.subscription_plan + subscription_expires_at 를 source of truth 로 읽으므로,
   //    여기서 함께 갱신하지 않으면 일회성 결제자가 계속 비구독자로 취급된다(유료 기능 접근 불가).
-  const planTier = plan.tier.toUpperCase(); // 'BLOGGER' | 'INFLUENCER'
+  // 🚨 등급 코드를 toUpperCase() 해서 쓰지 말 것. 'pro' → 'PRO' 는 DB 의 어떤 판정에도
+  // 걸리지 않아 결제한 사용자가 통째로 무료로 떨어진다. 저장값 정본은 toDbPlan 이다.
+  const planTier = toDbPlan(plan.tier);
   const { data: existingUser } = await supa
     .from('users')
     .select('first_paid_at')
@@ -296,7 +299,9 @@ async function chargePlan(opts: {
   //    여기서 함께 갱신하지 않으면 결제한 사용자가 계속 비구독자로 취급된다.
   // first_paid_at: 최초 결제 시각만 set (이후 갱신 결제는 보존). admin 수동 부여
   //   INFLUENCER 와 결제 회원을 구분하기 위함 — Claude 피드백 Opus 분기에 사용.
-  const planTier = plan.tier.toUpperCase(); // 'BLOGGER' | 'INFLUENCER'
+  // 🚨 등급 코드를 toUpperCase() 해서 쓰지 말 것. 'pro' → 'PRO' 는 DB 의 어떤 판정에도
+  // 걸리지 않아 결제한 사용자가 통째로 무료로 떨어진다. 저장값 정본은 toDbPlan 이다.
+  const planTier = toDbPlan(plan.tier);
   const { data: existingUser } = await supa
     .from('users')
     .select('first_paid_at')

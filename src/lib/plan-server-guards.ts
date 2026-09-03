@@ -33,7 +33,7 @@ export async function checkFeaturePage(
   const def = FEATURES[feature];
   if (!def) {
     console.error(`[checkFeaturePage] 등록되지 않은 기능 키: ${feature}`);
-    return { allowed: true, required: 'FREE' };
+    return { allowed: true, required: 'free' };
   }
 
   const supabaseAuth = await createRouteHandlerClient();
@@ -45,13 +45,13 @@ export async function checkFeaturePage(
   }
 
   const required = def.minPlan;
-  if (required === 'FREE') return { allowed: true, required };
+  if (required === 'free') return { allowed: true, required };
 
   const ctx = await getPaywallContext(user.id, user.email);
   if (ctx.isAdminUser) return { allowed: true, required };
 
   // hasActivePaidPlan 은 만료 여부만 답하므로 등급 비교 전에 먼저 본다.
-  const current = ctx.hasActivePaidPlan ? toPlanKey(ctx.plan) : 'FREE';
+  const current = ctx.hasActivePaidPlan ? toPlanKey(ctx.plan) : 'free';
   return { allowed: planAtLeast(current, required), required };
 }
 

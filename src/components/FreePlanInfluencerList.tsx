@@ -64,7 +64,7 @@ export default function FreePlanInfluencerList() {
       setTotal(data?.total || 0);
       setTotalPages(data?.total_pages || 1);
     } catch (err) {
-      console.error('무료 플랜 인플루언서 명단 로드 실패:', err);
+      console.error('Free 플랜 인플루언서 명단 로드 실패:', err);
       setError(err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
@@ -83,7 +83,7 @@ export default function FreePlanInfluencerList() {
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-dim px-0.5 leading-relaxed">
-        이름·프로필 링크·선정일자·주제를 담은 무료 플랜 대상자 명단입니다. 팬수·챌린지 데이터는 포함되지 않습니다.
+        이름·프로필 링크·선정일자·주제를 담은 Free 플랜 대상자 명단입니다. 팬수·챌린지 데이터는 포함되지 않습니다.
       </p>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">

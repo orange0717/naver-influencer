@@ -13,6 +13,7 @@ import {
   PLAN_FEATURES,
   PLAN_LABEL,
 } from '@/lib/pricing';
+import { isPlanKey, planLabel } from '@/lib/plans';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 
 const CHECK = (
@@ -34,20 +35,20 @@ const PERIOD_OPTIONS: { value: BillingPeriod; label: string; badge?: string }[] 
 ];
 
 // 할인 정책: 3m -5%, 6m -10%, 9m -15%, 12m 2개월 무료(=10개월치)
-const PRICE_TABLE: Record<BillingPeriod, { blogger: number; influencer: number; suffix: string; months: number }> = {
-  monthly: { blogger: 5500,  influencer: 9900,   suffix: '/월',     months: 1  },
-  '3m':    { blogger: 15700, influencer: 28200,  suffix: '/3개월',  months: 3  },
-  '6m':    { blogger: 29700, influencer: 53500,  suffix: '/6개월',  months: 6  },
-  '9m':    { blogger: 42100, influencer: 75700,  suffix: '/9개월',  months: 9  },
-  annual:  { blogger: 55000, influencer: 99000,  suffix: '/년',     months: 12 },
+const PRICE_TABLE: Record<BillingPeriod, { pro: number; max: number; suffix: string; months: number }> = {
+  monthly: { pro: 5500,  max: 9900,   suffix: '/월',     months: 1  },
+  '3m':    { pro: 15700, max: 28200,  suffix: '/3개월',  months: 3  },
+  '6m':    { pro: 29700, max: 53500,  suffix: '/6개월',  months: 6  },
+  '9m':    { pro: 42100, max: 75700,  suffix: '/9개월',  months: 9  },
+  annual:  { pro: 55000, max: 99000,  suffix: '/년',     months: 12 },
 };
 
-const PLAN_KEY: Record<BillingPeriod, { blogger: string; influencer: string }> = {
-  monthly: { blogger: 'BLOGGER_MONTHLY', influencer: 'INFLUENCER_MONTHLY' },
-  '3m':    { blogger: 'BLOGGER_3M',      influencer: 'INFLUENCER_3M' },
-  '6m':    { blogger: 'BLOGGER_6M',      influencer: 'INFLUENCER_6M' },
-  '9m':    { blogger: 'BLOGGER_9M',      influencer: 'INFLUENCER_9M' },
-  annual:  { blogger: 'BLOGGER_ANNUAL',  influencer: 'INFLUENCER_ANNUAL' },
+const PLAN_KEY: Record<BillingPeriod, { pro: string; max: string }> = {
+  monthly: { pro: 'BLOGGER_MONTHLY', max: 'INFLUENCER_MONTHLY' },
+  '3m':    { pro: 'BLOGGER_3M',      max: 'INFLUENCER_3M' },
+  '6m':    { pro: 'BLOGGER_6M',      max: 'INFLUENCER_6M' },
+  '9m':    { pro: 'BLOGGER_9M',      max: 'INFLUENCER_9M' },
+  annual:  { pro: 'BLOGGER_ANNUAL',  max: 'INFLUENCER_ANNUAL' },
 };
 
 const formatKRW = (v: number) => v.toLocaleString('ko-KR');
@@ -87,29 +88,32 @@ export default function SubscribeClient() {
   }, [user?.id]);
 
   const price = PRICE_TABLE[period];
-  const bloggerPlanKey = PLAN_KEY[period].blogger;
-  const influencerPlanKey = PLAN_KEY[period].influencer;
+  const proPlanKey = PLAN_KEY[period].pro;
+  const maxPlanKey = PLAN_KEY[period].max;
   // 월 환산 (1개월 제외)
-  const bloggerMonthly = period === 'monthly' ? null : Math.round(price.blogger / price.months);
-  const influencerMonthly = period === 'monthly' ? null : Math.round(price.influencer / price.months);
+  const proMonthly = period === 'monthly' ? null : Math.round(price.pro / price.months);
+  const maxMonthly = period === 'monthly' ? null : Math.round(price.max / price.months);
   const periodBadge = PERIOD_OPTIONS.find((o) => o.value === period)?.badge;
 
   // 이용권 전용 기능에 접근했다가 여기로 리다이렉트되었을 때의 안내.
   //
   // ⚠️ 보내는 쪽이 쿼리 키를 제각각 쓰고 있었고, 이 배너는 그중 `needsPro=1` 하나만 읽었다.
-  //   - `?required=influencer`  … 8곳 (롱폼·릴스 분석, 글쓰기 4종, 순위, 대량 키워드 조회)
-  //   - `?highlight=influencer` / `?highlight=blogger` … plan-server-guards.ts (전체 리스트 등)
+  //   - `?required=max`  … 8곳 (롱폼·릴스 분석, 글쓰기 4종, 순위, 대량 키워드 조회)
+  //   - `?highlight=max` / `?highlight=pro` … plan-server-guards.ts (전체 리스트 등)
   // 즉 안내 배너를 만들어 두고도 대부분의 경로에서 한 번도 뜬 적이 없다. 사용자는 메뉴를
   // 눌렀더니 아무 설명 없이 요금제 페이지에 떨어졌고, 왜 튕겼는지도 뭘 하면 되는지도
   // 알 수 없었다. 세 키를 모두 받는다.
-  const requiredPlan = searchParams.get('required') || searchParams.get('highlight');
-  const needsPro =
-    searchParams.get('needsPro') === '1' || requiredPlan === 'influencer' || requiredPlan === 'blogger';
+  const rawRequired = searchParams.get('required') || searchParams.get('highlight');
+  const requiredPlan = isPlanKey(rawRequired) ? rawRequired : null;
+  // 🚨 쿼리 키 `needsPro=1` 은 미들웨어와의 약속이라 이름을 그대로 둔다. 뜻은 "Pro 등급이
+  // 필요하다"가 아니라 "유료 이용권이 필요하다"이므로 변수 이름으로는 그 뜻을 적는다.
+  const needsPaidPlan =
+    searchParams.get('needsPro') === '1' || requiredPlan === 'max' || requiredPlan === 'pro';
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
-      {/* PRO 이용권 필요 안내 */}
-      {needsPro && (
+      {/* 유료 이용권 필요 안내 */}
+      {needsPaidPlan && (
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-5 flex items-start gap-3">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent shrink-0 mt-0.5" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
@@ -118,15 +122,13 @@ export default function SubscribeClient() {
           </svg>
           <div className="flex-1">
             <p className="text-sm font-bold text-accent">
-              {requiredPlan === 'influencer'
-                ? '방금 누른 기능은 인플루언서 이용권 전용입니다.'
-                : requiredPlan === 'blogger'
-                  ? '방금 누른 기능은 이용권이 있어야 열립니다.'
-                  : '이 기능은 PRO 이용권 전용입니다.'}
+              {requiredPlan
+                ? `방금 누른 기능은 ${planLabel(requiredPlan)} 플랜 전용입니다.`
+                : '이 기능은 유료 플랜 전용입니다.'}
             </p>
             <p className="text-xs text-text/80 mt-1 leading-relaxed">
-              {requiredPlan === 'blogger'
-                ? '예비 인플루언서 이상 이용권을 구매하면 바로 이용할 수 있습니다.'
+              {requiredPlan === 'pro'
+                ? `${planLabel('pro')} 플랜 이상을 구매하면 바로 이용할 수 있습니다.`
                 : '대량 데이터·AI 분석이 필요한 기능이라 이용권 구매 후 이용할 수 있습니다.'}
             </p>
             <div className="flex gap-2 mt-3">
@@ -225,7 +227,7 @@ export default function SubscribeClient() {
         {/* 무료 */}
         <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
           <div>
-            <p className="text-xs text-dim font-semibold">FREE</p>
+            <p className="text-xs text-dim font-semibold">{planLabel('free')}</p>
             <div className="flex items-baseline gap-1 mt-1">
               <span className="text-3xl font-black">0</span>
               <span className="text-sm text-dim">원</span>
@@ -253,19 +255,19 @@ export default function SubscribeClient() {
           </ul>
         </div>
 
-        {/* 예비 인플루언서 */}
+        {/* Pro */}
         <div className="bg-surface rounded-lg border-2 border-accent p-6 space-y-5 relative">
           <div className="absolute -top-3 left-6 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full">
             추천
           </div>
           <div>
-            <p className="text-xs text-accent font-semibold">예비 인플루언서</p>
+            <p className="text-xs text-accent font-semibold">{planLabel('pro')}</p>
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-3xl font-black">{formatKRW(price.blogger)}</span>
+              <span className="text-3xl font-black">{formatKRW(price.pro)}</span>
               <span className="text-sm text-dim">원{price.suffix}</span>
             </div>
-            {bloggerMonthly && (
-              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(bloggerMonthly)}원{periodBadge ? ` (${periodBadge})` : ''}</p>
+            {proMonthly && (
+              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(proMonthly)}원{periodBadge ? ` (${periodBadge})` : ''}</p>
             )}
           </div>
           <p className="text-sm text-dim leading-relaxed">
@@ -274,8 +276,8 @@ export default function SubscribeClient() {
 
           {isLoggedIn ? (
             <BillingButton
-              planKey={bloggerPlanKey}
-              label={`${formatKRW(price.blogger)}원 결제하기`}
+              planKey={proPlanKey}
+              label={`${formatKRW(price.pro)}원 결제하기`}
             />
           ) : (
             <Link
@@ -287,7 +289,7 @@ export default function SubscribeClient() {
           )}
 
           <ul className="space-y-2.5 text-sm">
-            <li className="flex items-center gap-2.5">{CHECK}<span>무료 플랜 전체 포함</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>{planLabel('free')} 플랜 전체 포함</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 키워드순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 포스팅 분석 (AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
@@ -298,16 +300,16 @@ export default function SubscribeClient() {
           </ul>
         </div>
 
-        {/* 인플루언서 */}
+        {/* Max */}
         <div className="bg-surface rounded-lg border border-border p-6 space-y-5">
           <div>
-            <p className="text-xs text-accent font-semibold">INFLUENCER</p>
+            <p className="text-xs text-accent font-semibold">{planLabel('max')}</p>
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-3xl font-black">{formatKRW(price.influencer)}</span>
+              <span className="text-3xl font-black">{formatKRW(price.max)}</span>
               <span className="text-sm text-dim">원{price.suffix}</span>
             </div>
-            {influencerMonthly && (
-              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(influencerMonthly)}원{periodBadge ? ` (${periodBadge})` : ''}</p>
+            {maxMonthly && (
+              <p className="text-[11px] text-accent font-semibold">월 {formatKRW(maxMonthly)}원{periodBadge ? ` (${periodBadge})` : ''}</p>
             )}
           </div>
           <p className="text-sm text-dim leading-relaxed">
@@ -316,8 +318,8 @@ export default function SubscribeClient() {
 
           {isLoggedIn ? (
             <BillingButton
-              planKey={influencerPlanKey}
-              label={`${formatKRW(price.influencer)}원 결제하기`}
+              planKey={maxPlanKey}
+              label={`${formatKRW(price.max)}원 결제하기`}
               className="w-full block text-center py-3 bg-accent/10 text-accent font-bold text-sm rounded-xl hover:bg-accent/20 transition disabled:opacity-50"
             />
           ) : (
@@ -330,7 +332,7 @@ export default function SubscribeClient() {
           )}
 
           <ul className="space-y-2.5 text-sm">
-            <li className="flex items-center gap-2.5">{CHECK}<span>예비 인플루언서 플랜 전체 포함</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>{planLabel('pro')} 플랜 전체 포함</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>전체 인플루언서 리스트</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 챌린지</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>제목 생성 (AI)</span></li>
@@ -338,7 +340,7 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (1회 500건)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 데이터 다운로드 (1회 500건)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
-            {/* 아래 11건은 인플루언서 이용권으로 실제 열리는데 이 카드에 한 줄도 없던 것들이다.
+            {/* 아래 11건은 Max 이용권으로 실제 열리는데 이 카드에 한 줄도 없던 것들이다.
                 8건은 비교표에도 없어 완전히 무고지였고(2026-09-01 채움), 3건(키워드 추천·글감 찾기·
                 릴스·쇼츠 분석)은 비교표에만 있고 카드에서만 빠져 있었다(2026-09-02 채움). */}
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 대시보드</span></li>
@@ -411,9 +413,9 @@ export default function SubscribeClient() {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-2 font-semibold text-dim w-2/5">기능</th>
-                <th className="text-center py-3 px-2 font-semibold">무료</th>
-                <th className="text-center py-3 px-2 font-semibold text-accent">예비 인플루언서</th>
-                <th className="text-center py-3 px-2 font-semibold text-accent">인플루언서</th>
+                <th className="text-center py-3 px-2 font-semibold">{planLabel('free')}</th>
+                <th className="text-center py-3 px-2 font-semibold text-accent">{planLabel('pro')}</th>
+                <th className="text-center py-3 px-2 font-semibold text-accent">{planLabel('max')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

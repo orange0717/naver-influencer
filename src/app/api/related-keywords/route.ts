@@ -9,7 +9,7 @@ const ALLOWED_LIMITS = [100, 300, 500, 1000];
 const DEFAULT_LIMIT = 1000;
 
 export async function POST(request: NextRequest) {
-  // 인플루언서 플랜 이상 필수 (대량 키워드 조회와 동일한 게이트 유지)
+  // Max 플랜 이상 필수 (대량 키워드 조회와 동일한 게이트 유지)
   const auth = await requireInfluencerPlan(request);
   if (auth.error) return auth.error;
 

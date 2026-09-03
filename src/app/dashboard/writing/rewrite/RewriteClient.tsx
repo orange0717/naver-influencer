@@ -230,7 +230,7 @@ export default function RewriteClient() {
       </div>
 
       <p className="text-[11px] text-dim/70 text-center">
-        Claude AI 기반 · 최대 3,000자 · 인플루언서 플랜 이상
+        Claude AI 기반 · 최대 3,000자 · Max 플랜 이상
       </p>
     </div>
   );

@@ -45,10 +45,10 @@ export function useFeatureAccess(feature: FeatureKey): FeatureAccess {
   // 만료된 구독은 등급이 없는 것과 같다. subscriptionActive 를 거치지 않고
   // subscriptionPlan 만 보면 만료자가 계속 유료로 보인다.
   const plan: PlanKey = user.isAdmin
-    ? 'INFLUENCER'
+    ? 'max'
     : user.subscriptionActive
       ? toPlanKey(user.subscriptionPlan)
-      : 'FREE';
+      : 'free';
 
   const allowAnonymous = def?.allowAnonymous === true;
 

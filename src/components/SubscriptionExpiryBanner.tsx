@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { planLabel } from '@/lib/plans';
 
 interface Props {
   subscriptionPlan: string | null;
@@ -29,9 +30,9 @@ export default function SubscriptionExpiryBanner({
           </div>
           <div>
             <p className="text-sm font-bold text-text">
-              PRO 이용권이 <span className="text-down">{expiredDays}일 전 만료</span>되었습니다
+              이용권이 <span className="text-down">{expiredDays}일 전 만료</span>되었습니다
             </p>
-            <p className="text-[11px] text-dim">현재 무료 이용 중. 이용권을 구매하면 PRO 기능을 다시 사용할 수 있습니다.</p>
+            <p className="text-[11px] text-dim">현재 {planLabel('free')} 이용 중. 이용권을 구매하면 유료 기능을 다시 사용할 수 있습니다.</p>
           </div>
         </div>
         <Link
@@ -56,7 +57,7 @@ export default function SubscriptionExpiryBanner({
         </div>
         <div>
           <p className="text-sm font-bold text-text">
-            PRO 이용권 만료 <span className="text-accent">{daysLeft}일 남음</span>
+            이용권 만료 <span className="text-accent">{daysLeft}일 남음</span>
           </p>
           <p className="text-[11px] text-dim">미리 연장하면 끊김 없이 계속 이용할 수 있습니다.</p>
         </div>

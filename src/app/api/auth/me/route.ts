@@ -67,7 +67,7 @@ async function getUserFromAuth(authUserId: string, email?: string | null) {
     profile.subscription_expires_at &&
     new Date(profile.subscription_expires_at) > new Date()
   );
-  // 관리자: 모든 유료 기능을 무제한으로 사용 — 가상 INFLUENCER 플랜 부여
+  // 관리자: 모든 유료 기능을 무제한으로 사용 — 가상 Max 플랜 부여
   const subscriptionActive = adminFlag || realActive;
   const effectivePlan = adminFlag
     ? (profile.subscription_plan || 'INFLUENCER')

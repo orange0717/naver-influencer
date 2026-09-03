@@ -29,7 +29,7 @@ export async function userOwnsBlogId(userId: string, blogId: string): Promise<bo
 }
 
 /**
- * 블로그 ID 기반 읽기/쓰기 API용: 무료 플랜은 본인 블로그만, 유료(블로거+)·관리자는 전체 허용.
+ * 블로그 ID 기반 읽기/쓰기 API용: Free 플랜은 본인 블로그만, 유료(Pro 이상)·관리자는 전체 허용.
  * 데모 쿠키 세션은 식별자와 blogId 가 일치할 때만 허용.
  */
 export async function assertBlogResourceAccess(

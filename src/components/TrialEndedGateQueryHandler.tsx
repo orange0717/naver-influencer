@@ -12,7 +12,7 @@ function sanitizeRedirect(raw: string | null): string | undefined {
 }
 
 /**
- * 미들웨어가 붙이는 ?needsPro=1&redirect=... 쿼리로 들어오면 "PRO 이용권 필요" 모달을 연다.
+ * 미들웨어가 붙이는 ?needsPro=1&redirect=... 쿼리로 들어오면 "유료 이용권 필요" 모달을 연다.
  * (2026-08-08 이전에는 trialEnded/trialOffer 두 종류였으나 단일 needsPro로 통합)
  */
 function Handler() {

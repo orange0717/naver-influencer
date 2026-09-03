@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
   if (AI_DISABLED) return aiDisabledResponse();
 
   // 2026-08-08 프리미엄 모델 전환: 로그인 없이도 하루 3회 무료 풀로 체험 가능.
-  // 로그인 무료회원도 하루 3회, PRO 이용권 보유자만 무제한. 초과 시 유료가입 유도.
+  // 로그인 무료회원도 하루 3회, 유료 이용권 보유자만 무제한. 초과 시 유료가입 유도.
   let authUser;
   try {
     authUser = await getAuthUser(request);

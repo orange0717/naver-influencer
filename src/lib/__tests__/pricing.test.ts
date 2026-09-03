@@ -40,8 +40,8 @@ describe('플랜 정의', () => {
   });
 
   it('기존 개인 티어에 매핑된다', () => {
-    expect(PLAN_TIER.BASIC).toBe('blogger');
-    expect(PLAN_TIER.PRO).toBe('influencer');
+    expect(PLAN_TIER.BASIC).toBe('pro');
+    expect(PLAN_TIER.PRO).toBe('max');
   });
 
   it('isPlanId 는 임의 문자열을 통과시키지 않는다', () => {

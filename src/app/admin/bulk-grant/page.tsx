@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
+import { planLabel } from '@/lib/plans';
 
 type Plan = 'INFLUENCER' | 'BLOGGER';
 type Scope = 'all' | 'inactive';
@@ -74,8 +75,8 @@ export default function AdminBulkGrantPage() {
           <p className="text-xs font-bold text-dim mb-2">플랜</p>
           <SegmentedFilter
             options={[
-              { value: 'INFLUENCER' as Plan, label: '인플루언서' },
-              { value: 'BLOGGER' as Plan, label: '블로거' },
+              { value: 'INFLUENCER' as Plan, label: planLabel('max') },
+              { value: 'BLOGGER' as Plan, label: planLabel('pro') },
             ]}
             value={plan}
             onChange={setPlan}

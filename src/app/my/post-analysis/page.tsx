@@ -5,6 +5,7 @@ import Link from 'next/link';
 import GlassCard from '@/components/dashboard/GlassCard';
 import AnimatedStatCard from '@/components/dashboard/AnimatedStatCard';
 import { useAuth } from '@/hooks/useAuth';
+import { planAtLeast, toPlanKey } from '@/lib/plans';
 import { todayStamp } from '@/lib/csv';
 import type { BloggerProfile, BlogPost, PostAnalysis, AiResult, PlagiarismResult, TextAnalysisResult } from './page.helpers';
 import { getAiBadge, sentenceTypeLabel, getProfileFromApi } from './page.helpers';
@@ -35,7 +36,7 @@ export default function PostAnalysisPage() {
   const { user } = useAuth();
   // 화면에 버튼을 보일지 정할 뿐이다. 실제 차단은 /api/downloads/post-analysis 의 서버 가드가 한다
   // (2026-09-01 이전에는 이 boolean 이 유일한 장치라 개발자도구로 그대로 우회됐다).
-  const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+  const canDownload = user.isAdmin || planAtLeast(toPlanKey(user.subscriptionPlan), 'max');
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {

@@ -8,6 +8,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { clearUserScopedLocalStorage } from '@/lib/clear-user-storage';
 import UsagePeriodCard from '@/components/dashboard/UsagePeriodCard';
 import { extractBlogId } from '@/lib/blog-utils';
+import { planAtLeast, planLabel, toPlanKey } from '@/lib/plans';
 import type { UserProfile, LinkedInfluencer } from './page.helpers';
 import { NotificationSettingsSection, SnsInput } from './page.helpers';
 
@@ -552,11 +553,11 @@ export default function ProfilePage() {
             {user.subscription_plan ? (
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                  user.subscription_plan === 'INFLUENCER'
+                  planAtLeast(toPlanKey(user.subscription_plan), 'max')
                     ? 'bg-accent text-white'
                     : 'bg-accent/15 text-accent'
                 }`}>
-                  {user.subscription_plan === 'INFLUENCER' ? '인플루언서' : '블로거'}
+                  {planLabel(toPlanKey(user.subscription_plan))}
                 </span>
                 {user.subscription_expires_at && (
                   <span className="text-xs text-dim">
@@ -565,7 +566,7 @@ export default function ProfilePage() {
                 )}
               </div>
             ) : (
-              <p className="text-sm text-dim">무료 플랜</p>
+              <p className="text-sm text-dim">{planLabel('free')} 플랜</p>
             )}
           </div>
           <Link
@@ -743,7 +744,7 @@ export default function ProfilePage() {
               <div>
                 <p className="text-sm font-semibold">{c.name}</p>
                 <p className="text-[11px] text-dim">
-                  {c.plan === 'INFLUENCER' ? '인플루언서' : '블로거'} 플랜 · {c.duration_days}일 · <span className="font-mono">{c.code}</span>
+                  {planLabel(toPlanKey(c.plan))} 플랜 · {c.duration_days}일 · <span className="font-mono">{c.code}</span>
                 </p>
               </div>
               <button
@@ -783,7 +784,7 @@ export default function ProfilePage() {
         {couponResult && (
           <p className={`text-xs ${couponResult.success ? 'text-up' : 'text-down'}`}>
             {couponResult.success
-              ? `${couponResult.plan === 'INFLUENCER' ? '인플루언서' : '블로거'} 플랜 적용 완료 (만료: ${new Date(couponResult.expiresAt!).toLocaleDateString('ko-KR')})`
+              ? `${planLabel(toPlanKey(couponResult.plan))} 플랜 적용 완료 (만료: ${new Date(couponResult.expiresAt!).toLocaleDateString('ko-KR')})`
               : couponResult.error}
           </p>
         )}

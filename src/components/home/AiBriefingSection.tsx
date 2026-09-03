@@ -26,6 +26,7 @@ import {
   type SegmentOption,
 } from '@/components/analytics';
 import { useAuth } from '@/hooks/useAuth';
+import { planAtLeast, toPlanKey } from '@/lib/plans';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from '@/lib/csv';
 import type { BloggerProfile, BlogPost, BriefingResult, AnalysisEntry, KeywordMeta, RepKeywordEntry } from './AiBriefingSection.helpers';
 import {
@@ -242,7 +243,7 @@ export default function AiBriefingSection() {
   }, []);
 
   const isLoggedIn = !!(user.id || user.authId);
-  const canDownload = user.isAdmin || user.subscriptionPlan === 'INFLUENCER';
+  const canDownload = user.isAdmin || planAtLeast(toPlanKey(user.subscriptionPlan), 'max');
 
   // useAuth()가 이미 불러온 사용자 정보에서 도출 — 별도로 /api/auth/me를 다시 fetch하지 않는다.
   // (페이지 마운트 시 여러 컴포넌트가 각자 인증 확인을 중복 호출하면 미들웨어에서 동시에

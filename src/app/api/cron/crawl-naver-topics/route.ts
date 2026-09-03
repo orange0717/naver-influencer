@@ -28,7 +28,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** curate-blog-topics와 동일한 조건(INFLUENCER 플랜 활성)의 유저 → 본인 블로그 + competitor_watches 경쟁자 naver_id */
+/** curate-blog-topics와 동일한 조건(Max 플랜 활성)의 유저 → 본인 블로그 + competitor_watches 경쟁자 naver_id */
 async function resolveTargets(supabase: SupabaseClient): Promise<CrawlTarget[]> {
   const { data: users, error: usersError } = await supabase
     .from('users')
