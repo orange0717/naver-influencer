@@ -10,6 +10,8 @@
  * NAVER API HUB 로 이관되면 이 파일의 Provider 구현만 교체하면 되고, 호출측은 그대로 둔다.
  */
 
+import { parseBlogPostRef } from '@/lib/naver-blog-post-ref';
+
 const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || '';
 const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
 
@@ -33,17 +35,17 @@ export interface BlogSearchProvider {
   search(query: string, limit?: number): Promise<{ hits: BlogSearchHit[]; error: boolean }>;
 }
 
-/** blog.naver.com/{blogId}/{postId} 또는 {blogId}?logNo={postId} 형태에서 (blogId, postId) 추출 */
+/**
+ * 글 URL 에서 (blogId, postId) 추출 — 표기 환원은 §3.2 정준화 모듈에 맡긴다.
+ * bloggerlink 처럼 글 번호 없이 블로그 홈만 가리키는 URL 도 오는데,
+ * 그건 글 참조가 아니라 블로그 참조이므로 postId:null 로 따로 돌려준다(호출부가 이 구분을 쓴다).
+ */
 function parseBlogUrl(url: string): { blogId: string; postId: string | null } | null {
   if (!url) return null;
-  const m = url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-  if (m) return { blogId: m[1], postId: m[2] };
-  const m2 = url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
-  if (m2) {
-    const logNo = url.match(/[?&]logNo=(\d+)/);
-    return { blogId: m2[1], postId: logNo ? logNo[1] : null };
-  }
-  return null;
+  const ref = parseBlogPostRef(url);
+  if (ref) return { blogId: ref.blogId, postId: ref.logNo };
+  const home = url.match(/(?:m\.|www\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)/);
+  return home ? { blogId: home[1], postId: null } : null;
 }
 
 /** 네이버 공식 블로그 검색 OpenAPI (openapi.naver.com/v1/search/blog.json) 구현 */

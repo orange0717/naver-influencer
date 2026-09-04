@@ -16,6 +16,7 @@
 import * as cheerio from 'cheerio';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchWithRetry, sleep } from './crawler';
+import { parseBlogPostRef } from './naver-blog-post-ref';
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -54,14 +55,14 @@ export interface BlogExposure {
   blogName?: string;
 }
 
-/** blog.naver.com/{blogId}/{postNo} 형태의 포스팅 링크에서 [blogId, postNo] 추출 */
+/** 포스팅 링크에서 [blogId, postNo] 추출 — 표기 환원은 §3.2 정준화 모듈에 위임 */
 function parseBlogPostLink(href: string): { blogId: string; postNo: string } | null {
-  const m = href.match(/(?:m\.)?blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-  if (!m) return null;
-  const blogId = m[1].toLowerCase();
+  const ref = parseBlogPostRef(href);
+  if (!ref) return null;
+  const blogId = ref.blogId.toLowerCase();
   // 블로그 홈/시스템 경로 방어
   if (blogId === 'influencer_search' || blogId === 'postview') return null;
-  return { blogId, postNo: m[2] };
+  return { blogId, postNo: ref.logNo };
 }
 
 /**

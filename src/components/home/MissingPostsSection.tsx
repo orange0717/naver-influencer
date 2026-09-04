@@ -22,7 +22,9 @@ import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MISSING_POSTS_TEASER, MISSING_POSTS_RECENT_LIMIT, SUBSCRIBE_PATH, planLabel, requiredPlanFor, type PlanKey } from '@/lib/plans';
-import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
+import { rowsToCsv, downloadCsvInBrowser, downloadTextInBrowser, todayStamp } from '@/lib/csv';
+import { computeAccuracy } from '@/lib/exposure-accuracy';
+import { toVerdictInput, evaluateTargets, ACCURACY_TARGETS, type GoldenCase } from '@/lib/exposure-golden';
 
 // §1·§12·§19 최근 N일까지는 기본(무료) 조회, 초과는 회원 전용. 서버(exposure-policy.ts)가 과금·권한을 최종 강제하며
 // 여기 값은 UI 게이팅용(동일 기본값 30). 서버와 어긋나도 서버가 최종 판단하므로 안전.
@@ -330,6 +332,10 @@ export default function MissingPostsSection({
   const [detailError, setDetailError] = useState('');
   const [detailHistory, setDetailHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  // §20/§21 정확도 라벨 — postId → 사람이 확인한 실제 노출 여부(ground truth)
+  const [labels, setLabels] = useState<Record<string, boolean>>({});
+  const [labelSaving, setLabelSaving] = useState(false);
+  const [labelError, setLabelError] = useState('');
   const abortRef = useRef(false);
   const batchRunningRef = useRef(false);
   const autoCheckedRef = useRef(false); // 진입 자동검사 1회만 실행
@@ -491,11 +497,55 @@ export default function MissingPostsSection({
     finally { setHistoryLoading(false); }
   }, [viewToken, teaser]);
 
+  /**
+   * §20 정확도 라벨 로드. 테이블 미적용(migration-149)이면 서버가 빈 목록을 주므로
+   * 라벨 UI 는 그냥 조용히 비어 있고, 저장을 눌렀을 때만 503 안내가 뜬다.
+   */
+  const fetchLabels = useCallback(async (blogId: string) => {
+    try {
+      const res = await fetchWithTimeout(
+        `/api/my/exposure-label?blogId=${encodeURIComponent(blogId)}`,
+        { headers: viewHeaders(viewToken) },
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const map: Record<string, boolean> = {};
+      for (const l of (Array.isArray(data.labels) ? data.labels : [])) {
+        if (typeof l?.post_id === 'string' && typeof l?.actual_exposed === 'boolean') map[l.post_id] = l.actual_exposed;
+      }
+      setLabels(map);
+    } catch { /* ignore */ }
+  }, [viewToken]);
+
+  const saveLabel = useCallback(async (post: BlogPost, actualExposed: boolean) => {
+    if (!profile?.blogId) return;
+    setLabelSaving(true);
+    setLabelError('');
+    try {
+      const res = await fetchWithTimeout('/api/my/exposure-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...viewHeaders(viewToken) },
+        body: JSON.stringify({ blogId: profile.blogId, postId: post.id, postTitle: post.title, actualExposed }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setLabelError(typeof data?.error === 'string' ? data.error : '라벨 저장에 실패했습니다.');
+        return;
+      }
+      setLabels(prev => ({ ...prev, [post.id]: actualExposed }));
+    } catch {
+      setLabelError('라벨 저장에 실패했습니다.');
+    } finally {
+      setLabelSaving(false);
+    }
+  }, [profile, viewToken]);
+
   useEffect(() => {
     if (!profile) return;
     fetchPosts(profile.blogId);
     fetchMissingState(profile.blogId);
-  }, [profile, fetchPosts, fetchMissingState]);
+    fetchLabels(profile.blogId);
+  }, [profile, fetchPosts, fetchMissingState, fetchLabels]);
 
   // 검사 1건 결과 — status(성공/실패) + 서버가 확정한 판정(verdict). 배치 완료 요약(§12)에서 노출/미노출 집계에 쓴다.
   // reason 이 있으면 '검사가 실패한 것'이 아니라 '검사를 시작할 수 없는 것'이다(로그인 끊김·크레딧 부족).
@@ -998,6 +1048,62 @@ export default function MissingPostsSection({
     downloadCsvInBrowser(`노출현황_${profile?.blogId ?? 'blog'}_${todayStamp()}.csv`, csv);
   };
 
+  /**
+   * §20 정확도 — 라벨(사람이 확인한 실제)과 시스템 판정을 대조한다.
+   * 서버(/api/my/exposure-accuracy)를 부르지 않는 이유는 CSV 와 같다: 두 값이 이미 전부
+   * 클라이언트에 있어 같은 답이 나오고, 라벨을 누른 즉시 숫자가 갱신돼야 한다.
+   */
+  const accuracy = useMemo(() => {
+    const ids = Object.keys(labels);
+    if (ids.length === 0) return null;
+    const now = Date.now();
+    return computeAccuracy(ids.map(id => {
+      const p = posts.find(x => x.id === id);
+      const mr = missingResults[id];
+      return {
+        postId: id,
+        postTitle: p?.title,
+        actualExposed: labels[id],
+        overallStatus: p ? displayVerdict({ ...p, publishedAt: parsePostDate(p.date) }, mr, now) : (mr?.overallStatus ?? null),
+      };
+    }));
+  }, [labels, posts, missingResults]);
+
+  /**
+   * 골든셋 내보내기 — 판정 "결과"가 아니라 판정 "입력"을 저장한다. 결과를 박아두면 상태머신을
+   * 고쳐도 테스트가 그대로 통과해 회귀를 못 잡는다. 받은 JSON 의 cases 를
+   * src/lib/__tests__/fixtures/exposure-golden.json 에 붙여 넣으면 회귀 테스트가 켜진다.
+   */
+  const exportGolden = () => {
+    const now = Date.now();
+    const cases: GoldenCase[] = [];
+    for (const [postId, actualExposed] of Object.entries(labels)) {
+      const mr = missingResults[postId];
+      if (!mr) continue; // 검사 기록이 없으면 재현할 입력 자체가 없다
+      const p = posts.find(x => x.id === postId);
+      const publishedAt = p ? parsePostDate(p.date) : null;
+      const age = publishedAt ? now - publishedAt.getTime() : null;
+      cases.push({
+        postId,
+        postTitle: p?.title ?? null,
+        actualExposed,
+        input: toVerdictInput({
+          view: mr.viewTab.exposed,
+          blog: mr.blogTab.exposed,
+          inf: mr.influencerTab?.exposed ?? null,
+          status: mr.status,
+          inIndexingGrace: age != null && age >= 0 && age < INDEXING_GRACE_HOURS * 60 * 60 * 1000,
+          consecutiveMissing: mr.consecutiveMissing,
+        }),
+      });
+    }
+    downloadTextInBrowser(
+      `노출골든셋_${profile?.blogId ?? 'blog'}_${todayStamp()}.json`,
+      JSON.stringify({ cases }, null, 2),
+      'application/json;charset=utf-8;',
+    );
+  };
+
   // §9 '미확인 n개 검사' 대상 = 실제 상태가 '미확인'(검사 기록 없음)인 글만. 단, 무료 구간(최근 30일)만 —
   // 30일 이전 미확인 글은 회원 전용 확장 조회(크레딧 정책)로만 검사되므로 이 무료 버튼 대상에서 제외한다.
   const uncheckedPosts = useMemo(() => {
@@ -1332,6 +1438,60 @@ export default function MissingPostsSection({
               </Link>
             )}
           </div>
+        </GlassCard>
+      )}
+
+      {/* §20/§21 판정 정확도 — 라벨이 한 건이라도 있을 때만. 라벨이 없으면 잴 수 있는 게 없고,
+          빈 상태를 "정확도 100%"로 그리면 측정하지 않은 것을 성적표로 내보내는 셈이 된다. */}
+      {accuracy && (
+        <GlassCard className="p-4">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-sm font-semibold text-text">판정 정확도</p>
+              <p className="text-[11px] text-dim mt-0.5">
+                상세 화면에서 직접 확인해 표시한 실제 노출 여부 {accuracy.labeledTotal}건과 시스템 판정을 대조한 결과입니다.
+                {accuracy.labeledTotal < ACCURACY_TARGETS.minCases && ` 기준 표본까지 ${ACCURACY_TARGETS.minCases - accuracy.labeledTotal}건 남았습니다.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={exportGolden}
+              className="shrink-0 px-3 py-1.5 rounded-lg border border-border text-[11px] text-dim hover:border-accent/30 transition-colors cursor-pointer"
+            >
+              골든셋 내보내기
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {evaluateTargets(accuracy).map(t => (
+              <div key={t.label} className="bg-bg rounded-lg px-3 py-2">
+                <p className="text-[10px] text-dim">{t.label}</p>
+                <p className={`text-sm font-bold ${t.pass ? 'text-text' : 'text-down'}`}>
+                  {t.label === '거짓 노출(건)' ? `${t.value}건` : `${(t.value * 100).toFixed(1)}%`}
+                </p>
+                <p className="text-[10px] text-dim">
+                  기준 {t.label === '거짓 노출(건)' ? `${t.limit}건` : `${t.label === '정확도' ? '≥' : '≤'} ${(t.limit * 100).toFixed(0)}%`}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] text-dim mt-2.5 leading-relaxed">
+            확정 판정 {accuracy.decided}건 · 미확정 {accuracy.undecided}건.
+            「거짓 노출」은 노출됐다고 판정했으나 실제로는 미노출인 경우,
+            「거짓 미노출」은 미노출로 판정했으나 실제로는 노출된 경우입니다.
+          </p>
+
+          {(accuracy.falseNegativeCases.length > 0 || accuracy.falsePositiveCases.length > 0) && (
+            <div className="mt-2.5 space-y-1">
+              {accuracy.falseNegativeCases.map(c => (
+                <p key={`fn-${c.postId}`} className="text-[11px] text-down leading-snug">거짓 노출: {c.postTitle || c.postId}</p>
+              ))}
+              {accuracy.falsePositiveCases.map(c => (
+                <p key={`fp-${c.postId}`} className="text-[11px] text-amber-600 leading-snug">거짓 미노출: {c.postTitle || c.postId}</p>
+              ))}
+            </div>
+          )}
         </GlassCard>
       )}
 
@@ -1702,6 +1862,36 @@ export default function MissingPostsSection({
               </div>
               {detailError && <p className="text-xs text-down mt-2">{detailError}</p>}
               {detailMr?.checkedAt && <p className="text-[10px] text-dim mt-2">최근 검사 {formatCheckedAt(detailMr.checkedAt)}</p>}
+            </div>
+
+            {/* §20 정확도 라벨 — 사람이 네이버에서 직접 확인한 실제 노출 여부를 기록한다.
+                이 값이 없으면 정확도를 잴 근거가 없고, 근거 없이 "정확해졌습니다"라고 말하게 된다. */}
+            <div className="bg-bg rounded-lg p-3 mt-3">
+              <p className="text-xs text-dim leading-relaxed">
+                네이버에서 이 글을 직접 검색해 보셨다면 실제 결과를 알려주세요. 시스템 판정과 대조해 정확도를 측정합니다.
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                {([
+                  { value: true, label: '실제로 노출됨' },
+                  { value: false, label: '실제로 미노출' },
+                ] as const).map(opt => {
+                  const selected = labels[detailPost.id] === opt.value;
+                  return (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => saveLabel(detailPost, opt.value)}
+                      disabled={labelSaving}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                        selected ? 'border-accent bg-accent/10 text-accent' : 'border-border text-dim hover:border-accent/30'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {labelError && <p className="text-xs text-down mt-2">{labelError}</p>}
             </div>
 
             <button

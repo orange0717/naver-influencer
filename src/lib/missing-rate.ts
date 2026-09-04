@@ -17,6 +17,8 @@ export interface MissingState {
   confidence?: Confidence | null;
   // §13 검사 근거 데이터(상세 화면용)
   evidence?: ExposureEvidence | null;
+  // §11 "모든 영역 미노출"을 연속으로 관측한 횟수 — 골든셋에 판정 입력을 그대로 저장하기 위해 필요
+  consecutiveMissing?: number | null;
   // §11/§19 처음으로 모든 영역 미노출이 감지된 시각(1차 검사 시각 표시용)
   firstAllMissingAt?: string | null;
   checkedAt?: string | null;

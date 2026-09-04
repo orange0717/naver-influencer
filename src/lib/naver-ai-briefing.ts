@@ -1,4 +1,5 @@
 import puppeteer, { type Browser, type Page, type HTTPRequest, type HTTPResponse } from 'puppeteer-core';
+import { parseBlogPostRef, matchesPost } from '@/lib/naver-blog-post-ref';
 
 /**
  * 네이버 "AI 브리핑"(통합검색 인라인 위젯) + "AI 탭"(ssc=tab.ait.all) 인용 여부 확인
@@ -200,26 +201,14 @@ function exposedFromStatus(s: SurfaceStatus): boolean | null {
   return null;
 }
 
-/** 네이버 블로그 URL(경로형/쿼리형 모두)에서 {blogId, postId} 추출 */
+/**
+ * 네이버 블로그 URL에서 {blogId, postId} 추출.
+ * 표기 환원은 §3.2 정준화 모듈(naver-blog-post-ref)에 위임한다 — 출처 URL을 못 읽으면
+ * 실제로 인용된 글이 '미인용'으로 판정되므로, 인용 판정과 순위 판정이 같은 표기 목록을 읽어야 한다.
+ */
 export function extractBlogPost(url: string): { blogId: string; postId: string } | null {
-  try {
-    const u = new URL(url);
-    if (!/(^|\.)blog\.naver\.com$/i.test(u.hostname)) return null;
-
-    const pathMatch = u.pathname.match(/^\/([a-zA-Z0-9_-]+)\/(\d+)\/?$/);
-    if (pathMatch) return { blogId: pathMatch[1], postId: pathMatch[2] };
-
-    // 구형 .nhn 형식도 받는다 — 출처 URL을 못 읽으면 실제로 인용된 글이 '미인용'으로 판정된다.
-    // (naver-blog-url.ts::parseNaverBlogPostUrl 과 동일한 범위를 유지)
-    if (/PostView\.(naver|nhn)/i.test(u.pathname)) {
-      const blogId = u.searchParams.get('blogId');
-      const postId = u.searchParams.get('logNo');
-      if (blogId && postId) return { blogId, postId };
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  const ref = parseBlogPostRef(url);
+  return ref ? { blogId: ref.blogId, postId: ref.logNo } : null;
 }
 
 /**
@@ -228,11 +217,8 @@ export function extractBlogPost(url: string): { blogId: string; postId: string }
  * 제목이 비슷한 남의 글이 인용된 경우를 인용으로 오판하지 않기 위함(스펙 #11).
  */
 export function findMatch(sources: RawSource[], blogId: string, postId: string): { index: number; source: RawSource } | null {
-  const blogIdLower = blogId.toLowerCase();
-  const postIdStr = String(postId);
   for (let i = 0; i < sources.length; i++) {
-    const parsed = extractBlogPost(sources[i].url);
-    if (parsed && parsed.blogId.toLowerCase() === blogIdLower && parsed.postId === postIdStr) {
+    if (matchesPost(sources[i].url, blogId, postId)) {
       return { index: i + 1, source: sources[i] };
     }
   }

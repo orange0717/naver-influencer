@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { createHmac } from 'crypto';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
+import { blogPostKey, parseBlogPostRef, countBlogPostRefs, type BlogPostRef } from '@/lib/naver-blog-post-ref';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -214,8 +215,8 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
     return { exposed: false, rank: null, error: true };
   }
 
-  const blogIdLower = blogId.toLowerCase();
-  const postIdStr = String(postId);
+  // 판정은 제목이 아니라 blogId+logNo 비교 키로만 한다(§3.2).
+  const targetKey = blogPostKey(blogId, postId);
   const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
   // 한 페이지라도 정상 로드됐는지 추적 — 전 페이지가 실패하면 "미노출"이 아니라 "일시적 오류"로 신호한다
@@ -240,23 +241,25 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
       anyPageLoaded = true;
 
       // 1순위: data-cr-on 속성에서 네이버 공식 순위 추출
-      // 패턴: data-url="https://blog.naver.com/blogId/postId" ... data-cr-on="r=순위"
+      // 패턴: data-url="<글 URL>" ... data-cr-on="r=순위"
       // 주의: r= 값은 페이지 내 상대 순위이므로, 페이지 번호를 반영해 절대 순위로 변환
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+      // data-url 값은 호스트를 고정하지 않고 통째로 넘겨 parseBlogPostRef 로 환원한다 —
+      // 예전엔 blog.naver.com 으로 못박아 m.blog / PostView 표기 항목이 통째로 안 잡혔고,
+      // 형제 항목 때문에 seen 이 비지 않아 아래 폴백도 안 돌아 조용한 미노출 오판이 났다.
+      const rankRegex = /data-url="([^"]*)"[^>]*?data-cr-on="r=(\d+)/g;
       const seen = new Set<string>();
       let match;
 
       while ((match = rankRegex.exec(html)) !== null) {
-        const [, linkBlogId, linkPostId, rankStr] = match;
-        const key = `${linkBlogId}/${linkPostId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
+        const ref = parseBlogPostRef(match[1]);
+        if (!ref || seen.has(ref.key)) continue;
+        seen.add(ref.key);
 
         // r= 값은 페이지 내 상대 순위이므로, start + rank - 1로 절대 순위 계산
-        const absoluteRank = start + parseInt(rankStr) - 1;
+        const absoluteRank = start + parseInt(match[2]) - 1;
         if (absoluteRank > deepestRank) deepestRank = absoluteRank;
 
-        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+        if (ref.key === targetKey) {
           return { exposed: true, rank: absoluteRank };
         }
       }
@@ -264,24 +267,21 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
       // 2순위 폴백: <a> href에서 수동 카운트 (data-cr-on 없는 경우)
       if (seen.size === 0) {
         const $ = cheerio.load(html);
-        const blogLinks: { blogId: string; postId: string }[] = [];
+        const blogLinks: BlogPostRef[] = [];
         const seenFb = new Set<string>();
         let globalRank = (page - 1) * 10;
 
         $('a').each((_, el) => {
-          const href = $(el).attr('href') || '';
-          const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-          if (!m) return;
-          const key = `${m[1]}/${m[2]}`;
-          if (seenFb.has(key)) return;
-          seenFb.add(key);
-          blogLinks.push({ blogId: m[1], postId: m[2] });
+          const ref = parseBlogPostRef($(el).attr('href') || '');
+          if (!ref || seenFb.has(ref.key)) return;
+          seenFb.add(ref.key);
+          blogLinks.push(ref);
         });
 
         for (const link of blogLinks) {
           globalRank++;
           if (globalRank > deepestRank) deepestRank = globalRank;
-          if (link.blogId.toLowerCase() === blogIdLower && link.postId === postIdStr) {
+          if (link.key === targetKey) {
             return { exposed: true, rank: globalRank };
           }
         }
@@ -323,9 +323,9 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
     return { exposed: false, rank: null, error: true };
   }
 
-  const blogIdLower = blogId.toLowerCase();
   const handleSet = buildHandleSet(blogId, opts?.influencerHandle);
-  const postIdStr = String(postId || '');
+  // 판정은 blogId+logNo 비교 키로만 한다(§3.2). postId 가 없으면 블로그 글 폴백은 성립하지 않는다.
+  const targetKey = postId ? blogPostKey(blogId, postId) : '';
   // 인플루언서 탭도 통합검색과 마찬가지로 &start= 파라미터를 무시하고 항상 1페이지 결과를 반환한다
   // (scripts/probe-influencer-tab.mjs로 확증 — page1=page2=page3 동일). 과거엔 이를 페이지2/3으로 오인해
   // start/(page-1)*10 오프셋을 더해, 실제 2위 글을 15/18위로 부풀리는 버그가 있었다.
@@ -347,36 +347,32 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
       return { exposed: true, rank: inRank };
     }
 
-    // 폴백1: 구형/혼합 마크업 — data-url=blog.naver.com + data-cr-on="r=" 정밀 매칭 (postId 필요). r= 는 절대순위이므로 그대로 사용.
-    if (postIdStr) {
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+    // 폴백1: 구형/혼합 마크업 — data-url 블로그 글 + data-cr-on="r=" 정밀 매칭 (postId 필요). r= 는 절대순위이므로 그대로 사용.
+    if (targetKey) {
+      const rankRegex = /data-url="([^"]*)"[^>]*?data-cr-on="r=(\d+)/g;
       const seen = new Set<string>();
       let match;
       while ((match = rankRegex.exec(html)) !== null) {
-        const [, linkBlogId, linkPostId, rankStr] = match;
-        const key = `${linkBlogId}/${linkPostId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
-          return { exposed: true, rank: parseInt(rankStr) };
+        const ref = parseBlogPostRef(match[1]);
+        if (!ref || seen.has(ref.key)) continue;
+        seen.add(ref.key);
+        if (ref.key === targetKey) {
+          return { exposed: true, rank: parseInt(match[2]) };
         }
       }
 
-      // 폴백2: <a> href에서 blog.naver.com 수동 카운트 (1페이지 등장순서)
+      // 폴백2: <a> href에서 블로그 글 링크 수동 카운트 (1페이지 등장순서)
       const $ = cheerio.load(html);
       const seenFb = new Set<string>();
       let globalRank = 0;
       let found: number | null = null;
       $('a').each((_, el) => {
         if (found !== null) return;
-        const href = $(el).attr('href') || '';
-        const m = href.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-        if (!m) return;
-        const key = `${m[1]}/${m[2]}`;
-        if (seenFb.has(key)) return;
-        seenFb.add(key);
+        const ref = parseBlogPostRef($(el).attr('href') || '');
+        if (!ref || seenFb.has(ref.key)) return;
+        seenFb.add(ref.key);
         globalRank++;
-        if (m[1].toLowerCase() === blogIdLower && m[2] === postIdStr) {
+        if (ref.key === targetKey) {
           found = globalRank;
         }
       });
@@ -394,7 +390,7 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
   // 판정 대상 항목을 하나도 관측하지 못했으면(인플루언서 콘텐츠 0건 + 블로그 링크 0건)
   // 미노출을 주장할 근거가 없다 → '확인 불가'. 페이지가 200으로 떠도 결과 골격이 바뀌거나
   // 결과가 비어 있으면 여기로 온다.
-  const blogEntryCount = html ? new Set([...html.matchAll(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/g)].map(m => `${m[1]}/${m[2]}`)).size : 0;
+  const blogEntryCount = html ? countBlogPostRefs(html) : 0;
   if (inCount === 0 && blogEntryCount === 0) {
     console.warn(`[keyword-rank-check] checkInfluencerTab 결과 항목 0건 파싱 → 미노출이 아니라 확인 불가로 처리 query="${query}" blogId=${blogId} postId=${postId}`);
     return { exposed: false, rank: null, error: true };
@@ -426,9 +422,10 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
     return { exposed: false, rank: null, error: true };
   }
 
-  const blogIdLower = blogId.toLowerCase();
   const handleSet = buildHandleSet(blogId, opts?.influencerHandle);
-  const postIdStr = String(postId || '');
+  // 판정은 blogId+logNo 비교 키로만 한다(§3.2). postId 가 없으면 블로그 글 정밀 매칭은 성립하지 않고
+  // 아래 in.naver handle 경로만 남는다.
+  const targetKey = postId ? blogPostKey(blogId, postId) : '';
   // 네이버 통합검색(where=webkr)은 &start= 파라미터를 무시하고 항상 1페이지 결과를 반환하며,
   // data-cr-on="r=" 값이 이미 최종(절대) 순위다. 과거엔 이를 페이지2/3으로 오인해 start 오프셋(+10/+20)을
   // 이중 가산해, 실제 8위 글을 18/28위로 부풀리는 버그가 있었다(scripts/probe-rank-offset.mjs로 확증).
@@ -456,22 +453,21 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
 
     // 블로그 포스트 링크 추출: data-url="..." data-cr-on="r=..." (postId 정밀 매칭 우선)
     // r= 값은 이미 절대순위이므로 페이지 오프셋을 더하지 않고 그대로 사용한다.
-    if (postIdStr) {
-      const rankRegex = /data-url="https?:\/\/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)"[^>]*?data-cr-on="r=(\d+)/g;
+    if (targetKey) {
+      const rankRegex = /data-url="([^"]*)"[^>]*?data-cr-on="r=(\d+)/g;
       const seen = new Set<string>();
       let match;
 
       while ((match = rankRegex.exec(html)) !== null) {
-        const [, linkBlogId, linkPostId, rankStr] = match;
-        const key = `${linkBlogId}/${linkPostId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
+        const ref = parseBlogPostRef(match[1]);
+        if (!ref || seen.has(ref.key)) continue;
+        seen.add(ref.key);
 
-        const entryRank = parseInt(rankStr);
+        const entryRank = parseInt(match[2]);
         if (entryRank > scannedDepth) scannedDepth = entryRank;
         observedEntries++;
 
-        if (linkBlogId.toLowerCase() === blogIdLower && linkPostId === postIdStr) {
+        if (ref.key === targetKey) {
           return { exposed: true, rank: entryRank };
         }
       }
@@ -485,7 +481,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
     }
 
     // 2순위 폴백: webkr OpenAPI(display=100, 절대순위). 스크리닝(maxPages=1)에선 API 쿼터 절약 위해 건너뜀.
-    if (postIdStr && maxPages > 1 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
+    if (targetKey && maxPages > 1 && NAVER_SEARCH_CLIENT_ID && NAVER_SEARCH_CLIENT_SECRET) {
       try {
         const apiUrl = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(query)}&display=100`;
         const apiRes = await fetch(apiUrl, {
@@ -499,11 +495,12 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
           const items = apiData.items || [];
           let rank = 0;
           for (const item of items) {
-            const link = item.link || '';
-            const blogMatch = link.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/(\d+)/);
-            if (!blogMatch) continue;
+            // OpenAPI 는 ?Redirect=Log&logNo= 형태도 섞어 준다. 경로형만 읽던 시절엔 그 항목이
+            // rank 에서 통째로 빠져 글에 닿지 못했고 그대로 미노출로 굳었다.
+            const ref = parseBlogPostRef(item.link || '');
+            if (!ref) continue;
             rank++;
-            if (blogMatch[1].toLowerCase() === blogIdLower && blogMatch[2] === postIdStr) {
+            if (ref.key === targetKey) {
               return { exposed: true, rank };
             }
           }

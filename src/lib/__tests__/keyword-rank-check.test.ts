@@ -136,4 +136,49 @@ describe('차단/점검 응답을 미노출로 확정하지 않는다', () => {
     const res = await checkBlogTab('강아지', 'myblog', '', { force: true });
     expect(res.error).toBe(true);
   });
+
+  // §3.2 — 판정은 blogId+logNo 로만 하고, 표기가 달라도 같은 글로 본다.
+  // 아래 셋은 전부 "멀쩡히 노출 중인데 미노출로 굳던" 실제 구멍이다.
+  describe('표기가 달라도 같은 글로 인정한다(§3.2 정준화)', () => {
+    it('data-url 이 m.blog 여도 노출로 판정한다', async () => {
+      mockFetchHtml(resultPage('<a data-url="https://m.blog.naver.com/myblog/12345" data-cr-on="r=4"></a>'));
+      const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+      expect(res).toMatchObject({ exposed: true, rank: 4 });
+    });
+
+    // 🚨 혼합 마크업이 진짜 사고 지점이었다. www 형제 항목 때문에 seen 이 비지 않아
+    //    <a> href 폴백이 아예 돌지 않았고, m.blog 인 내 글만 조용히 사라졌다.
+    it('www 항목과 m.blog 항목이 섞여 있어도 m.blog 인 내 글을 놓치지 않는다', async () => {
+      mockFetchHtml(resultPage(
+        '<a data-url="https://blog.naver.com/other/999" data-cr-on="r=1"></a>' +
+        '<a data-url="https://m.blog.naver.com/myblog/12345" data-cr-on="r=2"></a>',
+      ));
+      const res = await checkBlogTab('강아지', 'myblog', '12345', { force: true });
+      expect(res).toMatchObject({ exposed: true, rank: 2 });
+    });
+
+    it('PostView 뷰어형 + &amp; 엔티티도 읽어낸다', async () => {
+      mockFetchHtml(resultPage(
+        '<a data-url="https://blog.naver.com/PostView.naver?blogId=myblog&amp;logNo=12345" data-cr-on="r=5"></a>',
+      ));
+      const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+      expect(res).toMatchObject({ exposed: true, rank: 5 });
+    });
+
+    it('blogId 대소문자가 달라도 같은 글이다', async () => {
+      mockFetchHtml(resultPage('<a data-url="https://blog.naver.com/MyBlog/12345" data-cr-on="r=1"></a>'));
+      const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+      expect(res.exposed).toBe(true);
+    });
+
+    it('남의 글은 여전히 노출로 인정하지 않는다(거짓 노출 0건)', async () => {
+      mockFetchHtml(resultPage(
+        '<a data-url="https://m.blog.naver.com/myblog/99999" data-cr-on="r=1"></a>' +
+        '<a data-url="https://blog.naver.com/PostView.naver?blogId=other&amp;logNo=12345" data-cr-on="r=2"></a>',
+      ));
+      const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+      expect(res.exposed).toBe(false);
+      expect(res.error).toBeUndefined();
+    });
+  });
 });

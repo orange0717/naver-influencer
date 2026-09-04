@@ -45,10 +45,10 @@ export function todayStamp(): string {
 /** 한 번 다운로드 최대 행수 (Max 플랜 정책) */
 export const DOWNLOAD_ROW_LIMIT = 500;
 
-/** 브라우저에서 CSV 파일 다운로드 (Blob → a[download] 트리거) */
-export function downloadCsvInBrowser(filename: string, csv: string): void {
+/** 브라우저에서 텍스트 파일 다운로드 (Blob → a[download] 트리거) */
+export function downloadTextInBrowser(filename: string, text: string, mime: string): void {
   if (typeof window === 'undefined') return;
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -57,4 +57,8 @@ export function downloadCsvInBrowser(filename: string, csv: string): void {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function downloadCsvInBrowser(filename: string, csv: string): void {
+  downloadTextInBrowser(filename, csv, 'text/csv;charset=utf-8;');
 }
