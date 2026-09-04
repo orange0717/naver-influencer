@@ -6,6 +6,7 @@ vi.mock('@/lib/kv-cache', () => ({
 }));
 
 import { matchInfluencerContentByHandle, checkBlogTab, checkViewTab } from '@/lib/keyword-rank-check';
+import { buildSearchUrl } from '@/lib/exposure-conditions';
 
 // 실제 "한국소설" 통합검색 결과 순서: simple.arti → orangelibrary → kkkclub1
 const html = [
@@ -179,6 +180,50 @@ describe('차단/점검 응답을 미노출로 확정하지 않는다', () => {
       const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
       expect(res.exposed).toBe(false);
       expect(res.error).toBeUndefined();
+    });
+  });
+
+  // §4 "근거를 남길 수 없는 판정은 판정이 아니다."
+  // 순위만 돌려주고 그 숫자를 만들어 낸 조회 URL·응답을 남기지 않으면 나중에 아무도 반증할 수 없다.
+  describe('판정과 함께 근거(조회 URL·응답 지문)를 남긴다', () => {
+    it('노출 판정에는 실제로 읽은 검색 URL과 지문이 붙는다', async () => {
+      mockFetchHtml(resultPage('<a data-url="https://blog.naver.com/myblog/12345" data-cr-on="r=3"></a>'));
+      const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+      expect(res.snapshots).toHaveLength(1);
+      // 근거 URL은 화면용으로 다시 조립한 것이 아니라 조회에 쓴 그 URL이어야 한다.
+      expect(res.snapshots![0].url).toBe(buildSearchUrl('view', '강아지'));
+      expect(res.snapshots![0].hash).toMatch(/^[0-9a-f]{16}$/);
+      expect(res.snapshots![0].bytes).toBeGreaterThan(0);
+    });
+
+    // 확인 불가야말로 근거가 필요하다 — "무엇을 읽었길래 확인을 못 했나"에 답해야 하기 때문이다.
+    it('차단 페이지로 확인 불가가 나도 그 응답의 지문을 남긴다', async () => {
+      mockFetchHtml(blockedPage);
+      const res = await checkViewTab('강아지', 'myblog', '12345', 1, { force: true });
+      expect(res.error).toBe(true);
+      expect(res.snapshots).toHaveLength(1);
+      expect(res.snapshots![0].url).toBe(buildSearchUrl('view', '강아지'));
+    });
+
+    it('블로그탭은 페이지마다 조회 URL을 따로 남긴다', async () => {
+      mockFetchHtml(resultPage('<a data-url="https://blog.naver.com/other/999" data-cr-on="r=1"></a>'));
+      const res = await checkBlogTab('강아지', 'myblog', '12345', { force: true });
+      expect(res.snapshots).toHaveLength(3); // 1·2·3페이지
+      expect(res.snapshots!.map(s => s.url)).toEqual([
+        buildSearchUrl('blog', '강아지'),
+        buildSearchUrl('blog', '강아지', 11),
+        buildSearchUrl('blog', '강아지', 21),
+      ]);
+    });
+
+    // 조회 URL을 다른 곳에서 다시 조립하면 "조회는 A로 하고 근거엔 B를 적는" 상태가 되고,
+    // 그때부터 근거는 근거가 아니라 장식이 된다. 그래서 URL 생성기는 하나뿐이어야 한다.
+    it('검색 URL 생성기는 조회 조건(탭 파라미터)을 그대로 담는다', () => {
+      expect(buildSearchUrl('view', '강아지')).toContain('where=webkr');
+      expect(buildSearchUrl('blog', '강아지')).toContain('ssc=tab.blog.all');
+      expect(buildSearchUrl('influencer', '강아지')).toContain('ssc=tab.influencer.all');
+      // start=1 은 1페이지라 붙이지 않는다(네이버 기본값과 같은 URL이어야 캐시도 함께 맞는다).
+      expect(buildSearchUrl('blog', '강아지', 1)).toBe(buildSearchUrl('blog', '강아지'));
     });
   });
 });

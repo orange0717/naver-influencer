@@ -3,6 +3,10 @@ import { checkBlogTab, checkViewTab, checkInfluencerTab, getSearchVolume } from 
 import { corroborateBlogExposure } from '@/lib/naver-blog-search-api';
 import { logExposureCheck } from '@/lib/exposure-check-log';
 import {
+  EXPOSURE_CONDITIONS, MAX_SNAPSHOTS_PER_AREA, toKstString,
+  type ExposureConditions, type SearchSnapshot,
+} from '@/lib/exposure-conditions';
+import {
   computeRawAreaState,
   computeVerdict,
   type AreaExposed,
@@ -27,14 +31,39 @@ import {
 // scannedDepth: 조회 범위 밖(스펙 #10/#21) 판정용 — exposed=false && scannedDepth 존재 → "N위 밖"
 export type TabState = { exposed: boolean | null; rank: number | null; scannedDepth?: number | null };
 
+/**
+ * 영역 한 곳의 판정 근거.
+ *
+ * §4 "근거를 남길 수 없는 판정은 판정이 아니다" — 순위 숫자 하나만 남기면
+ * 나중에 그 숫자가 맞았는지 아무도 되짚을 수 없다. 그래서 어떤 URL을 몇 번 읽었고
+ * 그 응답이 무엇이었는지(지문)까지 함께 남긴다.
+ */
+export interface AreaEvidence {
+  exposed: boolean | null;
+  rank: number | null;
+  /** 노출 시 매칭된 실제 URL(포스팅/핸들) */
+  matchedUrl: string | null;
+  /** 이 영역을 판정하려고 실제로 조회한 URL·응답 지문 (§4 조회 URL·스냅샷 해시) */
+  snapshots?: SearchSnapshot[];
+  /** 이 영역에 대해 네이버를 조회한 횟수(후보 검색어 순회 + §11 2차 재검증 포함) — §3.6 재시도 회차 */
+  attempts?: number;
+}
+
 /** §13 검사 당시 근거 데이터(영역별 매칭 URL·순위, 재검증 관측 등) — DB evidence JSONB 로 저장 */
 export interface ExposureEvidence {
   /** 영역별 근거: 노출 시 매칭된 실제 URL(포스팅/핸들)과 순위 */
   areas: {
-    view: { exposed: boolean | null; rank: number | null; matchedUrl: string | null };
-    blog: { exposed: boolean | null; rank: number | null; matchedUrl: string | null };
-    influencer: { exposed: boolean | null; rank: number | null; matchedUrl: string | null };
+    view: AreaEvidence;
+    blog: AreaEvidence;
+    influencer: AreaEvidence;
   };
+  /**
+   * §3.3 조회 조건. 기기·로그인 여부·언어·지역이 바뀌면 순위도 바뀌므로 판정과 함께 굳혀 둔다.
+   * 레거시 행(2026-09-04 이전)에는 없다 → optional. 화면은 없으면 "기록 없음"으로 갈라 말할 것.
+   */
+  conditions?: ExposureConditions;
+  /** 검사 시각(KST 고정 표기) — 서버·브라우저 시간대와 무관하게 같은 문자열이어야 근거가 된다 */
+  checkedAtKst?: string;
   query: string;
   candidates: string[];
   /** §11 이번 검사에서 모든 영역 미노출 감지 후 in-request 2차 재검증을 수행했는가 */
@@ -296,7 +325,10 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
           blog: { exposed: null, rank: null, matchedUrl: null },
           influencer: { exposed: null, rank: null, matchedUrl: null },
         },
-        query: '', candidates: [], reverified: false, reverifyFlippedToExposed: false, checkedAt: now,
+        // 조회를 한 번도 하지 않았으므로 conditions 는 비워 둔다 — 조회하지 않은 조건을
+        // 적어 두면 "이 조건으로 확인했다"는 거짓말이 된다.
+        query: '', candidates: [], reverified: false, reverifyFlippedToExposed: false,
+        checkedAt: now, checkedAtKst: toKstString(now),
       },
       checkedAt: now,
     };
@@ -307,9 +339,27 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
   // 각 탭의 누적 상태. loaded=어떤 시도든 정상 응답을 한 번이라도 받으면 true.
   // loaded가 끝까지 false면 = 전 후보의 모든 페이지가 실패 = '일시적 오류'(미노출로 집계 안 함)
   // scannedDepth=마지막 정상 조회에서 확인한 상위 순위 범위("조회 범위 밖" 판정용)
-  const blog = { exposed: false, rank: null as number | null, loaded: false, scannedDepth: null as number | null };
-  const view = { exposed: false, rank: null as number | null, loaded: false, scannedDepth: null as number | null };
-  const inf = { exposed: false, rank: null as number | null, loaded: false, scannedDepth: null as number | null };
+  // snaps/attempts = §4 근거. 실제로 조회한 URL·응답 지문과 시도 횟수를 영역별로 모은다.
+  const mkAcc = () => ({
+    exposed: false, rank: null as number | null, loaded: false, scannedDepth: null as number | null,
+    snaps: [] as SearchSnapshot[], attempts: 0,
+  });
+  const blog = mkAcc();
+  const view = mkAcc();
+  const inf = mkAcc();
+
+  /** 한 번의 탭 조회에서 나온 근거를 누적한다. 같은 URL을 두 번 읽어도 지문이 같으면 한 줄만 남긴다. */
+  // exposed 를 받는 이유는 값을 쓰기 위해서가 아니라, snapshots 하나뿐인 옵셔널 타입이면
+  // TS 가 weak type 으로 보고 "겹치는 속성이 없다"며 인자를 거부하기 때문이다.
+  const collect = (acc: ReturnType<typeof mkAcc>, r: { exposed: boolean; snapshots?: SearchSnapshot[] }) => {
+    if (!r.snapshots || r.snapshots.length === 0) return;
+    acc.attempts++;
+    for (const s of r.snapshots) {
+      if (acc.snaps.length >= MAX_SNAPSHOTS_PER_AREA) break;
+      if (acc.snaps.some(p => p.url === s.url && p.hash === s.hash)) continue;
+      acc.snaps.push(s);
+    }
+  };
 
   for (let i = 0; i < candidates.length; i++) {
     const allExposed = blog.exposed && view.exposed && (!hasKeyword || inf.exposed);
@@ -320,6 +370,7 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
       !view.exposed ? checkViewTab(cand, blogId, postId || '', 3, { force, postTitle }) : Promise.resolve({ exposed: true, rank: view.rank, error: false }),
       (hasKeyword && !inf.exposed) ? checkInfluencerTab(cand, blogId, postId || '', { force, postTitle }) : Promise.resolve({ exposed: inf.exposed, rank: inf.rank, error: false }),
     ]);
+    collect(blog, cBlog); collect(view, cView); collect(inf, cInf);
     if (!blog.exposed && !cBlog.error) { blog.loaded = true; if (cBlog.exposed) { blog.exposed = true; blog.rank = cBlog.rank; } else if ('scannedDepth' in cBlog && cBlog.scannedDepth != null) { blog.scannedDepth = cBlog.scannedDepth; } }
     if (!view.exposed && !cView.error) { view.loaded = true; if (cView.exposed) { view.exposed = true; view.rank = cView.rank; } else if ('scannedDepth' in cView && cView.scannedDepth != null) { view.scannedDepth = cView.scannedDepth; } }
     if (hasKeyword && !inf.exposed && !cInf.error) { inf.loaded = true; if (cInf.exposed) { inf.exposed = true; inf.rank = cInf.rank; } else if ('scannedDepth' in cInf && cInf.scannedDepth != null) { inf.scannedDepth = cInf.scannedDepth; } }
@@ -352,6 +403,7 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
       viewExposed === false ? checkViewTab(query, blogId, postId || '', 3, { force: true, postTitle }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
       (hasKeyword && infExposed === false) ? checkInfluencerTab(query, blogId, postId || '', { force: true, postTitle }) : Promise.resolve({ exposed: false, rank: null, error: true } as const),
     ]);
+    collect(blog, rBlog); collect(view, rView); collect(inf, rInf);
     if (!rBlog.error && rBlog.exposed) { blogExposed = true; blog.rank = rBlog.rank; reverifyFlippedToExposed = true; }
     if (!rView.error && rView.exposed) { viewExposed = true; view.rank = rView.rank; reverifyFlippedToExposed = true; }
     if (hasKeyword && !rInf.error && rInf.exposed) { infExposed = true; inf.rank = rInf.rank; reverifyFlippedToExposed = true; }
@@ -388,10 +440,12 @@ export async function computePostExposure(input: ComputeExposureInput): Promise<
     rawState,
     evidence: {
       areas: {
-        view: { exposed: viewExposed, rank: view.rank, matchedUrl: matchedUrlFor('view', viewExposed, blogId, postId) },
-        blog: { exposed: blogExposed, rank: blog.rank, matchedUrl: matchedUrlFor('blog', blogExposed, blogId, postId) },
-        influencer: { exposed: infExposed, rank: inf.rank, matchedUrl: matchedUrlFor('influencer', infExposed, blogId, postId) },
+        view: { exposed: viewExposed, rank: view.rank, matchedUrl: matchedUrlFor('view', viewExposed, blogId, postId), snapshots: view.snaps, attempts: view.attempts },
+        blog: { exposed: blogExposed, rank: blog.rank, matchedUrl: matchedUrlFor('blog', blogExposed, blogId, postId), snapshots: blog.snaps, attempts: blog.attempts },
+        influencer: { exposed: infExposed, rank: inf.rank, matchedUrl: matchedUrlFor('influencer', infExposed, blogId, postId), snapshots: inf.snaps, attempts: inf.attempts },
       },
+      conditions: EXPOSURE_CONDITIONS,
+      checkedAtKst: toKstString(checkedAt),
       query,
       candidates,
       reverified,

@@ -24,6 +24,9 @@ import Link from 'next/link';
 import { MISSING_POSTS_TEASER, MISSING_POSTS_RECENT_LIMIT, SUBSCRIBE_PATH, planLabel, requiredPlanFor, type PlanKey } from '@/lib/plans';
 import { rowsToCsv, downloadCsvInBrowser, downloadTextInBrowser, todayStamp } from '@/lib/csv';
 import { computeAccuracy } from '@/lib/exposure-accuracy';
+import {
+  AREA_LABEL, CONDITIONS_SUMMARY, RANK_COUNTING_RULES, toKstString, type SearchArea,
+} from '@/lib/exposure-conditions';
 import { toVerdictInput, evaluateTargets, ACCURACY_TARGETS, type GoldenCase } from '@/lib/exposure-golden';
 
 // §1·§12·§19 최근 N일까지는 기본(무료) 조회, 초과는 회원 전용. 서버(exposure-policy.ts)가 과금·권한을 최종 강제하며
@@ -161,12 +164,13 @@ function parsePostDate(raw?: string | null): Date | null {
   return t == null ? null : new Date(t);
 }
 
+/**
+ * 검사 시각 표기. 브라우저 로컬 시간대가 아니라 KST 로 고정한다(§3.8) —
+ * 같은 판정을 보는 사람마다 다른 시각이 보이면 그 시각은 근거가 되지 못한다.
+ */
 function formatCheckedAt(iso?: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const kst = toKstString(iso);
+  return kst ? kst.slice(0, 16) : '—';
 }
 
 function missingAreaCount(mr?: PostMissingEntry): number {
@@ -222,6 +226,118 @@ function buildCauseAnalysis(mr?: PostMissingEntry): string[] {
   }
   if (notes.length === 0) notes.push('현재 노출 상태가 양호합니다.');
   return notes;
+}
+
+/**
+ * §4 판정 근거 패널 — "근거를 남길 수 없는 판정은 판정이 아니다".
+ *
+ * 순위 숫자만 보여 주는 건 지시서 §6 이 금지한 표시다(검사 조건 없이 순위만 표시).
+ * 그래서 이 글의 판정을 만들어 낸 조건(기기·로그인·언어·시각)과 실제로 읽은 URL·응답 지문을
+ * 그대로 펼쳐 보여준다. 사용자가 같은 URL을 직접 열어 우리 판정을 반증할 수 있어야 한다.
+ *
+ * 2026-09-04 이전 기록에는 조회 조건이 없다 — 그때는 저장하지 않았기 때문이다.
+ * 그 경우 조건을 지어내지 않고 "기록 없음"이라고 말한다.
+ */
+function EvidencePanel({ mr }: { mr?: PostMissingEntry }) {
+  const [open, setOpen] = useState(false);
+  const ev = mr?.evidence;
+
+  const areaRows: { key: SearchArea; area: NonNullable<typeof ev>['areas']['view'] | undefined }[] = [
+    { key: 'view', area: ev?.areas?.view },
+    { key: 'blog', area: ev?.areas?.blog },
+    { key: 'influencer', area: ev?.areas?.influencer },
+  ];
+
+  return (
+    <div className="mb-4 border border-border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-bg hover:bg-surface-hover transition cursor-pointer"
+      >
+        <span className="text-xs font-bold text-text">판정 근거 보기</span>
+        <span className="text-[10px] text-dim">{open ? '접기 ▲' : '펼치기 ▼'}</span>
+      </button>
+
+      {open && (
+        <div className="px-3 py-3 space-y-3 text-[11px] leading-relaxed">
+          {!ev && (
+            <p className="text-dim">이 게시글은 아직 검사 기록이 없습니다. 재검사하면 조회 조건과 근거가 함께 기록됩니다.</p>
+          )}
+
+          {ev && (
+            <>
+              {/* 조회 조건 (§3.3) */}
+              <div>
+                <p className="font-bold text-text mb-1">조회 조건</p>
+                {ev.conditions ? (
+                  <dl className="space-y-0.5">
+                    <div className="flex gap-2"><dt className="text-dim w-20 shrink-0">기기</dt><dd className="text-text">{ev.conditions.device === 'pc' ? 'PC(데스크톱 크롬)' : ev.conditions.device}</dd></div>
+                    <div className="flex gap-2"><dt className="text-dim w-20 shrink-0">로그인</dt><dd className="text-text">{ev.conditions.loggedIn ? '로그인 상태' : '비로그인(개인화 없음)'}</dd></div>
+                    <div className="flex gap-2"><dt className="text-dim w-20 shrink-0">언어 · 지역</dt><dd className="text-text">{ev.conditions.language} · {ev.conditions.region ?? '지역 미지정'}</dd></div>
+                    <div className="flex gap-2"><dt className="text-dim w-20 shrink-0">검사 시각</dt><dd className="text-text">{ev.checkedAtKst || toKstString(ev.checkedAt) || '—'}</dd></div>
+                    <div className="flex gap-2"><dt className="text-dim w-20 shrink-0">검색어</dt><dd className="text-text">{ev.query || '—'}</dd></div>
+                  </dl>
+                ) : (
+                  <p className="text-dim">
+                    이 기록에는 조회 조건이 저장돼 있지 않습니다(2026-09-04 이전 검사).
+                    지금은 <b className="text-text">{CONDITIONS_SUMMARY}</b> 조건으로 검사하며, 재검사하면 조건까지 함께 기록됩니다.
+                  </p>
+                )}
+              </div>
+
+              {/* 영역별 조회 기록 (§4 조회 URL · 매칭 위치 · 스냅샷 해시 · 재시도 회차) */}
+              <div>
+                <p className="font-bold text-text mb-1">영역별 조회 기록</p>
+                <div className="space-y-2">
+                  {areaRows.map(({ key, area }) => (
+                    <div key={key} className="bg-bg rounded px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-text">{AREA_LABEL[key]}</span>
+                        <span className="text-dim">
+                          {area?.exposed === true ? `노출${area.rank != null ? ` · ${area.rank}위` : ''}`
+                            : area?.exposed === false ? '미노출'
+                            : '확인 불가'}
+                          {area?.attempts ? ` · 조회 ${area.attempts}회` : ''}
+                        </span>
+                      </div>
+                      {area?.matchedUrl && (
+                        <p className="mt-1 break-all">
+                          <span className="text-dim">매칭 </span>
+                          <a href={area.matchedUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{area.matchedUrl}</a>
+                        </p>
+                      )}
+                      {area?.snapshots && area.snapshots.length > 0 ? (
+                        <ul className="mt-1 space-y-0.5">
+                          {area.snapshots.map((s, i) => (
+                            <li key={i} className="break-all">
+                              <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{s.url}</a>
+                              <span className="text-dim"> · 지문 {s.hash} · {Math.round(s.bytes / 1024).toLocaleString()}KB</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-1 text-dim">조회 기록 없음 — 이 영역은 조회하지 않았거나, 조회 기록을 남기기 전(2026-09-04 이전) 검사입니다.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* §3.4 순위 카운팅 규칙 */}
+              <div>
+                <p className="font-bold text-text mb-1">순위를 세는 규칙</p>
+                <ul className="space-y-1">
+                  {RANK_COUNTING_RULES.map((r, i) => (
+                    <li key={i} className="text-dim flex gap-1.5"><span className="text-accent shrink-0">·</span><span>{r}</span></li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // §4 게시글별 채널 노출 상태 배지 — 노출/미노출 + null 은 종합 상태(class)에 따라 확인중/확인실패/분석불가/미확인으로 구분.
@@ -1746,6 +1862,16 @@ export default function MissingPostsSection({
               ))}
             </div>
 
+            {/* 지시서 §6 — 검사 조건(탭·기기·시각) 없이 순위 숫자만 표시하지 않는다.
+                위 카드의 "N위"가 어떤 조건에서 나온 숫자인지 바로 아래에서 한 줄로 밝히고,
+                자세한 근거는 아래 [판정 근거 보기]에서 조회 URL까지 펼쳐 보여준다. */}
+            <p className="text-[10px] text-dim -mt-2 mb-4">
+              {detailMr?.evidence?.conditions
+                ? `${CONDITIONS_SUMMARY} 기준`
+                : `${CONDITIONS_SUMMARY} 기준(이 기록에는 조건이 저장돼 있지 않아 현재 검사 조건을 적었습니다)`}
+              {detailMr?.checkedAt ? ` · ${formatCheckedAt(detailMr.checkedAt)} KST 조회` : ''}
+            </p>
+
             {/* §14/§19 최종 판정 + 신뢰도 + 1·2차 검사 시각 */}
             {detailVerdict && (
               <div className="bg-bg rounded-lg px-3 py-2.5 mb-4 space-y-1.5">
@@ -1800,6 +1926,10 @@ export default function MissingPostsSection({
               )}
               <p>검색량: <b className="text-text">{detailMr?.searchVolume != null ? detailMr.searchVolume.toLocaleString() : '—'}</b></p>
             </div>
+
+            {/* §4 판정 근거 — 원인 "추정"보다 먼저 온다. 추정은 해석이고 근거는 사실이라,
+                사실을 뒤에 숨기면 사용자는 해석부터 읽고 그걸 사실로 받아들인다. */}
+            <EvidencePanel mr={detailMr} />
 
             {/* 원인 분석 */}
             <div className="mb-4">

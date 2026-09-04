@@ -2,8 +2,13 @@ import * as cheerio from 'cheerio';
 import { createHmac } from 'crypto';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
 import { blogPostKey, parseBlogPostRef, countBlogPostRefs, type BlogPostRef } from '@/lib/naver-blog-post-ref';
+import {
+  SEARCH_USER_AGENT, buildSearchUrl, snapshotHash, EXPOSURE_CONDITIONS, type SearchSnapshot,
+} from '@/lib/exposure-conditions';
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+// 조회 조건(UA·언어)의 정본은 exposure-conditions.ts 다. 화면에 "PC·비로그인으로 조회했다"고
+// 적어 두고 여기서 다른 UA 를 쓰면 그 설명이 거짓이 되므로 상수를 공유한다.
+const USER_AGENT = SEARCH_USER_AGENT;
 
 const NAVER_SEARCH_CLIENT_ID = process.env.NAVER_SEARCH_CLIENT_ID || '';
 const NAVER_SEARCH_CLIENT_SECRET = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
@@ -73,18 +78,26 @@ function isSearchResultPage(html: string): boolean {
  * 검색 결과 페이지 HTML을 가져온다. 같은 URL(=같은 키워드·탭·페이지)은 짧은 TTL 동안 공유 캐시에서 재사용(스펙 #24).
  * 반환 null = 응답 비정상/차단/네트워크 오류(호출측이 '일시적 오류'로 처리).
  */
-async function fetchSearchHtml(url: string, opts?: TabFetchOpts): Promise<string | null> {
+async function fetchSearchHtml(url: string, opts?: TabFetchOpts, snaps?: SearchSnapshot[]): Promise<string | null> {
+  // §4 근거: 실제로 읽은 페이지의 지문을 남긴다. 캐시 적중분도 판정에 쓰였으니 똑같이 남긴다 —
+  // "그때 무슨 화면을 보고 그렇게 판정했나"에 답할 수 없으면 근거가 아니다.
+  const record = (html: string) => {
+    if (!snaps) return;
+    if (snaps.some(s => s.url === url && s.hash === snapshotHash(html))) return;
+    snaps.push({ url, hash: snapshotHash(html), bytes: html.length });
+  };
+
   const cacheKey = `srchhtml:${url}`;
   if (!opts?.force) {
     const cached = await cacheGet<string>(cacheKey);
     // 차단 페이지가 캐시에 남아 있으면 TTL 동안 같은 배치의 모든 포스팅이 함께 오판된다.
-    if (cached !== null && isSearchResultPage(cached)) return cached;
+    if (cached !== null && isSearchResultPage(cached)) { record(cached); return cached; }
   }
   const res = await fetch(url, {
     headers: {
       'User-Agent': USER_AGENT,
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ko-KR,ko;q=0.9',
+      'Accept-Language': `${EXPOSURE_CONDITIONS.language},ko;q=0.9`,
       'Accept-Encoding': 'gzip, deflate',
       'Referer': 'https://search.naver.com/',
     },
@@ -92,6 +105,7 @@ async function fetchSearchHtml(url: string, opts?: TabFetchOpts): Promise<string
   });
   if (!res.ok) return null;
   const html = await res.text();
+  record(html);
   if (!isSearchResultPage(html)) {
     console.warn(`[keyword-rank-check] 검색 결과 페이지 아님(차단/점검 추정) → 일시적 오류 처리 url=${url} len=${html.length}`);
     return null;
@@ -105,7 +119,25 @@ async function fetchSearchHtml(url: string, opts?: TabFetchOpts): Promise<string
 // 탭 조회 결과 — error:true = 전 페이지 로드 실패(일시적 오류). 미노출(exposed:false)과 구분해야 오판을 막는다.
 //   scannedDepth = "조회 범위 밖"(스펙 #10/#21) 판정용 — 조회 성공했으나 미발견 시 확인한 상위 순위 범위(예: 30).
 //   exposed=false && scannedDepth 존재 → "N위 밖", scannedDepth 없으면 일반 미노출.
-export type TabCheckResult = { exposed: boolean; rank: number | null; error?: boolean; scannedDepth?: number };
+//   snapshots   = §4 근거. 이 판정을 만들어 낸 조회 URL·응답 지문. 조회를 한 번도 못 했으면 빈 배열.
+export type TabCheckResult = {
+  exposed: boolean; rank: number | null; error?: boolean; scannedDepth?: number;
+  snapshots?: SearchSnapshot[];
+};
+
+/**
+ * 근거(스냅샷) 수집을 각 탭 검사에 덧씌운다.
+ *
+ * 판정 로직 안의 return 지점마다 스냅샷을 손으로 붙이면 언젠가 한 곳을 빠뜨리고,
+ * 그 한 곳이 "근거 없는 판정"이 된다. 그래서 수집은 바깥에서 한 번만 감싼다.
+ */
+async function withSnapshots(
+  run: (snaps: SearchSnapshot[]) => Promise<TabCheckResult>,
+): Promise<TabCheckResult> {
+  const snaps: SearchSnapshot[] = [];
+  const result = await run(snaps);
+  return snaps.length > 0 ? { ...result, snapshots: snaps } : result;
+}
 
 export type RankCheckResult = {
   blogTab: TabCheckResult;
@@ -209,6 +241,10 @@ export function matchInfluencerContentByHandle(
  * 폴백: <a> href에서 blog.naver.com 링크 수동 카운트
  */
 export async function checkBlogTab(query: string, blogId: string, postId: string, opts?: TabFetchOpts): Promise<TabCheckResult> {
+  return withSnapshots(snaps => checkBlogTabInner(query, blogId, postId, opts, snaps));
+}
+
+async function checkBlogTabInner(query: string, blogId: string, postId: string, opts: TabFetchOpts | undefined, snaps: SearchSnapshot[]): Promise<TabCheckResult> {
   // 블로그탭은 blogId+postId 정밀 매칭이 유일한 판정 수단이다. 둘 중 하나라도 없으면
   // 조회를 해봐야 매칭이 성립하지 않으므로 '미노출'이 아니라 '확인 불가'다.
   if (!blogId || !postId) {
@@ -217,7 +253,6 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
 
   // 판정은 제목이 아니라 blogId+logNo 비교 키로만 한다(§3.2).
   const targetKey = blogPostKey(blogId, postId);
-  const baseUrl = `https://search.naver.com/search.naver?ssc=tab.blog.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
 
   // 한 페이지라도 정상 로드됐는지 추적 — 전 페이지가 실패하면 "미노출"이 아니라 "일시적 오류"로 신호한다
   // (네이버 다운/차단으로 인한 오탐을 미노출로 잘못 집계하지 않기 위함)
@@ -229,10 +264,11 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
 
   for (let page = 1; page <= 3; page++) {
     const start = (page - 1) * 10 + 1;
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&start=${start}`;
+    // 조회 URL은 근거로 그대로 저장되므로 화면용으로 다시 조립하지 않는다(§4).
+    const pageUrl = buildSearchUrl('blog', query, start);
 
     try {
-      const html = await fetchSearchHtml(pageUrl, opts);
+      const html = await fetchSearchHtml(pageUrl, opts, snaps);
       if (html === null) {
         console.warn(`[keyword-rank-check] checkBlogTab 네이버 응답 비정상 query="${query}" blogId=${blogId} postId=${postId} page=${page}`);
         continue;
@@ -317,6 +353,10 @@ export async function checkBlogTab(query: string, blogId: string, postId: string
  * (URL 구조·파싱 로직은 /api/keywords/blog-top의 crawlInfluencerTab과 동일 사이트 렌더링을 사용)
  */
 export async function checkInfluencerTab(query: string, blogId: string, postId: string, opts?: TabFetchOpts): Promise<TabCheckResult> {
+  return withSnapshots(snaps => checkInfluencerTabInner(query, blogId, postId, opts, snaps));
+}
+
+async function checkInfluencerTabInner(query: string, blogId: string, postId: string, opts: TabFetchOpts | undefined, snaps: SearchSnapshot[]): Promise<TabCheckResult> {
   // 인플루언서 콘텐츠는 in.naver.com handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
   // blogId 가 없으면 매칭 기준이 없어 판정 자체가 성립하지 않는다 → '미노출'이 아니라 '확인 불가'.
   if (!blogId) {
@@ -330,11 +370,11 @@ export async function checkInfluencerTab(query: string, blogId: string, postId: 
   // (scripts/probe-influencer-tab.mjs로 확증 — page1=page2=page3 동일). 과거엔 이를 페이지2/3으로 오인해
   // start/(page-1)*10 오프셋을 더해, 실제 2위 글을 15/18위로 부풀리는 버그가 있었다.
   // 따라서 1페이지만 조회하고 등장순서/r= 값을 그대로 순위로 사용한다.
-  const baseUrl = `https://search.naver.com/search.naver?ssc=tab.influencer.all&sm=tab_jum&query=${encodeURIComponent(query)}`;
+  const baseUrl = buildSearchUrl('influencer', query);
 
   let html: string | null = null;
   try {
-    html = await fetchSearchHtml(baseUrl, opts);
+    html = await fetchSearchHtml(baseUrl, opts, snaps);
     if (html === null) {
       console.warn(`[keyword-rank-check] checkInfluencerTab 네이버 응답 비정상 query="${query}" blogId=${blogId} postId=${postId}`);
       return { exposed: false, rank: null, error: true };
@@ -416,6 +456,10 @@ function countInfluencerEntries(html: string): number {
  * data-cr-on="r=순위" 속성에서 네이버 공식 순위 추출
  */
 export async function checkViewTab(query: string, blogId: string, postId?: string, maxPages: number = 3, opts?: TabFetchOpts): Promise<TabCheckResult> {
+  return withSnapshots(snaps => checkViewTabInner(query, blogId, postId, maxPages, opts, snaps));
+}
+
+async function checkViewTabInner(query: string, blogId: string, postId: string | undefined, maxPages: number, opts: TabFetchOpts | undefined, snaps: SearchSnapshot[]): Promise<TabCheckResult> {
   // 인플루언서 콘텐츠(in.naver.com)는 handle 기준으로 매칭하므로 postId가 없어도 조회 가능.
   // 다만 blogId 가 없으면 매칭 기준 자체가 없어 조회해봐야 판정이 성립하지 않는다 → '미노출'이 아니라 '확인 불가'.
   if (!blogId) {
@@ -431,7 +475,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   // 이중 가산해, 실제 8위 글을 18/28위로 부풀리는 버그가 있었다(scripts/probe-rank-offset.mjs로 확증).
   // 따라서 통합검색은 1페이지만 조회하고 r= 값을 그대로 순위로 사용한다.
   // maxPages는 이제 "webkr OpenAPI 폴백 사용 여부(정밀조회=3 / 스크리닝=1)" 플래그로만 쓴다.
-  const baseUrl = `https://search.naver.com/search.naver?where=webkr&sm=tab_jum&query=${encodeURIComponent(query)}`;
+  const baseUrl = buildSearchUrl('view', query);
 
   // "조회 범위 밖"(스펙 #10) 스캔 깊이 — 실제로 순위를 읽어낸 최대 깊이만 센다.
   // 페이지당 30건을 가정해 30을 고정으로 쓰면(과거 동작) 22건만 실린 결과에도 "30위 밖"이라 적어,
@@ -444,7 +488,7 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
   // data-cr-on / blog.naver.com 포스트 링크가 통째로 사라져 HTML 파싱이 상시 0건이 됐다.
   let observedEntries = 0;
   try {
-    const html = await fetchSearchHtml(baseUrl, opts);
+    const html = await fetchSearchHtml(baseUrl, opts, snaps);
     if (html === null) {
       // 단일 페이지 조회이므로 이 페이지 실패 = 조회 실패 → 미노출로 오판하지 않고 일시적 오류로 신호(스펙 #8)
       console.warn(`[keyword-rank-check] checkViewTab 네이버 응답 비정상 query="${query}" blogId=${blogId} postId=${postId}`);
@@ -491,7 +535,11 @@ export async function checkViewTab(query: string, blogId: string, postId?: strin
           },
         });
         if (apiRes.ok) {
-          const apiData = await apiRes.json();
+          const apiText = await apiRes.text();
+          // 이 폴백도 판정을 뒤집을 수 있으므로 근거에 남긴다 — HTML 이 아니라 공식 API 응답이지만
+          // "무엇을 보고 그렇게 판정했나"의 답에는 똑같이 들어가야 한다(§4).
+          snaps.push({ url: apiUrl, hash: snapshotHash(apiText), bytes: apiText.length });
+          const apiData = JSON.parse(apiText);
           const items = apiData.items || [];
           let rank = 0;
           for (const item of items) {
