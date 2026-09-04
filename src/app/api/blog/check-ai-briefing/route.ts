@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aiBriefingLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
 import { checkAiBriefingExposure, isVerifiedStatus, type AiBriefingStage } from '@/lib/naver-ai-briefing';
 
@@ -50,6 +51,12 @@ export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
     if (await aiBriefingLimiter.check(ip)) return rateLimitResponse();
+
+    // 등급 확인은 헤드리스 브라우저를 띄우기 전에 한다. 2026-09-04 이전엔 이 가드가 아예 없어
+    // 화면(/my/naver-mate)만 잠겨 있었고, 라우트를 직접 부르면 무료 회원도 판정을 받아 갔다.
+    // assertBlogResourceAccess 는 "내 블로그인가"만 보므로 등급 축을 대신하지 못한다.
+    const gate = await requireFeature(request, 'my.naver-mate');
+    if (gate.error) return gate.error;
 
     const body = await request.json();
     const { blogId, postId, keyword } = body;

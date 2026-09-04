@@ -159,7 +159,12 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
     minPlan: 'pro',
     consumesQuota: 'free-daily',
   },
-  'my.naver-mate': { key: 'my.naver-mate', label: 'AI 브리핑', minPlan: 'max' },
+  // 2026-09-04 Max → Pro(오렌지 지시, 노출 검사 4종 Pro 전환).
+  // 판정 비용이 큰 기능이다 — 헤드리스 브라우저를 띄워 통합검색 AI 브리핑과 AI 탭을
+  // 순차 확인한다. 그래서 화면(checkFeaturePage)만이 아니라 실제로 그 일을 하는
+  // 라우트 3종(check-ai-briefing · ai-briefing-state · ai-citation-estimate)이
+  // 모두 이 선언을 서버에서 강제해야 한다. 화면만 잠그면 API 직접 호출로 그대로 샌다.
+  'my.naver-mate': { key: 'my.naver-mate', label: 'AI 브리핑', minPlan: 'pro' },
   // 「포스팅 데이터 내려받기」 — 2026-09-01 이전에는 화면의 boolean 하나로만 막혀 있었고
   // 서버 라우트가 아예 없어 브라우저에서 CSV 를 직접 만들었다(개발자도구로 우회 가능).
   // /api/downloads/post-analysis 가 이 선언을 서버에서 강제한다.

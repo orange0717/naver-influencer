@@ -297,8 +297,10 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 포스팅 분석 (AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
-            {/* 2026-09-04 「노출 현황」이 Max → Pro 로 내려왔다(오렌지 지시). Max 카드에서 이 줄을 옮겼다. */}
+            {/* 2026-09-04 「노출 현황」·「AI 브리핑 · AI 탭 인용」이 Max → Pro 로 내려왔다(오렌지 지시).
+                둘 다 Max 카드에서 이 줄로 옮겼다. */}
             <li className="flex items-center gap-2.5">{CHECK}<span>노출 현황 (3탭 교차검증 · 전환 이력)</span></li>
+            <li className="flex items-center gap-2.5">{CHECK}<span>AI 브리핑 · AI 탭 인용</span></li>
             {/* 아래 2건은 2026-09-01 이전까지 실제로는 열려 있는데 이용권 페이지에 한 줄도 없었다. */}
             <li className="flex items-center gap-2.5">{CHECK}<span>유튜브 음원 추출</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>Google 색인 관리</span></li>
@@ -348,11 +350,10 @@ export default function SubscribeClient() {
             {/* 아래 10건은 Max 이용권으로 실제 열리는데 이 카드에 한 줄도 없던 것들이다.
                 8건은 비교표에도 없어 완전히 무고지였고(2026-09-01 채움), 3건(키워드 추천·글감 찾기·
                 릴스·쇼츠 분석)은 비교표에만 있고 카드에서만 빠져 있었다(2026-09-02 채움).
-                「노출 현황」은 2026-09-04 Pro 로 내려가 위 Pro 카드로 옮겼다 —
+                「노출 현황」과 「AI 브리핑 · AI 탭 인용」은 2026-09-04 Pro 로 내려가 위 Pro 카드로 옮겼다 —
                 이 카드 첫 줄의 "Pro 플랜 전체 포함"으로 Max 회원에게도 그대로 고지된다. */}
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 대시보드</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 상세</span></li>
-            <li className="flex items-center gap-2.5">{CHECK}<span>AI 브리핑 · AI 탭 인용</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>토픽 · 내 토픽</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>맞팬 관리</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>대량 키워드 조회</span></li>
@@ -475,10 +476,11 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
                 <td className="text-center text-[11px] text-accent font-semibold">1회 500건</td>
               </tr>
+              {/* 2026-09-04 Max → Pro 로 내려와 Pro 칸이 열렸다(오렌지 지시). */}
               <tr>
                 <td className="py-2.5 px-2">AI 브리핑 · AI 탭 인용</td>
                 <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
-                <td className="text-center"><div className="flex justify-center">{DASH}</div></td>
+                <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
 

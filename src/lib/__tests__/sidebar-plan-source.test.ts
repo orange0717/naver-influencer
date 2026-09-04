@@ -25,4 +25,18 @@ describe('사이드바 등급은 plans.ts 가 정본이다', () => {
     // 잠그면 Free 회원이 /subscribe 로 튕겨 티저(최근 7일·5건)에 도달할 수 없다.
     expect(itemLocksNavigation(item)).toBe(false);
   });
+
+  // 지시서 §1 — 노출 검사 4종은 전부 Pro 다. 등급은 여기 한 곳에서만 선언하므로
+  // 이 셋이 어긋나면 화면·서버·사이드바가 한꺼번에 어긋난다.
+  it('노출 검사 4종은 모두 Pro 다', () => {
+    expect({
+      '노출 현황': FEATURES['my.missing-posts'].minPlan,
+      '키워드 순위': FEATURES['my.keyword-ranking'].minPlan,
+      'AI 브리핑·AI 탭 인용': FEATURES['my.naver-mate'].minPlan,
+    }).toEqual({
+      '노출 현황': 'pro',
+      '키워드 순위': 'pro',
+      'AI 브리핑·AI 탭 인용': 'pro',
+    });
+  });
 });

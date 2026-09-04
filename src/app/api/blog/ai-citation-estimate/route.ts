@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { getAuthUser } from '@/lib/auth';
-import { isRestrictedByUserId } from '@/lib/admin';
+import { requireFeature } from '@/lib/guards/requireFeature';
 import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
@@ -23,11 +22,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   if (await dashboardLimiter.check(getClientIp(request))) return rateLimitResponse();
 
-  const auth = await getAuthUser(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (await isRestrictedByUserId(auth.userId)) {
-    return NextResponse.json({ error: '해당 계정은 유료 기능을 이용할 수 없습니다.' }, { status: 403 });
-  }
+  // AI 인용 확인 화면의 '전체 업데이트' 사전 계산이다 — 같은 기능이므로 같은 등급 가드를 쓴다.
+  // 로그인만 확인하던 시절엔 무료 회원이 이 화면의 작업량·쿼터를 그대로 받아 갔다.
+  // requireFeature 가 이용 제한 계정(isRestrictedByUserId)까지 함께 판정한다.
+  const gate = await requireFeature(request, 'my.naver-mate');
+  if (gate.error) return gate.error;
 
   const blogId = request.nextUrl.searchParams.get('blogId')?.trim();
   if (!blogId) return NextResponse.json({ error: 'blogId가 필요합니다.' }, { status: 400 });
@@ -49,7 +48,7 @@ export async function GET(request: NextRequest) {
     supabase
       .from('ai_briefing_exposures')
       .select('post_id, check_status, checked_at, briefing_status, tab_status')
-      .eq('user_id', auth.userId)
+      .eq('user_id', gate.authUser.userId)
       .eq('blog_id', blogId)
       .then(({ data }) => data ?? []),
   ]);
