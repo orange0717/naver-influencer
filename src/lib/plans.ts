@@ -128,18 +128,28 @@ export const PLAN_QUOTA: Record<PlanKey, QuotaCounter | null> = {
  */
 export const MISSING_POSTS_TEASER = { days: 7, rows: 5 } as const;
 
+/**
+ * 노출 현황이 한 번에 보는 최근 글 수(2026-09-04 오렌지 지시).
+ * 서버가 이 개수만큼만 조회해 내려보낸다 — 전체를 받아 화면에서 자르지 않는다.
+ *
+ * 티저 상수와 같은 이유로 여기 둔다. 서버(exposure-recent)와 화면(위젯·단독 페이지)이
+ * 같은 값을 봐야 "최근 10개 글 기준"이라는 안내가 실제 응답과 어긋나지 않는다.
+ */
+export const MISSING_POSTS_RECENT_LIMIT = 10;
+
 export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* ── 대시보드 — 블로그 ───────────────────────────────────── */
   'dashboard.blog': { key: 'dashboard.blog', label: '대시보드', minPlan: 'free' },
-  // 2026-09-03 Free → Max. 잠그는 축은 "미노출 숫자를 보느냐"가 아니라 노출 현황 화면
-  // 고유 기능(3탭 교차검증 확정 판정 · 전환 이력 · 30일 이전 확장 조회 · 내려받기)이다.
+  // 2026-09-03 Free → Max, 2026-09-04 Max → Pro(오렌지 지시). 잠그는 축은 "미노출 숫자를
+  // 보느냐"가 아니라 노출 현황 화면 고유 기능(3탭 교차검증 확정 판정 · 전환 이력 ·
+  // 30일 이전 확장 조회 · 내려받기)이다.
   // 무료 대시보드(BlogAnalysisSection)의 2탭 미노출 검사와 저장된 판정 조회
   // (/api/my/post-missing-state GET)는 그대로 무료다 — 같은 엔드포인트를 네 화면이
   // 공유하므로 라우트를 통째로 잠그면 무료 대시보드와 Pro 키워드순위·경쟁사가 함께 죽는다.
   'my.missing-posts': {
     key: 'my.missing-posts',
     label: '노출 현황',
-    minPlan: 'max',
+    minPlan: 'pro',
     consumesQuota: 'free-daily',
     teaser: true,
   },

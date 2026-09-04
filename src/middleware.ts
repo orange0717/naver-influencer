@@ -134,7 +134,7 @@ const PAID_PLAN_GATE_API_PREFIXES = ['/api/my'];
 // /api/my 하위이지만 유료 게이트에서 예외인 경로:
 //  - 계정 연결(link)은 결제 무관하게 열어둠
 //  - post-missing-state 는 저장된 판정을 읽기만 하고, 무료로 파는 「MY 블로그」(/dashboard)가
-//    같은 데이터를 쓴다. 노출 현황이 2026-09-03 Max 로 올라간 뒤에도 이 읽기는 무료로 남는다
+//    같은 데이터를 쓴다. 노출 현황이 유료(2026-09-03 Max → 09-04 Pro)로 올라간 뒤에도 이 읽기는 무료로 남는다
 //    (오렌지 결정 "대시보드 KPI는 무료 유지"). 새 수집·확장 조회 쪽이 등급으로 막힌다.
 //  - post-missing-history 는 노출 현황 전용이라 라우트 안에서 requireFeature 로 403 을 낸다.
 //    여기서 빼면 미들웨어의 402 가 먼저 떠 등급 안내가 아니라 결제 안내가 나가므로 면제로 둔다.
@@ -143,6 +143,9 @@ const PAID_PLAN_GATE_API_EXEMPT = [
   '/api/my/link-blog',
   '/api/my/post-missing-state',
   '/api/my/post-missing-history',
+  // exposure-recent 는 무료 「MY 블로그」(/dashboard) 노출 현황 위젯 전용 읽기다. 새로 검사하지 않고
+  // 이미 저장된 판정만 최근 10개 글에 대해 되읽으므로 post-missing-state 와 같은 이유로 무료다.
+  '/api/my/exposure-recent',
   // 「MY 블로그」(/dashboard)는 무료로 안내·판매하는 화면인데, 그 KPI 요약과 프로필이
   // /api/my 접두사에 걸려 402 를 받고 있었다(2026-09-01 매핑 OVERLOCK). 안내대로 연다.
   // 이 두 API 는 "사용자 본인이 이미 만들어 둔 결과"를 다시 집계해 보여줄 뿐이라,
@@ -451,7 +454,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
-  // /my API 전반: 무료 기능(계정 연결·노출 현황)만 PAID_PLAN_GATE_API_EXEMPT 로 열어둔다.
+  // /my API 전반: 계정 연결과, 노출 현황 중 무료로 남기는 읽기 전용 라우트만
+  // PAID_PLAN_GATE_API_EXEMPT 로 열어둔다(노출 현황 화면 자체는 Pro 다).
   const isPaidPlanGateApi =
     PAID_PLAN_GATE_API_PREFIXES.some(p => matchesPathPrefix(pathname, p)) &&
     !PAID_PLAN_GATE_API_EXEMPT.some(p => matchesPathPrefix(pathname, p));

@@ -6,6 +6,9 @@ import { dashboardLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-lim
 import { fetchBlogProfileStats } from '@/lib/blog-crawler';
 import { countMissing, type MissingResultsMap, type MissingState, type PostLike } from '@/lib/missing-rate';
 import { assertBlogResourceAccess } from '@/lib/blog-access';
+import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
+import { parseNaverPostDate } from '@/lib/naver-date';
+import { MISSING_POSTS_RECENT_LIMIT } from '@/lib/plans';
 import { rollupPostCitationStatus } from '@/lib/ai-citation-status';
 
 export const dynamic = 'force-dynamic';
@@ -156,13 +159,28 @@ export async function GET(request: NextRequest) {
     //    "동일한 판정 로직"(isPostMissing)으로 집계한다(스펙 9·10항). 이 컬럼을 빼면 isPostMissing 이 레거시 AND 폴백으로
     //    떨어져, 아직 확정 안 된 재검사(recheck) 글까지 미노출로 세어 미노출 페이지의 '전체 미노출' 카드보다 숫자가
     //    커지는 불일치가 생긴다. overall_status 는 migration-146 컬럼이라 미적용 DB 에선 레거시 컬럼으로 폴백한다.
+    // 2026-09-04(오렌지 지시 R2): 집계 범위를 「최근 10개 글」로 좁힌다. 발행일 컬럼이 없어
+    // checked_at 으로는 최근 글을 고를 수 없으므로, 네이버 목록에서 최신 10개 post_id 를 먼저 얻고
+    // 그 10개로만 조회한다(= 서버 쿼리 레벨 제한). 노출 현황 위젯(exposure-recent)과 같은 순서다.
     (async () => {
+      const { posts, failure } = await fetchBlogPostList(blogId, 1, MISSING_POSTS_RECENT_LIMIT);
+      if (posts.length === 0) {
+        // 글이 정말 없는 것(NO_POSTS)은 '미검사'로, 수집 실패는 ERROR 로 갈라야 한다 —
+        // 둘을 합치면 네이버가 막힌 날 KPI 가 "미노출 0건"으로 보인다.
+        return { rows: [], ok: !failure || failure === 'NO_POSTS', recent: [] as PostLike[] };
+      }
+      const now = Date.now();
+      const recent: PostLike[] = posts.map(p => {
+        const ms = parseNaverPostDate(p.date, now);
+        return { id: p.id, isPublic: p.isPublic, publishedAt: ms == null ? null : new Date(ms) };
+      });
+      const ids = recent.map(p => p.id);
       const FULL = 'post_id, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, overall_status, checked_at';
       const LEGACY = 'post_id, view_exposed, view_rank, blog_exposed, blog_rank, checked_at';
-      const full = await supabase.from('post_missing_checks').select(FULL).eq('blog_id', blogId).not('checked_at', 'is', null);
-      if (!full.error) return { rows: full.data ?? [], ok: true };
-      const legacy = await supabase.from('post_missing_checks').select(LEGACY).eq('blog_id', blogId).not('checked_at', 'is', null);
-      return { rows: legacy.data ?? [], ok: !legacy.error };
+      const full = await supabase.from('post_missing_checks').select(FULL).eq('blog_id', blogId).in('post_id', ids).not('checked_at', 'is', null);
+      if (!full.error) return { rows: full.data ?? [], ok: true, recent };
+      const legacy = await supabase.from('post_missing_checks').select(LEGACY).eq('blog_id', blogId).in('post_id', ids).not('checked_at', 'is', null);
+      return { rows: legacy.data ?? [], ok: !legacy.error, recent };
     })(),
     // 포스팅별 대표 키워드 순위(스펙 #20) 표시용 제목 — post_representative_keywords(공용, blog_id 기준)
     supabase
@@ -346,7 +364,6 @@ export async function GET(request: NextRequest) {
   };
   const missingCheckRows = missing.rows as MissingRow[];
   const missingResults: MissingResultsMap = {};
-  const missingPosts: PostLike[] = [];
   for (const r of missingCheckRows) {
     missingResults[r.post_id] = {
       blogTab: { exposed: r.blog_exposed, rank: r.blog_rank },
@@ -354,8 +371,10 @@ export async function GET(request: NextRequest) {
       influencerTab: { exposed: r.influencer_exposed ?? null, rank: null },
       overallStatus: (r.overall_status ?? null) as MissingState['overallStatus'],
     };
-    missingPosts.push({ id: r.post_id });
   }
+  // 판정 대상은 최근 10개 글이다(위 조회와 같은 목록). 발행일을 들고 있어야 색인 유예가 걸린다 —
+  // 검사 행에는 발행일이 없어서, 여기에 rows 로 PostLike 를 만들면 갓 발행한 글이 미노출로 새어 들어간다.
+  const missingPosts: PostLike[] = (missing.recent ?? []).filter(p => missingResults[p.id]);
   const missingCount = missingPosts.length > 0 ? countMissing(missingPosts, missingResults) : 0;
   const missingUpdatedAt = missingCheckRows.reduce<string | null>((max, r) => {
     const c = r.checked_at as string | null;
@@ -384,7 +403,7 @@ export async function GET(request: NextRequest) {
       metric_key: 'blog_missing_count', source_type: 'BLOG_NON_EXPOSURE', source_table: 'post_missing_checks',
       status: missingStatus, value: missingStatus === 'FRESH' ? missingCount : null,
       source_updated_at: missingUpdatedAt, href: '/my/missing-posts',
-      calculation_rule: '미노출 메뉴가 검사·저장한 결과 중 미노출로 판정된 포스팅 수(색인 유예 제외)',
+      calculation_rule: `최근 ${MISSING_POSTS_RECENT_LIMIT}개 글 중 노출 현황이 검사·저장한 결과에서 미노출로 판정된 포스팅 수(색인 유예 제외)`,
     }),
     blog_ai_briefing_cited: m({
       metric_key: 'blog_ai_briefing_cited', source_type: 'BLOG_AI_CITATION', source_table: 'ai_briefing_exposures',

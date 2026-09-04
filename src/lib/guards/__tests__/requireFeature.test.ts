@@ -31,17 +31,20 @@ describe('노출 현황(my.missing-posts) 서버 가드', () => {
     const gate = await requireFeature(request, 'my.missing-posts');
     expect(gate.error?.status).toBe(403);
     await expect(gate.error!.json()).resolves.toMatchObject({
-      requiresPlan: 'max',
+      requiresPlan: 'pro',
       featureLocked: true,
     });
   });
 
-  it('Pro 회원도 막힌다 — Max 기능이다', async () => {
+  // 2026-09-04 Max → Pro. 이 테스트가 뒤집힌 것이 등급 변경의 증거다.
+  it('Pro 회원은 통과한다', async () => {
     signedInAs('pro');
-    expect((await requireFeature(request, 'my.missing-posts')).error?.status).toBe(403);
+    const gate = await requireFeature(request, 'my.missing-posts');
+    expect(gate.error).toBeUndefined();
+    expect(gate.plan).toBe('pro');
   });
 
-  it('Max 회원은 통과한다', async () => {
+  it('Max 회원도 통과한다', async () => {
     signedInAs('max');
     const gate = await requireFeature(request, 'my.missing-posts');
     expect(gate.error).toBeUndefined();

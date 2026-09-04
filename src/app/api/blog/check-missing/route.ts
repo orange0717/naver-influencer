@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     const denied = await assertBlogResourceAccess(request, String(blogId));
     if (denied) return denied;
 
-    // 이 라우트는 네 화면이 공유한다 — 노출 현황(max) · 대시보드(free) · 키워드 순위(pro) · 경쟁사(pro).
+    // 이 라우트는 네 화면이 공유한다 — 노출 현황(pro) · 대시보드(free) · 키워드 순위(pro) · 경쟁사(pro).
     // 그래서 라우트 전체가 아니라 노출 현황 고유 동작인 3탭 교차검증(checkInfluencer)만 등급으로 막는다.
     // checkInfluencer 를 빼고 부르면 통과하지만, 그때 나오는 2탭 결과는 무료 대시보드가 이미 주는 것과
     // 같아서 권한 상승이 아니다. 인플루언서 탭까지 얹은 확정 판정이 노출 현황이 파는 것이다.

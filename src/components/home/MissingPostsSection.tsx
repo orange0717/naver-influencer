@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMemberOnlyGate } from '@/contexts/MemberOnlyGateContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MISSING_POSTS_TEASER, SUBSCRIBE_PATH, planLabel, type PlanKey } from '@/lib/plans';
+import { MISSING_POSTS_TEASER, MISSING_POSTS_RECENT_LIMIT, SUBSCRIBE_PATH, planLabel, requiredPlanFor, type PlanKey } from '@/lib/plans';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
 
 // §1·§12·§19 최근 N일까지는 기본(무료) 조회, 초과는 회원 전용. 서버(exposure-policy.ts)가 과금·권한을 최종 강제하며
@@ -281,7 +281,9 @@ const VERDICT_STYLE: Record<ExposureVerdict, string> = {
  */
 export default function MissingPostsSection({
   teaser = false,
-  requiredPlan = 'max',
+  // 등급을 여기서 짓지 않는다 — 손으로 적으면 plans.ts 를 바꿔도 이 기본값만 옛 등급으로
+  // 남아 잠금 안내가 실제 게이트와 다른 등급을 말한다(2026-09-03 배지가 Free 로 남았던 것과 같은 함정).
+  requiredPlan = requiredPlanFor('my.missing-posts') ?? 'pro',
 }: { teaser?: boolean; requiredPlan?: PlanKey } = {}) {
   const [profile, setProfile] = useState<BloggerProfile | null>(null);
   // 프로필 조회가 끝났는가. profile===null 은 '없음'과 '아직 안 옴' 둘 다라서,
@@ -935,6 +937,16 @@ export default function MissingPostsSection({
   }, [teaser, displayList]);
   const lockedCount = displayList.length - teaserList.length;
 
+  // 2026-09-04(오렌지 결정): 이 화면의 첫 화면은 최근 10개다. 「더 보기」로 전체까지 펼친다.
+  // 여기서만 화면 단에서 자른다 — 대시보드 위젯과 달리 이 화면은 필터·정렬·전체 검사가
+  // 목록 전체를 필요로 하므로(그게 이 화면이 파는 값이다) 서버에서 10개로 끊으면 기능이 죽는다.
+  const [showAllRecent, setShowAllRecent] = useState(false);
+  const visibleList = useMemo(
+    () => (teaser || showAllRecent ? teaserList : teaserList.slice(0, MISSING_POSTS_RECENT_LIMIT)),
+    [teaser, showAllRecent, teaserList],
+  );
+  const collapsedCount = teaserList.length - visibleList.length;
+
   /**
    * 지금 걸려 있는 조건들. 정렬은 넣지 않는다 — 순서를 바꿀 뿐 목록에서 글을 빼지 않으므로,
    * "왜 이 글이 안 보이지"의 답이 될 수 없는 항목까지 칩으로 두면 해제할 것을 찾기 어려워진다.
@@ -1001,9 +1013,10 @@ export default function MissingPostsSection({
   const toggleOne = useCallback((id: string) => {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }, []);
-  const allVisibleSelected = teaserList.length > 0 && teaserList.every(p => selectedIds.has(p.id));
+  // '전체 선택'은 화면에 보이는 것만 고른다 — 접혀 있는 글까지 몰래 선택하면 재검사 대상이 어긋난다.
+  const allVisibleSelected = visibleList.length > 0 && visibleList.every(p => selectedIds.has(p.id));
   const toggleAll = useCallback(() => {
-    const visibleIds = teaserList.map(p => p.id);
+    const visibleIds = visibleList.map(p => p.id);
     setSelectedIds(prev => {
       const everySelected = visibleIds.length > 0 && visibleIds.every(id => prev.has(id));
       const n = new Set(prev);
@@ -1011,7 +1024,7 @@ export default function MissingPostsSection({
       else visibleIds.forEach(id => n.add(id));
       return n;
     });
-  }, [teaserList]);
+  }, [visibleList]);
 
   const detailPost = useMemo(() => posts.find(p => p.id === detailPostId) || null, [posts, detailPostId]);
   const detailMr = detailPostId ? missingResults[detailPostId] : undefined;
@@ -1325,7 +1338,13 @@ export default function MissingPostsSection({
       <AnalyticsTableShell
         title="포스팅 목록"
         loading={postsLoading}
-        count={teaser && lockedCount > 0 ? `${teaserList.length} / ${displayList.length}개` : `${displayList.length}개`}
+        count={
+          teaser && lockedCount > 0
+            ? `${teaserList.length} / ${displayList.length}개`
+            : collapsedCount > 0
+              ? `${visibleList.length} / ${displayList.length}개`
+              : `${displayList.length}개`
+        }
       >
 
         {postsLoading ? (
@@ -1403,7 +1422,7 @@ export default function MissingPostsSection({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
-                  {teaserList.map((post, idx) => {
+                  {visibleList.map((post, idx) => {
                     const mr = missingResults[post.id];
                     const isChecking = checkingPostId === post.id;
                     const now = Date.now();
@@ -1452,7 +1471,7 @@ export default function MissingPostsSection({
 
             {/* 모바일 카드 */}
             <div className="md:hidden divide-y divide-border/20">
-              {teaserList.map((post, idx) => {
+              {visibleList.map((post, idx) => {
                 const mr = missingResults[post.id];
                 const isChecking = checkingPostId === post.id;
                 const now = Date.now();
@@ -1497,6 +1516,19 @@ export default function MissingPostsSection({
                 );
               })}
             </div>
+
+            {/* 첫 화면은 최근 10개 — 나머지는 여기서 펼친다. 목록은 이미 받아둔 것이라 다시 부르지 않는다. */}
+            {collapsedCount > 0 && (
+              <div className="px-5 py-4 border-t border-border/40 text-center">
+                <button
+                  onClick={() => setShowAllRecent(true)}
+                  className="px-4 py-2 border border-border text-text font-semibold rounded-xl hover:bg-surface-hover transition cursor-pointer text-xs"
+                >
+                  더 보기 ({collapsedCount}개)
+                </button>
+                <p className="text-[11px] text-dim mt-2">최근 {MISSING_POSTS_RECENT_LIMIT}개 글을 먼저 보여드립니다.</p>
+              </div>
+            )}
           </>
         )}
       </AnalyticsTableShell>

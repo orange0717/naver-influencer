@@ -6,6 +6,7 @@ import BlogDashboardKpiBar from '@/components/home/BlogDashboardKpiBar';
 import BlogKeywordRankTable from '@/components/home/BlogKeywordRankTable';
 import BlogAnalysisSection from '@/components/home/BlogAnalysisSection';
 import BlogConnectCta from '@/components/home/BlogConnectCta';
+import ExposureStatusWidget from '@/components/home/ExposureStatusWidget';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,6 +100,7 @@ export default async function DashboardPage() {
           {[
             { href: '#blog-info', label: '블로그 정보' },
             { href: '#dashboard-summary', label: 'KPI 요약' },
+            { href: '#exposure-status', label: '노출 현황' },
             { href: '#keyword-ranks', label: '키워드 순위' },
             { href: '#blog-analysis', label: '블로그 분석' },
           ].map(t => (
@@ -122,6 +124,12 @@ export default async function DashboardPage() {
       <section id="dashboard-summary" className="scroll-mt-24 space-y-3">
         <h2 className="type-section-title text-text px-1">KPI 요약</h2>
         <BlogDashboardKpiBar blogId={effectiveBlogId} />
+      </section>
+      {/* 노출 현황 — 아래 '블로그 분석'의 포스팅 표와 데이터를 공유하지 않는 독립 영역이다(2026-09-04 R3).
+          전용 엔드포인트(/api/my/exposure-recent)가 서버에서 최근 10개만 조회한다. */}
+      <section id="exposure-status" className="scroll-mt-24 space-y-3">
+        <h2 className="type-section-title text-text px-1">노출 현황</h2>
+        <ExposureStatusWidget blogId={effectiveBlogId} />
       </section>
       {/* 포스팅별 대표 키워드 순위(스펙 #20) — 키워드순위 화면과 동일한 keyword_rank_lookups 소스 재집계 */}
       <section id="keyword-ranks" className="scroll-mt-24 space-y-3">

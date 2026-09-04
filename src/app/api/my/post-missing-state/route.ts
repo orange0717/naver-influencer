@@ -21,6 +21,7 @@ type StoredRow = {
   overall_status: string | null;
   confidence: string | null;
   evidence: unknown;
+  consecutive_missing: number | null;
   first_all_missing_at: string | null;
   checked_at: string | null;
 };
@@ -28,7 +29,7 @@ type StoredRow = {
 /**
  * GET: 마운트 시 DB에서 (블로그 단위) 포스트별 누락 검사 상태 복원
  * 저장된 판정을 읽기만 하는 라우트라 회원에게 횟수 제한을 두지 않는다 — 외부 호출이 없다.
- * 노출 현황 화면이 2026-09-03 Max 로 올라간 뒤에도 여기는 무료로 남는다. 무료로 파는
+ * 노출 현황 화면이 유료(2026-09-03 Max → 09-04 Pro)로 올라간 뒤에도 여기는 무료로 남는다. 무료로 파는
  * 「MY 블로그」(/dashboard)가 같은 데이터로 미노출 KPI 를 그리기 때문이다. 등급으로 막히는 것은
  * 새 수집(check-missing 의 3탭 교차검증)·전환 이력·30일 이전 확장 조회 쪽이다.
  */
@@ -41,7 +42,8 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
   // overall_status/confidence/evidence 는 migration-146 이후 컬럼 — 미적용 DB 에서도 깨지지 않도록 실패 시 폴백 조회.
-  const FULL_COLS = 'post_id, post_title, query, search_candidates, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, overall_status, confidence, evidence, first_all_missing_at, checked_at';
+  // consecutive_missing 도 migration-146 에서 overall_status 와 함께 추가된 컬럼이라 폴백 경계가 같다.
+  const FULL_COLS = 'post_id, post_title, query, search_candidates, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, overall_status, confidence, evidence, consecutive_missing, first_all_missing_at, checked_at';
   const LEGACY_COLS = 'post_id, post_title, query, search_candidates, view_exposed, view_rank, blog_exposed, blog_rank, influencer_exposed, influencer_rank, search_volume, status, checked_at';
 
   const full = await supabase.from('post_missing_checks').select(FULL_COLS).eq('blog_id', blogId);
@@ -62,6 +64,7 @@ export async function GET(request: NextRequest) {
     overallStatus: string | null;
     confidence: string | null;
     evidence: unknown;
+    consecutiveMissing: number | null;
     firstAllMissingAt: string | null;
     checkedAt: string | null;
   }> = {};
@@ -78,6 +81,7 @@ export async function GET(request: NextRequest) {
       overallStatus: r.overall_status ?? null,
       confidence: r.confidence ?? null,
       evidence: r.evidence ?? null,
+      consecutiveMissing: r.consecutive_missing ?? null,
       firstAllMissingAt: r.first_all_missing_at ?? null,
       checkedAt: r.checked_at,
     };

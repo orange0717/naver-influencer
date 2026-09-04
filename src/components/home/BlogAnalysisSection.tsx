@@ -10,7 +10,7 @@ import GlassCard from '@/components/dashboard/GlassCard';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import { useSavedKeywords } from '@/hooks/useSavedKeywords';
 import { rowsToCsv, downloadCsvInBrowser, todayStamp } from '@/lib/csv';
-import { filterMissing, countMissing } from '@/lib/missing-rate';
+import { filterMissing } from '@/lib/missing-rate';
 import type { BloggerProfile, BlogPost, MissingResult, BlogScoreData, BlogAnalysisMetrics, BlogAnalysisAverages } from './BlogAnalysisSection.helpers';
 import SegmentedFilter from '@/components/analytics/SegmentedFilter';
 import Pagination from '@/components/analytics/Pagination';
@@ -545,30 +545,8 @@ export default function BlogAnalysisSection() {
     [currentViewList, missingResults]
   );
 
-  // ══════════════════════════════════════════════════════════
-  // 누락율 슬라이스 선택 (최신 N개 기준)
-  // ══════════════════════════════════════════════════════════
-  const [missingRateSlice, setMissingRateSlice] = useState<10 | 30 | 60 | 180 | 0>(10);
-
-  const missingRateSlicePosts = useMemo(() => {
-    const posts = allBlogPosts.length > 0 ? allBlogPosts : blogPosts;
-    return missingRateSlice === 0 ? posts : posts.slice(0, missingRateSlice);
-  }, [allBlogPosts, blogPosts, missingRateSlice]);
-
-  const missingCountForSlice = useMemo(
-    () => countMissing(missingRateSlicePosts, missingResults),
-    [missingRateSlicePosts, missingResults]
-  );
-
-  const checkedCountForSlice = useMemo(
-    () => missingRateSlicePosts.filter(p => missingResults[p.id]).length,
-    [missingRateSlicePosts, missingResults]
-  );
-
-  const missingRateForSlice = useMemo(() => {
-    if (checkedCountForSlice === 0) return 0;
-    return Math.round((missingCountForSlice / checkedCountForSlice) * 100);
-  }, [missingCountForSlice, checkedCountForSlice]);
+  // 누락율 슬라이스 상태(10/30/60/180/전체)는 제거됐다 — 노출 현황은 ExposureStatusWidget 이
+  // 전용 엔드포인트로 최근 10개만 본다(2026-09-04 R3). 여기 표는 자체 '개수' 필터만 갖는다.
 
   useEffect(() => {
     latestScoresRef.current = { total: totalScore, scores: [0, 0, 0, 0, 0, 0], grade: '' };
@@ -701,59 +679,16 @@ export default function BlogAnalysisSection() {
           </span>
         }
       >
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           <AnimatedStatCard size="stat" label="이번주 발행" value={publishingStats.weeklyTotal} suffix="회" description={(() => { const now = new Date(); const w = new Date(now.getTime() - 7*24*60*60*1000); return `${w.getMonth()+1}/${w.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>} color={publishingStats.weeklyTotal >= 3 ? 'up' : publishingStats.weeklyTotal >= 1 ? 'accent' : 'dim'} delay={150} />
           <AnimatedStatCard size="stat" label="한달 발행" value={publishingStats.monthlyTotal} suffix="회" description={(() => { const now = new Date(); const m = new Date(now.getTime() - 30*24*60*60*1000); return `${m.getMonth()+1}/${m.getDate()} ~ ${now.getMonth()+1}/${now.getDate()}`; })()} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={publishingStats.monthlyTotal >= 10 ? 'up' : publishingStats.monthlyTotal >= 4 ? 'accent' : 'dim'} delay={200} />
-          {/* 2행: 순위 + 누락율 */}
+          {/* 2행: 순위 */}
           <AnimatedStatCard size="stat" label="통합검색 평균순위" value={blogScoreCalc.viewAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.viewExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.viewExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>} color={blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 5 ? 'up' : blogScoreCalc.viewAvgRank && blogScoreCalc.viewAvgRank <= 15 ? 'accent' : 'dim'} delay={250} />
           <AnimatedStatCard size="stat" label="블로그탭 평균순위" value={blogScoreCalc.blogAvgRank || 0} suffix="위" placeholder={checkingAll ? '검사중...' : '—'} description={blogScoreCalc.hasData ? `노출 ${blogScoreCalc.blogExposed} / 누락 ${blogScoreCalc.totalKeywords - blogScoreCalc.blogExposed} (${blogScoreCalc.totalKeywords}개 키워드)` : '키워드순위에서 확인 필요'} icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>} color={blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 5 ? 'up' : blogScoreCalc.blogAvgRank && blogScoreCalc.blogAvgRank <= 15 ? 'accent' : 'dim'} delay={300} />
-          {/* 미노출 — 아래 누락율 카드와 동일 슬라이스(missingRateSlice) 공유, 체크 전/후 구분 위해 커스텀 카드 사용.
-              AnimatedStatCard의 size="stat" 레이아웃(aspect-square + 상단 아이콘/중앙 텍스트/하단 숫자)을 그대로 미러링. */}
-          <div className="aspect-square flex flex-col bg-surface rounded-lg border border-border p-3 sm:p-4 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
-            <div className="flex-1 flex flex-col items-center justify-between text-center min-h-0">
-              <div className="w-8 h-8 rounded-full bg-sunken text-down flex items-center justify-center shrink-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              </div>
-              <div className="flex flex-col items-center gap-1 px-1 min-w-0 w-full">
-                <p className="stat-title">미노출</p>
-                <p className="stat-desc line-clamp-2">
-                  {checkedCountForSlice === 0 ? ' ' : `${checkedCountForSlice}개 확인 중 ${missingRateForSlice}%`}
-                </p>
-              </div>
-              <div className="flex items-baseline gap-1.5 justify-center shrink-0">
-                <span className={`stat-value stat-value-stat font-rank truncate ${checkedCountForSlice === 0 ? 'text-dim' : missingCountForSlice === 0 ? 'text-up' : 'text-down'}`}>
-                  {checkedCountForSlice === 0 ? '—' : `${missingCountForSlice}개`}
-                </span>
-              </div>
-            </div>
-          </div>
-          {/* 누락율 — 슬라이스 탭 (AnimatedStatCard 공용 컴포넌트를 쓰지 않는 커스텀 카드라 사이즈·톤을 수동으로 맞춤, 정사각형 비율은 stat 카드와 동일하게 유지) */}
-          <div className="aspect-square flex flex-col bg-surface rounded-lg border border-border p-3 sm:p-4 shadow-xs transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:border-down/40">
-            <div className="flex-1 flex flex-col items-center justify-between text-center min-h-0">
-              <div className="w-8 h-8 rounded-full bg-sunken text-down flex items-center justify-center shrink-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-              <div className="flex flex-col items-center gap-1.5 px-1 min-w-0 w-full">
-                <p className="stat-title">누락율</p>
-                <div className="flex rounded-md border border-border overflow-hidden text-[9px] w-full">
-                  {([10, 30, 60, 180, 0] as const).map(n => (
-                    <button key={n} onClick={() => setMissingRateSlice(n)}
-                      className={`flex-1 py-1 font-semibold transition cursor-pointer whitespace-nowrap ${missingRateSlice === n ? 'bg-accent text-white' : 'text-dim hover:bg-bg'}`}>
-                      {n === 0 ? '전체' : n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-baseline gap-1.5 justify-center shrink-0">
-                <span className={`stat-value stat-value-stat font-rank truncate ${checkedCountForSlice === 0 ? 'text-dim' : missingRateForSlice <= 30 ? 'text-up' : missingRateForSlice <= 60 ? 'text-accent' : 'text-down'}`}>
-                  {checkedCountForSlice === 0 ? '—' : `${missingRateForSlice}%`}
-                </span>
-                <span className="text-[10px] text-dim/60 truncate">
-                  {checkedCountForSlice === 0 ? '누락 확인 후 표시' : `${checkedCountForSlice}개 중 ${missingCountForSlice}개 누락`}
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* 미노출·누락율 카드는 여기 있지 않다 — ExposureStatusWidget 으로 분리했다(2026-09-04 R3).
+              두 카드가 아래 표의 allBlogPosts 를 잘라 쓰고 있어서, 표의 '개수' 탭을 누르면
+              무관해 보이는 누락율이 함께 움직였다. 지금은 전용 엔드포인트로 최근 10개만 본다.
+              되돌려 붙이지 말 것. */}
           <AnimatedStatCard
             size="stat"
             label="품질점수"

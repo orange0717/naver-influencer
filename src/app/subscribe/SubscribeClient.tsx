@@ -250,8 +250,9 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>맞춤법 검사</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>커뮤니티</span></li>
             {/* 「블로거 순위」는 화면이 아직 「개발 중」이라 안내에서 내렸다(2026-09-01). 열리면 되살릴 것. */}
-            {/* 2026-09-03 「노출 현황」은 Max 로 이동. 무료로 남는 건 MY 블로그의 미노출 검사이고,
-                3탭 교차검증·전환 이력·30일 이전 조회를 갖춘 노출 현황 화면이 Max 상품이다. */}
+            {/* 「노출 현황」은 여기(Free) 항목이 아니다 — 2026-09-03 Max 로 올렸다가 09-04 Pro 로 내렸다.
+                무료로 남는 건 MY 블로그의 미노출 검사이고, 3탭 교차검증·전환 이력·30일 이전 조회를
+                갖춘 노출 현황 화면이 Pro 상품이다. */}
             <li className="flex items-center gap-2.5">{CHECK}<span>네이버 메이트</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>N인플 AI 대화 · 블로그 기본 분석 (하루 10회)</span></li>
           </ul>
@@ -296,6 +297,8 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>MY 포스팅 분석 (AI)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 검색순위</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
+            {/* 2026-09-04 「노출 현황」이 Max → Pro 로 내려왔다(오렌지 지시). Max 카드에서 이 줄을 옮겼다. */}
+            <li className="flex items-center gap-2.5">{CHECK}<span>노출 현황 (3탭 교차검증 · 전환 이력)</span></li>
             {/* 아래 2건은 2026-09-01 이전까지 실제로는 열려 있는데 이용권 페이지에 한 줄도 없었다. */}
             <li className="flex items-center gap-2.5">{CHECK}<span>유튜브 음원 추출</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>Google 색인 관리</span></li>
@@ -342,10 +345,11 @@ export default function SubscribeClient() {
             <li className="flex items-center gap-2.5">{CHECK}<span>포스팅 데이터 다운로드 (1회 500건)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>키워드 데이터 다운로드 (1회 500건)</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>경쟁자 분석 (무제한)</span></li>
-            {/* 아래 11건은 Max 이용권으로 실제 열리는데 이 카드에 한 줄도 없던 것들이다.
+            {/* 아래 10건은 Max 이용권으로 실제 열리는데 이 카드에 한 줄도 없던 것들이다.
                 8건은 비교표에도 없어 완전히 무고지였고(2026-09-01 채움), 3건(키워드 추천·글감 찾기·
-                릴스·쇼츠 분석)은 비교표에만 있고 카드에서만 빠져 있었다(2026-09-02 채움). */}
-            <li className="flex items-center gap-2.5">{CHECK}<span>노출 현황 (3탭 교차검증 · 전환 이력)</span></li>
+                릴스·쇼츠 분석)은 비교표에만 있고 카드에서만 빠져 있었다(2026-09-02 채움).
+                「노출 현황」은 2026-09-04 Pro 로 내려가 위 Pro 카드로 옮겼다 —
+                이 카드 첫 줄의 "Pro 플랜 전체 포함"으로 Max 회원에게도 그대로 고지된다. */}
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 대시보드</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>인플루언서 상세</span></li>
             <li className="flex items-center gap-2.5">{CHECK}<span>AI 브리핑 · AI 탭 인용</span></li>
@@ -457,11 +461,12 @@ export default function SubscribeClient() {
                 <td className="text-center"><div className="flex justify-center">{CHECK}</div></td>
               </tr>
               {/* Free 칸이 「최근 7일·5건」인 것은 티저다 — 등급이 모자라도 화면은 열리고
-                  그 범위까지는 실제 판정이 보인다(2026-09-03). 빈칸으로 두면 안내가 실제와 어긋난다. */}
+                  그 범위까지는 실제 판정이 보인다(2026-09-03). 빈칸으로 두면 안내가 실제와 어긋난다.
+                  2026-09-04 Max → Pro 로 내려와 Pro 칸이 티저에서 전체로 바뀌었다. */}
               <tr>
                 <td className="py-2.5 px-2">노출 현황</td>
                 <td className="text-center text-[11px] text-dim">최근 7일 · 5건</td>
-                <td className="text-center text-[11px] text-dim">최근 7일 · 5건</td>
+                <td className="text-center text-[11px] text-accent font-semibold">전체 · 전환 이력</td>
                 <td className="text-center text-[11px] text-accent font-semibold">전체 · 전환 이력</td>
               </tr>
               <tr>

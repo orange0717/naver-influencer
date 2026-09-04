@@ -44,7 +44,9 @@ const CARD_META: Record<string, { label: string; suffix: string; icon: React.Rea
   // 방문자 KPI(오늘/30일)는 제거됨 — 이 대시보드는 방문자 통계가 아니라 검색 노출·키워드 성과 분석 화면.
   blog_neighbor_count: { label: '이웃 수', suffix: '명', icon: ICONS.neighbor, color: 'accent' },
   blog_post_count: { label: '총 발행 수', suffix: '개', icon: ICONS.post, color: 'accent' },
-  blog_missing_count: { label: '미노출', suffix: '건', icon: ICONS.missing, color: 'down' },
+  // 2026-09-04(R2): 집계 범위가 최근 10개 글로 좁혀졌다. size="kpi" 는 description 을 렌더하지 않으므로
+  // 기준을 라벨에 적는다 — 안 적으면 전체 글 기준 숫자로 읽힌다.
+  blog_missing_count: { label: '미노출 (최근 10개)', suffix: '건', icon: ICONS.missing, color: 'down' },
   blog_ai_overall_cited: { label: 'AI 인용', suffix: '건', icon: ICONS.ai, color: 'up' },
   blog_ai_briefing_cited: { label: 'AI 브리핑 인용', suffix: '건', icon: ICONS.ai, color: 'up' },
   blog_ai_tab_exposed: { label: 'AI 탭 노출', suffix: '건', icon: ICONS.ai, color: 'up' },

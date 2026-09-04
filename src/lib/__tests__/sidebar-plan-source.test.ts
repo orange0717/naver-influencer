@@ -18,9 +18,10 @@ describe('사이드바 등급은 plans.ts 가 정본이다', () => {
     }
   });
 
-  it('노출 현황은 Max 배지를 달되 링크를 잠그지 않는다', () => {
+  it('노출 현황은 Pro 배지를 달되 링크를 잠그지 않는다', () => {
     const item = items.find((i) => i.href === '/my/missing-posts')!;
-    expect(itemRequiredPlan(item)).toBe('max');
+    // 2026-09-04 Max → Pro. 배지는 plans.ts 파생이라 이 한 줄만 따라 바뀐다.
+    expect(itemRequiredPlan(item)).toBe('pro');
     // 잠그면 Free 회원이 /subscribe 로 튕겨 티저(최근 7일·5건)에 도달할 수 없다.
     expect(itemLocksNavigation(item)).toBe(false);
   });
