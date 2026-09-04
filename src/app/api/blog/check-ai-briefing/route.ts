@@ -3,10 +3,13 @@ import { aiBriefingLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-li
 import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { requireFeature } from '@/lib/guards/requireFeature';
 import { cacheGet, cacheSet } from '@/lib/kv-cache';
-import { checkAiBriefingExposure, isVerifiedStatus, type AiBriefingStage } from '@/lib/naver-ai-briefing';
+import { checkAiBriefingExposure, isVerifiedStatus, type AiBriefingProgress } from '@/lib/naver-ai-briefing';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120; // 통합검색 AI 브리핑 + AI 탭(스트리밍 완료 폴링 최대 20초) 순차 확인 2단계 구조 + 브라우저 콜드스타트 여유
+// 통합검색 AI 브리핑 + AI 탭(스트리밍 완료 폴링) 2단계 확인을 §3.7에 따라 3회 반복한다.
+// 엔진 쪽 시간 예산(SAMPLE_TIME_BUDGET_MS)이 이보다 짧아, 시간이 모자라면 표본 수를 줄이더라도
+// 지금까지 본 결과는 반드시 응답으로 돌려준다. 조회 중 상태 회수 기준(5분)보다는 짧게 유지한다.
+export const maxDuration = 240;
 
 // AI 브리핑 확인 결과 캐시 (Redis 공유, 30분) — 헤드리스 브라우저 재실행 비용이 크므로 짧은 재확인은 캐시로 흡수
 const CACHE_TTL_SEC = 30 * 60;
@@ -80,7 +83,9 @@ export async function POST(request: NextRequest) {
         trimmedKeyword,
         String(blogId),
         String(postId),
-        (stage: AiBriefingStage) => enqueue({ stage }),
+        // 몇 번째 표본을 조회 중인지까지 흘려보낸다 — 3회 조회는 1회보다 오래 걸리므로
+        // 진행 표시가 없으면 사용자에겐 멈춘 것처럼 보인다.
+        (p: AiBriefingProgress) => enqueue({ stage: p.stage, sample: p.sample, totalSamples: p.totalSamples }),
       );
 
       if (result.error) {

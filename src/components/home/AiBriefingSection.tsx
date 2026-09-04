@@ -31,7 +31,7 @@ import { rowsToCsv, downloadCsvInBrowser, todayStamp, DOWNLOAD_ROW_LIMIT } from 
 import type { BloggerProfile, BlogPost, BriefingResult, AnalysisEntry, KeywordMeta, RepKeywordEntry } from './AiBriefingSection.helpers';
 import {
   STATE_API,
-  STAGE_LABELS,
+  stageLabelWithSample,
   timeAgo,
   rankKey,
   fetchBriefingState,
@@ -75,6 +75,8 @@ interface BulkEstimate {
   newChecks: number;
   estRepExtractions: number;
   estApiCalls: number;
+  /** 한 건을 몇 번 조회해 판정하는지(§3.7). 서버가 안 주면 표기하지 않는다. */
+  samplesPerCheck?: number;
   perRunCap: number;
   runsNeeded: number;
   betweenMs: number;
@@ -160,6 +162,8 @@ export default function AiBriefingSection() {
   const [briefingResults, setBriefingResults] = useState<Record<string, BriefingResult>>({});
   const [checkingKey, setCheckingKey] = useState('');
   const [checkingStage, setCheckingStage] = useState('');
+  // 몇 번째 표본을 조회 중인지(§3.7). 한 건을 여러 번 조회하므로 회차를 같이 보여준다.
+  const [checkingSample, setCheckingSample] = useState<{ sample: number; total: number } | null>(null);
   const [extractingPostId, setExtractingPostId] = useState('');
   // 보조·변형 키워드는 기본으로 접어두고 '보조 N ▼' 로만 펼친다(키워드순위와 동일).
   const [expandedSecondary, setExpandedSecondary] = useState<Record<string, boolean>>({});
@@ -588,7 +592,7 @@ export default function AiBriefingSection() {
         buffer = lines.pop() || '';
         for (const line of lines) {
           if (!line.trim()) continue;
-          let msg: { stage?: string; error?: string; result?: Record<string, unknown> };
+          let msg: { stage?: string; error?: string; result?: Record<string, unknown>; sample?: number; totalSamples?: number };
           try { msg = JSON.parse(line); } catch { continue; }
           if (msg.stage === 'error') {
             streamError = msg.error || 'AI 브리핑 확인 중 오류';
@@ -597,6 +601,7 @@ export default function AiBriefingSection() {
             setCheckingStage('done');
           } else if (msg.stage) {
             setCheckingStage(msg.stage);
+            if (msg.sample && msg.totalSamples) setCheckingSample({ sample: msg.sample, total: msg.totalSamples });
           }
         }
       }
@@ -624,6 +629,7 @@ export default function AiBriefingSection() {
     } finally {
       setCheckingKey('');
       setCheckingStage('');
+      setCheckingSample(null);
     }
   };
 
@@ -1177,7 +1183,7 @@ export default function AiBriefingSection() {
       {checkingKey && (
         <div className="px-4 py-3 rounded-xl bg-accent/10 border border-accent/30 text-accent text-sm flex items-center gap-2">
           <span className="w-3.5 h-3.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin inline-block shrink-0" />
-          <span className="flex-1">{STAGE_LABELS[checkingStage] || '확인 중...'}</span>
+          <span className="flex-1">{stageLabelWithSample(checkingStage, checkingSample?.sample, checkingSample?.total)}</span>
         </div>
       )}
     </>
@@ -1372,8 +1378,13 @@ export default function AiBriefingSection() {
                   <span className="font-rank font-semibold">{bulkEstimate.estRepExtractions.toLocaleString()}건</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-dim">예상 확인 호출</span>
-                  <span className="font-rank font-semibold">약 {bulkEstimate.estApiCalls.toLocaleString()}회</span>
+                  <span className="text-dim">예상 페이지 조회</span>
+                  <span className="font-rank font-semibold">
+                    약 {bulkEstimate.estApiCalls.toLocaleString()}회
+                    {!!bulkEstimate.samplesPerCheck && (
+                      <span className="text-dim font-normal"> (건당 {bulkEstimate.samplesPerCheck}회)</span>
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-accent font-bold">
                   <span>실제 신규 조회</span>
@@ -1383,6 +1394,9 @@ export default function AiBriefingSection() {
               <div className="rounded-xl bg-bg border border-border p-3 text-[11px] text-dim leading-relaxed space-y-1">
                 <p>· 이번 실행은 최신 발행순 <b className="text-text">최대 {bulkEstimate.perRunCap}개</b>만 확인합니다(안전 캡). 전체를 채우려면 약 <b className="text-text">{bulkEstimate.runsNeeded}회</b> 나눠 실행하세요.</p>
                 <p>· AI 인용 확인은 공식 API가 없어 헤드리스 브라우저로 실측합니다 — 공식 쿼터는 없고, 네이버 차단을 피하려 {Math.round(bulkEstimate.betweenMs / 1000)}초 간격·{bulkEstimate.quota.aiCitation.limiterLimit}회/{Math.round(bulkEstimate.quota.aiCitation.limiterWindowSec / 60)}분으로 제한합니다.</p>
+                {!!bulkEstimate.samplesPerCheck && (
+                  <p>· AI 답변은 조회 시점마다 출처가 달라져 한 건을 <b className="text-text">{bulkEstimate.samplesPerCheck}회</b> 조회한 뒤 &lsquo;n회 중 m회 인용&rsquo;으로 알려드립니다. 그만큼 시간이 더 걸립니다.</p>
+                )}
                 <p>· 대표키워드 추출·검색량 보조에 쓰는 네이버 검색 OpenAPI 일일 무료 쿼터는 {bulkEstimate.quota.naverSearchOpenApi.dailyQuota.toLocaleString()}회입니다.</p>
               </div>
               <div className="flex items-center justify-end gap-2 pt-1">
@@ -1418,7 +1432,7 @@ export default function AiBriefingSection() {
             {analyzing ? (
               <span className="inline-flex items-center gap-2">
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                {STAGE_LABELS[checkingStage] || '분석 중...'}
+                {stageLabelWithSample(checkingStage, checkingSample?.sample, checkingSample?.total, '분석 중...')}
               </span>
             ) : '분석하기'}
           </button>

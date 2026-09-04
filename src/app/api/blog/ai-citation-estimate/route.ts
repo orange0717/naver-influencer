@@ -6,6 +6,7 @@ import { assertBlogResourceAccess } from '@/lib/blog-access';
 import { fetchBlogPostList } from '@/lib/blog-posts-fetcher';
 import {
   BULK_RUN_CAP, BATCH_DELAY_MS, CITATION_FRESH_TTL_MS, AI_CITATION_LIMITER, NAVER_SEARCH_DAILY_QUOTA,
+  AI_CITATION_SAMPLE_COUNT,
 } from '@/lib/ai-citation-batch';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +16,10 @@ export const dynamic = 'force-dynamic';
  * '전체 업데이트' 실행 전 예상 작업량 + 쿼터/한도를 서버가 한 번에 계산해 반환한다(스펙 #9~#12).
  *
  * ⚠️ 정직성:
- *  - AI 인용 확인은 공식 API가 없다 → estApiCalls 는 신규 조회 수 × 1 (엔진 1회 호출이 브리핑+탭을
- *    동시에 반환하므로 절대 ×2 하지 않는다, 스펙 #9).
+ *  - AI 인용 확인은 공식 API가 없다 → estApiCalls 는 신규 조회 수 × AI_CITATION_SAMPLE_COUNT.
+ *    엔진 1회 호출은 브리핑+탭을 동시에 반환하므로 표면 수만큼 ×2 하지는 않는다(스펙 #9). 다만
+ *    §3.7에 따라 한 건을 3회 표본으로 확인하므로 실제 페이지 조회는 그만큼 늘어난다 —
+ *    이 숫자를 1로 두면 화면이 실제 작업량보다 적게 안내하게 된다.
  *  - "쿼터"는 공식 네이버 API 쿼터가 아니라 우리 측 안전장치(레이트리밋 + 1회 실행 캡)임을 명시한다(스펙 #12).
  */
 export async function GET(request: NextRequest) {
@@ -102,7 +105,8 @@ export async function GET(request: NextRequest) {
     cacheSkipped,                     // 최근 조회 캐시 제외
     newChecks,                        // 실제 신규 조회 대상
     estRepExtractions: repMissing,    // 예상 대표키워드 신규 추출 건수(별도)
-    estApiCalls: newChecks,           // 예상 확인 호출 = 신규 조회 × 1 (브리핑+탭 동시 반환, ×2 아님)
+    estApiCalls: newChecks * AI_CITATION_SAMPLE_COUNT, // 예상 페이지 조회 = 신규 조회 × 표본 수(브리핑+탭은 1회로 함께 확인)
+    samplesPerCheck: AI_CITATION_SAMPLE_COUNT,         // 한 건을 몇 번 조회해 판정하는지(§3.7)
 
     // ── 1회 실행 계획(스펙 #11/#15) ──
     perRunCap: BULK_RUN_CAP,          // 1회 실행 안전 캡
@@ -113,7 +117,8 @@ export async function GET(request: NextRequest) {
     quota: {
       aiCitation: {
         officialApi: false,
-        note: 'AI 브리핑·AI 탭 인용은 공식 네이버 API가 없어 헤드리스 브라우저로 실측합니다. 공식 일일 쿼터는 없으며, 네이버 자동화 차단을 피하기 위해 아래 안전장치로 제한합니다.',
+        note: `AI 브리핑·AI 탭 인용은 공식 네이버 API가 없어 헤드리스 브라우저로 실측합니다. AI 답변은 조회할 때마다 달라져 한 건당 ${AI_CITATION_SAMPLE_COUNT}회 조회한 뒤 "n회 중 m회 인용"으로 알려드립니다. 공식 일일 쿼터는 없으며, 네이버 자동화 차단을 피하기 위해 아래 안전장치로 제한합니다.`,
+        samplesPerCheck: AI_CITATION_SAMPLE_COUNT,
         limiterLimit: AI_CITATION_LIMITER.limit,       // 10
         limiterWindowSec: AI_CITATION_LIMITER.windowSec, // 300
         perRunCap: BULK_RUN_CAP,

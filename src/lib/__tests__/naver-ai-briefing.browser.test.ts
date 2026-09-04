@@ -189,6 +189,8 @@ function routes(search: string | 'abort', tab: string | 'abort' | null) {
   };
 }
 
+// ⚠️ 이 호출은 §3.7에 따라 같은 픽스처를 여러 번(AI_CITATION_SAMPLE_COUNT) 조회한다.
+//    픽스처는 결정적이라 판정 결과는 1회 때와 같지만, 실제 브라우저 왕복이 그만큼 늘어난다.
 const run = () => checkAiBriefingExposure('강아지 슬개골 탈구', BLOG, POST);
 
 afterAll(async () => { await h.realBrowser?.close().catch(() => {}); });
@@ -205,7 +207,7 @@ describe('성공 경로 — 화면을 끝까지 읽었을 때만 인용/미인�
     expect(r.tab.status).toBe('CITED');
     expect(r.exposed).toBe(true);
     expect(r.tabExposed).toBe(true);
-  }, 90_000);
+  }, 180_000);
 
   it('브리핑 미인용 + 탭 미인용 → 양쪽 NOT_CITED (출처를 실제로 다 읽음)', async () => {
     h.route = routes(searchPage({ briefing: 'not_cited' }), tabPage({ answer: 'not_cited' }));
@@ -216,7 +218,10 @@ describe('성공 경로 — 화면을 끝까지 읽었을 때만 인용/미인�
     expect(r.tab.status).toBe('NOT_CITED');
     expect(r.exposed).toBe(false);
     expect(r.tabExposed).toBe(false);
-  }, 90_000);
+    // §3.7 — 미인용은 표본 2회 이상이 일치했을 때만 확정된다. 1회 관측으로 나온 값이 아니다.
+    expect(r.briefing.samples).toBeGreaterThanOrEqual(2);
+    expect(r.briefing.citedSamples).toBe(0);
+  }, 180_000);
 
   it('탭의 "+N" 칩을 펼쳐야 보이는 출처도 인용으로 잡는다 (이번 수정의 핵심 버그)', async () => {
     h.route = routes(searchPage({ briefing: 'not_cited' }), tabPage({ answer: 'cited-after-expand' }));
@@ -226,7 +231,7 @@ describe('성공 경로 — 화면을 끝까지 읽었을 때만 인용/미인�
     expect(r.tab.status).toBe('CITED');
     expect(r.tab.sourceTotal).toBe(3);
     expect(r.tab.matchedUrl).toBe(TARGET);
-  }, 90_000);
+  }, 180_000);
 
   it('제목이 같은 남의 글 · 같은 블로그의 다른 글은 인용이 아니다 (부분 일치 판정 금지)', async () => {
     h.route = routes(searchPage({ briefing: 'trap' }), tabPage({ answer: 'not_cited' }));
@@ -234,7 +239,7 @@ describe('성공 경로 — 화면을 끝까지 읽었을 때만 인용/미인�
 
     expect(r.briefing.status).toBe('NOT_CITED');
     expect(r.briefing.matchedUrl).toBeNull();
-  }, 90_000);
+  }, 180_000);
 
   it('두 표면은 독립 — 브리핑 CITED 인데 탭이 실패해도 브리핑 결과를 버리지 않는다', async () => {
     h.route = routes(searchPage({ briefing: 'cited' }), tabPage({ answer: 'missing' }));
@@ -245,7 +250,7 @@ describe('성공 경로 — 화면을 끝까지 읽었을 때만 인용/미인�
     expect(r.tab.errorCode).toBe('DOM_CHANGED');
     expect(r.exposed).toBe(true);   // 브리핑은 살아남고
     expect(r.tabExposed).toBeNull(); // 탭은 boolean 으로 강등되지 않는다
-  }, 90_000);
+  }, 180_000);
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -264,7 +269,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.exposed).toBeNull();
     expect(r.tabExposed).toBeNull();
     notCitedFree(r);
-  }, 90_000);
+  }, 180_000);
 
   it('HTTP 503 → UNAVAILABLE / HTTP_ERROR', async () => {
     h.route = url => (url.includes('search.naver') ? { status: 503, body: '<html><body>error</body></html>' } : null);
@@ -273,7 +278,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.briefing.status).toBe('UNAVAILABLE');
     expect(r.briefing.errorCode).toBe('HTTP_ERROR');
     notCitedFree(r);
-  }, 90_000);
+  }, 180_000);
 
   it('자동화 차단 문구 → UNAVAILABLE / BLOCKED', async () => {
     h.route = routes(
@@ -285,7 +290,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.briefing.status).toBe('UNAVAILABLE');
     expect(r.briefing.errorCode).toBe('BLOCKED');
     notCitedFree(r);
-  }, 90_000);
+  }, 180_000);
 
   it('CAPTCHA 요구 → UNAVAILABLE / CAPTCHA', async () => {
     h.route = routes(
@@ -297,7 +302,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.briefing.status).toBe('UNAVAILABLE');
     expect(r.briefing.errorCode).toBe('CAPTCHA');
     notCitedFree(r);
-  }, 90_000);
+  }, 180_000);
 
   it('네이버 마크업 변경(#main_pack 소실) → UNAVAILABLE / PAGE_UNHEALTHY', async () => {
     h.route = routes('<!doctype html><html><body><div id="brand_new_root">검색 결과</div></body></html>', null);
@@ -306,7 +311,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.briefing.status).toBe('UNAVAILABLE');
     expect(r.briefing.errorCode).toBe('PAGE_UNHEALTHY');
     notCitedFree(r);
-  }, 90_000);
+  }, 180_000);
 
   it('답변은 있는데 출처 0건 → UNVERIFIED / NO_SOURCES (미인용이라 말할 근거가 없다)', async () => {
     h.route = routes(searchPage({ briefing: 'no-sources' }), tabPage({ answer: 'no-sources' }));
@@ -317,7 +322,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.tab.status).toBe('UNVERIFIED');
     expect(r.tab.errorCode).toBe('NO_SOURCES');
     notCitedFree(r);
-  }, 90_000);
+  }, 180_000);
 
   it('브리핑 렌더 미완료(빈 껍데기만 남음) → UNVERIFIED / RENDER_TIMEOUT', async () => {
     h.route = routes(searchPage({ briefing: 'skeleton' }), tabPage({ answer: 'not_cited' }));
@@ -326,7 +331,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.briefing.status).toBe('UNVERIFIED');
     expect(r.briefing.errorCode).toBe('RENDER_TIMEOUT');
     expect(r.exposed).toBeNull();
-  }, 90_000);
+  }, 180_000);
 
   it('탭 답변이 덜 생성됨 → UNVERIFIED / RENDER_TIMEOUT', async () => {
     h.route = routes(searchPage({ briefing: 'not_cited' }), tabPage({ answer: 'short' }));
@@ -335,7 +340,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.tab.status).toBe('UNVERIFIED');
     expect(r.tab.errorCode).toBe('RENDER_TIMEOUT');
     expect(r.tabExposed).toBeNull();
-  }, 90_000);
+  }, 180_000);
 
   it('AI 탭 진입 실패(앵커는 있는데 이동 불가) → UNAVAILABLE / TAB_ENTRY_FAILED', async () => {
     h.route = routes(searchPage({ briefing: 'cited' }), 'abort');
@@ -345,7 +350,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.tab.status).toBe('UNAVAILABLE');
     expect(r.tab.errorCode).toBe('TAB_ENTRY_FAILED');
     expect(r.tabExposed).toBeNull();
-  }, 90_000);
+  }, 180_000);
 
   it('탭 목록 자체를 못 읽음 → UNAVAILABLE / DOM_CHANGED (AI 탭 없음으로 단정하지 않는다)', async () => {
     h.route = routes(searchPage({ briefing: 'cited', tabBar: false }), null);
@@ -354,7 +359,7 @@ describe('실패 경로 — 어떤 실패도 미인용(NOT_CITED)이 되어서�
     expect(r.tab.status).toBe('UNAVAILABLE');
     expect(r.tab.errorCode).toBe('DOM_CHANGED');
     notCitedFree({ briefing: { status: 'x' }, tab: r.tab });
-  }, 90_000);
+  }, 180_000);
 
   it('AI 탭 답변 생성이 끝나지 않음 → UNVERIFIED / STREAM_TIMEOUT', async () => {
     h.route = routes(
@@ -379,5 +384,5 @@ describe('AI 영역이 아예 제공되지 않는 키워드', () => {
     expect(r.briefing.present).toBe(false);
     expect(r.tab.status).toBe('NOT_CITED');
     expect(r.tab.present).toBe(false);
-  }, 90_000);
+  }, 180_000);
 });

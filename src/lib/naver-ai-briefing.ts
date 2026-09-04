@@ -1,5 +1,6 @@
 import puppeteer, { type Browser, type Page, type HTTPRequest, type HTTPResponse } from 'puppeteer-core';
 import { parseBlogPostRef, matchesPost } from '@/lib/naver-blog-post-ref';
+import { AI_CITATION_SAMPLE_COUNT } from '@/lib/ai-citation-batch';
 
 /**
  * 네이버 "AI 브리핑"(통합검색 인라인 위젯) + "AI 탭"(ssc=tab.ait.all) 인용 여부 확인
@@ -99,7 +100,18 @@ const NON_SOURCE_HOSTS = [
 // innerText 는 CSS 렌더링 결과에 의존하므로 차단 시 오탐 위험이 있다.
 const BLOCKED_RESOURCE_TYPES = new Set(['image', 'media', 'font']);
 
+// ── §3.7 샘플링 ────────────────────────────────────────────────────────────
+// 표본 사이 간격. 연속으로 같은 키워드를 때리면 차단 위험이 커지고, 간격이 0이면 "같은 순간을
+// 두 번 본 것"에 가까워 표본으로서의 값도 떨어진다.
+const SAMPLE_GAP_MS = 2_000;
+// 전체 샘플링에 쓸 수 있는 시간(ms). 라우트 maxDuration 보다 확실히 짧게 잡아,
+// 시간이 모자라면 표본 수를 줄이더라도 "지금까지 본 것"은 반드시 돌려준다.
+const SAMPLE_TIME_BUDGET_MS = 200_000;
+
 export type AiBriefingStage = 'searching' | 'briefing' | 'tab' | 'comparing';
+
+/** 진행 상황 콜백 — 몇 번째 표본을 조회 중인지까지 알려준다(§3.7 표기). */
+export type AiBriefingProgress = { stage: AiBriefingStage; sample: number; totalSamples: number };
 
 /** 표면(AI 브리핑 / AI 탭) 하나에 대한 확인 결과 상태. boolean 로 뭉개지 않는다. */
 export type SurfaceStatus = 'CITED' | 'NOT_CITED' | 'UNVERIFIED' | 'UNAVAILABLE' | 'ERROR';
@@ -117,7 +129,8 @@ export type SurfaceErrorCode =
   | 'NO_SOURCES'         // 답변은 있는데 출처 목록을 하나도 확보하지 못함
   | 'NAV_TIMEOUT'        // 페이지 이동 타임아웃
   | 'BROWSER_ERROR'      // Puppeteer/Chromium 실행 오류
-  | 'NETWORK_ERROR';     // 네트워크 예외
+  | 'NETWORK_ERROR'      // 네트워크 예외
+  | 'INSUFFICIENT_SAMPLES'; // 표본이 1회뿐이라 "미인용"으로 확정하지 않음(§3.7)
 
 export interface SurfaceOutcome {
   status: SurfaceStatus;
@@ -129,6 +142,14 @@ export interface SurfaceOutcome {
   matchedUrl: string | null;
   errorCode: SurfaceErrorCode | null;
   errorMessage: string | null;
+  /**
+   * §3.7 표본. samples = 인용/미인용까지 확인이 끝난 조회 횟수,
+   * citedSamples = 그중 내 글이 출처에 있던 횟수, attempts = 실패 포함 실제 조회 시도 횟수.
+   * 한 번만 조회한 구버전 결과에는 없다 → optional.
+   */
+  samples?: number;
+  citedSamples?: number;
+  attempts?: number;
 }
 
 interface RawSource {
@@ -576,24 +597,147 @@ export interface NaverAiCitationProvider {
     keyword: string,
     blogId: string,
     postId: string,
-    onStage?: (stage: AiBriefingStage) => void,
+    onProgress?: (p: AiBriefingProgress) => void,
   ): Promise<AiBriefingCheckResult>;
 }
 
 export const naverAiCitationProvider: NaverAiCitationProvider = {
   kind: 'headless-scrape',
-  check: (keyword, blogId, postId, onStage) => checkAiBriefingExposure(keyword, blogId, postId, onStage),
+  check: (keyword, blogId, postId, onProgress) => checkAiBriefingExposure(keyword, blogId, postId, onProgress),
 };
+
+/** 네이버가 자동화를 막고 있다는 신호 — 더 조회해 봐야 같은 벽이므로 즉시 멈춘다(§3.6). */
+function isBlockingFailure(o: SurfaceOutcome): boolean {
+  return o.errorCode === 'BLOCKED' || o.errorCode === 'CAPTCHA'
+    || o.errorCode === 'MAINTENANCE' || o.errorCode === 'HTTP_ERROR';
+}
+
+/** 확인이 끝나지 못한 표면들 중 하나를 대표로 고를 때의 우선순위 — 더 "바깥" 사유를 앞에 둔다. */
+const FAILURE_PRIORITY: SurfaceStatus[] = ['UNAVAILABLE', 'ERROR', 'UNVERIFIED'];
+
+/**
+ * 한 표면(AI 브리핑 or AI 탭)의 표본 여러 개를 하나의 판정으로 합친다(§3.7).
+ *
+ * 규칙 — 한 번이라도 "봤다"는 근거는 살리고, "없더라"는 한 번으로 단정하지 않는다.
+ *   · 인용을 한 번이라도 확인 → CITED. 출처 URL 이라는 근거가 실제로 있으므로 표본 1회로 충분하다.
+ *   · 확인이 끝난 표본이 2회 이상이고 그중 인용이 0회 → NOT_CITED.
+ *   · 확인이 끝난 표본이 1회뿐이고 인용 없음 → UNVERIFIED(INSUFFICIENT_SAMPLES).
+ *     AI 답변은 조회할 때마다 달라져서, 한 번 안 보였다는 사실만으로는 미인용이라 말할 수 없다.
+ *   · 확인이 끝난 표본이 0회 → 실패 사유를 그대로 물려준다(절대 미인용으로 강등하지 않는다).
+ */
+export function aggregateSurfaceSamples(outcomes: SurfaceOutcome[]): SurfaceOutcome {
+  const attempts = outcomes.length;
+  if (attempts === 0) {
+    return surface('UNVERIFIED', {
+      errorCode: 'INSUFFICIENT_SAMPLES',
+      errorMessage: '조회를 한 번도 완료하지 못했습니다.',
+      samples: 0, citedSamples: 0, attempts: 0,
+    });
+  }
+
+  const verified = outcomes.filter(o => isVerifiedStatus(o.status));
+  const cited = verified.filter(o => o.status === 'CITED');
+  const counts = { samples: verified.length, citedSamples: cited.length, attempts };
+
+  if (cited.length > 0) {
+    // 순번·출처 수·근거 URL 은 실제로 인용을 본 그 회차의 값을 그대로 쓴다 —
+    // 회차마다 다른 값을 평균 내면 어느 화면에도 없던 숫자가 만들어진다.
+    return { ...cited[0], ...counts };
+  }
+
+  if (verified.length >= 2) {
+    // 어느 한 회차에서라도 AI 영역이 실제로 떴다면 "영역 자체가 없다"고 말하지 않는다.
+    const present = verified.some(o => o.present === true)
+      ? true
+      : verified.every(o => o.present === false) ? false : null;
+    return { ...verified[verified.length - 1], present, ...counts };
+  }
+
+  if (verified.length === 1) {
+    return surface('UNVERIFIED', {
+      present: verified[0].present,
+      errorCode: 'INSUFFICIENT_SAMPLES',
+      errorMessage: `${attempts}회 조회 중 1회만 끝까지 확인됐습니다. AI 답변은 조회할 때마다 달라져 `
+        + '한 번 보이지 않은 것만으로는 미인용이라고 판정하지 않습니다.',
+      ...counts,
+    });
+  }
+
+  const representative = FAILURE_PRIORITY
+    .map(s => outcomes.find(o => o.status === s))
+    .find(Boolean) ?? outcomes[0];
+  return { ...representative, ...counts };
+}
 
 /**
  * keyword 로 (1) 통합검색 "AI 브리핑" 위젯과 (2) "AI" 탭을 각각 독립적으로 확인한다.
  * 어느 한쪽이 실패해도 다른 쪽 결과는 그대로 반환된다.
+ *
+ * §3.7 — 조회는 AI_CITATION_SAMPLE_COUNT 회 반복한다. 생성형 답변은 조회 시점마다 출처가
+ * 달라지므로 1회 관측으로 "인용/미인용"을 단정하지 않고, 표본 n/N 을 결과에 함께 담는다.
+ * 다만 아래 경우엔 표본 수를 채우지 않고 멈춘다 — 더 두드려 봐야 얻을 게 없거나 위험한 경우다.
+ *   · 네이버가 차단/캡차/점검으로 막고 있을 때(§3.6 즉시 중단)
+ *   · 남은 시간이 다음 표본을 감당하지 못할 때(응답을 못 돌려주면 지금까지 본 것도 버려진다)
  */
 export async function checkAiBriefingExposure(
   keyword: string,
   blogId: string,
   postId: string,
-  onStage?: (stage: AiBriefingStage) => void,
+  onProgress?: (p: AiBriefingProgress) => void,
+): Promise<AiBriefingCheckResult> {
+  const totalSamples = AI_CITATION_SAMPLE_COUNT;
+  const startedAt = Date.now();
+  const samples: AiBriefingCheckResult[] = [];
+  let lastError: string | undefined;
+  let longestSampleMs = 0;
+
+  for (let i = 0; i < totalSamples; i++) {
+    if (i > 0) {
+      // 남은 시간이 "가장 오래 걸린 표본"만큼도 없으면 더 시작하지 않는다.
+      const elapsed = Date.now() - startedAt;
+      if (elapsed + longestSampleMs + SAMPLE_GAP_MS > SAMPLE_TIME_BUDGET_MS) {
+        console.log(`[ai-briefing][sampling] keyword="${keyword}" 시간 예산으로 ${i}/${totalSamples} 회에서 중단`);
+        break;
+      }
+      await new Promise(r => setTimeout(r, SAMPLE_GAP_MS));
+    }
+
+    const sampleStart = Date.now();
+    const onStage = (stage: AiBriefingStage) => onProgress?.({ stage, sample: i + 1, totalSamples });
+    const result = await runOneSample(keyword, blogId, postId, onStage);
+    longestSampleMs = Math.max(longestSampleMs, Date.now() - sampleStart);
+    samples.push(result);
+    if (result.error) lastError = result.error;
+
+    if (isBlockingFailure(result.briefing) && isBlockingFailure(result.tab)) {
+      console.log(`[ai-briefing][sampling] keyword="${keyword}" 네이버 차단으로 ${i + 1}/${totalSamples} 회에서 중단`);
+      break;
+    }
+  }
+
+  if (samples.length === 0) {
+    return fatalResult(keyword, blogId, postId, 'BROWSER_ERROR', lastError ?? '확인을 시작하지 못했습니다.');
+  }
+
+  const briefing = aggregateSurfaceSamples(samples.map(s => s.briefing));
+  const tab = aggregateSurfaceSamples(samples.map(s => s.tab));
+  // 전역 error 는 "두 표면 모두 확인 불가"의 신호다. 합친 결과에서 어느 한쪽이라도
+  // 확정됐다면 그 판정을 오류로 덮지 않는다.
+  const settled = isVerifiedStatus(briefing.status) || isVerifiedStatus(tab.status);
+  console.log(
+    `[ai-briefing][sampling] keyword="${keyword}" samples=${samples.length}/${totalSamples} `
+    + `briefing=${briefing.status}(${briefing.citedSamples}/${briefing.samples}) `
+    + `tab=${tab.status}(${tab.citedSamples}/${tab.samples})`,
+  );
+  return bothSurfaces(keyword, blogId, postId, briefing, tab, settled ? undefined : lastError);
+}
+
+/** 표본 1회 = 브라우저 확보 + checkOne 1회(브라우저가 죽었으면 한 번만 새로 띄워 재시도). */
+async function runOneSample(
+  keyword: string,
+  blogId: string,
+  postId: string,
+  onStage: (stage: AiBriefingStage) => void,
 ): Promise<AiBriefingCheckResult> {
   let browser: Browser;
   try {

@@ -41,7 +41,31 @@ type BriefingResult = {
   tabError?: string | null;
   /** 확인이 진행 중이면 시작 시각. 5분이 지나면 조회 시 UNVERIFIED로 회수된다. */
   checkingStartedAt?: string | null;
+  // 표본 n/N(§3.7) — 한 건을 여러 번 조회한 결과. 표본 수가 기록되지 않은 구버전 행은 null.
+  briefingSamples?: number | null;
+  briefingCitedSamples?: number | null;
+  tabSamples?: number | null;
+  tabCitedSamples?: number | null;
 };
+
+/**
+ * 표본 컬럼(migration-205)은 아직 DB에 적용되지 않았을 수 있다.
+ * 적용 전이라면 이 컬럼들 때문에 확인 결과 저장 자체가 실패해 "확인은 했는데 아무것도 안 남는"
+ * 상태가 된다 — 그건 표본 표기를 못 하는 것보다 훨씬 나쁘다. 그래서 컬럼이 없다는 응답이 오면
+ * 표본 없이 한 번 더 시도한다(마이그레이션 적용 후에는 첫 시도가 그대로 성공한다).
+ */
+const SAMPLE_SELECT = 'briefing_samples, briefing_cited_samples, tab_samples, tab_cited_samples';
+
+function isMissingColumnError(e: { code?: string; message?: string } | null): boolean {
+  if (!e) return false;
+  if (e.code === 'PGRST204' || e.code === '42703') return true;
+  return /does not exist|could not find the .*column/i.test(e.message ?? '');
+}
+
+/** 숫자로 저장할 값만 통과시킨다 — 문자열·음수 같은 값이 표본 수로 굳지 않게 한다. */
+function sampleCount(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null;
+}
 
 /** 확인 진행 중 표시가 이 시간을 넘기면 "중단된 것"으로 보고 미확인으로 회수한다(스펙 §9). */
 const STALE_CHECKING_MS = 5 * 60 * 1000;
@@ -73,13 +97,20 @@ export async function GET(request: NextRequest) {
   const postId = request.nextUrl.searchParams.get('postId')?.trim();
 
   const supabase = createServiceClient();
-  let query = supabase
-    .from('ai_briefing_exposures')
-    .select('post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, ai_briefing_source_url, ai_tab_source_url, post_url, checked_at, search_volume_monthly, competition, related_keyword_count, check_status, last_error, briefing_status, briefing_error_code, briefing_error, tab_status, tab_error_code, tab_error, checking_started_at')
-    .eq('user_id', g.userId)
-    .eq('blog_id', blogId);
-  if (postId) query = query.eq('post_id', postId);
-  const { data, error } = await query;
+  const BASE_SELECT = 'post_id, keyword, has_ai_briefing, exposed, source_index, source_total, matched_title, has_ai_tab, tab_exposed, tab_source_index, tab_source_total, tab_matched_title, ai_briefing_source_url, ai_tab_source_url, post_url, checked_at, search_volume_monthly, competition, related_keyword_count, check_status, last_error, briefing_status, briefing_error_code, briefing_error, tab_status, tab_error_code, tab_error, checking_started_at';
+  const runSelect = (columns: string) => {
+    let q = supabase
+      .from('ai_briefing_exposures')
+      .select(columns)
+      .eq('user_id', g.userId)
+      .eq('blog_id', blogId);
+    if (postId) q = q.eq('post_id', postId);
+    return q;
+  };
+
+  let { data, error } = await runSelect(`${BASE_SELECT}, ${SAMPLE_SELECT}`);
+  // 표본 컬럼이 아직 없으면 그 컬럼만 빼고 다시 읽는다 — 표본 표기를 못 할 뿐, 판정은 그대로 보여준다.
+  if (isMissingColumnError(error)) ({ data, error } = await runSelect(BASE_SELECT));
 
   if (error) return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });
 
@@ -87,7 +118,8 @@ export async function GET(request: NextRequest) {
   // 키워드 목록은 키워드순위(keyword_rank_lookups)가 SoT이므로 여기서 만들지 않는다.
   const briefingResults: Record<string, BriefingResult> = {};
   const staleKeys: Array<{ postId: string; keyword: string }> = [];
-  for (const r of (data ?? []) as Array<{
+  // 컬럼 목록을 런타임 문자열로 넘기므로(표본 컬럼 유무에 따라 달라진다) 타입 추론이 되지 않는다.
+  for (const r of (data ?? []) as unknown as Array<{
     post_id: string; keyword: string;
     has_ai_briefing: boolean | null; exposed: boolean | null;
     source_index: number | null; source_total: number | null;
@@ -102,6 +134,9 @@ export async function GET(request: NextRequest) {
     briefing_status: SurfaceStatus | null; briefing_error_code: string | null; briefing_error: string | null;
     tab_status: SurfaceStatus | null; tab_error_code: string | null; tab_error: string | null;
     checking_started_at: string | null;
+    // migration-205 미적용 환경에서는 아예 없는 필드다 → 옵셔널.
+    briefing_samples?: number | null; briefing_cited_samples?: number | null;
+    tab_samples?: number | null; tab_cited_samples?: number | null;
   }>) {
     // 확인 진행 표시가 5분을 넘겼으면 중단된 것으로 보고 이 응답에서부터 미확인(UNVERIFIED)으로 회수한다.
     // 중단은 절대 미인용이 아니다(스펙 §8·§9).
@@ -144,6 +179,10 @@ export async function GET(request: NextRequest) {
         tabErrorCode: r.tab_error_code,
         tabError: r.tab_error,
         checkingStartedAt: r.checking_started_at,
+        briefingSamples: r.briefing_samples ?? null,
+        briefingCitedSamples: r.briefing_cited_samples ?? null,
+        tabSamples: r.tab_samples ?? null,
+        tabCitedSamples: r.tab_cited_samples ?? null,
       };
     }
   }
@@ -272,7 +311,16 @@ export async function PATCH(request: NextRequest) {
       : (briefingStatus === 'UNAVAILABLE' || tabStatus === 'UNAVAILABLE') ? 'unanalyzable' : 'transient_error';
   const rowError = [r.briefing?.errorMessage, r.tab?.errorMessage].filter(Boolean).join(' / ').slice(0, 500) || null;
 
-  const { error } = await supabase
+  // 표본 n/N(§3.7). 확정된 표면의 값만 기록한다 — 미확정 표면의 표본 수를 남기면
+  // "3회 중 0회 인용"처럼 읽혀 확인 실패가 미인용으로 오독된다.
+  const sampleFields = {
+    briefing_samples: briefingVerified ? sampleCount(r.briefing?.samples) : null,
+    briefing_cited_samples: briefingVerified ? sampleCount(r.briefing?.citedSamples) : null,
+    tab_samples: tabVerified ? sampleCount(r.tab?.samples) : null,
+    tab_cited_samples: tabVerified ? sampleCount(r.tab?.citedSamples) : null,
+  };
+
+  const upsertRow = (extra: Record<string, unknown>) => supabase
     .from('ai_briefing_exposures')
     .upsert({
       user_id: g.userId,
@@ -310,7 +358,12 @@ export async function PATCH(request: NextRequest) {
       // 확정된 표면이 하나도 없으면 "마지막 확인 시각"을 갱신하지 않는다.
       ...(briefingVerified || tabVerified ? { checked_at: now } : {}),
       updated_at: now,
+      ...extra,
     }, { onConflict: 'user_id,post_id,keyword' });
+
+  let { error } = await upsertRow(sampleFields);
+  // 표본 컬럼이 아직 없는 DB라면 판정만이라도 남긴다 — 저장 자체가 실패하면 확인한 결과가 통째로 사라진다.
+  if (isMissingColumnError(error)) ({ error } = await upsertRow({}));
 
   if (error) return NextResponse.json({ error: '갱신에 실패했습니다.' }, { status: 500 });
 
@@ -336,21 +389,26 @@ export async function PATCH(request: NextRequest) {
     || prev.exposed !== exposed
     || prev.tab_exposed !== tabExposed;
   if (changed) {
-    await supabase.from('ai_briefing_exposure_history').insert({
-      user_id: g.userId,
-      blog_id: blogId,
-      post_id: postId,
-      keyword: kw,
-      has_ai_briefing: hasAiBriefing,
-      exposed,
-      source_index: sourceIndex,
-      has_ai_tab: hasAiTab,
-      tab_exposed: tabExposed,
-      tab_source_index: tabSourceIndex,
-      briefing_status: briefingStatus,
-      tab_status: tabStatus,
-      checked_at: now,
-    });
+    const insertHistory = (extra: Record<string, unknown>) => supabase
+      .from('ai_briefing_exposure_history')
+      .insert({
+        user_id: g.userId,
+        blog_id: blogId,
+        post_id: postId,
+        keyword: kw,
+        has_ai_briefing: hasAiBriefing,
+        exposed,
+        source_index: sourceIndex,
+        has_ai_tab: hasAiTab,
+        tab_exposed: tabExposed,
+        tab_source_index: tabSourceIndex,
+        briefing_status: briefingStatus,
+        tab_status: tabStatus,
+        checked_at: now,
+        ...extra,
+      });
+    const { error: histError } = await insertHistory(sampleFields);
+    if (isMissingColumnError(histError)) await insertHistory({});
   }
 
   return NextResponse.json({ success: true });

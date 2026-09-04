@@ -7,7 +7,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.browser.test.ts'],
-    testTimeout: 150_000,
+    // 한 건의 확인이 §3.7 표본 수만큼 실제 브라우저 왕복을 반복하므로 1회 시절보다 오래 걸린다.
+    testTimeout: 300_000,
     hookTimeout: 60_000,
     fileParallelism: false,
   },

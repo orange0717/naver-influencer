@@ -61,6 +61,13 @@ export interface BriefingResult {
   tabErrorCode?: string | null;
   tabError?: string | null;
   checkingStartedAt?: string | null;
+  // ── 표본 n/N(§3.7) ──────────────────────────────────────────────────────
+  // AI 답변은 조회할 때마다 달라지므로 한 건을 여러 번 조회한다. samples = 판정까지 끝난 조회 횟수,
+  // citedSamples = 그중 인용이 확인된 횟수. 1회만 조회하던 시절의 기록에는 없다(null).
+  briefingSamples?: number | null;
+  briefingCitedSamples?: number | null;
+  tabSamples?: number | null;
+  tabCitedSamples?: number | null;
 }
 
 export const EMPTY_BRIEFING: BriefingResult = {
@@ -157,6 +164,7 @@ export function fromEngineResult(raw: Record<string, unknown>): BriefingResult {
   const surfaceOf = (v: unknown) => (v ?? {}) as {
     status?: SurfaceStatusValue; present?: boolean | null;
     errorCode?: string | null; errorMessage?: string | null;
+    samples?: number | null; citedSamples?: number | null;
   };
   const b = surfaceOf(raw.briefing);
   const t = surfaceOf(raw.tab);
@@ -168,6 +176,10 @@ export function fromEngineResult(raw: Record<string, unknown>): BriefingResult {
     tabStatus: t.status ?? null,
     tabErrorCode: t.errorCode ?? null,
     tabError: t.errorMessage ?? null,
+    briefingSamples: b.samples ?? null,
+    briefingCitedSamples: b.citedSamples ?? null,
+    tabSamples: t.samples ?? null,
+    tabCitedSamples: t.citedSamples ?? null,
     checkingStartedAt: null,
   };
 }
@@ -240,11 +252,22 @@ const SURFACE_BADGE: Record<SurfaceStatusValue, { cls: string; label: string; ti
 };
 
 /**
+ * 표본 표기(§3.7) — "3회 중 1회 인용".
+ * AI 답변은 조회할 때마다 달라지므로 한 번 본 것을 항상 그렇다고 적지 않는다.
+ * 표본 수가 기록되지 않은 예전 결과(null)에는 아무것도 적지 않는다 — 없는 횟수를 지어내지 않는다.
+ */
+export function sampleRatioText(cited?: number | null, samples?: number | null): string {
+  if (typeof samples !== 'number' || samples <= 0) return '';
+  const n = typeof cited === 'number' ? cited : 0;
+  return `${samples}회 중 ${n}회 인용`;
+}
+
+/**
  * 표면 하나(AI 브리핑 or AI 탭)의 상태 배지.
  * 5개 상태를 모두 "글자"로 구분해 표시한다 — 색/아이콘만으로 구분하지 않는다(스펙 §14).
  */
 function SurfaceBadge({
-  status, errorMessage, sourceIndex, sourceTotal, present, absentLabel, indexPrefix,
+  status, errorMessage, sourceIndex, sourceTotal, present, absentLabel, indexPrefix, samples, citedSamples,
 }: {
   status: SurfaceStatusValue;
   errorMessage?: string | null;
@@ -253,10 +276,16 @@ function SurfaceBadge({
   present?: boolean | null;
   absentLabel: string;
   indexPrefix: string;
+  samples?: number | null;
+  citedSamples?: number | null;
 }) {
   const meta = SURFACE_BADGE[status];
   // "그 키워드엔 해당 AI 영역 자체가 안 뜬다"는 미인용과 다른 사실이므로 따로 알려준다.
   const label = status === 'NOT_CITED' && present === false ? absentLabel : meta.label;
+  // 인용이 매번 되는지, 어쩌다 한 번 되는지는 다른 사실이다. 확정된 판정에는 표본을 같이 적는다.
+  const ratio = status === 'CITED' || status === 'NOT_CITED'
+    ? sampleRatioText(citedSamples, samples)
+    : '';
   return (
     <span className="inline-flex items-center gap-1">
       <span className={`text-xs px-2 py-0.5 rounded-full ${meta.cls}`} title={errorMessage || meta.title}>
@@ -265,6 +294,11 @@ function SurfaceBadge({
       {status === 'CITED' && !!sourceIndex && (
         <span className="text-[10px] text-dim">
           {indexPrefix}{sourceIndex}{sourceTotal ? `/${sourceTotal}` : ''}
+        </span>
+      )}
+      {!!ratio && (
+        <span className="text-[10px] text-dim" title="AI 답변은 조회 시점마다 달라져 여러 번 조회한 결과입니다.">
+          {ratio}
         </span>
       )}
     </span>
@@ -288,6 +322,8 @@ export function BriefingLabelBadge({ result }: { result?: BriefingResult }) {
       present={result?.hasAiBriefing}
       absentLabel="브리핑 없음"
       indexPrefix="출처 #"
+      samples={result?.briefingSamples}
+      citedSamples={result?.briefingCitedSamples}
     />
   );
 }
@@ -310,6 +346,8 @@ export function AiTabBadge({ result }: { result?: BriefingResult }) {
       present={result?.hasAiTab}
       absentLabel="AI 탭 없음"
       indexPrefix=""
+      samples={result?.tabSamples}
+      citedSamples={result?.tabCitedSamples}
     />
   );
 }
@@ -394,6 +432,14 @@ export function CitationDetailPanel({
         <p className="text-dim">아직 확인한 적이 없습니다. &lsquo;다시 검사&rsquo;를 눌러 이 키워드의 AI 브리핑·AI 탭을 조회하세요.</p>
       )}
 
+      {/* §3.7 — 왜 "3회 중 1회"인지 설명한다. 이 문장이 없으면 사용자는 n/N 을 오류로 읽는다. */}
+      {(!!result?.briefingSamples || !!result?.tabSamples) && (
+        <p className="text-[11px] text-dim">
+          AI 답변은 같은 키워드라도 조회할 때마다 출처가 달라집니다. 그래서 한 번 보고 단정하지 않고
+          여러 번 조회한 결과를 &lsquo;n회 중 m회 인용&rsquo;으로 적습니다.
+        </p>
+      )}
+
       {/* 표면별 실패 사유는 따로 적는다 — 한쪽만 실패한 경우 어느 쪽인지 알 수 없으면 재확인 판단을 못 한다. */}
       {result?.briefingStatus && !['CITED', 'NOT_CITED'].includes(result.briefingStatus) && (
         <p className="text-[11px] text-gold">
@@ -437,6 +483,21 @@ export const STAGE_LABELS: Record<string, string> = {
   comparing: '출처 비교 중...',
   done: '완료',
 };
+
+/**
+ * 진행 문구 + 몇 번째 조회인지(§3.7). 3회 조회는 1회보다 3배 오래 걸리므로
+ * 회차를 안 보여주면 사용자에겐 멈춘 것처럼 보인다.
+ */
+export function stageLabelWithSample(
+  stage: string,
+  sample?: number | null,
+  totalSamples?: number | null,
+  fallback = '확인 중...',
+): string {
+  const base = STAGE_LABELS[stage] || fallback;
+  if (stage === 'done' || !sample || !totalSamples || totalSamples <= 1) return base;
+  return `${base} (${sample}/${totalSamples}회차)`;
+}
 
 export function timeAgo(dateStr?: string | null): string {
   if (!dateStr) return '';
