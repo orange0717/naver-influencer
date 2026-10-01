@@ -1,6 +1,7 @@
 ninfl-toss-app
 backend
-scripts
+scripts/*
+!scripts/datalab-influencers.json
 workers
 parser.py
 crawler.py
