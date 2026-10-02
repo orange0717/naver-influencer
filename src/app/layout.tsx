@@ -11,7 +11,6 @@ import ChatBot from "@/components/ChatBot";
 import FeedbackButton from "@/components/FeedbackButton";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import Providers from "@/components/Providers";
-import MaintenanceModal from "@/components/MaintenanceModal";
 import UpdateBanner from "@/components/UpdateBanner";
 import SubscriptionExpiryStrip from "@/components/SubscriptionExpiryStrip";
 import NicknameRequiredModal from "@/components/NicknameRequiredModal";
@@ -267,7 +266,6 @@ export default function RootLayout({
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <Providers>
-          <MaintenanceModal />
           <SentryUserIdentity />
           <HeaderWrapper />
           <SubscriptionExpiryStrip />
