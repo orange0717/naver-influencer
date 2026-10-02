@@ -14,6 +14,12 @@ export interface Keyword {
   trend_percentage: number;
   is_new: boolean;
   first_seen_at: string;
+  /** DB 에 적어 둔 세부분류(migration-206). 네이버 API 에서 바로 온 행에는 없다. */
+  sub_category?: string | null;
+  /** 현재 필터·정렬 안에서의 순위(1부터 연속) */
+  rank?: number;
+  /** 필터를 걸기 전 순위. 계산하지 않는 정렬에서는 null */
+  overall_rank?: number | null;
 }
 
 interface Recommendation {

@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const category = searchParams.get('category')?.slice(0, 50) || undefined;
   const search = searchParams.get('search')?.slice(0, 100) || undefined;
+  const sub = searchParams.get('sub')?.slice(0, 50) || undefined;
 
   const supabase = createServiceClient();
   let query = supabase
@@ -22,6 +23,8 @@ export async function GET(request: NextRequest) {
 
   if (category && category !== '전체') {
     query = query.eq('category', category);
+    // 화면에서 고른 세부분류와 같은 범위를 내려준다.
+    if (sub && sub !== '전체') query = query.eq('sub_category', sub);
   }
   if (search) {
     query = query.ilike('keyword', `%${search}%`);

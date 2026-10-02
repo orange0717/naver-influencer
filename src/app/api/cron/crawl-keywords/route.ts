@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { fetchWithRetry, sleep, verifyCronSecret, createCrawlJob, updateCrawlJob } from '@/lib/crawler';
+import { getSubcategory } from '@/data/subcategory-map';
 
 // Vercel 기본 10초 제한을 회피 — 카테고리가 많을 때 끝까지 순회하도록 확장.
 export const maxDuration = 300;
@@ -99,6 +100,8 @@ export async function GET(request: NextRequest) {
             keyword: kw.name,
             keyword_clean: kw.name.replace(/\s+/g, '').toLowerCase(),
             category: categoryMap.get(kw.categoryId) || cat.name,
+            // 세부분류 필터가 DB 에서 걸리도록 판정 결과를 같이 적는다(규칙을 고치면 다음 크롤에 반영).
+            sub_category: getSubcategory(categoryMap.get(kw.categoryId) || cat.name, kw.name),
             naver_keyword_id: kw.id,
             participant_count: kw.participantCount ?? 0,
             is_new: kw.recentAdded || false,

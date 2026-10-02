@@ -73,6 +73,7 @@ export default function Client() {
       const params = new URLSearchParams();
       if (category && category !== '전체') params.set('category', category);
       if (search.trim()) params.set('search', search.trim());
+      if (category !== '전체' && subFilter !== '전체') params.set('sub', subFilter);
       const res = await fetch(`/api/downloads/keywords?${params.toString()}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -104,6 +105,9 @@ export default function Client() {
   const [categories, setCategories] = useState<string[]>(['전체']);
   const [category, setCategory] = useState('전체');
   const [search, setSearch] = useState('');
+  // 서버에 실제로 보낸 검색어. 입력은 300ms 뒤에 여기로 옮겨진다.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [subFilter, setSubFilter] = useState('전체');
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -125,6 +129,7 @@ export default function Client() {
       setSortKey(key);
       setSortOrder('desc');
     }
+    setPage(1);
   };
 
   const sortArrow = (key: string) => {
@@ -218,104 +223,79 @@ export default function Client() {
     }
   };
 
-  // 커서 기반 페이지네이션 (카테고리 선택 시)
-  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const loadedCountRef = useRef(0);
+  // 필터·정렬·페이지는 전부 서버가 처리한다. 화면은 받은 한 페이지를 그대로 그린다.
+  const requestSeq = useRef(0);
 
-  const fetchData = useCallback(async (cursor?: string | null, searchQuery?: string) => {
+  const fetchData = useCallback(async () => {
+    const seq = ++requestSeq.current;
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: '50' });
-
+      const params = new URLSearchParams();
       if (category !== '전체') {
         params.set('category', category);
-        // 정렬 모드: DB에서 전체 키워드 조회
-        if (sortKey) {
-          params.set('sort', sortKey);
-          params.set('order', sortOrder);
-        } else if (cursor) {
-          params.set('cursor', cursor);
-        }
-      } else {
-        params.set('page', String(currentPageIndex + 1));
+        if (subFilter !== '전체') params.set('sub', subFilter);
       }
-
-      if (searchQuery) params.set('search', searchQuery);
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      if (sortKey) {
+        params.set('sort', sortKey);
+        params.set('order', sortOrder);
+      }
+      params.set('page', String(page));
 
       const res = await fetch(`/api/keywords?${params}`);
       if (!res.ok) {
         throw new Error('데이터를 불러오지 못했습니다.');
       }
       const data = await res.json();
+      // 늦게 도착한 이전 요청이 최신 결과를 덮어쓰지 않게 한다.
+      if (seq !== requestSeq.current) return;
 
       setKeywords(data.keywords || []);
       setGrouped(data.grouped || []);
       setCategories(data.categories || ['전체']);
       setTotal(data.total || 0);
-      setNextCursor(data.nextCursor || null);
     } catch (err) {
+      if (seq !== requestSeq.current) return;
       console.error('키워드 로드 실패:', err);
       setError(err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
-  }, [category, currentPageIndex, sortKey, sortOrder]);
+  }, [category, subFilter, debouncedSearch, sortKey, sortOrder, page]);
 
-  // 카테고리/페이지/정렬 변경 시 fetch
   useEffect(() => {
-    const cursor = cursorHistory[currentPageIndex];
-    fetchData(cursor, sortKey ? undefined : search.trim() || undefined);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, currentPageIndex, sortKey, sortOrder]);
+    fetchData();
+  }, [fetchData]);
 
-  // 검색어 변경 시 fetch (정렬 모드가 아닐 때만 - 정렬 모드는 클라이언트 필터링)
+  // 검색어는 300ms 멈췄을 때 서버로 보낸다. 빈 문자열이면 검색 필터가 풀린다.
   useEffect(() => {
-    if (sortKey) return;
+    const next = search.trim();
+    if (next === debouncedSearch) return;
     const timer = setTimeout(() => {
-      const cursor = cursorHistory[currentPageIndex];
-      fetchData(cursor, search.trim() || undefined);
-    }, 500);
+      setDebouncedSearch(next);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
     setSubFilter('전체');
     setSearch('');
+    setDebouncedSearch('');
     setSortKey(null);
     setSortOrder('desc');
-    setCursorHistory([null]);
-    setCurrentPageIndex(0);
-    setNextCursor(null);
-    loadedCountRef.current = 0;
+    setPage(1);
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setCursorHistory([null]);
-    setCurrentPageIndex(0);
-    setNextCursor(null);
-    loadedCountRef.current = 0;
+  const handleSubChange = (sub: string) => {
+    setSubFilter(sub);
+    setPage(1);
   };
 
-  const goNext = () => {
-    if (!nextCursor && category !== '전체') return;
-    const newPageIndex = currentPageIndex + 1;
-    if (cursorHistory.length <= newPageIndex && nextCursor) {
-      setCursorHistory(prev => [...prev, nextCursor]);
-    }
-    setCurrentPageIndex(newPageIndex);
-    loadedCountRef.current += keywords.length;
-  };
-
-  const goPrev = () => {
-    if (currentPageIndex <= 0) return;
-    loadedCountRef.current = Math.max(0, loadedCountRef.current - 50);
-    setCurrentPageIndex(currentPageIndex - 1);
+  const handleReset = () => {
+    handleCategoryChange('전체');
   };
 
   // 경쟁도는 분석 화면 공용 상태 토큰(초록/주황/빨강)만 쓴다 — /my '내 키워드' 배지와 같은 색.
@@ -325,9 +305,20 @@ export default function Client() {
     return <StatusBadge tone="danger" label="높음" />;
   };
 
-  const startNum = currentPageIndex * 50;
-  const hasNext = category !== '전체' ? !!nextCursor : (startNum + keywords.length) < total;
-  const isGroupedView = category === '전체' && !search.trim() && grouped.length > 0;
+  const PAGE_SIZE = 50;
+  const startNum = (page - 1) * PAGE_SIZE;
+  const hasNext = startNum + keywords.length < total;
+  const isGroupedView = category === '전체' && !debouncedSearch && grouped.length > 0;
+  const isFiltered = subFilter !== '전체' || !!debouncedSearch;
+  const filterLabel = [
+    subFilter !== '전체' ? subFilter : category,
+    debouncedSearch ? `"${debouncedSearch}"` : null,
+  ].filter(Boolean).join(' · ');
+  const emptyMessage = subFilter !== '전체' && !debouncedSearch
+    ? `${subFilter} 분류에 해당하는 키워드가 없습니다`
+    : '검색 결과가 없습니다.';
+  // 세부분류는 DB 에 적힌 값을 우선한다 — 필터가 그 값으로 걸리므로 표시와 필터가 어긋나지 않는다.
+  const subOf = (kw: Keyword) => kw.sub_category ?? getSubcategory(kw.category, kw.keyword);
 
   // 주제별로 카테고리 묶기
   const topicGrouped = useMemo<TopicGroup[]>(() => {
@@ -347,44 +338,8 @@ export default function Client() {
       }));
   }, [grouped, isGroupedView]);
 
-  // 세부분류 목록 + 필터링
-  const subCategories = useMemo(() => {
-    // 카테고리 정의에서 전체 세부분류 가져오기 (정렬/비정렬 상관없이 일관된 목록)
-    const definedSubs = getSubcategoryList(category);
-    if (definedSubs.length > 0) return ['전체', ...definedSubs];
-    // 정의 없는 카테고리: 로드된 키워드에서 추출
-    const subs = keywords.map(kw => getSubcategory(kw.category, kw.keyword)).filter(Boolean);
-    const unique = [...new Set(subs)].sort();
-    return ['전체', ...unique];
-  }, [category, keywords]);
-
-  const displayKeywords = useMemo(() => {
-    let list = subFilter === '전체' ? [...keywords] : keywords.filter(kw => getSubcategory(kw.category, kw.keyword) === subFilter);
-    // 정렬 모드에서 클라이언트 검색 (전체 데이터가 로드되어 있으므로)
-    if (sortKey && search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(kw => kw.keyword.toLowerCase().includes(q));
-    }
-    if (sortKey) {
-      const compOrder: Record<string, number> = { low: 1, medium: 2, high: 3 };
-      list = [...list].sort((a, b) => {
-        let diff = 0;
-        if (sortKey === 'participant_count') {
-          diff = a.participant_count - b.participant_count;
-        } else if (sortKey === 'search_volume_monthly') {
-          diff = (a.search_volume_monthly || 0) - (b.search_volume_monthly || 0);
-        } else if (sortKey === 'search_volume_pc') {
-          diff = (a.search_volume_pc || 0) - (b.search_volume_pc || 0);
-        } else if (sortKey === 'search_volume_mobile') {
-          diff = (a.search_volume_mobile || 0) - (b.search_volume_mobile || 0);
-        } else if (sortKey === 'competition_level') {
-          diff = (compOrder[a.competition_level] || 0) - (compOrder[b.competition_level] || 0);
-        }
-        return sortOrder === 'asc' ? diff : -diff;
-      });
-    }
-    return list;
-  }, [keywords, subFilter, sortKey, sortOrder, search]);
+  // 세부분류 목록은 카테고리 규칙 정의에서 온다(받아온 페이지와 무관하게 일정).
+  const subCategories = useMemo(() => ['전체', ...getSubcategoryList(category)], [category]);
 
   return (
     <div className={`${ANALYTICS_SCOPE} space-y-6`}>
@@ -413,11 +368,11 @@ export default function Client() {
       </div>
 
       <div className="flex items-center gap-2">
-        <input type="text" placeholder="키워드 검색..." value={search} onChange={e => handleSearchChange(e.target.value)}
+        <input type="text" placeholder="키워드 검색..." value={search} onChange={e => setSearch(e.target.value)}
           className={`${controlBoxClass} flex-1 text-text placeholder:text-dim focus:outline-none focus:border-accent transition-colors`} />
         {(search || category !== '전체' || subFilter !== '전체' || sortKey) && (
           <button
-            onClick={() => { setSearch(''); setCategory('전체'); setSubFilter('전체'); setSortKey(null); setSortOrder('desc'); setCursorHistory([null]); setCurrentPageIndex(0); setNextCursor(null); loadedCountRef.current = 0; }}
+            onClick={handleReset}
             className="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold bg-surface text-text-2 border border-border hover:border-border-strong hover:text-text transition-colors cursor-pointer"
           >
             초기화
@@ -435,22 +390,22 @@ export default function Client() {
             <span className="text-sm font-semibold text-dim">세부분류</span>
             <select
               value={subFilter}
-              onChange={e => setSubFilter(e.target.value)}
+              onChange={e => handleSubChange(e.target.value)}
               className={`${controlBoxClass} text-text focus:outline-none focus:border-accent transition-colors cursor-pointer appearance-none pr-8`}
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
             >
               {subCategories.map(sub => (
-                <option key={sub} value={sub}>{sub === '전체' ? `전체 (${keywords.length})` : sub}</option>
+                <option key={sub} value={sub}>{sub}</option>
               ))}
             </select>
-            {subFilter !== '전체' && (
-              <span className="text-xs text-accent font-rank">{displayKeywords.length}개</span>
+            {subFilter !== '전체' && !loading && (
+              <span className="text-xs text-accent font-rank">{total.toLocaleString()}개</span>
             )}
           </div>
           {/* 버튼 바로가기 (데스크톱 전용 — 모바일은 위 select 사용) */}
           <div className="hidden md:flex flex-wrap gap-2">
             {subCategories.map(sub => (
-              <button key={sub} onClick={() => setSubFilter(sub)}
+              <button key={sub} onClick={() => handleSubChange(sub)} aria-pressed={subFilter === sub}
                 className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                   subFilter === sub
                     ? 'bg-accent/20 text-accent border border-accent/40'
@@ -472,7 +427,7 @@ export default function Client() {
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-2 border-text-2 border-t-transparent rounded-full mx-auto mb-3" />
-            <p className="text-sm text-dim">네이버에서 키워드를 가져오는 중...</p>
+            <p className="text-sm text-dim">키워드를 불러오는 중...</p>
           </div>
         </div>
       ) : isGroupedView ? (
@@ -590,14 +545,17 @@ export default function Client() {
       ) : (
         /* ─── 카테고리 선택 or 검색: 기존 리스트 뷰 ─── */
         <>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="text-sm font-semibold text-text" aria-live="polite">
+              {filterLabel} · 총 <span className="font-rank">{total.toLocaleString()}</span>개
+            </span>
             <span className="text-xs text-dim">
               {sortKey
                 ? `정렬: ${sortKey === 'participant_count' ? '참여자' : sortKey === 'search_volume_monthly' ? '월 검색량' : sortKey === 'search_volume_pc' ? 'PC 검색량' : sortKey === 'search_volume_mobile' ? '모바일 검색량' : '경쟁도'} ${sortOrder === 'desc' ? '높은순' : '낮은순'}`
                 : '정렬: 기본순'}
             </span>
             {sortKey && (
-              <button onClick={() => setSortKey(null)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border/50 text-dim hover:border-accent/30 transition-colors cursor-pointer">초기화</button>
+              <button onClick={() => { setSortKey(null); setPage(1); }} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface border border-border/50 text-dim hover:border-accent/30 transition-colors cursor-pointer">초기화</button>
             )}
           </div>
           <div className="bg-surface rounded-lg border border-border overflow-x-auto hidden md:block">
@@ -628,8 +586,10 @@ export default function Client() {
                 </tr>
               </thead>
               <tbody>
-                {displayKeywords.map((kw, i) => {
-                  const sub = getSubcategory(kw.category, kw.keyword);
+                {keywords.map((kw, i) => {
+                  const sub = subOf(kw);
+                  const rank = kw.rank ?? startNum + i + 1;
+                  const showOverall = isFiltered && kw.overall_rank != null && kw.overall_rank !== rank;
                   const isExpanded = expandedId === kw.id;
                   const isLoadingRank = rankingsLoading === kw.id;
                   return (
@@ -638,7 +598,10 @@ export default function Client() {
                     className={`border-b border-border/50 hover:bg-surface-hover transition-colors cursor-pointer ${isExpanded ? 'bg-surface-hover' : ''}`}
                     onClick={() => toggleRankings(kw.id)}
                   >
-                    <td className="py-3.5 px-4 font-bold text-dim font-rank text-sm">{startNum + i + 1}</td>
+                    <td className="py-3.5 px-4 font-bold text-dim font-rank text-sm whitespace-nowrap">
+                      {rank}
+                      {showOverall && <span className="block text-xs font-normal text-dim">전체 {kw.overall_rank!.toLocaleString()}위</span>}
+                    </td>
                     <td className="py-3.5 px-4">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -722,18 +685,20 @@ export default function Client() {
                 })}
               </tbody>
             </table>
-            {displayKeywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
+            {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">{emptyMessage}</div>}
           </div>
 
           <div className="md:hidden space-y-3">
-            {displayKeywords.map((kw, i) => {
-              const sub = getSubcategory(kw.category, kw.keyword);
+            {keywords.map((kw, i) => {
+              const sub = subOf(kw);
+              const rank = kw.rank ?? startNum + i + 1;
+              const showOverall = isFiltered && kw.overall_rank != null && kw.overall_rank !== rank;
               return (
               <Link key={kw.id} href={`/keywords/${kw.id}`}
                 className="block bg-surface rounded-lg border border-border p-4 hover:border-accent/40 transition">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-sm font-bold text-dim font-rank shrink-0">#{startNum + i + 1}</span>
+                    <span className="text-sm font-bold text-dim font-rank shrink-0">#{rank}</span>
                     <span className="font-bold text-[15px] truncate">{kw.keyword}</span>
                     <span className="text-dim text-sm shrink-0">{kw.category}</span>
                     {sub && <span className="text-sm text-text-2 font-semibold shrink-0">{sub}</span>}
@@ -746,7 +711,8 @@ export default function Client() {
                     />
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-dim">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-dim">
+                  {showOverall && <span className="text-xs">전체 {kw.overall_rank!.toLocaleString()}위</span>}
                   <span>참여자 {kw.participant_count.toLocaleString()}명</span>
                   {kw.search_volume_monthly > 0 && <span>월 {kw.search_volume_monthly.toLocaleString()}회</span>}
                   {kw.search_volume_pc > 0 && <span>PC {kw.search_volume_pc.toLocaleString()}</span>}
@@ -755,14 +721,14 @@ export default function Client() {
               </Link>
               );
             })}
-            {displayKeywords.length === 0 && <div className="text-center py-12 text-dim text-sm">검색 결과가 없습니다.</div>}
+            {keywords.length === 0 && <div className="text-center py-12 text-dim text-sm">{emptyMessage}</div>}
           </div>
 
-          {(hasNext || currentPageIndex > 0) && (
+          {(hasNext || page > 1) && (
             <div className="flex items-center justify-center gap-3 pt-4">
               <button
-                disabled={currentPageIndex <= 0}
-                onClick={goPrev}
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
                 ← 이전
               </button>
@@ -771,7 +737,7 @@ export default function Client() {
               </span>
               <button
                 disabled={!hasNext}
-                onClick={goNext}
+                onClick={() => setPage(page + 1)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold bg-surface border border-border text-dim hover:border-accent/40 disabled:opacity-30 cursor-pointer disabled:cursor-default">
                 다음 →
               </button>
